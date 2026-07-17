@@ -6,6 +6,7 @@
  */
 
 #include "cpu_state.h"
+#include "psx_cycles.h"
 #include "psx_scheduler.h"   /* psx_scheduler_run — deterministic TCB scheduler */
 #include "parity_trace.h"    /* general two-process control-flow parity ring */
 #include "device_trace.h"    /* general two-process device-event cycle ring */
@@ -81,6 +82,12 @@
 #endif
 #include <windows.h>
 #include <commdlg.h>
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
 #endif
 
 #ifndef PSX_DEFAULT_BIOS_PATH
@@ -97,6 +104,7 @@
 #endif
 
 extern "C" uint64_t gte_get_exec_count(void);
+extern "C" int psx_exec_phase(void);
 
 /* Cross-language globals defined in C translation units. Declared extern "C" at
  * file scope so MSVC gives them C linkage (matching the C definitions); without
@@ -278,6 +286,245 @@ static PlayerInput g_players[2];
  * 640*scale x 512*scale. Allocated once the supersampling scale is known
  * (sized for the native 640x512 when supersampling is off). */
 static uint32_t*     sdl_pixel_buf = nullptr;
+
+#ifndef PSX_NO_DEBUG_TOOLS
+/* ---- External debug menu -------------------------------------------------
+ *
+ * This is deliberately a frontend overlay, not a Legaia overlay: it is drawn
+ * into the host staging buffer after the guest has rendered its frame.  That
+ * keeps it available while guest overlays are loading/faulting and makes it
+ * renderer-independent (software, OpenGL, and Vulkan all consume this buffer).
+ * The first version is strictly read-only.
+ */
+enum DebugMenuMode { DEBUG_MENU_OFF, DEBUG_MENU_COMPACT, DEBUG_MENU_FULL };
+static DebugMenuMode g_debug_menu_mode = DEBUG_MENU_OFF;
+static int g_debug_menu_panel = 0;
+static const char *debug_menu_renderer_name(void);
+static int debug_menu_vsync_disabled(void);
+static bool debug_menu_captures_keyboard(void) {
+    return g_debug_menu_mode == DEBUG_MENU_FULL;
+}
+
+static uint8_t debug_menu_glyph_row(char c, int row) {
+    /* 3x5 uppercase font; bit 2 is the left-most pixel. */
+    uint16_t bits = 0;
+    switch (c) {
+    case 'A': bits=0b111101111101101; break; case 'B': bits=0b110101110101110; break;
+    case 'C': bits=0b111100100100111; break; case 'D': bits=0b110101101101110; break;
+    case 'E': bits=0b111100110100111; break; case 'F': bits=0b111100110100100; break;
+    case 'G': bits=0b111100101101111; break; case 'H': bits=0b101101111101101; break;
+    case 'I': bits=0b111010010010111; break; case 'J': bits=0b001001001101111; break;
+    case 'K': bits=0b101101110101101; break; case 'L': bits=0b100100100100111; break;
+    case 'M': bits=0b101111111101101; break; case 'N': bits=0b101111111111101; break;
+    case 'O': bits=0b111101101101111; break; case 'P': bits=0b111101111100100; break;
+    case 'Q': bits=0b111101101111011; break; case 'R': bits=0b111101111110101; break;
+    case 'S': bits=0b111100111001111; break; case 'T': bits=0b111010010010010; break;
+    case 'U': bits=0b101101101101111; break; case 'V': bits=0b101101101101010; break;
+    case 'W': bits=0b101101111111101; break; case 'X': bits=0b101010010101101; break;
+    case 'Y': bits=0b101101010010010; break; case 'Z': bits=0b111001010100111; break;
+    case '0': bits=0b111101101101111; break; case '1': bits=0b010110010010111; break;
+    case '2': bits=0b111001111100111; break; case '3': bits=0b111001111001111; break;
+    case '4': bits=0b101101111001001; break; case '5': bits=0b111100111001111; break;
+    case '6': bits=0b111100111101111; break; case '7': bits=0b111001010010010; break;
+    case '8': bits=0b111101111101111; break; case '9': bits=0b111101111001111; break;
+    case '-': bits=0b000000111000000; break; case ':': bits=0b000010000010000; break;
+    case '.': bits=0b000000000000010; break; case '/': bits=0b001001010100100; break;
+    case '=': bits=0b000111000111000; break; case '%': bits=0b101001010100101; break;
+    default: break;
+    }
+    return (uint8_t)((bits >> ((4 - row) * 3)) & 7u);
+}
+
+static void debug_menu_rect(uint32_t *pixels, int w, int h, int x, int y,
+                            int rw, int rh, uint32_t colour) {
+    const int x0 = std::max(0, x), y0 = std::max(0, y);
+    const int x1 = std::min(w, x + rw), y1 = std::min(h, y + rh);
+    for (int py = y0; py < y1; ++py)
+        for (int px = x0; px < x1; ++px) pixels[py * w + px] = colour;
+}
+
+static void debug_menu_text(uint32_t *pixels, int w, int h, int x, int y,
+                            int scale, const char *text, uint32_t colour) {
+    for (const char *p = text; *p; ++p, x += 4 * scale) {
+        for (int row = 0; row < 5; ++row) {
+            const uint8_t bits = debug_menu_glyph_row(*p, row);
+            for (int col = 0; col < 3; ++col)
+                if (bits & (1u << (2 - col)))
+                    debug_menu_rect(pixels, w, h, x + col * scale,
+                                    y + row * scale, scale, scale, colour);
+        }
+    }
+}
+
+static const char *debug_menu_phase_name(int phase) {
+    switch (phase) {
+    case 1: return "INTERP";
+    case 2: return "NATIVE";
+    case 3: return "STATIC";
+    case 4: return "GPU";
+    default: return "OTHER";
+    }
+}
+
+static bool debug_menu_handle_key(const SDL_Keysym &key) {
+    const bool ctrl = (key.mod & KMOD_CTRL) != 0;
+    if (key.sym == SDLK_F10) {
+        if (ctrl) {
+            g_debug_menu_mode = g_debug_menu_mode == DEBUG_MENU_COMPACT
+                ? DEBUG_MENU_OFF : DEBUG_MENU_COMPACT;
+        } else {
+            g_debug_menu_mode = g_debug_menu_mode == DEBUG_MENU_FULL
+                ? DEBUG_MENU_OFF : DEBUG_MENU_FULL;
+        }
+        return true;
+    }
+    if (g_debug_menu_mode != DEBUG_MENU_FULL) return false;
+    if (key.sym == SDLK_ESCAPE) { g_debug_menu_mode = DEBUG_MENU_OFF; return true; }
+    if (key.sym == SDLK_TAB || key.sym == SDLK_RIGHT) {
+        g_debug_menu_panel = (g_debug_menu_panel + 1) % 3; return true;
+    }
+    if (key.sym == SDLK_LEFT) {
+        g_debug_menu_panel = (g_debug_menu_panel + 2) % 3; return true;
+    }
+    return false;
+}
+
+static void debug_menu_draw(uint32_t *pixels, int w, int h) {
+    if (g_debug_menu_mode == DEBUG_MENU_OFF || !pixels || w < 160 || h < 80) return;
+    const int scale = w >= 500 ? 2 : 1;
+    const int line_h = 7 * scale;
+    const uint32_t bg = 0xFF101522u, border = 0xFF4CC9F0u;
+    const uint32_t title = 0xFF90E0FFu, text = 0xFFE8EEF5u, warn = 0xFFFFC857u;
+    static uint64_t first_counter = 0, first_frame = 0;
+    const uint64_t now = SDL_GetPerformanceCounter();
+    const uint64_t freq = SDL_GetPerformanceFrequency();
+    if (!first_counter) { first_counter = now; first_frame = s_frame_count; }
+    const double secs = (freq && now > first_counter)
+        ? (double)(now - first_counter) / (double)freq : 0.0;
+    const double fps = secs > 0.0 ? (double)(s_frame_count - first_frame) / secs : 0.0;
+    const double speed = fps / 59.94;
+    CPUState *cpu = debug_cpu_ptr;
+    char line[128];
+
+    if (g_debug_menu_mode == DEBUG_MENU_COMPACT) {
+        debug_menu_rect(pixels, w, h, 6, 6, std::min(w - 12, 190 * scale),
+                        12 * scale, bg);
+        debug_menu_rect(pixels, w, h, 6, 6, std::min(w - 12, 190 * scale),
+                        scale, border);
+        std::snprintf(line, sizeof(line), "DEBUG %.2FX %s PC %08X", speed,
+                      debug_menu_phase_name(psx_exec_phase()),
+                      cpu ? cpu->pc : 0u);
+        debug_menu_text(pixels, w, h, 10, 9, scale, line, text);
+        return;
+    }
+
+    const int box_w = std::min(w - 16, 300 * scale);
+    const int box_h = std::min(h - 16, 142 * scale);
+    debug_menu_rect(pixels, w, h, 8, 8, box_w, box_h, bg);
+    debug_menu_rect(pixels, w, h, 8, 8, box_w, scale, border);
+    debug_menu_rect(pixels, w, h, 8, 8 + box_h - scale, box_w, scale, border);
+    debug_menu_rect(pixels, w, h, 8, 8, scale, box_h, border);
+    debug_menu_rect(pixels, w, h, 8 + box_w - scale, 8, scale, box_h, border);
+    const char *panel = g_debug_menu_panel == 0 ? "OVERVIEW" :
+                        g_debug_menu_panel == 1 ? "OVERLAYS" : "EXECUTION";
+    std::snprintf(line, sizeof(line), "PSX DEBUG %s", panel);
+    debug_menu_text(pixels, w, h, 14, 14, scale, line, title);
+    int y = 14 + line_h + 5 * scale;
+    auto put = [&](const char *s, uint32_t colour = 0xFFE8EEF5u) {
+        debug_menu_text(pixels, w, h, 14, y, scale, s, colour); y += line_h + 2 * scale;
+    };
+
+    if (g_debug_menu_panel == 0) {
+        std::snprintf(line, sizeof(line), "SPEED %.2FX FPS %.1F", speed, fps); put(line);
+        std::snprintf(line, sizeof(line), "RENDER %s VSYNC %s",
+            debug_menu_renderer_name(), debug_menu_vsync_disabled() ? "OFF" : "ON"); put(line);
+        std::snprintf(line, sizeof(line), "FRAME %llu CYCLE %llu",
+            (unsigned long long)s_frame_count, (unsigned long long)psx_cycle_count); put(line);
+        std::snprintf(line, sizeof(line), "PHASE %s LAST %08X",
+            debug_menu_phase_name(psx_exec_phase()), g_debug_current_func_addr); put(line, warn);
+        std::snprintf(line, sizeof(line), "PC %08X EPC %08X", cpu ? cpu->pc : 0u,
+                      cpu ? cpu->cop0[14] : 0u); put(line);
+        std::snprintf(line, sizeof(line), "RA %08X SP %08X", cpu ? cpu->gpr[31] : 0u,
+                      cpu ? cpu->gpr[29] : 0u); put(line);
+    } else if (g_debug_menu_panel == 1) {
+        int active=0, registered=0, regions=0, checked_written=0, found=0;
+        uint32_t checked[4] = {}, crc=0;
+        char cache[8] = {}, game[8] = {};
+        uint32_t loads=0, invalidations=0, unregistered=0, last_pc=0, last_addr=0, last_size=0, revalidations=0;
+        uint64_t native=0, interp=0, stale=0;
+        overlay_loader_get_status(&active, &registered, &regions, cache, (int)sizeof(cache),
+                                  game, (int)sizeof(game), checked, 4, &checked_written, &crc, &found);
+        overlay_loader_get_counters(&loads, &invalidations, &unregistered, &native, &interp,
+                                    &stale, &last_pc, &last_addr, &last_size, &regions, &revalidations);
+        std::snprintf(line, sizeof(line), "CACHE %s REG %d", active ? "ON" : "OFF", registered); put(line);
+        std::snprintf(line, sizeof(line), "LOADS %u INVALID %u", loads, invalidations); put(line);
+        std::snprintf(line, sizeof(line), "DISPATCH N %llu I %llu",
+                      (unsigned long long)native, (unsigned long long)interp); put(line);
+        std::snprintf(line, sizeof(line), "LAST CRC %08X FILE %s", crc, found ? "YES" : "NO"); put(line);
+        std::snprintf(line, sizeof(line), "REVALIDATE %u STALE %llu", revalidations,
+                      (unsigned long long)stale); put(line, warn);
+        std::snprintf(line, sizeof(line), "WRITE %08X AT %08X", last_addr, last_pc); put(line);
+    } else {
+        std::snprintf(line, sizeof(line), "PC %08X LAST %08X", cpu ? cpu->pc : 0u,
+                      g_debug_current_func_addr); put(line);
+        std::snprintf(line, sizeof(line), "EPC %08X CAUSE %08X", cpu ? cpu->cop0[14] : 0u,
+                      cpu ? cpu->cop0[13] : 0u); put(line);
+        std::snprintf(line, sizeof(line), "RA %08X SP %08X", cpu ? cpu->gpr[31] : 0u,
+                      cpu ? cpu->gpr[29] : 0u); put(line);
+        std::snprintf(line, sizeof(line), "A0 %08X A1 %08X", cpu ? cpu->gpr[4] : 0u,
+                      cpu ? cpu->gpr[5] : 0u); put(line);
+        std::snprintf(line, sizeof(line), "PHASE %s", debug_menu_phase_name(psx_exec_phase())); put(line, warn);
+        put("READ ONLY - NO GUEST WRITES", title);
+    }
+    debug_menu_text(pixels, w, h, 14, 8 + box_h - line_h - 4, scale,
+                    "F10 CLOSE TAB PANEL CTRL F10 HUD", title);
+}
+
+/* A small rolling companion to the full crash report.  This intentionally
+ * avoids ring serialization and refreshes only twice per second, so a sudden
+ * crash still leaves a readable pre-crash state without adding frame-time I/O. */
+static void debug_menu_live_snapshot_tick(void) {
+    static Uint64 last = 0;
+    const Uint64 now = SDL_GetPerformanceCounter();
+    const Uint64 freq = SDL_GetPerformanceFrequency();
+    if (last && freq && now - last < freq / 2) return;
+    last = now;
+    CPUState *cpu = debug_cpu_ptr;
+    int active=0, registered=0, regions=0, written=0, found=0;
+    uint32_t checked[1] = {}, crc=0;
+    char cache[2] = {}, game[2] = {};
+    uint32_t loads=0, invalidations=0, unregistered=0, last_pc=0, last_addr=0, last_size=0, revalidations=0;
+    uint64_t native=0, interp=0, stale=0;
+    overlay_loader_get_status(&active, &registered, &regions, cache, (int)sizeof(cache),
+                              game, (int)sizeof(game), checked, 1, &written, &crc, &found);
+    overlay_loader_get_counters(&loads, &invalidations, &unregistered, &native, &interp,
+                                &stale, &last_pc, &last_addr, &last_size, &regions, &revalidations);
+    FILE *f = fopen("psx_live_snapshot.json.tmp", "wb");
+    if (!f) return;
+    fprintf(f,
+        "{\n  \"frame\":%llu,\n  \"phase\":\"%s\",\n"
+        "  \"pc\":\"0x%08X\",\n  \"epc\":\"0x%08X\",\n"
+        "  \"ra\":\"0x%08X\",\n  \"sp\":\"0x%08X\",\n"
+        "  \"last_func\":\"0x%08X\",\n  \"overlay_cache_active\":%d,\n"
+        "  \"overlay_registered\":%d,\n  \"overlay_crc\":\"0x%08X\",\n"
+        "  \"dispatch_native\":%llu,\n  \"dispatch_interpreted\":%llu,\n"
+        "  \"last_write_pc\":\"0x%08X\",\n  \"last_write_addr\":\"0x%08X\"\n}\n",
+        (unsigned long long)s_frame_count, debug_menu_phase_name(psx_exec_phase()),
+        cpu ? cpu->pc : 0u, cpu ? cpu->cop0[14] : 0u,
+        cpu ? cpu->gpr[31] : 0u, cpu ? cpu->gpr[29] : 0u,
+        g_debug_current_func_addr, active, registered, crc,
+        (unsigned long long)native, (unsigned long long)interp,
+        last_pc, last_addr);
+    fclose(f);
+#ifdef _WIN32
+    MoveFileExA("psx_live_snapshot.json.tmp", "psx_live_snapshot.json",
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+#else
+    remove("psx_live_snapshot.json");
+    rename("psx_live_snapshot.json.tmp", "psx_live_snapshot.json");
+#endif
+}
+#endif
 
 /* Presentation-only interpolation for software-rendered content that repeats
  * each guest image for two vblanks. This never changes guest or audio timing. */
@@ -535,6 +782,13 @@ extern "C" {
 uint32_t g_present_slow_count = 0;     /* presents that blocked >250ms */
 int      g_present_vsync_disabled = 0; /* 1 once self-heal tripped */
 }
+
+#ifndef PSX_NO_DEBUG_TOOLS
+static const char *debug_menu_renderer_name(void) {
+    return g_vk_active ? "VULKAN" : g_gl_active ? "OPENGL" : "SOFTWARE";
+}
+static int debug_menu_vsync_disabled(void) { return g_present_vsync_disabled; }
+#endif
 
 /* Turbo-through-loads (step 4). C linkage: debug_server.c reads/toggles the
  * enable and reports the frame counter. Enabled by game.toml [runtime]
@@ -1696,6 +1950,11 @@ static bool controller_source_pressed_h(SDL_GameController* h, const ControllerS
  * (arrows=d-pad, X/S/Z/A=Cross/Circle/Square/Triangle, Q/W/E/R=L1/R1/L2/R2,
  * Return=Start, RShift=Select) plus T/Y=L3/R3 stick clicks. */
 static uint16_t pad_from_keyboard(int player) {
+    /* The full debug menu owns keyboard navigation. Controllers deliberately
+     * remain live, but menu keys must never leak into the guest. */
+#ifndef PSX_NO_DEBUG_TOOLS
+    if (debug_menu_captures_keyboard()) return 0xFFFF;
+#endif
     const Uint8* keys = SDL_GetKeyboardState(NULL);
     return psx_keybinds_pad_word(keys, player);
 }
@@ -1790,6 +2049,9 @@ static uint16_t pad_buttons_for(const PlayerInput& p, int player, bool suppress_
 static void pad_sticks_for(const PlayerInput& p, int player, uint8_t out[4], bool fold_dpad) {
     out[0] = out[1] = out[2] = out[3] = 0x80;
     if (p.kind == 1) {
+#ifndef PSX_NO_DEBUG_TOOLS
+        if (debug_menu_captures_keyboard()) return;
+#endif
         /* Keyboard analog: the configurable left/right stick-direction binds
          * (default = arrow keys on the LEFT stick; RIGHT stick unbound), so the
          * old keyboard analog behaviour is preserved unless the user rebinds. */
@@ -2022,8 +2284,14 @@ static void sample_pad_into_sio(int override) {
          * sticks onto the analog stick, so an analog-mode P1 steers from whatever
          * is plugged in (P1 binds). */
         if (dev_here && eff_analog) {
+#ifndef PSX_NO_DEBUG_TOOLS
+            if (!debug_menu_captures_keyboard()) {
+#endif
             const Uint8* keys = SDL_GetKeyboardState(NULL);
             psx_keybinds_sticks(keys, 1, st);
+#ifndef PSX_NO_DEBUG_TOOLS
+            }
+#endif
             dev_any_controller_sticks(st);
         }
         /* Push sticks every frame; request the pad type (digital/analog) through
@@ -2244,6 +2512,9 @@ static void sdl_vblank_present(void) {
 #endif
 
     runtime_perf_diag_tick();
+#ifndef PSX_NO_DEBUG_TOOLS
+    debug_menu_live_snapshot_tick();
+#endif
 
     /* Lightweight frontend telemetry from PR #13. Count simulated vblanks rather
      * than presents so turbo and skipped-frame modes still report game speed. */
@@ -2311,6 +2582,15 @@ static void sdl_vblank_present(void) {
                     refresh_player_devices();
                 }
             } else if (ev.type == SDL_KEYDOWN) {
+                /* External frontend debug menu owns its shortcuts before the
+                 * save-state bindings below (F10 previously meant save slot 9). */
+#ifndef PSX_NO_DEBUG_TOOLS
+                if (ev.key.keysym.sym == SDLK_F12 && (ev.key.keysym.mod & KMOD_CTRL)) {
+                    psx_crash_trace_manual_snapshot();
+                    continue;
+                }
+                if (debug_menu_handle_key(ev.key.keysym)) continue;
+#endif
                 const Uint16 mod = ev.key.keysym.mod;
                 /* Save states: Shift+F1-F12 = save slot 0-11, F1-F12 = load.
                  * (F11 is a save slot per the user's spec, so fullscreen is
@@ -2758,6 +3038,9 @@ static void sdl_vblank_present(void) {
 #ifndef PSX_SDL_NO_RENDER
     int src_w = (int)present_w * active_scale;
     int src_h = (int)h * active_scale;
+#ifndef PSX_NO_DEBUG_TOOLS
+    debug_menu_draw(sdl_pixel_buf, src_w, src_h);
+#endif
     if (g_gl_active) {
         /* OpenGL present: upload the active display rect and draw a full-screen
          * quad. SDL_GL_SwapWindow handles vsync; the wall-clock pacer above
@@ -2808,9 +3091,11 @@ static void sdl_vblank_present(void) {
 }
 
 int main(int argc, char** argv) {
-    /* Force line-buffered output so messages appear even if killed. */
-    std::setvbuf(stdout, nullptr, _IOLBF, 0);
-    std::setvbuf(stderr, nullptr, _IOLBF, 0);
+    /* Keep startup diagnostics visible even if the process aborts.  MSVCRT
+     * rejects _IOLBF when it is paired with a null caller-owned buffer, so
+     * use the portable unbuffered mode here. */
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
     std::fprintf(stderr, "psxrecomp: main() entered\n");
     std::fflush(stderr);
 
@@ -3006,7 +3291,6 @@ int main(int argc, char** argv) {
                     "psxrecomp: turbo_audio_sink enabled (opt-in)\n");
             }
             {
-                extern int g_idle_skip_enabled;
                 const char *idle_env = std::getenv("PSX_IDLE_SKIP");
                 g_idle_skip_enabled = idle_env
                     ? (idle_env[0] == '1' ? 1 : 0)

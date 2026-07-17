@@ -537,19 +537,21 @@ bool FullFunctionEmitter::emit_function(
                         // Emit JR resolution.
                         uint8_t rs = (pb.raw >> 21) & 0x1F;
                         if (rs == 31) {
+                            out += "    { uint32_t _jr_target = cpu->gpr[31];\n";
                             if (ra_loaded_from_non_sp)
-                                out += emit_irq_check_expr("cpu->gpr[31]") +
-                                       "    cpu->pc = cpu->gpr[31]; psx_restore_state_escape(); return;  /* longjmp-return */\n";
+                                out += emit_irq_check_expr("_jr_target") +
+                                       "    cpu->gpr[31] = _jr_target; cpu->pc = _jr_target; psx_restore_state_escape(); return;  /* longjmp-return */ }\n";
                             else if (cps)
-                                out += emit_irq_check_expr("cpu->gpr[31]") +
-                                       "    cpu->pc = cpu->gpr[31]; return;  /* CPS: publish $ra */\n";
+                                out += emit_irq_check_expr("_jr_target") +
+                                       "    cpu->gpr[31] = _jr_target; cpu->pc = _jr_target; return;  /* CPS: publish latched $ra */ }\n";
                             else
-                                out += emit_irq_check_expr("cpu->gpr[31]") +
-                                       "    return;\n";
+                                out += emit_irq_check_expr("_jr_target") +
+                                       "    cpu->gpr[31] = _jr_target; return; }\n";
                         } else {
-                            out += emit_irq_check_expr(fmt::format("cpu->gpr[{}]", static_cast<int>(rs)));
-                            out += fmt::format("    cpu->pc = cpu->gpr[{}]; return;\n",
+                            out += fmt::format("    {{ uint32_t _jr_target = cpu->gpr[{}];\n",
                                                static_cast<int>(rs));
+                            out += emit_irq_check_expr("_jr_target");
+                            out += "    cpu->pc = _jr_target; return; }\n";
                         }
                     } else {
                         // Pending non-JR terminator (unexpected but safe).
@@ -580,19 +582,21 @@ bool FullFunctionEmitter::emit_function(
                 if (kind == "jr") {
                     uint8_t rs = (raw >> 21) & 0x1F;
                     if (rs == 31) {
+                        out += "    { uint32_t _jr_target = cpu->gpr[31];\n";
                         if (ra_loaded_from_non_sp)
-                            out += emit_irq_check_expr("cpu->gpr[31]") +
-                                   "    cpu->pc = cpu->gpr[31]; psx_restore_state_escape(); return;  /* longjmp-return */\n";
+                            out += emit_irq_check_expr("_jr_target") +
+                                   "    cpu->gpr[31] = _jr_target; cpu->pc = _jr_target; psx_restore_state_escape(); return;  /* longjmp-return */ }\n";
                         else if (cps)
-                            out += emit_irq_check_expr("cpu->gpr[31]") +
-                                   "    cpu->pc = cpu->gpr[31]; return;  /* CPS: publish $ra */\n";
+                            out += emit_irq_check_expr("_jr_target") +
+                                   "    cpu->gpr[31] = _jr_target; cpu->pc = _jr_target; return;  /* CPS: publish latched $ra */ }\n";
                         else
-                            out += emit_irq_check_expr("cpu->gpr[31]") +
-                                   "    return;\n";
+                            out += emit_irq_check_expr("_jr_target") +
+                                   "    cpu->gpr[31] = _jr_target; return; }\n";
                     } else {
-                        out += emit_irq_check_expr(fmt::format("cpu->gpr[{}]", static_cast<int>(rs)));
-                        out += fmt::format("    cpu->pc = cpu->gpr[{}]; return;\n",
+                        out += fmt::format("    {{ uint32_t _jr_target = cpu->gpr[{}];\n",
                                            static_cast<int>(rs));
+                        out += emit_irq_check_expr("_jr_target");
+                        out += "    cpu->pc = _jr_target; return; }\n";
                     }
                 } else if (is_branch_kind(kind.c_str())) {
                     // Inline the orphaned delay slot from rom.
@@ -940,14 +944,14 @@ bool FullFunctionEmitter::emit_function(
                     out += emit_irq_check_expr("_t");
                     out += "    cpu->pc = _t; return; }\n";
                 } else {
-                    out += "    { uint32_t _csp = cpu->gpr[29];\n";
+                    out += fmt::format("    {{ uint32_t _csp = cpu->gpr[29]; uint32_t _t = cpu->gpr[{}];\n",
+                                       static_cast<int>(rs));
                     if (rd != 0) {
                         out += fmt::format("    cpu->gpr[{}] = 0x{:08X}u;\n",
                                            static_cast<int>(rd), return_addr);
                     }
-                    out += emit_irq_check_expr(fmt::format("cpu->gpr[{}]", static_cast<int>(rs)));
-                    out += fmt::format("    psx_dispatch(cpu, cpu->gpr[{}]);\n",
-                                       static_cast<int>(rs));
+                    out += emit_irq_check_expr("_t");
+                    out += "    psx_dispatch(cpu, _t);\n";
                     if (rd == 31) {
                         out += fmt::format("    if (psx_call_contract(cpu, 0x{:08X}u, _csp)) return; }}\n",
                                            return_addr);
@@ -963,15 +967,16 @@ bool FullFunctionEmitter::emit_function(
             } else if (kind == "jr") {
                 uint8_t rs = (pb.raw >> 21) & 0x1F;
                 if (rs == 31) {
+                    out += "    { uint32_t _jr_target = cpu->gpr[31];\n";
                     if (ra_loaded_from_non_sp)
-                        out += emit_irq_check_expr("cpu->gpr[31]") +
-                               "    cpu->pc = cpu->gpr[31]; psx_restore_state_escape(); return;  /* longjmp-return */\n";
+                        out += emit_irq_check_expr("_jr_target") +
+                               "    cpu->gpr[31] = _jr_target; cpu->pc = _jr_target; psx_restore_state_escape(); return;  /* longjmp-return */ }\n";
                     else if (cps)
-                        out += emit_irq_check_expr("cpu->gpr[31]") +
-                               "    cpu->pc = cpu->gpr[31]; return;  /* CPS: publish $ra for trampoline dispatch */\n";
+                        out += emit_irq_check_expr("_jr_target") +
+                               "    cpu->gpr[31] = _jr_target; cpu->pc = _jr_target; return;  /* CPS: publish latched $ra for trampoline dispatch */ }\n";
                     else
-                        out += emit_irq_check_expr("cpu->gpr[31]") +
-                               "    return;\n";
+                        out += emit_irq_check_expr("_jr_target") +
+                               "    cpu->gpr[31] = _jr_target; return; }\n";
                 } else {
                     // Attempt jump table resolution: scan backward from the
                     // jr instruction to find SLTIU/SLL/LUI/ADDU/LW pattern.
@@ -1053,10 +1058,11 @@ bool FullFunctionEmitter::emit_function(
                                     out += fmt::format("            goto label_{:08X};\n", rom_t);
                                 }
                                 out += "        default:\n";
-                                out += emit_irq_check_expr(fmt::format("cpu->gpr[{}]", static_cast<int>(jr_rs)),
-                                                           "            ");
-                                out += fmt::format("            cpu->pc = cpu->gpr[{}]; return;\n",
+                                out += fmt::format("            {{ uint32_t _jr_target = cpu->gpr[{}];\n",
                                                    static_cast<int>(jr_rs));
+                                out += emit_irq_check_expr("_jr_target",
+                                                           "            ");
+                                out += "            cpu->pc = _jr_target; return; }\n";
                                 out += "    }\n";
                                 emitted_switch = true;
                             }
@@ -1064,9 +1070,10 @@ bool FullFunctionEmitter::emit_function(
                     }
                     if (!emitted_switch) {
                         // Tail call: set cpu->pc and return; dispatch loop re-dispatches.
-                        out += emit_irq_check_expr(fmt::format("cpu->gpr[{}]", static_cast<int>(rs)));
-                        out += fmt::format("    cpu->pc = cpu->gpr[{}]; return;\n",
+                        out += fmt::format("    {{ uint32_t _jr_target = cpu->gpr[{}];\n",
                                            static_cast<int>(rs));
+                        out += emit_irq_check_expr("_jr_target");
+                        out += "    cpu->pc = _jr_target; return; }\n";
                     }
                 }
             }

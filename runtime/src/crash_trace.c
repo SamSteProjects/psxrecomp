@@ -37,6 +37,11 @@
 /* Output path — overwritten per dump. */
 static const char *kReportPath = "psx_last_run_report.json";
 
+extern uint32_t g_ra_load_watch, g_ra_load_snap_pc, g_ra_load_snap_insn;
+extern uint32_t g_ra_load_snap_before_ra, g_ra_load_snap_srcaddr;
+extern uint32_t g_ra_load_snap_gpr[32];
+extern int g_ra_load_snap_valid;
+
 /* Build identity, embedded into every report so a user-submitted crash can be
  * correlated to an exact build (issue #1 reports had no version field). The git
  * rev comes from runtime.cmake (PSX_BUILD_REV); __DATE__/__TIME__ are a always-
@@ -385,6 +390,16 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
         append_str(buf, sizeof(buf), &pos, "  \"cpu\": null,\n");
     }
 
+    /* Targeted save-point probe: the first interpreted instruction that
+     * establishes the wild return address. */
+    append_fmt(buf, sizeof(buf), &pos,
+        "  \"ra_load_watch\": {\"watch\":\"0x%08X\",\"valid\":%d,"
+        "\"pc\":\"0x%08X\",\"insn\":\"0x%08X\","
+        "\"before_ra\":\"0x%08X\",\"src_addr\":\"0x%08X\"},\n",
+        g_ra_load_watch, g_ra_load_snap_valid, g_ra_load_snap_pc,
+        g_ra_load_snap_insn, g_ra_load_snap_before_ra,
+        g_ra_load_snap_srcaddr);
+
     /* Recursion fingerprint (build-independent GUEST addresses): the func entered
      * when the native stack guard tripped, plus the recent recompiled-function-
      * entry ring — for a runaway, recent_fn's tail repeats the recursing func, so
@@ -547,10 +562,10 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
                 &g_dirty_ram_block_log[(start + i) & (DIRTY_RAM_BLOCK_LOG_CAP - 1u)];
             append_fmt(buf, sizeof(buf), &pos,
                 "%s{\"seq\":%llu,\"target\":\"0x%08X\",\"ra\":\"0x%08X\","
-                "\"a0\":\"0x%08X\",\"a1\":\"0x%08X\",\"frame\":%u}",
+                "\"a0\":\"0x%08X\",\"a1\":\"0x%08X\",\"t1\":\"0x%08X\",\"frame\":%u}",
                 i == 0 ? "" : ",",
                 (unsigned long long)e->seq,
-                e->target, e->ra, e->a0, e->a1, e->frame);
+                e->target, e->ra, e->a0, e->a1, e->t1, e->frame);
         }
         append_str(buf, sizeof(buf), &pos, "]\n  }\n");
     }
@@ -563,6 +578,20 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
         fwrite(buf, 1, pos, f);
         fclose(f);
     }
+}
+
+void psx_crash_trace_manual_snapshot(void) {
+    /* Reuse the normal bounded serializer, then preserve its output under a
+     * distinct name so a later atexit/SEH report cannot overwrite it. */
+    psx_crash_trace_dump("manual_snapshot", NULL);
+    FILE *src = fopen(kReportPath, "rb");
+    FILE *dst = fopen("psx_manual_snapshot.json", "wb");
+    if (!src || !dst) { if (src) fclose(src); if (dst) fclose(dst); return; }
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), src)) != 0) fwrite(buf, 1, n, dst);
+    fclose(dst);
+    fclose(src);
 }
 
 /* ── Fatal halt ──────────────────────────────────────────────────────── */
