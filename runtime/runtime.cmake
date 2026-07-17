@@ -887,9 +887,10 @@ function(psxrecomp_add_runtime_target target)
             endif()
         endif()
     endif()
-    # Layer B: statically-compiled overlay dispatch. Inert unless a game
-    # provides a generated overlays_static.c — no target sets this yet.
-    if(PSXRT_GAME_OVERLAY_STATIC_C AND EXISTS "${PSXRT_GAME_OVERLAY_STATIC_C}")
+    # Layer B: a game can provide a generated overlays_static.c. Mark it as
+    # generated so the file may be produced by a custom command after CMake
+    # configures the consuming project.
+    if(PSXRT_GAME_OVERLAY_STATIC_C)
         set_source_files_properties("${PSXRT_GAME_OVERLAY_STATIC_C}" PROPERTIES GENERATED TRUE)
         list(APPEND generated_sources "${PSXRT_GAME_OVERLAY_STATIC_C}")
         set(has_overlay_dispatch TRUE)
@@ -1582,6 +1583,14 @@ function(psxrecomp_add_runtime_target target)
             target_link_options(${target} PRIVATE -static -static-libgcc -static-libstdc++)
         endif()
     elseif(MSVC)
+        # MSVC's /std:c11 mode still reports standard atomics unavailable
+        # unless this opt-in is supplied. The runtime's audio trace uses
+        # <stdatomic.h>, so enable the matching compiler support for its C TU.
+        # A target-wide generator expression is not emitted by Visual Studio
+        # project generators, hence the explicit source-file property.
+        set_source_files_properties(
+            ${PSXRECOMP_ROOT}/runtime/src/audio_trace.c
+            PROPERTIES COMPILE_OPTIONS "/experimental:c11atomics")
         target_compile_options(${target} PRIVATE /GS- /guard:cf-)
         # Visual Studio project files cannot represent language-specific target
         # options on a mixed C/C++ target. Scope the experimental MSVC atomics

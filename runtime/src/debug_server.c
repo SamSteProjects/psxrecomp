@@ -13207,6 +13207,56 @@ static void handle_phase_hot(int id, const char *json)
 /* idle_skip: idle-loop cycle-skip status + runtime toggle.
  *   {"cmd":"idle_skip"}              -> counters
  *   {"cmd":"idle_skip","enable":0|1} -> toggle, then counters */
+/* dirty_exec_hot: rank the interpreter's per-instruction execution counters.
+ * This is intentionally debug-only observability: dirty_ram_interp.c already
+ * increments the table for overlay capture, so reporting it does not add work
+ * to the hot interpreter path. Clear immediately before a scene window, then
+ * query after it to identify the exact PCs worth static recompilation. */
+static void handle_dirty_exec_hot(int id, const char *json)
+{
+    int top = json_get_int(json, "top", 32);
+    int clear = json_get_int(json, "clear", 0);
+    if (top < 1) top = 1;
+    if (top > 64) top = 64;
+    if (clear) {
+        memset(g_dirty_ram_exec_pc_table, 0,
+               sizeof(g_dirty_ram_exec_pc_table));
+        send_fmt("{\"id\":%d,\"ok\":true,\"cleared\":true}", id);
+        return;
+    }
+    uint32_t best_pc[64] = {0};
+    uint64_t best_hits[64] = {0};
+    int n = 0;
+    uint64_t total = 0;
+    for (int i = 0; i < DIRTY_RAM_PC_TABLE_SIZE; i++) {
+        const DirtyRamPcEntry *e = &g_dirty_ram_exec_pc_table[i];
+        if (e->pc == 0 || e->hits == 0) continue;
+        total += e->hits;
+        int j = n < top ? n++ : top - 1;
+        if (j == top - 1 && n == top && e->hits <= best_hits[j]) continue;
+        while (j > 0 && best_hits[j - 1] < e->hits) {
+            best_hits[j] = best_hits[j - 1];
+            best_pc[j] = best_pc[j - 1];
+            j--;
+        }
+        best_hits[j] = e->hits;
+        best_pc[j] = e->pc;
+    }
+    char buf[8192];
+    int len = snprintf(buf, sizeof(buf),
+                       "{\"id\":%d,\"ok\":true,\"total\":%llu,\"top\":[",
+                       id, (unsigned long long)total);
+    for (int i = 0; i < n && len < (int)sizeof(buf) - 96; i++) {
+        len += snprintf(buf + len, sizeof(buf) - (size_t)len,
+                        "%s{\"pc\":\"0x%08X\",\"hits\":%llu,\"share\":%.4f}",
+                        i ? "," : "", best_pc[i],
+                        (unsigned long long)best_hits[i],
+                        total ? (double)best_hits[i] / (double)total : 0.0);
+    }
+    snprintf(buf + len, sizeof(buf) - (size_t)len, "]}");
+    send_fmt("%s", buf);
+}
+
 static void handle_idle_skip(int id, const char *json)
 {
     extern int      g_idle_skip_enabled;
@@ -13431,6 +13481,7 @@ static const CmdEntry s_commands[] = {
     { "probe_trace",       handle_probe_trace },
     { "probe_clear",       handle_probe_clear },
     { "dirty_ram_stats",   handle_dirty_ram_stats },
+    { "dirty_exec_hot",    handle_dirty_exec_hot },
     { "dirty_ram_unsupported", handle_dirty_ram_unsupported },
     { "dirty_block_log",   handle_dirty_block_log },
     { "dirty_flow_log",    handle_dirty_flow_log },
