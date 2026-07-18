@@ -61,6 +61,16 @@ static uint32_t cd_frame_count;
 static uint64_t cd_push_frames;
 static uint64_t cd_overflow_frames;
 static uint64_t cd_underflow_frames;
+static uint64_t cd_reset_count;
+static uint64_t cd_last_push_frames;
+static uint64_t cd_last_overflow_frames;
+static uint64_t cd_last_underflow_frames;
+static uint64_t cd_lifetime_push_frames;
+static uint64_t cd_lifetime_overflow_frames;
+static uint64_t cd_lifetime_underflow_frames;
+static uint64_t cd_lifetime_discarded_on_reset_frames;
+static uint64_t cd_last_discarded_on_reset_frames;
+static uint64_t cd_lifetime_inaudible_push_frames;
 
 /* ADSR phases — match Beetle's order so cross-process diffs read straight. */
 #define ADSR_ATTACK   0
@@ -254,6 +264,12 @@ static inline int16_t cd_input_volume(uint16_t raw) {
 }
 
 void spu_cd_audio_reset(void) {
+    cd_last_push_frames = cd_push_frames;
+    cd_last_overflow_frames = cd_overflow_frames;
+    cd_last_underflow_frames = cd_underflow_frames;
+    cd_last_discarded_on_reset_frames = cd_frame_count;
+    cd_lifetime_discarded_on_reset_frames += cd_frame_count;
+    cd_reset_count++;
     memset(cd_ring, 0, sizeof(cd_ring));
     cd_read_pos = 0;
     cd_write_pos = 0;
@@ -271,6 +287,7 @@ void spu_cd_audio_push(const int16_t* stereo, int frames) {
         uint32_t skip = in_frames - SPU_CD_RING_FRAMES;
         stereo += skip * 2u;
         cd_overflow_frames += skip;
+        cd_lifetime_overflow_frames += skip;
         in_frames = SPU_CD_RING_FRAMES;
     }
 
@@ -279,6 +296,7 @@ void spu_cd_audio_push(const int16_t* stereo, int frames) {
         cd_read_pos = (cd_read_pos + drop) % SPU_CD_RING_FRAMES;
         cd_frame_count -= drop;
         cd_overflow_frames += drop;
+        cd_lifetime_overflow_frames += drop;
     }
 
     for (uint32_t i = 0; i < in_frames; i++) {
@@ -288,6 +306,17 @@ void spu_cd_audio_push(const int16_t* stereo, int frames) {
     }
     cd_frame_count += in_frames;
     cd_push_frames += in_frames;
+    cd_lifetime_push_frames += in_frames;
+    /* PCM can be decoded correctly yet remain completely inaudible when the
+     * CD input bus is disabled or both CD gains are zero. Track this separately
+     * from FIFO underflow/drop so combo-position races are distinguishable. */
+    {
+        uint16_t ctrl_now = spu_regs[reg_index(0x1F801DAAu)];
+        int16_t vol_l_now = cd_input_volume(spu_regs[reg_index(0x1F801DB0u)]);
+        int16_t vol_r_now = cd_input_volume(spu_regs[reg_index(0x1F801DB2u)]);
+        if ((ctrl_now & 0x0001u) == 0 || (vol_l_now == 0 && vol_r_now == 0))
+            cd_lifetime_inaudible_push_frames += in_frames;
+    }
 
     /* T2 tap: what the CD/XA decoder feeds the SPU CD input bus. The event
      * stamps the GLOBAL GUEST CYCLE clock (low 32 bits) so push-to-push
@@ -615,6 +644,7 @@ void spu_render(int16_t* out_stereo, int frames) {
                     mix_r += ((int32_t)cd_r * cd_vol_r) >> 15;
                 } else if (cd_push_frames != 0) {
                     cd_underflow_frames++;
+                    cd_lifetime_underflow_frames++;
                 }
             }
             mix_l = (mix_l * main_l) >> 14;
@@ -672,6 +702,16 @@ void spu_debug_info(SpuDebugInfo* out) {
     out->cd_push_frames = cd_push_frames;
     out->cd_overflow_frames = cd_overflow_frames;
     out->cd_underflow_frames = cd_underflow_frames;
+    out->cd_reset_count = cd_reset_count;
+    out->cd_last_push_frames = cd_last_push_frames;
+    out->cd_last_overflow_frames = cd_last_overflow_frames;
+    out->cd_last_underflow_frames = cd_last_underflow_frames;
+    out->cd_lifetime_push_frames = cd_lifetime_push_frames;
+    out->cd_lifetime_overflow_frames = cd_lifetime_overflow_frames;
+    out->cd_lifetime_underflow_frames = cd_lifetime_underflow_frames;
+    out->cd_lifetime_discarded_on_reset_frames = cd_lifetime_discarded_on_reset_frames;
+    out->cd_last_discarded_on_reset_frames = cd_last_discarded_on_reset_frames;
+    out->cd_lifetime_inaudible_push_frames = cd_lifetime_inaudible_push_frames;
 }
 
 uint32_t spu_read(uint32_t addr) {

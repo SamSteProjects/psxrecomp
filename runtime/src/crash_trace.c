@@ -32,10 +32,82 @@
 #include <time.h>
 
 #include "cpu_state.h"
+#include "bios_hle.h"
+#include "cdrom.h"
 #include "crash_trace.h"
+#include "spu.h"
+#include "audio_trace.h"
 
 /* Output path — overwritten per dump. */
 static const char *kReportPath = "psx_last_run_report.json";
+
+/* Preserve the command/sector/audio timeline beside manual captures.  PCM can
+ * prove that a sound reached the speakers, but not why a back-to-back action
+ * failed to start a second stream; this bounded archive ties guest CD commands
+ * to the selected XA file/channel and the corresponding decoded samples. */
+static void dump_manual_audio_cd_timeline(uint64_t frame)
+{
+    char path[112];
+    snprintf(path, sizeof(path), "psx_audio_%llu_timeline.json",
+             (unsigned long long)frame);
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+
+    const CDROMCommandHistoryEntry *commands = NULL;
+    const CDROMSectorHistoryEntry *sectors = NULL;
+    uint64_t command_total = cdrom_debug_get_command_history(&commands);
+    uint64_t sector_total = cdrom_debug_get_sector_history(&sectors);
+    uint64_t command_start = command_total > 1024u ? command_total - 1024u : 0u;
+    uint64_t sector_start = sector_total > 1024u ? sector_total - 1024u : 0u;
+    AudioTraceEvent *events = (AudioTraceEvent *)malloc(4096u * sizeof(*events));
+    uint32_t event_count = events ? audio_trace_events_get(events, 4096u) : 0u;
+
+    fprintf(f, "{\n\"frame\":%llu,\n\"commands\":[",
+            (unsigned long long)frame);
+    int comma = 0;
+    for (uint64_t seq = command_start; seq < command_total; seq++) {
+        const CDROMCommandHistoryEntry *e =
+            &commands[seq % CDROM_COMMAND_HISTORY_CAP];
+        if (e->seq != seq) continue;
+        fprintf(f, "%s{\"seq\":%llu,\"frame\":%u,\"kind\":%u,\"cmd\":%u,"
+                   "\"pc\":%u,\"func\":%u,\"params\":[",
+                comma ? "," : "", (unsigned long long)e->seq, e->frame,
+                e->kind, e->cmd, e->pc, e->func);
+        for (uint32_t p = 0; p < e->param_count; p++)
+            fprintf(f, "%s%u", p ? "," : "", e->params[p]);
+        fprintf(f, "],\"mode\":%u,\"irq\":%u,\"reading\":%u,"
+                   "\"pending\":%u,\"queued\":%u}",
+                e->mode, e->irq_flag, e->reading,
+                e->pending_pending, e->queued_pending);
+        comma = 1;
+    }
+    fprintf(f, "],\n\"sectors\":[");
+    comma = 0;
+    for (uint64_t seq = sector_start; seq < sector_total; seq++) {
+        const CDROMSectorHistoryEntry *e =
+            &sectors[seq % CDROM_SECTOR_HISTORY_CAP];
+        if (e->seq != seq) continue;
+        fprintf(f, "%s{\"seq\":%llu,\"frame\":%u,\"lba\":%d,"
+                   "\"file\":%u,\"channel\":%u,\"submode\":%u,"
+                   "\"coding\":%u,\"xa\":%u,\"skip\":%u}",
+                comma ? "," : "", (unsigned long long)e->seq, e->frame,
+                e->lba, e->xa_file, e->xa_channel, e->xa_submode,
+                e->xa_coding, e->xa_audio_delivered, e->skip_reason);
+        comma = 1;
+    }
+    fprintf(f, "],\n\"audio_events\":[");
+    for (uint32_t i = 0; i < event_count; i++) {
+        const AudioTraceEvent *e = &events[i];
+        fprintf(f, "%s{\"seq\":%llu,\"sample\":%llu,\"frame\":%u,"
+                   "\"kind\":%u,\"a\":%u,\"b\":%u}",
+                i ? "," : "", (unsigned long long)e->seq,
+                (unsigned long long)e->sample_idx, e->frame, e->kind,
+                e->a, e->b);
+    }
+    fprintf(f, "]\n}\n");
+    free(events);
+    fclose(f);
+}
 
 extern uint32_t g_ra_load_watch, g_ra_load_snap_pc, g_ra_load_snap_insn;
 extern uint32_t g_ra_load_snap_before_ra, g_ra_load_snap_srcaddr;
@@ -61,6 +133,29 @@ extern uint64_t s_frame_count;
 extern uint32_t g_debug_current_func_addr;
 extern uint32_t g_debug_last_store_pc;
 
+/* XA/CD callback density probe from interrupts.c.  These are intentionally
+ * aggregate counters so manual snapshots can compare a laggy battle action
+ * against a clean field transition without adding trace overhead. */
+extern uint64_t g_xa_callback_cd_deliver_count;
+extern uint64_t g_xa_callback_overlay_preempt_count;
+extern uint32_t g_xa_callback_frame;
+extern uint32_t g_xa_callback_deliveries_this_frame;
+extern uint32_t g_xa_callback_max_deliveries_per_frame;
+extern uint32_t g_xa_callback_last_interrupted_pc;
+extern uint32_t g_xa_callback_last_s4;
+extern uint64_t g_cdrom_deliver_count;
+extern uint64_t g_cdrom_irq_probe_deliver_count;
+extern uint64_t g_cdrom_overlay_preempt_count;
+extern uint32_t g_cdrom_irq_frame;
+extern uint32_t g_cdrom_irq_deliveries_this_frame;
+extern uint32_t g_cdrom_irq_max_deliveries_per_frame;
+extern uint32_t g_cdrom_irq_last_interrupted_pc;
+extern void psx_cd_irq_probe_reset(void);
+extern void debug_phase_probe_get(uint64_t *, uint64_t *, uint64_t *,
+                                  uint64_t *, uint64_t *, uint64_t *);
+extern int debug_phase_probe_hot_get(uint32_t *, uint64_t *, int);
+extern void debug_phase_probe_reset(void);
+
 /* Native dispatch nesting depth (generated/SCPH1001_dispatch.c). Incremented per
  * nested psx_dispatch_call, decremented on return. A huge value at crash time is
  * the direct fingerprint of runaway recursion (the host C stack mirrors the guest
@@ -82,6 +177,21 @@ typedef struct {
 #define UNKNOWN_DISPATCH_CAP (1 << 16)
 extern UnknownDispatchEntry crash_trace_unknown_get(uint64_t seq);
 extern uint64_t crash_trace_unknown_seq_get(void);
+
+/* IRQ delivery/restore ring (interrupts.c). Keep this layout in sync with
+ * IrqCtxEntry there and with debug_server.c's irqctx_ring serializer. Including
+ * it in the post-mortem report makes same-thread restore failures diagnosable
+ * even when the process wedges before a TCP snapshot can be requested. */
+typedef struct {
+    uint64_t seq, cycle;
+    uint32_t frame, istat, imask, sr, d44, cdrom_active, is_vblank;
+    int dma_depth;
+    uint32_t take_pc, real_epc, exit_pc, exit_reason, same_thread, restored;
+    uint32_t v1_exit, v1_saved, ra_exit, ra_saved, redirects, entry_sp, pump_site;
+} CrashIrqCtxEntry;
+#define IRQCTX_RING_CAP 4096u
+extern CrashIrqCtxEntry g_irqctx_ring[];
+extern uint64_t g_irqctx_seq;
 
 /* Dirty-RAM block log (defined in dirty_ram_interp.c). */
 #include "dirty_ram_interp.h"
@@ -261,6 +371,13 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
     /* Pre-allocate large stack buffer; avoid heap on SEH path. */
     static char buf[8 * 1024 * 1024]; /* 8 MB */
     size_t pos = 0;
+    uint64_t phase_total = 0, phase_interp = 0, phase_native = 0;
+    uint64_t phase_static = 0, phase_gpu = 0, phase_exc = 0;
+    SpuDebugInfo spu_info;
+    memset(&spu_info, 0, sizeof(spu_info));
+    spu_debug_info(&spu_info);
+    debug_phase_probe_get(&phase_total, &phase_interp, &phase_native,
+                          &phase_static, &phase_gpu, &phase_exc);
 
     /* Header */
     char ts[64] = {0};
@@ -288,6 +405,70 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
         g_psx_dispatch_depth,
         g_debug_current_func_addr,
         g_debug_last_store_pc);
+
+    append_fmt(buf, sizeof(buf), &pos,
+        "  \"xa_callback\": {\"total_cd_deliveries\":%llu,"
+        "\"overlay_preemptions\":%llu,\"frame\":%u,"
+        "\"deliveries_this_frame\":%u,\"max_deliveries_per_frame\":%u,"
+        "\"last_interrupted_pc\":\"0x%08X\",\"last_s4\":\"0x%08X\"},\n",
+        (unsigned long long)g_xa_callback_cd_deliver_count,
+        (unsigned long long)g_xa_callback_overlay_preempt_count,
+        g_xa_callback_frame, g_xa_callback_deliveries_this_frame,
+        g_xa_callback_max_deliveries_per_frame,
+        g_xa_callback_last_interrupted_pc, g_xa_callback_last_s4);
+    append_fmt(buf, sizeof(buf), &pos,
+        "  \"cd_irq\": {\"interval_deliveries\":%llu,\"lifetime_deliveries\":%llu,\"overlay_preemptions\":%llu,"
+        "\"frame\":%u,\"deliveries_this_frame\":%u,"
+        "\"max_deliveries_per_frame\":%u,\"last_interrupted_pc\":\"0x%08X\"},\n",
+        (unsigned long long)g_cdrom_irq_probe_deliver_count,
+        (unsigned long long)g_cdrom_deliver_count,
+        (unsigned long long)g_cdrom_overlay_preempt_count,
+        g_cdrom_irq_frame, g_cdrom_irq_deliveries_this_frame,
+        g_cdrom_irq_max_deliveries_per_frame, g_cdrom_irq_last_interrupted_pc);
+    append_fmt(buf, sizeof(buf), &pos,
+        "  \"phase_probe\": {\"samples\":%llu,\"interp\":%llu,\"native\":%llu,"
+        "\"static\":%llu,\"gpu\":%llu,\"exception\":%llu},\n",
+        (unsigned long long)phase_total, (unsigned long long)phase_interp,
+        (unsigned long long)phase_native, (unsigned long long)phase_static,
+        (unsigned long long)phase_gpu, (unsigned long long)phase_exc);
+    append_fmt(buf, sizeof(buf), &pos,
+        "  \"spu_cd\": {\"ctrl\":\"0x%04X\",\"cd_vol_l\":%d,\"cd_vol_r\":%d,"
+        "\"queued_frames\":%u,\"pushed_frames\":%llu,"
+        "\"overflow_frames\":%llu,\"underflow_frames\":%llu,"
+        "\"reset_count\":%llu,\"last_pushed_frames\":%llu,"
+        "\"last_overflow_frames\":%llu,\"last_underflow_frames\":%llu,"
+        "\"lifetime_pushed_frames\":%llu,\"lifetime_overflow_frames\":%llu,"
+        "\"lifetime_underflow_frames\":%llu,"
+        "\"last_discarded_on_reset_frames\":%llu,"
+        "\"lifetime_discarded_on_reset_frames\":%llu,"
+        "\"lifetime_inaudible_push_frames\":%llu},\n",
+        (unsigned)(spu_info.ctrl & 0xFFFFu), (int)spu_info.cd_l, (int)spu_info.cd_r,
+        spu_info.cd_frames,
+        (unsigned long long)spu_info.cd_push_frames,
+        (unsigned long long)spu_info.cd_overflow_frames,
+        (unsigned long long)spu_info.cd_underflow_frames,
+        (unsigned long long)spu_info.cd_reset_count,
+        (unsigned long long)spu_info.cd_last_push_frames,
+        (unsigned long long)spu_info.cd_last_overflow_frames,
+        (unsigned long long)spu_info.cd_last_underflow_frames,
+        (unsigned long long)spu_info.cd_lifetime_push_frames,
+        (unsigned long long)spu_info.cd_lifetime_overflow_frames,
+        (unsigned long long)spu_info.cd_lifetime_underflow_frames,
+        (unsigned long long)spu_info.cd_last_discarded_on_reset_frames,
+        (unsigned long long)spu_info.cd_lifetime_discarded_on_reset_frames,
+        (unsigned long long)spu_info.cd_lifetime_inaudible_push_frames);
+    {
+        uint32_t hot_addr[16] = {0};
+        uint64_t hot_count[16] = {0};
+        int hot_n = debug_phase_probe_hot_get(hot_addr, hot_count, 16);
+        append_str(buf, sizeof(buf), &pos, "  \"phase_hot_static\": [");
+        for (int i = 0; i < hot_n; i++) {
+            append_fmt(buf, sizeof(buf), &pos,
+                "%s{\"addr\":\"0x%08X\",\"samples\":%llu}",
+                i ? "," : "", hot_addr[i], (unsigned long long)hot_count[i]);
+        }
+        append_str(buf, sizeof(buf), &pos, "],\n");
+    }
 
 #ifdef _WIN32
     if (seh_info) {
@@ -545,6 +726,114 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
         append_str(buf, sizeof(buf), &pos, "]\n  },\n");
     }
 
+    /* IRQ-delivery/restore tail (last 64). This is the decisive evidence for
+     * hangs that remain inside the BIOS event/exception continuation: it shows
+     * whether the interrupted thread was identified correctly and whether its
+     * live GPRs were restored before resuming. */
+    {
+        uint64_t total = g_irqctx_seq;
+        uint64_t avail = total < IRQCTX_RING_CAP ? total : IRQCTX_RING_CAP;
+        int count = (int)(avail < 64u ? avail : 64u);
+        append_fmt(buf, sizeof(buf), &pos,
+            "  \"irqctx_tail\": {\n"
+            "    \"total\": %llu,\n"
+            "    \"count\": %d,\n"
+            "    \"entries\": [",
+            (unsigned long long)total, count);
+        uint64_t start = total - (uint64_t)count;
+        for (int i = 0; i < count; i++) {
+            CrashIrqCtxEntry *e =
+                &g_irqctx_ring[(start + (uint64_t)i) & (IRQCTX_RING_CAP - 1u)];
+            append_fmt(buf, sizeof(buf), &pos,
+                "%s{\"seq\":%llu,\"cycle\":%llu,\"frame\":%u,"
+                "\"vblank\":%u,\"istat\":\"0x%08X\",\"imask\":\"0x%08X\","
+                "\"take_pc\":\"0x%08X\",\"real_epc\":\"0x%08X\","
+                "\"exit_pc\":\"0x%08X\",\"exit_reason\":%u,"
+                "\"same_thread\":%u,\"restored\":%u,"
+                "\"v1_exit\":\"0x%08X\",\"v1_saved\":\"0x%08X\","
+                "\"ra_exit\":\"0x%08X\",\"ra_saved\":\"0x%08X\","
+                "\"entry_sp\":\"0x%08X\",\"redirects\":%u,\"pump_site\":%u}",
+                i == 0 ? "" : ",",
+                (unsigned long long)e->seq, (unsigned long long)e->cycle,
+                e->frame, e->is_vblank, e->istat, e->imask,
+                e->take_pc, e->real_epc, e->exit_pc, e->exit_reason,
+                e->same_thread, e->restored,
+                e->v1_exit, e->v1_saved, e->ra_exit, e->ra_saved,
+                e->entry_sp, e->redirects, e->pump_site);
+        }
+        append_str(buf, sizeof(buf), &pos, "]\n  },\n");
+    }
+
+    /* BIOS-HLE route tail.  Keep this in the automatic report so a crash in
+     * an IRQ-delivered event can distinguish "the direct DeliverEvent route
+     * never activated" from "it activated and a callback/path after it
+     * wedged" without relying on an interactive debug-server request. */
+    {
+        uint64_t total = psx_hle_ring_seq();
+        uint64_t avail = total < PSX_HLE_RING_CAP ? total : PSX_HLE_RING_CAP;
+        int count = (int)(avail < 32u ? avail : 32u);
+        append_fmt(buf, sizeof(buf), &pos,
+            "  \"bios_hle\": {\"enabled\":%d,\"total\":%llu,\"count\":%d,\"entries\":[",
+            psx_bios_hle_enabled(), (unsigned long long)total, count);
+        uint64_t start = total - (uint64_t)count;
+        for (int i = 0; i < count; i++) {
+            const PsxHleCallEntry *e = psx_hle_ring_entry(start + (uint64_t)i);
+            if (!e) continue;
+            append_fmt(buf, sizeof(buf), &pos,
+                "%s{\"seq\":%llu,\"vector\":\"0x%08X\",\"fn\":\"0x%08X\","
+                "\"a0\":\"0x%08X\",\"a1\":\"0x%08X\",\"ra\":\"0x%08X\","
+                "\"v0\":\"0x%08X\",\"repeat\":%u,\"route\":%u,\"in_exc\":%u}",
+                i == 0 ? "" : ",", (unsigned long long)e->seq, e->vector, e->fn,
+                e->a0, e->a1, e->ra, e->v0, e->repeat, e->route, e->in_exc);
+        }
+        append_str(buf, sizeof(buf), &pos, "]},\n");
+    }
+
+    /* CD controller terminal state.  This is deliberately a compact snapshot
+     * rather than the high-volume MMIO trace: a guest-side CD/libcd wait can
+     * survive long enough to make the ordinary tail unhelpful, whereas the
+     * controller's visible IRQ, pending command, and one-deep data-ready state
+     * identify an acknowledgement/response ordering wedge directly. */
+    {
+        CDROMDebugState cd;
+        cdrom_debug_snapshot(&cd);
+        append_fmt(buf, sizeof(buf), &pos,
+            "  \"cdrom\":{\"seq\":%llu,\"index\":%u,\"stat\":%u,"
+            "\"request\":%u,\"irq_enable\":%u,\"irq_flag\":%u,"
+            "\"pending_cmd\":%u,\"pending\":%d,\"pending_delay\":%d,"
+            "\"queued_cmd\":%u,\"queued\":%u,\"reading\":%d,"
+            "\"read_delay\":%d,\"sector_available\":%d,\"sector_pos\":%d,"
+            "\"sector_size\":%d,\"int1_pending\":%u,\"int1_pended\":%llu,"
+            "\"int1_lost\":%llu,\"i_stat\":\"0x%08X\"},\n",
+            (unsigned long long)cd.seq, cd.index_reg, cd.stat_reg,
+            cd.request_reg, cd.irq_enable, cd.irq_flag,
+            cd.pending_cmd, cd.pending_pending, cd.pending_delay,
+            cd.queued_cmd, cd.queued_pending, cd.reading,
+            cd.read_delay, cd.sector_available, cd.sector_read_pos,
+            cd.sector_size, cd.int1_pending_now,
+            (unsigned long long)cd.int1_pended,
+            (unsigned long long)cd.int1_lost, cd.i_stat);
+    }
+
+    /* Legaia-specific evidence without changing emulation: Andrew Altimit's
+     * documented Tetsu-tutorial Healing Leaf freeze is caused when the SsAPI
+     * sound/effect pointer table at 0x800794F0 is overwritten.  The item-use
+     * path also reseats its field-pack pointer at 0x8007B8D0.  Record both
+     * live values so the next failure separates a corrupt item-use asset from
+     * an IRQ/CD timing fault. */
+    if (debug_cpu_ptr && debug_cpu_ptr->read_word) {
+        uint32_t ssapi[8];
+        for (int i = 0; i < 8; i++)
+            ssapi[i] = debug_cpu_ptr->read_word(0x800794F0u + (uint32_t)i * 4u);
+        append_fmt(buf, sizeof(buf), &pos,
+            "  \"legaia_item_use\":{\"field_pack\":\"0x%08X\",\"ssapi_794f0\":["
+            "\"0x%08X\",\"0x%08X\",\"0x%08X\",\"0x%08X\","
+            "\"0x%08X\",\"0x%08X\",\"0x%08X\",\"0x%08X\"]},\n",
+            debug_cpu_ptr->read_word(0x8007B8D0u),
+            ssapi[0], ssapi[1], ssapi[2], ssapi[3],
+            ssapi[4], ssapi[5], ssapi[6], ssapi[7]);
+    }
+
     /* dirty_block_log tail (last 100) */
     {
         uint64_t total = g_dirty_ram_block_log_seq;
@@ -581,6 +870,20 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
 }
 
 void psx_crash_trace_manual_snapshot(void) {
+    /* Preserve the immediately preceding manual capture before overwriting the
+     * latest one.  This makes a two-step A/B (laggy action, then clean field
+     * transition) possible with the existing single Ctrl+F12 hotkey. */
+    {
+        FILE *old = fopen("psx_manual_snapshot.json", "rb");
+        FILE *prev = fopen("psx_manual_snapshot_prev.json", "wb");
+        if (old && prev) {
+            char copy_buf[8192]; size_t copy_n;
+            while ((copy_n = fread(copy_buf, 1, sizeof(copy_buf), old)) != 0)
+                fwrite(copy_buf, 1, copy_n, prev);
+        }
+        if (old) fclose(old);
+        if (prev) fclose(prev);
+    }
     /* Reuse the normal bounded serializer, then preserve its output under a
      * distinct name so a later atexit/SEH report cannot overwrite it. */
     psx_crash_trace_dump("manual_snapshot", NULL);
@@ -592,6 +895,47 @@ void psx_crash_trace_manual_snapshot(void) {
     while ((n = fread(buf, 1, sizeof(buf), src)) != 0) fwrite(buf, 1, n, dst);
     fclose(dst);
     fclose(src);
+    /* Also retain a frame-numbered archive.  The rolling latest/previous pair
+     * is convenient, but repeated hotkey presses must not erase the one frame
+     * that captured an intermittent audio dropout. */
+    {
+        char archive_name[96];
+        snprintf(archive_name, sizeof(archive_name),
+                 "psx_manual_snapshot_%llu.json",
+                 (unsigned long long)s_frame_count);
+        FILE *latest = fopen("psx_manual_snapshot.json", "rb");
+        FILE *archive = fopen(archive_name, "wb");
+        if (latest && archive) {
+            char archive_buf[8192]; size_t archive_n;
+            while ((archive_n = fread(archive_buf, 1, sizeof(archive_buf), latest)) != 0)
+                fwrite(archive_buf, 1, archive_n, archive);
+        }
+        if (latest) fclose(latest);
+        if (archive) fclose(archive);
+    }
+    /* Preserve the last 15 seconds at each audio pipeline stage alongside the
+     * JSON capture.  This distinguishes silent/wrong decoded XA (CD input)
+     * from loss in SPU mixing or the final host queue without requiring the
+     * TCP debug server to be available during a battle. */
+    {
+        static const char *tap_name[4] = { "spu", "cd", "host", "voices" };
+        for (int tap = 0; tap < 4; tap++) {
+            uint64_t total = audio_trace_tap_total(tap);
+            uint64_t count = (uint64_t)audio_trace_tap_rate(tap) * 15u;
+            if (count > total) count = total;
+            int64_t start = (int64_t)(total - count);
+            char wav_name[112];
+            snprintf(wav_name, sizeof(wav_name), "psx_audio_%llu_%s.wav",
+                     (unsigned long long)s_frame_count, tap_name[tap]);
+            (void)audio_trace_dump_wav(tap, wav_name, start, count);
+        }
+    }
+    dump_manual_audio_cd_timeline(s_frame_count);
+    /* Begin the next manual-capture interval only after the current report is
+     * completely written.  Three presses now retain action-vs-field reports:
+     * baseline/reset, action/reset, then field. */
+    psx_cd_irq_probe_reset();
+    debug_phase_probe_reset();
 }
 
 /* ── Fatal halt ──────────────────────────────────────────────────────── */

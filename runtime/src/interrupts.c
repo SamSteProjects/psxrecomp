@@ -331,7 +331,14 @@ static void fire_vblank_edge(void) {
 
 void interrupts_service_scheduled_events(void) {
     note_sio_progress_cycle();
-    if (in_exception) return;
+    /* Hardware deadlines do not stop merely because guest code is executing
+     * inside an exception handler.  libcd may synchronously call VSync() from
+     * its CD callback (Legaia's XA seek/play sequencer does exactly this).
+     * Suppressing the VBlank edge here leaves that wait with a permanently
+     * stale frame counter while guest cycles continue to advance, so it spins
+     * forever in the handler.  Delivery is still safely controlled below by
+     * the guest SR IEc bit and the nested-exception depth/escape guards in
+     * psx_check_interrupts(); this function only models the device edge. */
     while (cycles_since_vblank >= VBLANK_CYCLES) {
         if (should_defer_vblank_for_sio()) return;
         fire_vblank_edge();
@@ -385,6 +392,36 @@ uint64_t g_vblank_raise_count   = 0;  /* bit0 set at the cycle-paced raise site 
 uint64_t g_vblank_deliver_count = 0;  /* VBLANK delivered to the guest (exception taken) */
 uint64_t g_irq_deliver_count    = 0;  /* ANY hardware interrupt delivered */
 uint64_t g_cdrom_deliver_count  = 0;  /* CD IRQ (IRQ_CDROM) delivered to the guest — FMV dispatch probe */
+/* Register-independent CD IRQ density probe.  The callback is not guaranteed
+ * to remain in a particular GPR at the actual exception boundary, so this is
+ * the authoritative measure for Legaia's XA action stutter. */
+uint64_t g_cdrom_irq_probe_deliver_count = 0;
+uint64_t g_cdrom_overlay_preempt_count = 0;
+uint32_t g_cdrom_irq_frame = 0;
+uint32_t g_cdrom_irq_deliveries_this_frame = 0;
+uint32_t g_cdrom_irq_max_deliveries_per_frame = 0;
+uint32_t g_cdrom_irq_last_interrupted_pc = 0;
+
+void psx_cd_irq_probe_reset(void) {
+    /* Never reset g_cdrom_deliver_count: it is long-lived FMV telemetry.
+     * This epoch is exclusively for manually comparing two short intervals. */
+    g_cdrom_irq_probe_deliver_count = 0;
+    g_cdrom_overlay_preempt_count = 0;
+    g_cdrom_irq_frame = 0;
+    g_cdrom_irq_deliveries_this_frame = 0;
+    g_cdrom_irq_max_deliveries_per_frame = 0;
+    g_cdrom_irq_last_interrupted_pc = 0;
+}
+/* XA battle-action probe.  The Legaia stutter occurs while the libcd XA
+ * callback is installed in $s4.  Keep this deliberately cheap: it records
+ * delivery density, not every poll, and has no scheduling side effects. */
+uint64_t g_xa_callback_cd_deliver_count = 0;
+uint64_t g_xa_callback_overlay_preempt_count = 0;
+uint32_t g_xa_callback_frame = 0;
+uint32_t g_xa_callback_deliveries_this_frame = 0;
+uint32_t g_xa_callback_max_deliveries_per_frame = 0;
+uint32_t g_xa_callback_last_interrupted_pc = 0;
+uint32_t g_xa_callback_last_s4 = 0;
 extern uint64_t g_vblank_ack_count;   /* defined in memory.c */
 
 /* Blocks of guaranteed main-code forward progress imposed after a CLAIMED
@@ -952,7 +989,48 @@ void psx_check_interrupts(CPUState* cpu) {
     }
     g_irq_deliver_count++;
     if ((i_stat & i_mask) & (1u << IRQ_VBLANK)) g_vblank_deliver_count++;
-    if ((i_stat & i_mask) & (1u << IRQ_CDROM))  g_cdrom_deliver_count++;
+    if ((i_stat & i_mask) & (1u << IRQ_CDROM)) {
+        extern uint64_t s_frame_count;
+        uint32_t frame = (uint32_t)s_frame_count;
+        uint32_t interrupted_pc =
+            g_dirty_safe_resume_pc ? g_dirty_safe_resume_pc : s_compiled_interrupt_resume_pc;
+        g_cdrom_deliver_count++;
+        g_cdrom_irq_probe_deliver_count++;
+        if (g_cdrom_irq_frame != frame) {
+            g_cdrom_irq_frame = frame;
+            g_cdrom_irq_deliveries_this_frame = 0;
+        }
+        g_cdrom_irq_deliveries_this_frame++;
+        if (g_cdrom_irq_deliveries_this_frame > g_cdrom_irq_max_deliveries_per_frame)
+            g_cdrom_irq_max_deliveries_per_frame = g_cdrom_irq_deliveries_this_frame;
+        g_cdrom_irq_last_interrupted_pc = interrupted_pc;
+        if (interrupted_pc >= 0x801CE818u && interrupted_pc < 0x801F69D8u)
+            g_cdrom_overlay_preempt_count++;
+    }
+    /* Legaia XA actions install CdStateMachine_SeekAndPlaySequence in $s4.
+     * Count actual CD IRQ deliveries while that callback is live.  In
+     * particular, compare the current and peak deliveries per display frame
+     * with a normal field transition: a high action-only density identifies
+     * IRQ/callback churn rather than an unmapped battle overlay. */
+    if (((i_stat & i_mask) & (1u << IRQ_CDROM)) != 0u &&
+        (cpu->gpr[20] == 0x8003D764u || cpu->gpr[20] == 0x8003D7C4u)) {
+        extern uint64_t s_frame_count;
+        uint32_t frame = (uint32_t)s_frame_count;
+        if (g_xa_callback_frame != frame) {
+            g_xa_callback_frame = frame;
+            g_xa_callback_deliveries_this_frame = 0;
+        }
+        g_xa_callback_cd_deliver_count++;
+        g_xa_callback_deliveries_this_frame++;
+        if (g_xa_callback_deliveries_this_frame > g_xa_callback_max_deliveries_per_frame)
+            g_xa_callback_max_deliveries_per_frame = g_xa_callback_deliveries_this_frame;
+        g_xa_callback_last_s4 = cpu->gpr[20];
+        g_xa_callback_last_interrupted_pc =
+            g_dirty_safe_resume_pc ? g_dirty_safe_resume_pc : s_compiled_interrupt_resume_pc;
+        if (g_xa_callback_last_interrupted_pc >= 0x801CE818u &&
+            g_xa_callback_last_interrupted_pc < 0x801F69D8u)
+            g_xa_callback_overlay_preempt_count++;
+    }
     /* IRQ-delivery context ring (MMX6 VSync-vs-CD-DMA hunt). Capture, at every IRQ
      * delivery, whether the kernel VSync callback-block word at 0x80079D44 is the
      * clobbered game value AND whether a CD DMA (ch3) is mid-transfer / a DMA is
@@ -1277,10 +1355,8 @@ void psx_check_interrupts(CPUState* cpu) {
     static int s_str_mode = -1;
     if (s_str_mode < 0) {
         const char *e = getenv("PSX_SAME_THREAD_RESTORE");
-        s_str_mode = (e && *e) ? atoi(e) : 1;   /* default = 13c5e0c behavior;
-            mode 2 (TCB check) is the hardening candidate, pending a Tomba
-            pause-menu gate. The MMX6 "not found" this selector was built to
-            verify turned out to be a STALE GENERATED IMAGE artifact. */
+        s_str_mode = (e && *e) ? atoi(e) : 1;   /* default = established
+            PC-resume behavior; mode 2 is retained strictly as an A/B option. */
         if (s_str_mode < 0 || s_str_mode > 2) s_str_mode = 1;
     }
     extern uint32_t psx_read_word(uint32_t addr);   /* memory.c (plain RAM read) */

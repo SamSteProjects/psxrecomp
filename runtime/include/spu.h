@@ -26,6 +26,16 @@ typedef struct SpuDebugInfo {
     uint64_t cd_push_frames;
     uint64_t cd_overflow_frames;
     uint64_t cd_underflow_frames;
+    uint64_t cd_reset_count;
+    uint64_t cd_last_push_frames;
+    uint64_t cd_last_overflow_frames;
+    uint64_t cd_last_underflow_frames;
+    uint64_t cd_lifetime_push_frames;
+    uint64_t cd_lifetime_overflow_frames;
+    uint64_t cd_lifetime_underflow_frames;
+    uint64_t cd_lifetime_discarded_on_reset_frames;
+    uint64_t cd_last_discarded_on_reset_frames;
+    uint64_t cd_lifetime_inaudible_push_frames;
 } SpuDebugInfo;
 
 void spu_debug_info(SpuDebugInfo* out);

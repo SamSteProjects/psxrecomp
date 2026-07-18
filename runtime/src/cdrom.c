@@ -17,6 +17,7 @@
 #include "event_ring.h"
 #include "audio_trace.h"
 #include "psx_cycles.h"
+#include "mdec.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -117,6 +118,22 @@ static uint32_t cdrom_intc_latched_generation;
  * throughput is unaffected. */
 #define CDROM_IRQ_PRESENT_DELAY 5000
 static int cdrom_irq_present_delay;
+/* A/B for the controller-response visibility fix.  The existing model delayed
+ * only the INTC edge while exposing irq_flag/response FIFO immediately.  That
+ * lets libcd polling inside a callback consume the response for a command the
+ * callback just issued, recursively running an asynchronous state machine in
+ * one exception.  Real hardware exposes the controller response only after
+ * its processing delay.  Keep opt-in until cross-game regression testing. */
+static int s_response_visibility_delay = -1;
+static uint64_t s_response_hidden_polls = 0;
+
+static int response_visibility_delayed(void) {
+    if (s_response_visibility_delay < 0) {
+        const char *e = getenv("PSX_CD_RESPONSE_VISIBILITY_DELAY");
+        s_response_visibility_delay = (e && e[0] == '1') ? 1 : 0;
+    }
+    return s_response_visibility_delay && irq_flag != 0 && cdrom_irq_present_delay > 0;
+}
 
 /* Parameter FIFO */
 #define PARAM_FIFO_SIZE 16
@@ -259,6 +276,22 @@ static uint64_t cdda_sectors_played;
 /* Operating divisor: 1x during BIOS boot, switches to g_game_divisor
  * when the game's entry point first fires (via cdrom_notify_game_started). */
 static int g_disc_speed_divisor = 1;
+/* Opt-in Legaia XA action timing A/B.  XA normally remains at authentic
+ * cadence because FMVs interleave it with MDEC video.  Battle voice/effect
+ * streams are XA without recent MDEC activity, so this allows a controlled
+ * divisor there while leaving FMV timing untouched. */
+static int s_xa_action_speed_divisor = -1;
+
+static int xa_action_speed_divisor(void) {
+    if (s_xa_action_speed_divisor < 0) {
+        const char *e = getenv("PSX_XA_ACTION_SPEED");
+        int d = (e && *e) ? atoi(e) : 1;
+        if (d < 1) d = 1;
+        if (d > 4) d = 4;
+        s_xa_action_speed_divisor = d;
+    }
+    return s_xa_action_speed_divisor;
+}
 /* Configured target speed — applied post-BIOS. */
 static int g_game_divisor = 1;
 
@@ -497,7 +530,14 @@ static int apply_speed(int delay) {
     /* XA streaming (FMV / CDDA background music): preserve authentic timing.
      * FMVs interleave XA audio + MDEC video — speeding up sector delivery
      * would cause both to play faster than the display refresh rate. */
-    if (xa_stream_active) return delay;
+    if (xa_stream_active) {
+        int d = xa_action_speed_divisor();
+        if (d > 1 && !mdec_recently_active(5)) {
+            int faster = delay / d;
+            return faster < CDROM_MIN_DELAY ? CDROM_MIN_DELAY : faster;
+        }
+        return delay;
+    }
     if (g_disc_speed_divisor == 0) return instant_period(); /* bounded 'instant' */
     int d = delay / g_disc_speed_divisor;
     return d < CDROM_MIN_DELAY ? CDROM_MIN_DELAY : d;
@@ -507,7 +547,8 @@ static int apply_read_speed(int delay) {
     /* A route is an explicit DATA-read allowlist, never a blanket drive-speed
      * change. XA filter/ADPCM modes are rejected before the first streaming
      * sector can set xa_stream_active; established XA remains authentic too. */
-    if (xa_stream_active || (mode_reg & 0x48u)) return delay;
+    if (xa_stream_active) return apply_speed(delay);
+    if (mode_reg & 0x48u) return delay;
     if (s_warm_route_active) return warm_route_period();
     return apply_speed(delay);
 }
@@ -1174,6 +1215,15 @@ static void xa_zero_scan(const int16_t *stereo, int frames, int lba,
 
 static int maybe_deliver_xa_audio(const uint8_t* raw_data, int lba,
                                   const CDROMSectorDelivery *delivery) {
+    /* XA decode is host-side presentation only; the guest's ReadS/libcd state
+     * is driven by the physical-sector INT1 below, whether or not samples are
+     * mixed.  Keep an opt-out switch for diagnosing slow-frame wedges in an
+     * XA-heavy scene without changing controller timing or FIFO visibility. */
+    static int s_xa_decode_enabled = -1;
+    if (s_xa_decode_enabled < 0) {
+        const char *e = getenv("PSX_XA_DECODE");
+        s_xa_decode_enabled = !(e && e[0] && e[0] == '0');
+    }
     if (!(mode_reg & 0x40u) || !raw_data || !delivery || cd_muted) return 0;
     if (!xa_is_audio_realtime(delivery)) return 0;
 
@@ -1186,6 +1236,8 @@ static int maybe_deliver_xa_audio(const uint8_t* raw_data, int lba,
         trace_cdrom('a', 0, ((uint32_t)file << 16) | ((uint32_t)channel << 8) | coding, 0);
         return 0;
     }
+
+    if (!s_xa_decode_enabled) return 0;
 
     int stereo = (coding & 0x01u) != 0;
     int rate_code = (coding >> 2) & 0x03;
@@ -1219,6 +1271,29 @@ static int maybe_deliver_xa_audio(const uint8_t* raw_data, int lba,
      * cdc.cpp GetCDAudio comment). */
     cd_apply_decode_volume(pcm_44100, out_frames);
     xa_zero_scan(pcm_44100, out_frames, lba, 1);
+    /* Keep sector identity and decoded energy on the audio timeline.  A
+     * continuous mixed WAV cannot reveal that the game selected the wrong XA
+     * file/channel (battle music can mask the absent action cue), while these
+     * events identify exactly what was decoded at each sample index. */
+    {
+        uint32_t peak = 0;
+        uint64_t abs_sum = 0;
+        uint32_t samples = (uint32_t)out_frames * 2u;
+        for (uint32_t i = 0; i < samples; i++) {
+            int32_t s = pcm_44100[i];
+            uint32_t a = (uint32_t)(s < 0 ? -s : s);
+            if (a > peak) peak = a;
+            abs_sum += a;
+        }
+        uint32_t mean_abs = samples ? (uint32_t)(abs_sum / samples) : 0;
+        if (peak > 0xFFFFu) peak = 0xFFFFu;
+        if (mean_abs > 0xFFFFu) mean_abs = 0xFFFFu;
+        audio_trace_event(AUDIO_EV_XA_SECTOR, (uint32_t)lba,
+            ((uint32_t)file << 24) | ((uint32_t)channel << 16) |
+            ((uint32_t)coding << 8) | ((uint32_t)(out_frames / 32) & 0xFFu));
+        audio_trace_event(AUDIO_EV_XA_ENERGY, (uint32_t)lba,
+                          (peak << 16) | mean_abs);
+    }
     spu_cd_audio_push(pcm_44100, out_frames);
     trace_cdrom('A', 0,
                 ((uint32_t)file << 24) | ((uint32_t)channel << 16) |
@@ -1318,7 +1393,15 @@ static int read_sector_at(int min, int sec, int sect) {
                     delivery.xa_coding,
                     0);
     }
-    return delivery.data_delivered ? 1 : 0;
+    /* A filtered realtime XA sector is still a physical sector arrival.  The
+     * CD controller raises INT1 for it even though the sector is consumed by
+     * its ADPCM path and therefore must not become CPU/DMA FIFO data.  libcd's
+     * ReadS callback sequencers (Legaia's XA voice path included) use that
+     * interrupt to issue GetLocP/Nop and advance their state machine.  Returning
+     * data_delivered here used to suppress INT1 entirely for the filtered
+     * sector, leaving the sequencer waiting forever after the first clip frame.
+     */
+    return 1;
 }
 
 static void advance_msf(int* m, int* s, int* f) {
@@ -2089,6 +2172,15 @@ static void process_pending(uint32_t cycles) {
     case 0x16: /* SeekP complete */
         stat_reg &= ~CDSTAT_SEEK;
         setloc_seek_far = 0;
+        /* The drive head is now at the SetLoc target.  Keep GetlocL's
+         * position coherent with that completed seek until the first new
+         * sector replaces it.  Leaving last_sector_lba at the prior stream's
+         * final sector made Legaia's back-to-back XA state machine believe a
+         * newly started clip was already beyond its end: ReadS -> GetlocL ->
+         * Pause all occurred in one frame, so every second Hyper Art lost its
+         * XA cue.  The next physical sector still refreshes all header and XA
+         * subheader fields through the normal delivery path. */
+        last_sector_lba = msf_to_lba(seek_min, seek_sec, seek_sect);
         response_push(stat_reg);
         set_irq(CDIRQ_COMPLETE);
         fire_cdrom_irq();
@@ -2244,6 +2336,7 @@ void cdrom_init(const char* cue_path) {
     cdrom_irq_generation = 0;
     cdrom_intc_latched_generation = 0;
     cdrom_irq_present_delay = 0;
+    s_response_hidden_polls = 0;
     param_count = 0;
     response_read = 0;
     response_count = 0;
@@ -2312,7 +2405,7 @@ uint32_t cdrom_read(uint32_t addr) {
          * init down a different branch from real hardware. */
         if (param_count == 0) s |= (1 << 3);
         if (param_count < PARAM_FIFO_SIZE) s |= (1 << 4);
-        if (response_read < response_count) s |= (1 << 5);
+        if (!response_visibility_delayed() && response_read < response_count) s |= (1 << 5);
         if (data_fifo_ready()) s |= (1 << 6);
         /* Bit 7 BUSYSTS: command written but not yet executed (our queued
          * path; the synchronous path leaves no guest-observable window).
@@ -2323,7 +2416,7 @@ uint32_t cdrom_read(uint32_t addr) {
     }
 
     case 0x1F801801:
-        if (response_read < response_count) {
+        if (!response_visibility_delayed() && response_read < response_count) {
             ret = response_fifo[response_read++];
         }
         break;
@@ -2341,7 +2434,12 @@ uint32_t cdrom_read(uint32_t addr) {
         if (index_reg == 0 || index_reg == 2) {
             ret = irq_enable;
         } else {
-            ret = irq_flag | 0xE0;
+            if (response_visibility_delayed()) {
+                s_response_hidden_polls++;
+                ret = 0xE0;
+            } else {
+                ret = irq_flag | 0xE0;
+            }
         }
         break;
 

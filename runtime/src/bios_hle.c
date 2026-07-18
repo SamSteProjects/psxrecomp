@@ -231,6 +231,12 @@ static void hle_deliver_event(CPUState* cpu, uint32_t base, uint32_t n)
         } else if (mode == EVMD_CALLBACK) {
             uint32_t func = cpu->read_word(ev + EV_FUNC);
             if (func != 0) {
+                /* Preserve the exact guest callback in the always-on HLE
+                 * trace.  The enclosing DeliverEvent record only identifies
+                 * the class/spec; this record identifies which event handler
+                 * was actually entered when an IRQ-stall occurs. */
+                hle_record(0xB0u, func, cpu, 0u,
+                           PSX_HLE_ROUTE_HLE);
                 /* Nested guest call, same shape as any compiled call site.
                  * $ra is the kernel's real post-jalr address so the callback
                  * returns through the standard dispatch contract; the caller's
