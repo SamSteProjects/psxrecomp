@@ -13010,6 +13010,74 @@ static PSX_BSS volatile uint32_t s_phase_gpu   [PHASE_RING_SECS];
 static PSX_BSS volatile uint32_t s_phase_exc   [PHASE_RING_SECS];
 static PSX_BSS volatile uint64_t s_phase_sec   [PHASE_RING_SECS];
 static volatile uint64_t s_phase_samples_all = 0, s_phase_interp_all = 0;
+/* Resettable manual-snapshot interval.  Unlike the rolling seconds histogram,
+ * this captures a short, user-defined action window (e.g. Spirit audio start
+ * through its delayed visual) without requiring the TCP debug port. */
+static volatile uint64_t s_phase_probe_total = 0, s_phase_probe_interp = 0;
+static volatile uint64_t s_phase_probe_native = 0, s_phase_probe_static = 0;
+static volatile uint64_t s_phase_probe_gpu = 0, s_phase_probe_exc = 0;
+#define PHASE_PROBE_HOT_SLOTS 1024
+static volatile uint32_t s_phase_probe_hot_addr[PHASE_PROBE_HOT_SLOTS];
+static volatile uint64_t s_phase_probe_hot_count[PHASE_PROBE_HOT_SLOTS];
+
+static void phase_probe_hot_add(uint32_t addr)
+{
+    if (!addr) return;
+    uint32_t h = (addr >> 2) * 2654435761u;
+    for (uint32_t p = 0; p < 16; p++) {
+        uint32_t i = (h + p) & (PHASE_PROBE_HOT_SLOTS - 1u);
+        uint32_t a = s_phase_probe_hot_addr[i];
+        if (a == addr) { s_phase_probe_hot_count[i]++; return; }
+        if (a == 0) {
+            s_phase_probe_hot_addr[i] = addr;
+            s_phase_probe_hot_count[i] = 1;
+            return;
+        }
+    }
+}
+
+int debug_phase_probe_hot_get(uint32_t *addrs, uint64_t *counts, int max)
+{
+    if (!addrs || !counts || max <= 0) return 0;
+    int n = 0;
+    for (uint32_t i = 0; i < PHASE_PROBE_HOT_SLOTS; i++) {
+        uint32_t addr = s_phase_probe_hot_addr[i];
+        uint64_t count = s_phase_probe_hot_count[i];
+        if (!addr || !count) continue;
+        int pos = n < max ? n++ : max - 1;
+        if (n >= max && count <= counts[pos]) continue;
+        while (pos > 0 && counts[pos - 1] < count) {
+            if (pos < max) {
+                addrs[pos] = addrs[pos - 1];
+                counts[pos] = counts[pos - 1];
+            }
+            pos--;
+        }
+        addrs[pos] = addr;
+        counts[pos] = count;
+    }
+    return n;
+}
+
+void debug_phase_probe_get(uint64_t *total, uint64_t *interp, uint64_t *native,
+                           uint64_t *statik, uint64_t *gpu, uint64_t *exc)
+{
+    if (total)  *total  = s_phase_probe_total;
+    if (interp) *interp = s_phase_probe_interp;
+    if (native) *native = s_phase_probe_native;
+    if (statik) *statik = s_phase_probe_static;
+    if (gpu)    *gpu    = s_phase_probe_gpu;
+    if (exc)    *exc    = s_phase_probe_exc;
+}
+
+void debug_phase_probe_reset(void)
+{
+    s_phase_probe_total = s_phase_probe_interp = 0;
+    s_phase_probe_native = s_phase_probe_static = 0;
+    s_phase_probe_gpu = s_phase_probe_exc = 0;
+    memset((void *)s_phase_probe_hot_addr, 0, sizeof(s_phase_probe_hot_addr));
+    memset((void *)s_phase_probe_hot_count, 0, sizeof(s_phase_probe_hot_count));
+}
 
 /* Hot-function histogram: when a sample lands in a native overlay shard,
  * bucket the shard's registered entry address (cumulative since boot; a
@@ -13075,24 +13143,26 @@ static void *phase_sampler_main(void *arg)
         }
         s_phase_total[slot]++;
         s_phase_samples_all++;
+        s_phase_probe_total++;
         switch (psx_exec_phase()) {
-        case 1: s_phase_interp[slot]++; s_phase_interp_all++; break;
-        case 2: s_phase_native[slot]++;
+        case 1: s_phase_interp[slot]++; s_phase_interp_all++; s_phase_probe_interp++; break;
+        case 2: s_phase_native[slot]++; s_phase_probe_native++;
                 s_phot_native_total++;
                 phot_add(overlay_loader_native_inprogress());
                 break;
-        case 3: s_phase_static[slot]++;
+        case 3: s_phase_static[slot]++; s_phase_probe_static++;
                 s_phot_static_total++;
                 {
                     extern volatile uint32_t g_psx_last_fn_entry;
+                    phase_probe_hot_add(g_psx_last_fn_entry);
                     phot_add_to(s_phots_addr, s_phots_cnt, &s_phots_drops,
                                 g_psx_last_fn_entry);
                 }
                 break;
-        case 4: s_phase_gpu[slot]++; break;
+        case 4: s_phase_gpu[slot]++; s_phase_probe_gpu++; break;
         default: break;                          /* 0 = host/other */
         }
-        if (psx_get_in_exception())       { s_phase_exc[slot]++; }
+        if (psx_get_in_exception())       { s_phase_exc[slot]++; s_phase_probe_exc++; }
     }
 #ifndef _WIN32
     return NULL;
