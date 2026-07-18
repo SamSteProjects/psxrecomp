@@ -299,10 +299,42 @@ static uint32_t*     sdl_pixel_buf = nullptr;
 enum DebugMenuMode { DEBUG_MENU_OFF, DEBUG_MENU_COMPACT, DEBUG_MENU_FULL };
 static DebugMenuMode g_debug_menu_mode = DEBUG_MENU_OFF;
 static int g_debug_menu_panel = 0;
+/* Legaia's retail developer menu is already a complete, game-owned tool: it
+ * contains MAP-CHANGE, event-flag, item, and sound-test controls.  The
+ * external overlay should not duplicate its delicate scene-loader contract.
+ * Instead, the WARP panel arms the documented retail gate and sends the
+ * documented SELECT+TRIANGLE chord for a few vblanks. */
+/* Two launch samples: a neutral pad frame to establish an unpressed edge,
+ * followed by exactly one SELECT+TRIANGLE sample on PSX port 2.  Legaia's
+ * debug dispatcher consumes its bindings from the upper half of the combined
+ * two-pad mask (the second port), leaving normal player input on port 1. */
+static int g_debug_native_menu_launch_frames = 0;
+static bool g_debug_native_menu_chord_this_vblank = false;
+/* This is the retail input dispatcher's master debug-mode gate, not a
+ * one-shot menu-open bit.  The documented live probe re-asserts it each
+ * vblank because scene initialisers can rewrite the backing word. */
+static bool g_debug_native_menu_enabled = false;
+static const uint32_t LEGAIA_GAME_MODE_ADDR = 0x8007B83Cu;
+static const uint32_t LEGAIA_OTHER_SUB_ID_ADDR = 0x8007BA34u;
+static const uint32_t LEGAIA_DEBUG_MENU_GATE_ADDR = 0x8007B98Fu;
+static const uint32_t LEGAIA_OTHER_INIT_MODE = 0x18u;
+static const uint16_t PSX_DEBUG_MENU_CHORD =
+    (uint16_t)(0xFFFFu & ~(1u << 0) & ~(1u << 12)); /* SELECT + TRIANGLE */
 static const char *debug_menu_renderer_name(void);
 static int debug_menu_vsync_disabled(void);
 static bool debug_menu_captures_keyboard(void) {
     return g_debug_menu_mode == DEBUG_MENU_FULL;
+}
+
+/* Same state hand-off as the retail field VM's 0x3E minigame-door opcode:
+ * sub-id 0 is Fishing, and mode 0x18 is OTHER INIT.  The retail initializer
+ * performs the scene backup, overlay load, and normal return path itself. */
+static bool debug_menu_start_fishing(void) {
+    if (psx_read_word(LEGAIA_GAME_MODE_ADDR) != 3u) return false;
+    psx_write_half(LEGAIA_OTHER_SUB_ID_ADDR, 0u);
+    psx_write_word(LEGAIA_GAME_MODE_ADDR, LEGAIA_OTHER_INIT_MODE);
+    g_debug_menu_mode = DEBUG_MENU_OFF;
+    return true;
 }
 
 static uint8_t debug_menu_glyph_row(char c, int row) {
@@ -381,10 +413,35 @@ static bool debug_menu_handle_key(const SDL_Keysym &key) {
     if (g_debug_menu_mode != DEBUG_MENU_FULL) return false;
     if (key.sym == SDLK_ESCAPE) { g_debug_menu_mode = DEBUG_MENU_OFF; return true; }
     if (key.sym == SDLK_TAB || key.sym == SDLK_RIGHT) {
-        g_debug_menu_panel = (g_debug_menu_panel + 1) % 3; return true;
+        g_debug_menu_panel = (g_debug_menu_panel + 1) % 4; return true;
     }
     if (key.sym == SDLK_LEFT) {
-        g_debug_menu_panel = (g_debug_menu_panel + 2) % 3; return true;
+        g_debug_menu_panel = (g_debug_menu_panel + 3) % 4; return true;
+    }
+    if (key.sym == SDLK_RETURN && g_debug_menu_panel == 3) {
+        /* The native menu is field-only.  Invoking it while a battle/menu/FMVs
+         * own the active overlay can intentionally swap the wrong code into
+         * the shared window, so refuse the shortcut outside normal field mode. */
+        if (psx_read_word(LEGAIA_GAME_MODE_ADDR) == 3u) {
+            /* The flag must remain asserted: FUN_8001822C checks the whole
+             * 32-bit word every frame before it accepts the retail debug
+             * bindings.  Clearing it after a pulse strands an in-progress
+             * menu transition and can leave the field input path consumed. */
+            g_debug_native_menu_enabled = true;
+            psx_write_byte(LEGAIA_DEBUG_MENU_GATE_ADDR, 1);
+            /* Do not force game mode 0: that opens PROT 0971's separate,
+             * full-screen CONFIG tester.  The compact in-field developer
+             * menu (MAP CHANGE / flags / tools) is the documented
+             * SELECT+TRIANGLE binding in resident field overlay 0897.  Give
+             * its edge detector a released vblank, then one chord vblank. */
+            g_debug_native_menu_launch_frames = 2;
+            g_debug_menu_mode = DEBUG_MENU_OFF;
+        }
+        return true;
+    }
+    if (key.sym == SDLK_f && g_debug_menu_panel == 3) {
+        debug_menu_start_fishing();
+        return true;
     }
     return false;
 }
@@ -426,7 +483,8 @@ static void debug_menu_draw(uint32_t *pixels, int w, int h) {
     debug_menu_rect(pixels, w, h, 8, 8, scale, box_h, border);
     debug_menu_rect(pixels, w, h, 8 + box_w - scale, 8, scale, box_h, border);
     const char *panel = g_debug_menu_panel == 0 ? "OVERVIEW" :
-                        g_debug_menu_panel == 1 ? "OVERLAYS" : "EXECUTION";
+                        g_debug_menu_panel == 1 ? "OVERLAYS" :
+                        g_debug_menu_panel == 2 ? "EXECUTION" : "WARP";
     std::snprintf(line, sizeof(line), "PSX DEBUG %s", panel);
     debug_menu_text(pixels, w, h, 14, 14, scale, line, title);
     int y = 14 + line_h + 5 * scale;
@@ -464,7 +522,7 @@ static void debug_menu_draw(uint32_t *pixels, int w, int h) {
         std::snprintf(line, sizeof(line), "REVALIDATE %u STALE %llu", revalidations,
                       (unsigned long long)stale); put(line, warn);
         std::snprintf(line, sizeof(line), "WRITE %08X AT %08X", last_addr, last_pc); put(line);
-    } else {
+    } else if (g_debug_menu_panel == 2) {
         std::snprintf(line, sizeof(line), "PC %08X LAST %08X", cpu ? cpu->pc : 0u,
                       g_debug_current_func_addr); put(line);
         std::snprintf(line, sizeof(line), "EPC %08X CAUSE %08X", cpu ? cpu->cop0[14] : 0u,
@@ -475,6 +533,16 @@ static void debug_menu_draw(uint32_t *pixels, int w, int h) {
                       cpu ? cpu->gpr[5] : 0u); put(line);
         std::snprintf(line, sizeof(line), "PHASE %s", debug_menu_phase_name(psx_exec_phase())); put(line, warn);
         put("READ ONLY - NO GUEST WRITES", title);
+    } else {
+        const uint32_t mode = psx_read_word(LEGAIA_GAME_MODE_ADDR);
+        put("NATIVE LEGAIA DEBUG MENU", title);
+        put("MAP CHANGE AND WARP TOOLS");
+        std::snprintf(line, sizeof(line), "GAME MODE %02X %s", mode,
+                      mode == 3u ? "READY" : "FIELD ONLY"); put(line, mode == 3u ? text : warn);
+        put("ENTER OPEN NATIVE MENU", mode == 3u ? title : warn);
+        put("F START FISHING", mode == 3u ? title : warn);
+        put("THEN USE THE PSX PAD", text);
+        put("SELECT TRIANGLE RETURNS", text);
     }
     debug_menu_text(pixels, w, h, 14, 8 + box_h - line_h - 4, scale,
                     "F10 CLOSE TAB PANEL CTRL F10 HUD", title);
@@ -2622,6 +2690,28 @@ static void sdl_vblank_present(void) {
     if (g_headless) sample_headless_pad_into_sio(override);
     else            sample_pad_into_sio(override);
 
+#ifndef PSX_NO_DEBUG_TOOLS
+    /* Deliver the menu-open chord through the normal SIO pad path after the
+     * host input sample.  This is deliberately a short pulse rather than a
+     * persistent override: once the retail menu opens, the user's keyboard or
+     * controller immediately owns navigation again. */
+    if (g_debug_native_menu_enabled) {
+        /* Match Andrew Altimit's live confirmation harness: a scene init may
+         * restore this BSS word, so keep the external debug enable durable. */
+        psx_write_byte(LEGAIA_DEBUG_MENU_GATE_ADDR, 1);
+    }
+    g_debug_native_menu_chord_this_vblank =
+        g_debug_native_menu_launch_frames == 1;
+    if (g_debug_native_menu_launch_frames == 2) {
+        /* Give the game's edge detector one fully released sample first. */
+        sio_set_pad_state_slot(1, 0xFFFFu);
+        --g_debug_native_menu_launch_frames;
+    } else if (g_debug_native_menu_chord_this_vblank) {
+        sio_set_pad_state_slot(1, PSX_DEBUG_MENU_CHORD);
+        --g_debug_native_menu_launch_frames;
+    }
+#endif
+
     /* Latency ring: open this present cycle's slot, stamping when input was
      * sampled into SIO.  Always-on; queried via the debug server "latency". */
     latency_ring_frame_begin();
@@ -2789,6 +2879,12 @@ static void sdl_vblank_present(void) {
         SDL_GameControllerUpdate();  /* refresh pad state after the wait */
         SDL_PumpEvents();            /* refresh keyboard state */
         sample_pad_into_sio(override);
+#ifndef PSX_NO_DEBUG_TOOLS
+        /* The late low-latency sample normally wins for the next guest frame;
+         * keep this vblank's deliberate debug chord from being overwritten. */
+        if (g_debug_native_menu_chord_this_vblank)
+            sio_set_pad_state_slot(1, PSX_DEBUG_MENU_CHORD);
+#endif
         latency_ring_restamp_input();
     }
 
