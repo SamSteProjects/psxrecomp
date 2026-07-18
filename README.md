@@ -143,6 +143,15 @@ configure time** (defaults OFF — other platforms sharing `recomp-ui` stay dark
 Details: [`docs/GAME_PROJECT_SETUP.md`](docs/GAME_PROJECT_SETUP.md). Legacy CLI
 `psxrecomp build` / `tools/setup_dev.sh` remain available.
 
+### Legend of Legaia research acknowledgement
+
+The Legaia-specific overlay mapping and validation work in this fork was
+informed by [Andrew Altimit's Legend of Legaia reverse-engineering
+documentation](https://github.com/AndrewAltimit/legend-of-legaia-re). Its
+documentation of streamed overlay identities, load locations, and
+minigame/field/battle behavior materially shortened the investigation and
+guided the runtime's overlay-cache fixes.
+
 **New here?** The fastest way in:
 
 | Path | Doc |
