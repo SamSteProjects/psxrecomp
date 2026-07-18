@@ -87,3 +87,28 @@ clip's audio completed with both Hyper Arts sounding correctly. Four-stage
 audio capture also confirmed that XA decoding, SPU mixing, and host delivery
 were not dropping the missing cue; the failure occurred before the second
 stream began.
+
+## 2026-07-18 - Muscle Dome loss-return crash fixed
+
+**Status:** verified with a complete successful Muscle Dome run and return to
+the field.
+
+**Symptom:** after losing a Muscle Dome match, the battle-to-field transition
+could fail with an unknown dispatch to `0x006E2098`. The crash occurred after
+the minigame had handed control back to the field path, rather than during the
+match itself.
+
+**Root cause:** the exit path rebuilt an actor's per-object render table from
+a valid-looking but unrelocated TMD. Its object entries still held file-relative
+offsets, which were copied into the actor table as if they were RAM pointers.
+The VBlank renderer later attempted to dispatch one of those offsets as code.
+
+**Fix:** before `FUN_80024D78` rebuilds an actor object table, the Legaia build
+now validates the referenced TMD and, only if it is still unrelocated, applies
+the original engine's idempotent `FUN_800268DC` offset-to-RAM-pointer transform.
+Already registered field and battle TMDs retain their normal path unchanged.
+
+**Verification:** a full Muscle Dome run completed without the prior
+transition crash. The separate "Powerful Players" debug option was also
+identified as a fixed base-stat value of 100, not an endgame stat boost; it
+should remain off for normal Muscle Dome testing.
