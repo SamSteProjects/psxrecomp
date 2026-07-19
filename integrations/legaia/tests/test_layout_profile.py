@@ -39,7 +39,12 @@ def context(value: dict | None = None) -> dict:
     overlay = value["overlay_requirements"][0]["identity"]
     return {
         "executable_identity": copy.deepcopy(value["executable_identity"]),
-        "runtime_protocol": {"name": "psxrecomp-json-tcp", "version": 1},
+        "runtime_protocol": {
+            "name": "psxrecomp-debug",
+            "major": 1,
+            "minor": 1,
+            "capabilities": copy.deepcopy(value["supported_runtime_protocol"]["required_capabilities"]),
+        },
         "overlays": [
             {
                 "id": overlay["id"],
@@ -185,6 +190,20 @@ class RuntimeLayoutProfileTests(unittest.TestCase):
         value = profile()
         with self.assertRaisesRegex(LayoutProfileError, "unresolved in profile"):
             validate_observation_context(value, context(runnable_profile()))
+
+    def test_20_required_protocol_capability_fails_closed(self) -> None:
+        value = runnable_profile()
+        observed = context(value)
+        observed["runtime_protocol"]["capabilities"].remove("executable_regions")
+        with self.assertRaisesRegex(LayoutProfileError, "capabilities are missing"):
+            validate_observation_context(value, observed)
+
+    def test_21_protocol_major_mismatch_fails_closed(self) -> None:
+        value = runnable_profile()
+        observed = context(value)
+        observed["runtime_protocol"]["major"] = 2
+        with self.assertRaisesRegex(LayoutProfileError, "major is incompatible"):
+            validate_observation_context(value, observed)
 
 
 if __name__ == "__main__":

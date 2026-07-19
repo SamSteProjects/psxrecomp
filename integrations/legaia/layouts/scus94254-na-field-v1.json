@@ -17,13 +17,14 @@
     }
   },
   "supported_runtime_protocol": {
-    "name": "psxrecomp-json-tcp",
-    "minimum_version": 1,
+    "name": "psxrecomp-debug",
+    "minimum_major": 1,
+    "minimum_minor": 1,
     "required_capabilities": [
-      "ping",
-      "read_ram",
-      "frame",
-      "canonical_overlay_identity"
+      "executable_regions",
+      "read_regions",
+      "runtime_identity",
+      "watched_page_generation"
     ]
   },
   "overlay_requirements": [

@@ -78,10 +78,11 @@
     "protocol": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "minimum_version", "required_capabilities"],
+      "required": ["name", "minimum_major", "minimum_minor", "required_capabilities"],
       "properties": {
-        "name": { "const": "psxrecomp-json-tcp" },
-        "minimum_version": { "type": "integer", "minimum": 1 },
+        "name": { "const": "psxrecomp-debug" },
+        "minimum_major": { "const": 1 },
+        "minimum_minor": { "type": "integer", "minimum": 1 },
         "required_capabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
       }
     },
