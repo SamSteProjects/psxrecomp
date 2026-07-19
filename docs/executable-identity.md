@@ -122,3 +122,19 @@ watched executable writes, registration changes, blacklist/ownership changes,
 or native enable-state changes. It is process-lifetime scoped and is not a
 separate counter. SHA-256 collision resistance is assumed; no persistence or
 cross-process ordering is promised.
+
+## Retail acceptance limitations
+
+The 2026-07-19 native acceptance found two constraints not covered by the
+synthetic contract. First, the advertised 128-record page can exceed the
+65,536-byte response cap for ordinary static-overlay records; 16-record pages
+worked, but clients must currently use a conservative page size and treat
+`invalid executable registration` as ambiguous until the server distinguishes
+capacity from invalid metadata. Second, the state token covers the watched
+pages of the whole canonical main image. Mutable data inside that image can
+advance generations continuously during play, so token equality across a
+multi-request census is not currently guaranteed.
+
+Neither limitation permits a client to ignore a token mismatch or promote a
+non-matching registration to native ownership. See
+`docs/legaia-sdk/field-overlay-0897-identity.md`.

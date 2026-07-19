@@ -35,6 +35,7 @@ Implemented:
 - completed additive model-identity resolution: 114 scene-local and five global-special metadata-only model records, 52/52 resolved actor references, bounded source provenance and 119/119 structural parity rows. See `docs/legaia-sdk/model-asset-identity.md`.
 - completed the first read-only SCUS-94254 field-runtime layout research pass: revisioned metadata-only profile/schema, multi-signal `town01` identity, observer-owned scene epochs, linked-node/collision-census distinction, bounded actor-field map, correlation-signal inventory and synthetic fail-closed validation. See `docs/legaia-sdk/runtime-layout-research.md`.
 - completed the generic protocol prerequisites for a later observer: protocol 1.1 negotiation, safe runtime/executable identities, authoritative watched-generation reporting, conservative native ownership and bounded frame-stamped `read_regions`. These changes are generic and contain no Legaia addresses or traversal logic.
+- completed native startup correction and live protocol/bounded-read acceptance. The subsequent overlay 0897 pass stopped fail closed because stable town01 field code had no source-matching native owner and the researched base was not a reported executable range. See `docs/runtime-launch-acceptance.md` and `docs/legaia-sdk/field-overlay-0897-identity.md`.
 
 Not implemented:
 

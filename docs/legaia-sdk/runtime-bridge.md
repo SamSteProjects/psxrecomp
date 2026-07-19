@@ -163,3 +163,10 @@ refuses live selection while overlay 0897's canonical live range/hash is
 unresolved. Resolving and accepting that evidence is the next prerequisite; it
 is not permission to traverse actors or correlate imported records. No
 Legaia-specific command or runtime hook has been added.
+
+The first live native pass confirmed negotiation and bounded reads but did not
+clear the overlay gate. In stable town01, records covering field code were not
+source-matching native owners, and the researched overlay base was not a
+reported exact executable range. A separately reviewed generic
+executable-region coverage/paging correction is required before a headless
+Legaia observer can select this profile. See `field-overlay-0897-identity.md`.
