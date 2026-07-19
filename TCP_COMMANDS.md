@@ -6,11 +6,12 @@ Protocol: **JSON over newline**, one object per line, responses on same connecti
 - Success: `{"id": N, "ok": true, ...data}`
 - Failure: `{"id": N, "ok": false, "error": "<msg>"}`
 
-There are **two** servers, both implementing this protocol with overlapping command sets:
+There are **three** servers implementing overlapping subsets of this protocol:
 
 | Server | Port | Source |
 |---|---|---|
 | **Native** (our recompiled runtime) | `4370` | `runtime/src/debug_server.c` |
+| **Beetle PSX** (oracle) | `4380` | `runtime/src/beetle_debug_server.c` |
 | **DuckStation** (oracle) | `4371` | `duckstation/src/core/psxrecomp_debug_server.cpp` (patched, see `tools/duckstation/psxrecomp_oracle.patch`) |
 
 The `debug_client.py` CLI can target either, or `compare` two at once to diff state live — that's how divergence hunts work.
@@ -30,6 +31,28 @@ strings), so every server command is reachable, e.g.
 ---
 
 ## Command inventory
+
+### Observer identity commands (protocol 1.1)
+
+Capability negotiation is authoritative; server kind is not a substitute for
+checking `capabilities`.
+
+| Command | Native | Beetle | DuckStation | Description |
+|---|---:|---:|---:|---|
+| `protocol_info` | full | full | full | Protocol name/version, server kind, sorted capabilities and hard limits |
+| `runtime_identity` | full | unsupported | unsupported | Safe runtime, BIOS and canonical main-executable identities; no paths or bytes |
+| `executable_regions` | full | unsupported | unsupported | Paged registrations with source/live identities, watched generations and conservative native ownership |
+| `read_regions` | full | partial | partial | Bounded ordered main-RAM reads; native includes frame and executable-state stamps, oracles include frame stamps |
+
+DuckStation support is intentionally limited to capabilities its backend can
+prove. Its checked-in patch exposes negotiation and frame-stamped bounded reads,
+but omits PSXRecomp registration ownership and watched generations. See
+`docs/debug-protocol-versioning.md`,
+`docs/executable-identity.md`, and `docs/read-regions-command.md`.
+
+CLI mappings are `protocol-info`, `runtime-identity`, `executable-regions`, and
+`read-regions key=addr:len [...]`. The executable-region view prints a compact
+summary followed by the full JSON response.
 
 Columns: **N** = native, **D** = DuckStation oracle.
 

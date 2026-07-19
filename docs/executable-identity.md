@@ -49,6 +49,30 @@ The response also states page size, first page, page count, and the legacy sum.
 The digest is process-local state: it is not stable across restarts and is not
 an allocation generation.
 
+### Implementation audit
+
+The protocol is a view of the existing runtime mechanism, not a second
+generation system:
+
+| Concern | Authoritative implementation |
+|---|---|
+| Watch registration | `overlay_watch_set_range` in `runtime/src/memory.c`; called by main-text registration, dynamic candidate registration, and `psx_overlay_static_code_matches` |
+| Page state | `overlay_watched_pages[512]` and `overlay_page_gen[512]` in `runtime/src/memory.c` |
+| Guest-store mutation | `overlay_watch_note_write`, before the RAM mutation in the byte/half/word raw store paths |
+| DMA and CD transfer | `runtime/src/dma.c`; to-RAM words, including CD DMA, use `psx_write_word` |
+| Debugger mutation | `handle_write_ram` in `runtime/src/debug_server.c` uses `psx_write_byte` |
+| Dynamic validation | `cand_gensum`, `cand_crc`, candidate `val_gen`, and the dispatch checks in `runtime/src/overlay_loader.c` |
+| Static validation | `psx_overlay_static_code_matches` and `StaticMatchCache.gen_sum` in `runtime/src/overlay_loader.c` |
+| Main executable guard | `dirty_ram_register_text_image` and `dirty_ram_text_native_ok` in `runtime/src/memory.c` |
+| Observer projection | `watched_generation_digest` and `executable_state_token` in `runtime/src/debug_server.c` |
+
+There is no overlay-unload operation in the current loader: loaded DLL images
+and registrations are retained, while current live bytes and dispatch guards
+decide eligibility. Same-address replacement advances watched page state; a
+registration does not remain native-valid merely because its address and length
+are unchanged. An unchanged-byte write also advances the page generation, then
+may revalidate successfully against the unchanged final hash.
+
 ## Mutation coverage and limitations
 
 - CPU stores: covered at byte, halfword, and word widths.

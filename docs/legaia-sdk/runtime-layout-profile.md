@@ -15,7 +15,7 @@ Selection is fail closed. A consumer must match:
 5. main-RAM bounds, pointer-census stride and count;
 6. scene-epoch boundary samples.
 
-The checked-in profile intentionally has a null canonical overlay content hash. It therefore validates as research metadata but cannot yet select a live runtime. This is a safety feature, not an incomplete validator.
+The checked-in profile intentionally has a null canonical overlay content hash. Protocol 1.1 can now supply source/live identities and watched-generation state, but the canonical field-overlay range/hash has not yet been accepted into this profile. It therefore validates as research metadata but cannot select a live runtime. This is a safety feature, not an incomplete validator.
 
 ## Actor-pool representation
 
@@ -45,7 +45,7 @@ The standard-library validator provides:
 - `validate_observation_context(profile, context)` for fail-closed selection and bounds;
 - `establish_epoch(profile, before, after, observer_epoch)` for mixed-epoch rejection.
 
-The validator performs no network access and no RAM reads. A future observer supplies already-read identity metadata and remains responsible for bounded transport.
+The validator performs no network access and no RAM reads. A future observer supplies metadata from `protocol_info`, `runtime_identity`, `executable_regions`, and `read_regions`; it must require the advertised capabilities and reject unstable frame/executable-state stamps.
 
 ## Synthetic validation
 

@@ -144,6 +144,13 @@ backend against the interpreter. See
 [`docs/internal/COSIM_ORACLE.md`](internal/COSIM_ORACLE.md),
 [`docs/config_schema.md`](config_schema.md), and [`TCP_COMMANDS.md`](../TCP_COMMANDS.md).
 
+Protocol 1.1 adds a generic, read-only observer boundary. Native exposes safe
+runtime/program identity, current executable registrations, the same watched-page
+generation state used by dispatch invalidation, and bounded multi-region RAM
+reads. Beetle and DuckStation expose negotiation and frame-stamped bounded reads
+only. Unsupported executable identity is omitted rather than synthesized. The identity protocol never returns executable
+bytes or host paths and introduces no game-specific runtime behavior.
+
 ## Configuration
 
 Every process has a **BIOS config**; a game adds a **game config** (`game.toml`),

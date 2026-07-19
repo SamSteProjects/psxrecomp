@@ -32,6 +32,13 @@ The response contains:
 - `stable_executable_state`;
 - one bounded hexadecimal payload per requested region.
 
+Those executable-state fields are a native capability. Beetle and DuckStation
+implement the same bounds, address/key rules, ordering, and frame stamps, but
+omit executable-state fields because they cannot expose PSXRecomp's watched-page
+and registration ownership semantics. Capability negotiation tells a client
+whether the backend is suitable; a revisioned observer that requires executable
+stability must reject either oracle response rather than infer stability.
+
 Handlers execute synchronously on the emulation thread at `debug_server_poll`,
 so a normal read has identical before/after stamps. Explicit stamps remain part
 of the wire contract so clients detect future backend differences and reject a
