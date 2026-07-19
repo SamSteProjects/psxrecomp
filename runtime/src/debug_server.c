@@ -18,6 +18,7 @@
 #include "debug_server.h"
 #include "latency_ring.h"
 #include "overlay_loader.h"
+#include "overlay_api.h"
 #include "overlay_capture.h"
 #include "code_provider.h"
 #include "overlay_backend.h"
@@ -41,12 +42,14 @@
 #include "crash_trace.h"
 #include "gpu_gl_renderer.h"
 #include "lockstep.h"
+#include "sha256.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <limits.h>
 
 #ifndef DEFAULT_DEBUG_PORT
 #error DEFAULT_DEBUG_PORT must be defined by the runtime target.
@@ -90,6 +93,12 @@ extern uint32_t psx_read_word(uint32_t addr);
 extern void     psx_write_word(uint32_t addr, uint32_t val);
 extern uint8_t  psx_read_byte(uint32_t addr);
 extern void     psx_write_byte(uint32_t addr, uint8_t val);
+extern uint8_t *memory_get_ram_ptr(void);
+extern void     memory_get_bios_sha256(uint8_t out[32]);
+
+#ifndef PSX_BUILD_REV
+#define PSX_BUILD_REV "unknown"
+#endif
 
 /* ---- Server state ---- */
 static sock_t s_listen  = SOCK_INVALID;
@@ -97,7 +106,7 @@ static sock_t s_client  = SOCK_INVALID;
 static int    s_port    = DEFAULT_DEBUG_PORT;
 static int    s_listen_err = 0;   /* platform socket error captured by init */
 
-#define RECV_BUF_SIZE 8192
+#define RECV_BUF_SIZE 8193
 static char s_recv_buf[RECV_BUF_SIZE];
 static int  s_recv_len = 0;
 
@@ -144,6 +153,19 @@ int debug_server_fmv_quiet(void)
 /* Non-static so other instrumentation (e.g. dirty_ram_interp.c) can stamp
  * ring-buffer entries with the current frame for cross-correlation. */
 uint64_t s_frame_count = 0;
+static char s_program_serial[64] = {0};
+
+void debug_server_set_program_identity(const char *serial) {
+    size_t n = 0;
+    if (!serial) { s_program_serial[0] = '\0'; return; }
+    while (*serial && n + 1 < sizeof(s_program_serial)) {
+        unsigned char c = (unsigned char)*serial++;
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.')
+            s_program_serial[n++] = (char)c;
+    }
+    s_program_serial[n] = '\0';
+}
 
 /* ---- Layer-1 first-divergence per-frame fingerprint ----------------------
  * Cumulative, ORDER-DEPENDENT rolling hashes over MAIN-RAM guest writes.
@@ -4420,6 +4442,358 @@ static void handle_frame(int id, const char *json)
     (void)json;
     send_fmt("{\"id\":%d,\"ok\":true,\"frame\":%llu}",
              id, (unsigned long long)s_frame_count);
+}
+
+#define OBS_MAX_REGIONS 32
+#define OBS_MAX_REGION_BYTES 4096
+#define OBS_MAX_TOTAL_BYTES 16384
+#define OBS_MAX_RESPONSE_BYTES 65536
+#define EXEC_REGION_PAGE_DEFAULT 64
+#define EXEC_REGION_PAGE_MAX 128
+
+static void sha_u32(PSXSha256 *ctx, uint32_t v) {
+    uint8_t b[4] = {(uint8_t)v, (uint8_t)(v >> 8),
+                    (uint8_t)(v >> 16), (uint8_t)(v >> 24)};
+    psx_sha256_update(ctx, b, sizeof(b));
+}
+
+static void executable_state_token(char out[65]) {
+    static const char domain[] = "psxrecomp-exec-state-v1";
+    PSXSha256 ctx;
+    psx_sha256_init(&ctx);
+    psx_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    uint32_t pages = overlay_watch_page_count();
+    sha_u32(&ctx, overlay_watch_page_size());
+    sha_u32(&ctx, pages);
+    for (uint32_t page = 0; page < pages; page++) {
+        sha_u32(&ctx, page);
+        sha_u32(&ctx, overlay_watch_page_generation(page));
+    }
+    uint32_t base = 0, len = 0;
+    uint8_t source[32] = {0};
+    int has_text = dirty_ram_text_identity(&base, &len, source);
+    sha_u32(&ctx, (uint32_t)has_text);
+    if (has_text) {
+        sha_u32(&ctx, base); sha_u32(&ctx, len);
+        psx_sha256_update(&ctx, source, sizeof(source));
+    }
+    uint64_t registrations = overlay_loader_registration_state_token();
+    sha_u32(&ctx, (uint32_t)registrations);
+    sha_u32(&ctx, (uint32_t)(registrations >> 32));
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, out);
+}
+
+static void handle_protocol_info(int id, const char *json) {
+    (void)json;
+    send_fmt("{\"id\":%d,\"ok\":true,"
+             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":1},"
+             "\"server\":{\"kind\":\"native\"},"
+             "\"capabilities\":[\"executable_regions\",\"read_ram\",\"read_regions\","
+             "\"runtime_identity\",\"watched_page_generation\"],"
+             "\"limits\":{\"max_request_bytes\":8191,\"max_read_ram_bytes\":2097152,"
+             "\"max_regions_per_request\":%d,\"max_bytes_per_region\":%d,"
+             "\"max_total_region_bytes\":%d,\"max_response_bytes\":%d,"
+             "\"max_executable_regions_per_response\":%d},\"frame\":%llu}",
+             id, OBS_MAX_REGIONS, OBS_MAX_REGION_BYTES, OBS_MAX_TOTAL_BYTES,
+             OBS_MAX_RESPONSE_BYTES, EXEC_REGION_PAGE_MAX,
+             (unsigned long long)s_frame_count);
+}
+
+static void handle_runtime_identity(int id, const char *json) {
+    (void)json;
+    uint8_t bios[32], source[32];
+    char bios_hex[65], source_hex[65];
+    uint32_t base = 0, len = 0;
+    memory_get_bios_sha256(bios);
+    psx_sha256_hex(bios, bios_hex);
+    int has_text = dirty_ram_text_identity(&base, &len, source);
+    if (has_text) psx_sha256_hex(source, source_hex);
+    if (has_text) {
+        send_fmt("{\"id\":%d,\"ok\":true,\"runtime\":{\"implementation\":\"psxrecomp\","
+                 "\"build_revision\":\"%s\"},\"server\":{\"kind\":\"native\"},"
+                 "\"guest_architecture\":\"mips-r3000a\","
+                 "\"bios\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"length\":524288},"
+                 "\"main_executable\":{\"serial\":\"%s\",\"guest_base\":\"0x%08X\","
+                 "\"canonical_length\":%u,\"source_identity\":{\"algorithm\":\"sha256\","
+                 "\"sha256\":\"%s\",\"scope\":\"ps-x-exe-body\"}},\"frame\":%llu}",
+                 id, PSX_BUILD_REV, bios_hex, s_program_serial, base | 0x80000000u,
+                 len, source_hex, (unsigned long long)s_frame_count);
+    } else {
+        send_fmt("{\"id\":%d,\"ok\":true,\"runtime\":{\"implementation\":\"psxrecomp\","
+                 "\"build_revision\":\"%s\"},\"server\":{\"kind\":\"native\"},"
+                 "\"guest_architecture\":\"mips-r3000a\","
+                 "\"bios\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"length\":524288},"
+                 "\"main_executable\":null,\"frame\":%llu}",
+                 id, PSX_BUILD_REV, bios_hex, (unsigned long long)s_frame_count);
+    }
+}
+
+static int hash_live_ranges(const uint32_t *lo, const uint32_t *len, int count,
+                            char out[65]) {
+    uint8_t *ram = memory_get_ram_ptr();
+    if (!ram || !lo || !len || count < 1 || count > OVERLAY_EXEC_MAX_RANGES) return 0;
+    PSXSha256 ctx; psx_sha256_init(&ctx);
+    for (int i = 0; i < count; i++) {
+        if (lo[i] >= 0x200000u || len[i] == 0 || len[i] > 0x200000u - lo[i]) return 0;
+        psx_sha256_update(&ctx, ram + lo[i], len[i]);
+    }
+    uint8_t digest[32]; psx_sha256_final(&ctx, digest); psx_sha256_hex(digest, out);
+    return 1;
+}
+
+static int watched_generation_digest(const uint32_t *lo, const uint32_t *len,
+                                     int count, char out[65], uint32_t *sum_out,
+                                     uint32_t *first_out, uint32_t *count_out) {
+    uint8_t pages[512] = {0};
+    uint32_t page_size = overlay_watch_page_size();
+    uint32_t page_count = overlay_watch_page_count();
+    if (!lo || !len || count < 1 || page_count > sizeof(pages)) return 0;
+    for (int i = 0; i < count; i++) {
+        if (lo[i] >= 0x200000u || len[i] == 0 || len[i] > 0x200000u - lo[i]) return 0;
+        uint32_t first = lo[i] / page_size;
+        uint32_t last = (lo[i] + len[i] - 1u) / page_size;
+        for (uint32_t page = first; page <= last; page++) pages[page] = 1;
+    }
+    static const char domain[] = "psxrecomp-watch-v1";
+    PSXSha256 ctx; psx_sha256_init(&ctx);
+    psx_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    uint32_t first = page_count, covered = 0, sum = 0;
+    for (uint32_t page = 0; page < page_count; page++) {
+        if (!pages[page]) continue;
+        uint32_t gen = overlay_watch_page_generation(page);
+        if (first == page_count) first = page;
+        covered++; sum += gen; sha_u32(&ctx, page); sha_u32(&ctx, gen);
+    }
+    uint8_t digest[32]; psx_sha256_final(&ctx, digest); psx_sha256_hex(digest, out);
+    if (sum_out) *sum_out = sum;
+    if (first_out) *first_out = first == page_count ? 0 : first;
+    if (count_out) *count_out = covered;
+    return covered != 0;
+}
+
+static int append_exec_record(char *out, size_t cap, size_t *pos,
+                              const OverlayExecutableRegion *r, int comma) {
+    char live_sha[65], gen_sha[65];
+    uint32_t gen_sum = 0, first_page = 0, covered_pages = 0;
+    if (!hash_live_ranges(r->range_lo, r->range_len, r->range_count, live_sha) ||
+        !watched_generation_digest(r->range_lo, r->range_len, r->range_count,
+                                   gen_sha, &gen_sum, &first_page, &covered_pages)) return 0;
+    const char *kind = r->kind == 1 ? "static_overlay" :
+                       r->kind == 3 ? "runtime_compiled_overlay" : "native_overlay";
+    const char *backend = r->kind == 1 ? "static" : r->kind == 3 ? "sljit" : "native_dll";
+    uint32_t total_len = 0;
+    for (int i = 0; i < r->range_count; i++) {
+        if (r->range_len[i] > UINT32_MAX - total_len) return 0;
+        total_len += r->range_len[i];
+    }
+    int n = snprintf(out + *pos, cap - *pos,
+        "%s{\"region_id\":\"ovl-%08x-%08x-%08x\",\"kind\":\"%s\","
+        "\"guest_base\":\"0x%08X\",\"length\":%u,\"backend\":\"%s\",\"active\":%s,"
+        "\"source_identity\":{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+        "\"overlay_abi_tag\":%d,\"codegen_version\":%d},"
+        "\"live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\"},"
+        "\"source_matches_live\":%s,\"native_registration_valid\":%s,"
+        "\"active_owner\":%s,\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
+        "\"digest\":\"%s\",\"page_size\":%u,\"first_page\":%u,\"page_count\":%u,"
+        "\"legacy_sum\":%u,\"validated_legacy_sum\":%u},\"ranges\":[",
+        comma ? "," : "", r->registration_id, r->entry, r->source_crc32, kind,
+        r->entry | 0x80000000u, total_len, backend,
+        r->source_matches_live ? "true" : "false",
+        r->source_crc32, PSX_OVERLAY_ABI_TAG, PSX_OVERLAY_CODEGEN_VER, live_sha,
+        r->source_matches_live ? "true" : "false",
+        r->native_registration_valid ? "true" : "false",
+        r->active_owner ? "true" : "false", gen_sha, overlay_watch_page_size(),
+        first_page, covered_pages, gen_sum, r->validated_generation_sum);
+    if (n < 0 || (size_t)n >= cap - *pos) return 0;
+    *pos += (size_t)n;
+    for (int i = 0; i < r->range_count; i++) {
+        n = snprintf(out + *pos, cap - *pos,
+                     "%s{\"guest_base\":\"0x%08X\",\"length\":%u}",
+                     i ? "," : "", r->range_lo[i] | 0x80000000u, r->range_len[i]);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0;
+        *pos += (size_t)n;
+    }
+    n = snprintf(out + *pos, cap - *pos, "],\"frame_observed\":%llu}",
+                 (unsigned long long)s_frame_count);
+    if (n < 0 || (size_t)n >= cap - *pos) return 0;
+    *pos += (size_t)n;
+    return 1;
+}
+
+static void handle_executable_regions(int id, const char *json) {
+    int offset = json_get_int(json, "offset", 0);
+    int limit = json_get_int(json, "limit", EXEC_REGION_PAGE_DEFAULT);
+    if (offset < 0) { send_err(id, "invalid offset"); return; }
+    if (limit < 1 || limit > EXEC_REGION_PAGE_MAX) { send_err(id, "invalid limit"); return; }
+    uint32_t main_base = 0, main_len = 0; uint8_t main_source[32];
+    int has_main = dirty_ram_text_identity(&main_base, &main_len, main_source);
+    int overlay_total = overlay_loader_executable_region_count();
+    int total = overlay_total + (has_main ? 1 : 0);
+    if (offset > total) { send_err(id, "offset past end"); return; }
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"ordering\":\"registration\",\"offset\":%d,"
+        "\"limit\":%d,\"total\":%d,\"regions\":[", id, offset, limit, total);
+    int emitted = 0;
+    for (int logical = offset; logical < total && emitted < limit; logical++) {
+        if (has_main && logical == 0) {
+            uint32_t lo[1] = {main_base}, len[1] = {main_len};
+            char source_hex[65], live_hex[65], gen_hex[65]; uint8_t live[32];
+            uint32_t gen_sum=0, first=0, pages=0;
+            psx_sha256_hex(main_source, source_hex);
+            psx_sha256(memory_get_ram_ptr()+main_base, main_len, live); psx_sha256_hex(live, live_hex);
+            watched_generation_digest(lo,len,1,gen_hex,&gen_sum,&first,&pages);
+            int match = memcmp(main_source, live, 32) == 0;
+            int n = snprintf(out+pos, OBS_MAX_RESPONSE_BYTES-pos,
+                "%s{\"region_id\":\"main-%.*s\",\"kind\":\"main_executable\","
+                "\"guest_base\":\"0x%08X\",\"length\":%u,\"backend\":\"static\","
+                "\"active\":true,\"source_identity\":{\"algorithm\":\"sha256\","
+                "\"sha256\":\"%s\",\"scope\":\"ps-x-exe-body\"},"
+                "\"live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\"},"
+                "\"source_matches_live\":%s,\"native_registration_valid\":%s,"
+                "\"active_owner\":%s,\"watched_generation\":{\"algorithm\":"
+                "\"sha256-page-vector-v1\",\"digest\":\"%s\",\"page_size\":%u,"
+                "\"first_page\":%u,\"page_count\":%u,\"legacy_sum\":%u},"
+                "\"frame_observed\":%llu}", emitted?",":"",16,source_hex,
+                main_base|0x80000000u,main_len,source_hex,live_hex,match?"true":"false",
+                match?"true":"false",match?"true":"false",gen_hex,overlay_watch_page_size(),
+                first,pages,gen_sum,(unsigned long long)s_frame_count);
+            if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES-pos) { free(out); send_err(id,"response too large"); return; }
+            pos += (size_t)n;
+        } else {
+            int oi = logical - (has_main ? 1 : 0);
+            OverlayExecutableRegion r;
+            if (!overlay_loader_get_executable_region(oi, &r) ||
+                !append_exec_record(out, OBS_MAX_RESPONSE_BYTES, &pos, &r, emitted != 0)) {
+                free(out); send_err(id, "invalid executable registration"); return;
+            }
+        }
+        emitted++;
+    }
+    char state[65]; executable_state_token(state);
+    int n = snprintf(out+pos, OBS_MAX_RESPONSE_BYTES-pos,
+        "],\"returned\":%d,\"has_more\":%s,\"executable_state\":\"%s\",\"frame\":%llu}",
+        emitted,(offset+emitted<total)?"true":"false",state,(unsigned long long)s_frame_count);
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES-pos) { free(out); send_err(id,"response too large"); return; }
+    debug_server_send_line(out); free(out);
+}
+
+typedef struct {
+    char key[65];
+    int has_key;
+    uint32_t addr;
+    uint32_t phys;
+    uint32_t len;
+} ObserverReadRegion;
+
+static int observer_key_valid(const char *s) {
+    if (!s || !*s) return 0;
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') || c == '_' || c == '.' ||
+              c == ':' || c == '-')) return 0;
+    }
+    return 1;
+}
+
+static int parse_observer_regions(const char *json, ObserverReadRegion *out,
+                                  int *count_out, uint32_t *total_out,
+                                  const char **error_out) {
+    const char *tag = strstr(json, "\"regions\"");
+    if (!tag || !(tag = strchr(tag, '['))) { *error_out = "missing regions"; return 0; }
+    const char *p = tag + 1;
+    int count = 0; uint32_t total = 0;
+    for (;;) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',') p++;
+        if (*p == ']') break;
+        if (*p != '{') { *error_out = "invalid regions array"; return 0; }
+        if (count >= OBS_MAX_REGIONS) { *error_out = "too many regions"; return 0; }
+        const char *end = strchr(p, '}');
+        if (!end || end - p >= 511) { *error_out = "invalid region object"; return 0; }
+        char obj[512]; size_t obj_len = (size_t)(end - p + 1);
+        memcpy(obj, p, obj_len); obj[obj_len] = '\0';
+        char addr_s[32];
+        if (!json_get_str(obj, "addr", addr_s, sizeof(addr_s)) || addr_s[0] == '-') {
+            *error_out = "invalid region address"; return 0;
+        }
+        long length = json_get_int(obj, "len", INT_MIN);
+        if (length <= 0) { *error_out = "invalid region length"; return 0; }
+        if (length > OBS_MAX_REGION_BYTES) { *error_out = "region byte limit exceeded"; return 0; }
+        unsigned long long parsed = strtoull(addr_s, NULL, 0);
+        if (parsed > 0xFFFFFFFFULL) { *error_out = "region address overflow"; return 0; }
+        uint32_t addr = (uint32_t)parsed;
+        uint32_t phys = addr & 0x1FFFFFFFu;
+        if (phys < 0x00800000u) phys &= 0x001FFFFFu;
+        else { *error_out = "region is not main RAM"; return 0; }
+        if ((uint32_t)length > 0x200000u - phys) {
+            *error_out = "region range overflow"; return 0;
+        }
+        if ((uint32_t)length > OBS_MAX_TOTAL_BYTES - total) {
+            *error_out = "aggregate byte limit exceeded"; return 0;
+        }
+        ObserverReadRegion *r = &out[count];
+        memset(r, 0, sizeof(*r)); r->addr = addr; r->phys = phys; r->len = (uint32_t)length;
+        if (json_get_str(obj, "key", r->key, sizeof(r->key))) {
+            if (!observer_key_valid(r->key)) { *error_out = "invalid region key"; return 0; }
+            r->has_key = 1;
+            for (int i = 0; i < count; i++) {
+                if (out[i].has_key && strcmp(out[i].key, r->key) == 0) {
+                    *error_out = "duplicate region key"; return 0;
+                }
+            }
+        }
+        total += r->len; count++; p = end + 1;
+    }
+    if (count == 0) { *error_out = "regions must not be empty"; return 0; }
+    *count_out = count; *total_out = total; return 1;
+}
+
+static void handle_read_regions(int id, const char *json) {
+    ObserverReadRegion regions[OBS_MAX_REGIONS];
+    int count = 0; uint32_t total = 0; const char *error = NULL;
+    if (!parse_observer_regions(json, regions, &count, &total, &error)) {
+        send_err(id, error ? error : "invalid regions"); return;
+    }
+    size_t estimated = 768u + (size_t)total * 2u + (size_t)count * 192u;
+    if (estimated > OBS_MAX_RESPONSE_BYTES) { send_err(id, "response too large"); return; }
+    char *out = (char *)malloc(estimated);
+    if (!out) { send_err(id, "alloc failed"); return; }
+    uint64_t frame_before = s_frame_count; char state_before[65], state_after[65];
+    executable_state_token(state_before);
+    size_t pos = (size_t)snprintf(out, estimated,
+        "{\"id\":%d,\"ok\":true,\"frame_before\":%llu,"
+        "\"executable_state_before\":\"%s\",\"regions\":[",
+        id, (unsigned long long)frame_before, state_before);
+    static const char h[] = "0123456789abcdef";
+    uint8_t *ram = memory_get_ram_ptr();
+    for (int i = 0; i < count; i++) {
+        ObserverReadRegion *r = &regions[i];
+        int n = snprintf(out + pos, estimated - pos,
+                         "%s{%s%s%s\"addr\":\"0x%08X\",\"len\":%u,\"hex\":\"",
+                         i ? "," : "", r->has_key ? "\"key\":\"" : "",
+                         r->has_key ? r->key : "", r->has_key ? "\"," : "",
+                         r->phys | 0x80000000u, r->len);
+        if (n < 0 || (size_t)n >= estimated - pos) { free(out); send_err(id,"response too large"); return; }
+        pos += (size_t)n;
+        for (uint32_t j = 0; j < r->len; j++) {
+            uint8_t b = ram[r->phys + j]; out[pos++] = h[b >> 4]; out[pos++] = h[b & 15];
+        }
+        out[pos++] = '"'; out[pos++] = '}';
+    }
+    uint64_t frame_after = s_frame_count; executable_state_token(state_after);
+    int stable_frame = frame_before == frame_after;
+    int stable_exec = strcmp(state_before, state_after) == 0;
+    int n = snprintf(out + pos, estimated - pos,
+        "],\"frame_after\":%llu,\"stable_frame\":%s,"
+        "\"executable_state_after\":\"%s\",\"stable_executable_state\":%s}",
+        (unsigned long long)frame_after, stable_frame ? "true" : "false",
+        state_after, stable_exec ? "true" : "false");
+    if (n < 0 || (size_t)n >= estimated - pos) { free(out); send_err(id,"response too large"); return; }
+    debug_server_send_line(out); free(out);
 }
 
 /* Layer-1 first-divergence: dump the per-frame write fingerprint ring.
@@ -12142,6 +12516,10 @@ static const CmdEntry s_commands[] = {
     { "idle_skip",         handle_idle_skip },
     { "lockstep",          handle_lockstep },
     { "lockstep_func",     handle_lockstep_func },
+    { "protocol_info",     handle_protocol_info },
+    { "runtime_identity",  handle_runtime_identity },
+    { "executable_regions", handle_executable_regions },
+    { "read_regions",      handle_read_regions },
     { "ping",              handle_ping },
     { "xlate",             handle_xlate },
     { "parity_dump",       handle_parity_dump },
@@ -12893,7 +13271,7 @@ static int recv_line(sock_t c, char *buf, int cap)
         if (nl) { *nl = '\0'; return (int)(nl - buf); }
     }
     buf[cap - 1] = '\0';
-    return cap - 1;   /* over-long line: take what we have */
+    return -2;        /* over-long line: fail closed, never parse a prefix */
 }
 
 /* The TCP I/O thread: owns accept/recv/send. Hands each request to the emu
@@ -12911,6 +13289,11 @@ static int io_thread_main(void *arg)
 
         char req[RECV_BUF_SIZE];
         int rl = recv_line(c, req, sizeof(req));
+        if (rl == -2) {
+            const char *too_long = "{\"id\":0,\"ok\":false,\"error\":\"request line too long\"}\n";
+            send_all_blocking(c, too_long, strlen(too_long));
+            sock_close(c); continue;
+        }
         if (rl < 0) { sock_close(c); continue; }
         if (rl > 0 && req[rl - 1] == '\r') req[rl - 1] = '\0';
 

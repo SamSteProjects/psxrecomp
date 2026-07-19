@@ -4609,6 +4609,132 @@ int overlay_loader_dump_candidates(char *out, int cap) {
     return n;
 }
 
+static int candidate_protocol_native_valid(const Candidate *c, int source_match) {
+    if (!source_match || !s_active || !s_native_exec ||
+        c->state == ENTRY_BLACKLIST || c->device_touch ||
+        overlay_native_blocked(c->addr)) return 0;
+    int want_diff = s_diff_mode || (s_sljit_live && c->dll < 0);
+    if (want_diff && c->addr < 0x10000u) want_diff = 0;
+    return !(want_diff && c->diff_passes < OVERLAY_DIFF_BUDGET);
+}
+
+static int candidate_is_active_owner(int index) {
+    const Candidate *wanted = &s_cand[index];
+    for (int i = idx_head(wanted->addr); i >= 0; i = s_cand[i].next) {
+        Candidate *c = &s_cand[i];
+        int match = cand_crc(c) == c->crc_code;
+        if (candidate_protocol_native_valid(c, match)) return i == index;
+    }
+    return 0;
+}
+
+static int static_match_entry_count(void) {
+#ifdef PSX_HAS_OVERLAY_DISPATCH
+    int n = 0;
+    for (uint32_t i = 0; i < STATIC_MATCH_CACHE_CAP; i++)
+        if (s_static_match_cache[i].ranges) n++;
+    return n;
+#else
+    return 0;
+#endif
+}
+
+int overlay_loader_executable_region_count(void) {
+    return s_cand_n + static_match_entry_count();
+}
+
+int overlay_loader_get_executable_region(int index, OverlayExecutableRegion *out) {
+    if (!out || index < 0) return 0;
+    memset(out, 0, sizeof(*out));
+    if (index < s_cand_n) {
+        Candidate *c = &s_cand[index];
+        out->registration_id = (uint32_t)index + 1u;
+        out->entry = c->addr;
+        out->source_crc32 = c->crc_code;
+        out->live_crc32 = cand_crc(c);
+        out->validated_generation_sum = c->val_gen;
+        out->watched_generation_sum = cand_gensum(c);
+        out->range_count = c->nranges;
+        out->kind = c->dll < 0 ? 3 : 2;
+        out->state = c->state;
+        out->source_matches_live = out->live_crc32 == out->source_crc32;
+        out->native_registration_valid =
+            candidate_protocol_native_valid(c, out->source_matches_live);
+        out->active_owner = out->native_registration_valid &&
+                            candidate_is_active_owner(index);
+        for (int r = 0; r < c->nranges; r++) {
+            out->range_lo[r] = c->range_lo[r];
+            out->range_len[r] = c->range_len[r];
+        }
+        return 1;
+    }
+#ifdef PSX_HAS_OVERLAY_DISPATCH
+    int wanted = index - s_cand_n;
+    for (uint32_t slot = 0; slot < STATIC_MATCH_CACHE_CAP; slot++) {
+        StaticMatchCache *e = &s_static_match_cache[slot];
+        if (!e->ranges) continue;
+        if (wanted-- != 0) continue;
+        /* Never publish a partial registration: truncating the range list
+         * would make both the live identity and ownership verdict describe a
+         * different executable region than dispatch validates. */
+        if (e->count > OVERLAY_EXEC_MAX_RANGES) return 0;
+        out->registration_id = 0x80000000u | slot;
+        out->entry = e->ranges[0] & 0x1FFFFFFFu;
+        out->source_crc32 = e->expected_crc;
+        out->validated_generation_sum = e->gen_sum;
+        out->range_count = (int)e->count;
+        out->kind = 1;
+        uint32_t live = 0xFFFFFFFFu, gen = 0;
+        const uint8_t *ram = memory_get_ram_ptr();
+        for (int r = 0; r < out->range_count; r++) {
+            uint32_t lo = e->ranges[r * 2] & 0x1FFFFFFFu;
+            uint32_t len = e->ranges[r * 2 + 1];
+            out->range_lo[r] = lo; out->range_len[r] = len;
+            live = crc32_update(live, ram + lo, len);
+            gen += overlay_watch_pagegen_sum(lo, len);
+        }
+        out->live_crc32 = live ^ 0xFFFFFFFFu;
+        out->watched_generation_sum = gen;
+        out->source_matches_live = out->live_crc32 == out->source_crc32;
+        out->state = out->source_matches_live ? ENTRY_VALID : ENTRY_INVALID;
+        out->native_registration_valid = out->source_matches_live;
+        out->active_owner = out->native_registration_valid;
+        return 1;
+    }
+#endif
+    return 0;
+}
+
+static uint64_t token_fold(uint64_t h, uint32_t v) {
+    for (int i = 0; i < 4; i++) { h ^= (uint8_t)(v >> (i * 8)); h *= 1099511628211ULL; }
+    return h;
+}
+
+uint64_t overlay_loader_registration_state_token(void) {
+    uint64_t h = 1469598103934665603ULL;
+    h = token_fold(h, (uint32_t)s_active);
+    h = token_fold(h, (uint32_t)s_native_exec);
+    h = token_fold(h, (uint32_t)s_cand_n);
+    for (int i = 0; i < s_cand_n; i++) {
+        Candidate *c = &s_cand[i];
+        h = token_fold(h, c->addr); h = token_fold(h, c->crc_code);
+        h = token_fold(h, (uint32_t)c->state); h = token_fold(h, (uint32_t)c->dll);
+        h = token_fold(h, (uint32_t)c->nranges);
+        for (int r = 0; r < c->nranges; r++) {
+            h = token_fold(h, c->range_lo[r]); h = token_fold(h, c->range_len[r]);
+        }
+    }
+#ifdef PSX_HAS_OVERLAY_DISPATCH
+    for (uint32_t i = 0; i < STATIC_MATCH_CACHE_CAP; i++) {
+        StaticMatchCache *e = &s_static_match_cache[i];
+        if (!e->ranges) continue;
+        h = token_fold(h, 0x80000000u | i); h = token_fold(h, e->expected_crc);
+        h = token_fold(h, e->count); h = token_fold(h, (uint32_t)e->matches);
+    }
+#endif
+    return h;
+}
+
 /* Focused form for live miss diagnosis. The full candidate table can exceed the
  * debug command's response buffer once a game has accumulated many variants;
  * filtering by entry keeps every candidate at a reused PC visible. */
