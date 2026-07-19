@@ -32,7 +32,8 @@ name = "Rim Elm Study"
 disc_identity = "sha256:<digest>"
 serial = "SCUS-94254"
 region = "ntsc-u"
-semantic_provider_revision = "d6e64c68ede25813d35db20980da82a1a025549b"
+importer_version = "0.1.0"
+semantic_reference_revision = "d6e64c68ede25813d35db20980da82a1a025549b"
 import_manifest = "imports/<id>/manifest.json"
 
 [runtime]
@@ -186,7 +187,7 @@ Use project-model commands over authored state only (`SetActorTransform`, `Repla
 - Every document declares schema name/major/minor.
 - Readers reject unsupported major versions and preserve unknown additive fields on round trip where practical.
 - Migrations are deterministic, tested and never need the source disc unless explicitly described.
-- Import/provider and runtime-profile revisions are recorded independently from project schema version.
+- Importer, semantic-reference and runtime-profile revisions are recorded independently from project schema version.
 
 ## Validation
 

@@ -13,13 +13,13 @@ The slice ends without editing RAM, authoring actors, rebuilding a disc, replaci
 - Add `integrations/legaia/{config,symbols,schemas,provenance,bridge,project-model,generated}` as needed.
 - Add explicit ignore rules for user discs, extracted/cache/runtime/generated paths; verify with `git check-ignore` tests.
 - Define semantic snapshot, claim/evidence and runtime-observation schemas.
-- Pin provider/runtime profile revisions without vendoring upstream code.
+- Pin the PSXRecomp importer/runtime profile and the Andrew reference revision without vendoring upstream code.
 
 Gate: synthetic fixtures validate; repository scan proves no proprietary bytes/text were added.
 
-### 2. Semantic provider spike
+### 2. PSXRecomp-side importer spike
 
-Add or consume a narrow provider command in the Legaia RE boundary that uses the existing chain:
+Implement a narrow importer under `integrations/legaia/`, using Andrew's existing chain as the traced reference behavior:
 
 ```text
 RawDisc/ISO9660 → PROT.DAT + CDNAME.TXT → ProtIndex → Scene::load
@@ -28,7 +28,9 @@ RawDisc/ISO9660 → PROT.DAT + CDNAME.TXT → ProtIndex → Scene::load
 
 Input: disc path and `town01`/Rim Elm selector. Output: schema-versioned metadata, geometry cache references, actor placements, model/ANM refs and claim/evidence records. Do not export retail dialogue into committed output.
 
-Gate: two imports of the same disc/provider produce identical IDs and canonical metadata digests.
+The SDK implementation lives in PSXRecomp. For each parser or semantic rule, record the exact Andrew source/doc path and reference commit used. Development parity tests may compare the importer with Andrew's tools, but those tools are not required by users.
+
+Gate: two imports of the same disc/importer version produce identical IDs and canonical metadata digests.
 
 ### 3. Headless SDK workbench
 
@@ -70,7 +72,7 @@ Gate: the report remains useful with PSXRecomp disconnected, with no disc, and w
 
 ## Exact next implementation task
 
-After approval, implement only the **semantic export contract spike**: schemas plus a headless adapter that invokes or consumes Andrew’s latest Legaia RE scene/NPC path for `town01`, producing metadata-only actor/source/model/transform claims. Do not touch PSXRecomp runtime code in that task.
+After approval, implement only the **PSXRecomp-side Rim Elm import contract spike**: schemas plus a headless importer under `integrations/legaia/` for `town01`, producing metadata-only actor/source/model/transform claims. Use Andrew's latest scene/NPC implementation as the reference and parity oracle, not as a runtime dependency. Do not touch generic PSXRecomp runtime code in that task.
 
 This validates the most important repository boundary before runtime correlation or UI work.
 
@@ -79,7 +81,7 @@ This validates the most important repository boundary before runtime correlation
 | Test | Fixture/source | Assertion |
 |---|---|---|
 | Stable semantic IDs | synthetic metadata + disc-gated Rim Elm | unchanged across order/filter/UI alias changes |
-| Parser determinism | user disc, provider pinned | canonical import digest repeats |
+| Parser determinism | user disc, importer/reference revisions pinned | canonical import digest repeats |
 | Semantic-to-raw provenance | synthetic carriers; disc-gated real spans | every imported property resolves to valid container/span |
 | Scene actor enumeration | `LEGAIA_DISC_BIN` | count/order/source records deterministic |
 | Actor-to-model | disc-gated | placement model index resolves or emits explicit diagnostic |

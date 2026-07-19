@@ -8,7 +8,7 @@ This directory is the isolated home for a future Unity-like SDK/editor integrati
 - **AndrewAltimit/legend-of-legaia-re** remains the independently maintained semantic/clean-room authority: disc and format parsers, scene/actor/script meaning, preview rendering, documentation and supported patching knowledge.
 - **This integration** will own stable semantic IDs, provenance, imported/authored/live state separation, runtime correlation, project persistence and editor-facing contracts.
 
-The clean-room repository is not copied here and is not linked into the PSXRecomp runtime. Phase 0 audited its latest `origin/main` commit `d6e64c68ede25813d35db20980da82a1a025549b` through a temporary external checkout. The recommended first boundary is a versioned subprocess/JSON semantic provider; live execution uses PSXRecomp’s existing JSON/TCP debug protocol.
+The clean-room repository is not copied here and is not linked into the PSXRecomp runtime. Phase 0 audited its latest `origin/main` commit `d6e64c68ede25813d35db20980da82a1a025549b` through a temporary external checkout. It is a pinned development reference and parity oracle, not a shipped dependency, submodule, required subprocess or second runtime. The SDK importer and project model will live here around the working recompiled engine; live inspection uses PSXRecomp’s existing JSON/TCP debug protocol.
 
 ## Why a dedicated branch
 
@@ -28,7 +28,7 @@ Implemented:
 
 Not implemented:
 
-- no semantic provider/adapter;
+- no PSXRecomp-side Legaia importer;
 - no SDK code or editor UI;
 - no scene or actor import in this repository;
 - no runtime correlation profile;
@@ -46,6 +46,6 @@ PSXRecomp is under PolyForm Noncommercial 1.0.0; legend-of-legaia-re declares `M
 
 The smallest useful proof is a headless, read-only import of Rim Elm (`town01`) from a user disc using the existing Legaia RE path (`ProtIndex`, `Scene::load`, `build_field_scene`, `build_npc_catalog`). It should enumerate geometry and actors, select one NPC, assign a structural semantic ID, show source record/model/imported transform and only evidence-backed movement/interaction/flag/dialogue claims, then optionally compare that actor with a PSXRecomp runtime observation.
 
-The exact next task—after approval—is only the schema plus metadata-only semantic export contract spike. Runtime/editor implementation remains a later approval boundary.
+The exact next task is the schema plus metadata-only PSXRecomp-side Rim Elm importer spike. It will use Andrew's scene/NPC code and documentation as attributed reference material and a development parity oracle, without making Andrew's repository part of the shipped SDK. Generic runtime/editor changes remain a later boundary.
 
 See `docs/legaia-sdk/` for the complete audit.
