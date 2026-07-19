@@ -87,9 +87,10 @@ Actor-slot reuse starts a new live identity when occupancy generation, scene epo
 
 ## Implemented generic observer prerequisites
 
-Protocol 1.1 implements the generic capabilities proven necessary by the layout
+Protocol 1.2 implements the generic capabilities proven necessary by the layout
 contract. The native server advertises `protocol_info`, `runtime_identity`,
-`executable_regions`, `read_regions`, and `watched_page_generation`.
+`executable_catalog`, `executable_regions`, `read_regions`, and
+`watched_page_generation`.
 
 - `protocol_info` returns the protocol version, explicit server kind, sorted
   capability tokens, limits, and frame. A client rejects an unsupported major
@@ -101,13 +102,17 @@ contract. The native server advertises `protocol_info`, `runtime_identity`,
   or runtime-compiled registrations. Immutable source identity, current live
   guest-memory SHA-256, authoritative page-generation digest, and conservative
   native validity are separate fields.
+- `executable_catalog` provides token-bound views of image groups, structural
+  ranges, and registrations, with explicit source/live comparability,
+  registration-time validation, and ownership failure reasons.
 - `read_regions` reads up to 32 ordered main-RAM ranges, 4 KiB each and 16 KiB
   total, with frame-before/after and executable-state-before/after stamps.
 
-The executable-state token is derived from watched-page generations and loader
-registration state; it is not a Legaia counter. A same-byte write may change the
-token while the final live hash remains unchanged. Different contents at the
-same address and length cannot retain stale native ownership.
+The ownership token is derived from watched generations for exact executable
+registration pages and loader registration state; it is not a Legaia counter.
+A same-byte write may change the token while the final live hash remains
+unchanged. Different contents at the same address and length cannot retain
+stale native ownership. A separate structural catalog token binds pagination.
 
 Beetle and DuckStation advertise only `read_ram` and `read_regions`; their
 responses include frame stamps but omit executable-state fields. The
@@ -157,16 +162,16 @@ The first revisioned profile now lives at `integrations/legaia/layouts/scus94254
 The research changes the proposed actor read from a contiguous table read to a bounded pointer-census read. Retail field actors are linked, individually allocated nodes. Field overlay 0897 rebuilds a filtered, 32-pointer collision census each frame; its four-byte entries are not actor records and its indices are not identity. A future observer should read the 128-byte census, validate each pointer, then read only the documented `0x9C`-byte node prefix.
 
 The generic transport prerequisites now exist. A later observer can negotiate
-protocol 1.1, verify program identity, enumerate executable registrations, and
+protocol 1.2, verify program identity, enumerate executable registrations, and
 discard mixed frame/executable-state snapshots. The checked-in profile still
 refuses live selection while overlay 0897's canonical live range/hash is
 unresolved. Resolving and accepting that evidence is the next prerequisite; it
 is not permission to traverse actors or correlate imported records. No
 Legaia-specific command or runtime hook has been added.
 
-The first live native pass confirmed negotiation and bounded reads but did not
-clear the overlay gate. In stable town01, records covering field code were not
-source-matching native owners, and the researched overlay base was not a
-reported exact executable range. A separately reviewed generic
-executable-region coverage/paging correction is required before a headless
-Legaia observer can select this profile. See `field-overlay-0897-identity.md`.
+The protocol 1.2 pass confirmed bounded complete paging and explained duplicate
+static structural variants, but it did not clear the overlay gate. In stable
+town01, records covering field code were not source-matching native owners, and
+the researched overlay base was not an authoritative loaded-image event. The
+next prerequisite is evidence for the real generic image lifecycle/identity,
+not actor traversal. See `field-overlay-0897-identity.md`.

@@ -15,7 +15,7 @@ Selection is fail closed. A consumer must match:
 5. main-RAM bounds, pointer-census stride and count;
 6. scene-epoch boundary samples.
 
-The checked-in profile intentionally has a null canonical overlay content hash. Protocol 1.1 can now supply source/live identities and watched-generation state, but the canonical field-overlay range/hash has not yet been accepted into this profile. It therefore validates as research metadata but cannot select a live runtime. This is a safety feature, not an incomplete validator.
+The checked-in profile intentionally has a null canonical overlay content hash. Protocol 1.2 can supply a token-bound executable catalog, distinct image/range/registration identities, source/live comparability, prior validation, and ownership reasons, but the canonical field-overlay identity has not been accepted into this profile. It therefore validates as research metadata but cannot select a live runtime. This is a safety feature, not an incomplete validator.
 
 ## Actor-pool representation
 
@@ -60,3 +60,8 @@ multi-signal town01 boundary, but did not find an authoritative native owner for
 field overlay 0897. The `0x801CE818` base remains a research hypothesis, not an
 accepted executable-region identity. The null overlay content hash and
 fail-closed selection remain unchanged. See `field-overlay-0897-identity.md`.
+
+The protocol 1.2 repeat retrieved all 562 registrations without response
+overflow and explained duplicate static structural variants, but it still did
+not expose an authoritative loaded image or active owner for overlay 0897.
+Catalog success is not overlay acceptance, so no profile field changed.

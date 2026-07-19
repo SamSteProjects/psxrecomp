@@ -67,3 +67,39 @@ stable town01 samples did not report a source-matching native owner for the
 field code. These are recorded in
 `docs/legaia-sdk/field-overlay-0897-identity.md`; no layout-profile identity was
 changed.
+
+## 2026-07-19 protocol 1.2 catalog update
+
+A fresh `RelWithDebInfo` runtime built from the current work opened port 4370,
+negotiated `psxrecomp-debug` 1.2, and reached town01 through normal controller
+input. The new catalog retrieved 116 image groups, 116 structural ranges, and
+562 registrations with an eight-record hard maximum. Complete traversal took
+15, 15, and 71 pages respectively and did not overflow the 65,536-byte response
+cap. The catalog token remained stable throughout each traversal.
+
+Ownership tokens changed between pages because writes advanced watched
+generations on pages that intersect registered executable ranges. This no
+longer invalidates or hides catalog paging: the client reports it separately.
+Each individual bounded `read_regions` request retained equal before/after
+frame and ownership stamps. Five-request median local latencies were 1.39 ms
+for `protocol_info`, 2.00 ms for `runtime_identity`, 2.01 ms for one small
+`read_regions`, and 11.12 ms for an eight-image catalog page. A complete
+registration traversal took approximately 1.01 seconds and should remain an
+epoch/transition diagnostic, not a polling loop.
+
+The expected `0x801CE818` loaded-image base was absent. Current registrations
+covering the known field function remained overlapping static structural
+variants, not an authoritative overlay image, and none was a current
+source-matching owner. Overlay 0897 remains unaccepted and the Legaia profile
+remains unchanged.
+
+Final rebuild verification found that the local game build cache had later
+been reconfigured to a stale temporary PSXRecomp staging tree; that binary
+truthfully reported protocol 1.1 and was rejected. The local game project was
+reconfigured with `PSXRECOMP_ROOT` pointing at the current checkout and
+`PSXRECOMP_GAME_EXECUTABLE` pointing at the preserved local recompiler, then
+rebuilt under the same normalized child environment. The resulting fresh
+binary reported protocol 1.2, the six native capabilities, both eight-record
+limits, and `load_base: null` for a static structural variant. This correction
+changed only the external local build cache, not repository files or user-wide
+environment state.

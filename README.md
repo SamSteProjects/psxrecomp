@@ -26,7 +26,7 @@ disc; retail assets are not included in this repository.
 | Legaia Trace inspector | Implemented as a local, read-only metadata viewer |
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
-| Generic PSXRecomp observer protocol | Protocol 1.1 implemented and accepted over a live native connection |
+| Generic PSXRecomp observer protocol | Protocol 1.2 implemented with bounded executable-catalog paging |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Live Legaia actor observation, imported-to-runtime actor matching, RAM editing,
@@ -159,16 +159,17 @@ field map and selection rules.
 
 ### Generic PSXRecomp Observer Protocol
 
-The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.1**. It
+The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.2**. It
 provides:
 
 - protocol and capability negotiation;
 - runtime, BIOS, and main-executable identity;
-- executable-region inspection;
+- distinct executable-image, structural-range, and registration inspection;
+- token-bound catalog paging and structured ownership reasons;
 - authoritative watched-page generation state;
 - bounded multi-region RAM reads;
 - frame-before and frame-after stamps;
-- executable-state boundary stamps; and
+- executable-ownership boundary stamps; and
 - fail-closed address, length, aggregate, and response validation.
 
 Native PSXRecomp implements the full identity and bounded-read surface.
@@ -186,16 +187,15 @@ observation:
   native code dispatchable;
 - current RAM is revalidated before native dispatch becomes eligible again;
 - Windows/MSVC startup portability issues were corrected; and
-- fresh native launch and protocol 1.1 wire acceptance passed.
+- fresh native launch and protocol 1.2 wire acceptance passed.
 
-These fixes establish correct failure behavior, but they do not complete the
-field-overlay ownership model described next.
+These fixes establish correct failure behavior and a bounded generic ownership
+catalog, but they do not establish the title-specific field-overlay identity
+described next.
 
 ## Current Technical Blocker
 
-The runtime currently exposes many overlapping dispatch registrations rather
-than one clean canonical field-overlay range. The active work is determining
-the correct relationship between:
+The generic runtime now models the following relationships explicitly:
 
 - the loaded executable image;
 - executable segments and structural ranges;
@@ -205,11 +205,12 @@ the correct relationship between:
 - current live identity; and
 - active native ownership.
 
-The earlier field-overlay 0897 identity was deliberately **not accepted**. The
-expected candidate base did not appear as one authoritative executable region,
-several registrations covered known field code, and their source/live and
-ownership status required further explanation. The layout profile therefore
-remains fail closed.
+The renewed field-overlay 0897 identity was deliberately **not accepted**. A
+complete town01 catalog was retrieved in bounded pages, and duplicate static
+registrations were grouped deterministically, but the expected candidate base
+did not appear as an authoritative loaded-image event. Registrations covering
+known field code remained non-owning source/live mismatches. The candidate base
+is still unresolved, and the layout profile therefore remains fail closed.
 
 Actor traversal has not begun because executable ownership must be trustworthy
 before RAM structures can be interpreted safely.
@@ -338,7 +339,9 @@ debug port:
 ```powershell
 python tools/debug_client.py protocol-info
 python tools/debug_client.py runtime-identity
-python tools/debug_client.py executable-regions 0 16
+python tools/debug_client.py executable-catalog images 8
+python tools/debug_client.py executable-catalog registrations 8
+python tools/debug_client.py executable-regions 0 8
 python tools/debug_client.py read-regions signal_a=0x80000000:4 signal_b=0x80000010:16
 ```
 
@@ -417,13 +420,13 @@ by this integration.
 - concrete model asset identity and provenance;
 - read-only Legaia Trace inspector;
 - runtime-layout research and revisioned profile;
-- generic observer protocol; and
+- generic observer protocol;
+- executable image/range/registration modeling and bounded catalog paging; and
 - stale-cache correction and native startup acceptance.
 
 **In progress**
 
-- executable-image and registration ownership model;
-- bounded executable-catalog paging; and
+- authoritative field-overlay load/lifecycle evidence; and
 - canonical field-overlay identity.
 
 **Next**
@@ -458,6 +461,9 @@ evidence, compatibility, and data-boundary review.
 - [Field-overlay 0897 identity attempt](docs/legaia-sdk/field-overlay-0897-identity.md)
 - [Debug protocol versioning](docs/debug-protocol-versioning.md)
 - [Executable identity](docs/executable-identity.md)
+- [Executable image model](docs/executable-image-model.md)
+- [Executable catalog pagination](docs/executable-catalog-pagination.md)
+- [Executable ownership diagnostics](docs/executable-ownership-diagnostics.md)
 - [Bounded `read_regions` command](docs/read-regions-command.md)
 - [Native runtime launch acceptance](docs/runtime-launch-acceptance.md)
 - [Legaia integration README](integrations/legaia/README.md)

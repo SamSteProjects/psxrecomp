@@ -44,15 +44,16 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Undo mutates imported/live data | M | H | Command log targets authored sparse overlays only | project model |
 | Collision census mistaken for owning actor pool | H | H | Profile distinguishes linked owning nodes from the filtered 32-pointer per-frame census; no slot-index identity | runtime profile |
 | Actor subclass fields conflated | H | H | Scope `.MAP` object fields separately from MAN NPCs; neutral names for `+0x50`/`+0x94` | runtime profile/provenance |
-| Source overlay hash mistaken for live identity | H | H | Protocol 1.1 keeps immutable source and current live hashes distinct; require a canonical field-overlay range/hash and fail closed while unresolved | runtime bridge |
+| Source overlay hash mistaken for live identity | H | H | Protocol 1.2 keeps image source, exact registration source, prior validation and current live identities distinct; require an accepted canonical field-overlay model | runtime bridge |
 | Mixed-epoch multi-read snapshot | M | H | Use bounded `read_regions`; reject differing frame or executable-state stamps and re-check scene-epoch signals | runtime bridge |
-| Executable-region census exceeds one bounded response | H | H | Use conservative paging only for research; require a stable/revisioned multi-page snapshot contract before profile selection | runtime bridge |
-| Field code has no authoritative native owner | H | H | Keep overlay 0897 identity null; reconcile static variant coverage without weakening source/live byte guards | runtime/overlay build |
+| Executable-region census exceeds one bounded response | M | H | Use protocol 1.2's eight-record byte-budgeted pages and token-bound cursor; treat ownership-token changes separately | runtime bridge |
+| Static structural variant mistaken for loaded image | H | H | Image catalog labels structural variants honestly; require an authoritative load/capture lifecycle before accepting a retail image base | runtime/overlay build |
+| Field code has no authoritative native owner | H | H | Keep overlay 0897 identity null; preserve exact source/live guards and collect authoritative image-lifecycle evidence | runtime/overlay build |
 
 ## Highest-priority validation items
 
 1. Prove the semantic export can remain narrow and deterministic without linking clean-room code into PSXRecomp.
-2. Resolve canonical live identity for field overlay 0897 using `executable_regions` so the revisioned profile can select a runtime.
+2. Resolve canonical loaded-image/lifecycle identity for field overlay 0897 using the generic catalog plus authoritative loader evidence so the revisioned profile can select a runtime.
 3. Prove linked actor-node lifecycle and imported-to-live correlation without census/list-order assumptions.
 4. Establish explicit evidence for any NPC → interaction → flag → dialogue chain before presenting it as resolved.
 5. Add and test proprietary-data ignore/scanning policy before any extraction/cache command writes inside the project.
