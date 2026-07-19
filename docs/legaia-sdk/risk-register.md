@@ -46,6 +46,8 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Actor subclass fields conflated | H | H | Scope `.MAP` object fields separately from MAN NPCs; neutral names for `+0x50`/`+0x94` | runtime profile/provenance |
 | Source overlay hash mistaken for live identity | H | H | Protocol 1.1 keeps immutable source and current live hashes distinct; require a canonical field-overlay range/hash and fail closed while unresolved | runtime bridge |
 | Mixed-epoch multi-read snapshot | M | H | Use bounded `read_regions`; reject differing frame or executable-state stamps and re-check scene-epoch signals | runtime bridge |
+| Executable-region census exceeds one bounded response | H | H | Use conservative paging only for research; require a stable/revisioned multi-page snapshot contract before profile selection | runtime bridge |
+| Field code has no authoritative native owner | H | H | Keep overlay 0897 identity null; reconcile static variant coverage without weakening source/live byte guards | runtime/overlay build |
 
 ## Highest-priority validation items
 

@@ -52,3 +52,11 @@ The validator performs no network access and no RAM reads. A future observer sup
 The suite covers schema validation, stable identity, supported/unsupported executable selection, overlay mismatch, missing scene signals, actor-base bounds, pointer stride, slot-count overflow, 32-bit wraparound, field bounds, duplicate offsets, contradictory/unknown claims, epoch invalidation, duplicate overlays, deterministic serialization, proprietary-payload rejection and unresolved-overlay fail-closed behavior.
 
 All fixtures are synthetic or profile metadata. Retail bytes and runtime captures are not used.
+
+## Live identity status
+
+The 2026-07-19 native pass accepted startup, protocol negotiation, and the
+multi-signal town01 boundary, but did not find an authoritative native owner for
+field overlay 0897. The `0x801CE818` base remains a research hypothesis, not an
+accepted executable-region identity. The null overlay content hash and
+fail-closed selection remain unchanged. See `field-overlay-0897-identity.md`.

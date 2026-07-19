@@ -66,3 +66,9 @@ stay well under the aggregate limit. The debug server runs handlers on the
 emulation thread and sends with a bounded main-thread budget; excessive polling
 or slow socket draining is observer interference and is visible through the
 existing TCP stall telemetry.
+
+Live native acceptance measured small two-region reads at approximately
+0.42-2.21 ms (1.76 ms average) with five of five requests stable and normal
+frame progression between requests. Negotiation attempted before the emulation
+thread reached a safe point may be boundedly dropped or answered busy; external
+observers should reconnect with backoff rather than spin or increase polling.

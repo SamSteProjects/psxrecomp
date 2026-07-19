@@ -53,3 +53,17 @@ telemetry requirement until a stable fresh runtime can complete wire acceptance.
 invalid discovery mode does not fail closed. The freshly rebuilt recompiler was
 used, so this is not attributable to a stale executable and was not modified as
 part of the protocol work.
+
+## 2026-07-19 live acceptance update
+
+The startup blocker was corrected and a fresh `RelWithDebInfo` native runtime
+completed live protocol negotiation, identity queries, bounded reads, and a
+normal exit. See `docs/runtime-launch-acceptance.md` for the root cause, build
+normalization, tests, and latency measurements.
+
+Field-overlay acceptance remains blocked. Retail use exposed an advertised
+128-record executable page that can exceed the 65,536-byte response cap, and
+stable town01 samples did not report a source-matching native owner for the
+field code. These are recorded in
+`docs/legaia-sdk/field-overlay-0897-identity.md`; no layout-profile identity was
+changed.
