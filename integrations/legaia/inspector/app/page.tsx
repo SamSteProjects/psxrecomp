@@ -42,14 +42,40 @@ type Actor = {
     placement_tile?: { x: number; z: number };
   };
   model_reference: {
-    source_entry?: number;
+    source_entry?: number | null;
     model_index: number;
+    normalized_pool_index?: number;
     model_pool: string;
-    referenced_asset_record: unknown;
+    asset_semantic_id?: string | null;
+    referenced_asset_record: string | null;
     resolution_status: string;
   };
   placement_fields?: { animation_id?: number; local_count?: number };
   claims: Claim[];
+  unresolved: string[];
+};
+
+type ModelAsset = {
+  semantic_id: string;
+  asset_kind: string;
+  scope: string;
+  model_pool: string;
+  encoded_model_index: number;
+  normalized_pool_index: number;
+  source_record: {
+    prot_entry_index: number;
+    record_kind: string;
+    byte_offset: number;
+    byte_length: number;
+    byte_coordinate_space: string;
+    containing_size: number;
+    container_section?: number;
+    pack_slot?: number;
+    object_count?: number;
+  };
+  claims: Claim[];
+  dependencies: unknown[];
+  aliases: unknown[];
   unresolved: string[];
 };
 
@@ -69,6 +95,7 @@ type ImportDocument = {
     source?: { bundle_entry?: number };
   };
   actors: Actor[];
+  assets?: { models: ModelAsset[] };
   diagnostics: Array<Record<string, unknown>>;
   unresolved: string[];
 };
@@ -82,8 +109,8 @@ const confidenceOrder: Confidence[] = [
 ];
 
 const SAMPLE_IMPORT: ImportDocument = {
-  schema_version: "legaia.scene-import.v1",
-  importer_version: "0.1.0",
+  schema_version: "legaia.scene-import.v2",
+  importer_version: "0.2.0",
   source: {
     disc_build: "Synthetic metadata preview — no retail data",
     disc_identity: `sha256:${"0".repeat(64)}`,
@@ -107,13 +134,50 @@ const SAMPLE_IMPORT: ImportDocument = {
     makeSampleActor(2, 960, 576, 11, "scene_tmd", "unknown"),
     makeSampleActor(3, 704, 1088, 241, "global_special", "confirmed"),
   ],
+  assets: {
+    models: [makeSampleModelAsset(4, "scene_tmd"), makeSampleModelAsset(11, "scene_tmd"), makeSampleModelAsset(241, "global_special")],
+  },
   diagnostics: [],
   unresolved: [
     "actor facing/rotation before script execution",
     "vertical placement coordinate",
-    "stable model asset-record identity",
   ],
 };
+
+function modelAssetId(modelIndex: number, pool: string) {
+  return pool === "global_special"
+    ? `asset://legaia/models/global-special/${modelIndex.toString(16).padStart(4, "0")}`
+    : `asset://town01/models/scene-tmd/${modelIndex.toString().padStart(4, "0")}`;
+}
+
+function makeSampleModelAsset(modelIndex: number, pool: string): ModelAsset {
+  const normalized = pool === "global_special" ? modelIndex - 0xf0 : modelIndex;
+  const semanticId = modelAssetId(modelIndex, pool);
+  const source = {
+    prot_entry_index: pool === "global_special" ? 874 : 4,
+    record_kind: pool === "global_special" ? "decoded_tmd_pack_slot" : "decoded_lzs_section",
+    byte_offset: normalized * 96,
+    byte_length: 72,
+    byte_coordinate_space: "decoded_lzs_section",
+    containing_size: 4096,
+    container_section: 0,
+    pack_slot: pool === "global_special" ? normalized : undefined,
+    object_count: 1,
+  };
+  return {
+    semantic_id: semanticId,
+    asset_kind: "tmd_model",
+    scope: pool === "global_special" ? "global" : "scene",
+    model_pool: pool,
+    encoded_model_index: modelIndex,
+    normalized_pool_index: normalized,
+    source_record: source,
+    claims: [sampleClaim("semantic_id", semanticId, "confirmed", "Synthetic structural pool identity.")],
+    dependencies: [],
+    aliases: [],
+    unresolved: ["character or object identity", "animation and texture bindings"],
+  };
+}
 
 function makeSampleActor(
   index: number,
@@ -148,11 +212,13 @@ function makeSampleActor(
       placement_tile: { x: Math.floor(x / 128), z: Math.floor(z / 128) },
     },
     model_reference: {
-      source_entry: 3,
+      source_entry: pool === "global_special" ? 874 : 4,
       model_index: modelIndex,
+      normalized_pool_index: pool === "global_special" ? modelIndex - 0xf0 : modelIndex,
       model_pool: pool,
-      referenced_asset_record: null,
-      resolution_status: "pool_index_only",
+      asset_semantic_id: modelAssetId(modelIndex, pool),
+      referenced_asset_record: modelAssetId(modelIndex, pool),
+      resolution_status: "resolved",
     },
     placement_fields: { animation_id: index % 2, local_count: index - 1 },
     claims: [
@@ -177,17 +243,14 @@ function makeSampleActor(
       ),
       sampleClaim(
         "model_reference.referenced_asset_record",
-        null,
+        modelAssetId(modelIndex, pool),
         modelAssetConfidence,
-        modelAssetConfidence === "unknown"
-          ? "A stable asset-record identity has not been assigned."
-          : "Synthetic preview claim for confidence rendering.",
+        "Synthetic preview claim for structural asset identity rendering.",
       ),
     ],
     unresolved: [
       "imported_transform.position.y",
       "imported_transform.rotation",
-      "model_reference.referenced_asset_record",
     ],
   };
 }
@@ -207,7 +270,7 @@ function isImportDocument(value: unknown): value is ImportDocument {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ImportDocument>;
   return (
-    candidate.schema_version === "legaia.scene-import.v1" &&
+    (candidate.schema_version === "legaia.scene-import.v1" || candidate.schema_version === "legaia.scene-import.v2") &&
     candidate.scene?.name === "town01" &&
     Array.isArray(candidate.actors) &&
     candidate.actors.every(
@@ -218,7 +281,8 @@ function isImportDocument(value: unknown): value is ImportDocument {
         typeof actor.imported_transform?.position?.x === "number" &&
         typeof actor.imported_transform?.position?.z === "number" &&
         Array.isArray(actor.claims),
-    )
+    ) &&
+    (candidate.schema_version === "legaia.scene-import.v1" || Array.isArray(candidate.assets?.models))
   );
 }
 
@@ -250,6 +314,9 @@ export default function Home() {
 
   const selected =
     document.actors.find((actor) => actor.semantic_id === selectedId) ?? document.actors[0];
+  const selectedModelAsset = document.assets?.models.find(
+    (asset) => asset.semantic_id === selected?.model_reference.asset_semantic_id,
+  );
 
   const filteredActors = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -295,7 +362,7 @@ export default function Home() {
     try {
       const parsed: unknown = JSON.parse(await file.text());
       if (!isImportDocument(parsed)) {
-        throw new Error("Expected schema legaia.scene-import.v1 for scene town01.");
+        throw new Error("Expected schema legaia.scene-import.v1 or v2 for scene town01.");
       }
       setDocument(parsed);
       setSelectedId(parsed.actors[0]?.semantic_id ?? "");
@@ -524,8 +591,18 @@ export default function Home() {
                   <span>Pool index</span><strong>{selected.model_reference.model_index}</strong>
                 </div>
                 <KeyValue label="Pool" value={selected.model_reference.model_pool} />
+                <KeyValue label="Normalized slot" value={selected.model_reference.normalized_pool_index ?? selected.model_reference.model_index} />
                 <KeyValue label="Resolution" value={selected.model_reference.resolution_status} />
-                <KeyValue label="Asset record" value={selected.model_reference.referenced_asset_record ?? "unknown"} muted />
+                <KeyValue label="Asset semantic ID" value={selected.model_reference.asset_semantic_id ?? selected.model_reference.referenced_asset_record ?? "unknown"} muted />
+                {selectedModelAsset && (
+                  <>
+                    <KeyValue label="Asset PROT entry" value={selectedModelAsset.source_record.prot_entry_index} />
+                    <KeyValue label="Asset source kind" value={selectedModelAsset.source_record.record_kind} />
+                    <KeyValue label="Asset source span" value={`0x${selectedModelAsset.source_record.byte_offset.toString(16).toUpperCase()} + ${selectedModelAsset.source_record.byte_length}`} />
+                    <KeyValue label="Asset coordinates" value={selectedModelAsset.source_record.byte_coordinate_space} />
+                    <KeyValue label="Asset unresolved" value={selectedModelAsset.unresolved.join("; ")} muted />
+                  </>
+                )}
               </InspectorSection>
 
               <InspectorSection title="Source record" badge="confirmed">

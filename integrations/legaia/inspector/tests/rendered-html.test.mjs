@@ -32,7 +32,10 @@ test("keeps imported metadata local and the surface read-only", async () => {
   const packageJson = await readFile(new URL("../package.json", import.meta.url), "utf8");
   assert.match(page, /accept="application\/json,\.json"/);
   assert.match(page, /Nothing is uploaded/);
-  assert.match(page, /schema_version === "legaia\.scene-import\.v1"/);
+  assert.match(page, /candidate\.schema_version === "legaia\.scene-import\.v1"/);
+  assert.match(page, /candidate\.schema_version === "legaia\.scene-import\.v2"/);
+  assert.match(page, /Asset semantic ID/);
+  assert.match(page, /Asset source span/);
   assert.match(page, /scene\?\.name === "town01"/);
   assert.doesNotMatch(page, /\bfetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|WebSocket/);
   assert.doesNotMatch(page, /write_ram|4370|contentEditable/i);
