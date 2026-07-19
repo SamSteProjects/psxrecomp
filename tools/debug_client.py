@@ -17,6 +17,8 @@ Commands (shared — identical on both servers):
     runtime-identity            Show safe runtime/program identity metadata
     executable-regions [offset] [limit]
                                 Summarize active executable registrations
+    executable-catalog [images|ranges|registrations] [limit]
+                                Safely retrieve a complete token-bound catalog
     read-regions <key=addr:len> [key=addr:len ...]
                                 One bounded, frame-stamped multi-region read
     ping                        Heartbeat + current frame
@@ -218,6 +220,132 @@ def pretty_executable_regions(resp):
     return "\n".join(lines)
 
 
+def pretty_executable_catalog(resp):
+    """Compact hierarchy-oriented summary followed by complete aggregate JSON."""
+    if not resp.get("ok"):
+        return pretty_json(resp)
+    view = resp.get("view")
+    lines = [
+        f"catalog={resp.get('catalog_token', '?')} view={view} "
+        f"records={len(resp.get('records', []))} pages={resp.get('pages', '?')} "
+        f"stable_ownership={resp.get('stable_ownership', False)}"
+    ]
+    for record in resp.get("records", []):
+        if view == "images":
+            lines.append(
+                f"{record.get('image_id', '?')} {record.get('kind', '?')} "
+                f"base={record.get('load_base', '?')} "
+                f"ranges={record.get('structural_range_count', '?')} "
+                f"registrations={record.get('registration_count', '?')} "
+                f"owner={record.get('active_owner', False)}"
+            )
+        elif view == "ranges":
+            lines.append(
+                f"  {record.get('range_id', '?')} {record.get('guest_base', '?')} "
+                f"+{record.get('length', '?')} registrations={record.get('registration_count', '?')} "
+                f"owner={record.get('active_owner', False)}"
+            )
+        else:
+            source = record.get("source_identity") or {}
+            live = record.get("current_live_identity") or {}
+            lines.append(
+                f"    {record.get('registration_id', '?')} image={record.get('image_id', '?')} "
+                f"{record.get('kind', '?')}/{record.get('backend', '?')} "
+                f"entry={record.get('entry', '?')} "
+                f"source={str(source.get('crc32') or source.get('sha256') or '-')[:12]} "
+                f"live={str(live.get('sha256') or '-')[:12]} "
+                f"owner={record.get('active_owner', False)} "
+                f"reason={record.get('ownership_reason', '?')}"
+            )
+    lines.append("\nFull JSON:")
+    lines.append(pretty_json(resp))
+    return "\n".join(lines)
+
+
+def fetch_executable_catalog(sock, view="registrations", limit=8, max_pages=4096):
+    if view not in ("images", "ranges", "registrations"):
+        return {"ok": False, "error": "invalid catalog view"}
+    if limit < 1:
+        return {"ok": False, "error": "invalid catalog limit"}
+    cursor = 0
+    catalog_token = None
+    expected_total = None
+    seen_cursors = set()
+    records = []
+    ownership_tokens = []
+    pages = 0
+    peer = None
+    if hasattr(sock, "getpeername"):
+        try:
+            peer = sock.getpeername()
+        except OSError:
+            peer = None
+    while True:
+        if pages >= max_pages:
+            return {"ok": False, "error": "executable catalog page limit exceeded"}
+        if cursor in seen_cursors:
+            return {"ok": False, "error": "executable catalog cursor loop"}
+        seen_cursors.add(cursor)
+        request = {"cmd": "executable_catalog", "view": view,
+                   "cursor": cursor, "limit": limit}
+        if catalog_token is not None:
+            request["catalog_token"] = catalog_token
+        page_sock = sock
+        close_page_sock = False
+        if pages > 0 and peer is not None:
+            page_sock = connect(peer[0], peer[1])
+            close_page_sock = True
+        try:
+            page = send_cmd(page_sock, request)
+        finally:
+            if close_page_sock:
+                page_sock.close()
+        pages += 1
+        if not page.get("ok"):
+            return page
+        token = page.get("catalog_token")
+        ownership = page.get("ownership_token")
+        if not isinstance(token, str) or not token:
+            return {"ok": False, "error": "missing executable catalog token"}
+        if not isinstance(ownership, str) or not ownership:
+            return {"ok": False, "error": "missing executable ownership token"}
+        if catalog_token is None:
+            catalog_token = token
+            expected_total = page.get("total")
+        elif token != catalog_token:
+            return {"ok": False, "error": "executable catalog changed during paging",
+                    "expected_catalog_token": catalog_token, "catalog_token": token}
+        if page.get("total") != expected_total:
+            return {"ok": False, "error": "executable catalog total changed during paging"}
+        page_records = page.get("records")
+        if not isinstance(page_records, list) or page.get("returned") != len(page_records):
+            return {"ok": False, "error": "invalid executable catalog page"}
+        records.extend(page_records)
+        ownership_tokens.append(ownership)
+        has_more = page.get("has_more")
+        next_cursor = page.get("next_cursor")
+        if not has_more:
+            if next_cursor is not None:
+                return {"ok": False, "error": "terminal executable catalog page has cursor"}
+            break
+        if not isinstance(next_cursor, int) or isinstance(next_cursor, bool) or next_cursor <= cursor:
+            return {"ok": False, "error": "invalid executable catalog continuation cursor"}
+        cursor = next_cursor
+    if len(records) != expected_total:
+        return {"ok": False, "error": "incomplete executable catalog",
+                "expected": expected_total, "received": len(records)}
+    return {
+        "ok": True,
+        "view": view,
+        "catalog_token": catalog_token,
+        "ownership_tokens": ownership_tokens,
+        "stable_ownership": len(set(ownership_tokens)) == 1,
+        "pages": pages,
+        "total": expected_total,
+        "records": records,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Command builder — translates CLI args to JSON wire format
 # ---------------------------------------------------------------------------
@@ -236,7 +364,7 @@ def build_cmd(args):
         return {"cmd": "runtime_identity"}, pretty_json
     elif cmd in ("executable-regions", "executable_regions"):
         offset = int(args[1], 0) if len(args) > 1 else 0
-        limit = int(args[2], 0) if len(args) > 2 else 64
+        limit = int(args[2], 0) if len(args) > 2 else 8
         return {"cmd": "executable_regions", "offset": offset,
                 "limit": limit}, pretty_executable_regions
     elif cmd in ("read-regions", "read_regions"):
@@ -658,6 +786,10 @@ def run_command(sock, args, host=DEFAULT_HOST):
         if len(args) < 3:
             return "Usage: ts_compare <start> <end>"
         return run_ts_compare(host, int(args[1]), int(args[2]))
+    if cmd in ("executable-catalog", "executable_catalog"):
+        view = args[1].lower() if len(args) > 1 else "registrations"
+        limit = int(args[2], 0) if len(args) > 2 else 8
+        return pretty_executable_catalog(fetch_executable_catalog(sock, view, limit))
 
     cmd_dict, fmt = build_cmd(args)
     if cmd_dict is None:
