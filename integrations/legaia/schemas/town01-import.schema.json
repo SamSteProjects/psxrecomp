@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://psxrecomp.dev/schemas/legaia/town01-import.v1.json",
+  "title": "Legaia metadata-only scene import",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "importer_version", "source", "scene", "actors", "diagnostics", "unresolved"],
+  "properties": {
+    "schema_version": {"const": "legaia.scene-import.v1"},
+    "importer_version": {"type": "string"},
+    "source": {"type": "object"},
+    "scene": {"type": "object"},
+    "actors": {"type": "array", "items": {"$ref": "#/$defs/actor"}},
+    "diagnostics": {"type": "array", "items": {"type": "object"}},
+    "unresolved": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "sourceRecord": {
+      "type": "object",
+      "required": ["iso_file", "prot_entry_index", "scene_bundle", "record_kind", "record_index", "byte_offset", "byte_length", "byte_coordinate_space"],
+      "properties": {
+        "iso_file": {"const": "PROT.DAT"},
+        "prot_entry_index": {"type": "integer", "minimum": 0},
+        "scene_bundle": {"type": "object"},
+        "record_kind": {"const": "man_partition_1_actor_placement"},
+        "record_index": {"type": "integer", "minimum": 1},
+        "byte_offset": {"type": "integer", "minimum": 0},
+        "byte_length": {"type": "integer", "minimum": 1},
+        "byte_coordinate_space": {"const": "decoded_man_payload"}
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property", "value", "confidence", "evidence", "source", "notes"],
+      "properties": {
+        "property": {"type": "string"},
+        "value": {},
+        "confidence": {"enum": ["confirmed", "strongly_inferred", "tentative", "unknown", "contradictory"]},
+        "evidence": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+        "source": {"type": "object"},
+        "notes": {"type": "string"}
+      }
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semantic_id", "source_record", "imported_transform", "model_reference", "placement_fields", "claims", "unresolved"],
+      "properties": {
+        "semantic_id": {"type": "string", "pattern": "^scene://town01/actors/man-p1/[0-9]{4,}$"},
+        "source_record": {"$ref": "#/$defs/sourceRecord"},
+        "imported_transform": {"type": "object"},
+        "model_reference": {"type": "object"},
+        "placement_fields": {"type": "object"},
+        "claims": {"type": "array", "items": {"$ref": "#/$defs/claim"}},
+        "unresolved": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
