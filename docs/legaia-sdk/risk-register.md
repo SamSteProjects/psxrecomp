@@ -42,12 +42,16 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Existing game/release regression | L | H | Documentation-only Phase 0; future generic changes run existing regression/oracle suites | PSXRecomp |
 | Editor UX pressures speculative mapping | H | H | Unknown/contradictory are first-class; confidence threshold blocks export | editor/provenance |
 | Undo mutates imported/live data | M | H | Command log targets authored sparse overlays only | project model |
+| Collision census mistaken for owning actor pool | H | H | Profile distinguishes linked owning nodes from the filtered 32-pointer per-frame census; no slot-index identity | runtime profile |
+| Actor subclass fields conflated | H | H | Scope `.MAP` object fields separately from MAN NPCs; neutral names for `+0x50`/`+0x94` | runtime profile/provenance |
+| Source overlay hash mistaken for live identity | H | H | Require a canonical runtime overlay range/hash; checked-in profile fails closed while it is unresolved | runtime bridge |
+| Mixed-epoch multi-read snapshot | M | H | Boundary-sample all scene/overlay/list signals or add bounded `read_regions`; discard on any change | runtime bridge |
 
 ## Highest-priority validation items
 
 1. Prove the semantic export can remain narrow and deterministic without linking clean-room code into PSXRecomp.
-2. Establish one exact retail revision/layout profile and a robust scene/overlay epoch.
-3. Prove actor-slot lifecycle and imported-to-live correlation without slot-order assumptions.
+2. Resolve canonical live identity for field overlay 0897 so the new revisioned profile can select a runtime.
+3. Prove linked actor-node lifecycle and imported-to-live correlation without census/list-order assumptions.
 4. Establish explicit evidence for any NPC → interaction → flag → dialogue chain before presenting it as resolved.
 5. Add and test proprietary-data ignore/scanning policy before any extraction/cache command writes inside the project.
 
