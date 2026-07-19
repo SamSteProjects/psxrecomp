@@ -85,43 +85,38 @@ Correlation algorithm:
 
 Actor-slot reuse starts a new live identity when occupancy generation, scene epoch, actor handle/pointer generation, or discriminating fields indicate replacement.
 
-## Proposed generic protocol extensions
+## Implemented generic observer prerequisites
 
-No extensions are implemented in Phase 0. Add only those proven necessary by the contract spike.
+Protocol 1.1 implements the generic capabilities proven necessary by the layout
+contract. The native server advertises `protocol_info`, `runtime_identity`,
+`executable_regions`, `read_regions`, and `watched_page_generation`.
 
-### `protocol_info`
+- `protocol_info` returns the protocol version, explicit server kind, sorted
+  capability tokens, limits, and frame. A client rejects an unsupported major
+  and requires every profile capability.
+- `runtime_identity` returns safe runtime/build metadata, BIOS SHA-256, and the
+  canonical main-executable source identity when registered. It returns no host
+  paths or executable bytes.
+- `executable_regions` pages the main executable and actual static, native-DLL,
+  or runtime-compiled registrations. Immutable source identity, current live
+  guest-memory SHA-256, authoritative page-generation digest, and conservative
+  native validity are separate fields.
+- `read_regions` reads up to 32 ordered main-RAM ranges, 4 KiB each and 16 KiB
+  total, with frame-before/after and executable-state-before/after stamps.
 
-Returns bounded server metadata and commands/capabilities, avoiding version guessing:
+The executable-state token is derived from watched-page generations and loader
+registration state; it is not a Legaia counter. A same-byte write may change the
+token while the final live hash remains unchanged. Different contents at the
+same address and length cannot retain stale native ownership.
 
-```json
-{
-  "id": 1, "ok": true,
-  "protocol": {"name": "psxrecomp-debug", "major": 1, "minor": 0},
-  "runtime": {"build_id": "...", "backend": "native"},
-  "limits": {"max_read_ram": 2097152, "max_vram_pixels": 16384, "max_batch_regions": 32},
-  "capabilities": ["read_ram", "overlay_identity", "memory_regions"]
-}
-```
+Beetle and DuckStation advertise only `read_ram` and `read_regions`; their
+responses include frame stamps but omit executable-state fields. The
+DuckStation patch was regenerated against pinned upstream commit
+`ffb33c281d196eb8ee0f559085ca285de7cdd51b`. Neither oracle backend is assumed
+to know PSXRecomp native ownership. Missing identity is never treated as a wildcard.
 
-Additive fields and a new command preserve existing clients.
-
-### `memory_regions`
-
-Returns a bounded list of generic mapped guest ranges and roles (`main_ram`, `scratchpad`, `bios`, `mmio`), not Legaia concepts. This lets clients validate requests.
-
-### `overlay_identity`
-
-Returns only the currently active executable/code ranges known by the generic loader: address, length, content digest, backend, capture/installation generation and frame. It must not return overlay bytes. This is the canonical input to game-specific correlation.
-
-### `read_regions`
-
-A bounded atomic-ish safe-point batch read:
-
-```json
-{"id": 4, "cmd": "read_regions", "regions": [{"tag":"scene","addr":"0x...","len":16},{"tag":"actors","addr":"0x...","len":4096}]}
-```
-
-The response repeats one frame/cycle stamp and returns tagged hex blocks. Limits cap region count and total bytes. Existing `read_ram` remains unchanged.
+See `docs/debug-protocol-versioning.md`, `docs/executable-identity.md`, and
+`docs/read-regions-command.md` for the wire contracts and performance limits.
 
 ### Game extension mechanism (only if raw profiles prove insufficient)
 
@@ -161,6 +156,10 @@ The first revisioned profile now lives at `integrations/legaia/layouts/scus94254
 
 The research changes the proposed actor read from a contiguous table read to a bounded pointer-census read. Retail field actors are linked, individually allocated nodes. Field overlay 0897 rebuilds a filtered, 32-pointer collision census each frame; its four-byte entries are not actor records and its indices are not identity. A future observer should read the 128-byte census, validate each pointer, then read only the documented `0x9C`-byte node prefix.
 
-Existing `read_ram`, `frame` and frame-ring support are sufficient for synthetic validation and bounded manual research. They are not sufficient for a fail-closed product observer because the native server does not advertise protocol version, executable identity or a canonical active-overlay identity/hash. `protocol_info` and `overlay_identity` are therefore required before live observation. `read_regions` remains strongly recommended to stamp the scene signals, census and node prefixes with one frame boundary; without it, the client must bracket reads and discard any mixed epoch.
-
-The checked-in profile intentionally refuses live selection while overlay 0897's canonical live hash is unresolved. No Legaia-specific command or runtime hook has been added.
+The generic transport prerequisites now exist. A later observer can negotiate
+protocol 1.1, verify program identity, enumerate executable registrations, and
+discard mixed frame/executable-state snapshots. The checked-in profile still
+refuses live selection while overlay 0897's canonical live range/hash is
+unresolved. Resolving and accepting that evidence is the next prerequisite; it
+is not permission to traverse actors or correlate imported records. No
+Legaia-specific command or runtime hook has been added.

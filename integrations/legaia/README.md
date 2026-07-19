@@ -34,13 +34,14 @@ Implemented:
 - completed real-disc acceptance for the supported North American build: 52 deterministic `town01` actor records, schema/privacy validation, Legaia Trace consumption and full structural parity with Andrew's pinned parser. See `docs/legaia-sdk/town01-acceptance.md`.
 - completed additive model-identity resolution: 114 scene-local and five global-special metadata-only model records, 52/52 resolved actor references, bounded source provenance and 119/119 structural parity rows. See `docs/legaia-sdk/model-asset-identity.md`.
 - completed the first read-only SCUS-94254 field-runtime layout research pass: revisioned metadata-only profile/schema, multi-signal `town01` identity, observer-owned scene epochs, linked-node/collision-census distinction, bounded actor-field map, correlation-signal inventory and synthetic fail-closed validation. See `docs/legaia-sdk/runtime-layout-research.md`.
+- completed the generic protocol prerequisites for a later observer: protocol 1.1 negotiation, safe runtime/executable identities, authoritative watched-generation reporting, conservative native ownership and bounded frame-stamped `read_regions`. These changes are generic and contain no Legaia addresses or traversal logic.
 
 Not implemented:
 
 - no authored/editor UI, asset viewport or transform controls;
 - no geometry, script, dialogue or authored scene import;
 - no live runtime observer or imported-to-runtime actor correlation;
-- no TCP changes;
+- no Legaia-specific TCP commands or runtime hooks;
 - no RAM writes, live reload or overrides;
 - no dialogue editing, asset authoring or disc export.
 
@@ -56,6 +57,6 @@ The first proof is now a headless, read-only import of Rim Elm (`town01`) from a
 
 Run it with `python integrations/legaia/tools/legaia_import.py --disc "C:\path\to\Legend of Legaia.bin" --scene town01 --output "C:\local-output\imported-town01.json"`. See `docs/legaia-sdk/town01-importer.md` for the schema, confidence model, tests, attribution and data-handling rules.
 
-The read-only scene/actor inspection surface is implemented under `integrations/legaia/inspector`; see `docs/legaia-sdk/town01-inspector.md`. The revisioned research profile is under `integrations/legaia/layouts`; it validates without a disc or runtime and intentionally fails live selection until the runtime can advertise executable/protocol identity and a canonical field-overlay hash. A later, separately approved generic protocol-capability phase must precede live actor observation. RAM writes, live correlation and generic runtime title checks remain out of scope.
+The read-only scene/actor inspection surface is implemented under `integrations/legaia/inspector`; see `docs/legaia-sdk/town01-inspector.md`. The revisioned research profile is under `integrations/legaia/layouts`; it validates without a disc or runtime. Generic protocol identity and bounded-read prerequisites now exist, but the profile still fails live selection until field overlay 0897 has a canonical live identity. A separately approved headless observer may use these generic commands after that evidence is recorded. RAM writes, actor correlation and generic runtime title checks remain out of scope.
 
 See `docs/legaia-sdk/` for the complete audit.

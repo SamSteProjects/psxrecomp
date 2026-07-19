@@ -44,13 +44,13 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Undo mutates imported/live data | M | H | Command log targets authored sparse overlays only | project model |
 | Collision census mistaken for owning actor pool | H | H | Profile distinguishes linked owning nodes from the filtered 32-pointer per-frame census; no slot-index identity | runtime profile |
 | Actor subclass fields conflated | H | H | Scope `.MAP` object fields separately from MAN NPCs; neutral names for `+0x50`/`+0x94` | runtime profile/provenance |
-| Source overlay hash mistaken for live identity | H | H | Require a canonical runtime overlay range/hash; checked-in profile fails closed while it is unresolved | runtime bridge |
-| Mixed-epoch multi-read snapshot | M | H | Boundary-sample all scene/overlay/list signals or add bounded `read_regions`; discard on any change | runtime bridge |
+| Source overlay hash mistaken for live identity | H | H | Protocol 1.1 keeps immutable source and current live hashes distinct; require a canonical field-overlay range/hash and fail closed while unresolved | runtime bridge |
+| Mixed-epoch multi-read snapshot | M | H | Use bounded `read_regions`; reject differing frame or executable-state stamps and re-check scene-epoch signals | runtime bridge |
 
 ## Highest-priority validation items
 
 1. Prove the semantic export can remain narrow and deterministic without linking clean-room code into PSXRecomp.
-2. Resolve canonical live identity for field overlay 0897 so the new revisioned profile can select a runtime.
+2. Resolve canonical live identity for field overlay 0897 using `executable_regions` so the revisioned profile can select a runtime.
 3. Prove linked actor-node lifecycle and imported-to-live correlation without census/list-order assumptions.
 4. Establish explicit evidence for any NPC → interaction → flag → dialogue chain before presenting it as resolved.
 5. Add and test proprietary-data ignore/scanning policy before any extraction/cache command writes inside the project.

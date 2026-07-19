@@ -46,7 +46,7 @@ Gate: one selected NPC has a stable semantic ID and every displayed relationship
 
 ### 4. Runtime connection
 
-Implement the TCP client against existing commands first: `ping`, `pause`, `get_registers`, `read_ram`, `vram_peek`, `overlay_dump`/status, snapshots/watches and `continue`. Add `protocol_info`, `overlay_identity` or `read_regions` only if the spike demonstrates a concrete need.
+Implement the TCP client against negotiated protocol 1.1 capabilities. The spike demonstrated the need for and supplied generic `protocol_info`, `runtime_identity`, `executable_regions`, and `read_regions`; a future Legaia observer must still fail closed until the field-overlay profile identity is resolved.
 
 Gate: launch/connect, startup detection, bounded observation and clean disconnect work without source logging or runtime behavior changes.
 

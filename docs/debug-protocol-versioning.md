@@ -32,6 +32,11 @@ An oracle advertises only mechanisms it can implement truthfully. In
 particular, bounded RAM reads do not imply knowledge of PSXRecomp native
 registration ownership.
 
+Beetle and DuckStation advertise `read_ram` and `read_regions`. Their
+`read_regions` responses carry frame stamps but no executable-state token.
+DuckStation's checked-in patch is regenerated against upstream
+`ffb33c281d196eb8ee0f559085ca285de7cdd51b`.
+
 ## Bounds
 
 The v1.1 native limits are:
@@ -59,3 +64,7 @@ identity field is not a wildcard: a revisioned observer must fail closed.
 Protocol responses contain no host paths. Runtime build identity is a source
 revision, not a binary path. Program and executable identities contain hashes
 and guest ranges, never executable bytes.
+
+Build and acceptance evidence for this revision is recorded in
+`docs/debug-observer-validation.md`. Source compilation and synthetic validation
+passed; fresh live wire acceptance remains explicitly unresolved there.
