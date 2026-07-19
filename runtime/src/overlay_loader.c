@@ -395,6 +395,7 @@ static void overlay_flush_leave(OverlayFlushFn prev) {
 
 extern uint8_t *memory_get_ram_ptr(void);
 extern uint32_t overlay_watch_pagegen_sum(uint32_t phys, uint32_t len);
+extern void overlay_watch_set_range(uint32_t phys, uint32_t len);
 
 /* ---- Per-candidate hash / generation over its code ranges -------------- */
 
@@ -450,6 +451,11 @@ int psx_overlay_static_code_matches(const uint32_t *lo_len_pairs,
             s_static_match_crc_misses++;
             return 0;
         }
+        /* Static variants use the same generation-cache contract as dynamic
+         * candidates, so their pages must participate in write invalidation.
+         * Without this registration a once-valid CRC remains cached forever
+         * (generation sum stays zero) after CD/DMA replaces the overlay. */
+        overlay_watch_set_range(lo, len);
         gen_sum += overlay_watch_pagegen_sum(lo, len);
     }
 
@@ -586,7 +592,6 @@ static void cand_register(uint32_t phys, OverlayFn fn, const ManFn *m, int dll) 
         c->nranges++;
     }
     /* Watch the code pages so future writes bump their generation. */
-    extern void overlay_watch_set_range(uint32_t phys, uint32_t len);
     for (int i = 0; i < c->nranges; i++)
         overlay_watch_set_range(c->range_lo[i], c->range_len[i]);
 
