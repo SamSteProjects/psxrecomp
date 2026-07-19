@@ -29,10 +29,12 @@ Implemented:
 - deterministic actor identities, source claims, imported X/Z transforms and model pool/index references;
 - synthetic unit coverage and an opt-in `LEGAIA_DISC_BIN` integration test;
 - pinned interpretation/attribution manifest and metadata JSON schema.
+- local-first Legaia Trace inspection surface for importer JSON, with actor search, X/Z projection, source spans and claim evidence;
+- synthetic-only inspector preview and tests proving there are no upload, persistence, runtime-write or authoring paths.
 
 Not implemented:
 
-- no editor UI or inspection surface;
+- no authored/editor UI, asset viewport or transform controls;
 - no geometry, script, dialogue or authored scene import;
 - no runtime correlation profile;
 - no TCP changes;
@@ -51,6 +53,6 @@ The first proof is now a headless, read-only import of Rim Elm (`town01`) from a
 
 Run it with `python integrations/legaia/tools/legaia_import.py --disc "C:\path\to\Legend of Legaia.bin" --scene town01 --output "C:\local-output\imported-town01.json"`. See `docs/legaia-sdk/town01-importer.md` for the schema, confidence model, tests, attribution and data-handling rules.
 
-The exact next task, after approval, is a read-only scene/actor inspection surface that consumes the importer metadata. Generic runtime changes and live editing remain outside that task.
+The read-only scene/actor inspection surface is implemented under `integrations/legaia/inspector`; see `docs/legaia-sdk/town01-inspector.md`. The next separately approved slice is the read-only PSXRecomp observation bridge and evidence-backed Legaia layout profile. RAM writes and generic runtime title checks remain out of scope.
 
 See `docs/legaia-sdk/` for the complete audit.
