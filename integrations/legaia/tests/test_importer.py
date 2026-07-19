@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import jsonschema
+
 INTEGRATION_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(INTEGRATION_ROOT))
 
@@ -15,6 +17,7 @@ from importer.core import (  # noqa: E402
     ImportError,
     ManActor,
     ParsedMan,
+    TmdRecord,
     canonical_json,
     claim,
     normalize_claims,
@@ -23,7 +26,9 @@ from importer.core import (  # noqa: E402
     parse_prot_bytes,
     parse_scene_table,
     scene_range,
+    scan_tmds,
     stable_actor_id,
+    stable_model_asset_id,
     validate_metadata_only,
     decompress_lzs,
 )
@@ -70,6 +75,14 @@ def synthetic_prot() -> bytes:
 
 def projected() -> dict:
     parsed = parse_man(synthetic_man())
+    scene_models = tuple(
+        TmdRecord("scene_tmd", index, 4, "decoded_lzs_section", index * 100, 72, 1000, 1, 2, 64)
+        for index in range(5)
+    )
+    global_models = tuple(
+        TmdRecord("global_special", index, 874, "decoded_tmd_pack_slot", index * 80, 72, 500, 1, 0, 32, index, 72)
+        for index in range(5)
+    )
     return project_metadata(
         disc_digest="11" * 32,
         scene="town01",
@@ -80,6 +93,8 @@ def projected() -> dict:
         descriptor_size=len(synthetic_man()),
         compressed_consumed=99,
         parsed_man=parsed,
+        scene_models=scene_models,
+        global_models=global_models,
     )
 
 
@@ -89,6 +104,18 @@ class ImporterUnitTests(unittest.TestCase):
         self.assertEqual(stable_actor_id("town01", 1, 7), stable_actor_id("town01", 1, 7))
         with self.assertRaises(ImportError):
             stable_actor_id("Town 01", 1, 7)
+
+    def test_stable_semantic_model_asset_id(self) -> None:
+        self.assertEqual(
+            stable_model_asset_id("town01", "scene_tmd", 4),
+            "asset://town01/models/scene-tmd/0004",
+        )
+        self.assertEqual(
+            stable_model_asset_id("town01", "global_special", 1),
+            "asset://legaia/models/global-special/00f1",
+        )
+        with self.assertRaises(ImportError):
+            stable_model_asset_id("town01", "global_special", 16)
 
     def test_claim_serialization_round_trip(self) -> None:
         item = claim("x", {"n": 3}, "confirmed", [{"kind": "parser_span"}], {"record": 1}, "synthetic")
@@ -134,6 +161,14 @@ class ImporterUnitTests(unittest.TestCase):
         self.assertEqual(decoded, b"SYNTHETC")
         self.assertEqual(consumed, 9)
 
+    def test_synthetic_tmd_scan_is_bounded(self) -> None:
+        tmd = bytearray(72)
+        struct.pack_into("<III", tmd, 0, 0x80000002, 0, 1)
+        struct.pack_into("<IIIIIII", tmd, 12, 28, 4, 0, 0, 28, 0, 0x00808080)
+        hits = scan_tmds(bytes(tmd))
+        self.assertEqual(hits, ((0, 72, 1),))
+        self.assertEqual(scan_tmds(bytes(tmd[:-1])), ())
+
     def test_truncated_man_and_invalid_offsets(self) -> None:
         with self.assertRaisesRegex(ImportError, "header is truncated"):
             parse_man(b"\0" * 10)
@@ -164,10 +199,25 @@ class ImporterUnitTests(unittest.TestCase):
         output = projected()
         validate_metadata_only(output)
         self.assertTrue(output["actors"])
+        self.assertEqual(output["schema_version"], "legaia.scene-import.v2")
+        self.assertEqual(len(output["assets"]["models"]), 10)
+        self.assertEqual(
+            output["actors"][0]["model_reference"]["asset_semantic_id"],
+            "asset://town01/models/scene-tmd/0004",
+        )
+        self.assertEqual(
+            output["actors"][1]["model_reference"]["asset_semantic_id"],
+            "asset://legaia/models/global-special/00f1",
+        )
         with self.assertRaisesRegex(ImportError, "forbidden field"):
             validate_metadata_only({"payload": "not allowed"})
         with self.assertRaisesRegex(ImportError, "binary value"):
             validate_metadata_only({"safe": b"binary"})
+
+    def test_v2_schema_accepts_projected_metadata(self) -> None:
+        schema_path = INTEGRATION_ROOT / "schemas" / "town01-import.v2.schema.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        jsonschema.validate(projected(), schema)
 
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "LEGAIA_DISC_BIN is not set")
@@ -180,10 +230,18 @@ class Town01DiscIntegrationTests(unittest.TestCase):
         self.assertGreater(len(first["actors"]), 0)
         ids = [actor["semantic_id"] for actor in first["actors"]]
         self.assertEqual(len(ids), len(set(ids)))
+        model_ids = [asset["semantic_id"] for asset in first["assets"]["models"]]
+        self.assertEqual(len(model_ids), len(set(model_ids)))
         for actor in first["actors"]:
             source = actor["source_record"]
             self.assertGreater(source["byte_length"], 0)
             self.assertLessEqual(source["byte_offset"] + source["byte_length"], source["containing_decoded_size"])
+            self.assertEqual(actor["model_reference"]["resolution_status"], "resolved")
+            self.assertIn(actor["model_reference"]["asset_semantic_id"], model_ids)
+        for asset in first["assets"]["models"]:
+            source = asset["source_record"]
+            self.assertGreater(source["byte_length"], 0)
+            self.assertLessEqual(source["byte_offset"] + source["byte_length"], source["containing_size"])
         validate_metadata_only(first)
 
 
