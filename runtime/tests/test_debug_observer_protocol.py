@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthetic and structural regressions for debug protocol 1.1.
+"""Synthetic and structural regressions for debug protocol 1.2.
 
 No retail bytes, executable payloads, host paths, or emulator state are used.
 The executable models below exercise the documented bounds and authoritative
@@ -10,10 +10,12 @@ and Beetle implementations.
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +27,16 @@ CLIENT = (ROOT / "tools/debug_client.py").read_text(encoding="utf-8")
 DUCK_PATCH = (ROOT / "tools/duckstation/psxrecomp_oracle.patch").read_text(encoding="utf-8")
 VERSIONING = (ROOT / "docs/debug-protocol-versioning.md").read_text(encoding="utf-8")
 IDENTITY = (ROOT / "docs/executable-identity.md").read_text(encoding="utf-8")
+IMAGE_MODEL_PATH = ROOT / "docs/executable-image-model.md"
+PAGINATION_PATH = ROOT / "docs/executable-catalog-pagination.md"
+OWNERSHIP_PATH = ROOT / "docs/executable-ownership-diagnostics.md"
+
+CLIENT_SPEC = importlib.util.spec_from_file_location(
+    "psxrecomp_debug_client", ROOT / "tools/debug_client.py"
+)
+assert CLIENT_SPEC and CLIENT_SPEC.loader
+DEBUG_CLIENT = importlib.util.module_from_spec(CLIENT_SPEC)
+CLIENT_SPEC.loader.exec_module(DEBUG_CLIENT)
 
 PAGE_SIZE = 4096
 RAM_SIZE = 2 * 1024 * 1024
@@ -55,8 +67,9 @@ class WatchModel:
         self.ram[base : base + len(payload)] = payload
 
     def token(self) -> str:
-        h = hashlib.sha256(b"psxrecomp-exec-state-v1")
-        for index, generation in enumerate(self.generation):
+        h = hashlib.sha256(b"psxrecomp-exec-ownership-v2")
+        for index in sorted(self.watched):
+            generation = self.generation[index]
             h.update(index.to_bytes(4, "little"))
             h.update(generation.to_bytes(4, "little"))
         for base, length, source in self.registrations:
@@ -117,7 +130,7 @@ class ProtocolMetadataTests(unittest.TestCase):
             self.assertIn(f'\\"{field}\\"', NATIVE)
 
     def test_02_stable_capability_ordering(self) -> None:
-        expected = ["executable_regions", "read_ram", "read_regions",
+        expected = ["executable_catalog", "executable_regions", "read_ram", "read_regions",
                     "runtime_identity", "watched_page_generation"]
         positions = [NATIVE.index(f'\\"{name}\\"', NATIVE.index("handle_protocol_info"))
                      for name in expected]
@@ -334,6 +347,183 @@ class CompatibilityAndHygieneTests(unittest.TestCase):
         self.assertIn('"capabilities":["read_ram","read_regions"]', DUCK_PATCH)
         self.assertIn('std::strcmp(cmd, "read_regions")', DUCK_PATCH)
         self.assertNotIn('"capabilities":["executable_regions"', DUCK_PATCH)
+
+
+class ExecutableCatalogModelTests(unittest.TestCase):
+    def test_45_image_range_registration_are_distinct(self) -> None:
+        for token in ("ObserverExecutableImage", "ObserverExecutableRange",
+                      "OverlayExecutableRegion"):
+            self.assertIn(token, NATIVE if token != "OverlayExecutableRegion" else LOADER)
+        self.assertIn('"view", view', NATIVE)
+
+    def test_46_multiple_registrations_group_by_image(self) -> None:
+        self.assertIn("images[j].image_id == r->image_id", NATIVE)
+        self.assertIn("image->registration_count++", NATIVE)
+
+    def test_47_overlapping_ranges_are_preserved(self) -> None:
+        self.assertIn("ranges[j].image_id == r->image_id", NATIVE)
+        self.assertIn("ranges[range_index].registration_count++", NATIVE)
+
+    def test_48_distinct_registration_state_is_not_collapsed(self) -> None:
+        self.assertIn('registration_id\\\":\\\"reg-%08x', NATIVE)
+        self.assertIn('ownership_reason\\\":\\\"%s', NATIVE)
+
+    def test_49_source_live_comparability_is_explicit(self) -> None:
+        self.assertIn('source_live_comparison\\\":{\\\"comparable\\\":%s', NATIVE)
+        self.assertIn("source_live_comparable", LOADER)
+
+    def test_50_registration_validated_identity_is_separate(self) -> None:
+        self.assertIn('registration_time_validated_identity\\\":', NATIVE)
+        self.assertIn("has_validated_identity", LOADER)
+
+    def test_51_every_ownership_reason_is_serializable(self) -> None:
+        for reason in (
+            "valid", "validated-bytes-mismatch", "generation-invalidated",
+            "registration-inactive", "shadowed", "blacklisted",
+            "native-disabled", "dispatch-guard-failed", "backend-ineligible",
+            "unknown",
+        ):
+            self.assertIn(f'"{reason}"', NATIVE)
+
+    def test_52_generation_is_part_of_native_validity(self) -> None:
+        predicate = LOADER[LOADER.index("candidate_protocol_native_valid"):
+                           LOADER.index("candidate_ownership_reason")]
+        self.assertIn("cand_gensum(c) != c->val_gen", predicate)
+
+    def test_53_same_address_replacement_cannot_retain_owner(self) -> None:
+        self.assertIn("OVERLAY_OWNERSHIP_VALIDATED_BYTES_MISMATCH", LOADER)
+        self.assertIn("out->live_crc32 == out->source_crc32", LOADER)
+
+    def test_54_runtime_and_static_registration_classes_are_modeled(self) -> None:
+        for kind in ("static-overlay-variant", "runtime-compiled-fragment",
+                     "native-overlay-bundle"):
+            self.assertIn(kind, NATIVE)
+
+    def test_55_catalog_token_excludes_mutable_ownership_state(self) -> None:
+        start = LOADER.index("uint64_t overlay_loader_catalog_token")
+        end = LOADER.index("void overlay_loader_executable_watch_bitmap", start)
+        catalog = LOADER[start:end]
+        for state in ("c->state", "c->val_gen", "s_native_exec", "diff_passes"):
+            self.assertNotIn(state, catalog)
+
+    def test_56_ownership_scope_uses_registration_ranges(self) -> None:
+        token = NATIVE[NATIVE.index("static void executable_state_token"):
+                       NATIVE.index("static void handle_protocol_info")]
+        self.assertIn("overlay_loader_executable_watch_bitmap", token)
+        self.assertNotIn("for (uint32_t page = 0; page < pages", token)
+
+    def test_57_unrelated_data_write_does_not_change_ownership_token(self) -> None:
+        model = WatchModel()
+        model.register(PAGE_SIZE, 16, b"A" * 16)
+        before = model.token()
+        model.write(PAGE_SIZE * 8, b"data")
+        self.assertEqual(before, model.token())
+
+    def test_58_executable_write_changes_ownership_token(self) -> None:
+        model = WatchModel()
+        model.register(PAGE_SIZE, 16, b"A" * 16)
+        before = model.token()
+        model.write(PAGE_SIZE, b"A")
+        self.assertNotEqual(before, model.token())
+
+    def test_59_page_max_and_byte_budget_are_bounded(self) -> None:
+        self.assertIn("#define EXEC_CATALOG_PAGE_MAX 8", NATIVE)
+        self.assertIn("#define EXEC_CATALOG_RECORD_BUDGET 60000", NATIVE)
+        self.assertIn("catalog record exceeds response budget", NATIVE)
+
+    def test_60_cursor_is_bound_to_catalog_token(self) -> None:
+        self.assertIn("cursor > 0", NATIVE)
+        self.assertIn('error\\\":\\\"catalog_changed', NATIVE)
+        self.assertIn('next_cursor\\\":', NATIVE)
+
+    def test_61_protocol_minor_and_capability_are_additive(self) -> None:
+        self.assertIn('major\\\":1,\\\"minor\\\":2', NATIVE)
+        self.assertIn('\\\"executable_catalog\\\"', NATIVE)
+        self.assertIn('{ "executable_regions", handle_executable_regions }', NATIVE)
+
+    def test_62_complete_client_paging(self) -> None:
+        pages = [
+            {"ok": True, "catalog_token": "abc", "ownership_token": "one",
+             "total": 3, "returned": 2, "has_more": True, "next_cursor": 2,
+             "records": [{"n": 1}, {"n": 2}]},
+            {"ok": True, "catalog_token": "abc", "ownership_token": "one",
+             "total": 3, "returned": 1, "has_more": False, "next_cursor": None,
+             "records": [{"n": 3}]},
+        ]
+        with mock.patch.object(DEBUG_CLIENT, "send_cmd", side_effect=pages):
+            result = DEBUG_CLIENT.fetch_executable_catalog(object(), "registrations", 2)
+        self.assertTrue(result["ok"])
+        self.assertEqual([item["n"] for item in result["records"]], [1, 2, 3])
+        self.assertTrue(result["stable_ownership"])
+
+    def test_63_client_rejects_catalog_change(self) -> None:
+        pages = [
+            {"ok": True, "catalog_token": "a", "ownership_token": "one",
+             "total": 2, "returned": 1, "has_more": True, "next_cursor": 1,
+             "records": [{}]},
+            {"ok": True, "catalog_token": "b", "ownership_token": "two",
+             "total": 2, "returned": 1, "has_more": False, "next_cursor": None,
+             "records": [{}]},
+        ]
+        with mock.patch.object(DEBUG_CLIENT, "send_cmd", side_effect=pages):
+            result = DEBUG_CLIENT.fetch_executable_catalog(object(), "registrations", 1)
+        self.assertFalse(result["ok"])
+        self.assertIn("changed", result["error"])
+
+    def test_64_client_rejects_cursor_loop(self) -> None:
+        page = {"ok": True, "catalog_token": "a", "ownership_token": "one",
+                "total": 2, "returned": 1, "has_more": True, "next_cursor": 0,
+                "records": [{}]}
+        with mock.patch.object(DEBUG_CLIENT, "send_cmd", return_value=page):
+            result = DEBUG_CLIENT.fetch_executable_catalog(object(), "ranges", 1)
+        self.assertFalse(result["ok"])
+        self.assertIn("cursor", result["error"])
+
+    def test_65_no_host_paths_or_payload_fields(self) -> None:
+        handler = NATIVE[NATIVE.index("static void handle_executable_catalog"):
+                         NATIVE.index("typedef struct {", NATIVE.index("handle_executable_catalog"))]
+        for forbidden in ("cache_dir", "dll_path", '"hex"', '"bytes"'):
+            self.assertNotIn(forbidden, handler)
+
+    def test_66_ownership_change_during_paging_is_reported(self) -> None:
+        pages = [
+            {"ok": True, "catalog_token": "same", "ownership_token": "one",
+             "total": 2, "returned": 1, "has_more": True, "next_cursor": 1,
+             "records": [{"n": 1}]},
+            {"ok": True, "catalog_token": "same", "ownership_token": "two",
+             "total": 2, "returned": 1, "has_more": False, "next_cursor": None,
+             "records": [{"n": 2}]},
+        ]
+        with mock.patch.object(DEBUG_CLIENT, "send_cmd", side_effect=pages):
+            result = DEBUG_CLIENT.fetch_executable_catalog(object(), "images", 1)
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["stable_ownership"])
+        self.assertEqual(result["ownership_tokens"], ["one", "two"])
+
+    def test_67_static_validation_history_survives_invalidation(self) -> None:
+        self.assertIn("int      ever_matched;", LOADER)
+        self.assertIn("entry->ever_matched = 1", LOADER)
+        self.assertIn("out->has_validated_identity = e->ever_matched", LOADER)
+        self.assertIn("entry->last_validated_gen = gen_sum", LOADER)
+        self.assertIn("out->validated_generation_sum = e->last_validated_gen", LOADER)
+
+    def test_68_catalog_tracks_structural_replacement(self) -> None:
+        start = LOADER.index("uint64_t overlay_loader_catalog_token")
+        end = LOADER.index("void overlay_loader_executable_watch_bitmap", start)
+        catalog = LOADER[start:end]
+        for structural in ("c->dll", "c->addr", "c->crc_code",
+                           "c->range_lo[r]", "c->range_len[r]"):
+            self.assertIn(structural, catalog)
+
+    def test_69_registration_classes_do_not_invent_dirty_image(self) -> None:
+        kinds = NATIVE[NATIVE.index("static const char *catalog_image_kind"):
+                       NATIVE.index("static int append_catalog_registration")]
+        self.assertNotIn("dirty-executable-image", kinds)
+        self.assertIn("per-dispatch-range-not-cataloged", NATIVE)
+
+    def test_70_structural_variant_does_not_claim_loaded_base(self) -> None:
+        self.assertIn("has_image_load_base", LOADER)
+        self.assertIn('snprintf(load_base, sizeof(load_base), "null")', NATIVE)
 
 
 if __name__ == "__main__":
