@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SamSteProjects/psxrecomp/integrations/legaia/schemas/runtime-layout-profile.v1.schema.json",
+  "title": "Legend of Legaia runtime layout profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "game",
+    "region",
+    "executable_identity",
+    "supported_runtime_protocol",
+    "overlay_requirements",
+    "scene_identity",
+    "scene_epoch",
+    "actor_pool",
+    "actor_fields",
+    "safety_bounds",
+    "evidence",
+    "unresolved"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "profile_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-v[0-9]+$" },
+    "game": { "const": "Legend of Legaia" },
+    "region": { "const": "North America" },
+    "executable_identity": { "$ref": "#/$defs/executableIdentity" },
+    "supported_runtime_protocol": { "$ref": "#/$defs/protocol" },
+    "overlay_requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/overlay" }
+    },
+    "scene_identity": { "$ref": "#/$defs/sceneIdentity" },
+    "scene_epoch": { "$ref": "#/$defs/sceneEpoch" },
+    "actor_pool": { "$ref": "#/$defs/actorPool" },
+    "actor_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/actorField" }
+    },
+    "safety_bounds": { "$ref": "#/$defs/safetyBounds" },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+    "unresolved": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "address": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{8}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "confidence": {
+      "enum": ["confirmed", "strongly_inferred", "tentative", "unknown", "contradictory"]
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property", "value", "confidence", "evidence", "notes"],
+      "properties": {
+        "property": { "type": "string" },
+        "value": {},
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "alternatives": { "type": "array", "minItems": 2, "items": {} }
+      }
+    },
+    "executableIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serial", "sha256", "file_size", "load_address", "claim"],
+      "properties": {
+        "serial": { "const": "SCUS-94254" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "file_size": { "type": "integer", "minimum": 1 },
+        "load_address": { "$ref": "#/$defs/address" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "minimum_version", "required_capabilities"],
+      "properties": {
+        "name": { "const": "psxrecomp-json-tcp" },
+        "minimum_version": { "type": "integer", "minimum": 1 },
+        "required_capabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "overlayIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "prot_entry", "load_address", "content_sha256", "source_entry_sha256"],
+      "properties": {
+        "id": { "type": "string" },
+        "prot_entry": { "type": "integer", "minimum": 0 },
+        "load_address": { "$ref": "#/$defs/address" },
+        "content_sha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "source_entry_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "overlay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "identity", "owner", "claim"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "identity": { "$ref": "#/$defs/overlayIdentity" },
+        "owner": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "sceneSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "address", "width", "type", "expected", "owner", "lifecycle", "claim"],
+      "properties": {
+        "id": { "type": "string" },
+        "address": { "$ref": "#/$defs/address" },
+        "width": { "enum": [1, 2, 4, 8, 16] },
+        "type": { "type": "string" },
+        "expected": {},
+        "owner": { "type": "string" },
+        "lifecycle": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "sceneIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene_key", "strategy", "required_signals"],
+      "properties": {
+        "scene_key": { "const": "town01" },
+        "strategy": { "type": "string" },
+        "required_signals": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/sceneSignal" } }
+      }
+    },
+    "sceneEpoch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observer_owned", "stability_samples", "invalidation_signals", "contract"],
+      "properties": {
+        "observer_owned": { "const": true },
+        "stability_samples": { "type": "integer", "minimum": 2 },
+        "invalidation_signals": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+        "contract": { "type": "string" }
+      }
+    },
+    "count": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "width", "type", "claim"],
+      "properties": {
+        "address": { "$ref": "#/$defs/address" },
+        "width": { "enum": [1, 2, 4] },
+        "type": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "pointerCensus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_address", "entry_stride", "maximum_slots", "count", "rebuild_function", "lifecycle", "claim"],
+      "properties": {
+        "base_address": { "$ref": "#/$defs/address" },
+        "entry_stride": { "const": 4 },
+        "maximum_slots": { "type": "integer", "minimum": 1 },
+        "count": { "$ref": "#/$defs/count" },
+        "rebuild_function": { "$ref": "#/$defs/address" },
+        "lifecycle": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "linkedListHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "owner", "claim"],
+      "properties": {
+        "address": { "$ref": "#/$defs/address" },
+        "owner": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "actorRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allocation", "contiguous_stride", "bounded_read_size", "alignment", "claim"],
+      "properties": {
+        "allocation": { "type": "string" },
+        "contiguous_stride": { "type": "null" },
+        "bounded_read_size": { "type": "integer", "minimum": 1 },
+        "alignment": { "type": "integer", "minimum": 1 },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "actorPool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage_kind", "pointer_census", "linked_list_head", "actor_record", "initializers", "updaters", "teardown", "unresolved"],
+      "properties": {
+        "storage_kind": { "const": "linked_nodes_with_pointer_census" },
+        "pointer_census": { "$ref": "#/$defs/pointerCensus" },
+        "linked_list_head": { "$ref": "#/$defs/linkedListHead" },
+        "actor_record": { "$ref": "#/$defs/actorRecord" },
+        "initializers": { "type": "array", "items": { "$ref": "#/$defs/address" } },
+        "updaters": { "type": "array", "items": { "$ref": "#/$defs/address" } },
+        "teardown": { "type": "array", "items": { "$ref": "#/$defs/address" } },
+        "unresolved": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "actorField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "offset", "width", "type", "signed", "representation", "observation", "correlation_value", "owner", "claim"],
+      "properties": {
+        "id": { "type": "string" },
+        "offset": { "type": "integer", "minimum": 0 },
+        "width": { "enum": [1, 2, 4] },
+        "type": { "type": "string" },
+        "signed": { "type": "boolean" },
+        "representation": { "type": "string" },
+        "observation": { "enum": ["safe", "conditional", "unsafe"] },
+        "correlation_value": { "enum": ["strong", "supporting", "weak", "unsafe"] },
+        "owner": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "safetyBounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["main_ram_start", "main_ram_end_exclusive", "maximum_read_bytes", "maximum_poll_hz", "mixed_epoch_policy"],
+      "properties": {
+        "main_ram_start": { "$ref": "#/$defs/address" },
+        "main_ram_end_exclusive": { "$ref": "#/$defs/address" },
+        "maximum_read_bytes": { "type": "integer", "minimum": 1 },
+        "maximum_poll_hz": { "type": "number", "exclusiveMinimum": 0 },
+        "mixed_epoch_policy": { "const": "discard" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "repository", "revision", "path", "symbol_or_function", "role"],
+      "properties": {
+        "id": { "type": "string" },
+        "repository": { "type": "string" },
+        "revision": { "type": "string" },
+        "path": { "type": "string" },
+        "symbol_or_function": { "type": "string" },
+        "role": { "type": "string" }
+      }
+    }
+  }
+}
