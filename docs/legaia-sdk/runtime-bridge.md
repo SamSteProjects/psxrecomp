@@ -154,3 +154,13 @@ These require evidence from symbol maps, code, bounded RAM observations and trac
 - Native and oracle schemas stay parallel where both implement a command.
 - Bounds, malformed JSON, disconnect and slow-client behavior are tested.
 - A metadata-only Legaia test uses synthetic RAM/layout fixtures; disc-gated live tests require `LEGAIA_DISC_BIN` and skip cleanly.
+
+## Runtime-layout research result
+
+The first revisioned profile now lives at `integrations/legaia/layouts/scus94254-na-field-v1.json`; see `runtime-layout-research.md` and `runtime-layout-profile.md`.
+
+The research changes the proposed actor read from a contiguous table read to a bounded pointer-census read. Retail field actors are linked, individually allocated nodes. Field overlay 0897 rebuilds a filtered, 32-pointer collision census each frame; its four-byte entries are not actor records and its indices are not identity. A future observer should read the 128-byte census, validate each pointer, then read only the documented `0x9C`-byte node prefix.
+
+Existing `read_ram`, `frame` and frame-ring support are sufficient for synthetic validation and bounded manual research. They are not sufficient for a fail-closed product observer because the native server does not advertise protocol version, executable identity or a canonical active-overlay identity/hash. `protocol_info` and `overlay_identity` are therefore required before live observation. `read_regions` remains strongly recommended to stamp the scene signals, census and node prefixes with one frame boundary; without it, the client must bracket reads and discard any mixed epoch.
+
+The checked-in profile intentionally refuses live selection while overlay 0897's canonical live hash is unresolved. No Legaia-specific command or runtime hook has been added.
