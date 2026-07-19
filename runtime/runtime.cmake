@@ -1583,14 +1583,12 @@ function(psxrecomp_add_runtime_target target)
             target_link_options(${target} PRIVATE -static -static-libgcc -static-libstdc++)
         endif()
     elseif(MSVC)
-        # MSVC's /std:c11 mode still reports standard atomics unavailable
-        # unless this opt-in is supplied. The runtime's audio trace uses
-        # <stdatomic.h>, so enable the matching compiler support for its C TU.
-        # A target-wide generator expression is not emitted by Visual Studio
-        # project generators, hence the explicit source-file property.
+        target_compile_definitions(${target} PRIVATE NOMINMAX)
+        # Enable MSVC C atomics for the audio trace translation unit.
         set_source_files_properties(
             ${PSXRECOMP_ROOT}/runtime/src/audio_trace.c
             PROPERTIES COMPILE_OPTIONS "/experimental:c11atomics")
+        target_compile_options(${target} PRIVATE /experimental:c11atomics)
         target_compile_options(${target} PRIVATE /GS- /guard:cf-)
         # Visual Studio project files cannot represent language-specific target
         # options on a mixed C/C++ target. Scope the experimental MSVC atomics
