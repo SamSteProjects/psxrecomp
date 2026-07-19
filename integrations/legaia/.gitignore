@@ -1,0 +1,14 @@
+# User-supplied or disc-derived material must remain local.
+/cache/
+/generated/
+/imports/
+/local/
+/output/
+/runtime/
+*.bin
+*.cue
+*.img
+*.iso
+imported-*.json
+__pycache__/
+*.py[cod]
