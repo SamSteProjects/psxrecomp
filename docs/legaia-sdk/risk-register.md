@@ -4,23 +4,23 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 
 | Risk | L | I | Mitigation / evidence gate | Owner |
 |---|---:|---:|---|---|
-| C/C++/Rust integration complexity | M | H | Start with subprocess JSON + TCP; defer FFI; pin schemas/tool versions | integration |
-| CMake/Cargo build coupling | M | H | Independent builds/releases; PSX runtime has no Cargo requirement | integration |
+| C/C++/Rust integration complexity | M | H | Keep shipped SDK code on the PSXRecomp side; use Andrew's Rust implementation as reference/parity oracle, not a runtime dependency | integration |
+| CMake/Cargo build coupling | L | H | No Cargo/submodule requirement in the shipped PSXRecomp SDK; pin reference revisions in provenance | integration |
 | Runtime vs clean-room disagreement | H | H | Preserve both observations as claims; PSXRecomp decides retail behavior, traces locate first divergence | provenance/runtime |
 | Scene-specific overlays | H | H | Scope symbols/layouts to overlay digest/load generation; never address-only | runtime profile |
 | Reused RAM addresses | H | H | Session + frame interval + scene/overlay epoch in every live locator | provenance |
 | Actor slot reuse | H | H | Occupancy generations and discriminators; expire correlation on replacement | bridge |
 | Dynamically allocated actors | H | H | Enumerate runtime candidates and allocation traces; do not assume MAN order | bridge |
 | Indirect script dispatch | H | H | Function/read/write traces and explicit unknown claims; no proximity inference | semantics/runtime |
-| Unresolved story flags | H | M | Retain bank/id/site/clean/alias evidence; contradictions allowed | semantic provider |
-| Dialogue IDs depend on scene context | H | H | Include scene/carrier/MES container in identity; require explicit control/data-flow | semantic provider |
+| Unresolved story flags | H | M | Retain bank/id/site/clean/alias evidence; contradictions allowed | Legaia importer |
+| Dialogue IDs depend on scene context | H | H | Include scene/carrier/MES container in identity; require explicit control/data-flow | Legaia importer |
 | Static decoder desync through text/data | H | H | Carry `clean`/text-alias status, independent byte scans and runtime validation | provenance |
 | Temporary vs authored state confusion | M | H | Five state layers in schema; live is never serialized as authored | project model |
 | Runtime timing sensitivity | M | H | Pause/safe-point/batched reads; observer-stall telemetry; no unbounded requests | bridge/runtime |
 | Live edits overwritten by game | H | M | No writes in first slice; later transactions declare reapply/rollback policy | preview |
 | Unsafe memory writes | M | H | Default read-only, profile/range allowlists, captured originals and explicit consent | preview |
 | Fixed PS1 actor/script/resource limits | H | H | Target-specific preflight and capacity reports before authoring/export | build |
-| Archive size restrictions | H | H | Use proven packer/relayout constraints; fail with report, never truncate | build/provider |
+| Archive size restrictions | H | H | Adapt proven packer/relayout constraints with attribution; fail with report, never truncate | build/importer |
 | VRAM constraints/palette collisions | H | H | Reuse targeted VRAM model and compare live VRAM; budget validator | build/render |
 | Disc rebuild/ECC/sector constraints | H | H | Reuse `legaia-iso` sector-aware writer and PPF; preserve original; verify output | export |
 | Proprietary data committed | M | H | Ignore rules before extraction, metadata allowlist/scanner, disc-gated tests | repository |
@@ -31,7 +31,7 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Clean-room contamination | M | H | No generated/decompiled MIPS-to-C in Rust repo; factual interfaces/provenance only | both upstreams |
 | Generic PSXRecomp coupled to Legaia | M | H | Isolated integration/profile; generic protocol extensions only; no title checks | PSXRecomp |
 | Clean-room runtime copied wholesale | L | H | Provider boundary and narrow DTOs; no vendoring in Phase 0 | integration |
-| Upstream API churn | H | M | Pin commit/provider version; schema adapter and contract tests | integration |
+| Upstream research changes | H | M | Record audited Andrew commit, periodically review upstream discoveries, and update local provenance/tests deliberately | integration |
 | Two-upstream maintenance burden | H | H | Unidirectional dependencies, explicit compatibility matrix and upgrade procedure | project governance |
 | Symbol collisions across overlays/revisions | H | H | Program + overlay digest + address + map revision as symbol key | provenance |
 | Region/disc revision mismatch | M | H | Exact disc/executable hashes and profile compatibility; refuse silent fallback | import/runtime |
@@ -53,8 +53,7 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 
 ## Decision triggers
 
-- Choose submodule vs external release only after the provider contract stabilizes and developer distribution needs are known.
-- Consider Cargo linkage only if subprocess overhead or deployment is measured to block the workflow.
+- Do not add a submodule, Cargo dependency or required Andrew subprocess unless a future, separately reviewed need overturns the current one-runtime design.
 - Change the generic TCP protocol only after existing commands cannot satisfy a concrete bounded observation.
 - Begin PS1 patch export only after project/authored state and capacity validation are stable.
 - Seek licensing advice before any combined binary/package or commercial use.

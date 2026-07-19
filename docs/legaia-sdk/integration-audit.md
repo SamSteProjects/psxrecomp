@@ -10,6 +10,8 @@ Audit snapshots:
 
 This is an implementation audit, not a README comparison. Paths below are repository-relative to the repository named in each section. Maturity labels mean: **production** (normal supported path), **validated** (tests or runtime parity evidence), **partial** (useful but explicitly incomplete), and **research** (evidence-gathering, not a stable API).
 
+In the matrix, “reuse” means reuse the documented knowledge, algorithms, evidence and—where license-compatible and appropriately attributed—selectively adapted implementation. It does **not** mean linking, shipping or requiring the legend-of-legaia-re repository or clean-room runtime.
+
 ## Capability matrix
 
 | Capability | Existing implementation | Maturity | Integration decision | Missing or uncertain |
@@ -40,7 +42,7 @@ This is an implementation audit, not a README comparison. Paths below are reposi
 | Overlay identification | `overlay_dump`, `overlay_loader_status`, `overlay_candidates`, capture/native rings | validated diagnostics | Wrap generic data | No single stable `current_overlay` response/capability contract |
 | Overlay capture | `runtime/src/overlay_capture.c`, `overlay_loader.c`; `tools/compile_overlays.py`; `overlay_capture_dump` | validated | Keep independent; use only hashes/ranges/metadata in SDK | Safe metadata-only export distinct from proprietary capture bytes |
 | Symbol maps/function naming | PSXRecomp generated `func_XXXXXXXX` and audit config; Legaia RE `ghidra/scripts/symbols.json`, `known_symbols.py`, `docs/reference/functions.md` | partial/research | Generate licensed metadata maps with provenance | Cross-revision/overlay symbol namespace and collisions |
-| Disc patching | Legaia RE `crates/iso/src/write.rs`, `relayout.rs`; `crates/rando/src/disc.rs`, `ppf.rs` | validated for supported edits | Remain a later subprocess/library export backend | General scene/NPC edits, archive/resource limits |
+| Disc patching | Legaia RE `crates/iso/src/write.rs`, `relayout.rs`; `crates/rando/src/disc.rs`, `ppf.rs` | validated for supported edits | Use as attributed reference for a later PSXRecomp-side export backend | General scene/NPC edits, archive/resource limits |
 | Native asset overrides | Clean-room engine supports override-oriented scene/config paths; PSXRecomp has no semantic asset override layer | partial/absent | Design later in Legaia integration | Override manifest and safe runtime hooks |
 | Live reload | Neither repository provides authored semantic live reload end-to-end | absent | New integration capability | Transaction protocol, invalidation, rollback |
 | Project serialization | Legaia RE has configs/saves, not SDK authored projects; PSXRecomp has `game.toml`, not editor state | absent | New integration-owned schema | Versioning, migrations, undo journal |
@@ -142,4 +144,4 @@ Existing commands needed by the first slice include `ping`, `get_registers`, `re
 
 ## Audit conclusion
 
-Use legend-of-legaia-re as an independently versioned semantic provider and PSXRecomp as the independently versioned live execution provider. The SDK integration owns only stable IDs, typed claims/provenance, authored state, correlation and orchestration. Start with a subprocess/JSON semantic import boundary and TCP runtime boundary; defer a Cargo dependency, submodule, or C ABI until the read-only contract is validated.
+Build the importer, SDK model, editor services and live correlation inside PSXRecomp's isolated `integrations/legaia/` layer, around the running recompiled engine. Use the pinned legend-of-legaia-re revision as a development reference and parity oracle for parsers, viewers, semantics and evidence; selectively adapt only what the SDK needs with attribution. Do not add a submodule, Cargo dependency, required subprocess or second shipped runtime. Use PSXRecomp's TCP protocol as the live boundary.

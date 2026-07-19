@@ -31,7 +31,7 @@ sem:v1:<disc-family>:<entity-kind>:<canonical-source-path>
 
 | Layer | Meaning | Mutable | Source of truth |
 |---|---|---:|---|
-| `imported` | Deterministic facts decoded from a particular disc snapshot | no | user disc + provider version |
+| `imported` | Deterministic facts decoded from a particular disc snapshot | no | user disc + PSXRecomp importer version |
 | `derived` | Recomputable semantic interpretations/claims | replaceable | evidence graph + algorithms |
 | `authored` | User intent and edits | yes | SDK project |
 | `live` | Timestamped PSXRecomp observations | ephemeral | runtime session |
@@ -179,4 +179,4 @@ Claims are append-only within an import snapshot. A validation operation can mar
 3. Every raw relationship identifies disc, container and byte coordinate space.
 4. Every live relationship includes session, frame/interval and scene/overlay epoch.
 5. An authored property may cite an imported source but cannot mutate or masquerade as it.
-6. Reimporting the same disc with the same provider version yields identical structural IDs and imported digests.
+6. Reimporting the same disc with the same importer version yields identical structural IDs and imported digests; the manifest also records the Andrew reference revision used to justify adapted semantics.
