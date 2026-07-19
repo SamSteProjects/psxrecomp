@@ -34,6 +34,7 @@ extern "C" void psx_event_step_conservative_env_init(void);
 #include "gpu_vk_renderer.h"
 #include "frame_pacing.h"
 #include "latency_ring.h"
+#include "psx_cycles.h"
 #include "sio.h"
 #include "psx_netplay.h"
 #include "psx_lobby_client.h"
@@ -87,6 +88,9 @@ extern "C" void psx_event_step_conservative_env_init(void);
 #endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <commdlg.h>
 #endif
@@ -4242,9 +4246,16 @@ namespace {
 #endif
 
 int main(int argc, char** argv) {
-    /* Force line-buffered output so messages appear even if killed. */
+    /* The Windows UCRT rejects _IOLBF with a null, zero-sized buffer through
+     * its invalid-parameter fail-fast path. Unbuffered streams provide the
+     * same startup-diagnostic guarantee there; POSIX keeps line buffering. */
+#ifdef _WIN32
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+#else
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
     std::setvbuf(stderr, nullptr, _IOLBF, 0);
+#endif
     std::fprintf(stderr, "psxrecomp: main() entered\n");
     std::fflush(stderr);
 
@@ -4480,7 +4491,6 @@ int main(int argc, char** argv) {
                     "psxrecomp: turbo_audio_sink enabled (opt-in)\n");
             }
             {
-                extern int g_idle_skip_enabled;
                 const char *idle_env = std::getenv("PSX_IDLE_SKIP");
                 g_idle_skip_enabled = idle_env
                     ? (idle_env[0] == '1' ? 1 : 0)
