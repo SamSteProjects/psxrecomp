@@ -131,8 +131,9 @@ const SAMPLE_IMPORT: ImportDocument = {
   },
   actors: [
     makeSampleActor(1, 448, 704, 4, "scene_tmd", "confirmed"),
-    makeSampleActor(2, 960, 576, 11, "scene_tmd", "unknown"),
+    makeSampleActor(2, 960, 576, 11, "scene_tmd", "confirmed"),
     makeSampleActor(3, 704, 1088, 241, "global_special", "confirmed"),
+    makeSampleActor(4, 1152, 960, 254, "global_special", "unknown"),
   ],
   assets: {
     models: [makeSampleModelAsset(4, "scene_tmd"), makeSampleModelAsset(11, "scene_tmd"), makeSampleModelAsset(241, "global_special")],
@@ -187,6 +188,8 @@ function makeSampleActor(
   pool: string,
   modelAssetConfidence: Confidence,
 ): Actor {
+  const modelResolved = modelAssetConfidence !== "unknown";
+  const assetId = modelResolved ? modelAssetId(modelIndex, pool) : null;
   const source = {
     iso_file: "PROT.DAT",
     prot_entry_index: 3,
@@ -212,13 +215,13 @@ function makeSampleActor(
       placement_tile: { x: Math.floor(x / 128), z: Math.floor(z / 128) },
     },
     model_reference: {
-      source_entry: pool === "global_special" ? 874 : 4,
+      source_entry: modelResolved ? (pool === "global_special" ? 874 : 4) : null,
       model_index: modelIndex,
       normalized_pool_index: pool === "global_special" ? modelIndex - 0xf0 : modelIndex,
       model_pool: pool,
-      asset_semantic_id: modelAssetId(modelIndex, pool),
-      referenced_asset_record: modelAssetId(modelIndex, pool),
-      resolution_status: "resolved",
+      asset_semantic_id: assetId,
+      referenced_asset_record: assetId,
+      resolution_status: modelResolved ? "resolved" : "pool_index_out_of_bounds",
     },
     placement_fields: { animation_id: index % 2, local_count: index - 1 },
     claims: [
@@ -243,14 +246,17 @@ function makeSampleActor(
       ),
       sampleClaim(
         "model_reference.referenced_asset_record",
-        modelAssetId(modelIndex, pool),
+        assetId,
         modelAssetConfidence,
-        "Synthetic preview claim for structural asset identity rendering.",
+        modelResolved
+          ? "Synthetic preview claim for structural asset identity rendering."
+          : "No source-backed pool record exists for this synthetic selector.",
       ),
     ],
     unresolved: [
       "imported_transform.position.y",
       "imported_transform.rotation",
+      ...(!modelResolved ? ["model_reference.asset_semantic_id"] : []),
     ],
   };
 }

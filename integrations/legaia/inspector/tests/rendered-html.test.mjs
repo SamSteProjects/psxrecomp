@@ -36,6 +36,8 @@ test("keeps imported metadata local and the surface read-only", async () => {
   assert.match(page, /candidate\.schema_version === "legaia\.scene-import\.v2"/);
   assert.match(page, /Asset semantic ID/);
   assert.match(page, /Asset source span/);
+  assert.match(page, /pool_index_out_of_bounds/);
+  assert.match(page, /model_reference\.asset_semantic_id/);
   assert.match(page, /scene\?\.name === "town01"/);
   assert.doesNotMatch(page, /\bfetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|WebSocket/);
   assert.doesNotMatch(page, /write_ram|4370|contentEditable/i);

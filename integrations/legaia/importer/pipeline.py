@@ -68,6 +68,7 @@ def _model_source_locator(disc_digest: str, scene: str, record: Any) -> dict[str
         "prot_entry_index": record.entry_index,
         "prot_entry_name": scene if record.pool == "scene_tmd" else "befect_data",
         "record_kind": record.source_kind,
+        "record_index": record.pool_index,
         "byte_offset": record.byte_offset,
         "byte_length": record.byte_length,
         "byte_coordinate_space": (
@@ -119,6 +120,22 @@ def _project_model_assets(
             "source_record": source_record,
             "claims": normalize_claims(
                 [
+                    claim(
+                        "asset_kind",
+                        "tmd_model",
+                        "confirmed",
+                        evidence,
+                        source_record,
+                        "The bounded record passes the Legaia TMD structural parser; no model bytes are emitted.",
+                    ),
+                    claim(
+                        "asset_scope",
+                        "scene" if record.pool == "scene_tmd" else "global",
+                        "confirmed",
+                        evidence,
+                        source_record,
+                        "Scope follows the independently constructed scene-local or PROT 874 global pool.",
+                    ),
                     claim(
                         "semantic_id",
                         semantic_id,
@@ -270,6 +287,22 @@ def project_metadata(
                 ),
                 source_record,
                 "The pool selector is known; this slice intentionally does not export or decode TMD assets.",
+            ),
+            claim(
+                "model_reference.asset_semantic_id",
+                asset_semantic_id,
+                "confirmed" if asset is not None else "unknown",
+                _evidence(
+                    "structural_resolution",
+                    "crates/web-viewer/src/field_npc.rs::build_npc_catalog_impl",
+                    "placement pool/index resolves to the corresponding structurally enumerated model slot",
+                ),
+                source_record,
+                (
+                    "Stable indexed asset identity resolved without embedding the source record or TMD bytes."
+                    if asset is not None
+                    else "No structurally enumerated model slot exists for this selector."
+                ),
             ),
             claim(
                 "model_reference.referenced_asset_record",

@@ -41,13 +41,14 @@
     "modelSourceRecord": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["disc", "iso_file", "prot_entry_index", "prot_entry_name", "record_kind", "byte_offset", "byte_length", "byte_coordinate_space", "containing_size", "object_count"],
+      "required": ["disc", "iso_file", "prot_entry_index", "prot_entry_name", "record_kind", "record_index", "byte_offset", "byte_length", "byte_coordinate_space", "containing_size", "object_count"],
       "properties": {
         "disc": {"type": "object"},
         "iso_file": {"const": "PROT.DAT"},
         "prot_entry_index": {"type": "integer", "minimum": 0},
         "prot_entry_name": {"type": "string"},
         "record_kind": {"enum": ["raw_prot_entry", "decoded_lzs_section", "decoded_tmd_pack_slot"]},
+        "record_index": {"type": "integer", "minimum": 0},
         "byte_offset": {"type": "integer", "minimum": 0},
         "byte_length": {"type": "integer", "minimum": 1},
         "byte_coordinate_space": {"enum": ["prot_entry", "decoded_lzs_section"]},
