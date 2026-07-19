@@ -32,7 +32,7 @@ strings), so every server command is reachable, e.g.
 
 ## Command inventory
 
-### Observer identity commands (protocol 1.1)
+### Observer identity commands (protocol 1.2)
 
 Capability negotiation is authoritative; server kind is not a substitute for
 checking `capabilities`.
@@ -41,6 +41,7 @@ checking `capabilities`.
 |---|---:|---:|---:|---|
 | `protocol_info` | full | full | full | Protocol name/version, server kind, sorted capabilities and hard limits |
 | `runtime_identity` | full | unsupported | unsupported | Safe runtime, BIOS and canonical main-executable identities; no paths or bytes |
+| `executable_catalog` | full | unsupported | unsupported | Token-bound pages over executable images, structural ranges, or registrations |
 | `executable_regions` | full | unsupported | unsupported | Paged registrations with source/live identities, watched generations and conservative native ownership |
 | `read_regions` | full | partial | partial | Bounded ordered main-RAM reads; native includes frame and executable-state stamps, oracles include frame stamps |
 
@@ -50,9 +51,18 @@ but omits PSXRecomp registration ownership and watched generations. See
 `docs/debug-protocol-versioning.md`,
 `docs/executable-identity.md`, and `docs/read-regions-command.md`.
 
-CLI mappings are `protocol-info`, `runtime-identity`, `executable-regions`, and
+CLI mappings are `protocol-info`, `runtime-identity`, `executable-catalog`, `executable-regions`, and
 `read-regions key=addr:len [...]`. The executable-region view prints a compact
 summary followed by the full JSON response.
+
+`executable-catalog [images|ranges|registrations] [limit]` retrieves every
+page, reconnecting for the native server's one-command-per-connection contract.
+The native maximum is eight records. Continuations carry the first page's
+catalog token; catalog changes fail closed. Ownership-token changes are
+reported separately and do not permit records from different catalog revisions
+to be combined. See `docs/executable-image-model.md`,
+`docs/executable-catalog-pagination.md`, and
+`docs/executable-ownership-diagnostics.md`.
 
 Columns: **N** = native, **D** = DuckStation oracle.
 

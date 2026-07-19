@@ -113,28 +113,35 @@ current generation validation, enabled native execution, and applicable
 dispatch guards. Unknown or mixed validity is reported conservatively and must
 not be promoted by clients.
 
+Protocol 1.2 adds `executable_catalog`, which separates loaded/captured image
+groups, structural ranges, and dispatch registrations. Image-level source
+identity is explicitly marked non-comparable when it covers a different byte
+domain than child registrations. Exact registration source CRC,
+registration-time validated identity, and current exact-range SHA-256 remain
+separate. See `executable-image-model.md` and
+`executable-ownership-diagnostics.md`.
+
 ## Executable-state token
 
-The lightweight state token is SHA-256 over the domain
-`psxrecomp-exec-state-v1`, the complete ordered page-generation array, main
-source identity/range, and overlay registration-state digest. It changes on
-watched executable writes, registration changes, blacklist/ownership changes,
-or native enable-state changes. It is process-lifetime scoped and is not a
-separate counter. SHA-256 collision resistance is assumed; no persistence or
-cross-process ordering is promised.
+The lightweight ownership token is SHA-256 over the domain
+`psxrecomp-exec-ownership-v2`, the watched generations of only pages
+intersecting exact executable registrations, the main-text divergence bitmap,
+and loader registration state. It changes on relevant executable writes,
+registration changes, blacklist/ownership changes, or native enable-state
+changes. It excludes unrelated watched data pages and is not a separately
+maintained counter. It is process-lifetime scoped; SHA-256 collision resistance
+is assumed and no cross-process ordering is promised.
 
-## Retail acceptance limitations
+## Retail acceptance result
 
-The 2026-07-19 native acceptance found two constraints not covered by the
-synthetic contract. First, the advertised 128-record page can exceed the
-65,536-byte response cap for ordinary static-overlay records; 16-record pages
-worked, but clients must currently use a conservative page size and treat
-`invalid executable registration` as ambiguous until the server distinguishes
-capacity from invalid metadata. Second, the state token covers the watched
-pages of the whole canonical main image. Mutable data inside that image can
-advance generations continuously during play, so token equality across a
-multi-request census is not currently guaranteed.
+Protocol 1.2 resolves the response-cap and catalog-revision defects: the
+advertised maximum is eight, serialization has a separate 60,000-byte record
+budget, and continuations are bound to a structural catalog token. A complete
+town01 census was retrieved without overflow. Ownership can still change
+between pages when writes intersect registered executable ranges; this is
+reported by the separate ownership token and is never hidden by the pager.
 
-Neither limitation permits a client to ignore a token mismatch or promote a
-non-matching registration to native ownership. See
+The renewed field-overlay pass still found no authoritative loaded-image event
+or active source-matching registration for the researched overlay 0897
+identity. The layout profile therefore remains fail closed. See
 `docs/legaia-sdk/field-overlay-0897-identity.md`.

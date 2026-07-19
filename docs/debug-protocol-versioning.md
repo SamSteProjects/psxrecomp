@@ -6,7 +6,7 @@ Identity support is an additive protocol revision:
 
 - name: `psxrecomp-debug`
 - major: 1
-- minor: 1
+- minor: 2
 
 A major change may remove or reinterpret fields and is incompatible unless a
 client explicitly supports it. A minor change may add commands, capabilities,
@@ -22,6 +22,7 @@ limits, and the current frame. Capability names are stable lowercase tokens.
 
 The native server advertises:
 
+- `executable_catalog`
 - `executable_regions`
 - `read_ram`
 - `read_regions`
@@ -49,7 +50,8 @@ The v1.1 native limits are:
 | One `read_regions` entry | 4,096 bytes |
 | Aggregate `read_regions` payload | 16,384 bytes |
 | `read_regions` response | 65,536 bytes |
-| `executable_regions` records per page | 64 default, 128 maximum |
+| `executable_regions` records per page | 8 default, 8 maximum |
+| `executable_catalog` records per page | 8 default, 8 maximum |
 
 An overlong request, malformed range, overflow, or response-budget violation
 fails closed with the existing `{id,ok:false,error}` envelope. Unsupported
@@ -66,5 +68,6 @@ revision, not a binary path. Program and executable identities contain hashes
 and guest ranges, never executable bytes.
 
 Build and acceptance evidence for this revision is recorded in
-`docs/debug-observer-validation.md`. Source compilation and synthetic validation
-passed; fresh live wire acceptance remains explicitly unresolved there.
+`docs/debug-observer-validation.md`. Protocol 1.2 adds the bounded, token-bound
+catalog described in `docs/executable-catalog-pagination.md`; older clients and
+commands remain valid.
