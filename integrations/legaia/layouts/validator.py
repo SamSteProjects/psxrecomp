@@ -94,10 +94,15 @@ def validate_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
         _fail("$.executable_identity.sha256 must be a lowercase SHA-256")
 
     protocol = _need(result, "supported_runtime_protocol", "$")
-    if protocol.get("name") != "psxrecomp-json-tcp":
+    if protocol.get("name") != "psxrecomp-debug":
         _fail("$.supported_runtime_protocol.name is unsupported")
-    if not isinstance(protocol.get("minimum_version"), int) or protocol["minimum_version"] < 1:
-        _fail("$.supported_runtime_protocol.minimum_version must be positive")
+    if protocol.get("minimum_major") != 1:
+        _fail("$.supported_runtime_protocol.minimum_major must equal 1")
+    if not isinstance(protocol.get("minimum_minor"), int) or protocol["minimum_minor"] < 1:
+        _fail("$.supported_runtime_protocol.minimum_minor must be positive")
+    capabilities = protocol.get("required_capabilities")
+    if not isinstance(capabilities, list) or not capabilities or not all(isinstance(item, str) for item in capabilities):
+        _fail("$.supported_runtime_protocol.required_capabilities must be nonempty strings")
 
     bounds = _need(result, "safety_bounds", "$")
     ram_start = _address(_need(bounds, "main_ram_start", "$.safety_bounds"), "$.safety_bounds.main_ram_start")
@@ -223,12 +228,6 @@ def profile_identity(profile: Mapping[str, Any]) -> str:
     return validate_profile(profile)["profile_id"]
 
 
-def _parse_version(value: Any, path: str) -> int:
-    if not isinstance(value, int) or value < 1:
-        _fail(f"{path} must be a positive integer")
-    return value
-
-
 def validate_observation_context(profile: Mapping[str, Any], context: Mapping[str, Any]) -> dict[str, int]:
     """Select a profile and validate one already-collected snapshot context.
 
@@ -243,8 +242,18 @@ def validate_observation_context(profile: Mapping[str, Any], context: Mapping[st
     wanted = p["supported_runtime_protocol"]
     if protocol.get("name") != wanted["name"]:
         _fail("runtime protocol name does not match profile")
-    if _parse_version(protocol.get("version"), "$.runtime_protocol.version") < wanted["minimum_version"]:
-        _fail("runtime protocol version is too old")
+    major = protocol.get("major")
+    minor = protocol.get("minor")
+    if major != wanted["minimum_major"]:
+        _fail("runtime protocol major is incompatible")
+    if not isinstance(minor, int) or minor < wanted["minimum_minor"]:
+        _fail("runtime protocol minor is too old")
+    available = protocol.get("capabilities")
+    if not isinstance(available, list):
+        _fail("runtime protocol capabilities are missing")
+    missing = sorted(set(wanted["required_capabilities"]) - set(available))
+    if missing:
+        _fail(f"runtime protocol capabilities are missing: {', '.join(missing)}")
 
     observed_overlays = {item.get("id"): item for item in context.get("overlays", [])}
     for requirement in p["overlay_requirements"]:
