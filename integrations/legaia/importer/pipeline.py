@@ -14,17 +14,20 @@ from .core import (
     claim,
     decompress_lzs,
     find_scene_bundle,
+    global_special_tmd_pool,
     normalize_claims,
     parse_cdname,
     parse_man,
     scene_range,
+    scene_tmd_pool,
     sha256_file,
     stable_actor_id,
+    stable_model_asset_id,
     validate_metadata_only,
 )
 
-SCHEMA_VERSION = "legaia.scene-import.v1"
-IMPORTER_VERSION = "0.1.0"
+SCHEMA_VERSION = "legaia.scene-import.v2"
+IMPORTER_VERSION = "0.2.0"
 REFERENCE_REPOSITORY = "AndrewAltimit/legend-of-legaia-re"
 REFERENCE_COMMIT = "d6e64c68ede25813d35db20980da82a1a025549b"
 SUPPORTED_SCENE = "town01"
@@ -58,6 +61,111 @@ def _source_locator(
     }
 
 
+def _model_source_locator(disc_digest: str, scene: str, record: Any) -> dict[str, Any]:
+    source = {
+        "disc": {"sha256": disc_digest, "serial": "SCUS-94254"},
+        "iso_file": "PROT.DAT",
+        "prot_entry_index": record.entry_index,
+        "prot_entry_name": scene if record.pool == "scene_tmd" else "befect_data",
+        "record_kind": record.source_kind,
+        "byte_offset": record.byte_offset,
+        "byte_length": record.byte_length,
+        "byte_coordinate_space": (
+            "prot_entry" if record.source_kind == "raw_prot_entry" else "decoded_lzs_section"
+        ),
+        "containing_size": record.containing_size,
+        "object_count": record.object_count,
+    }
+    if record.container_section is not None:
+        source["container_section"] = record.container_section
+    if record.stream_offset is not None:
+        source["compressed_stream_offset"] = record.stream_offset
+        source["compressed_stream_coordinate_space"] = "prot_entry"
+    if record.pack_slot is not None:
+        source["pack_slot"] = record.pack_slot
+    if record.tmd_byte_length is not None:
+        source["tmd_byte_length"] = record.tmd_byte_length
+    return source
+
+
+def _project_model_assets(
+    disc_digest: str,
+    scene: str,
+    scene_models: Any,
+    global_models: Any,
+) -> tuple[list[dict[str, Any]], dict[tuple[str, int], dict[str, Any]]]:
+    assets = []
+    lookup = {}
+    for record in (*scene_models, *global_models):
+        semantic_id = stable_model_asset_id(scene, record.pool, record.pool_index)
+        encoded_index = record.pool_index if record.pool == "scene_tmd" else 0xF0 + record.pool_index
+        source_record = _model_source_locator(disc_digest, scene, record)
+        evidence = _evidence(
+            "parser_span",
+            (
+                "crates/engine-core/src/scene_resources.rs::SceneResources::build_targeted_with_options"
+                if record.pool == "scene_tmd"
+                else "crates/asset/src/character_pack.rs::parse"
+            ),
+            "bounded TMD record in the structurally ordered model pool",
+        )
+        model = {
+            "semantic_id": semantic_id,
+            "asset_kind": "tmd_model",
+            "scope": "scene" if record.pool == "scene_tmd" else "global",
+            "model_pool": record.pool,
+            "encoded_model_index": encoded_index,
+            "normalized_pool_index": record.pool_index,
+            "source_record": source_record,
+            "claims": normalize_claims(
+                [
+                    claim(
+                        "semantic_id",
+                        semantic_id,
+                        "confirmed",
+                        evidence,
+                        source_record,
+                        "Identity derives from the structural pool and slot, never a character name.",
+                    ),
+                    claim(
+                        "source_record",
+                        source_record,
+                        "confirmed",
+                        evidence,
+                        source_record,
+                        "Offsets are explicitly scoped to raw or decoded coordinates and remain bounded.",
+                    ),
+                    claim(
+                        "model_pool_index",
+                        {
+                            "pool": record.pool,
+                            "encoded_index": encoded_index,
+                            "normalized_index": record.pool_index,
+                        },
+                        "confirmed",
+                        _evidence(
+                            "runtime_trace",
+                            "crates/web-viewer/src/field_npc.rs::build_npc_catalog_impl",
+                            "scene indices are direct; global-special indices normalize by subtracting 0xF0",
+                        ),
+                        source_record,
+                        "Pool-slot identity does not imply character or animation identity.",
+                    ),
+                ]
+            ),
+            "dependencies": [],
+            "aliases": [],
+            "unresolved": [
+                "character or object identity",
+                "animation and texture bindings",
+                "runtime pointer or mutable asset state",
+            ],
+        }
+        assets.append(model)
+        lookup[(record.pool, record.pool_index)] = model
+    return assets, lookup
+
+
 def project_metadata(
     *,
     disc_digest: str,
@@ -69,6 +177,8 @@ def project_metadata(
     descriptor_size: int,
     compressed_consumed: int,
     parsed_man: Any,
+    scene_models: Any,
+    global_models: Any,
 ) -> dict[str, Any]:
     bundle_ref = {
         "kind": "scene_asset_table",
@@ -80,6 +190,7 @@ def project_metadata(
         "compressed_bytes_consumed": compressed_consumed,
         "decoded_size": descriptor_size,
     }
+    model_assets, model_lookup = _project_model_assets(disc_digest, scene, scene_models, global_models)
     actors = []
     for actor in parsed_man.actors:
         source_record = _source_locator(
@@ -92,12 +203,18 @@ def project_metadata(
             descriptor_size,
         )
         special = actor.model_index >= 0xF0
+        model_pool = "global_special" if special else "scene_tmd"
+        normalized_index = actor.model_index - 0xF0 if special else actor.model_index
+        asset = model_lookup.get((model_pool, normalized_index))
+        asset_semantic_id = asset["semantic_id"] if asset is not None else None
         model_reference = {
-            "source_entry": bundle_entry,
+            "source_entry": asset["source_record"]["prot_entry_index"] if asset is not None else None,
             "model_index": actor.model_index,
-            "model_pool": "global_special" if special else "scene_tmd",
-            "referenced_asset_record": None,
-            "resolution_status": "pool_index_only",
+            "normalized_pool_index": normalized_index,
+            "model_pool": model_pool,
+            "asset_semantic_id": asset_semantic_id,
+            "referenced_asset_record": asset_semantic_id,
+            "resolution_status": "resolved" if asset is not None else "pool_index_out_of_bounds",
         }
         imported_transform = {
             "position": {"x": actor.world_x, "y": None, "z": actor.world_z},
@@ -156,15 +273,19 @@ def project_metadata(
             ),
             claim(
                 "model_reference.referenced_asset_record",
-                None,
-                "unknown",
+                asset_semantic_id,
+                "confirmed" if asset is not None else "unknown",
                 _evidence(
                     "negative_evidence",
                     "crates/web-viewer/src/field_npc.rs::build_npc_catalog_impl",
-                    "full resolution requires the separately built scene/global TMD pool",
+                    "actor selector resolves through the separately constructed scene/global TMD pool",
                 ),
                 source_record,
-                "Deferred until scene resource records have stable semantic asset identities.",
+                (
+                    "Reference is the stable structural asset ID; no TMD bytes are embedded."
+                    if asset is not None
+                    else "The placement selector is outside the structurally enumerated pool."
+                ),
             ),
             claim(
                 "placement_fields.animation_id",
@@ -202,7 +323,11 @@ def project_metadata(
                     "local_count": actor.local_count,
                 },
                 "claims": normalize_claims(claims),
-                "unresolved": ["imported_transform.position.y", "imported_transform.rotation", "model_reference.referenced_asset_record"],
+                "unresolved": [
+                    "imported_transform.position.y",
+                    "imported_transform.rotation",
+                    *([] if asset is not None else ["model_reference.asset_semantic_id"]),
+                ],
             }
         )
     output = {
@@ -224,11 +349,11 @@ def project_metadata(
             "man_partition_counts": list(parsed_man.partition_counts),
         },
         "actors": actors,
+        "assets": {"models": model_assets},
         "diagnostics": [],
         "unresolved": [
             "actor facing/rotation before script execution",
             "vertical placement coordinate",
-            "stable model asset-record identity",
             "interaction, dialogue, story flags, runtime slots, and live RAM correlation",
         ],
     }
@@ -268,6 +393,10 @@ def import_scene(disc: Path | str, scene: str = SUPPORTED_SCENE) -> dict[str, An
         parsed = parse_man(man_bytes, scene)
         if not parsed.actors:
             raise ImportError(f"{scene} MAN contains no actor placement records")
+        scene_models = scene_tmd_pool(archive, start, end)
+        global_models = global_special_tmd_pool(archive)
+        if not scene_models or not global_models:
+            raise ImportError(f"{scene} model pools did not enumerate structural assets")
         return project_metadata(
             disc_digest=digest,
             scene=scene,
@@ -278,6 +407,8 @@ def import_scene(disc: Path | str, scene: str = SUPPORTED_SCENE) -> dict[str, An
             descriptor_size=descriptor.size,
             compressed_consumed=consumed,
             parsed_man=parsed,
+            scene_models=scene_models,
+            global_models=global_models,
         )
 
 

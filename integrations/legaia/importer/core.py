@@ -39,6 +39,21 @@ def stable_actor_id(scene: str, partition: int, record_index: int) -> str:
     return f"scene://{scene}/actors/man-p{partition}/{record_index:04d}"
 
 
+def stable_model_asset_id(scene: str, pool: str, pool_index: int) -> str:
+    if not re.fullmatch(r"[a-z0-9_]+", scene):
+        raise ImportError(f"invalid structural scene name: {scene!r}")
+    if pool_index < 0:
+        raise ImportError("model pool index must be non-negative")
+    if pool == "scene_tmd":
+        return f"asset://{scene}/models/scene-tmd/{pool_index:04d}"
+    if pool == "global_special":
+        encoded = 0xF0 + pool_index
+        if encoded > 0xFF:
+            raise ImportError("global-special model pool index exceeds placement byte range")
+        return f"asset://legaia/models/global-special/{encoded:04x}"
+    raise ImportError(f"unsupported model pool: {pool}")
+
+
 CONFIDENCE_VALUES = {
     "confirmed",
     "strongly_inferred",
@@ -402,6 +417,29 @@ class SceneBundle:
     descriptors: tuple[Descriptor, ...]
 
 
+@dataclass(frozen=True)
+class LzsSection:
+    index: int
+    decoded_size: int
+    stream_offset: int
+
+
+@dataclass(frozen=True)
+class TmdRecord:
+    pool: str
+    pool_index: int
+    entry_index: int
+    source_kind: str
+    byte_offset: int
+    byte_length: int
+    containing_size: int
+    object_count: int
+    container_section: int | None = None
+    stream_offset: int | None = None
+    pack_slot: int | None = None
+    tmd_byte_length: int | None = None
+
+
 def parse_scene_table(data: bytes, entry_index: int, offset: int = 0) -> SceneBundle | None:
     if offset < 0 or offset + 8 > len(data):
         return None
@@ -480,6 +518,192 @@ def decompress_lzs(data: bytes, expected_size: int) -> tuple[bytes, int]:
                     break
         control >>= 1
     return bytes(output), source
+
+
+def parse_lzs_sections(data: bytes, *, maximum: int = 64) -> tuple[LzsSection, ...]:
+    """Parse the bounded `(decoded size, stream offset)` container table."""
+    if len(data) < 16:
+        raise ImportError("LZS container is shorter than its header")
+    sections: list[LzsSection] = []
+    last_offset = 0
+    for index in range(min(len(data) // 8 - 1, maximum)):
+        pair_offset = 8 + index * 8
+        decoded_size = _u32(data, pair_offset) & 0xFFFFFF
+        stream_offset = _u32(data, pair_offset + 4)
+        if decoded_size == 0 or stream_offset == 0:
+            break
+        if stream_offset >= len(data) or stream_offset < last_offset:
+            break
+        sections.append(LzsSection(index, decoded_size, stream_offset))
+        last_offset = stream_offset
+    if not sections:
+        raise ImportError("LZS container has no bounded sections")
+    return tuple(sections)
+
+
+def decode_lzs_sections(data: bytes) -> tuple[tuple[LzsSection, bytes, int], ...]:
+    sections = parse_lzs_sections(data)
+    decoded = []
+    for position, section in enumerate(sections):
+        stream_end = sections[position + 1].stream_offset if position + 1 < len(sections) else len(data)
+        body, consumed = decompress_lzs(data[section.stream_offset:stream_end], section.decoded_size)
+        if consumed > stream_end - section.stream_offset:
+            raise ImportError(f"LZS section {section.index} consumed beyond its encoded bounds")
+        decoded.append((section, body, consumed))
+    return tuple(decoded)
+
+
+TMD_MAGIC = 0x80000002
+TMD_HEADER_SIZE = 12
+TMD_OBJECT_SIZE = 28
+TMD_VECTOR_SIZE = 8
+
+
+def _tmd_extent(data: bytes, offset: int) -> tuple[int, int] | None:
+    """Return `(byte extent, object count)` for a structurally bounded TMD."""
+    if offset < 0 or offset + TMD_HEADER_SIZE > len(data) or _u32(data, offset) != TMD_MAGIC:
+        return None
+    object_count = _u32(data, offset + 8)
+    if object_count == 0 or object_count > 1024:
+        return None
+    table_end = TMD_HEADER_SIZE + object_count * TMD_OBJECT_SIZE
+    available = len(data) - offset
+    if table_end > available:
+        return None
+    extent = table_end
+    total_vertices = 0
+    for index in range(object_count):
+        base = offset + TMD_HEADER_SIZE + index * TMD_OBJECT_SIZE
+        vert_top, n_vert, normal_top, n_normal, prim_top = struct.unpack_from("<IIIII", data, base)
+        if n_vert > 1_000_000 or n_normal > 1_000_000:
+            return None
+        vert_start = TMD_HEADER_SIZE + vert_top
+        normal_start = TMD_HEADER_SIZE + normal_top
+        prim_start = TMD_HEADER_SIZE + prim_top
+        vert_end = vert_start + n_vert * TMD_VECTOR_SIZE
+        normal_end = normal_start + n_normal * TMD_VECTOR_SIZE
+        if vert_end > available or normal_end > available or prim_start > available:
+            return None
+        prim_end = min(
+            [candidate for count, candidate in ((n_vert, vert_start), (n_normal, normal_start)) if count]
+            or [available]
+        )
+        if prim_start > prim_end:
+            return None
+        extent = max(extent, vert_end, normal_end, prim_end)
+        total_vertices += n_vert
+    if total_vertices < 4:
+        return None
+    return extent, object_count
+
+
+def scan_tmds(data: bytes) -> tuple[tuple[int, int, int], ...]:
+    hits = []
+    for offset in range(0, max(len(data) - 3, 0), 4):
+        if _u32(data, offset) != TMD_MAGIC:
+            continue
+        parsed = _tmd_extent(data, offset)
+        if parsed is not None:
+            hits.append((offset, parsed[0], parsed[1]))
+    return tuple(hits)
+
+
+def is_scene_tmd_stream(data: bytes) -> bool:
+    if len(data) < 32 or _u32(data, 4) != TMD_MAGIC or _u32(data, 8) != 0:
+        return False
+    object_count = _u32(data, 12)
+    header = _u32(data, 0)
+    tmd_size = header & 0xFFFFFF
+    if header >> 24 or object_count == 0 or object_count > 64:
+        return False
+    if tmd_size < TMD_HEADER_SIZE + object_count * TMD_OBJECT_SIZE or tmd_size % 4:
+        return False
+    return 4 + tmd_size <= len(data) and _tmd_extent(data, 4) is not None
+
+
+def scene_tmd_pool(archive: ProtArchive, start: int, end: int) -> tuple[TmdRecord, ...]:
+    records: list[TmdRecord] = []
+    for entry_index in range(start, end):
+        try:
+            entry = archive.entry(entry_index)
+        except ImportError:
+            continue
+        raw = archive.read_entry(entry, extended=True)
+        if is_scene_tmd_stream(raw):
+            continue
+        for byte_offset, byte_length, object_count in scan_tmds(raw):
+            records.append(
+                TmdRecord("scene_tmd", len(records), entry_index, "raw_prot_entry", byte_offset, byte_length, len(raw), object_count)
+            )
+        try:
+            sections = decode_lzs_sections(raw)
+        except ImportError:
+            continue
+        for section, body, _consumed in sections:
+            for byte_offset, byte_length, object_count in scan_tmds(body):
+                records.append(
+                    TmdRecord(
+                        "scene_tmd",
+                        len(records),
+                        entry_index,
+                        "decoded_lzs_section",
+                        byte_offset,
+                        byte_length,
+                        len(body),
+                        object_count,
+                        container_section=section.index,
+                        stream_offset=section.stream_offset,
+                    )
+                )
+    return tuple(records)
+
+
+def _pack_ranges(data: bytes) -> tuple[tuple[int, int], ...]:
+    if len(data) < 4:
+        raise ImportError("model pack is shorter than its count")
+    count = _u32(data, 0)
+    if count > 65536 or 4 + count * 4 > len(data):
+        raise ImportError(f"model pack has invalid entry count {count}")
+    offsets = [_u32(data, 4 + index * 4) * 4 for index in range(count)]
+    if any(offset > len(data) for offset in offsets) or offsets != sorted(offsets):
+        raise ImportError("model pack offsets are out of bounds or non-monotonic")
+    ends = offsets[1:] + [len(data)]
+    return tuple(zip(offsets, ends))
+
+
+def global_special_tmd_pool(archive: ProtArchive) -> tuple[TmdRecord, ...]:
+    entry_index = 874
+    raw = archive.read_entry(archive.entry(entry_index), extended=True)
+    decoded_sections = decode_lzs_sections(raw)
+    if not decoded_sections or decoded_sections[0][0].index != 0:
+        raise ImportError("PROT entry 874 has no decoded global-special section 0")
+    section, body, _consumed = decoded_sections[0]
+    ranges = _pack_ranges(body)
+    if len(ranges) < 5:
+        raise ImportError(f"global-special TMD pack has {len(ranges)} entries; expected at least 5")
+    records = []
+    for slot, (start, end) in enumerate(ranges[:5]):
+        parsed = _tmd_extent(body[start:end], 0)
+        if parsed is None:
+            raise ImportError(f"global-special TMD pack slot {slot} is not structurally valid")
+        tmd_length, object_count = parsed
+        records.append(
+            TmdRecord(
+                "global_special",
+                slot,
+                entry_index,
+                "decoded_tmd_pack_slot",
+                start,
+                end - start,
+                len(body),
+                object_count,
+                container_section=section.index,
+                stream_offset=section.stream_offset,
+                pack_slot=slot,
+                tmd_byte_length=tmd_length,
+            )
+        )
+    return tuple(records)
 
 
 @dataclass(frozen=True)
