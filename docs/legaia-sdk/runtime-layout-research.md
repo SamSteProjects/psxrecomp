@@ -130,3 +130,9 @@ No evidence currently supports a runtime `man_record_index` for MAN NPC nodes. `
 The profile and bounds model are ready for a later observer implementation, but actual live actor observation is not yet safe with the current native capability surface because fail-closed overlay selection cannot be completed. A small, generic, separately approved protocol addition should expose protocol version, executable identity and canonical active-overlay identity/hash; an atomic-ish bounded `read_regions` or a frame token around reads is also strongly recommended.
 
 Once those generic capabilities exist, poll identity at no more than 10 Hz, read at most 4 KiB per request, normally read only the 128-byte pointer census plus validated `0x9C` prefixes, and check frame/epoch boundaries. Never poll full RAM. Actor correlation remains premature.
+
+## Validation summary
+
+The profile/schema/validator suite contains 19 synthetic tests and passes in full. The complete `integrations/legaia/tests` suite passes 36/36 with the supported user disc supplied through a command-scoped `LEGAIA_DISC_BIN`; no retail test is skipped. Python compilation, JSON Schema validation, deterministic serialization, `git diff --check` and the metadata/path scan pass. The canonical profile serialization is 17,645 bytes with SHA-256 `1024dccd56a8875ea1b4887e7b6548395f28440ba6339e8639db7081bfc18e19`.
+
+No generic runtime files, importer behavior or inspector behavior changed. No retail output, executable/overlay bytes, RAM captures, save states, user paths or Andrew checkout contents are tracked.
