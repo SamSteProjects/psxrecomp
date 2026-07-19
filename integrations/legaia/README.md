@@ -25,12 +25,15 @@ Implemented:
 - authored/imported/derived/live/generated project schema;
 - read-only vertical-slice and test plan;
 - risk register.
+- independent, read-only `town01` ISO/PROT/CDNAME/MAN metadata importer;
+- deterministic actor identities, source claims, imported X/Z transforms and model pool/index references;
+- synthetic unit coverage and an opt-in `LEGAIA_DISC_BIN` integration test;
+- pinned interpretation/attribution manifest and metadata JSON schema.
 
 Not implemented:
 
-- no PSXRecomp-side Legaia importer;
-- no SDK code or editor UI;
-- no scene or actor import in this repository;
+- no editor UI or inspection surface;
+- no geometry, script, dialogue or authored scene import;
 - no runtime correlation profile;
 - no TCP changes;
 - no RAM writes, live reload or overrides;
@@ -44,8 +47,10 @@ PSXRecomp is under PolyForm Noncommercial 1.0.0; legend-of-legaia-re declares `M
 
 ## Smallest proof of concept
 
-The smallest useful proof is a headless, read-only import of Rim Elm (`town01`) from a user disc using the existing Legaia RE path (`ProtIndex`, `Scene::load`, `build_field_scene`, `build_npc_catalog`). It should enumerate geometry and actors, select one NPC, assign a structural semantic ID, show source record/model/imported transform and only evidence-backed movement/interaction/flag/dialogue claims, then optionally compare that actor with a PSXRecomp runtime observation.
+The first proof is now a headless, read-only import of Rim Elm (`town01`) from a user disc. The independently implemented PSXRecomp-side path resolves ISO9660, PROT/CDNAME, the MAN-bearing scene bundle and actor-placement records, then emits deterministic metadata with structural IDs and evidence-backed claims. It does not import geometry, decode scripts or require Legaia RE at runtime.
 
-The exact next task is the schema plus metadata-only PSXRecomp-side Rim Elm importer spike. It will use Andrew's scene/NPC code and documentation as attributed reference material and a development parity oracle, without making Andrew's repository part of the shipped SDK. Generic runtime/editor changes remain a later boundary.
+Run it with `python integrations/legaia/tools/legaia_import.py --disc "C:\path\to\Legend of Legaia.bin" --scene town01 --output "C:\local-output\imported-town01.json"`. See `docs/legaia-sdk/town01-importer.md` for the schema, confidence model, tests, attribution and data-handling rules.
+
+The exact next task, after approval, is a read-only scene/actor inspection surface that consumes the importer metadata. Generic runtime changes and live editing remain outside that task.
 
 See `docs/legaia-sdk/` for the complete audit.
