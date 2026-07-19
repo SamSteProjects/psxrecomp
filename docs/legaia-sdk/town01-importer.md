@@ -92,4 +92,4 @@ Users must supply a legally obtained disc. Never commit disc images or sectors, 
 
 The importer intentionally leaves vertical position, initial facing, script-derived movement, stable model asset-record identity, interaction/dialogue/story relationships and runtime correlation unresolved. It performs no writes and cannot rebuild or patch a disc.
 
-After approval, the exact next task is: add a read-only scene/actor inspection surface that consumes this importer metadata, while still avoiding generic runtime changes and live editing.
+The approved follow-on read-only inspection surface now lives at `integrations/legaia/inspector`; see `town01-inspector.md`. The next separately approved slice is a read-only PSXRecomp observation bridge and revisioned Legaia layout profile, still without RAM writes or generic runtime title checks.
