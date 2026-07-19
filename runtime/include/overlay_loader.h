@@ -103,6 +103,30 @@ int      overlay_loader_lazy_manifest_count(void);
 int      overlay_loader_lazy_manifest_overflow(void);
 int      overlay_loader_dump_lazy_at(uint32_t addr, char *out, int cap);
 
+#define OVERLAY_EXEC_MAX_RANGES 16
+typedef struct {
+    uint32_t registration_id;
+    uint32_t entry;
+    uint32_t source_crc32;
+    uint32_t live_crc32;
+    uint32_t validated_generation_sum;
+    uint32_t watched_generation_sum;
+    uint32_t range_lo[OVERLAY_EXEC_MAX_RANGES];
+    uint32_t range_len[OVERLAY_EXEC_MAX_RANGES];
+    int range_count;
+    int kind;       /* 1=static overlay, 2=native DLL, 3=runtime compiled */
+    int state;      /* 0=valid, 1=invalid, 2=blacklisted */
+    int source_matches_live;
+    int native_registration_valid;
+    int active_owner;
+} OverlayExecutableRegion;
+
+/* Side-effect-free observer snapshot. Records are ordered by registration ID.
+ * A negative/too-large index fails closed. */
+int overlay_loader_executable_region_count(void);
+int overlay_loader_get_executable_region(int index, OverlayExecutableRegion *out);
+uint64_t overlay_loader_registration_state_token(void);
+
 #ifdef __cplusplus
 }
 #endif

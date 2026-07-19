@@ -111,11 +111,16 @@ static inline int overlay_cache_window_contains(uint32_t phys) {
 uint32_t dirty_ram_get_bitmap(void);
 uint32_t dirty_ram_get_bitmap_word(uint32_t word_index);
 uint32_t dirty_ram_get_bitmap_word_count(void);
+uint32_t overlay_watch_page_size(void);
+uint32_t overlay_watch_page_count(void);
+uint32_t overlay_watch_page_generation(uint32_t page_index);
 void     dirty_ram_mark_executable_range(uint32_t phys, uint32_t len);
 void     dirty_ram_register_text_image(uint32_t phys_lo, const uint8_t *bytes,
                                        uint32_t len);
 int      dirty_ram_text_native_ok(uint32_t phys);
 int      dirty_ram_text_image_registered(void);
+int      dirty_ram_text_identity(uint32_t *phys_lo, uint32_t *len,
+                                 uint8_t source_sha256[32]);
 /* Bless an intentional runtime data patch (e.g. text_xlate string/glyph tables)
  * into the text reference image so it is not mistaken for self-modifying code. */
 void     dirty_ram_text_bless(uint32_t phys, const uint8_t *bytes, uint32_t len);
