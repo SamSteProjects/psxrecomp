@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 import jsonschema
+from dataclasses import replace
 
 INTEGRATION_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(INTEGRATION_ROOT))
@@ -73,8 +74,8 @@ def synthetic_prot() -> bytes:
     return bytes(data)
 
 
-def projected() -> dict:
-    parsed = parse_man(synthetic_man())
+def projected(parsed: ParsedMan | None = None) -> dict:
+    parsed = parsed or parse_man(synthetic_man())
     scene_models = tuple(
         TmdRecord("scene_tmd", index, 4, "decoded_lzs_section", index * 100, 72, 1000, 1, 2, 64)
         for index in range(5)
@@ -126,6 +127,31 @@ class ImporterUnitTests(unittest.TestCase):
         second = canonical_json(projected(), pretty=True)
         self.assertEqual(first, second)
         self.assertNotIn("timestamp", first.lower())
+
+    def test_asset_order_shared_references_and_unused_assets(self) -> None:
+        base = parse_man(synthetic_man())
+        shared = ParsedMan(base.partition_counts, (base.actors[0], replace(base.actors[1], model_index=4)))
+        output = projected(shared)
+        model_ids = [model["semantic_id"] for model in output["assets"]["models"]]
+        self.assertEqual(model_ids[:2], [
+            "asset://town01/models/scene-tmd/0000",
+            "asset://town01/models/scene-tmd/0001",
+        ])
+        self.assertEqual(model_ids[-1], "asset://legaia/models/global-special/00f4")
+        refs = [actor["model_reference"]["asset_semantic_id"] for actor in output["actors"]]
+        self.assertEqual(refs, ["asset://town01/models/scene-tmd/0004"] * 2)
+        self.assertEqual(len(set(model_ids) - set(refs)), 9)
+        self.assertTrue(all(model["aliases"] == [] for model in output["assets"]["models"]))
+
+    def test_unknown_out_of_range_special_model_is_not_fabricated(self) -> None:
+        base = parse_man(synthetic_man())
+        invalid = ParsedMan(base.partition_counts, (replace(base.actors[0], model_index=0xFF),))
+        actor = projected(invalid)["actors"][0]
+        self.assertEqual(actor["model_reference"]["normalized_pool_index"], 15)
+        self.assertIsNone(actor["model_reference"]["asset_semantic_id"])
+        self.assertEqual(actor["model_reference"]["resolution_status"], "pool_index_out_of_bounds")
+        claim_by_property = {item["property"]: item for item in actor["claims"]}
+        self.assertEqual(claim_by_property["model_reference.referenced_asset_record"]["confidence"], "unknown")
 
     def test_synthetic_prot_table(self) -> None:
         entries = parse_prot_bytes(synthetic_prot())
@@ -194,6 +220,10 @@ class ImporterUnitTests(unittest.TestCase):
         normalized = normalize_claims([one, same, other])
         self.assertEqual(len(normalized), 2)
         self.assertEqual({item["confidence"] for item in normalized}, {"contradictory"})
+        model_one = claim("model_asset.source_record", {"record": 1}, "confirmed", [], {}, "one")
+        model_other = claim("model_asset.source_record", {"record": 2}, "tentative", [], {}, "two")
+        model_claims = normalize_claims([model_one, model_other])
+        self.assertEqual({item["confidence"] for item in model_claims}, {"contradictory"})
 
     def test_metadata_only_output(self) -> None:
         output = projected()
