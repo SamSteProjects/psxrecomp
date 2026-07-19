@@ -4422,8 +4422,11 @@ static void handle_frame(int id, const char *json)
 #define OBS_MAX_REGION_BYTES 4096
 #define OBS_MAX_TOTAL_BYTES 16384
 #define OBS_MAX_RESPONSE_BYTES 65536
-#define EXEC_REGION_PAGE_DEFAULT 64
-#define EXEC_REGION_PAGE_MAX 128
+#define EXEC_REGION_PAGE_DEFAULT 8
+#define EXEC_REGION_PAGE_MAX 8
+#define EXEC_CATALOG_PAGE_DEFAULT 8
+#define EXEC_CATALOG_PAGE_MAX 8
+#define EXEC_CATALOG_RECORD_BUDGET 60000
 
 static void sha_u32(PSXSha256 *ctx, uint32_t v) {
     uint8_t b[4] = {(uint8_t)v, (uint8_t)(v >> 8),
@@ -4432,28 +4435,26 @@ static void sha_u32(PSXSha256 *ctx, uint32_t v) {
 }
 
 static void executable_state_token(char out[65]) {
-    static const char domain[] = "psxrecomp-exec-state-v1";
+    static const char domain[] = "psxrecomp-exec-ownership-v2";
     PSXSha256 ctx;
     psx_sha256_init(&ctx);
     psx_sha256_update(&ctx, domain, sizeof(domain) - 1);
-    uint32_t pages = overlay_watch_page_count();
-    sha_u32(&ctx, overlay_watch_page_size());
-    sha_u32(&ctx, pages);
-    for (uint32_t page = 0; page < pages; page++) {
+    uint32_t page_size = overlay_watch_page_size();
+    uint32_t page_count = overlay_watch_page_count();
+    uint32_t covered[16] = {0};
+    overlay_loader_executable_watch_bitmap(covered, (page_count + 31u) / 32u);
+    sha_u32(&ctx, page_size);
+    for (uint32_t page = 0; page < page_count; page++) {
+        if (!(covered[page >> 5] & (1u << (page & 31u)))) continue;
         sha_u32(&ctx, page);
         sha_u32(&ctx, overlay_watch_page_generation(page));
     }
-    uint32_t base = 0, len = 0;
-    uint8_t source[32] = {0};
-    int has_text = dirty_ram_text_identity(&base, &len, source);
-    sha_u32(&ctx, (uint32_t)has_text);
-    if (has_text) {
-        sha_u32(&ctx, base); sha_u32(&ctx, len);
-        psx_sha256_update(&ctx, source, sizeof(source));
-    }
-    uint64_t registrations = overlay_loader_registration_state_token();
-    sha_u32(&ctx, (uint32_t)registrations);
-    sha_u32(&ctx, (uint32_t)(registrations >> 32));
+    extern uint32_t dirty_ram_text_diverged_bitmap_word(uint32_t word_index);
+    for (uint32_t word = 0; word < (page_count + 31u) / 32u; word++)
+        sha_u32(&ctx, dirty_ram_text_diverged_bitmap_word(word));
+    uint64_t registration_state = overlay_loader_registration_state_token();
+    sha_u32(&ctx, (uint32_t)registration_state);
+    sha_u32(&ctx, (uint32_t)(registration_state >> 32));
     uint8_t digest[32];
     psx_sha256_final(&ctx, digest);
     psx_sha256_hex(digest, out);
@@ -4462,16 +4463,17 @@ static void executable_state_token(char out[65]) {
 static void handle_protocol_info(int id, const char *json) {
     (void)json;
     send_fmt("{\"id\":%d,\"ok\":true,"
-             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":1},"
+             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":2},"
              "\"server\":{\"kind\":\"native\"},"
-             "\"capabilities\":[\"executable_regions\",\"read_ram\",\"read_regions\","
+             "\"capabilities\":[\"executable_catalog\",\"executable_regions\",\"read_ram\",\"read_regions\","
              "\"runtime_identity\",\"watched_page_generation\"],"
              "\"limits\":{\"max_request_bytes\":8191,\"max_read_ram_bytes\":2097152,"
              "\"max_regions_per_request\":%d,\"max_bytes_per_region\":%d,"
              "\"max_total_region_bytes\":%d,\"max_response_bytes\":%d,"
-             "\"max_executable_regions_per_response\":%d},\"frame\":%llu}",
+             "\"max_executable_regions_per_response\":%d,"
+             "\"max_executable_catalog_records_per_response\":%d},\"frame\":%llu}",
              id, OBS_MAX_REGIONS, OBS_MAX_REGION_BYTES, OBS_MAX_TOTAL_BYTES,
-             OBS_MAX_RESPONSE_BYTES, EXEC_REGION_PAGE_MAX,
+             OBS_MAX_RESPONSE_BYTES, EXEC_REGION_PAGE_MAX, EXEC_CATALOG_PAGE_MAX,
              (unsigned long long)s_frame_count);
 }
 
@@ -4547,6 +4549,21 @@ static int watched_generation_digest(const uint32_t *lo, const uint32_t *len,
     return covered != 0;
 }
 
+static const char *ownership_reason_name(int reason) {
+    switch (reason) {
+    case OVERLAY_OWNERSHIP_VALID: return "valid";
+    case OVERLAY_OWNERSHIP_VALIDATED_BYTES_MISMATCH: return "validated-bytes-mismatch";
+    case OVERLAY_OWNERSHIP_GENERATION_INVALIDATED: return "generation-invalidated";
+    case OVERLAY_OWNERSHIP_REGISTRATION_INACTIVE: return "registration-inactive";
+    case OVERLAY_OWNERSHIP_SHADOWED: return "shadowed";
+    case OVERLAY_OWNERSHIP_BLACKLISTED: return "blacklisted";
+    case OVERLAY_OWNERSHIP_NATIVE_DISABLED: return "native-disabled";
+    case OVERLAY_OWNERSHIP_DISPATCH_GUARD_FAILED: return "dispatch-guard-failed";
+    case OVERLAY_OWNERSHIP_BACKEND_INELIGIBLE: return "backend-ineligible";
+    default: return "unknown";
+    }
+}
+
 static int append_exec_record(char *out, size_t cap, size_t *pos,
                               const OverlayExecutableRegion *r, int comma) {
     char live_sha[65], gen_sha[65];
@@ -4569,16 +4586,18 @@ static int append_exec_record(char *out, size_t cap, size_t *pos,
         "\"overlay_abi_tag\":%d,\"codegen_version\":%d},"
         "\"live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\"},"
         "\"source_matches_live\":%s,\"native_registration_valid\":%s,"
-        "\"active_owner\":%s,\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
+        "\"active_owner\":%s,\"ownership_reason\":\"%s\","
+        "\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
         "\"digest\":\"%s\",\"page_size\":%u,\"first_page\":%u,\"page_count\":%u,"
         "\"legacy_sum\":%u,\"validated_legacy_sum\":%u},\"ranges\":[",
         comma ? "," : "", r->registration_id, r->entry, r->source_crc32, kind,
         r->entry | 0x80000000u, total_len, backend,
-        r->source_matches_live ? "true" : "false",
+        r->active_owner ? "true" : "false",
         r->source_crc32, PSX_OVERLAY_ABI_TAG, PSX_OVERLAY_CODEGEN_VER, live_sha,
         r->source_matches_live ? "true" : "false",
         r->native_registration_valid ? "true" : "false",
-        r->active_owner ? "true" : "false", gen_sha, overlay_watch_page_size(),
+        r->active_owner ? "true" : "false", ownership_reason_name(r->ownership_reason),
+        gen_sha, overlay_watch_page_size(),
         first_page, covered_pages, gen_sum, r->validated_generation_sum);
     if (n < 0 || (size_t)n >= cap - *pos) return 0;
     *pos += (size_t)n;
@@ -4653,6 +4672,327 @@ static void handle_executable_regions(int id, const char *json) {
         emitted,(offset+emitted<total)?"true":"false",state,(unsigned long long)s_frame_count);
     if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES-pos) { free(out); send_err(id,"response too large"); return; }
     debug_server_send_line(out); free(out);
+}
+
+typedef struct {
+    uint32_t image_id;
+    int kind;
+    uint32_t load_base;
+    int has_load_base;
+    uint32_t structural_lo;
+    uint32_t structural_hi;
+    uint32_t source_crc32;
+    int has_source;
+    int source_live_comparable;
+    int registration_count;
+    int structural_range_count;
+    int active_owner;
+} ObserverExecutableImage;
+
+typedef struct {
+    uint32_t image_id;
+    uint32_t lo;
+    uint32_t len;
+    int registration_count;
+    int active_owner;
+} ObserverExecutableRange;
+
+static void executable_catalog_token(char out[17]) {
+    uint64_t token = overlay_loader_catalog_token();
+    uint32_t base = 0, len = 0;
+    uint8_t source[32] = {0};
+    if (dirty_ram_text_identity(&base, &len, source)) {
+        token ^= ((uint64_t)base << 32) | len;
+        for (int i = 0; i < 32; i++) {
+            token ^= source[i];
+            token *= 1099511628211ULL;
+        }
+    }
+    snprintf(out, 17, "%016llx", (unsigned long long)token);
+}
+
+static const char *catalog_image_kind(int kind) {
+    return kind == 1 ? "static-overlay-variant" :
+           kind == 3 ? "runtime-compiled-fragment" : "native-overlay-bundle";
+}
+
+static const char *catalog_registration_kind(int kind) {
+    return kind == 1 ? "static-native" :
+           kind == 3 ? "runtime-native" : "cached-native";
+}
+
+static const char *catalog_backend(int kind) {
+    return kind == 1 ? "static" : kind == 3 ? "sljit" : "native-dll";
+}
+
+static int append_catalog_registration(char *out, size_t cap,
+                                       const OverlayExecutableRegion *r) {
+    char live_sha[65], gen_sha[65];
+    uint32_t gen_sum = 0, first_page = 0, covered_pages = 0;
+    if (!hash_live_ranges(r->range_lo, r->range_len, r->range_count, live_sha) ||
+        !watched_generation_digest(r->range_lo, r->range_len, r->range_count,
+                                   gen_sha, &gen_sum, &first_page, &covered_pages)) return -1;
+    size_t pos = 0;
+    int n = snprintf(out, cap,
+        "{\"registration_id\":\"reg-%08x\",\"image_id\":\"img-%08x\","
+        "\"kind\":\"%s\",\"backend\":\"%s\",\"entry\":\"0x%08X\","
+        "\"source_identity\":{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+        "\"scope\":\"exact-registration-ranges\",\"overlay_abi_tag\":%d,"
+        "\"codegen_version\":%d},\"source_live_comparison\":{\"comparable\":%s,"
+        "\"reason\":\"same-exact-ranges\",\"matches\":%s},"
+        "\"registration_time_validated_identity\":",
+        r->registration_id, r->image_id, catalog_registration_kind(r->kind),
+        catalog_backend(r->kind), r->entry | 0x80000000u, r->source_crc32,
+        PSX_OVERLAY_ABI_TAG, PSX_OVERLAY_CODEGEN_VER,
+        r->source_live_comparable ? "true" : "false",
+        r->source_matches_live ? "true" : "false");
+    if (n < 0 || (size_t)n >= cap) return -1;
+    pos = (size_t)n;
+    if (r->has_validated_identity) {
+        n = snprintf(out + pos, cap - pos,
+            "{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+            "\"scope\":\"exact-registration-ranges\",\"watched_generation_sum\":%u}",
+            r->validated_crc32, r->validated_generation_sum);
+    } else {
+        n = snprintf(out + pos, cap - pos, "null");
+    }
+    if (n < 0 || (size_t)n >= cap - pos) return -1;
+    pos += (size_t)n;
+    n = snprintf(out + pos, cap - pos,
+        ",\"current_live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+        "\"scope\":\"exact-registration-ranges\"},"
+        "\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
+        "\"digest\":\"%s\",\"page_size\":%u,\"first_page\":%u,"
+        "\"page_count\":%u,\"legacy_sum\":%u,\"validated_legacy_sum\":%u},"
+        "\"predicates\":{\"source_matches_live\":%s,\"generation_current\":%s,"
+        "\"loader_active\":%s,\"native_enabled\":%s,\"backend_eligible\":%s,"
+        "\"dispatch_guard_valid\":%s},\"native_registration_valid\":%s,"
+        "\"active_owner\":%s,\"ownership_reason\":\"%s\",\"ranges\":[",
+        live_sha, gen_sha, overlay_watch_page_size(), first_page, covered_pages,
+        gen_sum, r->validated_generation_sum,
+        r->source_matches_live ? "true" : "false",
+        r->generation_current ? "true" : "false",
+        r->loader_active ? "true" : "false",
+        r->native_enabled ? "true" : "false",
+        r->backend_eligible ? "true" : "false",
+        r->dispatch_guard_valid ? "true" : "false",
+        r->native_registration_valid ? "true" : "false",
+        r->active_owner ? "true" : "false", ownership_reason_name(r->ownership_reason));
+    if (n < 0 || (size_t)n >= cap - pos) return -1;
+    pos += (size_t)n;
+    for (int i = 0; i < r->range_count; i++) {
+        n = snprintf(out + pos, cap - pos,
+            "%s{\"range_id\":\"rng-%08x-%08x-%08x\",\"guest_base\":\"0x%08X\","
+            "\"length\":%u}", i ? "," : "", r->image_id, r->range_lo[i],
+            r->range_len[i], r->range_lo[i] | 0x80000000u, r->range_len[i]);
+        if (n < 0 || (size_t)n >= cap - pos) return -1;
+        pos += (size_t)n;
+    }
+    n = snprintf(out + pos, cap - pos, "]}");
+    if (n < 0 || (size_t)n >= cap - pos) return -1;
+    return (int)(pos + (size_t)n);
+}
+
+static void handle_executable_catalog(int id, const char *json) {
+    char view[24] = "registrations";
+    char requested_token[32] = {0};
+    (void)json_get_str(json, "view", view, sizeof(view));
+    (void)json_get_str(json, "catalog_token", requested_token, sizeof(requested_token));
+    int cursor = json_get_int(json, "cursor", 0);
+    int limit = json_get_int(json, "limit", EXEC_CATALOG_PAGE_DEFAULT);
+    if (strcmp(view, "images") != 0 && strcmp(view, "ranges") != 0 &&
+        strcmp(view, "registrations") != 0) { send_err(id, "invalid catalog view"); return; }
+    if (cursor < 0) { send_err(id, "invalid catalog cursor"); return; }
+    if (limit < 1 || limit > EXEC_CATALOG_PAGE_MAX) { send_err(id, "invalid catalog limit"); return; }
+
+    char catalog_token[17], ownership_token[65];
+    executable_catalog_token(catalog_token);
+    executable_state_token(ownership_token);
+    if (cursor > 0 && (!requested_token[0] || strcmp(requested_token, catalog_token) != 0)) {
+        send_fmt("{\"id\":%d,\"ok\":false,\"error\":\"catalog_changed\","
+                 "\"catalog_token\":\"%s\"}", id, catalog_token);
+        return;
+    }
+
+    int registration_count = overlay_loader_executable_region_count();
+    OverlayExecutableRegion *registrations = registration_count > 0
+        ? (OverlayExecutableRegion *)calloc((size_t)registration_count, sizeof(*registrations)) : NULL;
+    if (registration_count > 0 && !registrations) { send_err(id, "alloc failed"); return; }
+    for (int i = 0; i < registration_count; i++) {
+        if (!overlay_loader_get_executable_region(i, &registrations[i])) {
+            free(registrations); send_err(id, "invalid executable registration metadata"); return;
+        }
+    }
+
+    ObserverExecutableImage *images = (ObserverExecutableImage *)calloc(
+        (size_t)registration_count + 1u, sizeof(*images));
+    ObserverExecutableRange *ranges = (ObserverExecutableRange *)calloc(
+        (size_t)registration_count * OVERLAY_EXEC_MAX_RANGES + 1u, sizeof(*ranges));
+    if (!images || !ranges) {
+        free(ranges); free(images); free(registrations); send_err(id, "alloc failed"); return;
+    }
+    int image_count = 0, range_count = 0;
+    uint32_t main_base = 0, main_len = 0; uint8_t main_source[32];
+    int has_main = dirty_ram_text_identity(&main_base, &main_len, main_source);
+    if (has_main) {
+        images[image_count].image_id = 0;
+        images[image_count].kind = 0;
+        images[image_count].load_base = main_base;
+        images[image_count].structural_lo = main_base;
+        images[image_count].structural_hi = main_base + main_len;
+        images[image_count].structural_range_count = 1;
+        image_count++;
+        ranges[range_count].image_id = 0;
+        ranges[range_count].lo = main_base;
+        ranges[range_count].len = main_len;
+        range_count++;
+    }
+    for (int i = 0; i < registration_count; i++) {
+        OverlayExecutableRegion *r = &registrations[i];
+        int image_index = -1;
+        for (int j = 0; j < image_count; j++) if (images[j].image_id == r->image_id) { image_index = j; break; }
+        if (image_index < 0) {
+            image_index = image_count++;
+            images[image_index].image_id = r->image_id;
+            images[image_index].kind = r->kind;
+            images[image_index].load_base = r->image_load_base;
+            images[image_index].has_load_base = r->has_image_load_base;
+            images[image_index].structural_lo = UINT32_MAX;
+            images[image_index].source_crc32 = r->image_source_crc32;
+            images[image_index].has_source = r->has_image_source_identity;
+            images[image_index].source_live_comparable = r->kind == 1 || r->kind == 3;
+        }
+        ObserverExecutableImage *image = &images[image_index];
+        image->registration_count++;
+        if (r->active_owner) image->active_owner = 1;
+        for (int k = 0; k < r->range_count; k++) {
+            if (r->range_lo[k] < image->structural_lo) image->structural_lo = r->range_lo[k];
+            uint32_t hi = r->range_lo[k] + r->range_len[k];
+            if (hi > image->structural_hi) image->structural_hi = hi;
+            int range_index = -1;
+            for (int j = 0; j < range_count; j++) {
+                if (ranges[j].image_id == r->image_id && ranges[j].lo == r->range_lo[k] &&
+                    ranges[j].len == r->range_len[k]) { range_index = j; break; }
+            }
+            if (range_index < 0) {
+                range_index = range_count++;
+                ranges[range_index].image_id = r->image_id;
+                ranges[range_index].lo = r->range_lo[k];
+                ranges[range_index].len = r->range_len[k];
+                image->structural_range_count++;
+            }
+            ranges[range_index].registration_count++;
+            if (r->active_owner) ranges[range_index].active_owner = 1;
+        }
+    }
+
+    int total = strcmp(view, "images") == 0 ? image_count :
+                strcmp(view, "ranges") == 0 ? range_count : registration_count;
+    if (cursor > total) {
+        free(ranges); free(images); free(registrations); send_err(id, "catalog cursor past end"); return;
+    }
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { free(ranges); free(images); free(registrations); send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"view\":\"%s\",\"ordering\":\"catalog\","
+        "\"cursor\":%d,\"requested_limit\":%d,\"effective_limit\":%d,"
+        "\"total\":%d,\"catalog_token\":\"%s\",\"ownership_token\":\"%s\","
+        "\"records\":[", id, view, cursor, limit, limit, total, catalog_token, ownership_token);
+    int emitted = 0;
+    for (int logical = cursor; logical < total && emitted < limit; logical++) {
+        char record[8192]; int n = -1;
+        if (strcmp(view, "registrations") == 0) {
+            n = append_catalog_registration(record, sizeof(record), &registrations[logical]);
+        } else if (strcmp(view, "ranges") == 0) {
+            ObserverExecutableRange *r = &ranges[logical];
+            n = snprintf(record, sizeof(record),
+                "{\"range_id\":\"rng-%08x-%08x-%08x\",\"image_id\":\"img-%08x\","
+                "\"guest_base\":\"0x%08X\",\"length\":%u,\"registration_count\":%d,"
+                "\"active_owner\":%s}", r->image_id, r->lo, r->len, r->image_id,
+                r->lo | 0x80000000u, r->len, r->registration_count,
+                r->active_owner ? "true" : "false");
+        } else {
+            ObserverExecutableImage *image = &images[logical];
+            if (image->kind == 0) {
+                char source_hex[65], live_hex[65]; uint8_t live[32];
+                psx_sha256_hex(main_source, source_hex);
+                psx_sha256(memory_get_ram_ptr() + main_base, main_len, live);
+                psx_sha256_hex(live, live_hex);
+                n = snprintf(record, sizeof(record),
+                    "{\"image_id\":\"img-00000000\",\"kind\":\"main-executable\","
+                    "\"load_base\":\"0x%08X\",\"loaded_length\":%u,"
+                    "\"source_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+                    "\"scope\":\"ps-x-exe-body\"},\"current_live_identity\":{"
+                    "\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"scope\":\"ps-x-exe-body\"},"
+                    "\"registration_count\":0,\"structural_range_count\":1,"
+                    "\"ownership_model\":\"per-dispatch-range-not-cataloged\"}",
+                    main_base | 0x80000000u, main_len, source_hex, live_hex);
+            } else {
+                char source[160];
+                char load_base[24];
+                if (image->has_load_base)
+                    snprintf(load_base, sizeof(load_base), "\"0x%08X\"",
+                             image->load_base | 0x80000000u);
+                else
+                    snprintf(load_base, sizeof(load_base), "null");
+                if (image->has_source) snprintf(source, sizeof(source),
+                    "{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+                    "\"scope\":\"%s\"}", image->source_crc32,
+                    image->source_live_comparable ? "exact-structural-ranges"
+                                                  : "captured-image-key");
+                else snprintf(source, sizeof(source), "null");
+                n = snprintf(record, sizeof(record),
+                    "{\"image_id\":\"img-%08x\",\"kind\":\"%s\","
+                    "\"load_base\":%s,\"loaded_length\":null,"
+                    "\"structural_envelope\":{\"guest_base\":\"0x%08X\",\"length\":%u},"
+                    "\"source_identity\":%s,\"source_live_comparable\":%s,"
+                    "\"source_live_comparability_reason\":\"%s\","
+                    "\"structural_range_count\":%d,\"registration_count\":%d,"
+                    "\"active_owner\":%s}", image->image_id,
+                    catalog_image_kind(image->kind), load_base,
+                    image->structural_lo | 0x80000000u,
+                    image->structural_hi - image->structural_lo, source,
+                    image->source_live_comparable ? "true" : "false",
+                    image->source_live_comparable ? "comparison-reported-by-child-registrations"
+                                                  : "image-source-domain-differs-from-child-ranges",
+                    image->structural_range_count, image->registration_count,
+                    image->active_owner ? "true" : "false");
+            }
+        }
+        if (n < 0 || (size_t)n >= sizeof(record)) {
+            free(out); free(ranges); free(images); free(registrations);
+            send_err(id, "catalog record exceeds response budget"); return;
+        }
+        size_t needed = (emitted ? 1u : 0u) + (size_t)n + 256u;
+        if (pos + needed > EXEC_CATALOG_RECORD_BUDGET) break;
+        if (emitted) out[pos++] = ',';
+        memcpy(out + pos, record, (size_t)n); pos += (size_t)n; emitted++;
+    }
+    if (emitted == 0 && cursor < total) {
+        free(out); free(ranges); free(images); free(registrations);
+        send_err(id, "catalog record exceeds response budget"); return;
+    }
+    int next = cursor + emitted;
+    int n = snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+        "],\"returned\":%d,\"has_more\":%s,\"next_cursor\":",
+        emitted, next < total ? "true" : "false");
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(ranges); free(images); free(registrations); send_err(id, "response too large"); return;
+    }
+    pos += (size_t)n;
+    n = next < total ? snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos, "%d", next)
+                     : snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos, "null");
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(ranges); free(images); free(registrations); send_err(id, "response too large"); return;
+    }
+    pos += (size_t)n;
+    n = snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+        ",\"frame\":%llu}", (unsigned long long)s_frame_count);
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(ranges); free(images); free(registrations); send_err(id, "response too large"); return;
+    }
+    debug_server_send_line(out);
+    free(out); free(ranges); free(images); free(registrations);
 }
 
 typedef struct {
@@ -12513,6 +12853,7 @@ static const CmdEntry s_commands[] = {
     { "lockstep_func",     handle_lockstep_func },
     { "protocol_info",     handle_protocol_info },
     { "runtime_identity",  handle_runtime_identity },
+    { "executable_catalog", handle_executable_catalog },
     { "executable_regions", handle_executable_regions },
     { "read_regions",      handle_read_regions },
     { "ping",              handle_ping },

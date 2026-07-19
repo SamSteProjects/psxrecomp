@@ -74,6 +74,8 @@ typedef struct {
     int       state;                     /* ENTRY_VALID/INVALID/BLACKLIST      */
     int       dll;                       /* source DLL index                   */
     int       next;                      /* next candidate at same addr, -1 end*/
+    int       has_validated_identity;    /* exact compiled bytes matched once */
+    uint32_t  last_validated_gen;        /* generation of last accepted bytes */
     uint32_t  diff_passes;               /* clean same-state diffs (verify budget)*/
     int       device_touch;              /* 1 = touches MMIO; never run its shard,
                                           * always interp (shadow diff can't safely
@@ -377,6 +379,9 @@ static uint32_t s_last_write_size = 0;
  * before the guest-visible write; block/device boundaries flush through the
  * DLL glue directly. */
 static OverlayFlushFn s_dll_flush[4096];
+static uint32_t s_dll_image_base[4096];
+static uint32_t s_dll_image_crc[4096];
+static uint8_t  s_dll_image_identity[4096];
 OverlayFlushFn g_overlay_flush_pending_cycles = NULL;
 
 static OverlayFlushFn overlay_flush_enter(const Candidate *c) {
@@ -426,6 +431,8 @@ typedef struct {
     uint32_t expected_crc;
     uint32_t gen_sum;
     int      matches;
+    int      ever_matched;
+    uint32_t last_validated_gen;
 } StaticMatchCache;
 
 static StaticMatchCache s_static_match_cache[STATIC_MATCH_CACHE_CAP];
@@ -498,6 +505,10 @@ int psx_overlay_static_code_matches(const uint32_t *lo_len_pairs,
         entry->expected_crc = expected_crc;
         entry->gen_sum = gen_sum;
         entry->matches = matches;
+        if (matches) {
+            entry->ever_matched = 1;
+            entry->last_validated_gen = gen_sum;
+        }
     }
     return matches;
 }
@@ -608,6 +619,8 @@ static void cand_register(uint32_t phys, OverlayFn fn, const ManFn *m, int dll) 
     }
     c->val_gen = cand_gensum(c);
     c->state   = (cand_crc(c) == c->crc_code) ? ENTRY_VALID : ENTRY_INVALID;
+    c->has_validated_identity = c->state == ENTRY_VALID;
+    if (c->has_validated_identity) c->last_validated_gen = c->val_gen;
     c->next    = idx_head(phys);
     idx_set_head(phys, idx);
     range_index_add_candidate(idx);
@@ -673,6 +686,8 @@ static void register_sljit_candidate(uint32_t phys, OverlayFn fn,
     c->crc_code = crc_override ? crc_override : cand_crc(c);  /* live bytes == JIT'd-from bytes */
     c->val_gen  = cand_gensum(c);
     c->state    = ENTRY_VALID;
+    c->has_validated_identity = 1;
+    c->last_validated_gen = c->val_gen;
     c->diff_passes = 0;
     c->device_touch = 0;
     c->next     = idx_head(c->addr);
@@ -2258,6 +2273,18 @@ static int load_one_dll(const char *dll_path) {
         free(man);
         return 0;
     }
+    if (s_ndlls >= 0 && s_ndlls < (int)(sizeof(s_dll_image_base) / sizeof(s_dll_image_base[0]))) {
+        const char *name = strrchr(dll_path, '/');
+        const char *back = strrchr(dll_path, '\\');
+        if (!name || (back && back > name)) name = back;
+        name = name ? name + 1 : dll_path;
+        uint32_t image_base = 0, image_crc = 0;
+        if (psx_overlay_cache_name_parse(name, &image_base, &image_crc)) {
+            s_dll_image_base[s_ndlls] = image_base & 0x1FFFFFFFu;
+            s_dll_image_crc[s_ndlls] = image_crc;
+            s_dll_image_identity[s_ndlls] = 1;
+        }
+    }
     int registered = load_overlay_dll(dll_path, man, man_n, s_ndlls);
 #ifdef _WIN32
     QueryPerformanceCounter(&q1);
@@ -2507,6 +2534,8 @@ static int range_candidate_matches(int i, uint32_t phys) {
     s_last_crc = live;
     c->val_gen = gen;
     if (live == c->crc_code) {
+        c->has_validated_identity = 1;
+        c->last_validated_gen = gen;
         if (c->state != ENTRY_VALID) {
             c->state = ENTRY_VALID;
             s_valid_count++;
@@ -2663,6 +2692,8 @@ retry_candidates:
             }
             if (_probe) s_cps_probe_matched = matched;
             if (matched) {
+                c->has_validated_identity = 1;
+                c->last_validated_gen = gen;
                 if (c->state != ENTRY_VALID) { c->state = ENTRY_VALID; s_valid_count++; }
                 if (c->device_touch)   { if (_probe) s_cps_probe_outcome = 3; s_disp_interp++; return 0; }
                 /* Diff instrument — same contract as the entry chain's want_diff
@@ -2769,6 +2800,8 @@ retry_candidates:
             matched = (live == c->crc_code);
         }
         if (matched) {
+            c->has_validated_identity = 1;
+            c->last_validated_gen = gen;
             if (c->state != ENTRY_VALID) {
                 c->state = ENTRY_VALID;
                 s_revalidations++;              /* reload-on-return */
@@ -3620,12 +3653,37 @@ int overlay_loader_dump_candidates(char *out, int cap) {
 }
 
 static int candidate_protocol_native_valid(const Candidate *c, int source_match) {
-    if (!source_match || !s_active || !s_native_exec ||
+    if (!source_match || c->state != ENTRY_VALID ||
+        cand_gensum(c) != c->val_gen || !s_active || !s_native_exec ||
         c->state == ENTRY_BLACKLIST || c->device_touch ||
         overlay_native_blocked(c->addr)) return 0;
     int want_diff = s_diff_mode || (s_sljit_live && c->dll < 0);
     if (want_diff && c->addr < 0x10000u) want_diff = 0;
     return !(want_diff && c->diff_passes < OVERLAY_DIFF_BUDGET);
+}
+
+static int candidate_ownership_reason(const Candidate *c, int source_match,
+                                      int active_owner) {
+    if (!s_active) return OVERLAY_OWNERSHIP_REGISTRATION_INACTIVE;
+    if (c->state == ENTRY_BLACKLIST) return OVERLAY_OWNERSHIP_BLACKLISTED;
+    if (c->state != ENTRY_VALID || cand_gensum(c) != c->val_gen) {
+        if (!source_match)
+            return OVERLAY_OWNERSHIP_VALIDATED_BYTES_MISMATCH;
+        return OVERLAY_OWNERSHIP_GENERATION_INVALIDATED;
+    }
+    if (!source_match) return OVERLAY_OWNERSHIP_VALIDATED_BYTES_MISMATCH;
+    if (!s_native_exec) return OVERLAY_OWNERSHIP_NATIVE_DISABLED;
+    if (c->device_touch) return OVERLAY_OWNERSHIP_BACKEND_INELIGIBLE;
+    if (overlay_native_blocked(c->addr))
+        return OVERLAY_OWNERSHIP_DISPATCH_GUARD_FAILED;
+    {
+        int want_diff = s_diff_mode || (s_sljit_live && c->dll < 0);
+        if (want_diff && c->addr < 0x10000u) want_diff = 0;
+        if (want_diff && c->diff_passes < OVERLAY_DIFF_BUDGET)
+            return OVERLAY_OWNERSHIP_DISPATCH_GUARD_FAILED;
+    }
+    if (!active_owner) return OVERLAY_OWNERSHIP_SHADOWED;
+    return OVERLAY_OWNERSHIP_VALID;
 }
 
 static int candidate_is_active_owner(int index) {
@@ -3649,6 +3707,19 @@ static int static_match_entry_count(void) {
 #endif
 }
 
+#ifdef PSX_HAS_OVERLAY_DISPATCH
+static uint32_t static_match_image_id(const StaticMatchCache *e) {
+    uint32_t h = 2166136261u;
+    h = (h ^ e->expected_crc) * 16777619u;
+    h = (h ^ e->count) * 16777619u;
+    for (uint32_t r = 0; r < e->count; r++) {
+        h = (h ^ (e->ranges[r * 2u] & 0x1FFFFFFFu)) * 16777619u;
+        h = (h ^ e->ranges[r * 2u + 1u]) * 16777619u;
+    }
+    return 0x80000000u | (h & 0x7FFFFFFFu);
+}
+#endif
+
 int overlay_loader_executable_region_count(void) {
     return s_cand_n + static_match_entry_count();
 }
@@ -3659,19 +3730,43 @@ int overlay_loader_get_executable_region(int index, OverlayExecutableRegion *out
     if (index < s_cand_n) {
         Candidate *c = &s_cand[index];
         out->registration_id = (uint32_t)index + 1u;
+        out->image_id = c->dll >= 0 ? (uint32_t)c->dll + 1u
+                                    : 0x40000000u | out->registration_id;
+        if (c->dll >= 0 && c->dll < (int)(sizeof(s_dll_image_base) / sizeof(s_dll_image_base[0])) &&
+            s_dll_image_identity[c->dll]) {
+            out->image_load_base = s_dll_image_base[c->dll];
+            out->image_source_crc32 = s_dll_image_crc[c->dll];
+            out->has_image_load_base = 1;
+            out->has_image_source_identity = 1;
+        } else {
+            out->image_load_base = c->range_lo[0];
+            out->image_source_crc32 = c->crc_code;
+            out->has_image_source_identity = c->dll < 0;
+        }
         out->entry = c->addr;
         out->source_crc32 = c->crc_code;
         out->live_crc32 = cand_crc(c);
-        out->validated_generation_sum = c->val_gen;
+        out->validated_generation_sum = c->last_validated_gen;
         out->watched_generation_sum = cand_gensum(c);
+        out->validated_crc32 = c->crc_code;
+        out->has_validated_identity = c->has_validated_identity;
         out->range_count = c->nranges;
         out->kind = c->dll < 0 ? 3 : 2;
         out->state = c->state;
+        out->source_live_comparable = 1;
+        out->generation_current = c->state == ENTRY_VALID &&
+                                  out->watched_generation_sum == c->val_gen;
+        out->loader_active = s_active;
+        out->native_enabled = s_native_exec;
+        out->backend_eligible = !c->device_touch;
+        out->dispatch_guard_valid = !overlay_native_blocked(c->addr);
         out->source_matches_live = out->live_crc32 == out->source_crc32;
         out->native_registration_valid =
             candidate_protocol_native_valid(c, out->source_matches_live);
         out->active_owner = out->native_registration_valid &&
                             candidate_is_active_owner(index);
+        out->ownership_reason = candidate_ownership_reason(
+            c, out->source_matches_live, out->active_owner);
         for (int r = 0; r < c->nranges; r++) {
             out->range_lo[r] = c->range_lo[r];
             out->range_len[r] = c->range_len[r];
@@ -3689,9 +3784,13 @@ int overlay_loader_get_executable_region(int index, OverlayExecutableRegion *out
          * different executable region than dispatch validates. */
         if (e->count > OVERLAY_EXEC_MAX_RANGES) return 0;
         out->registration_id = 0x80000000u | slot;
+        out->image_id = static_match_image_id(e);
         out->entry = e->ranges[0] & 0x1FFFFFFFu;
+        out->image_load_base = out->entry;
+        out->image_source_crc32 = e->expected_crc;
+        out->has_image_source_identity = 1;
         out->source_crc32 = e->expected_crc;
-        out->validated_generation_sum = e->gen_sum;
+        out->validated_generation_sum = e->last_validated_gen;
         out->range_count = (int)e->count;
         out->kind = 1;
         uint32_t live = 0xFFFFFFFFu, gen = 0;
@@ -3705,10 +3804,24 @@ int overlay_loader_get_executable_region(int index, OverlayExecutableRegion *out
         }
         out->live_crc32 = live ^ 0xFFFFFFFFu;
         out->watched_generation_sum = gen;
+        out->validated_crc32 = e->expected_crc;
+        out->has_validated_identity = e->ever_matched;
+        out->source_live_comparable = 1;
+        out->generation_current = e->gen_sum == gen;
+        out->loader_active = 1;
+        out->native_enabled = 1;
+        out->backend_eligible = 1;
+        out->dispatch_guard_valid = 1;
         out->source_matches_live = out->live_crc32 == out->source_crc32;
-        out->state = out->source_matches_live ? ENTRY_VALID : ENTRY_INVALID;
-        out->native_registration_valid = out->source_matches_live;
+        out->state = e->matches ? ENTRY_VALID : ENTRY_INVALID;
+        out->native_registration_valid = out->source_matches_live && e->matches &&
+                                         out->generation_current;
         out->active_owner = out->native_registration_valid;
+        out->ownership_reason = !out->source_matches_live
+            ? OVERLAY_OWNERSHIP_VALIDATED_BYTES_MISMATCH
+            : (!out->generation_current || !e->matches)
+                ? OVERLAY_OWNERSHIP_GENERATION_INVALIDATED
+                : OVERLAY_OWNERSHIP_VALID;
         return 1;
     }
 #endif
@@ -3718,6 +3831,77 @@ int overlay_loader_get_executable_region(int index, OverlayExecutableRegion *out
 static uint64_t token_fold(uint64_t h, uint32_t v) {
     for (int i = 0; i < 4; i++) { h ^= (uint8_t)(v >> (i * 8)); h *= 1099511628211ULL; }
     return h;
+}
+
+uint64_t overlay_loader_catalog_token(void) {
+    uint64_t h = 1469598103934665603ULL;
+    h = token_fold(h, (uint32_t)s_cand_n);
+    for (int i = 0; i < s_cand_n; i++) {
+        Candidate *c = &s_cand[i];
+        uint32_t image_id = c->dll >= 0 ? (uint32_t)c->dll + 1u
+                                        : 0x40000000u | ((uint32_t)i + 1u);
+        h = token_fold(h, (uint32_t)i + 1u);
+        h = token_fold(h, image_id);
+        h = token_fold(h, c->addr);
+        h = token_fold(h, c->crc_code);
+        h = token_fold(h, (uint32_t)c->dll);
+        h = token_fold(h, (uint32_t)c->nranges);
+        if (c->dll >= 0 && c->dll < (int)(sizeof(s_dll_image_base) / sizeof(s_dll_image_base[0])) &&
+            s_dll_image_identity[c->dll]) {
+            h = token_fold(h, s_dll_image_base[c->dll]);
+            h = token_fold(h, s_dll_image_crc[c->dll]);
+        }
+        for (int r = 0; r < c->nranges; r++) {
+            h = token_fold(h, c->range_lo[r]);
+            h = token_fold(h, c->range_len[r]);
+        }
+    }
+#ifdef PSX_HAS_OVERLAY_DISPATCH
+    for (uint32_t i = 0; i < STATIC_MATCH_CACHE_CAP; i++) {
+        StaticMatchCache *e = &s_static_match_cache[i];
+        if (!e->ranges) continue;
+        h = token_fold(h, 0x80000000u | i);
+        h = token_fold(h, static_match_image_id(e));
+        h = token_fold(h, e->expected_crc);
+        h = token_fold(h, e->count);
+        for (uint32_t r = 0; r < e->count; r++) {
+            h = token_fold(h, e->ranges[r * 2u] & 0x1FFFFFFFu);
+            h = token_fold(h, e->ranges[r * 2u + 1u]);
+        }
+    }
+#endif
+    return h;
+}
+
+static void observer_watch_add(uint32_t *words, uint32_t word_count,
+                               uint32_t lo, uint32_t len) {
+    if (!words || !word_count || !len || lo >= 0x200000u || len > 0x200000u - lo) return;
+    uint32_t first = lo >> 12;
+    uint32_t last = (lo + len - 1u) >> 12;
+    for (uint32_t page = first; page <= last; page++) {
+        uint32_t word = page >> 5;
+        if (word < word_count) words[word] |= 1u << (page & 31u);
+    }
+}
+
+void overlay_loader_executable_watch_bitmap(uint32_t *words, uint32_t word_count) {
+    if (!words || !word_count) return;
+    memset(words, 0, (size_t)word_count * sizeof(*words));
+    for (int i = 0; i < s_cand_n; i++) {
+        Candidate *c = &s_cand[i];
+        for (int r = 0; r < c->nranges; r++)
+            observer_watch_add(words, word_count, c->range_lo[r], c->range_len[r]);
+    }
+#ifdef PSX_HAS_OVERLAY_DISPATCH
+    for (uint32_t i = 0; i < STATIC_MATCH_CACHE_CAP; i++) {
+        StaticMatchCache *e = &s_static_match_cache[i];
+        if (!e->ranges) continue;
+        for (uint32_t r = 0; r < e->count; r++)
+            observer_watch_add(words, word_count,
+                               e->ranges[r * 2u] & 0x1FFFFFFFu,
+                               e->ranges[r * 2u + 1u]);
+    }
+#endif
 }
 
 uint64_t overlay_loader_registration_state_token(void) {
