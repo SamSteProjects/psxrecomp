@@ -163,3 +163,48 @@ The `town01` importer is accepted for its current metadata-only contract. A sepa
 Live-runtime observation remains premature. It still requires a revisioned layout profile, a supported current-scene/epoch signal and an evidence-backed record-to-runtime correlation design. This acceptance does not authorize TCP changes, RAM reads/writes or generic runtime modifications.
 
 The previously reported `test_reachable_discovery_codegen.py` failure against `build-msvc3` was not reproduced in this pass because it did not affect the importer. It remains a separate, pre-existing recompiler/stale-executable issue; no recompiler source or build directory was changed.
+
+## Additive model-identity layer (2026-07-18)
+
+The v1 actor-placement acceptance above remains unchanged. Importer v0.2.0 and
+`legaia.scene-import.v2` add metadata-only model asset identities without
+altering any accepted actor ID, source record, transform, placement field or
+model pool/index value.
+
+| Check | Additive result |
+|---|---|
+| Actors and actor IDs | 52 actors; 52/52 unique; IDs unchanged from v1 |
+| Scene-local model pool | 114 records, structural source order, PROT entry 4 |
+| Global-special model pool | Five records, encoded `0xF0..0xF4`, normalized slots `0..4`, PROT entry 874 section 0 |
+| Model asset IDs | 119/119 unique |
+| Actor model references | 52/52 resolved; 29 distinct referenced assets; maximum five actors per asset |
+| Unused model assets | 90 retained as independent structural records |
+| Concrete source identity | 119 Confirmed; 0 Unknown |
+| Alias/null/invalid entries | 0/0/0 on the supported retail image |
+| Source bounds | 119/119 bounded in their declared raw or decoded coordinate space |
+| Run 1 SHA-256 | `bbdd965831be572d3f19eee1ad33e8dd4a9b650d94c919358889cbf18198e728` |
+| Run 2 SHA-256 | `bbdd965831be572d3f19eee1ad33e8dd4a9b650d94c919358889cbf18198e728` |
+| Determinism/schema/privacy | Byte-identical; v2 schema passed; no payload keys or absolute paths |
+| Andrew parity | 119/119 exact structural rows; no differences |
+
+Andrew's `field_scene_assembles_full_maps` test reported 114 town01 environment
+TMDs and passed. Its `town01_catalog_matches_engine_ground_truth` test also
+passed. The local parity oracle compared pool, normalized slot, PROT entry,
+decoded source offset and length; no extracted bytes were compared or retained.
+
+The gated PSXRecomp suite passed all 17 tests without skipping the retail test.
+Across actor and model claims, the final v2 output contains 959 Confirmed and 52
+Unknown values, with zero Strongly Inferred, Tentative or Contradictory claims.
+Agreement with Andrew was not used by itself to promote source identity.
+
+Legaia Trace's v1/v2 production build and two read-only rendering/privacy tests
+passed, and the v2 preview displayed resolved and unresolved model identities,
+source spans and uncertainty. The desktop browser file chooser stalled while
+attaching the external retail JSON, so this additive pass does not claim a new
+interactive retail-file-load observation. The previously accepted v1 local-file
+flow is unchanged; v2 acceptance is backed by the same client predicate, the v2
+schema test and the production inspector build.
+
+No retail JSON, model bytes, comparison output, Andrew checkout content or
+absolute user path was committed. Character naming, animations, textures, VRAM
+dependencies and runtime pointer/slot identity remain outside this acceptance.
