@@ -1,313 +1,474 @@
-<p align="center">
-  <img src="docs/assets/psxrecomp-logo.png" alt="PSXRecomp" width="640">
-</p>
+# Legend of Legaia SDK
 
-# PSXRecomp
+A modern, provenance-aware SDK and game-editor foundation for inspecting,
+understanding, and eventually modifying *Legend of Legaia* through a native
+PSXRecomp runtime.
 
-Generic static recompiler framework for PlayStation 1: MIPS R3000A to C to
-native x64.
+> **Branch notice**
+>
+> This README describes the experimental `legaia-sdk-integration` branch. It is
+> not necessarily representative of the repository's default branch. The branch
+> contains accepted SDK foundations and active research, but it does **not** yet
+> contain the finished Unity-like editor described in the roadmap below.
 
-Background on the original prototype:
-[I Built a PS1 Static Recompiler With No Prior Experience (and Claude Code)](https://1379.tech/i-built-a-ps1-static-recompiler-with-no-prior-experience-and-claude-code/)
+The project combines two deliberately separated layers: PSXRecomp provides the
+generic PlayStation execution foundation, while `integrations/legaia/` adds
+Legaia-specific import, semantic identity, provenance, layout profiles, and
+future editor-facing contracts. Users supply their own legally obtained game
+disc; retail assets are not included in this repository.
 
-[![PSXRecomp demo](https://img.youtube.com/vi/CID9oVhgCyY/maxresdefault.jpg)](https://www.youtube.com/watch?v=CID9oVhgCyY)
+## Project Status
 
-## What It Is
-
-PSXRecomp translates PS1 MIPS binaries into C, then compiles that C as a
-native executable linked against a PS1 hardware runtime. The v4 architecture
-recompiles the real SCPH1001 BIOS and runs it as the kernel. There is no HLE
-BIOS layer, no stubs, and no general-purpose interpreter fallback for static
-code.
-
-PSXRecomp is a framework. Game-specific projects live in their own
-repositories and link this one in as a **git submodule** to build a game binary.
-The active end-to-end targets are:
-
-- [TombaRecomp](https://github.com/mstan/TombaRecomp) — *Tomba!*
-- [MegaManX6Recomp](https://github.com/mstan/MegaManX6Recomp) — *Mega Man X6*
-
-**New here?** The fastest way in:
-[`docs/EXECUTION_MODEL.md`](docs/EXECUTION_MODEL.md) (how a game actually
-runs — static / native-overlay / interpreter), then
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`docs/BUILDING.md`](docs/BUILDING.md), and
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
-
-## Philosophy — toward 100% static recompilation
-
-The goal is simple and absolute: **a PS1 game should run as native code, not be
-emulated.** Every MIPS instruction the game executes should ideally have been
-translated to C and compiled ahead of time. No interpreter on the hot path, no
-HLE shims, no "good enough" approximation of the hardware — the recompiled BIOS
-*is* the kernel, and the recompiled game *is* the game.
-
-PS1 games make that goal hard in one specific way: **overlays.** Games stream
-code off the disc into RAM at runtime and execute it, then overwrite it with the
-next overlay. That code does not exist in the executable at build time, so a
-pure ahead-of-time recompiler cannot see it. This is the frontier the project is
-working through, and it is why this is an **alpha/beta**: today a *majority* of a
-supported game runs as statically recompiled native code, but **not yet 100%.**
-
-How we close the gap, without ever compromising correctness:
-
-1. **Static first.** The main executable and the BIOS are fully recompiled
-   ahead of time. This is the bulk of execution and it is always native.
-2. **Capture → compile → cache for overlays.** As the game runs, overlays are
-   captured the moment they load. Offline, each is recompiled to a native DLL
-   keyed by its content, cached, and on later runs loaded and dispatched as
-   native code *before* any fallback. Coverage grows as the game is played:
-   every overlay someone reaches becomes native for everyone after.
-3. **Interpreter failover — only for code that isn't static yet.** A small
-   MIPS interpreter runs *runtime-installed* code (overlays/dirty RAM) that
-   hasn't been captured-and-compiled. It is a safety net and a coverage feeder,
-   never a substitute for recompiling static code, and never on the BIOS/main-EXE
-   path.
-4. **Precision over recall.** A piece of code we *haven't* compiled safely falls
-   back to the interpreter and gets captured for next time — under-coverage
-   self-heals. A piece we compile *wrong* would corrupt the machine, so the
-   system biases hard toward correctness: native code is only dispatched when its
-   source RAM is provably unchanged, and a registration is revoked the instant
-   the RAM it was compiled from is overwritten.
-
-Two honest bounds. **The worst case is always performance, never correctness** —
-anything not yet native simply runs interpreted, correctly.
-
-**Known corner case — genuinely self-modifying / per-load-relocated code.** Some
-code is rewritten or relocated to *different bytes on every load*, so it is not
-static by definition and cannot be recompiled ahead of time into a single
-correct translation. **This code remains interpreted** — permanently, as far as
-the current design is concerned, and that is an accepted, correct outcome (the
-interpreter runs it faithfully; only speed is lost). It is a narrow corner, not
-a wall. We **may someday aim to cover it** — e.g. by detecting the
-relocation/patch pattern and baking it in at compile time (keyed by relocation
-parameters), or by compiling at load time — but we make no promise, and the
-project is fully correct without it.
-
-The aspiration is **100% static coverage** — every reachable instruction native,
-the interpreter idle. The capture-and-recompile loop converges toward it the more
-a game is played; this branch is where that machinery is being built.
-
-## Status
-
-Current milestone as of 2026-05-18:
-
-| Subsystem | State |
+| Layer | Current state |
 |---|---|
-| BIOS recompilation (`SCPH1001.BIN`) | Boots and hands off to Tomba |
-| Game EXE recompilation | Tomba title, OPTIONS, NEW GAME, save/load, and gameplay reached |
-| CD-ROM / MDEC / XA | Tomba FMVs stream and play at the game's 15 fps cadence |
-| Memory cards | Tomba save and load verified |
-| SIO0 controllers | Digital pad polling plus DualShock config replies used by Tomba |
-| GPU | Functional for BIOS boot, FMVs, menus, and first gameplay area |
-| Interrupts, COP0, timers | Working for current Tomba path |
-| Dirty-RAM support | BIOS/game RAM-installed dispatch paths handled |
-| Controller input | Keyboard plus SDL/XInput-style controller mapping via `input.ini` |
+| Architecture and integration contracts | Complete for the current foundation |
+| Deterministic `town01` importer | Accepted against the supported retail disc |
+| Legaia Trace inspector | Implemented as a local, read-only metadata viewer |
+| Model asset identity and provenance | Accepted for `town01` |
+| Revisioned runtime-layout research | Implemented with explicit unknowns |
+| Generic PSXRecomp observer protocol | Protocol 1.1 implemented and accepted over a live native connection |
+| Windows startup and stale-cache correctness | Corrected with regression coverage |
 
-Known follow-up work:
+Live Legaia actor observation, imported-to-runtime actor matching, RAM editing,
+and authored game changes have not started. The current runtime-identity blocker
+must be resolved before actor traversal begins.
 
-- The recent Tomba visual burn-down fixed the BIOS PS logo, title/menu glyph
-  seams, dialog/pause panel seams, terrain shading, and shaded textured branch
-  rendering observed in the first area.
-- SPU coverage is partial; reverb, noise, sweep, and accurate SPU IRQ behavior
-  are not complete.
-- The historical Windows "Not Responding" hang is mitigated but should stay on
-  the watch list until longer in-game soak tests are clean.
-- Neither game is fully validated end to end yet. Tomba has considerably more
-  coverage; Mega Man X6 is playable (stages, controller, and memory-card
-  save/load all work). Full playthroughs of both are still unverified.
+## Vision
 
-For the current game milestone, build and run the sibling TombaRecomp project:
+The long-term goal is a Unity-like workflow built around the original game
+engine. A future editor should be able to load scenes from a user-supplied disc,
+show a 3D viewport and field-actor hierarchy, select an NPC, and trace each
+property back to the disc record, script, asset, or runtime observation that
+supports it.
 
-```sh
-cd ../TombaRecomp
-cmake --build build -j16
-./build/psx-runtime.exe --game game.toml
+Planned editor capabilities include:
+
+- a 3D scene viewport, actor hierarchy, property inspector, and transform gizmos;
+- model and animation selection;
+- dialogue and story-flag editing;
+- interaction and movement-script graphs;
+- drag-and-drop NPC creation;
+- live preview through the recompiled runtime; and
+- eventual PS1-compatible and extended-native build targets.
+
+These are roadmap goals, not current product features.
+
+## What Works Today
+
+### `town01` Scene Importer
+
+The accepted importer follows this metadata-only pipeline:
+
+```text
+user-supplied Mode 2/2352 disc
+  -> ISO9660
+  -> PROT.DAT and CDNAME.TXT
+  -> town01 scene range
+  -> Legaia LZS decompression
+  -> MAN actor placements
+  -> deterministic metadata JSON
 ```
 
-Running this repository's runtime without `--game` is still useful for
-BIOS-only memory card management.
+For the supported North American `SCUS-94254` build, the accepted result has:
 
-## Release Package
+- 52 imported `town01` actor placements;
+- 52/52 unique, stable semantic actor IDs;
+- confirmed imported X/Z positions and placement tiles;
+- model pool, model index, and animation-record IDs;
+- bounded source-record provenance; and
+- explicit unknowns rather than invented values for unresolved properties such
+  as Y position and initial rotation.
 
-The framework release package is BIOS-only:
+Repeated imports are byte-identical. The output contains structural metadata,
+claims, evidence, confidence, and bounded source locators, but no extracted MAN,
+TMD, TIM, dialogue, executable, or disc-sector payloads.
 
-1. Download `PSXRecomp-v*-windows-x64.zip` from Releases.
-2. Extract it and run `PSXRecomp.exe`.
-3. Select your legally obtained `SCPH1001.BIN` BIOS when prompted.
+### Model Asset Identity
 
-The package does not include a PS1 BIOS, game disc image, generated game code,
-or save data. The selected BIOS path is saved next to the executable as
-`bios.cfg`; delete that file to pick a different BIOS later.
+The additive model catalog identifies where models belong without exporting
+their bytes:
 
-Game-specific recomp projects, including TombaRecomp, use the same runtime
-picker contract but also prompt for a legally obtained game disc image.
+- 119 stable model asset identities;
+- 114 scene-local models and 5 global-special models;
+- 52/52 actor model references resolved;
+- 119 confirmed concrete source records;
+- 29 referenced assets and 90 unused-but-represented pool assets;
+- no aliases, null pool entries, or invalid indices in the accepted `town01`
+  data; and
+- 119/119 structural parity rows against the pinned reference implementation.
 
-## Setup
+Asset IDs describe structural pool slots and provenance. They are not inferred
+character names, runtime pointers, or exported model and texture data.
 
-Builds natively on **Windows (MSVC/MinGW)**, **macOS (Apple Silicon & Intel)**,
-and **Linux**. The BIOS thread scheduler uses host fibers — Win32 Fibers on
-Windows, `ucontext` on POSIX (`runtime/src/psx_fiber.c`) — so the recompiled
-BIOS's cooperative thread switching (the CD-boot handoff in particular) behaves
-the same on every platform.
+### Legaia Trace Inspector
 
-Requirements at a glance (full details, dependency table, and per-platform
-prerequisites in [`docs/BUILDING.md`](docs/BUILDING.md)):
+Legaia Trace is the current read-only visual surface. It supports:
 
-- A C/C++ toolchain: MSVC or MinGW/MSYS2 (Windows), Apple Clang (macOS),
-  Clang/GCC (Linux). CMake 3.20+; on macOS/Linux also `ninja` and `pkg-config`.
-- SDL2 (system / bundled). RmlUi and FreeType come in as **git submodules** —
-  clone with `--recurse-submodules`.
-- A legally obtained `SCPH1001.BIN` BIOS dump. Not included.
-- For game projects, a legally obtained game disc/EXE dump. Not included.
+- local JSON selection and drag-and-drop, with parsing in browser memory;
+- no upload endpoint, remote storage, or browser persistence;
+- searchable actor records and confidence filtering;
+- X/Z structural placement projection and actor selection;
+- imported transform and model-identity inspection;
+- PROT and MAN source provenance;
+- expandable claims, evidence, confidence, and notes;
+- visible unresolved properties; and
+- a responsive browser layout.
 
-Build the framework (recompiler tool + BIOS-only runtime):
+It does not render retail 3D models, connect to a running game, author changes,
+or modify RAM.
 
-```sh
-git clone --recurse-submodules https://github.com/mstan/psxrecomp.git && cd psxrecomp
+### Provenance and Confidence
 
-cmake -S recompiler -B recompiler/build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build recompiler/build
-cmake -S runtime    -B runtime/build    -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build runtime/build --target psx-runtime
-```
+Every semantic property is represented as a claim with evidence and source
+provenance. The shared confidence vocabulary is:
 
-On Windows swap `-G Ninja` for your generator if you prefer (e.g.
-`-G "Unix Makefiles"`); always keep an explicit `-DCMAKE_BUILD_TYPE` so the
-generated C is optimized. Game projects generate their own
-`generated/<serial>_*.c` files and link this runtime through CMake — see
-[`docs/BUILDING.md`](docs/BUILDING.md#build-and-run-a-game).
-
-## Keyboard Map
-
-| PSX button | Keyboard |
+| Confidence | Meaning |
 |---|---|
-| D-Pad Up / Down / Left / Right | Arrow keys |
-| Cross | X |
-| Square | Z |
-| Circle | S |
-| Triangle | A |
-| L1 / R1 | Q / W |
-| L2 / R2 | E / R |
-| L3 / R3 (stick clicks) | T / Y |
-| Start | Enter |
-| Select | Right Shift |
-| Turbo | Tab (hold) |
-| Fullscreen | F11 / Alt+Enter / Cmd+F |
+| **Confirmed** | Directly supported by validated structure, code, or repeatable evidence |
+| **Strongly Inferred** | Multiple strong signals support the interpretation, but proof is incomplete |
+| **Tentative** | Plausible and useful as a hypothesis, not safe as editor truth |
+| **Unknown** | Evidence does not support a value |
+| **Contradictory** | Credible evidence supports incompatible interpretations |
 
-## Controller Map
+A conceptual claim can say that a two-byte field is a confirmed signed X
+coordinate because a traced reader and writer agree, while the adjacent
+unresolved field remains `Unknown`. Agreement between two tools is supporting
+evidence; it does not silently promote a guess into a known property.
 
-Xbox-style controller defaults are enabled when a controller is connected:
+### Runtime Layout Research
 
-| PSX button | Xbox controller |
-|---|---|
-| D-Pad Up / Down / Left / Right | D-pad or left stick |
-| Cross | A |
-| Circle | B |
-| Square | X |
-| Triangle | Y |
-| L1 / R1 | LB / RB |
-| L2 / R2 | LT / RT |
-| L3 / R3 | Left / right stick click |
-| Start | Menu |
-| Select | View / Back |
+The first revisioned `SCUS-94254` field-layout profile records what a future
+observer may safely interpret:
 
-Release builds create/use `input.ini` next to the executable. Edit that file to
-change controller device index, deadzone, or button mapping.
+- field actors are individually allocated linked nodes, not a fixed-stride
+  contiguous actor array;
+- the 32-entry interaction/collision census is rebuilt each frame;
+- the census is filtered and distance-culled, so its position is not actor
+  identity;
+- observer-owned scene epochs prevent a reused RAM address from retaining
+  semantic identity across transitions;
+- known actor-prefix fields are documented with per-field evidence and
+  confidence; and
+- imported-to-runtime matching remains unresolved.
+
+Addresses with incomplete evidence remain Strongly Inferred, Tentative, or
+Unknown and are not presented as universal facts. See the
+[runtime-layout research](docs/legaia-sdk/runtime-layout-research.md) and
+[profile contract](docs/legaia-sdk/runtime-layout-profile.md) for the detailed
+field map and selection rules.
+
+### Generic PSXRecomp Observer Protocol
+
+The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.1**. It
+provides:
+
+- protocol and capability negotiation;
+- runtime, BIOS, and main-executable identity;
+- executable-region inspection;
+- authoritative watched-page generation state;
+- bounded multi-region RAM reads;
+- frame-before and frame-after stamps;
+- executable-state boundary stamps; and
+- fail-closed address, length, aggregate, and response validation.
+
+Native PSXRecomp implements the full identity and bounded-read surface.
+DuckStation and Beetle expose only the generic subset they can support
+truthfully. No Legaia-specific protocol command was added, and the present SDK
+foundation requires no debugger RAM writes.
+
+### Runtime Correctness and Portability
+
+This branch also contains generic runtime corrections needed for trustworthy
+observation:
+
+- static overlay ranges participate in watched-page invalidation;
+- replacing executable bytes at the same guest address cannot leave stale
+  native code dispatchable;
+- current RAM is revalidated before native dispatch becomes eligible again;
+- Windows/MSVC startup portability issues were corrected; and
+- fresh native launch and protocol 1.1 wire acceptance passed.
+
+These fixes establish correct failure behavior, but they do not complete the
+field-overlay ownership model described next.
+
+## Current Technical Blocker
+
+The runtime currently exposes many overlapping dispatch registrations rather
+than one clean canonical field-overlay range. The active work is determining
+the correct relationship between:
+
+- the loaded executable image;
+- executable segments and structural ranges;
+- dispatch registrations;
+- immutable source identity;
+- registration-time validated identity;
+- current live identity; and
+- active native ownership.
+
+The earlier field-overlay 0897 identity was deliberately **not accepted**. The
+expected candidate base did not appear as one authoritative executable region,
+several registrations covered known field code, and their source/live and
+ownership status required further explanation. The layout profile therefore
+remains fail closed.
+
+Actor traversal has not begun because executable ownership must be trustworthy
+before RAM structures can be interpreted safely.
+
+## What Is Not Implemented Yet
+
+- live Legaia actor enumeration;
+- imported-to-runtime actor matching;
+- click-to-select NPCs in the running game;
+- transform gizmos or actor movement/editing;
+- dialogue editing;
+- story-flag naming and editing;
+- interaction-script or movement-script graphs;
+- adding new NPCs;
+- authored project persistence;
+- model or texture replacement;
+- disc rebuilding or patch generation;
+- native extended asset loading;
+- a full 3D editor viewport; or
+- playable SDK-authored modifications.
 
 ## Architecture
 
-The recompiler emits C functions and dispatch tables for BIOS and game code.
-The runtime loads the BIOS/game assets into emulated PS1 memory, links the
-generated C as native code, and simulates hardware through MMIO handlers for
-GPU, DMA, timers, CD-ROM, MDEC, SIO0, memory cards, SPU, GTE, and interrupt
-delivery. The recompiled `SCPH1001.BIN` is the low-level (LLE) kernel and the
-correctness oracle; an optional HLE tier lays instant boot-skip and a few BIOS
-services on top, always falling through to the recompiled BIOS.
+The project has three layers:
 
-Code that can't be seen ahead of time (disc-streamed **overlays**) is captured
-and compiled to native code the first time it appears (`static → gcc → tcc`
-backend), with a small interpreter as the correctness fallback until it is. Full
-story in [`docs/EXECUTION_MODEL.md`](docs/EXECUTION_MODEL.md); component-level
-detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+1. **PSXRecomp**
+   - statically recompiles PlayStation MIPS R3000A code to generated C and then
+     native code;
+   - runs the recompiled BIOS and game against a PS1 hardware and memory runtime;
+   - handles overlays, generated/native registrations, and interpreter fallback
+     for runtime-installed code that is not safely native yet;
+   - owns the generic debug protocol and runtime-correctness boundary.
+2. **Legaia integration layer**
+   - owns disc and scene import, semantic IDs, provenance, asset identities,
+     revisioned runtime-layout profiles, and the future authoring model;
+   - keeps imported, derived, authored, live, and generated state distinct.
+3. **Legaia Trace**
+   - is the current read-only visual consumer of importer metadata;
+   - is intended to become an editor-facing surface only after the underlying
+     identity and authoring contracts are accepted.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`CLAUDE.md`](CLAUDE.md) for the
-development rules, and [`docs/internal/`](docs/internal/) for the phased plans
-and deep design notes (`PLAN.md`, `FAITHFUL_TIMING_PLAN.md`, …).
+PSXRecomp's execution model remains generic. It supports a recompiled BIOS and
+main executable, content-checked native overlays, and a correctness-first MIPS
+interpreter fallback. Missing native coverage may reduce performance; it must
+not reduce correctness. See [Execution Model](docs/EXECUTION_MODEL.md),
+[Architecture](docs/ARCHITECTURE.md), and [Building](docs/BUILDING.md).
 
-## Disc Speed
+The project uses
+[`AndrewAltimit/legend-of-legaia-re` at `d6e64c68`](https://github.com/AndrewAltimit/legend-of-legaia-re/tree/d6e64c68ede25813d35db20980da82a1a025549b)
+as a pinned, attributed research reference and parity oracle. It is not a Git
+submodule, runtime or Python/Cargo dependency, required subprocess, shipped
+component, or wholesale copy. PSXRecomp-side evidence is retained independently
+for adapted interpretations.
 
-Per-game `disc_speed` in `game.toml [runtime]` compresses CD-ROM timing:
+## Repository Layout
 
-| Value | Effect |
+| Path | Purpose |
 |---|---|
-| `"1x"` | Authentic PSX timing. Default for all games. |
-| `"2x"` / `"4x"` | 2× / 4× faster reads and seeks. |
-| `"instant"` | Minimum-floor delays. **Known to hang some games** during early initialization; root cause not yet identified. Use `"4x"` instead until resolved. |
+| `integrations/legaia/` | Isolated Legaia SDK integration root |
+| `integrations/legaia/tools/` | Importer command-line entry points |
+| `integrations/legaia/tests/` | Synthetic and opt-in disc-gated tests |
+| `integrations/legaia/layouts/` | Revisioned runtime-layout profile and validator |
+| `integrations/legaia/inspector/` | Legaia Trace browser application |
+| `docs/legaia-sdk/` | Architecture, evidence, acceptance, and roadmap documents |
+| `runtime/` | Generic PS1 runtime, hardware, overlays, and debug server |
+| `recompiler/` | MIPS R3000A analysis and C code generation |
+| `tools/debug_client.py` | Generic native/oracle debug-protocol client |
 
-FMV playback is always protected: the CD-ROM layer reverts to 1× whenever XA
-audio streaming is active, regardless of `disc_speed`. The speed switch fires
-only after the BIOS has handed off to the game EXE — boot and the license
-screen always run at authentic 1×.
+Generated game C, local imports, overlay captures, and retail-derived output are
+not SDK source and must remain outside version control.
 
-## Help make your game faster — just by playing it
+## Quick Start
 
-**Why isn't the game already at full speed everywhere?** Most of a game's
-code is converted ("recompiled") into a fast native program ahead of time.
-But PlayStation games don't keep all of their code on screen at once — they
-stream extra chunks of code off the disc as you reach new areas (these
-chunks are called *overlays*). We can't convert a chunk we've never seen,
-and the only way to see it is for someone to actually visit that area.
-Until then, that area's code runs in a slower compatibility mode.
+### Run the importer
 
-**You can help, just by playing.** While you play, the game quietly notices
-which areas are still running in the slow mode, takes a snapshot of them,
-and converts them to fast native code in the background — often within a
-minute, while you keep playing. The more places you visit, the faster the
-game gets. This happens automatically; you don't have to do anything.
+From the repository root in PowerShell:
 
-**Your discoveries persist for you.** They are saved in a file written next
-to the game called `overlay_captures.json`, and your local cache is rebuilt
-from it automatically — areas you have visited stay fast on every later
-session.
+```powershell
+python integrations/legaia/tools/legaia_import.py `
+  --disc "<path-to-your-legally-obtained-disc.bin>" `
+  --scene town01 `
+  --output "<local-output>\imported-town01.json"
+```
 
-**Please do not post `overlay_captures.json` publicly.** The file contains
-verbatim snapshots of the game's code read from your disc, which is
-copyrighted material — keep it on your own machine, alongside your disc
-image. A metadata-only contribution format (addresses and checksums, no
-game code) is planned so discoveries can be shared safely in the future.
+The importer currently accepts the supported Mode 2/2352 North American build
+and emits metadata JSON. Keep generated retail output outside the repository.
 
-## Contributing
+### Run importer and layout tests
 
-Contributions are welcome — AI-assisted or not — as long as they're reviewed,
-tested, and keep the core game-agnostic. A few things hold this project together:
-the faithful recompiled BIOS is the baseline and oracle, generated code is never
-hand-edited (fix the recompiler and regenerate), and a change proves itself
-against the Beetle oracle / on screen rather than by assertion. Game-specific work
-lives in the game repos, which pin an exact framework commit as a submodule.
+```powershell
+python -m unittest discover integrations/legaia/tests -v
+```
 
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a PR — it covers the core
-rules, how to verify a change, the regression checklist across the known games,
-and how a framework fix reaches a game through its pin. Bugs and build problems go
-to GitHub issues (include `gcc -v` / OS / generator for build failures); design
-discussion happens in the **R.A.I.D.** Discord (invite below).
+Retail-disc acceptance is opt-in. Set the environment variable only for the
+current PowerShell session:
 
-## License
+```powershell
+$env:LEGAIA_DISC_BIN = "<path-to-your-legally-obtained-disc.bin>"
+python -m unittest discover integrations/legaia/tests -v
+```
 
-PolyForm Noncommercial 1.0.0. See `LICENSE`.
+Disc-gated tests skip cleanly when `LEGAIA_DISC_BIN` is absent; synthetic tests
+are not a substitute for retail acceptance.
 
-The PSX BIOS and game disc images remain copyrighted by their respective
-owners. This project distributes no BIOS images, no disc images, and no
-game assets — those are always supplied by the user from their own
-collection. Release executables (and per-game overlay caches) contain
-statically recompiled (machine-translated) builds of the original code,
-the same distribution model used by other static recompilation projects
-such as N64: Recompiled.
+### Run Legaia Trace
 
----
+Legaia Trace requires Node.js 22.13.0 or newer. Its checked-in package scripts
+support this local workflow:
 
-<p align="center">
-  <sub><b>R.A.I.D. — Retro AI Development</b> · a Discord for AI-assisted retro reverse-engineering, decomp &amp; recomp</sub>
-</p>
+```powershell
+Set-Location integrations\legaia\inspector
+npm ci --ignore-scripts
+npm run dev
+```
 
-<p align="center">
-  <a href="https://discord.gg/Ad9BwSzctP"><img src=".github/raid-discord.png" alt="Join the Retro AI Development (R.A.I.D.) Discord" width="200"></a>
-</p>
+Open the local URL printed by the development server, then choose **Open
+import** or drag in the importer JSON. Validation commands are `npm test` and
+`npm run lint -- --ignore-pattern work` (the extra ignore excludes local
+deployment artifacts, not source).
+
+### Query a locally built runtime
+
+These commands require a running native PSXRecomp runtime on its default local
+debug port:
+
+```powershell
+python tools/debug_client.py protocol-info
+python tools/debug_client.py runtime-identity
+python tools/debug_client.py executable-regions 0 16
+python tools/debug_client.py read-regions signal_a=0x80000000:4 signal_b=0x80000010:16
+```
+
+The client prints compact executable-region summaries while preserving the
+protocol's structured output. The examples perform reads only. See
+[TCP Commands](TCP_COMMANDS.md) for the complete generic command surface.
+
+### Build the generic PSXRecomp foundation
+
+PSXRecomp builds on Windows with MSVC or MinGW, macOS on Apple Silicon or
+Intel, and Linux with Clang or GCC. CMake 3.20+ is required; platform-specific
+dependencies and supported generators are documented in
+[Building](docs/BUILDING.md). Clone with submodules because the generic runtime
+has third-party UI dependencies:
+
+```powershell
+git clone --recurse-submodules https://github.com/SamSteProjects/psxrecomp.git
+Set-Location psxrecomp
+cmake -S recompiler -B recompiler/build -DCMAKE_BUILD_TYPE=Release
+cmake --build recompiler/build --config Release
+cmake -S runtime -B runtime/build -DCMAKE_BUILD_TYPE=Release
+cmake --build runtime/build --config Release --target psx-runtime
+```
+
+Game-specific generated code and configuration are separate inputs to the
+generic runtime. A legally obtained BIOS is required for execution and is not
+included.
+
+## Testing and Acceptance
+
+The branch is validated in distinct layers rather than through one misleading
+aggregate test count:
+
+- synthetic importer parsing, bounds, determinism, and provenance tests;
+- an opt-in real-disc gated test for the supported build;
+- repeated deterministic output and JSON Schema validation;
+- metadata-only and absolute-path scans;
+- Legaia Trace production-build, rendering, lint, and privacy tests;
+- model-identity structural parity against the pinned reference;
+- layout-profile schema, canonical serialization, and fail-closed validation;
+- generic observer-protocol, bounds, capability, and compatibility tests;
+- watched-page and stale-cache regression tests;
+- Windows/MSVC startup regression tests; and
+- fresh native-wire protocol acceptance with bounded-read latency checks.
+
+`test_reachable_discovery_codegen.py` has a separately tracked
+invalid-discovery-mode fail-closed failure. Current project documentation does
+not attribute it to the Legaia SDK changes, and this branch's README work does
+not modify it.
+
+## Legal and Data Boundaries
+
+- Users must supply their own legally obtained game disc and BIOS where needed.
+- No game assets, executable bytes, dialogue dumps, extracted models or
+  textures, disc sectors, or RAM snapshots are included.
+- Generated retail importer JSON is kept outside the repository.
+- Importer output is metadata-only; it identifies structures and provenance
+  without embedding asset payloads.
+- Overlay captures and other files containing retail bytes must remain local.
+- This is an independent project and is not affiliated with or endorsed by
+  Sony Interactive Entertainment or the owners of *Legend of Legaia*.
+
+Repository components have distinct licensing and attribution boundaries.
+PSXRecomp is distributed under the [PolyForm Noncommercial 1.0.0 license](LICENSE).
+The pinned reference repository declares its own license and remains an external
+research source; see the [Legaia integration data and license boundary](integrations/legaia/README.md#proprietary-data).
+Third-party libraries retain their respective licenses. No license is changed
+by this integration.
+
+## Roadmap
+
+**Completed foundation**
+
+- architecture and integration contracts;
+- deterministic `town01` import and semantic actor IDs;
+- concrete model asset identity and provenance;
+- read-only Legaia Trace inspector;
+- runtime-layout research and revisioned profile;
+- generic observer protocol; and
+- stale-cache correction and native startup acceptance.
+
+**In progress**
+
+- executable-image and registration ownership model;
+- bounded executable-catalog paging; and
+- canonical field-overlay identity.
+
+**Next**
+
+- a headless, read-only Legaia runtime observer;
+- scene-epoch establishment;
+- linked actor-node snapshots;
+- evidence-backed runtime fields; and
+- imported/runtime correlation research.
+
+**Later**
+
+- live inspector integration;
+- transform authoring;
+- dialogue and story-flag editing;
+- movement and interaction tools;
+- new actor creation; and
+- PS1-compatible and extended-native build or patch targets.
+
+No completion dates are assigned, and later milestones remain subject to
+evidence, compatibility, and data-boundary review.
+
+## Documentation
+
+- [Legaia SDK architecture](docs/legaia-sdk/architecture.md)
+- [`town01` retail-disc acceptance](docs/legaia-sdk/town01-acceptance.md)
+- [Model asset identity](docs/legaia-sdk/model-asset-identity.md)
+- [Runtime-layout research](docs/legaia-sdk/runtime-layout-research.md)
+- [Runtime-layout profile contract](docs/legaia-sdk/runtime-layout-profile.md)
+- [Future correlation signals](docs/legaia-sdk/runtime-correlation-signals.md)
+- [Runtime bridge](docs/legaia-sdk/runtime-bridge.md)
+- [Field-overlay 0897 identity attempt](docs/legaia-sdk/field-overlay-0897-identity.md)
+- [Debug protocol versioning](docs/debug-protocol-versioning.md)
+- [Executable identity](docs/executable-identity.md)
+- [Bounded `read_regions` command](docs/read-regions-command.md)
+- [Native runtime launch acceptance](docs/runtime-launch-acceptance.md)
+- [Legaia integration README](integrations/legaia/README.md)
+- [Generic PSXRecomp architecture](docs/ARCHITECTURE.md)
+- [Generic execution model](docs/EXECUTION_MODEL.md)
+- [Build guide](docs/BUILDING.md)
+
+## Project Status Summary
+
+The project currently provides a validated, provenance-aware scene and asset
+importer, a read-only visual inspector, a runtime-layout knowledge base, and a
+generic PSXRecomp observation protocol. It does not yet provide the finished
+Unity-like editing workflow, but the accepted foundation is being built
+specifically toward that goal.
