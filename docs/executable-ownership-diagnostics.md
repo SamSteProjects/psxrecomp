@@ -42,4 +42,3 @@ therefore marked non-comparable to a child registration's live identity.
 `registration_time_validated_identity` is null until the registration has
 actually passed validation. Static registrations retain that validation
 history after later invalidation, while current ownership remains false.
-

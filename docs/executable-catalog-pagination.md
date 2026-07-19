@@ -47,4 +47,3 @@ data portion of the canonical main image.
 page because the native server serves one command per connection. It enforces
 the token and total, rejects repeated or non-advancing cursors, caps page count,
 and returns both a compact summary and full JSON.
-
