@@ -9,9 +9,46 @@
  */
 #include "audio_trace.h"
 
-#include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
+
+/* MSVC's C11 mode exposes most C11 syntax but its <stdatomic.h> support is not
+ * enabled in every toolchain configuration.  These trace rings have one writer
+ * per counter, so the Windows interlocked operations are a direct (stronger)
+ * replacement for the acquire/release operations used on other compilers. */
+#if defined(_MSC_VER)
+#include <windows.h>
+typedef volatile LONG64 AudioAtomicU64;
+typedef volatile LONG   AudioAtomicU32;
+static uint64_t audio_atomic_load_u64(const AudioAtomicU64 *p) {
+    return (uint64_t)InterlockedCompareExchange64((volatile LONG64 *)p, 0, 0);
+}
+static uint32_t audio_atomic_load_u32(const AudioAtomicU32 *p) {
+    return (uint32_t)InterlockedCompareExchange((volatile LONG *)p, 0, 0);
+}
+static void audio_atomic_store_u64(AudioAtomicU64 *p, uint64_t value) {
+    InterlockedExchange64((volatile LONG64 *)p, (LONG64)value);
+}
+static void audio_atomic_store_u32(AudioAtomicU32 *p, uint32_t value) {
+    InterlockedExchange((volatile LONG *)p, (LONG)value);
+}
+#else
+#include <stdatomic.h>
+typedef _Atomic uint64_t AudioAtomicU64;
+typedef _Atomic uint32_t AudioAtomicU32;
+static uint64_t audio_atomic_load_u64(const AudioAtomicU64 *p) {
+    return atomic_load_explicit(p, memory_order_acquire);
+}
+static uint32_t audio_atomic_load_u32(const AudioAtomicU32 *p) {
+    return atomic_load_explicit(p, memory_order_acquire);
+}
+static void audio_atomic_store_u64(AudioAtomicU64 *p, uint64_t value) {
+    atomic_store_explicit(p, value, memory_order_release);
+}
+static void audio_atomic_store_u32(AudioAtomicU32 *p, uint32_t value) {
+    atomic_store_explicit(p, value, memory_order_release);
+}
+#endif
 
 /* 2^22 frames @ 44100 ~= 95 s per tap. Power of two so wrap is a mask. */
 #define PCM_RING_FRAMES (1u << 22)
@@ -27,7 +64,7 @@
 
 typedef struct {
     int16_t          pcm[PCM_RING_FRAMES * 2];
-    _Atomic uint64_t head;      /* frames ever written; ring pos = head & MASK */
+    AudioAtomicU64   head;      /* frames ever written; ring pos = head & MASK */
     uint64_t         nonzero;
     uint64_t         audible;
     int32_t          peak;
@@ -52,9 +89,9 @@ uint32_t audio_trace_tap_rate(int tap)
 }
 
 static AudioTraceEvent  s_events[EV_RING_CAP];
-static _Atomic uint64_t s_event_head;
+static AudioAtomicU64 s_event_head;
 
-static _Atomic uint32_t s_noted_frame;
+static AudioAtomicU32 s_noted_frame;
 
 /* Host pump counters (single writer: the pump/render thread). */
 static uint64_t s_pump_calls;
@@ -68,13 +105,13 @@ static uint64_t s_unmute_events;
 void audio_trace_init(void)
 {
     for (int t = 0; t < AUDIO_TAP_COUNT; t++) {
-        atomic_store(&s_taps[t].head, 0);
+        audio_atomic_store_u64(&s_taps[t].head, 0);
         s_taps[t].nonzero = 0;
         s_taps[t].audible = 0;
         s_taps[t].peak = 0;
     }
-    atomic_store(&s_event_head, 0);
-    atomic_store(&s_noted_frame, 0);
+    audio_atomic_store_u64(&s_event_head, 0);
+    audio_atomic_store_u32(&s_noted_frame, 0);
     s_pump_calls = 0;
     s_pump_skips = 0;
     s_underruns = 0;
@@ -86,14 +123,14 @@ void audio_trace_init(void)
 
 void audio_trace_note_frame(uint32_t frame)
 {
-    atomic_store_explicit(&s_noted_frame, frame, memory_order_relaxed);
+    audio_atomic_store_u32(&s_noted_frame, frame);
 }
 
 void audio_trace_pcm(int tap, const int16_t *stereo, int frames)
 {
     if (tap < 0 || tap >= AUDIO_TAP_COUNT || !stereo || frames <= 0) return;
     PcmTap *t = &s_taps[tap];
-    uint64_t head = atomic_load_explicit(&t->head, memory_order_relaxed);
+    uint64_t head = audio_atomic_load_u64(&t->head);
 
     for (int f = 0; f < frames; f++) {
         int16_t l = stereo[f * 2 + 0];
@@ -108,23 +145,21 @@ void audio_trace_pcm(int tap, const int16_t *stereo, int frames)
         if (a > AUDIBLE_ABS) t->audible++;
         if (a > t->peak) t->peak = a;
     }
-    atomic_store_explicit(&t->head, head + (uint64_t)frames,
-                          memory_order_release);
+    audio_atomic_store_u64(&t->head, head + (uint64_t)frames);
 }
 
 void audio_trace_event(uint16_t kind, uint32_t a, uint32_t b)
 {
-    uint64_t seq = atomic_load_explicit(&s_event_head, memory_order_relaxed);
+    uint64_t seq = audio_atomic_load_u64(&s_event_head);
     AudioTraceEvent *e = &s_events[(uint32_t)(seq & EV_RING_MASK)];
     e->seq        = seq;
-    e->sample_idx = atomic_load_explicit(&s_taps[AUDIO_TAP_SPU_OUT].head,
-                                         memory_order_relaxed);
-    e->frame      = atomic_load_explicit(&s_noted_frame, memory_order_relaxed);
+    e->sample_idx = audio_atomic_load_u64(&s_taps[AUDIO_TAP_SPU_OUT].head);
+    e->frame      = audio_atomic_load_u32(&s_noted_frame);
     e->kind       = kind;
     e->reserved   = 0;
     e->a          = a;
     e->b          = b;
-    atomic_store_explicit(&s_event_head, seq + 1, memory_order_release);
+    audio_atomic_store_u64(&s_event_head, seq + 1);
 
     switch (kind) {
     case AUDIO_EV_RENDER:
@@ -145,8 +180,7 @@ void audio_trace_get_stats(AudioTraceStats *out)
     if (!out) return;
     memset(out, 0, sizeof(*out));
     for (int t = 0; t < AUDIO_TAP_COUNT; t++) {
-        out->tap_frames[t]  = atomic_load_explicit(&s_taps[t].head,
-                                                   memory_order_acquire);
+        out->tap_frames[t]  = audio_atomic_load_u64(&s_taps[t].head);
         out->tap_nonzero[t] = s_taps[t].nonzero;
         out->tap_audible[t] = s_taps[t].audible;
         out->tap_peak[t]    = s_taps[t].peak;
@@ -158,25 +192,24 @@ void audio_trace_get_stats(AudioTraceStats *out)
     out->queue_lowater  = s_queue_lowater == 0xFFFFFFFFu ? 0 : s_queue_lowater;
     out->mute_events    = s_mute_events;
     out->unmute_events  = s_unmute_events;
-    out->events_total   = atomic_load_explicit(&s_event_head,
-                                               memory_order_acquire);
+    out->events_total   = audio_atomic_load_u64(&s_event_head);
 }
 
 uint64_t audio_trace_tap_total(int tap)
 {
     if (tap < 0 || tap >= AUDIO_TAP_COUNT) return 0;
-    return atomic_load_explicit(&s_taps[tap].head, memory_order_acquire);
+    return audio_atomic_load_u64(&s_taps[tap].head);
 }
 
 uint64_t audio_trace_events_total(void)
 {
-    return atomic_load_explicit(&s_event_head, memory_order_acquire);
+    return audio_atomic_load_u64(&s_event_head);
 }
 
 uint32_t audio_trace_events_get(AudioTraceEvent *out, uint32_t max)
 {
     if (!out || max == 0) return 0;
-    uint64_t total = atomic_load_explicit(&s_event_head, memory_order_acquire);
+    uint64_t total = audio_atomic_load_u64(&s_event_head);
     uint64_t avail = total < (uint64_t)EV_RING_CAP ? total : (uint64_t)EV_RING_CAP;
     if ((uint64_t)max > avail) max = (uint32_t)avail;
     uint64_t first = total - (uint64_t)max;
@@ -220,7 +253,7 @@ int64_t audio_trace_dump_wav(int tap, const char *path,
     /* Snapshot the head; everything in [head - avail, head) is stable
      * (append-only, single writer) unless the writer laps us — the ring
      * holds ~95 s, a dump takes well under a second. */
-    uint64_t head  = atomic_load_explicit(&t->head, memory_order_acquire);
+    uint64_t head  = audio_atomic_load_u64(&t->head);
     uint64_t avail = head < (uint64_t)PCM_RING_FRAMES ? head
                                                       : (uint64_t)PCM_RING_FRAMES;
     if (avail == 0) return -1;
