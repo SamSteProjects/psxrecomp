@@ -617,6 +617,11 @@ function(psxrecomp_add_runtime_target target)
             target_link_options(${target} PRIVATE -static -static-libgcc -static-libstdc++)
         endif()
     elseif(MSVC)
+        target_compile_definitions(${target} PRIVATE NOMINMAX)
+        # MSVC's stdatomic.h requires this opt-in. The option is accepted by
+        # both the C and C++ front ends, which keeps Visual Studio generators
+        # from silently dropping a COMPILE_LANGUAGE expression.
+        target_compile_options(${target} PRIVATE /experimental:c11atomics)
         target_compile_options(${target} PRIVATE /GS- /guard:cf-)
         target_link_options(${target} PRIVATE /STACK:67108864,67108864 /GUARD:NO)
         # No console window in Release MSVC builds. /ENTRY keeps main() as
