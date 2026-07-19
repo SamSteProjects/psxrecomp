@@ -32,6 +32,7 @@ Implemented:
 - local-first Legaia Trace inspection surface for importer JSON, with actor search, X/Z projection, source spans and claim evidence;
 - synthetic-only inspector preview and tests proving there are no upload, persistence, runtime-write or authoring paths.
 - completed real-disc acceptance for the supported North American build: 52 deterministic `town01` actor records, schema/privacy validation, Legaia Trace consumption and full structural parity with Andrew's pinned parser. See `docs/legaia-sdk/town01-acceptance.md`.
+- completed additive model-identity resolution: 114 scene-local and five global-special metadata-only model records, 52/52 resolved actor references, bounded source provenance and 119/119 structural parity rows. See `docs/legaia-sdk/model-asset-identity.md`.
 
 Not implemented:
 
@@ -50,7 +51,7 @@ PSXRecomp is under PolyForm Noncommercial 1.0.0; legend-of-legaia-re declares `M
 
 ## Smallest proof of concept
 
-The first proof is now a headless, read-only import of Rim Elm (`town01`) from a user disc. The independently implemented PSXRecomp-side path resolves ISO9660, PROT/CDNAME, the MAN-bearing scene bundle and actor-placement records, then emits deterministic metadata with structural IDs and evidence-backed claims. It does not import geometry, decode scripts or require Legaia RE at runtime.
+The first proof is now a headless, read-only import of Rim Elm (`town01`) from a user disc. The independently implemented PSXRecomp-side path resolves ISO9660, PROT/CDNAME, the MAN-bearing scene bundle, actor placements and structural scene/global model pools, then emits deterministic metadata with stable actor/model IDs and evidence-backed claims. It does not emit geometry, decode scripts or require Legaia RE at runtime.
 
 Run it with `python integrations/legaia/tools/legaia_import.py --disc "C:\path\to\Legend of Legaia.bin" --scene town01 --output "C:\local-output\imported-town01.json"`. See `docs/legaia-sdk/town01-importer.md` for the schema, confidence model, tests, attribution and data-handling rules.
 

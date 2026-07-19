@@ -23,12 +23,13 @@ Outputs should be written outside the repository. Local output/cache/disc patter
 
 ## Output contract
 
-The schema is `integrations/legaia/schemas/town01-import.schema.json`. Its top level contains:
+New imports use `integrations/legaia/schemas/town01-import.v2.schema.json`; the retained `town01-import.schema.json` describes legacy v1 output. The v2 top level contains:
 
 - `schema_version` and `importer_version`;
 - `source`, with the exact disc digest, supported build, scene label, tool version and pinned reference revision;
 - `scene`, with its structural identity and MAN partition counts;
 - `actors`, one entry for every readable partition-1 actor record after controller record zero;
+- `assets.models`, structural scene-local records followed by global-special pack records;
 - `diagnostics` and explicit `unresolved` questions.
 
 No timestamp is emitted. Objects are sorted by key and actors remain in structural MAN record order, so identical disc and tool versions produce byte-identical JSON. A runtime metadata-only validator rejects binary values and fields conventionally used for payloads, sectors, meshes, textures and dialogue.
@@ -54,7 +55,7 @@ This slice emits:
 - confirmed X/Z position and tile coordinates using the retail placement formula;
 - unknown Y and rotation/facing, because those are not present in the confirmed placement prefix;
 - confirmed model pool/index selection, including the `0xF0` special-pool threshold;
-- unknown referenced model asset record, because the scene/global TMD pools do not yet have stable asset IDs here;
+- confirmed stable model asset ID and bounded source record when the independently built scene/global pool contains the selected slot;
 - confirmed raw animation-record ID semantics, without resolving or exporting animation assets.
 
 Exact record bounds use the next higher record or MAN-section offset across all partitions. Conflicting active values are retained and normalized to `contradictory`; exact duplicate claims are removed.
@@ -63,7 +64,7 @@ Exact record bounds use the next higher record or MAN-section offset across all 
 
 The reference manifest at `integrations/legaia/provenance/reference-manifest.json` pins AndrewAltimit/legend-of-legaia-re commit `d6e64c68ede25813d35db20980da82a1a025549b`. For each adapted interpretation it names the source files, documentation, functions/types, evidence, independently implemented behavior and differences.
 
-The implementation was written independently for PSXRecomp and is narrower than the reference: read-only ISO/PROT/CDNAME, count-6/count-7 scene tables, LZS decode, and MAN placement metadata only. The reference repository is an attributed development reference and optional parity oracle, never a submodule, Cargo/Python dependency, subprocess or shipped component.
+The implementation was written independently for PSXRecomp and is narrower than the reference: read-only ISO/PROT/CDNAME, count-6/count-7 scene tables, LZS decode, MAN placement metadata, structural TMD scanning and the five-slot PROT 874 pack. The reference repository is an attributed development reference and optional parity oracle, never a submodule, Cargo/Python dependency, subprocess or shipped component.
 
 For optional local parity work, run this importer and Andrew's viewer/tooling separately against the same user-owned disc, then compare only scene identity, actor record indices, model pool/index and X/Z placement metadata. Keep all raw and normalized outputs in ignored local directories. Parity is supplemental; the claims above cite parser spans and retail/runtime evidence independently.
 
@@ -90,6 +91,6 @@ Users must supply a legally obtained disc. Never commit disc images or sectors, 
 
 ## Unresolved and next step
 
-The importer intentionally leaves vertical position, initial facing, script-derived movement, stable model asset-record identity, interaction/dialogue/story relationships and runtime correlation unresolved. It performs no writes and cannot rebuild or patch a disc.
+The importer intentionally leaves vertical position, initial facing, script-derived movement, human model identity, animation/texture bindings, interaction/dialogue/story relationships and runtime correlation unresolved. It performs no writes and cannot rebuild or patch a disc.
 
 The approved follow-on read-only inspection surface now lives at `integrations/legaia/inspector`; see `town01-inspector.md`. The next separately approved slice is a read-only PSXRecomp observation bridge and revisioned Legaia layout profile, still without RAM writes or generic runtime title checks.

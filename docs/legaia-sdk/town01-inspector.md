@@ -2,7 +2,7 @@
 
 ## Boundary
 
-Legaia Trace is the first visual consumer of `legaia.scene-import.v1`. It lives at `integrations/legaia/inspector` and remains separate from generic PSXRecomp runtime code. It does not open a disc, connect to PSXRecomp, inspect RAM, render retail assets, modify metadata or persist a project.
+Legaia Trace consumes legacy `legaia.scene-import.v1` and current `legaia.scene-import.v2`. It lives at `integrations/legaia/inspector` and remains separate from generic PSXRecomp runtime code. It does not open a disc, connect to PSXRecomp, inspect RAM, render retail assets, modify metadata or persist a project.
 
 The surface accepts the deterministic JSON created by `integrations/legaia/tools/legaia_import.py`. The file is read with the browser `File` API and held in React state for the current tab. There is no upload route, connector, storage binding, browser storage or analytics path.
 
@@ -13,7 +13,7 @@ The surface accepts the deterministic JSON created by `integrations/legaia/tools
 - a structural X/Z placement projection with no retail geometry;
 - imported X/Y/Z values with unresolved Y shown explicitly;
 - rotation/facing as unknown when no claim supports it;
-- model pool/index and unresolved asset-record identity;
+- model pool/index, stable asset semantic ID, resolution status and bounded model-source provenance;
 - PROT/MAN source record and decoded byte span;
 - per-property confidence, evidence locators and notes;
 - actor-level and import-level unresolved questions.
@@ -28,7 +28,7 @@ npm ci --ignore-scripts
 npm run dev
 ```
 
-Use **Open import** or drag a `legaia.scene-import.v1` JSON file onto the drop target. The client rejects other schema versions and scenes.
+Use **Open import** or drag a `legaia.scene-import.v1` or `legaia.scene-import.v2` JSON file onto the drop target. The client rejects other schema versions and scenes.
 
 ```powershell
 npm test
@@ -43,6 +43,6 @@ The deployed/static application contains no import snapshot. A user-selected fil
 
 ## Still unresolved
 
-This surface intentionally does not infer facing, vertical position, model asset identity, scripts, dialogue, story flags or runtime actor correlation. It shows unknown and contradictory claims instead of inventing display values.
+This surface intentionally does not infer facing, vertical position, human-readable model identity, animation/texture dependencies, scripts, dialogue, story flags or runtime actor correlation. It shows unknown and contradictory claims instead of inventing display values.
 
 The next separately approved slice is a read-only PSXRecomp observation bridge and revisioned Legaia layout profile. It must preserve imported/live state separation and must not introduce RAM writes or generic runtime title checks.
