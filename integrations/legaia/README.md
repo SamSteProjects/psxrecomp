@@ -31,6 +31,7 @@ Implemented:
 - pinned interpretation/attribution manifest and metadata JSON schema.
 - local-first Legaia Trace inspection surface for importer JSON, with actor search, X/Z projection, source spans and claim evidence;
 - synthetic-only inspector preview and tests proving there are no upload, persistence, runtime-write or authoring paths.
+- completed real-disc acceptance for the supported North American build: 52 deterministic `town01` actor records, schema/privacy validation, Legaia Trace consumption and full structural parity with Andrew's pinned parser. See `docs/legaia-sdk/town01-acceptance.md`.
 
 Not implemented:
 
