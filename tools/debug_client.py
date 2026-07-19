@@ -13,6 +13,12 @@ Options:
     --host HOST     Target host (default: 127.0.0.1)
 
 Commands (shared — identical on both servers):
+    protocol-info               Negotiate protocol version, capabilities, limits
+    runtime-identity            Show safe runtime/program identity metadata
+    executable-regions [offset] [limit]
+                                Summarize active executable registrations
+    read-regions <key=addr:len> [key=addr:len ...]
+                                One bounded, frame-stamped multi-region read
     ping                        Heartbeat + current frame
     frame                       Current frame number
     regs / get_registers        Dump all MIPS registers
@@ -186,6 +192,32 @@ def pretty_json(resp):
     return json.dumps(resp, indent=2)
 
 
+def pretty_executable_regions(resp):
+    """Compact operator view followed by the complete machine response."""
+    if not resp.get("ok"):
+        return pretty_json(resp)
+    lines = []
+    for region in resp.get("regions", []):
+        source = region.get("source_identity", {})
+        live = region.get("live_identity", {})
+        generation = region.get("watched_generation", {})
+        source_hash = source.get("sha256") or source.get("crc32") or "-"
+        live_hash = live.get("sha256", "-")
+        lines.append(
+            f"{region.get('kind', '?'):>24} "
+            f"{region.get('guest_base', '?')} +{region.get('length', '?')} "
+            f"backend={region.get('backend', '?')} "
+            f"source={str(source_hash)[:12]} live={str(live_hash)[:12]} "
+            f"generation={str(generation.get('digest', '-'))[:12]} "
+            f"native={region.get('native_registration_valid', False)}"
+        )
+    if not lines:
+        lines.append("(no executable regions returned)")
+    lines.append("\nFull JSON:")
+    lines.append(pretty_json(resp))
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Command builder — translates CLI args to JSON wire format
 # ---------------------------------------------------------------------------
@@ -198,6 +230,34 @@ def build_cmd(args):
 
     if cmd == "ping":
         return {"cmd": "ping"}, pretty_json
+    elif cmd in ("protocol-info", "protocol_info"):
+        return {"cmd": "protocol_info"}, pretty_json
+    elif cmd in ("runtime-identity", "runtime_identity"):
+        return {"cmd": "runtime_identity"}, pretty_json
+    elif cmd in ("executable-regions", "executable_regions"):
+        offset = int(args[1], 0) if len(args) > 1 else 0
+        limit = int(args[2], 0) if len(args) > 2 else 64
+        return {"cmd": "executable_regions", "offset": offset,
+                "limit": limit}, pretty_executable_regions
+    elif cmd in ("read-regions", "read_regions"):
+        if len(args) < 2:
+            return None, lambda _: "Usage: read-regions <key=addr:len> [key=addr:len ...]"
+        regions = []
+        for spec in args[1:]:
+            key = None
+            value = spec
+            if "=" in spec:
+                key, value = spec.split("=", 1)
+                if not key:
+                    return None, lambda _: f"Invalid region: {spec}"
+            if ":" not in value:
+                return None, lambda _: f"Invalid region (expected addr:len): {spec}"
+            addr, length = value.rsplit(":", 1)
+            region = {"addr": addr, "len": int(length, 0)}
+            if key is not None:
+                region["key"] = key
+            regions.append(region)
+        return {"cmd": "read_regions", "regions": regions}, pretty_json
     elif cmd == "frame":
         return {"cmd": "frame"}, pretty_json
     elif cmd in ("regs", "get_registers"):

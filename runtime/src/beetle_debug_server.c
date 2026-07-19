@@ -181,7 +181,12 @@ static sock_t s_listen = SOCK_INVALID;
 static sock_t s_client = SOCK_INVALID;
 static int    s_port   = DEFAULT_DEBUG_PORT;
 
-#define RECV_BUF_SIZE 8192
+#define RECV_BUF_SIZE 8193
+#define OBS_MAX_REQUEST_BYTES 8191
+#define OBS_MAX_REGIONS 32
+#define OBS_MAX_REGION_BYTES 4096
+#define OBS_MAX_TOTAL_BYTES 16384
+#define OBS_MAX_RESPONSE_BYTES 65536
 static char s_recv_buf[RECV_BUF_SIZE];
 static int  s_recv_len = 0;
 
@@ -267,6 +272,19 @@ static void h_ping(int id, const char *json) {
              id, s_port, beetle_get_frame_count(), beetle_core_get_guest_cycles());
 }
 
+static void h_protocol_info(int id, const char *json) {
+    (void)json;
+    send_fmt("{\"id\":%d,\"ok\":true,\"protocol\":{\"name\":\"psxrecomp-debug\","
+             "\"major\":1,\"minor\":1},\"server\":{\"kind\":\"beetle\"},"
+             "\"capabilities\":[\"read_ram\",\"read_regions\"],\"limits\":{"
+             "\"max_request_bytes\":%d,\"max_read_ram_bytes\":2097152,"
+             "\"max_regions_per_request\":%d,\"max_bytes_per_region\":%d,"
+             "\"max_total_region_bytes\":%d,\"max_response_bytes\":%d},"
+             "\"frame\":%u}\n", id, OBS_MAX_REQUEST_BYTES, OBS_MAX_REGIONS,
+             OBS_MAX_REGION_BYTES, OBS_MAX_TOTAL_BYTES, OBS_MAX_RESPONSE_BYTES,
+             beetle_get_frame_count());
+}
+
 /* get_registers — oracle CPU state, same JSON shape as the recomp server so
  * one tool parses both ports (Rule 16). Fields: gpr[32], pc, lo, hi, cop0_sr,
  * cop0_cause, cop0_epc. (i_stat/i_mask omitted: read via wtrace/read_ram.) */
@@ -338,6 +356,146 @@ static void h_read_ram(int id, const char *json) {
     memcpy(tail, "\"}\n", 3);
     send_raw(out, (int)(hdr + (size_t)len * 2 + 3));
     free(out); free(buf);
+}
+
+typedef struct {
+    char key[65];
+    int has_key;
+    uint32_t phys;
+    uint32_t len;
+} ObserverReadRegion;
+
+static int observer_key_valid(const char *s) {
+    if (!s || !*s) return 0;
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') || c == '_' || c == '.' ||
+              c == ':' || c == '-')) return 0;
+    }
+    return 1;
+}
+
+static int json_get_scalar(const char *json, const char *key, char *out, int outlen) {
+    char pat[64];
+    snprintf(pat, sizeof(pat), "\"%s\"", key);
+    const char *p = strstr(json, pat);
+    if (!p) return 0;
+    p += strlen(pat);
+    while (*p && (*p == ':' || *p == ' ' || *p == '\t')) p++;
+    int quoted = (*p == '"');
+    if (quoted) p++;
+    int i = 0;
+    while (*p && i < outlen - 1) {
+        if ((quoted && *p == '"') || (!quoted && (*p == ',' || *p == '}' ||
+            *p == ' ' || *p == '\t' || *p == '\r' || *p == '\n'))) break;
+        out[i++] = *p++;
+    }
+    out[i] = 0;
+    return i > 0;
+}
+
+static int parse_observer_regions(const char *json, ObserverReadRegion *out,
+                                  int *count_out, uint32_t *total_out,
+                                  const char **error_out) {
+    const char *tag = strstr(json, "\"regions\"");
+    if (!tag || !(tag = strchr(tag, '['))) { *error_out = "missing regions"; return 0; }
+    const char *p = tag + 1;
+    int count = 0; uint32_t total = 0;
+    for (;;) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',') p++;
+        if (*p == ']') break;
+        if (*p != '{') { *error_out = "invalid regions array"; return 0; }
+        if (count >= OBS_MAX_REGIONS) { *error_out = "too many regions"; return 0; }
+        const char *end = strchr(p, '}');
+        if (!end || end - p >= 511) { *error_out = "invalid region object"; return 0; }
+        char obj[512]; size_t obj_len = (size_t)(end - p + 1);
+        memcpy(obj, p, obj_len); obj[obj_len] = '\0';
+        char addr_s[32];
+        if (!json_get_scalar(obj, "addr", addr_s, sizeof(addr_s)) || addr_s[0] == '-') {
+            *error_out = "invalid region address"; return 0;
+        }
+        char len_s[32];
+        if (!json_get_scalar(obj, "len", len_s, sizeof(len_s)) || len_s[0] == '-') {
+            *error_out = "invalid region length"; return 0;
+        }
+        char *len_end = NULL;
+        unsigned long length = strtoul(len_s, &len_end, 0);
+        if (!len_end || *len_end || length == 0) { *error_out = "invalid region length"; return 0; }
+        if (length > OBS_MAX_REGION_BYTES) { *error_out = "region byte limit exceeded"; return 0; }
+        char *addr_end = NULL;
+        unsigned long long parsed = strtoull(addr_s, &addr_end, 0);
+        if (!addr_end || *addr_end || parsed > 0xFFFFFFFFULL) {
+            *error_out = "region address overflow"; return 0;
+        }
+        uint32_t phys = (uint32_t)parsed & 0x1FFFFFFFu;
+        if (phys < 0x00800000u) phys &= 0x001FFFFFu;
+        else { *error_out = "region is not main RAM"; return 0; }
+        if ((uint32_t)length > 0x200000u - phys) {
+            *error_out = "region range overflow"; return 0;
+        }
+        if ((uint32_t)length > OBS_MAX_TOTAL_BYTES - total) {
+            *error_out = "aggregate byte limit exceeded"; return 0;
+        }
+        ObserverReadRegion *r = &out[count];
+        memset(r, 0, sizeof(*r)); r->phys = phys; r->len = (uint32_t)length;
+        if (json_get_str(obj, "key", r->key, sizeof(r->key))) {
+            if (!observer_key_valid(r->key)) { *error_out = "invalid region key"; return 0; }
+            r->has_key = 1;
+            for (int i = 0; i < count; i++) {
+                if (out[i].has_key && strcmp(out[i].key, r->key) == 0) {
+                    *error_out = "duplicate region key"; return 0;
+                }
+            }
+        }
+        total += r->len; count++; p = end + 1;
+    }
+    if (count == 0) { *error_out = "regions must not be empty"; return 0; }
+    *count_out = count; *total_out = total; return 1;
+}
+
+static void h_read_regions(int id, const char *json) {
+    ObserverReadRegion regions[OBS_MAX_REGIONS];
+    int count = 0; uint32_t total = 0; const char *error = NULL;
+    if (!parse_observer_regions(json, regions, &count, &total, &error)) {
+        send_err(id, error ? error : "invalid regions"); return;
+    }
+    size_t estimated = 512u + (size_t)total * 2u + (size_t)count * 192u;
+    if (estimated > OBS_MAX_RESPONSE_BYTES) { send_err(id, "response too large"); return; }
+    char *out = (char *)malloc(estimated);
+    if (!out) { send_err(id, "alloc"); return; }
+    uint32_t frame_before = beetle_get_frame_count();
+    size_t pos = (size_t)snprintf(out, estimated,
+        "{\"id\":%d,\"ok\":true,\"frame_before\":%u,\"regions\":[",
+        id, frame_before);
+    static const char h[] = "0123456789abcdef";
+    for (int i = 0; i < count; i++) {
+        ObserverReadRegion *r = &regions[i];
+        int n = snprintf(out + pos, estimated - pos,
+                         "%s{%s%s%s\"addr\":\"0x%08X\",\"len\":%u,\"hex\":\"",
+                         i ? "," : "", r->has_key ? "\"key\":\"" : "",
+                         r->has_key ? r->key : "", r->has_key ? "\"," : "",
+                         r->phys | 0x80000000u, r->len);
+        if (n < 0 || (size_t)n >= estimated - pos) {
+            free(out); send_err(id, "response too large"); return;
+        }
+        pos += (size_t)n;
+        for (uint32_t j = 0; j < r->len; j++) {
+            uint8_t b = beetle_read_byte(r->phys + j);
+            out[pos++] = h[b >> 4]; out[pos++] = h[b & 15];
+        }
+        out[pos++] = '"'; out[pos++] = '}';
+    }
+    uint32_t frame_after = beetle_get_frame_count();
+    int n = snprintf(out + pos, estimated - pos,
+        "],\"frame_after\":%u,\"stable_frame\":%s}", frame_after,
+        frame_before == frame_after ? "true" : "false");
+    if (n < 0 || (size_t)n >= estimated - pos) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    send_raw(out, (int)(pos + (size_t)n));
+    send_raw("\n", 1);
+    free(out);
 }
 
 static void h_press(int id, const char *json) {
@@ -1613,6 +1771,7 @@ typedef void (*cmd_handler)(int id, const char *json);
 typedef struct { const char *name; cmd_handler handler; } CmdEntry;
 
 static const CmdEntry CMDS[] = {
+    { "protocol_info",         h_protocol_info },
     { "ping",                  h_ping },
     { "parity_dump",           h_parity_dump },
     { "parity_ctl",            h_parity_ctl },
@@ -1622,6 +1781,7 @@ static const CmdEntry CMDS[] = {
     { "cyc_watch_dump",        h_cyc_watch_dump },
     { "cyc_watch_clear",       h_cyc_watch_clear },
     { "read_ram",              h_read_ram },
+    { "read_regions",          h_read_regions },
     { "get_registers",         h_get_registers },
     { "dump_ram",              h_read_ram },        /* alias, parity with native */
     { "press",                 h_press },
@@ -1793,7 +1953,8 @@ void beetle_debug_server_poll(void) {
         s_recv_len -= start;
     }
     if (s_recv_len >= RECV_BUF_SIZE - 1) {
-        /* Overflow, drop the connection. */
+        /* Fail with one bounded response, then drop the overlong line. */
+        send_err(0, "request too large");
         sock_close(s_client); s_client = SOCK_INVALID;
         s_recv_len = 0;
     }

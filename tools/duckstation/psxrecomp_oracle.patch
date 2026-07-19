@@ -1,5 +1,5 @@
 diff --git a/src/common/log_channels.h b/src/common/log_channels.h
-index a1576e7..6dfdb45 100644
+index a1576e73..6dfdb45e 100644
 --- a/src/common/log_channels.h
 +++ b/src/common/log_channels.h
 @@ -47,6 +47,7 @@
@@ -11,7 +11,7 @@ index a1576e7..6dfdb45 100644
    X(ReShadeFXShader)                                                                                                   \
    X(Recompiler)                                                                                                        \
 diff --git a/src/core/CMakeLists.txt b/src/core/CMakeLists.txt
-index e2d0294..b290bd3 100644
+index e2d0294b..b290bd35 100644
 --- a/src/core/CMakeLists.txt
 +++ b/src/core/CMakeLists.txt
 @@ -116,6 +116,8 @@ add_library(core
@@ -24,7 +24,7 @@ index e2d0294..b290bd3 100644
    settings.cpp
    settings.h
 diff --git a/src/core/gpu.h b/src/core/gpu.h
-index 975f8d5..05fa360 100644
+index 975f8d5d..05fa3600 100644
 --- a/src/core/gpu.h
 +++ b/src/core/gpu.h
 @@ -212,6 +212,19 @@ public:
@@ -49,10 +49,10 @@ index 975f8d5..05fa360 100644
  
 diff --git a/src/core/psxrecomp_debug_server.cpp b/src/core/psxrecomp_debug_server.cpp
 new file mode 100644
-index 0000000..1fcc225
+index 00000000..166e6ee1
 --- /dev/null
 +++ b/src/core/psxrecomp_debug_server.cpp
-@@ -0,0 +1,1053 @@
+@@ -0,0 +1,1233 @@
 +// PSXRecomp TCP debug server for DuckStation
 +// JSON-over-newline protocol on localhost:4371 (same as runner debug server).
 +// Includes 36000-frame ring buffer with CPU, GPU, pad, and RAM snapshot state.
@@ -82,6 +82,7 @@ index 0000000..1fcc225
 +#include <optional>
 +#include <string>
 +#include <string_view>
++#include <utility>
 +#include <vector>
 +
 +#include "fmt/format.h"
@@ -133,6 +134,143 @@ index 0000000..1fcc225
 +// ---------------------------------------------------------------------------
 +
 +static constexpr u32 FRAME_HISTORY_CAP = 36000; // ~10 min @ 60fps
++static constexpr u32 OBS_MAX_REGIONS = 32;
++static constexpr u32 OBS_MAX_REGION_BYTES = 4096;
++static constexpr u32 OBS_MAX_TOTAL_BYTES = 16384;
++static constexpr size_t OBS_MAX_RESPONSE_BYTES = 65536;
++
++struct ObserverReadRegion
++{
++  std::string key;
++  u32 phys;
++  u32 length;
++};
++
++static bool observer_key_valid(std::string_view key)
++{
++  if (key.empty() || key.size() > 64)
++    return false;
++  return std::all_of(key.begin(), key.end(), [](const char c) {
++    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
++           (c >= '0' && c <= '9') || c == '_' || c == '.' || c == ':' || c == '-';
++  });
++}
++
++static bool json_get_scalar(const char* json, const char* key, std::string* out)
++{
++  char pattern[128];
++  std::snprintf(pattern, sizeof(pattern), "\"%s\"", key);
++  const char* p = std::strstr(json, pattern);
++  if (!p)
++    return false;
++  p += std::strlen(pattern);
++  while (*p == ' ' || *p == ':' || *p == '\t')
++    p++;
++  const bool quoted = (*p == '"');
++  if (quoted)
++    p++;
++  const char* start = p;
++  while (*p && ((quoted && *p != '"') ||
++                (!quoted && *p != ',' && *p != '}' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n')))
++    p++;
++  if (p == start)
++    return false;
++  out->assign(start, p);
++  return true;
++}
++
++static bool parse_observer_regions(const char* json, std::vector<ObserverReadRegion>* out,
++                                   std::string* error)
++{
++  const char* tag = std::strstr(json, "\"regions\"");
++  if (!tag || !(tag = std::strchr(tag, '[')))
++  {
++    *error = "missing regions";
++    return false;
++  }
++  const char* p = tag + 1;
++  u32 total = 0;
++  for (;;)
++  {
++    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',')
++      p++;
++    if (*p == ']')
++      break;
++    if (*p != '{' || out->size() >= OBS_MAX_REGIONS)
++    {
++      *error = (*p == '{') ? "too many regions" : "invalid regions array";
++      return false;
++    }
++    const char* end = std::strchr(p, '}');
++    if (!end || end - p >= 511)
++    {
++      *error = "invalid region object";
++      return false;
++    }
++    std::string object(p, end + 1);
++    std::string addr_text, length_text;
++    if (!json_get_scalar(object.c_str(), "addr", &addr_text) || addr_text[0] == '-' ||
++        !json_get_scalar(object.c_str(), "len", &length_text) || length_text[0] == '-')
++    {
++      *error = "invalid region address or length";
++      return false;
++    }
++    char* addr_end = nullptr;
++    char* length_end = nullptr;
++    const unsigned long long address = std::strtoull(addr_text.c_str(), &addr_end, 0);
++    const unsigned long length = std::strtoul(length_text.c_str(), &length_end, 0);
++    if (!addr_end || *addr_end || address > 0xFFFFFFFFull)
++    {
++      *error = "region address overflow";
++      return false;
++    }
++    if (!length_end || *length_end || length == 0 || length > OBS_MAX_REGION_BYTES)
++    {
++      *error = (length > OBS_MAX_REGION_BYTES) ? "region byte limit exceeded" : "invalid region length";
++      return false;
++    }
++    u32 phys = static_cast<u32>(address) & 0x1FFFFFFFu;
++    if (phys < 0x00800000u)
++      phys &= 0x001FFFFFu;
++    else
++    {
++      *error = "region is not main RAM";
++      return false;
++    }
++    if (length > 0x200000u - phys || phys >= Bus::g_ram_size ||
++        length > Bus::g_ram_size - phys)
++    {
++      *error = "region range overflow";
++      return false;
++    }
++    if (length > OBS_MAX_TOTAL_BYTES - total)
++    {
++      *error = "aggregate byte limit exceeded";
++      return false;
++    }
++    char key[65] = {};
++    std::string key_string;
++    if (json_get_str(object.c_str(), "key", key, sizeof(key)))
++    {
++      key_string = key;
++      if (!observer_key_valid(key_string) ||
++          std::any_of(out->begin(), out->end(), [&key_string](const ObserverReadRegion& r) { return r.key == key_string; }))
++      {
++        *error = "invalid or duplicate region key";
++        return false;
++      }
++    }
++    out->push_back({std::move(key_string), phys, static_cast<u32>(length)});
++    total += static_cast<u32>(length);
++    p = end + 1;
++  }
++  if (out->empty())
++  {
++    *error = "regions must not be empty";
++    return false;
++  }
++  return true;
++}
 +
 +// Snapshot of a RAM region stored per frame
 +static constexpr int RAM_SNAPSHOT_REGIONS = 4;
@@ -338,6 +476,13 @@ index 0000000..1fcc225
 +  {
 +    SendJSON(fmt::format(R"({{"id":{},"ok":true,"frame":{}}})", s_request_id, s_frame_counter));
 +  }
++  // ---- protocol_info ----
++  else if (std::strcmp(cmd, "protocol_info") == 0)
++  {
++    SendJSON(fmt::format(
++      R"({{"id":{},"ok":true,"protocol":{{"name":"psxrecomp-debug","major":1,"minor":1}},"server":{{"kind":"duckstation"}},"capabilities":["read_ram","read_regions"],"limits":{{"max_request_bytes":8191,"max_read_ram_bytes":65536,"max_regions_per_request":32,"max_bytes_per_region":4096,"max_total_region_bytes":16384,"max_response_bytes":65536}},"frame":{}}})",
++      s_request_id, s_frame_counter));
++  }
 +  // ---- registers ----
 +  else if (std::strcmp(cmd, "get_registers") == 0 || std::strcmp(cmd, "regs") == 0)
 +  {
@@ -371,6 +516,41 @@ index 0000000..1fcc225
 +    SendJSON(fmt::format(
 +      R"({{"id":{},"ok":true,"addr":"0x{:08X}","len":{},"hex":"{}"}})",
 +      s_request_id, addr, len, hex));
++  }
++  // ---- read_regions ----
++  else if (std::strcmp(cmd, "read_regions") == 0)
++  {
++    std::vector<ObserverReadRegion> regions;
++    std::string error;
++    if (!parse_observer_regions(json, &regions, &error))
++    {
++      SendJSON(fmt::format(R"({{"id":{},"ok":false,"error":"{}"}})", s_request_id, error));
++      return;
++    }
++    const u32 frame_before = s_frame_counter;
++    std::string response = fmt::format(
++      R"({{"id":{},"ok":true,"frame_before":{},"regions":[)", s_request_id, frame_before);
++    for (size_t index = 0; index < regions.size(); index++)
++    {
++      const ObserverReadRegion& region = regions[index];
++      if (index > 0)
++        response += ',';
++      response += '{';
++      if (!region.key.empty())
++        response += fmt::format(R"("key":"{}",)", region.key);
++      response += fmt::format(R"("addr":"0x{:08X}","len":{},"hex":")",
++                              region.phys | 0x80000000u, region.length);
++      for (u32 offset = 0; offset < region.length; offset++)
++        fmt::format_to(std::back_inserter(response), "{:02x}", Bus::g_ram[region.phys + offset]);
++      response += R"("})";
++    }
++    const u32 frame_after = s_frame_counter;
++    response += fmt::format(R"(],"frame_after":{},"stable_frame":{}}})",
++                            frame_after, frame_before == frame_after ? "true" : "false");
++    if (response.size() > OBS_MAX_RESPONSE_BYTES)
++      SendJSON(fmt::format(R"({{"id":{},"ok":false,"error":"response too large"}})", s_request_id));
++    else
++      SendJSON(response);
 +  }
 +  // ---- write_ram ----
 +  else if (std::strcmp(cmd, "write_ram") == 0)
@@ -1108,7 +1288,7 @@ index 0000000..1fcc225
 +}
 diff --git a/src/core/psxrecomp_debug_server.h b/src/core/psxrecomp_debug_server.h
 new file mode 100644
-index 0000000..8aa466c
+index 00000000..8aa466c7
 --- /dev/null
 +++ b/src/core/psxrecomp_debug_server.h
 @@ -0,0 +1,20 @@
@@ -1133,7 +1313,7 @@ index 0000000..8aa466c
 +
 +} // namespace PSXRecompDebug
 diff --git a/src/core/system.cpp b/src/core/system.cpp
-index a36ad75..1d23daf 100644
+index a36ad755..1d23daf5 100644
 --- a/src/core/system.cpp
 +++ b/src/core/system.cpp
 @@ -102,6 +102,7 @@ LOG_CHANNEL(System);
@@ -1173,7 +1353,7 @@ index a36ad75..1d23daf 100644
    PollDiscordPresence();
  #endif
 diff --git a/src/duckstation-qt/CMakeLists.txt b/src/duckstation-qt/CMakeLists.txt
-index acb8e40..b7f7b8e 100644
+index acb8e40c..b7f7b8e3 100644
 --- a/src/duckstation-qt/CMakeLists.txt
 +++ b/src/duckstation-qt/CMakeLists.txt
 @@ -210,7 +210,7 @@ foreach(src ${SRCS})
