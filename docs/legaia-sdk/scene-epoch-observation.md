@@ -36,7 +36,10 @@ stale.
 ## Current acceptance status
 
 Synthetic transitions prove scene, head, required witness, runtime, and relevant
-lifecycle changes all invalidate an epoch. Repeated retail town01 boundary-only
-runs established a stable scoped epoch while the broader global token changed.
-No actor bytes were read. Normal bounded navigation did not reach a scene exit,
-so exit invalidation and re-entry remain the live acceptance blocker.
+lifecycle changes all invalidate an epoch. The transition watcher also requires
+explicit old-token rejection, two stable outside samples, full witness
+revalidation, a new two-sample epoch, ten stable re-entry samples, and a final
+guard. Repeated retail town01 boundary-only runs established a stable scoped
+epoch while the broader global token changed. No actor bytes were read. A
+compatible normal-game `town01` save is still required to complete live exit and
+re-entry acceptance; see `scene-transition-acceptance.md`.

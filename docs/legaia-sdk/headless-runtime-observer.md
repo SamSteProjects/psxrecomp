@@ -20,7 +20,9 @@ hook and has no write-capable API.
 - `actor_nodes.py`: KSEG0 pointer checks, bounded linked traversal, and
   profile-driven field decoding;
 - `snapshot.py`: whole-attempt retry/discard behavior and schema validation;
-- `legaia_observe.py`: one-shot CLI.
+- `transition.py`: transition-only state machine, old-token rejection,
+  outside-scene sampling, and re-entry stabilization;
+- `legaia_observe.py`: one-shot boundary or transition-watch CLI.
 
 The native server intentionally closes each socket after one response. The
 client is therefore a persistent logical session: request sequence, negotiated
@@ -48,8 +50,12 @@ continued changing because unrelated watched pages and lifecycle records remain
 in its domain. Boundary-only passes used 13 requests, read zero actor-node
 bytes, performed zero RAM writes, and took approximately 154–333 ms.
 
-The CLI requires `--boundary-only`; retail actor traversal is deliberately
-disabled in this phase. Bounded normal navigation did not reach a town01 exit,
-so live exit invalidation and re-entry epoch creation remain unaccepted. Until
-that transition gate passes, no retail node prefix or actor chain may be read.
-Actor correlation remains out of scope.
+The CLI requires either `--boundary-only` or `--transition-watch`; retail actor
+traversal is deliberately disabled. Transition-watch uses manual normal-game
+navigation, explicit old-token rejection, stable outside-scene samples, and a
+two-sample plus ten-sample re-entry gate. Synthetic coverage passes, but the
+available retail save is a later transformed Rim Elm revision and fresh New
+Game keeps the south gate story-locked. Until a compatible normal `town01` save
+allows live exit/re-entry acceptance, no retail node prefix or actor chain may
+be read. See `scene-transition-acceptance.md`. Actor correlation remains out of
+scope.

@@ -81,8 +81,10 @@ neither substitutes for the other.
 The profile now requires protocol 1.5 and derives a scoped observation guard
 from its existing scene signals, actor-list-head candidate, and three execution
 witnesses. Stable town01 boundary-only sampling has been observed across fresh
-launches. Actor traversal remains fail closed because live scene-exit
-invalidation and re-entry epoch creation have not yet been accepted.
+launches. A transition-only client now exercises old-token rejection and
+re-entry rules without changing the profile, but retail scene-exit/re-entry
+acceptance still awaits a compatible normal `town01` save. Actor traversal
+remains fail closed.
 
 ## Live identity status
 

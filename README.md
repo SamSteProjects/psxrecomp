@@ -27,7 +27,7 @@ disc; retail assets are not included in this repository.
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
 | Generic PSXRecomp observer protocol | Protocol 1.5 adds stateless profile-scoped observation guards and guarded bounded reads |
-| Headless Legaia runtime observer | Stable retail town01 boundary-only acceptance; actor traversal remains gated by exit/re-entry validation |
+| Headless Legaia runtime observer | Stable retail town01 boundary-only acceptance and synthetic transition watcher; actor traversal remains gated by retail exit/re-entry validation |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Retail live actor snapshots, imported-to-runtime actor matching, RAM editing,
@@ -224,9 +224,11 @@ identity repeated across field-scene replacements and fresh launches.
 Protocol 1.5 now establishes a stateless boundary over only the profile's scene
 signals and three witnesses. Repeated fresh-runtime town01 boundary-only passes
 retained one scoped token while unrelated global executable state changed and
-frames advanced. No actor bytes were read and no RAM writes occurred. Normal
-bounded navigation did not reach a town01 exit, so live exit invalidation and
-re-entry epoch creation remain unaccepted; actor traversal stays disabled.
+frames advanced. A transition-only manual watcher now implements explicit
+old-token rejection, stable outside sampling, and re-entry stabilization without
+actor reads. Synthetic coverage passes, but fresh New Game has a story-locked
+exit and the available save is a later transformed Rim Elm revision. Retail
+exit/re-entry acceptance therefore remains open; actor traversal stays disabled.
 
 ## What Is Not Implemented Yet
 
@@ -436,6 +438,7 @@ by this integration.
 - generic observer protocol;
 - executable image/range/registration modeling and bounded catalog paging;
 - accepted multi-witness field execution identity; and
+- transition-only scene-epoch state machine and synthetic validation;
 - stale-cache correction and native startup acceptance.
 
 **In progress**
@@ -476,6 +479,7 @@ evidence, compatibility, and data-boundary review.
 - [Headless runtime observer](docs/legaia-sdk/headless-runtime-observer.md)
 - [Scene epoch observation](docs/legaia-sdk/scene-epoch-observation.md)
 - [Scoped scene epoch](docs/legaia-sdk/scoped-scene-epoch.md)
+- [Scene-transition acceptance](docs/legaia-sdk/scene-transition-acceptance.md)
 - [Live actor-node snapshot](docs/legaia-sdk/live-actor-node-snapshot.md)
 - [Debug protocol versioning](docs/debug-protocol-versioning.md)
 - [Executable identity](docs/executable-identity.md)
