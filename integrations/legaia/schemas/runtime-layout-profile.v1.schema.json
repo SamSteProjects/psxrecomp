@@ -18,6 +18,7 @@
     "actor_pool",
     "actor_fields",
     "safety_bounds",
+    "observation_policy",
     "evidence",
     "unresolved"
   ],
@@ -43,6 +44,7 @@
       "items": { "$ref": "#/$defs/actorField" }
     },
     "safety_bounds": { "$ref": "#/$defs/safetyBounds" },
+    "observation_policy": { "$ref": "#/$defs/observationPolicy" },
     "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
     "unresolved": { "type": "array", "items": { "type": "string" } }
   },
@@ -68,21 +70,35 @@
     "executableIdentity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["serial", "sha256", "file_size", "load_address", "claim"],
+      "required": ["serial", "sha256", "file_size", "load_address", "runtime_source_identity", "claim"],
       "properties": {
         "serial": { "const": "SCUS-94254" },
         "sha256": { "$ref": "#/$defs/sha256" },
         "file_size": { "type": "integer", "minimum": 1 },
         "load_address": { "$ref": "#/$defs/address" },
+        "runtime_source_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "scope", "length", "guest_base", "sha256", "claim"],
+          "properties": {
+            "algorithm": { "const": "sha256" },
+            "scope": { "const": "ps-x-exe-body" },
+            "length": { "type": "integer", "minimum": 1 },
+            "guest_base": { "$ref": "#/$defs/address" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "claim": { "$ref": "#/$defs/claim" }
+          }
+        },
         "claim": { "$ref": "#/$defs/claim" }
       }
     },
     "protocol": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "minimum_major", "minimum_minor", "required_capabilities"],
+      "required": ["name", "required_runtime_implementation", "minimum_major", "minimum_minor", "required_capabilities"],
       "properties": {
         "name": { "const": "psxrecomp-debug" },
+        "required_runtime_implementation": { "const": "psxrecomp" },
         "minimum_major": { "const": 1 },
         "minimum_minor": { "type": "integer", "minimum": 1 },
         "required_capabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
@@ -274,6 +290,51 @@
         "maximum_read_bytes": { "type": "integer", "minimum": 1 },
         "maximum_poll_hz": { "type": "number", "exclusiveMinimum": 0 },
         "mixed_epoch_policy": { "const": "discard" }
+      }
+    },
+    "observationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["head_pointer", "traversal", "snapshot"],
+      "properties": {
+        "head_pointer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "type", "endianness", "accepted_segments", "alignment", "epoch_relevant"],
+          "properties": {
+            "width": { "const": 4 },
+            "type": { "const": "ram_pointer" },
+            "endianness": { "const": "little" },
+            "accepted_segments": { "const": ["kseg0"] },
+            "alignment": { "const": 4 },
+            "epoch_relevant": { "const": true }
+          }
+        },
+        "traversal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prefix_length", "next_pointer_offset", "maximum_nodes", "maximum_aggregate_bytes", "maximum_requests", "maximum_duration_ms", "partial_snapshots", "claim"],
+          "properties": {
+            "prefix_length": { "const": 156 },
+            "next_pointer_offset": { "const": 0 },
+            "maximum_nodes": { "type": "integer", "minimum": 1, "maximum": 4096 },
+            "maximum_aggregate_bytes": { "type": "integer", "minimum": 156 },
+            "maximum_requests": { "type": "integer", "minimum": 1, "maximum": 4096 },
+            "maximum_duration_ms": { "type": "integer", "minimum": 1, "maximum": 60000 },
+            "partial_snapshots": { "const": "reject" },
+            "claim": { "$ref": "#/$defs/claim" }
+          }
+        },
+        "snapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stability_samples", "maximum_attempts", "mixed_boundary_policy"],
+          "properties": {
+            "stability_samples": { "type": "integer", "minimum": 2, "maximum": 8 },
+            "maximum_attempts": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "mixed_boundary_policy": { "const": "discard" }
+          }
+        }
       }
     },
     "evidence": {

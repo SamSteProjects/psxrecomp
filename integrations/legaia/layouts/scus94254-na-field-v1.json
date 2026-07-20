@@ -8,6 +8,20 @@
     "sha256": "292256e2e66db42727f613406785e444254d3f699569e611f65fcf1c6d2f3482",
     "file_size": 442368,
     "load_address": "0x80010000",
+    "runtime_source_identity": {
+      "algorithm": "sha256",
+      "scope": "ps-x-exe-body",
+      "length": 440320,
+      "guest_base": "0x80010000",
+      "sha256": "185d3362e57441a6a8328fba376a469341c55a2e7a7ef35c0e64d04601fc0f68",
+      "claim": {
+        "property": "runtime_main_executable_source_identity",
+        "value": "ps-x-exe-body:185d3362e57441a6a8328fba376a469341c55a2e7a7ef35c0e64d04601fc0f68",
+        "confidence": "confirmed",
+        "evidence": ["psxrecomp-protocol-1.4-live-runs", "psxrecomp-game-config"],
+        "notes": "This is the canonical loaded PS-X EXE body identity exposed by runtime_identity. It is deliberately distinct from the SHA-256 of the complete 442,368-byte ISO file."
+      }
+    },
     "claim": {
       "property": "executable_identity",
       "value": "SCUS-94254:292256e2e66db42727f613406785e444254d3f699569e611f65fcf1c6d2f3482",
@@ -18,6 +32,7 @@
   },
   "supported_runtime_protocol": {
     "name": "psxrecomp-debug",
+    "required_runtime_implementation": "psxrecomp",
     "minimum_major": 1,
     "minimum_minor": 4,
     "required_capabilities": [
@@ -430,6 +445,37 @@
     "maximum_read_bytes": 4096,
     "maximum_poll_hz": 10,
     "mixed_epoch_policy": "discard"
+  },
+  "observation_policy": {
+    "head_pointer": {
+      "width": 4,
+      "type": "ram_pointer",
+      "endianness": "little",
+      "accepted_segments": ["kseg0"],
+      "alignment": 4,
+      "epoch_relevant": true
+    },
+    "traversal": {
+      "prefix_length": 156,
+      "next_pointer_offset": 0,
+      "maximum_nodes": 128,
+      "maximum_aggregate_bytes": 19968,
+      "maximum_requests": 128,
+      "maximum_duration_ms": 5000,
+      "partial_snapshots": "reject",
+      "claim": {
+        "property": "observer_traversal_bounds",
+        "value": "at most 128 exact 0x9C-byte node reads",
+        "confidence": "confirmed",
+        "evidence": ["psxrecomp-debug-protocol", "andrew-list-walker"],
+        "notes": "This is a conservative observer safety policy, not a claim that the retail engine has 128 actors. Reaching any limit rejects the snapshot."
+      }
+    },
+    "snapshot": {
+      "stability_samples": 2,
+      "maximum_attempts": 3,
+      "mixed_boundary_policy": "discard"
+    }
   },
   "evidence": [
     { "id": "psxrecomp-game-config", "repository": "SamSteProjects/psxrecomp", "revision": "3bc6ecc978e65bcbc4ff543c6e67039b3da7af87", "path": "legaia-release/game.toml", "symbol_or_function": "game.load_address/text_size", "role": "Independent executable load contract" },

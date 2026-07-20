@@ -92,10 +92,22 @@ def validate_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
     digest = executable.get("sha256")
     if not isinstance(digest, str) or not SHA256.fullmatch(digest):
         _fail("$.executable_identity.sha256 must be a lowercase SHA-256")
+    runtime_source = _need(executable, "runtime_source_identity", "$.executable_identity")
+    if runtime_source.get("algorithm") != "sha256" or runtime_source.get("scope") != "ps-x-exe-body":
+        _fail("$.executable_identity.runtime_source_identity contract is unsupported")
+    source_digest = runtime_source.get("sha256")
+    if not isinstance(source_digest, str) or not SHA256.fullmatch(source_digest):
+        _fail("$.executable_identity.runtime_source_identity.sha256 is invalid")
+    if not isinstance(runtime_source.get("length"), int) or runtime_source["length"] < 1:
+        _fail("$.executable_identity.runtime_source_identity.length is invalid")
+    _address(runtime_source.get("guest_base"), "$.executable_identity.runtime_source_identity.guest_base")
+    _confidence(_need(runtime_source, "claim", "$.executable_identity.runtime_source_identity"), "$.executable_identity.runtime_source_identity.claim")
 
     protocol = _need(result, "supported_runtime_protocol", "$")
     if protocol.get("name") != "psxrecomp-debug":
         _fail("$.supported_runtime_protocol.name is unsupported")
+    if protocol.get("required_runtime_implementation") != "psxrecomp":
+        _fail("$.supported_runtime_protocol.required_runtime_implementation is unsupported")
     if protocol.get("minimum_major") != 1:
         _fail("$.supported_runtime_protocol.minimum_major must equal 1")
     if not isinstance(protocol.get("minimum_minor"), int) or protocol["minimum_minor"] < 1:
@@ -238,6 +250,38 @@ def validate_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
     if not set(epoch_signals).issubset(signal_ids | overlay_ids | {"field_execution_identity", "actor_list_head", "actor_census_base"}):
         _fail("$.scene_epoch references an unknown invalidation signal")
 
+    policy = _need(result, "observation_policy", "$")
+    head_policy = _need(policy, "head_pointer", "$.observation_policy")
+    if (head_policy.get("width"), head_policy.get("type"), head_policy.get("endianness")) != (4, "ram_pointer", "little"):
+        _fail("$.observation_policy.head_pointer encoding is unsupported")
+    if head_policy.get("accepted_segments") != ["kseg0"] or head_policy.get("alignment") != 4:
+        _fail("$.observation_policy.head_pointer rules are unsupported")
+    traversal = _need(policy, "traversal", "$.observation_policy")
+    if traversal.get("prefix_length") != read_size or traversal.get("next_pointer_offset") != 0:
+        _fail("$.observation_policy.traversal must use the accepted actor prefix and next pointer")
+    maximum_nodes = traversal.get("maximum_nodes")
+    aggregate = traversal.get("maximum_aggregate_bytes")
+    requests = traversal.get("maximum_requests")
+    duration = traversal.get("maximum_duration_ms")
+    if not isinstance(maximum_nodes, int) or not 1 <= maximum_nodes <= 4096:
+        _fail("$.observation_policy.traversal.maximum_nodes is invalid")
+    if not isinstance(aggregate, int) or aggregate < read_size or aggregate < maximum_nodes * read_size:
+        _fail("$.observation_policy.traversal.maximum_aggregate_bytes is too small")
+    if not isinstance(requests, int) or requests < maximum_nodes or requests > 4096:
+        _fail("$.observation_policy.traversal.maximum_requests is invalid")
+    if not isinstance(duration, int) or not 1 <= duration <= 60000:
+        _fail("$.observation_policy.traversal.maximum_duration_ms is invalid")
+    if traversal.get("partial_snapshots") != "reject":
+        _fail("$.observation_policy.traversal must reject partial snapshots")
+    _confidence(_need(traversal, "claim", "$.observation_policy.traversal"), "$.observation_policy.traversal.claim")
+    snapshot = _need(policy, "snapshot", "$.observation_policy")
+    if not isinstance(snapshot.get("stability_samples"), int) or snapshot["stability_samples"] < 2:
+        _fail("$.observation_policy.snapshot.stability_samples is invalid")
+    if not isinstance(snapshot.get("maximum_attempts"), int) or not 1 <= snapshot["maximum_attempts"] <= 10:
+        _fail("$.observation_policy.snapshot.maximum_attempts is invalid")
+    if snapshot.get("mixed_boundary_policy") != "discard":
+        _fail("$.observation_policy.snapshot must discard mixed boundaries")
+
     _scan_metadata(result)
     try:
         validate_metadata_only(result)
@@ -271,8 +315,13 @@ def validate_observation_context(profile: Mapping[str, Any], context: Mapping[st
     """
     p = validate_profile(profile)
     exe = context.get("executable_identity", {})
-    if exe.get("serial") != p["executable_identity"]["serial"] or exe.get("sha256") != p["executable_identity"]["sha256"]:
+    if exe.get("serial") != p["executable_identity"]["serial"]:
         _fail("runtime executable identity does not match profile")
+    runtime_source = context.get("runtime_source_identity", {})
+    expected_source = p["executable_identity"]["runtime_source_identity"]
+    for key in ("algorithm", "scope", "length", "guest_base", "sha256"):
+        if runtime_source.get(key) != expected_source.get(key):
+            _fail("runtime executable source identity does not match profile")
     protocol = context.get("runtime_protocol", {})
     wanted = p["supported_runtime_protocol"]
     if protocol.get("name") != wanted["name"]:
