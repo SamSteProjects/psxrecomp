@@ -16,3 +16,7 @@ Decision: **NOT YET SAFE** to begin one bounded read-only actor traversal.
 3. Confirm the fresh run still has an accepted actor-list-head locator and current witnesses. Address reuse is never actor identity.
 
 No actor-node prefix was requested in this phase, no actor snapshot was emitted, and no imported/runtime correlation was attempted. Even after a future `SAFE TO BEGIN ONE BOUNDED READ-ONLY ACTOR TRAVERSAL` decision, correlating observed nodes to imported town actors remains a separate, later approval.
+
+A fresh debug-server process was probed only at boot/menu to validate protocol and
+executable identity; that is explicitly not a substitute for the required retail
+town0c transition.
