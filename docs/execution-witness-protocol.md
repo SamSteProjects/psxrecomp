@@ -33,3 +33,9 @@ The command returns no code bytes, RAM payloads, host paths, source paths, or
 title-specific interpretation. Protocol 1.3 clients remain compatible because
 1.4 is additive. DuckStation and Beetle do not advertise this capability unless
 they can supply the same ownership and generation semantics.
+
+Protocol 1.5 can bind several current witnesses into one stateless observation
+guard. The guard includes each witness's exact range, backend, live identity,
+watched-generation currentness, and relevant registration/lifecycle identity,
+but excludes changing hit counts and first/last frames. The standalone 1.4
+command and its response remain unchanged.

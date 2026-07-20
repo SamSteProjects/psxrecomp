@@ -72,3 +72,12 @@ Live native acceptance measured small two-region reads at approximately
 frame progression between requests. Negotiation attempted before the emulation
 thread reached a safe point may be boundedly dropped or answered busy; external
 observers should reconnect with backoff rather than spin or increase polling.
+
+## Protocol 1.5 guarded reads
+
+Native `read_regions` accepts an optional `guard` descriptor. The server derives
+the profile-scoped token before and after the payload reads and returns payload
+only when the token is valid, stable, and compatible with `expected_token` when
+provided. The broader executable-state stamps remain diagnostic and may change
+because of unrelated executable activity. Unguarded requests retain the 1.1
+contract. See `observation-guard-protocol.md`.

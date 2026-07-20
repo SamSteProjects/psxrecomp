@@ -32,7 +32,7 @@ strings), so every server command is reachable, e.g.
 
 ## Command inventory
 
-### Observer identity commands (protocol 1.4)
+### Observer identity commands (protocol 1.5)
 
 Capability negotiation is authoritative; server kind is not a substitute for
 checking `capabilities`.
@@ -44,8 +44,9 @@ checking `capabilities`.
 | `executable_catalog` | full | unsupported | unsupported | Token-bound pages over executable images, structural ranges, or registrations |
 | `executable_lifecycle` | full | unsupported | unsupported | Token-bound image-instance, exact-PC owner, or bounded lifecycle-event pages |
 | `execution_witness` | full | unsupported | unsupported | One exact-PC, four-byte execution witness with backend, live identity, generation currentness and boundary stamps |
+| `observation_guard` | full | unsupported | unsupported | Stateless consistency token over bounded client-declared RAM signals and exact-PC witnesses |
 | `executable_regions` | full | unsupported | unsupported | Paged registrations with source/live identities, watched generations and conservative native ownership |
-| `read_regions` | full | partial | partial | Bounded ordered main-RAM reads; native includes frame and executable-state stamps, oracles include frame stamps |
+| `read_regions` | full | partial | partial | Bounded ordered main-RAM reads; native optionally gates payload delivery on an observation guard |
 
 DuckStation support is intentionally limited to capabilities its backend can
 prove. Its checked-in patch exposes negotiation and frame-stamped bounded reads,
@@ -55,8 +56,15 @@ but omits PSXRecomp registration ownership and watched generations. See
 
 CLI mappings are `protocol-info`, `runtime-identity`, `executable-catalog`,
 `executable-lifecycle`, `execution-witness`, `executable-regions`, and
-`read-regions key=addr:len [...]`. Compact summaries are followed by the full
+`read-regions key=addr:len [...]`. Native-only mappings also include
+`observation-guard` and `guarded-read`. Compact summaries are followed by the full
 JSON response.
+
+Protocol 1.5 guard descriptors are strictly bounded to 16 RAM ranges, 256 bytes
+per range, 2,048 aggregate RAM bytes, and eight exact-PC witnesses. Guarded
+reads return payload only when their before/after scoped token is valid, stable,
+and compatible with an optional expected token. See
+`docs/observation-guard-protocol.md`.
 
 `executable-catalog [images|ranges|registrations] [limit]` retrieves every
 page, reconnecting for the native server's one-command-per-connection contract.
