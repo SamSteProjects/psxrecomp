@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SamSteProjects/psxrecomp/integrations/legaia/schemas/runtime-observation.v1.schema.json",
+  "title": "Legend of Legaia metadata-only runtime observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "observer_version", "profile", "protocol", "runtime",
+    "epoch", "scene_signals", "execution_witnesses", "actor_chain",
+    "boundaries", "snapshot_current_at_capture", "historical_observation",
+    "metrics", "diagnostics", "unresolved"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "observer_version": { "const": "1.0" },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "profile_hash", "selection"],
+      "properties": {
+        "profile_id": { "type": "string" },
+        "profile_hash": { "$ref": "#/$defs/sha256" },
+        "selection": { "type": "object" }
+      }
+    },
+    "protocol": { "type": "object" },
+    "runtime": { "type": "object" },
+    "epoch": { "$ref": "#/$defs/epoch" },
+    "scene_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["active_scene_name", "active_scene_prot_base", "master_game_mode"],
+      "properties": {
+        "active_scene_name": { "type": "string" },
+        "active_scene_prot_base": { "type": "integer" },
+        "master_game_mode": { "type": "integer" }
+      }
+    },
+    "execution_witnesses": { "type": "array", "minItems": 3, "items": { "type": "object" } },
+    "actor_chain": { "$ref": "#/$defs/actorChain" },
+    "boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after", "stable"],
+      "properties": {
+        "before": { "type": "object" },
+        "after": { "type": "object" },
+        "stable": { "const": true }
+      }
+    },
+    "snapshot_current_at_capture": { "const": true },
+    "historical_observation": { "const": true },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "request_count", "actor_read_requests", "actor_bytes_read", "traversal_duration_ms", "total_duration_ms"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1 },
+        "request_count": { "type": "integer", "minimum": 1 },
+        "actor_read_requests": { "type": "integer", "minimum": 0 },
+        "actor_bytes_read": { "type": "integer", "minimum": 0 },
+        "traversal_duration_ms": { "type": "number", "minimum": 0 },
+        "total_duration_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "diagnostics": { "type": "array", "items": { "type": "object" } },
+    "unresolved": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "address": { "type": "string", "pattern": "^0x[0-9A-F]{8}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "epoch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "epoch_id", "observer_epoch_number", "profile_id", "runtime_process_identity",
+        "scene_name", "prot_base", "master_mode", "actor_list_head",
+        "executable_state_token", "lifecycle_token",
+        "required_witness_structural_identities", "first_stable_frame", "last_validated_frame"
+      ],
+      "properties": {
+        "epoch_id": { "type": "string", "pattern": "^epoch-[0-9a-f]{64}$" },
+        "observer_epoch_number": { "type": "integer", "minimum": 1 },
+        "profile_id": { "type": "string" },
+        "runtime_process_identity": { "$ref": "#/$defs/sha256" },
+        "scene_name": { "type": "string" },
+        "prot_base": { "type": "integer" },
+        "master_mode": { "type": "integer" },
+        "actor_list_head": { "$ref": "#/$defs/address" },
+        "executable_state_token": { "type": "string" },
+        "lifecycle_token": { "type": "string" },
+        "required_witness_structural_identities": { "type": "array", "minItems": 3, "items": { "type": "object" } },
+        "first_stable_frame": { "type": "integer", "minimum": 0 },
+        "last_validated_frame": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_value", "value", "null", "aligned", "in_main_ram", "accepted_segment", "in_known_executable_range", "dereferenced"],
+      "properties": {
+        "raw_value": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "value": { "$ref": "#/$defs/address" },
+        "null": { "type": "boolean" },
+        "aligned": { "type": "boolean" },
+        "in_main_ram": { "type": "boolean" },
+        "accepted_segment": { "type": "boolean" },
+        "in_known_executable_range": { "type": ["boolean", "null"] },
+        "dereferenced": { "type": "boolean" }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property", "raw_numeric_value", "interpreted_value", "offset", "width", "signedness", "representation", "confidence", "evidence", "notes", "applicability", "unresolved", "alternatives"],
+      "properties": {
+        "property": { "type": "string" },
+        "raw_numeric_value": { "type": "integer" },
+        "interpreted_value": {},
+        "offset": { "type": "integer", "minimum": 0, "maximum": 155 },
+        "width": { "enum": [1, 2, 4] },
+        "signedness": { "enum": ["signed", "unsigned"] },
+        "representation": { "type": "string" },
+        "confidence": { "enum": ["confirmed", "strongly_inferred", "tentative", "unknown", "contradictory"] },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "applicability": { "type": "string" },
+        "unresolved": { "type": "boolean" },
+        "alternatives": { "type": "array" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["epoch_scoped_node_id", "node_address", "chain_index", "source_read_range", "next_pointer", "prefix_length", "decoded_fields", "unresolved_fields", "claims", "diagnostics"],
+      "properties": {
+        "epoch_scoped_node_id": { "type": "string", "pattern": "^runtime://epoch-[0-9a-f]{64}/field-node/[0-9a-f]{8}$" },
+        "node_address": { "$ref": "#/$defs/address" },
+        "chain_index": { "type": "integer", "minimum": 0 },
+        "source_read_range": {
+          "type": "object", "additionalProperties": false,
+          "required": ["base", "length"],
+          "properties": { "base": { "$ref": "#/$defs/address" }, "length": { "const": 156 } }
+        },
+        "next_pointer": { "$ref": "#/$defs/pointer" },
+        "prefix_length": { "const": 156 },
+        "decoded_fields": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/field" } },
+        "unresolved_fields": { "type": "array", "items": { "type": "string" } },
+        "claims": { "type": "array", "items": { "type": "object" } },
+        "diagnostics": { "type": "array" }
+      }
+    },
+    "actorChain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["head", "node_count", "traversal_complete", "termination_reason", "prefix_length", "request_count", "bytes_read", "nodes"],
+      "properties": {
+        "head": { "$ref": "#/$defs/address" },
+        "node_count": { "type": "integer", "minimum": 0 },
+        "traversal_complete": { "const": true },
+        "termination_reason": { "enum": ["null", "null_head"] },
+        "prefix_length": { "const": 156 },
+        "request_count": { "type": "integer", "minimum": 0 },
+        "bytes_read": { "type": "integer", "minimum": 0 },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    }
+  }
+}
