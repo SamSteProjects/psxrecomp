@@ -167,6 +167,7 @@ typedef struct {
                           * is the evidence stream for interior-alias seeds. */
     uint32_t last_frame; /* most recent frame observed (exec table) */
     uint32_t watched_generation; /* exact-PC page generation at observation */
+    uint32_t instruction_word; /* exact four bytes fetched at observation */
 } DirtyRamPcEntry;
 extern DirtyRamPcEntry g_dirty_ram_pc_table[DIRTY_RAM_PC_TABLE_SIZE];
 /* Companion table: every PC the interpreter actually executes (not just block

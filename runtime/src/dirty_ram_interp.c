@@ -194,7 +194,7 @@ static DirtyRamPcEntry *pc_table_get_or_insert(uint32_t pc) {
 
 /* Record every PC the interpreter executes (not just block entries) so
  * overlay_capture can report execution-verified seeds for the region. */
-static void exec_pc_table_record(uint32_t pc) {
+static void exec_pc_table_record(uint32_t pc, uint32_t instruction_word) {
     uint32_t phys = pc & 0x1fffffffu;
     static uint32_t watched_page = UINT32_MAX;
     uint32_t page = phys & ~0xfffu;
@@ -209,6 +209,7 @@ static void exec_pc_table_record(uint32_t pc) {
         e->hits++;
         e->last_frame = (uint32_t)s_frame_count;
         e->watched_generation = overlay_watch_pagegen_sum(phys, 4u);
+        e->instruction_word = instruction_word;
     }
 }
 
@@ -1150,9 +1151,9 @@ static void exec_delay_slot(CPUState *cpu, uint32_t pc) {
 }
 
 static int exec_one(CPUState *cpu, uint32_t pc, uint32_t *next_pc_out) {
-    exec_pc_table_record(pc);
     uint32_t phys = pc & 0x1FFFFFFFu;
     uint32_t insn = fetch_word(phys);
+    exec_pc_table_record(pc, insn);
     uint32_t opc  = op_field(insn);
     uint32_t rs   = rs_field(insn);
     uint32_t rt   = rt_field(insn);

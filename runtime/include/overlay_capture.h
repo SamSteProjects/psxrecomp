@@ -121,6 +121,7 @@ typedef struct {
     uint32_t registration_id;
     uint32_t reason;
     uint32_t watched_generation_at_observation;
+    uint32_t instruction_word_at_observation;
 } OverlayExecutionOwner;
 
 typedef struct {
