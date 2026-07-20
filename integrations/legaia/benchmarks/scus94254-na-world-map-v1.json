@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "legaia-na-scus94254-world-map-v1",
+  "targets": [
+    {
+      "target_id": "town0c-field-control",
+      "required_signals": [
+        { "id": "active_scene_name", "address": "0x80084548", "width": 8, "type": "ascii_nul_terminated", "expected": "town0c" },
+        { "id": "master_game_mode", "address": "0x8007B83C", "width": 2, "type": "u16_le", "expected": 3 }
+      ]
+    },
+    {
+      "target_id": "map01-world-map",
+      "required_signals": [
+        { "id": "active_scene_name", "address": "0x80084548", "width": 8, "type": "ascii_nul_terminated", "expected": "map01" }
+      ]
+    }
+  ]
+}

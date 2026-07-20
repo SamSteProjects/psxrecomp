@@ -12,8 +12,12 @@ from .errors import ProtocolError
 
 
 READ_ONLY_COMMANDS = {
+    "dispatch_stats",
+    "dirty_ram_stats",
     "protocol_info",
     "runtime_identity",
+    "overlay_status",
+    "phase_profile",
     "read_regions",
     "execution_witness",
     "executable_lifecycle",
@@ -169,3 +173,14 @@ class ProtocolClient:
 
     def observation_guard(self, guard: dict[str, Any]) -> dict[str, Any]:
         return self.request("observation_guard", guard=guard)
+
+    def performance_stats(self, command: str, **params: Any) -> dict[str, Any]:
+        """Request one bounded, read-only runtime diagnostic command.
+
+        The allow-list is deliberately shared with the normal request gate.  It
+        prevents benchmark tooling from gaining a configuration, write, trace,
+        or cache-control escape hatch.
+        """
+        if command not in {"dispatch_stats", "dirty_ram_stats", "overlay_status", "phase_profile"}:
+            raise ProtocolError(f"performance command is not permitted: {command}")
+        return self.request(command, **params)
