@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthetic and structural regressions for debug protocol 1.3.
+"""Synthetic and structural regressions for debug protocol 1.4.
 
 No retail bytes, executable payloads, host paths, or emulator state are used.
 The executable models below exercise the documented bounds and authoritative
@@ -478,9 +478,10 @@ class ExecutableCatalogModelTests(unittest.TestCase):
         self.assertIn('next_cursor\\\":', NATIVE)
 
     def test_61_protocol_minor_and_capability_are_additive(self) -> None:
-        self.assertIn('major\\\":1,\\\"minor\\\":3', NATIVE)
+        self.assertIn('major\\\":1,\\\"minor\\\":4', NATIVE)
         self.assertIn('\\\"executable_catalog\\\"', NATIVE)
         self.assertIn('\\\"executable_image_lifecycle\\\"', NATIVE)
+        self.assertIn('\\\"execution_witness\\\"', NATIVE)
         self.assertIn('{ "executable_regions", handle_executable_regions }', NATIVE)
 
     def test_62_complete_client_paging(self) -> None:
@@ -724,6 +725,113 @@ class ExecutableLifecycleTests(unittest.TestCase):
     def test_94_normal_opening_capacity_exceeds_accepted_observation(self) -> None:
         self.assertIn("OVERLAY_LIFECYCLE_INSTANCE_CAP 32768u", CAPTURE)
         self.assertIn("OVERLAY_LIFECYCLE_OWNER_CAP 65536u", CAPTURE)
+
+
+class ExecutionWitnessTests(unittest.TestCase):
+    def test_95_interpreter_range_is_exact_fetched_instruction(self) -> None:
+        self.assertIn("exec_pc_table_record(pc, insn)", DIRTY)
+        self.assertIn('\\\"kind\\\":\\\"executed-instruction\\\"', NATIVE)
+        self.assertIn('\\\"length\\\":4', NATIVE)
+        self.assertIn('\\\"instruction_count\\\":1', NATIVE)
+
+    def test_96_no_decoded_block_or_function_boundary_is_claimed(self) -> None:
+        self.assertIn('\\\"block_range_available\\\":false', NATIVE)
+        self.assertIn('\\\"decoded-block-boundary\\\"', NATIVE)
+        self.assertIn('\\\"function-boundary\\\"', NATIVE)
+
+    def test_97_observed_instruction_identity_is_retained(self) -> None:
+        self.assertIn("instruction_word_at_observation", CAPTURE)
+        self.assertIn("instruction_word", DIRTY)
+        self.assertIn("observed_identity", NATIVE)
+
+    def test_98_live_identity_hashes_exact_four_bytes(self) -> None:
+        handler = NATIVE[NATIVE.index("handle_execution_witness"):
+                         NATIVE.index("static const char *ownership_reason_name")]
+        self.assertIn("psx_sha256(ram + phys, 4u", handler)
+        self.assertNotIn("4096u", handler)
+
+    def test_99_witness_uses_authoritative_watched_generation(self) -> None:
+        self.assertIn("watched_generation_digest(&lo, &len, 1", NATIVE)
+        self.assertIn("owner.watched_generation_at_observation", NATIVE)
+        self.assertIn("overlay_lifecycle_owner_observation_current", NATIVE)
+
+    def test_100_same_byte_write_can_stale_witness(self) -> None:
+        model = WatchModel()
+        model.register(PAGE_SIZE, 4, b"ABCD")
+        model.ram[PAGE_SIZE:PAGE_SIZE + 4] = b"ABCD"
+        before = model.generation[1]
+        model.write(PAGE_SIZE, b"ABCD")
+        self.assertNotEqual(before, model.generation[1])
+        self.assertEqual(model.ram[PAGE_SIZE:PAGE_SIZE + 4], b"ABCD")
+
+    def test_101_content_replacement_changes_live_identity(self) -> None:
+        self.assertNotEqual(hashlib.sha256(b"AAAA").hexdigest(),
+                            hashlib.sha256(b"BBBB").hexdigest())
+        self.assertIn("source_matches_live", NATIVE)
+
+    def test_102_backend_change_participates_in_witness_id(self) -> None:
+        witness_id = NATIVE[NATIVE.index("static void execution_witness_id"):
+                            NATIVE.index("static void handle_execution_witness")]
+        self.assertIn("owner->owner", witness_id)
+        self.assertIn("owner->instruction_word_at_observation", witness_id)
+
+    def test_103_lifecycle_and_registration_provenance_are_explicit(self) -> None:
+        self.assertIn('\\\"lifecycle_fragment\\\"', NATIVE)
+        self.assertIn('\\\"native_registration\\\"', NATIVE)
+        self.assertIn('\\\"whole-image-association\\\"', NATIVE)
+
+    def test_104_missing_witness_is_explicit(self) -> None:
+        self.assertIn('\\\"status\\\":\\\"missing\\\"', NATIVE)
+        self.assertIn('\\\"witness\\\":null', NATIVE)
+
+    def test_105_stale_and_ambiguous_states_are_explicit(self) -> None:
+        self.assertIn('? "ambiguous"', NATIVE)
+        self.assertIn('? "current" : "stale"', NATIVE)
+        self.assertIn("owner.owner != OVERLAY_EXEC_OWNER_AMBIGUOUS", NATIVE)
+
+    def test_106_lookup_is_aligned_bounded_main_ram(self) -> None:
+        self.assertIn("phys >= 0x200000u || (phys & 3u) != 0", NATIVE)
+        self.assertIn("phys > 0x1ffffcu", NATIVE)
+
+    def test_107_observation_has_frame_and_state_boundaries(self) -> None:
+        for field in ("frame_before", "frame_after", "executable_state_before",
+                      "executable_state_after", "lifecycle_token_before",
+                      "lifecycle_token_after", "stable_observation_boundary"):
+            self.assertIn(field, NATIVE)
+
+    def test_108_protocol_command_and_client_are_registered(self) -> None:
+        self.assertIn('{ "execution_witness", handle_execution_witness }', NATIVE)
+        self.assertIn("execution-witness <guest-address>", CLIENT)
+        self.assertIn("pretty_execution_witness", CLIENT)
+
+    def test_109_response_is_bounded_one_record(self) -> None:
+        self.assertIn('\\\"execution_witness_range_bytes\\\":4', NATIVE)
+        self.assertNotIn("execution_witness_list", NATIVE)
+
+    def test_110_no_raw_code_or_host_paths(self) -> None:
+        handler = NATIVE[NATIVE.index("handle_execution_witness"):
+                         NATIVE.index("static const char *ownership_reason_name")]
+        for forbidden in ('\\\"hex\\\"', "raw_bytes", "host_path", "source_path"):
+            self.assertNotIn(forbidden, handler)
+
+    def test_111_no_title_specific_witness_logic(self) -> None:
+        handler = NATIVE[NATIVE.index("handle_execution_witness"):
+                         NATIVE.index("static const char *ownership_reason_name")]
+        self.assertNotRegex(handler, r"Legaia|SCUS[-_]?94254|town01|801CF754")
+
+    def test_112_delay_slots_are_independently_recorded(self) -> None:
+        delay = DIRTY[DIRTY.index("static void exec_delay_slot"):
+                      DIRTY.index("static int exec_one(CPUState", DIRTY.index("static void exec_delay_slot"))]
+        self.assertIn("exec_one(cpu, pc, &dummy_next)", delay)
+        self.assertIn("exec_pc_table_record(pc, insn)", DIRTY)
+
+    def test_113_witness_id_scope_is_not_cross_process(self) -> None:
+        self.assertIn('\\\"id_scope\\\":\\\"process-local-observation\\\"', NATIVE)
+        self.assertIn("overlay_lifecycle_tracking_started_frame", NATIVE)
+
+    def test_114_old_lifecycle_surface_remains_registered(self) -> None:
+        self.assertIn('{ "executable_lifecycle", handle_executable_lifecycle }', NATIVE)
+        self.assertIn("executable_image_lifecycle", NATIVE)
 
 
 if __name__ == "__main__":
