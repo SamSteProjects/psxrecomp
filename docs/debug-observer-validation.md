@@ -125,3 +125,17 @@ figures include Python process startup and are not wire-only latency; the prior
 same-host wire measurements remain representative. Low-frequency queries did
 not stop frame progression. Full lifecycle/catalog traversal remains an
 epoch-change diagnostic, not a polling operation.
+
+## 2026-07-19 protocol 1.4 execution-witness update
+
+A freshly linked RelWithDebInfo runtime advertised the additive
+`execution_witness` capability. Three independent SCUS-94254 field PCs returned
+current exact four-byte witnesses with stable frame, executable-state, and
+lifecycle boundaries. Their backend/range/live-hash tuples repeated across
+fresh launches and the natural opening field-scene replacement chain through
+town01. Missing and stale candidates remained explicitly rejected.
+
+Settled-town01 five-query averages were approximately 9–19 ms per end-to-end
+Python request, including connection and client overhead. Hit counts advanced
+and frame progression continued. No debugger RAM write, raw code response, or
+title-specific runtime command was used.

@@ -87,9 +87,10 @@ Actor-slot reuse starts a new live identity when occupancy generation, scene epo
 
 ## Implemented generic observer prerequisites
 
-Protocol 1.3 implements the generic capabilities proven necessary by the layout
+Protocol 1.4 implements the generic capabilities proven necessary by the layout
 contract. The native server advertises `protocol_info`, `runtime_identity`,
-`executable_catalog`, `executable_image_lifecycle`, `executable_regions`, `read_regions`, and
+`executable_catalog`, `executable_image_lifecycle`, `executable_regions`,
+`execution_witness`, `read_regions`, and
 `watched_page_generation`.
 
 - `protocol_info` returns the protocol version, explicit server kind, sorted
@@ -108,6 +109,9 @@ contract. The native server advertises `protocol_info`, `runtime_identity`,
 - `executable_lifecycle` provides exact DMA capture instances, supersession
   links, bounded lifecycle events, and exact-PC backend observations. A last
   owner becomes non-current after its watched generation changes.
+- `execution_witness` returns one exact four-byte executed-instruction span,
+  observed/current SHA-256, backend, watched generation, currentness,
+  provenance where known, and before/after state boundaries.
 - `read_regions` reads up to 32 ordered main-RAM ranges, 4 KiB each and 16 KiB
   total, with frame-before/after and executable-state-before/after stamps.
 
@@ -165,16 +169,14 @@ The first revisioned profile now lives at `integrations/legaia/layouts/scus94254
 The research changes the proposed actor read from a contiguous table read to a bounded pointer-census read. Retail field actors are linked, individually allocated nodes. Field overlay 0897 rebuilds a filtered, 32-pointer collision census each frame; its four-byte entries are not actor records and its indices are not identity. A future observer should read the 128-byte census, validate each pointer, then read only the documented `0x9C`-byte node prefix.
 
 The generic transport prerequisites now exist. A later observer can negotiate
-protocol 1.2, verify program identity, enumerate executable registrations, and
-discard mixed frame/executable-state snapshots. The checked-in profile still
-refuses live selection while overlay 0897's canonical live range/hash is
-unresolved. Resolving and accepting that evidence is the next prerequisite; it
-is not permission to traverse actors or correlate imported records. No
-Legaia-specific command or runtime hook has been added.
+protocol 1.4, verify program identity, require the accepted three-witness field
+execution identity, and discard mixed frame/executable/lifecycle snapshots.
+The profile no longer requires a guessed whole-overlay range. This enables a
+separately approved headless read-only observer phase; it is not permission to
+correlate imported records or write RAM. No Legaia-specific command or runtime
+hook has been added.
 
-The protocol 1.2 pass confirmed bounded complete paging and explained duplicate
-static structural variants, but it did not clear the overlay gate. In stable
-town01, records covering field code were not source-matching native owners, and
-the researched overlay base was not an authoritative loaded-image event. The
-next prerequisite is evidence for the real generic image lifecycle/identity,
-not actor traversal. See `field-overlay-0897-identity.md`.
+The whole-overlay base/range remains unresolved, but protocol 1.4 established
+field execution identity using current interpreter and static-native witnesses
+whose exact instruction identities repeated across field-scene replacements
+and fresh launches. See `field-execution-identity.md`.

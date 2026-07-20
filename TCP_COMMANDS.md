@@ -32,7 +32,7 @@ strings), so every server command is reachable, e.g.
 
 ## Command inventory
 
-### Observer identity commands (protocol 1.3)
+### Observer identity commands (protocol 1.4)
 
 Capability negotiation is authoritative; server kind is not a substitute for
 checking `capabilities`.
@@ -43,6 +43,7 @@ checking `capabilities`.
 | `runtime_identity` | full | unsupported | unsupported | Safe runtime, BIOS and canonical main-executable identities; no paths or bytes |
 | `executable_catalog` | full | unsupported | unsupported | Token-bound pages over executable images, structural ranges, or registrations |
 | `executable_lifecycle` | full | unsupported | unsupported | Token-bound image-instance, exact-PC owner, or bounded lifecycle-event pages |
+| `execution_witness` | full | unsupported | unsupported | One exact-PC, four-byte execution witness with backend, live identity, generation currentness and boundary stamps |
 | `executable_regions` | full | unsupported | unsupported | Paged registrations with source/live identities, watched generations and conservative native ownership |
 | `read_regions` | full | partial | partial | Bounded ordered main-RAM reads; native includes frame and executable-state stamps, oracles include frame stamps |
 
@@ -53,7 +54,7 @@ but omits PSXRecomp registration ownership and watched generations. See
 `docs/executable-identity.md`, and `docs/read-regions-command.md`.
 
 CLI mappings are `protocol-info`, `runtime-identity`, `executable-catalog`,
-`executable-lifecycle`, `executable-regions`, and
+`executable-lifecycle`, `execution-witness`, `executable-regions`, and
 `read-regions key=addr:len [...]`. Compact summaries are followed by the full
 JSON response.
 

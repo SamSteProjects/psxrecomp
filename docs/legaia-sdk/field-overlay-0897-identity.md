@@ -74,8 +74,8 @@ coverage.
 Overlay 0897 still lacks a repeatable authoritative loaded-image identity or a
 deterministic required set of currently owned registrations. Its canonical
 base, loaded length, live SHA-256 domain, source relationship, and ownership
-gate remain unknown. The revisioned layout profile remains unchanged and fail
-closed.
+gate remain unknown. At that stage, the revisioned layout profile remained
+unchanged and fail closed.
 
 The generic catalog prerequisite is accepted; a Legaia observer is not. The
 next safe work is evidence collection for the actual overlay load/capture event
@@ -111,3 +111,14 @@ Overlay 0897 is still **not accepted**. The interpreter backend is repeatable,
 but it cannot be linked to a bounded active executable-image instance, source
 or capture identity, deterministic child range set, or authoritative base and
 length. The layout profile remains unchanged and fail closed.
+
+## Protocol 1.4 terminology decision
+
+The subsequent execution-witness pass did not discover a canonical whole-image
+range. Instead, it accepted three independent exact-instruction witnesses as a
+repeatable **field execution identity**. The profile now uses that witness set,
+plus executable and scene signals, for fail-closed selection. It does not call
+the set an overlay hash or resolve `0x801CE818` as an image base.
+
+See `field-execution-identity.md` for the accepted ranges, hashes, backend
+stability, field-scene replacement evidence, and profile contract.

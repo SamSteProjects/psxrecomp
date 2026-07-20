@@ -51,3 +51,8 @@ a backend executes that PC again. Registration records continue to report
 native validity independently.
 
 No backend name is inferred from address proximity or from catalog overlap.
+
+Protocol 1.4 can turn one current exact-PC observation into a bounded execution
+witness. The witness hashes only the exact four-byte instruction span and keeps
+backend ownership separate from native registration validity. See
+`execution-witness-model.md`.

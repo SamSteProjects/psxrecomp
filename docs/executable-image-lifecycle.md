@@ -43,3 +43,7 @@ validation, emulation semantics, or guest memory. Its hot-path attribution is
 disabled until a client negotiates `protocol_info` or directly requests the
 lifecycle command. The response reports `tracking_started_frame`; evidence
 before that frame is intentionally unavailable rather than reconstructed.
+
+An execution witness may link to one of these exact fragments when the
+instruction lies inside it. A null link remains valid execution evidence and
+must not be expanded by joining adjacent fragments or guessing a whole image.

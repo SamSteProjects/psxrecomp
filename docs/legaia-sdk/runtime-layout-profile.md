@@ -10,12 +10,18 @@ Selection is fail closed. A consumer must match:
 
 1. executable serial and SHA-256;
 2. advertised runtime protocol name/version and required capabilities;
-3. every required overlay identity, load address and canonical content hash;
-4. every required scene signal;
-5. main-RAM bounds, pointer-census stride and count;
-6. scene-epoch boundary samples.
+3. all required execution witnesses, including backend, exact four-byte range,
+   live identity, currentness and watched generation;
+4. stable executable/lifecycle observation boundaries;
+5. every required scene signal;
+6. main-RAM bounds, pointer-census stride and count;
+7. scene-epoch boundary samples.
 
-The checked-in profile intentionally has a null canonical overlay content hash. Protocol 1.3 can additionally supply process-local DMA lifecycle instances and exact-PC backend-owner observations, but the canonical field-overlay identity has not been accepted into this profile. It therefore validates as research metadata but cannot select a live runtime. This is a safety feature, not an incomplete validator.
+The checked-in profile retains a null canonical overlay content hash because no
+whole-image range has been proven. That structural overlay hypothesis is no
+longer a required selector. Protocol 1.4 supplies an accepted three-witness
+field execution identity instead. Selection still fails closed when any
+witness or scene/boundary signal is missing, stale, ambiguous, or mismatched.
 
 ## Actor-pool representation
 
@@ -45,21 +51,28 @@ The standard-library validator provides:
 - `validate_observation_context(profile, context)` for fail-closed selection and bounds;
 - `establish_epoch(profile, before, after, observer_epoch)` for mixed-epoch rejection.
 
-The validator performs no network access and no RAM reads. A future observer supplies metadata from `protocol_info`, `runtime_identity`, `executable_regions`, and `read_regions`; it must require the advertised capabilities and reject unstable frame/executable-state stamps.
+The validator performs no network access and no RAM reads. A future observer
+supplies metadata from `protocol_info`, `runtime_identity`,
+`execution_witness`, and `read_regions`; it must reject unstable frame,
+executable-state, lifecycle, or watched-generation boundaries.
 
 ## Synthetic validation
 
-The suite covers schema validation, stable identity, supported/unsupported executable selection, overlay mismatch, missing scene signals, actor-base bounds, pointer stride, slot-count overflow, 32-bit wraparound, field bounds, duplicate offsets, contradictory/unknown claims, epoch invalidation, duplicate overlays, deterministic serialization, proprietary-payload rejection and unresolved-overlay fail-closed behavior.
+The suite covers those structural checks plus missing, stale, and ambiguous
+witnesses; backend/range/hash mismatches; watched-generation changes; mixed
+executable/lifecycle states; multi-witness completeness; protocol compatibility;
+metadata-only identities; and the legacy unresolved-overlay failure mode.
 
 All fixtures are synthetic or profile metadata. Retail bytes and runtime captures are not used.
 
 ## Live identity status
 
-The 2026-07-19 native pass accepted startup, protocol negotiation, and the
-multi-signal town01 boundary, but did not find an authoritative native owner for
-field overlay 0897. The `0x801CE818` base remains a research hypothesis, not an
-accepted executable-region identity. The null overlay content hash and
-fail-closed selection remain unchanged. See `field-overlay-0897-identity.md`.
+The protocol 1.4 native pass accepted three exact-instruction witnesses across
+fresh launches and the natural field-scene replacement chain. The profile now
+uses that repeatable field execution identity. The `0x801CE818` base remains a
+research hypothesis and the null whole-overlay content hash remains unchanged;
+neither is represented as the accepted identity. See
+`field-execution-identity.md` and `field-overlay-0897-identity.md`.
 
 The protocol 1.2 repeat retrieved all 562 registrations without response
 overflow and explained duplicate static structural variants, but it still did
