@@ -27,7 +27,7 @@ disc; retail assets are not included in this repository.
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
 | Generic PSXRecomp observer protocol | Protocol 1.5 adds stateless profile-scoped observation guards and guarded bounded reads |
-| Headless Legaia runtime observer | Stable retail town01 boundary-only acceptance and synthetic transition watcher; actor traversal remains gated by retail exit/re-entry validation |
+| Headless Legaia runtime observer | Stable retail town01 boundary plus a read-only town0c exit/re-entry acceptance; actor traversal remains separately gated |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Retail live actor snapshots, imported-to-runtime actor matching, RAM editing,
@@ -228,7 +228,11 @@ frames advanced. A transition-only manual watcher now implements explicit
 old-token rejection, stable outside sampling, and re-entry stabilization without
 actor reads. Synthetic coverage passes, but fresh New Game has a story-locked
 exit and the available save is a later transformed Rim Elm revision. Retail
-exit/re-entry acceptance therefore remains open; actor traversal stays disabled.
+The actual Rim Elm lifecycle is asymmetric: the one-time night scene exits as
+`town01 -> map01`, while later entry resolves to `town0c`. A read-only
+`town0c -> map01 -> town0c` round trip has now validated old-epoch rejection
+and new observer-epoch establishment. Actor traversal remains disabled pending
+a revisioned town0c profile and a separately approved pass.
 
 ## What Is Not Implemented Yet
 

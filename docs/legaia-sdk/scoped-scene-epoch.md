@@ -34,13 +34,13 @@ Each boundary-only pass used 13 protocol requests, read no actor-node bytes,
 performed no RAM writes, and completed in approximately 154–333 ms. Runtime
 process and scoped tokens changed across fresh launches as designed.
 
-## Remaining transition gate
+## Transition acceptance
 
-A transition-only state machine and manual `--transition-watch` CLI now prove
-old-token rejection, stable outside sampling, and re-entry stabilization in
-synthetic tests without actor reads. Retail acceptance remains pending: fresh
-New Game has a story-locked south gate, while the available memory-card save
-loads a later transformed Rim Elm revision rather than the accepted `town01`
-profile. Synthetic coverage is not a substitute for the normal live
-transition. Retail actor-node traversal remains disabled until the transition
-gate is completed. See `scene-transition-acceptance.md`.
+A transition-only state machine and manual `--transition-watch` CLI prove
+old-token rejection, stable outside sampling, and re-entry stabilization
+without actor reads. Retail evidence established the asymmetric
+`town01 -> map01 -> town0c` lifecycle and accepted a normal
+`town0c -> map01 -> town0c` round trip. The scoped state fingerprint returned
+to its original value after re-entry, while the intervening map state rejected
+it and the observer-owned epoch sequence advanced. Retail actor-node traversal
+remains separately gated. See `scene-transition-acceptance.md`.

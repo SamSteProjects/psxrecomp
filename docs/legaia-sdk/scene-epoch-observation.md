@@ -41,5 +41,6 @@ explicit old-token rejection, two stable outside samples, full witness
 revalidation, a new two-sample epoch, ten stable re-entry samples, and a final
 guard. Repeated retail town01 boundary-only runs established a stable scoped
 epoch while the broader global token changed. No actor bytes were read. A
-compatible normal-game `town01` save is still required to complete live exit and
-re-entry acceptance; see `scene-transition-acceptance.md`.
+normal retail testing established `town01 -> map01 -> town0c` and completed a
+`town0c -> map01 -> town0c` exit/re-entry acceptance with zero actor reads and
+writes; see `scene-transition-acceptance.md`.
