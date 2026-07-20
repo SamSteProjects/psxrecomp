@@ -87,9 +87,9 @@ Actor-slot reuse starts a new live identity when occupancy generation, scene epo
 
 ## Implemented generic observer prerequisites
 
-Protocol 1.2 implements the generic capabilities proven necessary by the layout
+Protocol 1.3 implements the generic capabilities proven necessary by the layout
 contract. The native server advertises `protocol_info`, `runtime_identity`,
-`executable_catalog`, `executable_regions`, `read_regions`, and
+`executable_catalog`, `executable_image_lifecycle`, `executable_regions`, `read_regions`, and
 `watched_page_generation`.
 
 - `protocol_info` returns the protocol version, explicit server kind, sorted
@@ -105,6 +105,9 @@ contract. The native server advertises `protocol_info`, `runtime_identity`,
 - `executable_catalog` provides token-bound views of image groups, structural
   ranges, and registrations, with explicit source/live comparability,
   registration-time validation, and ownership failure reasons.
+- `executable_lifecycle` provides exact DMA capture instances, supersession
+  links, bounded lifecycle events, and exact-PC backend observations. A last
+  owner becomes non-current after its watched generation changes.
 - `read_regions` reads up to 32 ordered main-RAM ranges, 4 KiB each and 16 KiB
   total, with frame-before/after and executable-state-before/after stamps.
 

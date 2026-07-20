@@ -15,7 +15,7 @@ Selection is fail closed. A consumer must match:
 5. main-RAM bounds, pointer-census stride and count;
 6. scene-epoch boundary samples.
 
-The checked-in profile intentionally has a null canonical overlay content hash. Protocol 1.2 can supply a token-bound executable catalog, distinct image/range/registration identities, source/live comparability, prior validation, and ownership reasons, but the canonical field-overlay identity has not been accepted into this profile. It therefore validates as research metadata but cannot select a live runtime. This is a safety feature, not an incomplete validator.
+The checked-in profile intentionally has a null canonical overlay content hash. Protocol 1.3 can additionally supply process-local DMA lifecycle instances and exact-PC backend-owner observations, but the canonical field-overlay identity has not been accepted into this profile. It therefore validates as research metadata but cannot select a live runtime. This is a safety feature, not an incomplete validator.
 
 ## Actor-pool representation
 

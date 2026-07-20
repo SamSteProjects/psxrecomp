@@ -32,7 +32,7 @@ strings), so every server command is reachable, e.g.
 
 ## Command inventory
 
-### Observer identity commands (protocol 1.2)
+### Observer identity commands (protocol 1.3)
 
 Capability negotiation is authoritative; server kind is not a substitute for
 checking `capabilities`.
@@ -42,6 +42,7 @@ checking `capabilities`.
 | `protocol_info` | full | full | full | Protocol name/version, server kind, sorted capabilities and hard limits |
 | `runtime_identity` | full | unsupported | unsupported | Safe runtime, BIOS and canonical main-executable identities; no paths or bytes |
 | `executable_catalog` | full | unsupported | unsupported | Token-bound pages over executable images, structural ranges, or registrations |
+| `executable_lifecycle` | full | unsupported | unsupported | Token-bound image-instance, exact-PC owner, or bounded lifecycle-event pages |
 | `executable_regions` | full | unsupported | unsupported | Paged registrations with source/live identities, watched generations and conservative native ownership |
 | `read_regions` | full | partial | partial | Bounded ordered main-RAM reads; native includes frame and executable-state stamps, oracles include frame stamps |
 
@@ -51,9 +52,10 @@ but omits PSXRecomp registration ownership and watched generations. See
 `docs/debug-protocol-versioning.md`,
 `docs/executable-identity.md`, and `docs/read-regions-command.md`.
 
-CLI mappings are `protocol-info`, `runtime-identity`, `executable-catalog`, `executable-regions`, and
-`read-regions key=addr:len [...]`. The executable-region view prints a compact
-summary followed by the full JSON response.
+CLI mappings are `protocol-info`, `runtime-identity`, `executable-catalog`,
+`executable-lifecycle`, `executable-regions`, and
+`read-regions key=addr:len [...]`. Compact summaries are followed by the full
+JSON response.
 
 `executable-catalog [images|ranges|registrations] [limit]` retrieves every
 page, reconnecting for the native server's one-command-per-connection contract.
@@ -63,6 +65,12 @@ reported separately and do not permit records from different catalog revisions
 to be combined. See `docs/executable-image-model.md`,
 `docs/executable-catalog-pagination.md`, and
 `docs/executable-ownership-diagnostics.md`.
+
+`executable-lifecycle [instances|owners|events] [limit]` applies the same
+eight-record maximum and token-bound continuation rule. Event retention is a
+4,096-record ring; an evicted cursor fails closed. See
+`docs/executable-lifecycle-protocol.md`. `executable-owner <guest-address>` is
+the bounded one-record form for a changing exact-PC owner table.
 
 Columns: **N** = native, **D** = DuckStation oracle.
 

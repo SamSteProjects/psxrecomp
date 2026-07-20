@@ -26,7 +26,7 @@ disc; retail assets are not included in this repository.
 | Legaia Trace inspector | Implemented as a local, read-only metadata viewer |
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
-| Generic PSXRecomp observer protocol | Protocol 1.2 implemented with bounded executable-catalog paging |
+| Generic PSXRecomp observer protocol | Protocol 1.3 implemented with bounded catalog and lifecycle paging |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Live Legaia actor observation, imported-to-runtime actor matching, RAM editing,
@@ -159,13 +159,14 @@ field map and selection rules.
 
 ### Generic PSXRecomp Observer Protocol
 
-The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.2**. It
+The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.3**. It
 provides:
 
 - protocol and capability negotiation;
 - runtime, BIOS, and main-executable identity;
 - distinct executable-image, structural-range, and registration inspection;
 - token-bound catalog paging and structured ownership reasons;
+- process-local executable-image lifecycle and backend-owner observations;
 - authoritative watched-page generation state;
 - bounded multi-region RAM reads;
 - frame-before and frame-after stamps;
@@ -187,7 +188,8 @@ observation:
   native code dispatchable;
 - current RAM is revalidated before native dispatch becomes eligible again;
 - Windows/MSVC startup portability issues were corrected; and
-- fresh native launch and protocol 1.2 wire acceptance passed.
+- fresh native launch and protocol 1.2 wire acceptance passed; protocol 1.3
+  lifecycle acceptance is tracked separately.
 
 These fixes establish correct failure behavior and a bounded generic ownership
 catalog, but they do not establish the title-specific field-overlay identity
@@ -204,13 +206,17 @@ The generic runtime now models the following relationships explicitly:
 - registration-time validated identity;
 - current live identity; and
 - active native ownership.
+- exact-PC backend execution observations; and
+- bounded DMA capture-instance creation and supersession.
 
 The renewed field-overlay 0897 identity was deliberately **not accepted**. A
 complete town01 catalog was retrieved in bounded pages, and duplicate static
 registrations were grouped deterministically, but the expected candidate base
-did not appear as an authoritative loaded-image event. Registrations covering
-known field code remained non-owning source/live mismatches. The candidate base
-is still unresolved, and the layout profile therefore remains fail closed.
+did not appear as an authoritative loaded-image event. Protocol 1.3 confirms
+that known field code is currently interpreter-owned despite invalid static
+native registrations. That exact instruction still has no authoritative image
+instance, and the candidate base remains unresolved, so the layout profile
+remains fail closed.
 
 Actor traversal has not begun because executable ownership must be trustworthy
 before RAM structures can be interpreted safely.
@@ -462,6 +468,9 @@ evidence, compatibility, and data-boundary review.
 - [Debug protocol versioning](docs/debug-protocol-versioning.md)
 - [Executable identity](docs/executable-identity.md)
 - [Executable image model](docs/executable-image-model.md)
+- [Executable image lifecycle](docs/executable-image-lifecycle.md)
+- [Backend-neutral execution ownership](docs/execution-ownership.md)
+- [Executable lifecycle protocol](docs/executable-lifecycle-protocol.md)
 - [Executable catalog pagination](docs/executable-catalog-pagination.md)
 - [Executable ownership diagnostics](docs/executable-ownership-diagnostics.md)
 - [Bounded `read_regions` command](docs/read-regions-command.md)

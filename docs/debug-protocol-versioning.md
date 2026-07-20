@@ -6,7 +6,7 @@ Identity support is an additive protocol revision:
 
 - name: `psxrecomp-debug`
 - major: 1
-- minor: 2
+- minor: 3
 
 A major change may remove or reinterpret fields and is incompatible unless a
 client explicitly supports it. A minor change may add commands, capabilities,
@@ -23,6 +23,7 @@ limits, and the current frame. Capability names are stable lowercase tokens.
 The native server advertises:
 
 - `executable_catalog`
+- `executable_image_lifecycle`
 - `executable_regions`
 - `read_ram`
 - `read_regions`
@@ -52,6 +53,7 @@ The v1.1 native limits are:
 | `read_regions` response | 65,536 bytes |
 | `executable_regions` records per page | 8 default, 8 maximum |
 | `executable_catalog` records per page | 8 default, 8 maximum |
+| `executable_lifecycle` records per page | 8 default, 8 maximum |
 
 An overlong request, malformed range, overflow, or response-budget violation
 fails closed with the existing `{id,ok:false,error}` envelope. Unsupported
@@ -69,5 +71,7 @@ and guest ranges, never executable bytes.
 
 Build and acceptance evidence for this revision is recorded in
 `docs/debug-observer-validation.md`. Protocol 1.2 adds the bounded, token-bound
-catalog described in `docs/executable-catalog-pagination.md`; older clients and
-commands remain valid.
+catalog described in `docs/executable-catalog-pagination.md`. Protocol 1.3 adds
+bounded image lifecycle and exact-PC execution-owner observations described in
+`docs/executable-lifecycle-protocol.md`; older clients and commands remain
+valid.

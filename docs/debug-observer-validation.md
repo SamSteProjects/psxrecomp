@@ -103,3 +103,25 @@ binary reported protocol 1.2, the six native capabilities, both eight-record
 limits, and `load_base: null` for a static structural variant. This correction
 changed only the external local build cache, not repository files or user-wide
 environment state.
+
+## 2026-07-19 protocol 1.3 lifecycle update
+
+A fresh normalized-environment `RelWithDebInfo` build compiled and linked the
+generic lifecycle instrumentation. Native negotiation reported protocol 1.3,
+the additive `executable_image_lifecycle` capability, an eight-record lifecycle
+page maximum, and 4,096 retained events.
+
+Four normal-flow launches were used while tightening the bounded model. The
+accepted repeat reached `town01`, PROT `3`, and mode `3` with stable frame and
+executable-state boundaries. Exact-owner queries repeatedly reported
+`0x801CF754` as a current dirty-RAM interpreter observation with no native
+registration and no image-instance parent. `0x801CE818` had no owner record.
+The final bounded tables did not overflow; the event ring explicitly reported
+older event history as truncated.
+
+Five end-to-end Python CLI invocations averaged approximately 189 ms for the
+one-record owner query and 150 ms for a small `read_regions` request. These
+figures include Python process startup and are not wire-only latency; the prior
+same-host wire measurements remain representative. Low-frequency queries did
+not stop frame progression. Full lifecycle/catalog traversal remains an
+epoch-change diagnostic, not a polling operation.
