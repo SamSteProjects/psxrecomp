@@ -27,6 +27,34 @@ def _hex_address(value: int) -> str:
     return f"0x{value:08X}"
 
 
+def build_guard_descriptor(
+    profile: Mapping[str, Any], expected_token: str | None = None
+) -> dict[str, Any]:
+    signals = profile["scene_identity"]["required_signals"]
+    head = profile["actor_pool"]["linked_list_head"]
+    ram_regions = [
+        {"key": signal["id"], "addr": signal["address"], "len": signal["width"]}
+        for signal in signals
+    ]
+    ram_regions.append(
+        {
+            "key": "actor_list_head",
+            "addr": head["address"],
+            "len": profile["observation_policy"]["head_pointer"]["width"],
+        }
+    )
+    descriptor: dict[str, Any] = {
+        "ram_regions": ram_regions,
+        "execution_witnesses": [
+            {"pc": witness["pc"], "require_current": True}
+            for witness in profile["execution_identity"]["required_witnesses"]
+        ],
+    }
+    if expected_token is not None:
+        descriptor["expected_token"] = expected_token
+    return descriptor
+
+
 def _decode_signal(signal: Mapping[str, Any], payload: bytes) -> Any:
     width = signal["width"]
     if len(payload) != width:
@@ -103,29 +131,49 @@ class ProfileSelector:
             raise ProfileRejected("main executable source identity does not match profile")
         if main.get("canonical_length") != expected_source["length"] or main.get("guest_base") != expected_source["guest_base"]:
             raise ProfileRejected("main executable source range does not match profile")
-        structural_runtime = {key: value for key, value in self.runtime.items() if key not in {"id", "frame"}}
-        self.runtime_process_identity = _sha(
-            {"observer_session": self.client.session_id, "runtime": structural_runtime}
-        )
+        process_identity = self.runtime.get("runtime", {}).get("process_instance_id")
+        if not isinstance(process_identity, str) or not process_identity.startswith("proc-"):
+            raise ProfileRejected("runtime process instance identity is missing")
+        self.runtime_process_identity = process_identity
 
-    def _scene_and_head(self) -> tuple[dict[str, Any], dict[str, Any]]:
+    def guard_descriptor(self, expected_token: str | None = None) -> dict[str, Any]:
+        return build_guard_descriptor(self.profile.document, expected_token)
+
+    @staticmethod
+    def _require_guard(response: Mapping[str, Any]) -> Mapping[str, Any]:
+        guard = response.get("guard")
+        if not isinstance(guard, Mapping):
+            raise ProtocolError("observation guard result is missing")
+        if guard.get("valid") is not True:
+            evidence = guard.get("evidence") or {}
+            raise ProfileRejected(
+                f"observation guard is invalid: {evidence.get('failure_reason', 'unknown')}"
+            )
+        if guard.get("stable") is not True:
+            raise SnapshotUnstable("observation guard changed during one request")
+        if guard.get("expected_token_matched") is not True:
+            raise SnapshotUnstable("observation guard does not match the accepted epoch token")
+        if guard.get("compatible") is not True:
+            raise SnapshotUnstable("observation guard is not compatible")
+        token = guard.get("token_before")
+        if not isinstance(token, str) or token != guard.get("token_after"):
+            raise ProtocolError("observation guard token is malformed")
+        return guard
+
+    def _scene_and_head(
+        self, expected_token: str | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any], Mapping[str, Any]]:
         profile = self.profile.document
         signals = profile["scene_identity"]["required_signals"]
         head = profile["actor_pool"]["linked_list_head"]
-        regions = [
-            {"key": signal["id"], "addr": signal["address"], "len": signal["width"]}
-            for signal in signals
-        ]
-        regions.append(
-            {
-                "key": "actor_list_head",
-                "addr": head["address"],
-                "len": profile["observation_policy"]["head_pointer"]["width"],
-            }
+        regions = self.guard_descriptor()["ram_regions"]
+        response = self.client.read_regions(
+            regions,
+            guard=self.guard_descriptor(expected_token),
         )
-        response = self.client.read_regions(regions)
-        if response.get("stable_frame") is not True or response.get("stable_executable_state") is not True:
-            raise SnapshotUnstable("scene-signal read crossed a frame or executable boundary")
+        guard = self._require_guard(response)
+        if response.get("payload_returned") is not True:
+            raise SnapshotUnstable("guarded scene-signal payload was withheld")
         records = response.get("regions")
         if not isinstance(records, list) or len(records) != len(regions):
             raise ProtocolError("read_regions returned an incomplete scene sample")
@@ -146,57 +194,68 @@ class ProfileSelector:
             "value": _hex_address(head_value),
             "raw_value": head_value,
             "response": response,
-        }
+        }, guard
 
-    def _witnesses(self) -> tuple[list[dict[str, Any]], str, str]:
+    def _normalize_guard_witnesses(self, guard: Mapping[str, Any]) -> list[dict[str, Any]]:
+        evidence = guard.get("evidence")
+        if not isinstance(evidence, Mapping):
+            raise ProtocolError("observation guard evidence is missing")
+        wire_witnesses = evidence.get("execution_witnesses")
+        if not isinstance(wire_witnesses, list):
+            raise ProtocolError("observation guard witness evidence is missing")
+        by_pc = {item.get("pc"): item for item in wire_witnesses if isinstance(item, Mapping)}
         observed: list[dict[str, Any]] = []
-        executable_tokens: set[str] = set()
-        lifecycle_tokens: set[str] = set()
         for required in self.profile.document["execution_identity"]["required_witnesses"]:
-            response = self.client.execution_witness(required["pc"])
-            if response.get("stable_observation_boundary") is not True:
-                raise SnapshotUnstable(f"witness {required['pc']} crossed an observation boundary")
-            witness = response.get("witness")
-            if not isinstance(witness, dict):
-                raise ProfileRejected(f"required witness {required['pc']} is missing")
-            generation = witness.get("watched_generation", {})
-            observed_generation = generation.get("observed_legacy_sum")
-            current_generation = generation.get("current_legacy_sum")
+            witness = by_pc.get(required["pc"])
+            if not isinstance(witness, Mapping):
+                raise ProfileRejected(f"required witness {required['pc']} is missing from guard")
+            generation = witness.get("watched_generation_digest")
             normalized = {
                 "id": required["id"],
-                "pc": response.get("requested_pc"),
-                "status": response.get("status"),
+                "pc": witness.get("pc"),
+                "status": witness.get("status"),
                 "backend": witness.get("backend"),
                 "range": {
-                    "kind": witness.get("range", {}).get("kind"),
+                    "kind": "executed-instruction",
                     "base": witness.get("range", {}).get("guest_base"),
                     "length": witness.get("range", {}).get("length"),
                 },
-                "live_sha256": witness.get("current_live_identity", {}).get("sha256"),
-                "observed_sha256": witness.get("observed_identity", {}).get("sha256"),
-                "observation_current": witness.get("observation_current"),
-                "watched_generation_digest": generation.get("digest"),
-                "watched_generation_at_observation": f"legacy:{observed_generation}",
-                "watched_generation_current": f"legacy:{current_generation}",
-                "first_observed_frame": witness.get("first_observed_frame"),
-                "last_observed_frame": witness.get("last_observed_frame"),
-                "hit_count": witness.get("hit_count"),
-                "memory_provenance": witness.get("memory_provenance"),
+                "live_sha256": witness.get("live_sha256"),
+                "observation_current": witness.get("current"),
+                "watched_generation_digest": generation,
+                "watched_generation_at_observation": f"digest:{generation}",
+                "watched_generation_current": f"digest:{generation}",
+                "image_instance_id": witness.get("image_instance_id"),
+                "lifecycle_generation": witness.get("lifecycle_generation"),
+                "native_registration_id": witness.get("native_registration_id"),
+                "reason": witness.get("reason"),
             }
             observed.append(normalized)
-            executable_tokens.update(
-                [response.get("executable_state_before"), response.get("executable_state_after")]
-            )
-            lifecycle_tokens.update(
-                [response.get("lifecycle_token_before"), response.get("lifecycle_token_after")]
-            )
-        if None in executable_tokens or len(executable_tokens) != 1:
-            raise SnapshotUnstable("execution witness set crossed an executable-state boundary")
-        if None in lifecycle_tokens or len(lifecycle_tokens) != 1:
-            raise SnapshotUnstable("execution witness set crossed a lifecycle boundary")
-        return observed, executable_tokens.pop(), lifecycle_tokens.pop()
+        return observed
 
-    def sample_boundary(self) -> dict[str, Any]:
+    def sample_guard_only(self, expected_token: str) -> dict[str, Any]:
+        response = self.client.observation_guard(self.guard_descriptor(expected_token))
+        guard = self._require_guard(response)
+        evidence = guard.get("evidence") or {}
+        if evidence.get("runtime_instance_id") != self.runtime_process_identity:
+            raise SnapshotUnstable("runtime process identity changed during guard sampling")
+        return {
+            "frame_before": response.get("frame_before"),
+            "frame_after": response.get("frame_after"),
+            "guard_token": guard["token_before"],
+            "global_executable_state_before": response.get("executable_state_before"),
+            "global_executable_state_after": response.get("executable_state_after"),
+            "stable_global_executable_state": response.get("stable_executable_state"),
+            "global_state_components_before": response.get(
+                "global_state_components_before"
+            ),
+            "global_state_components_after": response.get(
+                "global_state_components_after"
+            ),
+            "guard_evidence": evidence,
+        }
+
+    def sample_boundary(self, expected_token: str | None = None) -> dict[str, Any]:
         if self.protocol is None or self.runtime is None or self.runtime_process_identity is None:
             raise ProfileRejected("profile negotiation has not completed")
         runtime = self.client.runtime_identity()
@@ -204,17 +263,9 @@ class ProfileSelector:
         expected_structural = {key: value for key, value in self.runtime.items() if key not in {"id", "frame"}}
         if structural != expected_structural:
             raise SnapshotUnstable("runtime identity changed during observation")
-        signals, head = self._scene_and_head()
-        witnesses, witness_exec, witness_lifecycle = self._witnesses()
-        lifecycle = self.client.lifecycle_token()
-        lifecycle_token = lifecycle.get("lifecycle_token")
+        signals, head, guard = self._scene_and_head(expected_token)
+        witnesses = self._normalize_guard_witnesses(guard)
         read_response = head.pop("response")
-        read_exec_before = read_response.get("executable_state_before")
-        read_exec_after = read_response.get("executable_state_after")
-        if read_exec_before != read_exec_after or read_exec_before != witness_exec:
-            raise SnapshotUnstable("scene and witness samples disagree on executable state")
-        if lifecycle_token != witness_lifecycle:
-            raise SnapshotUnstable("scene and witness samples disagree on lifecycle state")
         context = {
             "executable_identity": {
                 "serial": runtime["main_executable"]["serial"],
@@ -232,8 +283,9 @@ class ProfileSelector:
             "scene_signals": signals,
             "execution_witnesses": witnesses,
             "observation_boundary": {
-                "stable_executable_state": True,
-                "stable_lifecycle_state": True,
+                "stable_executable_state": read_response.get("stable_executable_state"),
+                "stable_lifecycle_state": None,
+                "stable_observation_guard": True,
             },
             "actor_count": 0,
         }
@@ -261,11 +313,13 @@ class ProfileSelector:
             "field_execution_identity": _sha(witness_structural),
             "witness_structural_identities": witness_structural,
             "witness_results": witnesses,
-            "executable_state_token": witness_exec,
-            "lifecycle_token": witness_lifecycle,
-            "stable_frame": True,
-            "stable_executable_state": True,
-            "stable_lifecycle_state": True,
+            "observation_guard_token": guard["token_before"],
+            "guard_evidence": guard.get("evidence"),
+            "global_executable_state_before": read_response.get("executable_state_before"),
+            "global_executable_state_after": read_response.get("executable_state_after"),
+            "stable_global_executable_state": read_response.get("stable_executable_state"),
+            "stable_frame": read_response.get("stable_frame"),
+            "stable_observation_guard": True,
         }
 
     def selection_result(self, boundary: Mapping[str, Any]) -> dict[str, Any]:
@@ -284,5 +338,5 @@ class ProfileSelector:
             "witness_results": boundary["witness_results"],
             "scene_signal_results": boundary["scene_signals"],
             "confidence": "confirmed",
-            "evidence": ["revisioned-layout-profile", "protocol-1.4-live-boundary"],
+            "evidence": ["revisioned-layout-profile", "protocol-1.5-observation-guard"],
         }

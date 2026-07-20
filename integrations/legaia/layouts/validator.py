@@ -251,6 +251,20 @@ def validate_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
         _fail("$.scene_epoch references an unknown invalidation signal")
 
     policy = _need(result, "observation_policy", "$")
+    guard = _need(policy, "guard", "$.observation_policy")
+    expected_guard = {
+        "capability": "observation_guard",
+        "token_domain": "psxrecomp-observation-guard-v1",
+        "ram_regions_from": "scene_identity.required_signals+actor_pool.linked_list_head",
+        "execution_witnesses_from": "execution_identity.required_witnesses",
+        "require_witness_currentness": True,
+        "require_before_after_stability": True,
+        "require_expected_token_match": True,
+    }
+    if guard != expected_guard:
+        _fail("$.observation_policy.guard contract is unsupported")
+    if "observation_guard" not in protocol.get("required_capabilities", []):
+        _fail("$.supported_runtime_protocol must require observation_guard")
     head_policy = _need(policy, "head_pointer", "$.observation_policy")
     if (head_policy.get("width"), head_policy.get("type"), head_policy.get("endianness")) != (4, "ram_pointer", "little"):
         _fail("$.observation_policy.head_pointer encoding is unsupported")
@@ -359,6 +373,8 @@ def validate_observation_context(profile: Mapping[str, Any], context: Mapping[st
         _fail("execution witness selection crossed an executable-state boundary")
     if execution.get("require_stable_lifecycle_state") and boundary.get("stable_lifecycle_state") is not True:
         _fail("execution witness selection crossed a lifecycle boundary")
+    if execution.get("require_stable_observation_guard") and boundary.get("stable_observation_guard") is not True:
+        _fail("execution witness selection crossed a scoped observation guard")
     observed_witnesses = {
         item.get("pc"): item for item in context.get("execution_witnesses", [])
         if isinstance(item, Mapping)

@@ -17,6 +17,7 @@ READ_ONLY_COMMANDS = {
     "read_regions",
     "execution_witness",
     "executable_lifecycle",
+    "observation_guard",
 }
 
 
@@ -149,11 +150,22 @@ class ProtocolClient:
     def runtime_identity(self) -> dict[str, Any]:
         return self.request("runtime_identity")
 
-    def read_regions(self, regions: list[dict[str, Any]]) -> dict[str, Any]:
-        return self.request("read_regions", regions=regions)
+    def read_regions(
+        self,
+        regions: list[dict[str, Any]],
+        *,
+        guard: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {"regions": regions}
+        if guard is not None:
+            params["guard"] = guard
+        return self.request("read_regions", **params)
 
     def execution_witness(self, pc: str) -> dict[str, Any]:
         return self.request("execution_witness", pc=pc)
 
     def lifecycle_token(self) -> dict[str, Any]:
         return self.request("executable_lifecycle", view="instances", cursor="0", limit=1)
+
+    def observation_guard(self, guard: dict[str, Any]) -> dict[str, Any]:
+        return self.request("observation_guard", guard=guard)

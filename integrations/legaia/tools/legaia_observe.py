@@ -18,7 +18,6 @@ from integrations.legaia.observer import (  # noqa: E402
     ObserverError,
     ProtocolClient,
     RuntimeObserver,
-    canonical_snapshot_json,
 )
 
 
@@ -37,6 +36,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--connection-timeout", type=float, default=3.0)
     parser.add_argument("--request-timeout", type=float, default=5.0)
     parser.add_argument("--maximum-snapshot-attempts", type=int)
+    parser.add_argument(
+        "--boundary-only",
+        action="store_true",
+        help="validate a scoped scene epoch without reading actor nodes",
+    )
+    parser.add_argument(
+        "--boundary-samples",
+        type=int,
+        default=10,
+        help="additional compatible guard-only samples (default: 10)",
+    )
     parser.add_argument("--full-json", action="store_true", help="also print the metadata JSON to stdout")
     args = parser.parse_args(argv)
     try:
@@ -47,21 +57,29 @@ def main(argv: list[str] | None = None) -> int:
             connection_timeout=args.connection_timeout,
             request_timeout=args.request_timeout,
         ) as client:
-            snapshot = RuntimeObserver(client, profile).capture(args.maximum_snapshot_attempts)
-        encoded = canonical_snapshot_json(snapshot)
+            observer = RuntimeObserver(client, profile)
+            if not args.boundary_only:
+                raise ValueError(
+                    "retail actor traversal remains gated; use --boundary-only"
+                )
+            snapshot = observer.capture_boundary(args.boundary_samples)
+        encoded = json.dumps(
+            snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ) + "\n"
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(encoded, encoding="utf-8", newline="\n")
     except (OSError, ValueError, ObserverError) as exc:
         parser.exit(2, f"legaia-observe: error: {exc}\n")
-    chain = snapshot["actor_chain"]
     metrics = snapshot["metrics"]
     print(
-        f"Accepted historical observation: epoch={snapshot['epoch']['epoch_id'][:18]}... "
-        f"nodes={chain['node_count']} termination={chain['termination_reason']} "
-        f"requests={metrics['request_count']} bytes={metrics['actor_bytes_read']} "
-        f"duration_ms={metrics['total_duration_ms']}"
+        f"Accepted scoped boundary: epoch={snapshot['epoch']['epoch_id'][:18]}... "
+        f"guard={snapshot['guard']['token'][:12]} "
+        f"samples={snapshot['guard']['compatible_sample_count']} "
+        f"frames={snapshot['frames']['first']}->{snapshot['frames']['last']} "
+        f"requests={metrics['request_count']} actor_bytes=0 "
+        f"duration_ms={metrics['duration_ms']}"
     )
-    print(f"Saved metadata-only snapshot to {args.output}")
+    print(f"Saved metadata-only boundary diagnostic to {args.output}")
     if args.full_json:
         print(json.dumps(snapshot, indent=2, ensure_ascii=False))
     return 0

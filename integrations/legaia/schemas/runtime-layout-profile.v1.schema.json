@@ -156,12 +156,13 @@
     "executionIdentity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "minimum_required_witnesses", "require_stable_executable_state", "require_stable_lifecycle_state", "required_witnesses"],
+      "required": ["kind", "minimum_required_witnesses", "require_stable_executable_state", "require_stable_lifecycle_state", "require_stable_observation_guard", "required_witnesses"],
       "properties": {
         "kind": { "const": "field_execution_witness_set" },
         "minimum_required_witnesses": { "type": "integer", "minimum": 2 },
-        "require_stable_executable_state": { "const": true },
-        "require_stable_lifecycle_state": { "const": true },
+        "require_stable_executable_state": { "const": false },
+        "require_stable_lifecycle_state": { "const": false },
+        "require_stable_observation_guard": { "const": true },
         "required_witnesses": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/executionWitness" } }
       }
     },
@@ -295,8 +296,22 @@
     "observationPolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["head_pointer", "traversal", "snapshot"],
+      "required": ["guard", "head_pointer", "traversal", "snapshot"],
       "properties": {
+        "guard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability", "token_domain", "ram_regions_from", "execution_witnesses_from", "require_witness_currentness", "require_before_after_stability", "require_expected_token_match"],
+          "properties": {
+            "capability": { "const": "observation_guard" },
+            "token_domain": { "const": "psxrecomp-observation-guard-v1" },
+            "ram_regions_from": { "const": "scene_identity.required_signals+actor_pool.linked_list_head" },
+            "execution_witnesses_from": { "const": "execution_identity.required_witnesses" },
+            "require_witness_currentness": { "const": true },
+            "require_before_after_stability": { "const": true },
+            "require_expected_token_match": { "const": true }
+          }
+        },
         "head_pointer": {
           "type": "object",
           "additionalProperties": false,

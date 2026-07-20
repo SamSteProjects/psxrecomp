@@ -9,6 +9,7 @@ from typing import Any, Mapping
 from .client import ProtocolClient
 from .epoch import SceneEpoch
 from .errors import ChainInvalid, ProtocolError, SnapshotUnstable
+from .profile import build_guard_descriptor
 
 
 POINTER_TYPES = {"ram_pointer", "code_pointer"}
@@ -148,13 +149,19 @@ def traverse_actor_chain(
             raise ChainInvalid("actor traversal reached aggregate_byte_limit")
         validate_chain_pointer(current, profile, prefix_length)
         response = client.read_regions(
-            [{"key": "actor_node", "addr": _format_address(current), "len": prefix_length}]
+            [{"key": "actor_node", "addr": _format_address(current), "len": prefix_length}],
+            guard=build_guard_descriptor(profile, epoch.observation_guard_token),
         )
         request_count += 1
-        if response.get("stable_frame") is not True or response.get("stable_executable_state") is not True:
-            raise SnapshotUnstable("node read crossed a frame or executable-state boundary")
-        if response.get("executable_state_before") != epoch.executable_state_token:
-            raise SnapshotUnstable("node read belongs to a different executable state")
+        guard = response.get("guard")
+        if not isinstance(guard, Mapping) or guard.get("compatible") is not True:
+            raise SnapshotUnstable("node read crossed the accepted scoped observation guard")
+        if guard.get("token_before") != epoch.observation_guard_token or (
+            guard.get("token_after") != epoch.observation_guard_token
+        ):
+            raise SnapshotUnstable("node read belongs to a different scoped scene epoch")
+        if response.get("payload_returned") is not True:
+            raise SnapshotUnstable("guarded node payload was withheld")
         records = response.get("regions")
         if not isinstance(records, list) or len(records) != 1:
             raise ProtocolError("node read returned an invalid region count")

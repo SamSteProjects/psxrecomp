@@ -17,8 +17,7 @@ BOUNDARY_KEYS = (
     "actor_census_base",
     "field_execution_identity",
     "witness_structural_identities",
-    "executable_state_token",
-    "lifecycle_token",
+    "observation_guard_token",
 )
 
 
@@ -46,8 +45,7 @@ class SceneEpoch:
     prot_base: int
     master_mode: int
     actor_list_head: str
-    executable_state_token: str
-    lifecycle_token: str
+    observation_guard_token: str
     required_witness_structural_identities: list[dict[str, Any]]
     first_stable_frame: int
     last_validated_frame: int
@@ -62,8 +60,7 @@ class SceneEpoch:
             "prot_base": self.prot_base,
             "master_mode": self.master_mode,
             "actor_list_head": self.actor_list_head,
-            "executable_state_token": self.executable_state_token,
-            "lifecycle_token": self.lifecycle_token,
+            "observation_guard_token": self.observation_guard_token,
             "required_witness_structural_identities": self.required_witness_structural_identities,
             "first_stable_frame": self.first_stable_frame,
             "last_validated_frame": self.last_validated_frame,
@@ -87,8 +84,7 @@ def establish_scene_epoch(
         "prot_base": signals["active_scene_prot_base"],
         "master_mode": signals["master_game_mode"],
         "actor_list_head": second["actor_list_head"],
-        "executable_state_token": second["executable_state_token"],
-        "lifecycle_token": second["lifecycle_token"],
+        "observation_guard_token": second["observation_guard_token"],
         "required_witness_structural_identities": second["witness_structural_identities"],
         "observer_epoch_number": observer_epoch_number,
     }
@@ -104,8 +100,7 @@ def establish_scene_epoch(
         prot_base=signals["active_scene_prot_base"],
         master_mode=signals["master_game_mode"],
         actor_list_head=second["actor_list_head"],
-        executable_state_token=second["executable_state_token"],
-        lifecycle_token=second["lifecycle_token"],
+        observation_guard_token=second["observation_guard_token"],
         required_witness_structural_identities=second["witness_structural_identities"],
         first_stable_frame=first["frame"],
         last_validated_frame=second["frame"],
