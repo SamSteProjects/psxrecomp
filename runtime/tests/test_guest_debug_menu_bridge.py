@@ -36,6 +36,10 @@ def main() -> int:
             "bridge bypasses the normal controller input path")
     require("psx_write_byte((uint32_t)PSX_GUEST_DEBUG_GATE_ADDR, 1u)", MAIN,
             "configured game-owned gate is not asserted")
+    require("(mod & KMOD_CTRL) != 0 && (mod & KMOD_SHIFT) != 0", MAIN,
+            "shortcut must accept either-side Ctrl plus either-side Shift")
+    if "(mod & (KMOD_CTRL | KMOD_SHIFT)) ==" in MAIN:
+        raise AssertionError("shortcut incorrectly requires every modifier-side bit")
 
     # The generic runtime must not acquire the Legaia addresses or title name.
     for forbidden in ("8007B98F", "8007B83C", "LEGAIA_DEBUG_MENU_GATE"):
