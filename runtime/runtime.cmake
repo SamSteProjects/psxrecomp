@@ -65,6 +65,10 @@ set(PSX_GUEST_DEBUG_READY_ADDR "" CACHE STRING
     "Optional guest word address that gates debug-menu activation")
 set(PSX_GUEST_DEBUG_READY_VALUE "0" CACHE STRING
     "Required value at PSX_GUEST_DEBUG_READY_ADDR")
+set(PSX_GUEST_DEBUG_ACTIVATE_ADDR "" CACHE STRING
+    "Optional guest word address selecting the game-owned debug mode")
+set(PSX_GUEST_DEBUG_ACTIVATE_VALUE "0" CACHE STRING
+    "Value written to PSX_GUEST_DEBUG_ACTIVATE_ADDR on activation")
 set(PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT "0" CACHE STRING
     "Default delayed CD controller-response visibility (0 or 1; env may override)")
 
@@ -540,6 +544,11 @@ function(psxrecomp_add_runtime_target target)
             target_compile_definitions(${target} PRIVATE
                 PSX_GUEST_DEBUG_READY_ADDR=${PSX_GUEST_DEBUG_READY_ADDR}
                 PSX_GUEST_DEBUG_READY_VALUE=${PSX_GUEST_DEBUG_READY_VALUE})
+        endif()
+        if(PSX_GUEST_DEBUG_ACTIVATE_ADDR)
+            target_compile_definitions(${target} PRIVATE
+                PSX_GUEST_DEBUG_ACTIVATE_ADDR=${PSX_GUEST_DEBUG_ACTIVATE_ADDR}
+                PSX_GUEST_DEBUG_ACTIVATE_VALUE=${PSX_GUEST_DEBUG_ACTIVATE_VALUE})
         endif()
     endif()
     target_compile_definitions(${target} PRIVATE

@@ -22,6 +22,8 @@ def main() -> int:
         "PSX_GUEST_DEBUG_PAD_CHORD",
         "PSX_GUEST_DEBUG_READY_ADDR",
         "PSX_GUEST_DEBUG_READY_VALUE",
+        "PSX_GUEST_DEBUG_ACTIVATE_ADDR",
+        "PSX_GUEST_DEBUG_ACTIVATE_VALUE",
     ):
         require(setting, CMAKE, f"missing generic CMake setting {setting}")
         require(setting, MAIN, f"missing runtime use of {setting}")
@@ -32,6 +34,10 @@ def main() -> int:
             "activation does not fail closed on the configured ready signal")
     require("g_guest_debug_bridge_frames = 2", MAIN,
             "bridge no longer begins with a bounded two-sample pulse")
+    require("psx_write_word((uint32_t)PSX_GUEST_DEBUG_ACTIVATE_ADDR", MAIN,
+            "configured activation must select the game-owned debug lifecycle")
+    require("g_guest_debug_bridge_frames = 0", MAIN,
+            "lifecycle activation must not also pulse the compact-menu chord")
     require("sio_set_pad_state_slot", MAIN,
             "bridge bypasses the normal controller input path")
     require("sio_set_pad_connected((int)PSX_GUEST_DEBUG_PAD_SLOT, 1)", MAIN,

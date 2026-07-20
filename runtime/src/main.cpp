@@ -262,9 +262,9 @@ extern "C" uint8_t  psx_read_byte(uint32_t addr);
 extern "C" void     psx_write_byte(uint32_t addr, uint8_t val);
 
 #if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
-/* Generic bridge to a game-owned retail debug menu.  The game project supplies
- * all guest addresses and the controller chord; the runtime merely performs a
- * bounded released-frame/chord-frame sequence. */
+/* Generic bridge to a game-owned retail debug menu.  A title may enter its
+ * debug-mode lifecycle through a configured guest mode word, or use the
+ * bounded released-frame/chord-frame sequence when no selector exists. */
 static bool g_guest_debug_bridge_enabled = false;
 static int g_guest_debug_bridge_frames = 0;
 static bool g_guest_debug_chord_this_vblank = false;
@@ -289,7 +289,17 @@ static void guest_debug_bridge_arm(void) {
         return;
     }
     g_guest_debug_bridge_enabled = true;
+#ifdef PSX_GUEST_DEBUG_ACTIVATE_ADDR
+    /* Some games load a dedicated retail debug overlay before their compact
+     * field shortcut becomes meaningful.  Use the title-supplied lifecycle
+     * selector instead of attempting to skip that initialization. */
+    psx_write_byte((uint32_t)PSX_GUEST_DEBUG_GATE_ADDR, 1u);
+    psx_write_word((uint32_t)PSX_GUEST_DEBUG_ACTIVATE_ADDR,
+                   (uint32_t)PSX_GUEST_DEBUG_ACTIVATE_VALUE);
+    g_guest_debug_bridge_frames = 0;
+#else
     g_guest_debug_bridge_frames = 2;
+#endif
     std::fprintf(stderr, "psxrecomp: opening game-owned debug menu\n");
 }
 
