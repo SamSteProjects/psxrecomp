@@ -65,6 +65,8 @@ set(PSX_GUEST_DEBUG_READY_ADDR "" CACHE STRING
     "Optional guest word address that gates debug-menu activation")
 set(PSX_GUEST_DEBUG_READY_VALUE "0" CACHE STRING
     "Required value at PSX_GUEST_DEBUG_READY_ADDR")
+set(PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT "0" CACHE STRING
+    "Default delayed CD controller-response visibility (0 or 1; env may override)")
 
 if(NOT SDL2_INCLUDE_DIRS OR NOT SDL2_LIBRARIES)
     if(MSVC)
@@ -540,6 +542,8 @@ function(psxrecomp_add_runtime_target target)
                 PSX_GUEST_DEBUG_READY_VALUE=${PSX_GUEST_DEBUG_READY_VALUE})
         endif()
     endif()
+    target_compile_definitions(${target} PRIVATE
+        PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT=${PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT})
 
     if(PSXRECOMP_HAS_RECOMP_NET)
         target_compile_definitions(${target} PRIVATE PSX_HAS_RECOMP_NET=1)
