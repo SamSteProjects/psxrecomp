@@ -25,6 +25,11 @@ Commands (shared — identical on both servers):
                                 Query one exact-PC execution-owner observation
     execution-witness <guest-address>
                                 Query one bounded exact-instruction witness
+    observation-guard --region key=addr:len --witness pc [...]
+                                Sample a stateless scoped observation boundary
+    guarded-read --payload key=addr:len --guard-region key=addr:len
+                 --witness pc [--expected-token sha256] [...]
+                                Read bounded payload under a scoped guard
     read-regions <key=addr:len> [key=addr:len ...]
                                 One bounded, frame-stamped multi-region read
     ping                        Heartbeat + current frame
@@ -331,6 +336,72 @@ def pretty_execution_witness(resp):
     return "\n".join(lines)
 
 
+def pretty_observation_guard(resp):
+    """Compact scoped/global boundary summary followed by full JSON."""
+    if not resp.get("ok") or not isinstance(resp.get("guard"), dict):
+        return pretty_json(resp)
+    guard = resp["guard"]
+    evidence = guard.get("evidence") or {}
+    lines = [
+        f"guard={str(guard.get('token_before') or '-')[:12]} "
+        f"valid={guard.get('valid', False)} stable={guard.get('stable', False)} "
+        f"expected={guard.get('expected_token_matched', False)} "
+        f"compatible={guard.get('compatible', False)}",
+        f"frames={resp.get('frame_before', '?')}->{resp.get('frame_after', '?')} "
+        f"ram_regions={evidence.get('ram_region_count', '?')} "
+        f"witnesses={evidence.get('execution_witness_count', '?')} "
+        f"failure={evidence.get('failure_reason', '?')}",
+        f"global_executable_state_stable={resp.get('stable_executable_state', '?')} "
+        f"payload_returned={resp.get('payload_returned', False)}",
+        "\nFull JSON:",
+        pretty_json(resp),
+    ]
+    return "\n".join(lines)
+
+
+def _parse_guard_cli(args, *, payload_required=False):
+    guard_regions = []
+    witnesses = []
+    payload = []
+    expected = None
+
+    def parse_region(spec):
+        if "=" not in spec or ":" not in spec:
+            raise ValueError(f"invalid region (expected key=addr:len): {spec}")
+        key, value = spec.split("=", 1)
+        addr, length = value.rsplit(":", 1)
+        if not key:
+            raise ValueError(f"invalid region key: {spec}")
+        return {"key": key, "addr": addr, "len": int(length, 0)}
+
+    i = 1
+    while i < len(args):
+        option = args[i]
+        if option in ("--region", "--guard-region", "--witness", "--payload", "--expected-token"):
+            if i + 1 >= len(args):
+                raise ValueError(f"missing value for {option}")
+            value = args[i + 1]
+            if option in ("--region", "--guard-region"):
+                guard_regions.append(parse_region(value))
+            elif option == "--witness":
+                witnesses.append({"pc": value, "require_current": True})
+            elif option == "--payload":
+                payload.append(parse_region(value))
+            else:
+                expected = value
+            i += 2
+        else:
+            raise ValueError(f"unknown guard option: {option}")
+    if not guard_regions and not witnesses:
+        raise ValueError("guard requires at least one RAM region or witness")
+    if payload_required and not payload:
+        raise ValueError("guarded-read requires at least one --payload region")
+    guard = {"ram_regions": guard_regions, "execution_witnesses": witnesses}
+    if expected is not None:
+        guard["expected_token"] = expected
+    return guard, payload
+
+
 def fetch_executable_catalog(sock, view="registrations", limit=8, max_pages=4096):
     if view not in ("images", "ranges", "registrations"):
         return {"ok": False, "error": "invalid catalog view"}
@@ -527,6 +598,18 @@ def build_cmd(args):
         if len(args) < 2:
             return None, lambda _: "Usage: execution-witness <guest-address>"
         return {"cmd": "execution_witness", "pc": args[1]}, pretty_execution_witness
+    elif cmd in ("observation-guard", "observation_guard"):
+        try:
+            guard, _ = _parse_guard_cli(args)
+        except (ValueError, TypeError) as exc:
+            return None, lambda _, message=str(exc): f"Usage error: {message}"
+        return {"cmd": "observation_guard", "guard": guard}, pretty_observation_guard
+    elif cmd in ("guarded-read", "guarded_read"):
+        try:
+            guard, payload = _parse_guard_cli(args, payload_required=True)
+        except (ValueError, TypeError) as exc:
+            return None, lambda _, message=str(exc): f"Usage error: {message}"
+        return {"cmd": "read_regions", "regions": payload, "guard": guard}, pretty_observation_guard
     elif cmd in ("executable-regions", "executable_regions"):
         offset = int(args[1], 0) if len(args) > 1 else 0
         limit = int(args[2], 0) if len(args) > 2 else 8
