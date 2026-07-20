@@ -34,6 +34,8 @@ def main() -> int:
             "bridge no longer begins with a bounded two-sample pulse")
     require("sio_set_pad_state_slot", MAIN,
             "bridge bypasses the normal controller input path")
+    require("sio_set_pad_connected((int)PSX_GUEST_DEBUG_PAD_SLOT, 1)", MAIN,
+            "configured debug pad remains disconnected and cannot be polled")
     require("psx_write_byte((uint32_t)PSX_GUEST_DEBUG_GATE_ADDR, 1u)", MAIN,
             "configured game-owned gate is not asserted")
     require("(mod & KMOD_CTRL) != 0 && (mod & KMOD_SHIFT) != 0", MAIN,
