@@ -19,9 +19,10 @@
   "supported_runtime_protocol": {
     "name": "psxrecomp-debug",
     "minimum_major": 1,
-    "minimum_minor": 1,
+    "minimum_minor": 4,
     "required_capabilities": [
       "executable_regions",
+      "execution_witness",
       "read_regions",
       "runtime_identity",
       "watched_page_generation"
@@ -29,7 +30,7 @@
   },
   "overlay_requirements": [
     {
-      "required": true,
+      "required": false,
       "identity": {
         "id": "field-overlay-0897",
         "prot_entry": 897,
@@ -43,13 +44,54 @@
         "value": "field-overlay-0897",
         "confidence": "strongly_inferred",
         "evidence": ["andrew-boot-mode-table", "andrew-field-overlay-functions", "local-disc-prot897-hash"],
-        "notes": "PROT 897 and its slot-A base are supported by loader traces. The source-entry hash is not yet a canonical live-memory overlay hash, so required runtime content identity remains unresolved and profile selection fails closed."
+        "notes": "PROT 897 and its slot-A base are supported by loader traces. The source-entry hash is not a canonical live-memory overlay hash. This structural overlay hypothesis is not used for profile selection; the accepted field execution identity below supplies the fail-closed executable-state gate."
       }
     }
   ],
+  "execution_identity": {
+    "kind": "field_execution_witness_set",
+    "minimum_required_witnesses": 3,
+    "require_stable_executable_state": true,
+    "require_stable_lifecycle_state": true,
+    "required_witnesses": [
+      {
+        "id": "field-collision-census-rebuild",
+        "pc": "0x801CF754",
+        "backend": "interpreter",
+        "range": { "kind": "executed-instruction", "base": "0x801CF754", "length": 4 },
+        "live_sha256": "bad69a1914bdcaf9db0344c046a9731c78aae2d93bb2b842b5d7123b36fbf4bc",
+        "require_current": true,
+        "require_watched_generation_match": true,
+        "confidence": "confirmed",
+        "evidence": ["psxrecomp-protocol-1.4-live-runs", "andrew-field-collision"]
+      },
+      {
+        "id": "field-vm-dispatch",
+        "pc": "0x801DE840",
+        "backend": "static-native",
+        "range": { "kind": "executed-instruction", "base": "0x801DE840", "length": 4 },
+        "live_sha256": "ec4f4d5323b718c7b0c2a96aa7da96280e5e363fa61672bde6a0044ea9a621dd",
+        "require_current": true,
+        "require_watched_generation_match": true,
+        "confidence": "confirmed",
+        "evidence": ["psxrecomp-protocol-1.4-live-runs", "andrew-field-vm"]
+      },
+      {
+        "id": "field-actor-helper",
+        "pc": "0x801D79E8",
+        "backend": "static-native",
+        "range": { "kind": "executed-instruction", "base": "0x801D79E8", "length": 4 },
+        "live_sha256": "2ed3561c68bb654f8e2ad2ad487bde2c12f773777e92956e1ff0e7f27ad6b1d9",
+        "require_current": true,
+        "require_watched_generation_match": true,
+        "confidence": "confirmed",
+        "evidence": ["psxrecomp-protocol-1.4-live-runs", "andrew-field-locomotion"]
+      }
+    ]
+  },
   "scene_identity": {
     "scene_key": "town01",
-    "strategy": "Require the active scene name, runtime PROT base index, field-run master mode, executable identity and canonical field-overlay identity to agree in two boundary samples.",
+    "strategy": "Require the active scene name, runtime PROT base index, field-run master mode, executable identity and all current field execution witnesses to agree across stable executable/lifecycle boundary samples.",
     "required_signals": [
       {
         "id": "active_scene_name",
@@ -108,7 +150,7 @@
       "active_scene_name",
       "active_scene_prot_base",
       "master_game_mode",
-      "field-overlay-0897",
+      "field_execution_identity",
       "actor_list_head",
       "actor_census_base"
     ],
@@ -397,6 +439,9 @@
     { "id": "andrew-asset-loader", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "docs/subsystems/asset-loader.md", "symbol_or_function": "FUN_8001FD44/FUN_80021934", "role": "Scene identity and transition lifecycle" },
     { "id": "andrew-boot-mode-table", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "docs/subsystems/boot.md", "symbol_or_function": "modes 2 and 3; PROT 0897", "role": "Field mode and overlay ownership" },
     { "id": "andrew-field-collision", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "docs/subsystems/field-locomotion.md", "symbol_or_function": "FUN_801CFC40/FUN_801CF9F4/FUN_801CF754", "role": "Actor census, list, fields and lifecycle" },
+    { "id": "andrew-field-vm", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "docs/subsystems/script-vm.md", "symbol_or_function": "FUN_801DE840", "role": "Field VM dispatcher identity" },
+    { "id": "andrew-field-locomotion", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "docs/subsystems/field-locomotion.md", "symbol_or_function": "FUN_801D79E8", "role": "Field actor helper identity" },
+    { "id": "psxrecomp-protocol-1.4-live-runs", "repository": "SamSteProjects/psxrecomp", "revision": "local acceptance preceding documentation commit", "path": "docs/legaia-sdk/field-execution-identity.md", "symbol_or_function": "execution_witness live acceptance", "role": "Repeatable backend, byte identity and generation evidence" },
     { "id": "andrew-runtime-probes", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "scripts/pcsx-redux/autorun_state_poll.lua", "symbol_or_function": "scene/mode/player observation", "role": "Runtime supporting evidence" },
     { "id": "andrew-s5-actor-probe", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "scripts/pcsx-redux/autorun_s5_actors.lua", "symbol_or_function": "town01 active actor census", "role": "Town01 runtime observation" },
     { "id": "andrew-engine-shell-capture-tests", "repository": "AndrewAltimit/legend-of-legaia-re", "revision": "d6e64c68ede25813d35db20980da82a1a025549b", "path": "crates/engine-shell/tests/field_collision_discriminator.rs", "symbol_or_function": "live actor census assertions", "role": "Independent capture-backed tests" },
@@ -404,8 +449,6 @@
   ],
   "unresolved": [
     "Canonical live-memory identity and exact loaded span for field overlay 0897.",
-    "A protocol-advertised executable identity and protocol version.",
-    "Atomic or boundary-framed multi-region reads.",
     "Exact actor allocator/free-list lifecycle and node allocation size.",
     "Whether the collision census is sufficient for later observation or the owning linked list must be walked.",
     "A MAN partition-1 record index on runtime NPC nodes.",

@@ -130,6 +130,41 @@ def validate_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
             _fail(f"{path}.identity.content_sha256 is invalid")
         _confidence(_need(overlay, "claim", path), f"{path}.claim")
 
+    execution = _need(result, "execution_identity", "$")
+    if execution.get("kind") != "field_execution_witness_set":
+        _fail("$.execution_identity.kind is unsupported")
+    witnesses = execution.get("required_witnesses")
+    minimum = execution.get("minimum_required_witnesses")
+    if not isinstance(witnesses, list) or len(witnesses) < 2:
+        _fail("$.execution_identity.required_witnesses needs at least two witnesses")
+    if not isinstance(minimum, int) or minimum < 2 or minimum > len(witnesses):
+        _fail("$.execution_identity.minimum_required_witnesses is invalid")
+    witness_ids: set[str] = set()
+    witness_pcs: set[str] = set()
+    for index, witness in enumerate(witnesses):
+        path = f"$.execution_identity.required_witnesses[{index}]"
+        wid = _need(witness, "id", path)
+        pc = _need(witness, "pc", path)
+        if not isinstance(wid, str) or not wid or wid in witness_ids:
+            _fail(f"{path}.id is empty or duplicated")
+        if pc in witness_pcs:
+            _fail(f"{path}.pc duplicates execution witness {pc}")
+        witness_ids.add(wid); witness_pcs.add(pc)
+        pc_value = _address(pc, f"{path}.pc")
+        if pc_value & 3:
+            _fail(f"{path}.pc is not instruction aligned")
+        if witness.get("backend") not in {"static-native", "cached-native", "runtime-native", "interpreter"}:
+            _fail(f"{path}.backend is unsupported")
+        span = _need(witness, "range", path)
+        base = _address(_need(span, "base", f"{path}.range"), f"{path}.range.base")
+        if span.get("kind") != "executed-instruction" or span.get("length") != 4 or base != pc_value:
+            _fail(f"{path}.range is not the exact executed instruction")
+        live_sha = witness.get("live_sha256")
+        if not isinstance(live_sha, str) or not SHA256.fullmatch(live_sha):
+            _fail(f"{path}.live_sha256 is invalid")
+        if witness.get("require_current") is not True or witness.get("require_watched_generation_match") is not True:
+            _fail(f"{path} must require current generation-matched evidence")
+
     scene = _need(result, "scene_identity", "$")
     signals = _need(scene, "required_signals", "$.scene_identity")
     if not isinstance(signals, list) or not signals:
@@ -200,7 +235,7 @@ def validate_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
     epoch_signals = epoch.get("invalidation_signals")
     if not isinstance(epoch_signals, list) or not epoch_signals:
         _fail("$.scene_epoch.invalidation_signals must be nonempty")
-    if not set(epoch_signals).issubset(signal_ids | overlay_ids | {"actor_list_head", "actor_census_base"}):
+    if not set(epoch_signals).issubset(signal_ids | overlay_ids | {"field_execution_identity", "actor_list_head", "actor_census_base"}):
         _fail("$.scene_epoch references an unknown invalidation signal")
 
     _scan_metadata(result)
@@ -268,6 +303,42 @@ def validate_observation_context(profile: Mapping[str, Any], context: Mapping[st
         for key in ("load_address", "content_sha256"):
             if observed.get(key) != identity.get(key):
                 _fail(f"required overlay {identity['id']} {key} mismatch")
+
+    execution = p["execution_identity"]
+    boundary = context.get("observation_boundary", {})
+    if execution.get("require_stable_executable_state") and boundary.get("stable_executable_state") is not True:
+        _fail("execution witness selection crossed an executable-state boundary")
+    if execution.get("require_stable_lifecycle_state") and boundary.get("stable_lifecycle_state") is not True:
+        _fail("execution witness selection crossed a lifecycle boundary")
+    observed_witnesses = {
+        item.get("pc"): item for item in context.get("execution_witnesses", [])
+        if isinstance(item, Mapping)
+    }
+    matched = 0
+    for required in execution["required_witnesses"]:
+        observed = observed_witnesses.get(required["pc"])
+        if observed is None:
+            _fail(f"required execution witness {required['pc']} is missing")
+        if observed.get("status") == "ambiguous" or observed.get("backend") == "ambiguous":
+            _fail(f"required execution witness {required['pc']} has ambiguous execution owner")
+        if observed.get("observation_current") is not True or observed.get("status") != "current":
+            _fail(f"required execution witness {required['pc']} is stale")
+        if observed.get("backend") != required["backend"]:
+            _fail(f"required execution witness {required['pc']} backend mismatch")
+        observed_range = observed.get("range", {})
+        required_range = required["range"]
+        for key in ("kind", "base", "length"):
+            if observed_range.get(key) != required_range.get(key):
+                _fail(f"required execution witness {required['pc']} range {key} mismatch")
+        if observed.get("live_sha256") != required["live_sha256"]:
+            _fail(f"required execution witness {required['pc']} live identity mismatch")
+        observed_generation = observed.get("watched_generation_at_observation")
+        current_generation = observed.get("watched_generation_current")
+        if not isinstance(observed_generation, str) or not observed_generation or observed_generation != current_generation:
+            _fail(f"required execution witness {required['pc']} watched generation changed")
+        matched += 1
+    if matched < execution["minimum_required_witnesses"]:
+        _fail("execution witness set is incomplete")
 
     observed_signals = context.get("scene_signals", {})
     for signal in p["scene_identity"]["required_signals"]:

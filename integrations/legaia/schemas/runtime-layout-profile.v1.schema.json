@@ -12,6 +12,7 @@
     "executable_identity",
     "supported_runtime_protocol",
     "overlay_requirements",
+    "execution_identity",
     "scene_identity",
     "scene_epoch",
     "actor_pool",
@@ -32,6 +33,7 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/overlay" }
     },
+    "execution_identity": { "$ref": "#/$defs/executionIdentity" },
     "scene_identity": { "$ref": "#/$defs/sceneIdentity" },
     "scene_epoch": { "$ref": "#/$defs/sceneEpoch" },
     "actor_pool": { "$ref": "#/$defs/actorPool" },
@@ -107,6 +109,44 @@
         "identity": { "$ref": "#/$defs/overlayIdentity" },
         "owner": { "type": "string" },
         "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "executionWitnessRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "base", "length"],
+      "properties": {
+        "kind": { "const": "executed-instruction" },
+        "base": { "$ref": "#/$defs/address" },
+        "length": { "const": 4 }
+      }
+    },
+    "executionWitness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pc", "backend", "range", "live_sha256", "require_current", "require_watched_generation_match", "confidence", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "pc": { "$ref": "#/$defs/address" },
+        "backend": { "enum": ["static-native", "cached-native", "runtime-native", "interpreter"] },
+        "range": { "$ref": "#/$defs/executionWitnessRange" },
+        "live_sha256": { "$ref": "#/$defs/sha256" },
+        "require_current": { "const": true },
+        "require_watched_generation_match": { "const": true },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "executionIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "minimum_required_witnesses", "require_stable_executable_state", "require_stable_lifecycle_state", "required_witnesses"],
+      "properties": {
+        "kind": { "const": "field_execution_witness_set" },
+        "minimum_required_witnesses": { "type": "integer", "minimum": 2 },
+        "require_stable_executable_state": { "const": true },
+        "require_stable_lifecycle_state": { "const": true },
+        "required_witnesses": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/executionWitness" } }
       }
     },
     "sceneSignal": {
