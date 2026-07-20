@@ -51,6 +51,21 @@ else()
     option(PSX_DEBUG_TOOLS "Build with TCP debug server + heartbeat + per-block recording" ON)
 endif()
 
+# Optional game-owned debug-menu bridge.  A game project may provide a byte
+# gate and an active-low controller chord used by its own retail debug tools.
+# The runtime contains no title addresses by default, and production builds
+# still compile the bridge out with PSX_NO_DEBUG_TOOLS.
+set(PSX_GUEST_DEBUG_GATE_ADDR "" CACHE STRING
+    "Optional guest byte address enabling the game's own debug menu")
+set(PSX_GUEST_DEBUG_PAD_SLOT "1" CACHE STRING
+    "Zero-based SIO pad slot for the guest debug-menu chord")
+set(PSX_GUEST_DEBUG_PAD_CHORD "0xEFFE" CACHE STRING
+    "Active-low pad word used to open the guest debug menu")
+set(PSX_GUEST_DEBUG_READY_ADDR "" CACHE STRING
+    "Optional guest word address that gates debug-menu activation")
+set(PSX_GUEST_DEBUG_READY_VALUE "0" CACHE STRING
+    "Required value at PSX_GUEST_DEBUG_READY_ADDR")
+
 if(NOT SDL2_INCLUDE_DIRS OR NOT SDL2_LIBRARIES)
     if(MSVC)
         file(GLOB SDL2_MSVC_DIR "${PSXRECOMP_ROOT}/../sdl2-msvc/SDL2-*")
@@ -514,6 +529,16 @@ function(psxrecomp_add_runtime_target target)
     # also visible to psx-beetle / non-runtime-helper targets.
     if(NOT PSX_DEBUG_TOOLS)
         target_compile_definitions(${target} PRIVATE PSX_NO_DEBUG_TOOLS=1)
+    elseif(PSX_GUEST_DEBUG_GATE_ADDR)
+        target_compile_definitions(${target} PRIVATE
+            PSX_GUEST_DEBUG_GATE_ADDR=${PSX_GUEST_DEBUG_GATE_ADDR}
+            PSX_GUEST_DEBUG_PAD_SLOT=${PSX_GUEST_DEBUG_PAD_SLOT}
+            PSX_GUEST_DEBUG_PAD_CHORD=${PSX_GUEST_DEBUG_PAD_CHORD})
+        if(PSX_GUEST_DEBUG_READY_ADDR)
+            target_compile_definitions(${target} PRIVATE
+                PSX_GUEST_DEBUG_READY_ADDR=${PSX_GUEST_DEBUG_READY_ADDR}
+                PSX_GUEST_DEBUG_READY_VALUE=${PSX_GUEST_DEBUG_READY_VALUE})
+        endif()
     endif()
 
     if(PSXRECOMP_HAS_RECOMP_NET)
