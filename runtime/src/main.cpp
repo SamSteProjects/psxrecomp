@@ -282,8 +282,14 @@ static void guest_debug_bridge_arm(void) {
 }
 
 static void guest_debug_bridge_sample(void) {
-    if (g_guest_debug_bridge_enabled)
+    if (g_guest_debug_bridge_enabled) {
+        /* A game may reserve a controller port exclusively for its retail
+         * debug binding while the user-facing configuration leaves that port
+         * disconnected.  Connect only the explicitly configured debug slot;
+         * otherwise changing its button word is correctly invisible on SIO. */
+        sio_set_pad_connected((int)PSX_GUEST_DEBUG_PAD_SLOT, 1);
         psx_write_byte((uint32_t)PSX_GUEST_DEBUG_GATE_ADDR, 1u);
+    }
     g_guest_debug_chord_this_vblank = g_guest_debug_bridge_frames == 1;
     if (g_guest_debug_bridge_frames == 2) {
         sio_set_pad_state_slot((int)PSX_GUEST_DEBUG_PAD_SLOT, 0xFFFFu);
