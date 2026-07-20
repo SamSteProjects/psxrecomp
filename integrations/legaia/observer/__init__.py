@@ -11,10 +11,18 @@ from .errors import (
 )
 from .profile import LoadedProfile, ProfileSelector
 from .snapshot import RuntimeObserver, canonical_snapshot_json, validate_snapshot
+from .transition import (
+    ManualNavigator,
+    SceneTransitionWatcher,
+    TransitionLimits,
+    TransitionState,
+    TransitionTimeout,
+)
 
 __all__ = [
     "ChainInvalid",
     "LoadedProfile",
+    "ManualNavigator",
     "ObserverError",
     "ProfileRejected",
     "ProfileSelector",
@@ -23,6 +31,10 @@ __all__ = [
     "RetryExhausted",
     "RuntimeObserver",
     "SnapshotUnstable",
+    "SceneTransitionWatcher",
+    "TransitionLimits",
+    "TransitionState",
+    "TransitionTimeout",
     "canonical_snapshot_json",
     "validate_snapshot",
 ]

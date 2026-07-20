@@ -255,6 +255,81 @@ class ProfileSelector:
             "guard_evidence": evidence,
         }
 
+    def sample_guard_diagnostic(self, expected_token: str) -> dict[str, Any]:
+        """Return bounded mismatch evidence without promoting it to a valid profile."""
+        if self.runtime_process_identity is None:
+            raise ProfileRejected("profile negotiation has not completed")
+        response = self.client.observation_guard(self.guard_descriptor(expected_token))
+        guard = response.get("guard")
+        if not isinstance(guard, Mapping):
+            raise ProtocolError("observation guard result is missing")
+        evidence = guard.get("evidence")
+        if not isinstance(evidence, Mapping):
+            raise ProtocolError("observation guard evidence is missing")
+        runtime_instance = evidence.get("runtime_instance_id")
+        return {
+            "frame_before": response.get("frame_before"),
+            "frame_after": response.get("frame_after"),
+            "stable": guard.get("stable") is True,
+            "valid": guard.get("valid") is True,
+            "compatible": guard.get("compatible") is True,
+            "expected_token_matched": guard.get("expected_token_matched") is True,
+            "token_before": guard.get("token_before"),
+            "token_after": guard.get("token_after"),
+            "runtime_instance_id": runtime_instance,
+            "runtime_instance_matches": runtime_instance == self.runtime_process_identity,
+            "failure_reason": evidence.get("failure_reason"),
+            "ram_regions": evidence.get("ram_regions", []),
+            "execution_witnesses": evidence.get("execution_witnesses", []),
+            "global_executable_state_before": response.get("executable_state_before"),
+            "global_executable_state_after": response.get("executable_state_after"),
+        }
+
+    def sample_scene_signals_unscoped(self) -> dict[str, Any]:
+        """Read only profile-declared scene signals while town01 is not selected."""
+        if self.runtime_process_identity is None:
+            raise ProfileRejected("profile negotiation has not completed")
+        regions = self.guard_descriptor()["ram_regions"]
+        response = self.client.read_regions(regions)
+        records = response.get("regions")
+        if not isinstance(records, list) or len(records) != len(regions):
+            raise ProtocolError("read_regions returned an incomplete scene sample")
+        by_key: dict[str, bytes] = {}
+        for expected_region, record in zip(regions, records):
+            if record.get("key") != expected_region["key"] or record.get("len") != expected_region["len"]:
+                raise ProtocolError("read_regions did not preserve requested scene region order")
+            try:
+                payload = bytes.fromhex(record["hex"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ProtocolError("read_regions returned malformed scene hex") from exc
+            if len(payload) != expected_region["len"]:
+                raise ProtocolError("read_regions returned a truncated scene region")
+            by_key[expected_region["key"]] = payload
+        decoded: dict[str, Any] = {}
+        decode_errors: dict[str, str] = {}
+        for signal in self.profile.document["scene_identity"]["required_signals"]:
+            try:
+                decoded[signal["id"]] = _decode_signal(signal, by_key[signal["id"]])
+            except ProfileRejected as exc:
+                decoded[signal["id"]] = None
+                decode_errors[signal["id"]] = str(exc)
+        head_value = int.from_bytes(by_key["actor_list_head"], "little", signed=False)
+        return {
+            "frame_before": response.get("frame_before"),
+            "frame_after": response.get("frame_after"),
+            "stable_frame": response.get("stable_frame"),
+            "stable_executable_state": (
+                response.get("executable_state_before")
+                == response.get("executable_state_after")
+            ),
+            "scene_signals": decoded,
+            "actor_list_head": _hex_address(head_value),
+            "actor_list_head_raw": head_value,
+            "decode_errors": decode_errors,
+            "global_executable_state_before": response.get("executable_state_before"),
+            "global_executable_state_after": response.get("executable_state_after"),
+        }
+
     def sample_boundary(self, expected_token: str | None = None) -> dict[str, Any]:
         if self.protocol is None or self.runtime is None or self.runtime_process_identity is None:
             raise ProfileRejected("profile negotiation has not completed")
