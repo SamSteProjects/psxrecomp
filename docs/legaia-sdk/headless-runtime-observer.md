@@ -55,6 +55,7 @@ traversal is deliberately disabled. Transition-watch uses manual normal-game
 navigation, explicit old-token rejection, stable outside-scene samples, and a
 two-sample plus ten-sample re-entry gate. Retail testing established the real
 `town01 -> map01 -> town0c` lifecycle and completed a same-process
-`town0c -> map01 -> town0c` round trip with zero actor reads and writes. A
-revisioned town0c profile and separate traversal approval remain required. See
+`town0c -> map01 -> town0c` round trip with zero actor reads and writes. The
+revisioned town0c profile now exists; fresh-process acceptance, world-map A/B,
+and separate traversal approval remain required. See
 `scene-transition-acceptance.md`. Actor correlation remains out of scope.

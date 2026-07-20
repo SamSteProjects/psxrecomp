@@ -16,6 +16,8 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Dialogue IDs depend on scene context | H | H | Include scene/carrier/MES container in identity; require explicit control/data-flow | Legaia importer |
 | Static decoder desync through text/data | H | H | Carry `clean`/text-alias status, independent byte scans and runtime validation | provenance |
 | Temporary vs authored state confusion | M | H | Five state layers in schema; live is never serialized as authored | project model |
+| World-map slowdown attributed to missing compilation without evidence | M | H | State-equivalent, metadata-only A/B harness; backend/lifecycle counter deltas required before a cause claim | world-map-performance-analysis.md |
+| Dynamic overlay cache reintroduced before same-address replacement proof | M | H | Remains disabled; requires separate correctness review, stale-cache coverage and opt-in measured benefit | stale-cache-reconciliation.md |
 | Runtime timing sensitivity | M | H | Pause/safe-point/batched reads; observer-stall telemetry; no unbounded requests | bridge/runtime |
 | Live edits overwritten by game | H | M | No writes in first slice; later transactions declare reapply/rollback policy | preview |
 | Unsafe memory writes | M | H | Default read-only, profile/range allowlists, captured originals and explicit consent | preview |

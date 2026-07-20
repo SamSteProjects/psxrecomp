@@ -1,7 +1,9 @@
 # Scene-transition acceptance
 
 Status: implementation, synthetic validation, and one same-process retail
-`town0c -> map01 -> town0c` acceptance pass complete.
+`town0c -> map01 -> town0c` acceptance pass complete. The former research
+selection has been replaced by `legaia-na-scus94254-town0c-field-v1`; a fresh
+process repeat remains required before actor traversal.
 
 ## Scope
 
@@ -15,8 +17,8 @@ The command is:
 ```powershell
 python integrations/legaia/tools/legaia_observe.py `
   --transition-watch `
-  --profile integrations/legaia/layouts/scus94254-na-field-v1.json `
-  --output "<local-output>\town01-transition.json"
+  --profile integrations/legaia/layouts/scus94254-na-town0c-field-v1.json `
+  --output "<metadata-output>"
 ```
 
 Manual navigation is intentional. Once the initial epoch is established, the
@@ -108,8 +110,8 @@ stale epoch was accepted.
 
 ## Remaining gate
 
-Retail actor traversal stays disabled. The town0c research selection must first
-become a reviewed revisioned profile, and a second fresh-process round trip is
-still desirable. Bounded guarded traversal can then be considered as a
-separately approved phase. Imported/runtime correlation remains later work even
-after traversal is enabled.
+Retail actor traversal stays disabled. The town0c research selection is now a
+reviewed revisioned profile, but a second fresh-process round trip and
+state-equivalent world-map observer-overhead A/B remain hard gates. Bounded
+guarded traversal can then be considered as a separately approved phase.
+Imported/runtime correlation remains later work even after traversal is enabled.
