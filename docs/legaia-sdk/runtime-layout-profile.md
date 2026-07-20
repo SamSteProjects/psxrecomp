@@ -81,9 +81,9 @@ neither substitutes for the other.
 The profile now requires protocol 1.5 and derives a scoped observation guard
 from its existing scene signals, actor-list-head candidate, and three execution
 witnesses. Stable town01 boundary-only sampling has been observed across fresh
-launches. A transition-only client now exercises old-token rejection and
-re-entry rules without changing the profile, but retail scene-exit/re-entry
-acceptance still awaits a compatible normal `town01` save. Actor traversal
+launches. A transition-only client accepted a normal town0c round trip using a
+metadata-only research selection derived from the field profile. A reviewed,
+revisioned town0c profile is still required before actor traversal, which
 remains fail closed.
 
 ## Live identity status
