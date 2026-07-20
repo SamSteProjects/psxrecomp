@@ -159,7 +159,12 @@ class SceneTransitionWatcher:
         return structural == expected
 
     def _establish_epoch(self, stable_samples: int, *, new_epoch: bool) -> tuple[dict[str, Any], dict[str, Any]]:
-        timeout = self._deadline(self.limits.stabilization_timeout_seconds)
+        timeout_seconds = (
+            self.limits.stabilization_timeout_seconds
+            if new_epoch
+            else self.limits.initial_timeout_seconds
+        )
+        timeout = self._deadline(timeout_seconds)
         last_error: str | None = None
         while self.clock() < timeout:
             try:
