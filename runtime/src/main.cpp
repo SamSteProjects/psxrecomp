@@ -2362,8 +2362,7 @@ static void sdl_vblank_present(void) {
                 const Uint16 mod = ev.key.keysym.mod;
 #if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
                 if (ev.key.keysym.sym == SDLK_m &&
-                    (mod & (KMOD_CTRL | KMOD_SHIFT)) ==
-                        (KMOD_CTRL | KMOD_SHIFT)) {
+                    (mod & KMOD_CTRL) != 0 && (mod & KMOD_SHIFT) != 0) {
                     guest_debug_bridge_arm();
                 }
                 else
