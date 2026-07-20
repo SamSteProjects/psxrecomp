@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthetic and structural regressions for debug protocol 1.2.
+"""Synthetic and structural regressions for debug protocol 1.3.
 
 No retail bytes, executable payloads, host paths, or emulator state are used.
 The executable models below exercise the documented bounds and authoritative
@@ -23,6 +23,8 @@ NATIVE = (ROOT / "runtime/src/debug_server.c").read_text(encoding="utf-8")
 BEETLE = (ROOT / "runtime/src/beetle_debug_server.c").read_text(encoding="utf-8")
 MEMORY = (ROOT / "runtime/src/memory.c").read_text(encoding="utf-8")
 LOADER = (ROOT / "runtime/src/overlay_loader.c").read_text(encoding="utf-8")
+CAPTURE = (ROOT / "runtime/src/overlay_capture.c").read_text(encoding="utf-8")
+DIRTY = (ROOT / "runtime/src/dirty_ram_interp.c").read_text(encoding="utf-8")
 CLIENT = (ROOT / "tools/debug_client.py").read_text(encoding="utf-8")
 DUCK_PATCH = (ROOT / "tools/duckstation/psxrecomp_oracle.patch").read_text(encoding="utf-8")
 VERSIONING = (ROOT / "docs/debug-protocol-versioning.md").read_text(encoding="utf-8")
@@ -77,6 +79,45 @@ class WatchModel:
             h.update(length.to_bytes(4, "little"))
             h.update(source.encode("ascii"))
         return h.hexdigest()
+
+
+class LifecycleModel:
+    """Metadata-only oracle for exact transfer instances and PC owners."""
+
+    def __init__(self, event_cap: int = 4) -> None:
+        self.instances: list[dict] = []
+        self.owners: dict[int, str] = {}
+        self.events: list[dict] = []
+        self.event_cap = event_cap
+        self.sequence = 0
+
+    def _event(self, kind: str, instance: int, related: int | None = None) -> None:
+        self.sequence += 1
+        self.events.append({"sequence": self.sequence, "kind": kind,
+                            "instance": instance, "related": related})
+        self.events = self.events[-self.event_cap :]
+
+    def load(self, base: int, payload: bytes) -> int:
+        if not payload or base < 0 or base + len(payload) > RAM_SIZE:
+            raise ValueError("invalid exact transfer span")
+        ident = len(self.instances) + 1
+        for old in self.instances:
+            overlaps = base < old["base"] + old["length"] and old["base"] < base + len(payload)
+            if old["active"] and overlaps:
+                old["active"] = False
+                old["successor"] = ident
+                self._event("superseded", old["id"], ident)
+        self.instances.append({"id": ident, "base": base, "length": len(payload),
+                               "identity": hashlib.sha256(payload).hexdigest(),
+                               "active": True, "successor": None})
+        self._event("created", ident)
+        return ident
+
+    def execute(self, pc: int, backend: str) -> None:
+        previous = self.owners.get(pc)
+        self.owners[pc] = backend
+        if previous != backend:
+            self._event("owner-acquired" if previous is None else "owner-changed", 0)
 
 
 def validate_regions(regions: list[dict]) -> list[dict]:
@@ -437,8 +478,9 @@ class ExecutableCatalogModelTests(unittest.TestCase):
         self.assertIn('next_cursor\\\":', NATIVE)
 
     def test_61_protocol_minor_and_capability_are_additive(self) -> None:
-        self.assertIn('major\\\":1,\\\"minor\\\":2', NATIVE)
+        self.assertIn('major\\\":1,\\\"minor\\\":3', NATIVE)
         self.assertIn('\\\"executable_catalog\\\"', NATIVE)
+        self.assertIn('\\\"executable_image_lifecycle\\\"', NATIVE)
         self.assertIn('{ "executable_regions", handle_executable_regions }', NATIVE)
 
     def test_62_complete_client_paging(self) -> None:
@@ -524,6 +566,164 @@ class ExecutableCatalogModelTests(unittest.TestCase):
     def test_70_structural_variant_does_not_claim_loaded_base(self) -> None:
         self.assertIn("has_image_load_base", LOADER)
         self.assertIn('snprintf(load_base, sizeof(load_base), "null")', NATIVE)
+
+
+class ExecutableLifecycleTests(unittest.TestCase):
+    def test_71_same_address_reload_creates_successor(self) -> None:
+        model = LifecycleModel()
+        first = model.load(0x10000, b"A" * 16)
+        second = model.load(0x10000, b"B" * 16)
+        self.assertNotEqual(first, second)
+        self.assertFalse(model.instances[0]["active"])
+        self.assertEqual(model.instances[0]["successor"], second)
+
+    def test_72_different_content_has_distinct_identity(self) -> None:
+        model = LifecycleModel()
+        model.load(0x10000, b"A" * 16)
+        model.load(0x10000, b"B" * 16)
+        self.assertNotEqual(model.instances[0]["identity"], model.instances[1]["identity"])
+
+    def test_73_partial_overlap_supersedes_prior_exact_span(self) -> None:
+        model = LifecycleModel()
+        model.load(0x10000, b"A" * 32)
+        model.load(0x10010, b"B" * 4)
+        self.assertFalse(model.instances[0]["active"])
+
+    def test_74_adjacent_transfers_are_not_grouped(self) -> None:
+        model = LifecycleModel()
+        model.load(0x10000, b"A" * 16)
+        model.load(0x10010, b"B" * 16)
+        self.assertEqual(len(model.instances), 2)
+        self.assertTrue(all(item["active"] for item in model.instances))
+
+    def test_75_no_false_unload_without_observation(self) -> None:
+        model = LifecycleModel()
+        model.load(0x10000, b"A" * 16)
+        self.assertTrue(model.instances[0]["active"])
+        self.assertNotIn("OVERLAY_LIFECYCLE_UNLOADED", CAPTURE)
+
+    def test_76_backend_owner_changes_at_same_pc(self) -> None:
+        model = LifecycleModel()
+        model.execute(0x10000, "cached-native")
+        model.execute(0x10000, "interpreter")
+        self.assertEqual(model.owners[0x10000], "interpreter")
+        self.assertEqual(model.events[-1]["kind"], "owner-changed")
+
+    def test_77_native_failure_falls_through_to_interpreter_owner(self) -> None:
+        self.assertIn("OVERLAY_EXEC_REASON_NATIVE_VALIDATION_FALLBACK", DIRTY)
+        self.assertIn("OVERLAY_EXEC_OWNER_INTERPRETER", DIRTY)
+        self.assertIn("if (overlay_loader_dispatch(cpu, addr))", DIRTY)
+
+    def test_78_all_four_execution_backends_are_observable(self) -> None:
+        for owner in ("STATIC_NATIVE", "CACHED_NATIVE", "RUNTIME_NATIVE", "INTERPRETER"):
+            self.assertIn(f"OVERLAY_EXEC_OWNER_{owner}", NATIVE + LOADER + DIRTY)
+
+    def test_79_owner_observation_is_exact_pc_not_range_guess(self) -> None:
+        self.assertIn("lifecycle_owner_slot(phys, 0)", CAPTURE)
+        self.assertIn("dirty_ram_exec_pc_observed(phys", CAPTURE)
+        self.assertNotIn("nearest", CAPTURE.lower())
+
+    def test_80_lifecycle_events_are_sequence_ordered(self) -> None:
+        model = LifecycleModel()
+        model.load(0x10000, b"A")
+        model.load(0x10000, b"B")
+        sequence = [event["sequence"] for event in model.events]
+        self.assertEqual(sequence, sorted(sequence))
+
+    def test_81_event_ring_reports_eviction_boundary(self) -> None:
+        model = LifecycleModel(event_cap=2)
+        model.load(0x10000, b"A")
+        model.load(0x10000, b"B")
+        self.assertEqual(len(model.events), 2)
+        self.assertGreater(model.events[0]["sequence"], 1)
+        self.assertIn("lifecycle event cursor evicted", NATIVE)
+
+    def test_82_lifecycle_pages_are_strictly_bounded(self) -> None:
+        self.assertIn("#define EXEC_LIFECYCLE_PAGE_MAX 8", NATIVE)
+        handler = NATIVE[NATIVE.index("handle_executable_lifecycle"):
+                         NATIVE.index("handle_runtime_identity")]
+        self.assertIn("OBS_MAX_RESPONSE_BYTES", handler)
+
+    def test_83_cursor_requires_stable_lifecycle_token(self) -> None:
+        self.assertIn('error\\\":\\\"lifecycle_changed', NATIVE)
+        self.assertIn('"lifecycle_token"', CLIENT)
+
+    def test_84_client_pages_complete_lifecycle(self) -> None:
+        pages = [
+            {"ok": True, "lifecycle_token": "same", "total": 2, "returned": 1,
+             "has_more": True, "next_cursor": 1, "records": [{"n": 1}],
+             "frame": 10, "overflowed": False, "event_oldest_sequence": 1,
+             "event_latest_sequence": 2},
+            {"ok": True, "lifecycle_token": "same", "total": 2, "returned": 1,
+             "has_more": False, "next_cursor": None, "records": [{"n": 2}],
+             "frame": 10, "overflowed": False, "event_oldest_sequence": 1,
+             "event_latest_sequence": 2},
+        ]
+        with mock.patch.object(DEBUG_CLIENT, "send_cmd", side_effect=pages):
+            result = DEBUG_CLIENT.fetch_executable_lifecycle(object(), "instances", 1)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["stable_frame"])
+        self.assertEqual([record["n"] for record in result["records"]], [1, 2])
+
+    def test_85_client_rejects_lifecycle_change(self) -> None:
+        pages = [
+            {"ok": True, "lifecycle_token": "a", "total": 2, "returned": 1,
+             "has_more": True, "next_cursor": 1, "records": [{}], "frame": 1},
+            {"ok": True, "lifecycle_token": "b", "total": 2, "returned": 1,
+             "has_more": False, "next_cursor": None, "records": [{}], "frame": 2},
+        ]
+        with mock.patch.object(DEBUG_CLIENT, "send_cmd", side_effect=pages):
+            result = DEBUG_CLIENT.fetch_executable_lifecycle(object(), "owners", 1)
+        self.assertFalse(result["ok"])
+        self.assertIn("changed", result["error"])
+
+    def test_86_capture_and_live_identities_remain_distinct(self) -> None:
+        handler = NATIVE[NATIVE.index("handle_executable_lifecycle"):
+                         NATIVE.index("handle_runtime_identity")]
+        self.assertIn("capture_identity", handler)
+        self.assertIn("current_live_identity", handler)
+        self.assertIn("whole_image_identity", handler)
+
+    def test_87_lifecycle_contains_no_raw_payload(self) -> None:
+        handler = NATIVE[NATIVE.index("handle_executable_lifecycle"):
+                         NATIVE.index("handle_runtime_identity")]
+        for forbidden in ('"hex"', "raw_bytes", "host_path"):
+            self.assertNotIn(forbidden, handler)
+
+    def test_88_capture_runs_independently_of_optional_cache(self) -> None:
+        start = CAPTURE.index("void overlay_capture_on_dma")
+        body = CAPTURE[start:CAPTURE.index("/* ---- JSON output", start)]
+        self.assertLess(body.index("lifecycle_create_dma_instance"),
+                        body.index("if (!s_enabled) return"))
+
+    def test_89_catalog_registration_exposes_execution_owner(self) -> None:
+        self.assertIn('\\\"execution_owner\\\"', NATIVE)
+        self.assertIn("overlay_lifecycle_owner_at(r->entry", NATIVE)
+
+    def test_90_protocol_command_and_client_are_registered(self) -> None:
+        self.assertIn('{ "executable_lifecycle", handle_executable_lifecycle }', NATIVE)
+        self.assertIn("fetch_executable_lifecycle", CLIENT)
+
+    def test_91_tracking_is_negotiation_gated(self) -> None:
+        self.assertIn("if (!s_lifecycle_tracking_enabled) return", CAPTURE)
+        protocol = NATIVE[NATIVE.index("static void handle_protocol_info"):
+                          NATIVE.index("static const char *execution_owner_name")]
+        self.assertIn("overlay_lifecycle_set_tracking_enabled(1)", protocol)
+        self.assertIn("tracking_started_frame", NATIVE)
+
+    def test_92_exact_owner_lookup_is_bounded(self) -> None:
+        self.assertIn('strcmp(view, "owner")', NATIVE)
+        self.assertIn("missing lifecycle owner address", NATIVE)
+        self.assertIn("executable-owner", CLIENT)
+
+    def test_93_interpreter_owner_reuses_existing_exact_pc_evidence(self) -> None:
+        self.assertIn("dirty_ram_exec_pc_observed", DIRTY)
+        self.assertIn("dirty_ram_exec_pc_observed(phys", CAPTURE)
+        self.assertIn("watched_generation", DIRTY)
+
+    def test_94_normal_opening_capacity_exceeds_accepted_observation(self) -> None:
+        self.assertIn("OVERLAY_LIFECYCLE_INSTANCE_CAP 32768u", CAPTURE)
+        self.assertIn("OVERLAY_LIFECYCLE_OWNER_CAP 65536u", CAPTURE)
 
 
 if __name__ == "__main__":
