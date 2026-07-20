@@ -47,9 +47,9 @@ class ManualNavigator:
 
     def begin(self, phase: str) -> None:
         if phase == "exit":
-            self.announce("Town01 epoch established. Navigate out of town01 normally.")
+            self.announce("Profiled scene epoch established. Navigate out normally.")
         elif phase == "reentry":
-            self.announce("Old epoch invalidated. Return to town01 normally.")
+            self.announce("Old epoch invalidated. Return to the profiled scene normally.")
 
     def cleanup(self) -> None:
         return
@@ -334,7 +334,7 @@ class SceneTransitionWatcher:
             if not candidate_seen:
                 last = outside_samples[-1] if outside_samples else None
                 raise TransitionTimeout(
-                    "town01 re-entry was not detected before timeout; "
+                    "profiled-scene re-entry was not detected before timeout; "
                     f"last_sample={last}"
                 )
 
@@ -342,10 +342,10 @@ class SceneTransitionWatcher:
             reentry, _ = self._establish_epoch(
                 self.limits.reentry_stable_samples, new_epoch=True
             )
-            if reentry["token"] == old_token:
-                raise SnapshotUnstable("re-entry reused the initial scoped token")
             if reentry["epoch"]["runtime_process_identity"] != process_identity:
                 raise SnapshotUnstable("same-process re-entry changed runtime identity")
+            if reentry["epoch"]["epoch_id"] == initial["epoch"]["epoch_id"]:
+                raise SnapshotUnstable("re-entry reused the observer-owned epoch identity")
             self._set_state(
                 TransitionState.NEW_EPOCH_STABLE,
                 frame=reentry["last_frame"], stable_samples=reentry["stable_sample_count"],
@@ -369,7 +369,8 @@ class SceneTransitionWatcher:
                 "stable_outside_state": stable_outside,
                 "reentry_epoch": {
                     **reentry,
-                    "token_differs_from_initial": True,
+                    "token_differs_from_initial": reentry["token"] != old_token,
+                    "token_reuse_is_state_equivalence": reentry["token"] == old_token,
                     "actor_head_reused": reentry["actor_list_head"] == initial["actor_list_head"],
                 },
                 "state_transitions": self.events,
