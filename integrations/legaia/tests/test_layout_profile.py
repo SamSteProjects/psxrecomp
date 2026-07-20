@@ -36,6 +36,7 @@ def context(value: dict | None = None) -> dict:
     overlay = value["overlay_requirements"][0]["identity"]
     return {
         "executable_identity": copy.deepcopy(value["executable_identity"]),
+        "runtime_source_identity": copy.deepcopy(value["executable_identity"]["runtime_source_identity"]),
         "runtime_protocol": {
             "name": "psxrecomp-debug",
             "major": 1,
@@ -93,8 +94,8 @@ class RuntimeLayoutProfileTests(unittest.TestCase):
     def test_04_unsupported_executable_rejected(self) -> None:
         value = runnable_profile()
         observed = context(value)
-        observed["executable_identity"]["sha256"] = "0" * 64
-        with self.assertRaisesRegex(LayoutProfileError, "executable identity"):
+        observed["runtime_source_identity"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(LayoutProfileError, "executable source identity"):
             validate_observation_context(value, observed)
 
     def test_05_overlay_mismatch_rejected(self) -> None:
