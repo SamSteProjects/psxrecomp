@@ -26,13 +26,13 @@ disc; retail assets are not included in this repository.
 | Legaia Trace inspector | Implemented as a local, read-only metadata viewer |
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
-| Generic PSXRecomp observer protocol | Protocol 1.4 implemented with bounded catalog, lifecycle, and execution witnesses |
-| Headless Legaia runtime observer | Implemented and synthetically validated; retail snapshot acceptance blocked by cross-request executable-state churn |
+| Generic PSXRecomp observer protocol | Protocol 1.5 adds stateless profile-scoped observation guards and guarded bounded reads |
+| Headless Legaia runtime observer | Stable retail town01 boundary-only acceptance; actor traversal remains gated by exit/re-entry validation |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Retail live actor snapshots, imported-to-runtime actor matching, RAM editing,
-and authored game changes have not been accepted. The headless observer now
-fails closed at the executable-state boundary before actor traversal.
+and authored game changes have not been accepted. The observer can establish a
+scoped town01 boundary, but it still fails closed before actor traversal.
 
 ## Vision
 
@@ -160,7 +160,7 @@ field map and selection rules.
 
 ### Generic PSXRecomp Observer Protocol
 
-The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.4**. It
+The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.5**. It
 provides:
 
 - protocol and capability negotiation;
@@ -170,6 +170,9 @@ provides:
 - process-local executable-image lifecycle and backend-owner observations;
 - bounded exact-instruction execution witnesses with live identity and
   watched-generation currentness;
+- stateless observation guards scoped to client-declared RAM signals and
+  execution witnesses;
+- guarded reads that withhold payload on a scoped-boundary mismatch;
 - authoritative watched-page generation state;
 - bounded multi-region RAM reads;
 - frame-before and frame-after stamps;
@@ -191,7 +194,7 @@ observation:
   native code dispatchable;
 - current RAM is revalidated before native dispatch becomes eligible again;
 - Windows/MSVC startup portability issues were corrected; and
-- fresh native launch and protocol 1.4 witness acceptance passed.
+- fresh native launch and protocol 1.5 scoped-boundary acceptance passed.
 
 These fixes establish correct failure behavior and a bounded generic ownership
 catalog, but they do not establish the title-specific field-overlay identity
@@ -213,17 +216,17 @@ The generic runtime now models the following relationships explicitly:
 
 The whole-image interpretation of field overlay 0897 remains deliberately
 unaccepted: `0x801CE818` is not an authoritative image event and no canonical
-whole-overlay range/hash is claimed. Protocol 1.4 instead establishes a
+whole-overlay range/hash is claimed. Protocol 1.4 established a
 fail-closed **field execution identity** from three independent current
 instruction witnesses, combined with executable build and scene signals. This
 identity repeated across field-scene replacements and fresh launches.
 
-The headless observer and snapshot schema are implemented with synthetic
-coverage. Retail attempts reached town01 but stopped before actor traversal:
-the process-global executable-state token changed between the separately
-bounded scene and witness requests, despite each request being internally
-stable. A generic bounded multi-request epoch mechanism or appropriately scoped
-authoritative token is required before retail snapshots can be accepted.
+Protocol 1.5 now establishes a stateless boundary over only the profile's scene
+signals and three witnesses. Repeated fresh-runtime town01 boundary-only passes
+retained one scoped token while unrelated global executable state changed and
+frames advanced. No actor bytes were read and no RAM writes occurred. Normal
+bounded navigation did not reach a town01 exit, so live exit invalidation and
+re-entry epoch creation remain unaccepted; actor traversal stays disabled.
 
 ## What Is Not Implemented Yet
 
@@ -437,13 +440,12 @@ by this integration.
 
 **In progress**
 
-- resolving cross-request executable-state churn for scene epochs; and
-- retail acceptance of the synthetically validated headless observer.
+- live scene-exit invalidation and re-entry epoch acceptance; and
+- keeping retail actor traversal gated until that transition proof exists.
 
 **Next**
 
-- a generic atomic or suitably scoped multi-request observation boundary;
-- retail scene-epoch establishment;
+- complete live transition acceptance for the scoped scene epoch;
 - accepted linked actor-node snapshots;
 - evidence-backed runtime fields; and
 - imported/runtime correlation research.
@@ -473,6 +475,7 @@ evidence, compatibility, and data-boundary review.
 - [Accepted field execution identity](docs/legaia-sdk/field-execution-identity.md)
 - [Headless runtime observer](docs/legaia-sdk/headless-runtime-observer.md)
 - [Scene epoch observation](docs/legaia-sdk/scene-epoch-observation.md)
+- [Scoped scene epoch](docs/legaia-sdk/scoped-scene-epoch.md)
 - [Live actor-node snapshot](docs/legaia-sdk/live-actor-node-snapshot.md)
 - [Debug protocol versioning](docs/debug-protocol-versioning.md)
 - [Executable identity](docs/executable-identity.md)
@@ -481,6 +484,8 @@ evidence, compatibility, and data-boundary review.
 - [Backend-neutral execution ownership](docs/execution-ownership.md)
 - [Execution witness model](docs/execution-witness-model.md)
 - [Execution witness protocol](docs/execution-witness-protocol.md)
+- [Observation guard model](docs/observation-guard-model.md)
+- [Observation guard protocol](docs/observation-guard-protocol.md)
 - [Executable lifecycle protocol](docs/executable-lifecycle-protocol.md)
 - [Executable catalog pagination](docs/executable-catalog-pagination.md)
 - [Executable ownership diagnostics](docs/executable-ownership-diagnostics.md)

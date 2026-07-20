@@ -13,19 +13,19 @@ epoch becomes active. Each boundary contains:
 - scene name, PROT base, and master mode;
 - actor-list head and census base;
 - structural identity of every required execution witness;
-- executable-state token;
-- lifecycle token; and
+- profile-scoped observation-guard token; and
 - frame number.
 
 Frames may advance, but they may not move backwards. Every other structural
-field must agree. The epoch ID is SHA-256 over those inputs plus the positive
+field must agree. Global executable-state and lifecycle tokens remain diagnostic
+and are not scoped epoch inputs. The epoch ID is SHA-256 over those inputs plus the positive
 observer epoch sequence.
 
 ## Snapshot boundary
 
 The observer samples boundary A, reads only validated node prefixes, then
-samples boundary B. Every node read must be internally frame/executable stable
-and must carry boundary A's executable-state token. Any changed scene signal,
+samples boundary B. Every node read must carry boundary A's expected
+observation-guard token. Any changed scene signal,
 head, witness, token, runtime identity, or profile identity discards the whole
 attempt. Partial results are never merged.
 
@@ -35,9 +35,8 @@ stale.
 
 ## Current acceptance status
 
-Synthetic transitions prove scene, head, witness, runtime, executable, and
-lifecycle changes all invalidate an epoch. Retail town01 has not established an
-epoch because the process-global executable-state token changes between the
-required one-command connections even though each command is internally
-stable. Scene exit and re-entry therefore were not tested by the observer; the
-retail stop condition was reached first.
+Synthetic transitions prove scene, head, required witness, runtime, and relevant
+lifecycle changes all invalidate an epoch. Repeated retail town01 boundary-only
+runs established a stable scoped epoch while the broader global token changed.
+No actor bytes were read. Normal bounded navigation did not reach a scene exit,
+so exit invalidation and re-entry remain the live acceptance blocker.

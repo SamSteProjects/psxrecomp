@@ -12,15 +12,16 @@ Selection is fail closed. A consumer must match:
 2. advertised runtime protocol name/version and required capabilities;
 3. all required execution witnesses, including backend, exact four-byte range,
    live identity, currentness and watched generation;
-4. stable executable/lifecycle observation boundaries;
+4. a stable profile-scoped observation guard;
 5. every required scene signal;
 6. main-RAM bounds, pointer-census stride and count;
 7. scene-epoch boundary samples.
 
 The checked-in profile retains a null canonical overlay content hash because no
 whole-image range has been proven. That structural overlay hypothesis is no
-longer a required selector. Protocol 1.4 supplies an accepted three-witness
-field execution identity instead. Selection still fails closed when any
+longer a required selector. Protocol 1.4 supplied the accepted three-witness
+field execution identity; protocol 1.5 binds it and the scene signals into a
+scoped observation guard. Selection still fails closed when any
 witness or scene/boundary signal is missing, stale, ambiguous, or mismatched.
 
 ## Actor-pool representation
@@ -53,14 +54,14 @@ The standard-library validator provides:
 
 The validator performs no network access and no RAM reads. A future observer
 supplies metadata from `protocol_info`, `runtime_identity`,
-`execution_witness`, and `read_regions`; it must reject unstable frame,
-executable-state, lifecycle, or watched-generation boundaries.
+`observation_guard`, and guarded `read_regions`; it must reject an invalid,
+unstable, or incompatible scoped token.
 
 ## Synthetic validation
 
 The suite covers those structural checks plus missing, stale, and ambiguous
-witnesses; backend/range/hash mismatches; watched-generation changes; mixed
-executable/lifecycle states; multi-witness completeness; protocol compatibility;
+witnesses; backend/range/hash mismatches; watched-generation changes; scoped
+guard mismatches; multi-witness completeness; protocol compatibility;
 metadata-only identities; and the legacy unresolved-overlay failure mode.
 
 All fixtures are synthetic or profile metadata. Retail bytes and runtime captures are not used.
@@ -77,9 +78,11 @@ hash used by disc provenance and the exact 440,320-byte `ps-x-exe-body` source
 identity exposed by `runtime_identity`. Live selection requires the latter;
 neither substitutes for the other.
 
-The profile remains fail closed for retail snapshots. Its scene and witness
-requirements select correctly, but a stable cross-request executable-state
-boundary has not yet been observed, so actor traversal cannot begin.
+The profile now requires protocol 1.5 and derives a scoped observation guard
+from its existing scene signals, actor-list-head candidate, and three execution
+witnesses. Stable town01 boundary-only sampling has been observed across fresh
+launches. Actor traversal remains fail closed because live scene-exit
+invalidation and re-entry epoch creation have not yet been accepted.
 
 ## Live identity status
 

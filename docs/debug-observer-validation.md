@@ -160,3 +160,24 @@ issued, and no input command occurred during observation. The observer's
 synthetic suite passes 33 fail-closed scenarios. Retail acceptance requires a
 separately approved generic multi-request boundary mechanism; weakening the
 existing token check is not acceptable.
+
+## 2026-07-19 protocol 1.5 scoped-guard acceptance
+
+A fresh RelWithDebInfo runtime advertised protocol 1.5 and the additive
+`observation_guard` capability. Multiple normal-flow launches reached town01.
+Each boundary-only pass used one guarded scene read, one stabilization query,
+and ten subsequent guard queries. All 12 samples were compatible while frames
+advanced. The runs used 13 requests, zero actor-node reads, zero actor bytes,
+and zero RAM writes, completing in approximately 154–333 ms.
+
+The process-global executable token changed six or seven times per pass while
+the scoped guard stayed fixed. Bounded component diagnostics observed changes
+in the global watched-page and lifecycle-catalog components, with no
+registration-state change in the component-audit run. Required witness
+generation/currentness/backend/live/lifecycle evidence was stable because it is
+inside the unchanged scoped token. The global token remains correct but is too
+broad for this profile boundary.
+
+Normal bounded navigation did not produce a town01 exit. Live exit invalidation
+and re-entry epoch creation therefore remain unaccepted, despite synthetic
+coverage for those changes. Actor traversal remains disabled.
