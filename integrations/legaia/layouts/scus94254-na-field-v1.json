@@ -34,10 +34,11 @@
     "name": "psxrecomp-debug",
     "required_runtime_implementation": "psxrecomp",
     "minimum_major": 1,
-    "minimum_minor": 4,
+    "minimum_minor": 5,
     "required_capabilities": [
       "executable_regions",
       "execution_witness",
+      "observation_guard",
       "read_regions",
       "runtime_identity",
       "watched_page_generation"
@@ -66,8 +67,9 @@
   "execution_identity": {
     "kind": "field_execution_witness_set",
     "minimum_required_witnesses": 3,
-    "require_stable_executable_state": true,
-    "require_stable_lifecycle_state": true,
+    "require_stable_executable_state": false,
+    "require_stable_lifecycle_state": false,
+    "require_stable_observation_guard": true,
     "required_witnesses": [
       {
         "id": "field-collision-census-rebuild",
@@ -106,7 +108,7 @@
   },
   "scene_identity": {
     "scene_key": "town01",
-    "strategy": "Require the active scene name, runtime PROT base index, field-run master mode, executable identity and all current field execution witnesses to agree across stable executable/lifecycle boundary samples.",
+    "strategy": "Require the active scene name, runtime PROT base index, field-run master mode, executable identity and all current field execution witnesses to agree under one profile-scoped observation guard.",
     "required_signals": [
       {
         "id": "active_scene_name",
@@ -169,7 +171,7 @@
       "actor_list_head",
       "actor_census_base"
     ],
-    "contract": "Increment the observer-side epoch only after two boundary samples agree. Invalidate immediately on any signal change, field mode exit, overlay uncertainty, actor-list replacement or read-boundary mismatch; discard the mixed snapshot."
+    "contract": "Increment the observer-side epoch only after two profile-scoped guard samples agree. Invalidate immediately on any guarded signal, required witness, runtime instance, executable identity, relevant lifecycle identity, actor-list head or scoped-token change; retain the global executable-state token as diagnostics and discard the mixed snapshot."
   },
   "actor_pool": {
     "storage_kind": "linked_nodes_with_pointer_census",
@@ -447,6 +449,15 @@
     "mixed_epoch_policy": "discard"
   },
   "observation_policy": {
+    "guard": {
+      "capability": "observation_guard",
+      "token_domain": "psxrecomp-observation-guard-v1",
+      "ram_regions_from": "scene_identity.required_signals+actor_pool.linked_list_head",
+      "execution_witnesses_from": "execution_identity.required_witnesses",
+      "require_witness_currentness": true,
+      "require_before_after_stability": true,
+      "require_expected_token_match": true
+    },
     "head_pointer": {
       "width": 4,
       "type": "ram_pointer",

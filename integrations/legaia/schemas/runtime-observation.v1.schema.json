@@ -75,20 +75,19 @@
       "required": [
         "epoch_id", "observer_epoch_number", "profile_id", "runtime_process_identity",
         "scene_name", "prot_base", "master_mode", "actor_list_head",
-        "executable_state_token", "lifecycle_token",
+        "observation_guard_token",
         "required_witness_structural_identities", "first_stable_frame", "last_validated_frame"
       ],
       "properties": {
         "epoch_id": { "type": "string", "pattern": "^epoch-[0-9a-f]{64}$" },
         "observer_epoch_number": { "type": "integer", "minimum": 1 },
         "profile_id": { "type": "string" },
-        "runtime_process_identity": { "$ref": "#/$defs/sha256" },
+        "runtime_process_identity": { "type": "string", "pattern": "^proc-[0-9a-f]{64}$" },
         "scene_name": { "type": "string" },
         "prot_base": { "type": "integer" },
         "master_mode": { "type": "integer" },
         "actor_list_head": { "$ref": "#/$defs/address" },
-        "executable_state_token": { "type": "string" },
-        "lifecycle_token": { "type": "string" },
+        "observation_guard_token": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "required_witness_structural_identities": { "type": "array", "minItems": 3, "items": { "type": "object" } },
         "first_stable_frame": { "type": "integer", "minimum": 0 },
         "last_validated_frame": { "type": "integer", "minimum": 0 }
