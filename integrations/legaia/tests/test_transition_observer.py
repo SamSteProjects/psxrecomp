@@ -7,6 +7,7 @@ from typing import Any
 
 from integrations.legaia.observer import (
     LoadedProfile,
+    ProfileRejected,
     SceneTransitionWatcher,
     TransitionLimits,
     TransitionState,
@@ -122,6 +123,8 @@ class FakeSelector:
     def sample_boundary(self) -> dict[str, Any]:
         self.client.request_count += 2
         self.frame += 1
+        if self.scenario == "initial_unstable" and self.phase == "initial":
+            raise ProfileRejected("synthetic initial scene mismatch")
         witnesses = self._witnesses()
         return {
             "runtime_process_identity": self.runtime_process_identity,
@@ -321,6 +324,10 @@ class TransitionObserverTests(unittest.TestCase):
 
     def test_23_transition_timeout(self):
         with self.assertRaises(TransitionTimeout): self.run_transition("global_only")
+
+    def test_23b_initial_establishment_timeout(self):
+        with self.assertRaisesRegex(TransitionTimeout, "initial town01 epoch"):
+            self.run_transition("initial_unstable")
 
     def test_24_reentry_timeout(self):
         with self.assertRaises(TransitionTimeout): self.run_transition(reenter=False)

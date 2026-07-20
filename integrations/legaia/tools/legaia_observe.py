@@ -29,7 +29,7 @@ DEFAULT_PROFILE = REPOSITORY_ROOT / "integrations" / "legaia" / "layouts" / "scu
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="legaia-observe",
-        description="Capture one headless, read-only field actor-node observation from native PSXRecomp.",
+        description="Run one headless, read-only Legaia observation acceptance action.",
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=4370)
