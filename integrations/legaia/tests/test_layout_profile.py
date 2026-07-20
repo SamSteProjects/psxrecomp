@@ -20,6 +20,7 @@ from integrations.legaia.layouts import (
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "layouts" / "scus94254-na-field-v1.json"
+TOWN0C_PROFILE_PATH = ROOT / "layouts" / "scus94254-na-town0c-field-v1.json"
 SCHEMA_PATH = ROOT / "schemas" / "runtime-layout-profile.v1.schema.json"
 
 
@@ -29,6 +30,10 @@ def profile() -> dict:
 
 def runnable_profile() -> dict:
     return profile()
+
+
+def town0c_profile() -> dict:
+    return load_profile(TOWN0C_PROFILE_PATH)
 
 
 def context(value: dict | None = None) -> dict:
@@ -340,6 +345,90 @@ class RuntimeLayoutProfileTests(unittest.TestCase):
         value = profile(); value["overlay_requirements"][0]["required"] = True
         with self.assertRaisesRegex(LayoutProfileError, "unresolved in profile"):
             validate_observation_context(value, context(value))
+
+    def test_42_town0c_derived_profile_schema_and_resolution(self) -> None:
+        raw = json.loads(TOWN0C_PROFILE_PATH.read_text(encoding="utf-8"))
+        schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+        jsonschema.validate(raw, schema)
+        value = town0c_profile()
+        self.assertEqual(value["profile_id"], "legaia-na-scus94254-town0c-field-v1")
+        self.assertEqual(value["scene_identity"]["scene_key"], "town0c")
+        self.assertEqual(value["scene_identity"]["required_signals"][0]["expected"], "town0c")
+        self.assertEqual(value["scene_identity"]["required_signals"][1]["expected"], 21)
+
+    def test_43_town0c_resolves_shared_safety_and_node_contract(self) -> None:
+        value = town0c_profile()
+        self.assertEqual(value["actor_pool"]["linked_list_head"]["address"], "0x8007C354")
+        self.assertEqual(value["actor_pool"]["actor_record"]["bounded_read_size"], 156)
+        self.assertEqual(value["observation_policy"]["traversal"]["maximum_nodes"], 128)
+
+    def test_44_town0c_context_accepts_only_matching_scene_signals(self) -> None:
+        value = town0c_profile()
+        self.assertEqual(validate_observation_context(value, context(value))["actor_count"], 7)
+        observed = context(value)
+        observed["scene_signals"]["active_scene_name"] = "town01"
+        with self.assertRaisesRegex(LayoutProfileError, "does not identify"):
+            validate_observation_context(value, observed)
+
+    def test_45_town0c_context_rejects_wrong_prot_mode_and_missing_head_policy(self) -> None:
+        value = town0c_profile()
+        observed = context(value)
+        observed["scene_signals"]["active_scene_prot_base"] = 3
+        with self.assertRaisesRegex(LayoutProfileError, "does not identify"):
+            validate_observation_context(value, observed)
+        broken = copy.deepcopy(value)
+        del broken["actor_pool"]["linked_list_head"]
+        with self.assertRaisesRegex(LayoutProfileError, "linked_list_head"):
+            validate_profile(broken)
+
+    def test_46_town0c_witness_rejections_remain_fail_closed(self) -> None:
+        value = town0c_profile()
+        for field, replacement, expected in (
+            ("backend", "runtime-native", "backend mismatch"),
+            ("live_sha256", "0" * 64, "live identity mismatch"),
+            ("watched_generation_current", "different", "watched generation changed"),
+        ):
+            observed = context(value)
+            observed["execution_witnesses"][0][field] = replacement
+            with self.assertRaisesRegex(LayoutProfileError, expected):
+                validate_observation_context(value, observed)
+
+    def test_47_town0c_observation_guard_is_profile_derived(self) -> None:
+        value = town0c_profile()
+        self.assertEqual(
+            value["observation_policy"]["guard"]["ram_regions_from"],
+            "scene_identity.required_signals+actor_pool.linked_list_head",
+        )
+        self.assertIn("field_execution_identity", value["scene_epoch"]["invalidation_signals"])
+
+    def test_48_town0c_canonical_serialization_is_deterministic_and_private(self) -> None:
+        value = town0c_profile()
+        serialized = canonical_profile_json(value)
+        self.assertEqual(serialized, canonical_profile_json(copy.deepcopy(value)))
+        self.assertNotIn("C:\\\\", serialized)
+        self.assertNotIn('"payload"', serialized)
+
+    def test_49_town0c_base_profile_confusion_is_rejected(self) -> None:
+        raw = json.loads(TOWN0C_PROFILE_PATH.read_text(encoding="utf-8"))
+        raw["extends"]["profile_id"] = "legaia-na-scus94254-other-v1"
+        temporary = TOWN0C_PROFILE_PATH.with_name("temporary-town0c-profile.json")
+        temporary.write_text(json.dumps(raw), encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(LayoutProfileError, "base ID"):
+                load_profile(temporary)
+        finally:
+            temporary.unlink()
+
+    def test_50_town0c_extension_cannot_escape_layout_directory(self) -> None:
+        raw = json.loads(TOWN0C_PROFILE_PATH.read_text(encoding="utf-8"))
+        raw["extends"]["file_name"] = "..\\scus94254-na-field-v1.json"
+        temporary = TOWN0C_PROFILE_PATH.with_name("temporary-town0c-profile.json")
+        temporary.write_text(json.dumps(raw), encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(LayoutProfileError, "safe revisioned"):
+                load_profile(temporary)
+        finally:
+            temporary.unlink()
 
 
 if __name__ == "__main__":

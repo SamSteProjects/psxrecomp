@@ -24,6 +24,7 @@ CONFIDENCE = {"confirmed", "strongly_inferred", "tentative", "unknown", "contrad
 HEX32 = re.compile(r"^0x[0-9A-Fa-f]{8}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 PROFILE_ID = re.compile(r"^[a-z0-9][a-z0-9-]*-v[0-9]+$")
+PROFILE_FILE_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*-v[0-9]+\.json$")
 FORBIDDEN_PROFILE_KEYS = {
     "bytes",
     "dialogue",
@@ -305,11 +306,63 @@ def validate_profile(profile: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def load_profile(path: str | Path) -> dict[str, Any]:
+    """Load one metadata-only profile, resolving a single local base profile.
+
+    A derived profile may change only scene-specific selection metadata and
+    provenance.  The base reference is a filename, not an arbitrary path, so
+    profile loading remains deterministic and cannot escape the layouts
+    directory.  The returned document is always fully resolved and validated.
+    """
+    source = Path(path)
     try:
-        value = json.loads(Path(path).read_text(encoding="utf-8"))
+        value = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise LayoutProfileError(f"cannot load layout profile: {exc}") from exc
-    return validate_profile(value)
+    if not isinstance(value, Mapping) or "extends" not in value:
+        return validate_profile(value)
+
+    extension = value.get("extends")
+    if not isinstance(extension, Mapping):
+        _fail("$.extends must be an object")
+    file_name = extension.get("file_name")
+    base_id = extension.get("profile_id")
+    if not isinstance(file_name, str) or not PROFILE_FILE_NAME.fullmatch(file_name):
+        _fail("$.extends.file_name must be a safe revisioned profile filename")
+    if not isinstance(base_id, str) or not PROFILE_ID.fullmatch(base_id):
+        _fail("$.extends.profile_id is invalid")
+    overrides = value.get("overrides")
+    if not isinstance(overrides, Mapping):
+        _fail("$.overrides must be an object")
+    allowed = {"schema_version", "profile_id", "extends", "overrides"}
+    unexpected = sorted(set(value) - allowed)
+    if unexpected:
+        _fail("derived profile contains unsupported top-level fields: " + ", ".join(unexpected))
+
+    base_path = source.parent / file_name
+    try:
+        base = json.loads(base_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise LayoutProfileError(f"cannot load base layout profile: {exc}") from exc
+    if not isinstance(base, Mapping) or "extends" in base:
+        _fail("derived profile base must be one complete non-derived profile")
+    base_validated = validate_profile(base)
+    if base_validated["profile_id"] != base_id:
+        _fail("derived profile base ID does not match the referenced profile")
+    if value.get("schema_version") != base_validated["schema_version"]:
+        _fail("derived profile schema version does not match its base")
+    derived_id = value.get("profile_id")
+    if not isinstance(derived_id, str) or not PROFILE_ID.fullmatch(derived_id):
+        _fail("derived profile ID is not a stable versioned identifier")
+    if derived_id == base_id:
+        _fail("derived profile ID must differ from its base")
+    if set(overrides) != {"scene_identity", "evidence", "unresolved"}:
+        _fail("derived profile overrides must contain exactly scene_identity, evidence, unresolved")
+    resolved = copy.deepcopy(base_validated)
+    resolved["profile_id"] = derived_id
+    resolved["scene_identity"] = copy.deepcopy(overrides["scene_identity"])
+    resolved["evidence"] = copy.deepcopy(overrides["evidence"])
+    resolved["unresolved"] = copy.deepcopy(overrides["unresolved"])
+    return validate_profile(resolved)
 
 
 def canonical_profile_json(profile: Mapping[str, Any]) -> str:

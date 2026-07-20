@@ -1,4 +1,4 @@
-"""Transition-only town01 scene-epoch acceptance state machine."""
+"""Transition-only, profile-driven scene-epoch acceptance state machine."""
 
 from __future__ import annotations
 
@@ -142,7 +142,7 @@ class SceneTransitionWatcher:
     def _pause(self) -> None:
         self.sleep(self.limits.poll_interval_seconds)
 
-    def _town01_signals_match(self, sample: Mapping[str, Any]) -> bool:
+    def _profiled_scene_signals_match(self, sample: Mapping[str, Any]) -> bool:
         observed = sample.get("scene_signals") or {}
         return all(
             observed.get(signal["id"]) == signal["expected"]
@@ -202,7 +202,8 @@ class SceneTransitionWatcher:
                 last_error = str(exc)
                 self._pause()
         label = "re-entry" if new_epoch else "initial"
-        raise TransitionTimeout(f"{label} town01 epoch did not stabilize: {last_error}")
+        scene_key = self.profile.document["scene_identity"]["scene_key"]
+        raise TransitionTimeout(f"{label} {scene_key} epoch did not stabilize: {last_error}")
 
     @staticmethod
     def _classify_invalidation(
@@ -325,7 +326,7 @@ class SceneTransitionWatcher:
             candidate_seen = False
             while self.clock() < reentry_deadline:
                 scene = self.selector.sample_scene_signals_unscoped()
-                if self._town01_signals_match(scene):
+                if self._profiled_scene_signals_match(scene):
                     candidate_seen = True
                     break
                 if len(outside_samples) < self.limits.maximum_outside_samples:
@@ -353,7 +354,8 @@ class SceneTransitionWatcher:
             self._set_state(TransitionState.COMPLETED)
             report = {
                 "schema_version": 1,
-                "observation_kind": "town01-scene-transition-acceptance",
+                "observation_kind": "profiled-scene-transition-acceptance",
+                "scene_key": self.profile.document["scene_identity"]["scene_key"],
                 "profile_id": self.profile.document["profile_id"],
                 "protocol": self.selector.protocol["protocol"],
                 "runtime_identity_summary": {
