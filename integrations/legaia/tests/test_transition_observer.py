@@ -17,10 +17,16 @@ from integrations.legaia.observer import (
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE_PATH = ROOT / "layouts" / "scus94254-na-field-v1.json"
+TOWN0C_PROFILE_PATH = ROOT / "layouts" / "scus94254-na-town0c-field-v1.json"
 
 
 def profile() -> LoadedProfile:
     return LoadedProfile.from_document(json.loads(PROFILE_PATH.read_text(encoding="utf-8")))
+
+
+def town0c_profile() -> LoadedProfile:
+    from integrations.legaia.layouts import load_profile
+    return LoadedProfile.from_document(load_profile(TOWN0C_PROFILE_PATH))
 
 
 class FakeClock:
@@ -93,16 +99,21 @@ class FakeSelector:
     def _signals(self) -> dict[str, Any]:
         if self.phase in {"initial", "reentry"}:
             return {
-                "active_scene_name": "town01",
-                "active_scene_prot_base": 3,
-                "master_game_mode": 3,
+                signal["id"]: signal["expected"]
+                for signal in self.profile.document["scene_identity"]["required_signals"]
             }
         signal = self.scenario
-        return {
-            "active_scene_name": "map01" if signal != "prot" and signal != "mode" and signal != "head" else "town01",
-            "active_scene_prot_base": 4 if signal == "prot" else 3,
-            "master_game_mode": 2 if signal == "mode" else 3,
+        values = {
+            item["id"]: item["expected"]
+            for item in self.profile.document["scene_identity"]["required_signals"]
         }
+        if signal not in {"prot", "mode", "head"}:
+            values["active_scene_name"] = "map01"
+        if signal == "prot":
+            values["active_scene_prot_base"] = int(values["active_scene_prot_base"]) + 1
+        if signal == "mode":
+            values["master_game_mode"] = 2
+        return values
 
     def _head(self) -> str:
         if self.phase == "initial":
@@ -376,6 +387,21 @@ class TransitionObserverTests(unittest.TestCase):
 
     def test_33_state_machine_completed(self):
         result, _, _ = self.run_transition(); self.assertEqual(result["state_transitions"][-1]["state"], TransitionState.COMPLETED.value)
+
+    def test_34_town0c_profile_round_trip_is_profile_driven(self):
+        loaded = town0c_profile()
+        selector = FakeSelector(loaded, "normal", process_tag="c")
+        navigator = FakeNavigator(selector)
+        clock = FakeClock()
+        result = SceneTransitionWatcher(
+            selector, loaded, navigator=navigator, announce=lambda _: None,
+            sleep=clock.sleep, clock=clock,
+        ).run()
+        self.assertEqual(result["scene_key"], "town0c")
+        self.assertEqual(result["initial_epoch"]["scene_signals"]["active_scene_name"], "town0c")
+        self.assertTrue(result["exit_invalidation"]["old_expected_token_rejected"])
+        self.assertEqual(result["metrics"]["actor_node_requests"], 0)
+        self.assertEqual(result["metrics"]["ram_writes"], 0)
 
 
 if __name__ == "__main__":

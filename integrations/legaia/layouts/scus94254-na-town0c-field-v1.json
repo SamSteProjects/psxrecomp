@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "profile_id": "legaia-na-scus94254-town0c-field-v1",
+  "extends": {
+    "profile_id": "legaia-na-scus94254-field-v1",
+    "file_name": "scus94254-na-field-v1.json"
+  },
+  "overrides": {
+    "scene_identity": {
+      "scene_key": "town0c",
+      "strategy": "Require the active scene name, runtime PROT base index, field-run master mode, executable identity and all current field execution witnesses to agree under one profile-scoped observation guard.",
+      "required_signals": [
+        {
+          "id": "active_scene_name",
+          "address": "0x80084548",
+          "width": 8,
+          "type": "ascii_nul_terminated",
+          "expected": "town0c",
+          "owner": "SCUS_942.54",
+          "lifecycle": "Updated during named scene transition; valid active buffer after field initialization.",
+          "claim": {
+            "property": "active_scene_name",
+            "value": "town0c",
+            "confidence": "confirmed",
+            "evidence": ["psxrecomp-town0c-transition-live"],
+            "notes": "Observed in two settled guarded samples on re-entry after map01. The 0x8007050C pending/mirror name remains supporting only."
+          }
+        },
+        {
+          "id": "active_scene_prot_base",
+          "address": "0x80084540",
+          "width": 2,
+          "type": "u16_le",
+          "expected": 21,
+          "owner": "SCUS_942.54",
+          "lifecycle": "Resolved from CDNAME and consumed by the retail field loader; changes for inter-scene transitions.",
+          "claim": {
+            "property": "town0c_runtime_prot_base",
+            "value": 21,
+            "confidence": "confirmed",
+            "evidence": ["psxrecomp-town0c-transition-live"],
+            "notes": "Observed with the town0c active-name signal after normal map01 re-entry. It is a runtime/CDNAME index, not an extraction-frame number."
+          }
+        },
+        {
+          "id": "master_game_mode",
+          "address": "0x8007B83C",
+          "width": 2,
+          "type": "u16_le",
+          "expected": 3,
+          "owner": "SCUS_942.54",
+          "lifecycle": "Mode 2 initializes the field; mode 3 is settled field/town gameplay and changes before other modes.",
+          "claim": {
+            "property": "field_run_mode",
+            "value": 3,
+            "confidence": "confirmed",
+            "evidence": ["andrew-boot-mode-table", "psxrecomp-town0c-transition-live"],
+            "notes": "Mode 3 is necessary but not scene-specific."
+          }
+        }
+      ]
+    },
+    "evidence": [
+      {
+        "id": "psxrecomp-town0c-transition-live",
+        "repository": "SamSteProjects/psxrecomp",
+        "revision": "bc91cfbff8b116a2681e8284eaeae55b9658bcd6",
+        "path": "docs/legaia-sdk/scene-transition-acceptance.md",
+        "symbol_or_function": "metadata-only town0c transition acceptance",
+        "role": "Live guarded scene-selection evidence; no actor nodes read"
+      },
+      {
+        "id": "andrew-boot-mode-table",
+        "repository": "AndrewAltimit/legend-of-legaia-re",
+        "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+        "path": "docs/subsystems/boot.md",
+        "symbol_or_function": "field mode lifecycle",
+        "role": "Field initialization and settled mode context"
+      }
+    ],
+    "unresolved": [
+      "No complete canonical live identity for the field overlay image is available; selection relies on the current generation-matched witness set.",
+      "Actor-list-head content, node allocation size, list membership and node-to-import identity remain unresolved and are not read by this profile.",
+      "The town0c profile is supported by documented same-process transition evidence; fresh-process acceptance is a required follow-up before traversal approval."
+    ]
+  }
+}

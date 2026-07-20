@@ -4,27 +4,26 @@
   "title": "Legend of Legaia runtime layout profile v1",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "profile_id",
-    "game",
-    "region",
-    "executable_identity",
-    "supported_runtime_protocol",
-    "overlay_requirements",
-    "execution_identity",
-    "scene_identity",
-    "scene_epoch",
-    "actor_pool",
-    "actor_fields",
-    "safety_bounds",
-    "observation_policy",
-    "evidence",
-    "unresolved"
+  "required": ["schema_version", "profile_id"],
+  "allOf": [
+    {
+      "if": { "required": ["extends"] },
+      "then": { "required": ["extends", "overrides"] },
+      "else": {
+        "required": [
+          "game", "region", "executable_identity", "supported_runtime_protocol",
+          "overlay_requirements", "execution_identity", "scene_identity",
+          "scene_epoch", "actor_pool", "actor_fields", "safety_bounds",
+          "observation_policy", "evidence", "unresolved"
+        ]
+      }
+    }
   ],
   "properties": {
     "schema_version": { "const": 1 },
     "profile_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-v[0-9]+$" },
+    "extends": { "$ref": "#/$defs/profileExtension" },
+    "overrides": { "$ref": "#/$defs/profileOverrides" },
     "game": { "const": "Legend of Legaia" },
     "region": { "const": "North America" },
     "executable_identity": { "$ref": "#/$defs/executableIdentity" },
@@ -49,6 +48,25 @@
     "unresolved": { "type": "array", "items": { "type": "string" } }
   },
   "$defs": {
+    "profileExtension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "file_name"],
+      "properties": {
+        "profile_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-v[0-9]+$" },
+        "file_name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-v[0-9]+\\.json$" }
+      }
+    },
+    "profileOverrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene_identity", "evidence", "unresolved"],
+      "properties": {
+        "scene_identity": { "$ref": "#/$defs/sceneIdentity" },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "unresolved": { "type": "array", "items": { "type": "string" } }
+      }
+    },
     "address": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{8}$" },
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "confidence": {
@@ -186,7 +204,7 @@
       "additionalProperties": false,
       "required": ["scene_key", "strategy", "required_signals"],
       "properties": {
-        "scene_key": { "const": "town01" },
+        "scene_key": { "enum": ["town01", "town0c"] },
         "strategy": { "type": "string" },
         "required_signals": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/sceneSignal" } }
       }
