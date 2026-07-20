@@ -23,6 +23,8 @@ Commands (shared — identical on both servers):
                                 Retrieve image lifecycle and execution ownership
     executable-owner <guest-address>
                                 Query one exact-PC execution-owner observation
+    execution-witness <guest-address>
+                                Query one bounded exact-instruction witness
     read-regions <key=addr:len> [key=addr:len ...]
                                 One bounded, frame-stamped multi-region read
     ping                        Heartbeat + current frame
@@ -305,6 +307,30 @@ def pretty_executable_lifecycle(resp):
     return "\n".join(lines)
 
 
+def pretty_execution_witness(resp):
+    """Compact witness result followed by the complete wire response."""
+    if not resp.get("ok") or not resp.get("witness"):
+        return pretty_json(resp)
+    witness = resp["witness"]
+    span = witness.get("range") or {}
+    live = witness.get("current_live_identity") or {}
+    generation = witness.get("watched_generation") or {}
+    lines = [
+        f"pc={resp.get('requested_pc', '?')} status={resp.get('status', '?')} "
+        f"backend={witness.get('backend', '?')} current={witness.get('observation_current', False)}",
+        f"range={span.get('guest_base', '?')}+{span.get('length', '?')} "
+        f"kind={span.get('kind', '?')} instructions={span.get('instruction_count', '?')}",
+        f"live={str(live.get('sha256') or '-')[:12]} "
+        f"generation={str(generation.get('digest') or '-')[:12]} "
+        f"hits={witness.get('hit_count', '?')} "
+        f"image={witness.get('image_instance_id', '-')} "
+        f"registration={witness.get('native_registration_id', '-')}",
+        "\nFull JSON:",
+        pretty_json(resp),
+    ]
+    return "\n".join(lines)
+
+
 def fetch_executable_catalog(sock, view="registrations", limit=8, max_pages=4096):
     if view not in ("images", "ranges", "registrations"):
         return {"ok": False, "error": "invalid catalog view"}
@@ -497,6 +523,10 @@ def build_cmd(args):
         return {"cmd": "protocol_info"}, pretty_json
     elif cmd in ("runtime-identity", "runtime_identity"):
         return {"cmd": "runtime_identity"}, pretty_json
+    elif cmd in ("execution-witness", "execution_witness"):
+        if len(args) < 2:
+            return None, lambda _: "Usage: execution-witness <guest-address>"
+        return {"cmd": "execution_witness", "pc": args[1]}, pretty_execution_witness
     elif cmd in ("executable-regions", "executable_regions"):
         offset = int(args[1], 0) if len(args) > 1 else 0
         limit = int(args[2], 0) if len(args) > 2 else 8

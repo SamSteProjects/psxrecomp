@@ -4469,9 +4469,9 @@ static void handle_protocol_info(int id, const char *json) {
     (void)json;
     overlay_lifecycle_set_tracking_enabled(1);
     send_fmt("{\"id\":%d,\"ok\":true,"
-             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":3},"
+             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":4},"
              "\"server\":{\"kind\":\"native\"},"
-             "\"capabilities\":[\"executable_catalog\",\"executable_image_lifecycle\",\"executable_regions\",\"read_ram\",\"read_regions\","
+             "\"capabilities\":[\"executable_catalog\",\"executable_image_lifecycle\",\"executable_regions\",\"execution_witness\",\"read_ram\",\"read_regions\","
              "\"runtime_identity\",\"watched_page_generation\"],"
              "\"limits\":{\"max_request_bytes\":8191,\"max_read_ram_bytes\":2097152,"
              "\"max_regions_per_request\":%d,\"max_bytes_per_region\":%d,"
@@ -4479,7 +4479,8 @@ static void handle_protocol_info(int id, const char *json) {
              "\"max_executable_regions_per_response\":%d,"
              "\"max_executable_catalog_records_per_response\":%d,"
              "\"max_executable_lifecycle_records_per_response\":%d,"
-             "\"max_executable_lifecycle_events_retained\":%u},\"frame\":%llu}",
+             "\"max_executable_lifecycle_events_retained\":%u,"
+             "\"execution_witness_range_bytes\":4},\"frame\":%llu}",
              id, OBS_MAX_REGIONS, OBS_MAX_REGION_BYTES, OBS_MAX_TOTAL_BYTES,
              OBS_MAX_RESPONSE_BYTES, EXEC_REGION_PAGE_MAX, EXEC_CATALOG_PAGE_MAX,
              EXEC_LIFECYCLE_PAGE_MAX, overlay_lifecycle_event_capacity(),
@@ -4793,6 +4794,139 @@ static int watched_generation_digest(const uint32_t *lo, const uint32_t *len,
     if (first_out) *first_out = first == page_count ? 0 : first;
     if (count_out) *count_out = covered;
     return covered != 0;
+}
+
+static void execution_witness_id(const OverlayExecutionOwner *owner,
+                                 char out[65]) {
+    static const char domain[] = "psxrecomp-execution-witness-v1";
+    PSXSha256 ctx;
+    psx_sha256_init(&ctx);
+    psx_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    sha_u32(&ctx, owner->phys);
+    sha_u32(&ctx, 4u);
+    sha_u32(&ctx, owner->owner);
+    sha_u32(&ctx, owner->instruction_word_at_observation);
+    sha_u32(&ctx, owner->watched_generation_at_observation);
+    sha_u32(&ctx, (uint32_t)owner->instance_id);
+    sha_u32(&ctx, (uint32_t)(owner->instance_id >> 32));
+    sha_u32(&ctx, owner->registration_id);
+    sha_u32(&ctx, owner->first_observed_frame);
+    sha_u32(&ctx, overlay_lifecycle_tracking_started_frame());
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, out);
+}
+
+/* Exact-PC execution witness. The dirty interpreter has no decoded-block
+ * cache or retained block boundary, so its strongest authoritative byte
+ * domain is the one four-byte instruction actually fetched by exec_one.
+ * Native acquisition points use the same exact dispatch-PC representation.
+ * This must never be widened into a guessed function, page, or overlay. */
+static void handle_execution_witness(int id, const char *json) {
+    overlay_lifecycle_set_tracking_enabled(1);
+    char pc_text[32] = {0};
+    if (!json_get_str(json, "pc", pc_text, sizeof(pc_text))) {
+        send_err(id, "missing execution witness pc"); return;
+    }
+    uint32_t requested = hex_to_u32(pc_text);
+    uint32_t phys = requested & 0x1fffffffu;
+    if (phys >= 0x200000u || (phys & 3u) != 0 || phys > 0x1ffffcu) {
+        send_err(id, "execution witness pc is not aligned main RAM"); return;
+    }
+
+    uint64_t frame_before = s_frame_count;
+    char state_before[65], state_after[65];
+    executable_state_token(state_before);
+    uint64_t life_before = overlay_lifecycle_catalog_token();
+
+    OverlayExecutionOwner owner;
+    int found = overlay_lifecycle_owner_at(phys, &owner);
+    if (!found) {
+        executable_state_token(state_after);
+        uint64_t life_after = overlay_lifecycle_catalog_token();
+        send_fmt("{\"id\":%d,\"ok\":true,\"status\":\"missing\","
+                 "\"requested_pc\":\"0x%08X\",\"witness\":null,"
+                 "\"frame_before\":%llu,\"frame_after\":%llu,"
+                 "\"executable_state_before\":\"%s\",\"executable_state_after\":\"%s\","
+                 "\"lifecycle_token_before\":\"%016llx\",\"lifecycle_token_after\":\"%016llx\","
+                 "\"stable_observation_boundary\":%s}", id, requested,
+                 (unsigned long long)frame_before, (unsigned long long)s_frame_count,
+                 state_before, state_after, (unsigned long long)life_before,
+                 (unsigned long long)life_after,
+                 frame_before == s_frame_count && !strcmp(state_before, state_after) &&
+                 life_before == life_after ? "true" : "false");
+        return;
+    }
+
+    uint8_t observed_bytes[4] = {
+        (uint8_t)owner.instruction_word_at_observation,
+        (uint8_t)(owner.instruction_word_at_observation >> 8),
+        (uint8_t)(owner.instruction_word_at_observation >> 16),
+        (uint8_t)(owner.instruction_word_at_observation >> 24)
+    };
+    uint8_t observed_digest[32], live_digest[32];
+    char observed_sha[65], live_sha[65], generation_sha[65], witness_id[65];
+    psx_sha256(observed_bytes, sizeof(observed_bytes), observed_digest);
+    psx_sha256_hex(observed_digest, observed_sha);
+    uint8_t *ram = memory_get_ram_ptr();
+    psx_sha256(ram + phys, 4u, live_digest);
+    psx_sha256_hex(live_digest, live_sha);
+    uint32_t lo = phys, len = 4u, generation_sum = 0, first_page = 0, pages = 0;
+    if (!watched_generation_digest(&lo, &len, 1, generation_sha,
+                                   &generation_sum, &first_page, &pages)) {
+        send_err(id, "execution witness generation unavailable"); return;
+    }
+    execution_witness_id(&owner, witness_id);
+    int bytes_match = !memcmp(observed_digest, live_digest, sizeof(live_digest));
+    int owner_current = overlay_lifecycle_owner_observation_current(&owner);
+    int current = bytes_match && owner_current &&
+                  owner.owner != OVERLAY_EXEC_OWNER_AMBIGUOUS;
+    const char *status = owner.owner == OVERLAY_EXEC_OWNER_AMBIGUOUS ? "ambiguous" :
+                         current ? "current" : "stale";
+    char instance_id[40] = "null", registration_id[40] = "null";
+    if (owner.instance_id) snprintf(instance_id, sizeof(instance_id),
+        "\"life-%016llx\"", (unsigned long long)owner.instance_id);
+    if (owner.registration_id) snprintf(registration_id, sizeof(registration_id),
+        "\"reg-%08x\"", owner.registration_id);
+
+    executable_state_token(state_after);
+    uint64_t life_after = overlay_lifecycle_catalog_token();
+    uint64_t frame_after = s_frame_count;
+    int stable = frame_before == frame_after && !strcmp(state_before, state_after) &&
+                 life_before == life_after;
+    send_fmt("{\"id\":%d,\"ok\":true,\"status\":\"%s\","
+        "\"requested_pc\":\"0x%08X\",\"witness\":{"
+        "\"witness_id\":\"wit-%s\",\"id_scope\":\"process-local-observation\","
+        "\"resolved_pc\":\"0x%08X\",\"backend\":\"%s\",\"reason\":\"%s\","
+        "\"range\":{\"kind\":\"executed-instruction\",\"guest_base\":\"0x%08X\","
+        "\"length\":4,\"instruction_count\":1,\"block_range_available\":false},"
+        "\"observed_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+        "\"scope\":\"exact-executed-instruction\"},"
+        "\"current_live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+        "\"scope\":\"exact-executed-instruction\"},\"source_matches_live\":%s,"
+        "\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
+        "\"digest\":\"%s\",\"page_size\":%u,\"first_page\":%u,\"page_count\":%u,"
+        "\"current_legacy_sum\":%u,\"observed_legacy_sum\":%u},"
+        "\"first_observed_frame\":%u,\"last_observed_frame\":%u,\"hit_count\":%llu,"
+        "\"observation_current\":%s,\"image_instance_id\":%s,"
+        "\"native_registration_id\":%s,\"memory_provenance\":{"
+        "\"lifecycle_fragment\":%s,\"native_registration\":%s},"
+        "\"unresolved\":[\"decoded-block-boundary\",\"function-boundary\","
+        "\"whole-image-association\"]},\"frame_before\":%llu,\"frame_after\":%llu,"
+        "\"executable_state_before\":\"%s\",\"executable_state_after\":\"%s\","
+        "\"lifecycle_token_before\":\"%016llx\",\"lifecycle_token_after\":\"%016llx\","
+        "\"stable_observation_boundary\":%s}",
+        id, status, requested, witness_id, owner.phys | 0x80000000u,
+        execution_owner_name(owner.owner), execution_reason_name(owner.reason),
+        owner.phys | 0x80000000u, observed_sha, live_sha,
+        bytes_match ? "true" : "false", generation_sha, overlay_watch_page_size(),
+        first_page, pages, generation_sum, owner.watched_generation_at_observation,
+        owner.first_observed_frame, owner.last_observed_frame,
+        (unsigned long long)owner.hits, current ? "true" : "false",
+        instance_id, registration_id, instance_id, registration_id,
+        (unsigned long long)frame_before, (unsigned long long)frame_after,
+        state_before, state_after, (unsigned long long)life_before,
+        (unsigned long long)life_after, stable ? "true" : "false");
 }
 
 static const char *ownership_reason_name(int reason) {
@@ -13140,6 +13274,7 @@ static const CmdEntry s_commands[] = {
     { "runtime_identity",  handle_runtime_identity },
     { "executable_catalog", handle_executable_catalog },
     { "executable_lifecycle", handle_executable_lifecycle },
+    { "execution_witness", handle_execution_witness },
     { "executable_regions", handle_executable_regions },
     { "read_regions",      handle_read_regions },
     { "ping",              handle_ping },
