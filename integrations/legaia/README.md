@@ -36,12 +36,13 @@ Implemented:
 - completed the first read-only SCUS-94254 field-runtime layout research pass: revisioned metadata-only profile/schema, multi-signal `town01` identity, observer-owned scene epochs, linked-node/collision-census distinction, bounded actor-field map, correlation-signal inventory and synthetic fail-closed validation. See `docs/legaia-sdk/runtime-layout-research.md`.
 - completed generic observer foundations through protocol 1.4: safe runtime/executable identities, authoritative watched-generation reporting, native validity, backend-neutral execution-owner observations, bounded exact-instruction witnesses, frame-stamped `read_regions`, an eight-record executable catalog, and bounded image-lifecycle pages. These changes are generic and contain no Legaia addresses or traversal logic.
 - accepted a three-witness field execution identity across fresh launches and natural field-scene replacements. This does not claim a canonical whole-overlay image. See `docs/legaia-sdk/field-execution-identity.md`.
+- implemented the external headless observer, metadata-only snapshot schema, profile-driven field decoding and 33-case synthetic fail-closed suite. Retail acceptance stops before actor traversal because the global executable-state token changes between required one-command connections. See `docs/legaia-sdk/headless-runtime-observer.md`.
 
 Not implemented:
 
 - no authored/editor UI, asset viewport or transform controls;
 - no geometry, script, dialogue or authored scene import;
-- no live runtime observer or imported-to-runtime actor correlation;
+- no accepted retail runtime snapshot or imported-to-runtime actor correlation;
 - no Legaia-specific TCP commands or runtime hooks;
 - no RAM writes, live reload or overrides;
 - no dialogue editing, asset authoring or disc export.
@@ -58,6 +59,6 @@ The first proof is now a headless, read-only import of Rim Elm (`town01`) from a
 
 Run it with `python integrations/legaia/tools/legaia_import.py --disc "C:\path\to\Legend of Legaia.bin" --scene town01 --output "C:\local-output\imported-town01.json"`. See `docs/legaia-sdk/town01-importer.md` for the schema, confidence model, tests, attribution and data-handling rules.
 
-The read-only scene/actor inspection surface is implemented under `integrations/legaia/inspector`; see `docs/legaia-sdk/town01-inspector.md`. The revisioned profile under `integrations/legaia/layouts` now selects the supported field runtime through three execution witnesses plus scene and boundary signals, without requiring a guessed whole-overlay range. A separately approved headless read-only observer is now the next safe phase. RAM writes, actor correlation and generic runtime title checks remain out of scope.
+The read-only scene/actor inspection surface is implemented under `integrations/legaia/inspector`; see `docs/legaia-sdk/town01-inspector.md`. The external headless observer is implemented under `integrations/legaia/observer`, but retail snapshots remain fail-closed until a multi-request executable-state boundary can be held or scoped reliably. RAM writes, actor correlation and generic runtime title checks remain out of scope.
 
 See `docs/legaia-sdk/` for the complete audit.

@@ -180,3 +180,18 @@ The whole-overlay base/range remains unresolved, but protocol 1.4 established
 field execution identity using current interpreter and static-native witnesses
 whose exact instruction identities repeated across field-scene replacements
 and fresh launches. See `field-execution-identity.md`.
+
+## Headless observer implementation result
+
+The first external observer now implements negotiation, revisioned profile
+selection, two-sample epochs, exact-prefix linked traversal, evidence-backed
+field decoding, bounded retries, and metadata-only schema output. It contains
+no write command, importer input, correlation logic, or inspector connection.
+
+Retail acceptance exposed a remaining generic boundary problem. Every protocol
+request was internally frame/executable stable, but the process-global
+executable-state token changed continuously between the scene read and the
+three required witness requests. Ten settled-town01 diagnostic groups produced
+no common token across all four commands. The observer therefore discarded all
+attempts before actor traversal. See `headless-runtime-observer.md` and
+`scene-epoch-observation.md`.

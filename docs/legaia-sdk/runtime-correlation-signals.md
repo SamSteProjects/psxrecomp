@@ -2,6 +2,12 @@
 
 Status: research inventory only. No matching algorithm or live actor correlation is implemented.
 
+The headless observer implementation does not consume imported metadata and
+does not emit correlation candidates. Retail node snapshots are not yet
+accepted because the cross-request executable-state boundary remains unstable.
+Consequently no signal below has advanced in confidence or implementation
+status.
+
 The eventual matcher must operate within one verified scene epoch and support exact match, unique multi-signal match, ambiguous candidates, no match, stale slot and conflicting evidence. It must never use nearest-position matching or assume pointer/table index equality is actor identity.
 
 | Candidate | Availability | Value | Limitations |

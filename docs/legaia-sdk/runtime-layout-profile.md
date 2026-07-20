@@ -65,6 +65,22 @@ metadata-only identities; and the legacy unresolved-overlay failure mode.
 
 All fixtures are synthetic or profile metadata. Retail bytes and runtime captures are not used.
 
+## Observer policy
+
+The profile now carries the client-visible pointer encoding, exact `0x9C`
+prefix, `+0x00` next-pointer offset, two-sample stabilization rule, three-attempt
+retry policy, and hard node/request/byte/time limits. The 128-node limit is a
+confirmed safety policy rather than a claim about retail actor capacity.
+
+Executable identity now preserves two distinct domains: the complete ISO file
+hash used by disc provenance and the exact 440,320-byte `ps-x-exe-body` source
+identity exposed by `runtime_identity`. Live selection requires the latter;
+neither substitutes for the other.
+
+The profile remains fail closed for retail snapshots. Its scene and witness
+requirements select correctly, but a stable cross-request executable-state
+boundary has not yet been observed, so actor traversal cannot begin.
+
 ## Live identity status
 
 The protocol 1.4 native pass accepted three exact-instruction witnesses across

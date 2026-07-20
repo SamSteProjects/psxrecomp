@@ -27,11 +27,12 @@ disc; retail assets are not included in this repository.
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
 | Generic PSXRecomp observer protocol | Protocol 1.4 implemented with bounded catalog, lifecycle, and execution witnesses |
+| Headless Legaia runtime observer | Implemented and synthetically validated; retail snapshot acceptance blocked by cross-request executable-state churn |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
-Live Legaia actor observation, imported-to-runtime actor matching, RAM editing,
-and authored game changes have not started. A fail-closed field execution
-identity is now accepted; actor traversal remains a separately gated next phase.
+Retail live actor snapshots, imported-to-runtime actor matching, RAM editing,
+and authored game changes have not been accepted. The headless observer now
+fails closed at the executable-state boundary before actor traversal.
 
 ## Vision
 
@@ -217,13 +218,16 @@ fail-closed **field execution identity** from three independent current
 instruction witnesses, combined with executable build and scene signals. This
 identity repeated across field-scene replacements and fresh launches.
 
-Actor traversal has not begun. The next phase must establish observer-owned
-scene epochs and take bounded read-only snapshots without conflating runtime
-slots with imported actors.
+The headless observer and snapshot schema are implemented with synthetic
+coverage. Retail attempts reached town01 but stopped before actor traversal:
+the process-global executable-state token changed between the separately
+bounded scene and witness requests, despite each request being internally
+stable. A generic bounded multi-request epoch mechanism or appropriately scoped
+authoritative token is required before retail snapshots can be accepted.
 
 ## What Is Not Implemented Yet
 
-- live Legaia actor enumeration;
+- accepted retail Legaia actor enumeration;
 - imported-to-runtime actor matching;
 - click-to-select NPCs in the running game;
 - transform gizmos or actor movement/editing;
@@ -433,14 +437,14 @@ by this integration.
 
 **In progress**
 
-- headless observer design around the accepted witness-set gate; and
-- scene-epoch snapshot boundaries.
+- resolving cross-request executable-state churn for scene epochs; and
+- retail acceptance of the synthetically validated headless observer.
 
 **Next**
 
-- a headless, read-only Legaia runtime observer;
-- scene-epoch establishment;
-- linked actor-node snapshots;
+- a generic atomic or suitably scoped multi-request observation boundary;
+- retail scene-epoch establishment;
+- accepted linked actor-node snapshots;
 - evidence-backed runtime fields; and
 - imported/runtime correlation research.
 
@@ -467,6 +471,9 @@ evidence, compatibility, and data-boundary review.
 - [Runtime bridge](docs/legaia-sdk/runtime-bridge.md)
 - [Field-overlay 0897 identity attempt](docs/legaia-sdk/field-overlay-0897-identity.md)
 - [Accepted field execution identity](docs/legaia-sdk/field-execution-identity.md)
+- [Headless runtime observer](docs/legaia-sdk/headless-runtime-observer.md)
+- [Scene epoch observation](docs/legaia-sdk/scene-epoch-observation.md)
+- [Live actor-node snapshot](docs/legaia-sdk/live-actor-node-snapshot.md)
 - [Debug protocol versioning](docs/debug-protocol-versioning.md)
 - [Executable identity](docs/executable-identity.md)
 - [Executable image model](docs/executable-image-model.md)
