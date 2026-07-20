@@ -165,11 +165,14 @@ typedef struct {
                           * below the local-flow floor every taken branch
                           * re-dispatches, so chain blocks dominate. entry_hits
                           * is the evidence stream for interior-alias seeds. */
+    uint32_t last_frame; /* most recent frame observed (exec table) */
+    uint32_t watched_generation; /* exact-PC page generation at observation */
 } DirtyRamPcEntry;
 extern DirtyRamPcEntry g_dirty_ram_pc_table[DIRTY_RAM_PC_TABLE_SIZE];
 /* Companion table: every PC the interpreter actually executes (not just block
  * entries). overlay_capture uses both to report execution-verified seeds. */
 extern DirtyRamPcEntry g_dirty_ram_exec_pc_table[DIRTY_RAM_PC_TABLE_SIZE];
+int dirty_ram_exec_pc_observed(uint32_t pc, DirtyRamPcEntry *out);
 
 /* Block-entry ring buffer. Records every dispatch into dirty RAM with the
  * caller's RA at entry, plus argument context — answers

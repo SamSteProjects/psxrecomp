@@ -32,6 +32,7 @@
 #include "gpu.h"   /* psx_ws_is_backdrop_site / psx_ws_backdrop_x (interp hook) */
 #include "ws_backdrop_detect.h"  /* shared backdrop-window detector (auto_backdrop) */
 #include "lockstep.h"
+#include "overlay_capture.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -194,9 +195,36 @@ static DirtyRamPcEntry *pc_table_get_or_insert(uint32_t pc) {
 /* Record every PC the interpreter executes (not just block entries) so
  * overlay_capture can report execution-verified seeds for the region. */
 static void exec_pc_table_record(uint32_t pc) {
-    DirtyRamPcEntry *e = pc_table_get_or_insert_in(g_dirty_ram_exec_pc_table,
-                                                   pc & 0x1FFFFFFFu);
-    if (e) e->hits++;
+    uint32_t phys = pc & 0x1fffffffu;
+    static uint32_t watched_page = UINT32_MAX;
+    uint32_t page = phys & ~0xfffu;
+    if (page != watched_page) {
+        extern void overlay_watch_set_range(uint32_t phys, uint32_t len);
+        overlay_watch_set_range(page, 4096u);
+        watched_page = page;
+    }
+    DirtyRamPcEntry *e = pc_table_get_or_insert_in(g_dirty_ram_exec_pc_table, phys);
+    if (e) {
+        extern uint32_t overlay_watch_pagegen_sum(uint32_t phys, uint32_t len);
+        e->hits++;
+        e->last_frame = (uint32_t)s_frame_count;
+        e->watched_generation = overlay_watch_pagegen_sum(phys, 4u);
+    }
+}
+
+int dirty_ram_exec_pc_observed(uint32_t pc, DirtyRamPcEntry *out) {
+    uint32_t phys = pc & 0x1fffffffu;
+    uint32_t h = (phys * 2654435761u) & (DIRTY_RAM_PC_TABLE_SIZE - 1);
+    for (uint32_t i = 0; i < 128u; i++) {
+        DirtyRamPcEntry *entry =
+            &g_dirty_ram_exec_pc_table[(h + i) & (DIRTY_RAM_PC_TABLE_SIZE - 1)];
+        if (entry->pc == phys) {
+            if (out) *out = *entry;
+            return entry->hits != 0;
+        }
+        if (!entry->pc) return 0;
+    }
+    return 0;
 }
 
 /* From debug_server.c — keep our outer-frame attribution coherent. */
@@ -2156,7 +2184,12 @@ static int dirty_ram_dispatch_inner(CPUState* cpu, uint32_t addr, uint32_t stop_
             g_exec_phase = prev_phase;
             ls_func_exit(addr, cpu, _gc);
             g_mixed_depth--;
-            if (_gc) return 1;
+            if (_gc) {
+                overlay_lifecycle_note_execution(
+                    addr, OVERLAY_EXEC_OWNER_STATIC_NATIVE, 0,
+                    OVERLAY_EXEC_REASON_MAIN_COMPILED);
+                return 1;
+            }
         }
         clean_game_text_miss = psx_game_address_in_text(addr) ? 1 : 0;
     } else if (psx_game_address_in_text(addr)) {
@@ -2179,7 +2212,12 @@ static int dirty_ram_dispatch_inner(CPUState* cpu, uint32_t addr, uint32_t stop_
 #ifdef PSX_HAS_OVERLAY_DISPATCH
     {
         extern int psx_overlay_dispatch(CPUState *cpu, uint32_t addr);
-        if (psx_overlay_dispatch(cpu, addr)) return 1;
+        if (psx_overlay_dispatch(cpu, addr)) {
+            overlay_lifecycle_note_execution(
+                addr, OVERLAY_EXEC_OWNER_STATIC_NATIVE, 0,
+                OVERLAY_EXEC_REASON_STATIC_COMPILED);
+            return 1;
+        }
     }
 #endif
 
@@ -2236,6 +2274,12 @@ static int dirty_ram_dispatch_inner(CPUState* cpu, uint32_t addr, uint32_t stop_
      * window. The autocapture tick reads-and-resets this to decide whether
      * an unseen region variant is being interp-executed right now. */
     if (overlay_cache_window_contains(phys)) g_dirty_window_dispatches++;
+
+    overlay_lifecycle_note_execution(
+        addr, OVERLAY_EXEC_OWNER_INTERPRETER, 0,
+        overlay_loader_is_candidate(phys)
+            ? OVERLAY_EXEC_REASON_NATIVE_VALIDATION_FALLBACK
+            : OVERLAY_EXEC_REASON_DIRTY_INTERPRETER);
 
     /* Reset soft-fail state at block entry. */
     g_unsupported_seen = 0;

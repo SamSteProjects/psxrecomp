@@ -35,6 +35,314 @@ static char     s_out_dir[512];
 static int      s_active   = 0;
 static int      s_enabled  = 0;   /* config gate; off unless overlay cache enabled */
 
+/* ---- Authoritative lifecycle and execution ownership ------------------
+ * Image instances are exact post-DMA transfer spans. They deliberately do not
+ * claim that adjacent transfers are one overlay. Overlapping later transfers
+ * supersede earlier instances. The exact-PC owner table is updated only at
+ * existing dispatch acquisition points and is therefore backend-neutral
+ * observed truth, not a protocol reconstruction. */
+#define OVERLAY_LIFECYCLE_INSTANCE_CAP 32768u
+#define OVERLAY_LIFECYCLE_OWNER_CAP 65536u
+#define OVERLAY_LIFECYCLE_EVENT_CAP 4096u
+
+static OverlayLifecycleInstance s_lifecycle_instances[OVERLAY_LIFECYCLE_INSTANCE_CAP];
+static uint32_t s_lifecycle_instance_count;
+static OverlayExecutionOwner s_execution_owners[OVERLAY_LIFECYCLE_OWNER_CAP];
+static uint32_t s_execution_owner_count;
+static OverlayLifecycleEvent s_lifecycle_events[OVERLAY_LIFECYCLE_EVENT_CAP];
+static uint64_t s_lifecycle_event_sequence;
+static int s_lifecycle_overflow;
+static int s_lifecycle_tracking_enabled;
+static uint32_t s_lifecycle_tracking_start_frame;
+extern uint64_t s_frame_count;
+extern void overlay_watch_set_range(uint32_t phys, uint32_t len);
+extern uint32_t overlay_watch_pagegen_sum(uint32_t phys, uint32_t len);
+
+static int lifecycle_ranges_overlap(uint32_t a, uint32_t an,
+                                    uint32_t b, uint32_t bn) {
+    if (!an || !bn || a >= 0x200000u || b >= 0x200000u) return 0;
+    uint64_t ae = (uint64_t)a + an;
+    uint64_t be = (uint64_t)b + bn;
+    return (uint64_t)a < be && (uint64_t)b < ae;
+}
+
+static void lifecycle_event(uint32_t kind, uint64_t instance_id,
+                            uint64_t related_id, uint32_t base, uint32_t length,
+                            uint32_t previous_owner, uint32_t new_owner,
+                            uint32_t reason) {
+    uint64_t seq = ++s_lifecycle_event_sequence;
+    OverlayLifecycleEvent *e = &s_lifecycle_events[(seq - 1u) % OVERLAY_LIFECYCLE_EVENT_CAP];
+    memset(e, 0, sizeof(*e));
+    e->sequence = seq;
+    e->frame = (uint32_t)s_frame_count;
+    e->kind = kind;
+    e->instance_id = instance_id;
+    e->related_instance_id = related_id;
+    e->base = base;
+    e->length = length;
+    e->previous_owner = previous_owner;
+    e->new_owner = new_owner;
+    e->reason = reason;
+}
+
+static OverlayLifecycleInstance *lifecycle_instance_by_id(uint64_t id) {
+    if (!id || id > s_lifecycle_instance_count) return NULL;
+    return &s_lifecycle_instances[id - 1u];
+}
+
+static OverlayLifecycleInstance *lifecycle_find_active(uint32_t phys) {
+    for (uint32_t n = s_lifecycle_instance_count; n > 0; n--) {
+        OverlayLifecycleInstance *i = &s_lifecycle_instances[n - 1u];
+        if (i->active && phys >= i->capture_base &&
+            phys - i->capture_base < i->known_length) return i;
+    }
+    return NULL;
+}
+
+static void lifecycle_create_dma_instance(uint32_t load_addr, uint32_t size,
+                                          const uint8_t *bytes) {
+    if (!bytes || !size || load_addr >= 0x200000u || size > 0x200000u - load_addr)
+        return;
+    if (s_lifecycle_instance_count >= OVERLAY_LIFECYCLE_INSTANCE_CAP) {
+        s_lifecycle_overflow = 1;
+        return;
+    }
+    uint64_t id = (uint64_t)s_lifecycle_instance_count + 1u;
+    uint64_t predecessor = 0;
+    for (uint32_t n = 0; n < s_lifecycle_instance_count; n++) {
+        OverlayLifecycleInstance *old = &s_lifecycle_instances[n];
+        if (!old->active || !lifecycle_ranges_overlap(
+                old->capture_base, old->known_length, load_addr, size)) continue;
+        old->active = 0;
+        old->successor_id = id;
+        old->last_observed_frame = (uint32_t)s_frame_count;
+        if (old->instance_id > predecessor) predecessor = old->instance_id;
+        lifecycle_event(OVERLAY_LIFECYCLE_SUPERSEDED, old->instance_id, id,
+                        old->capture_base, old->known_length,
+                        old->last_execution_owner, OVERLAY_EXEC_OWNER_UNAVAILABLE,
+                        OVERLAY_EXEC_REASON_NONE);
+    }
+    OverlayLifecycleInstance *instance =
+        &s_lifecycle_instances[s_lifecycle_instance_count++];
+    memset(instance, 0, sizeof(*instance));
+    instance->instance_id = id;
+    instance->predecessor_id = predecessor;
+    instance->lifecycle_generation = (uint32_t)id;
+    instance->capture_base = load_addr;
+    instance->known_length = size;
+    instance->capture_crc32 = crc32_compute(bytes, size);
+    instance->first_observed_frame = (uint32_t)s_frame_count;
+    instance->last_observed_frame = (uint32_t)s_frame_count;
+    instance->active = 1;
+    lifecycle_event(OVERLAY_LIFECYCLE_CREATED, id, predecessor, load_addr, size,
+                    OVERLAY_EXEC_OWNER_UNAVAILABLE, OVERLAY_EXEC_OWNER_UNAVAILABLE,
+                    OVERLAY_EXEC_REASON_NONE);
+}
+
+static OverlayExecutionOwner *lifecycle_owner_slot(uint32_t phys, int create) {
+    uint32_t start = (phys * 2654435761u) & (OVERLAY_LIFECYCLE_OWNER_CAP - 1u);
+    for (uint32_t probe = 0; probe < OVERLAY_LIFECYCLE_OWNER_CAP; probe++) {
+        OverlayExecutionOwner *owner =
+            &s_execution_owners[(start + probe) & (OVERLAY_LIFECYCLE_OWNER_CAP - 1u)];
+        if (owner->owner && owner->phys == phys) return owner;
+        if (!owner->owner) {
+            if (!create) return NULL;
+            owner->phys = phys;
+            s_execution_owner_count++;
+            return owner;
+        }
+    }
+    if (create) s_lifecycle_overflow = 1;
+    return NULL;
+}
+
+void overlay_lifecycle_note_execution(uint32_t addr, uint32_t owner,
+                                      uint32_t registration_id,
+                                      uint32_t reason) {
+    if (!s_lifecycle_tracking_enabled) return;
+    uint32_t phys = addr & 0x1fffffffu;
+    if (phys >= 0x200000u || owner == OVERLAY_EXEC_OWNER_UNAVAILABLE ||
+        owner > OVERLAY_EXEC_OWNER_AMBIGUOUS) return;
+
+    overlay_watch_set_range(phys, 4u);
+    OverlayExecutionOwner *record = lifecycle_owner_slot(phys, 1);
+    if (!record) return;
+    uint32_t previous_owner = record->owner;
+    uint64_t previous_instance = record->instance_id;
+    OverlayLifecycleInstance *instance = lifecycle_find_active(phys);
+    uint64_t instance_id = instance ? instance->instance_id : 0;
+    int changed = previous_owner != owner ||
+                  previous_instance != instance_id ||
+                  record->registration_id != registration_id;
+    int first_backend_for_instance = instance &&
+        !(instance->observed_owner_mask & (1u << owner));
+
+    if (!record->first_observed_frame)
+        record->first_observed_frame = (uint32_t)s_frame_count;
+    record->owner = owner;
+    record->last_observed_frame = (uint32_t)s_frame_count;
+    record->hits++;
+    record->instance_id = instance_id;
+    record->registration_id = registration_id;
+    record->reason = reason;
+    record->watched_generation_at_observation =
+        overlay_watch_pagegen_sum(phys, 4u);
+
+    if (instance) {
+        instance->last_observed_frame = (uint32_t)s_frame_count;
+        instance->last_execution_frame = (uint32_t)s_frame_count;
+        instance->last_execution_owner = owner;
+        instance->observed_owner_mask |= 1u << owner;
+    }
+    /* Keep the bounded lifecycle ring useful: record a backend's first
+     * acquisition for an image and real exact-PC owner transfers, not every
+     * first visit to thousands of instruction addresses. */
+    if ((previous_owner && changed) || first_backend_for_instance) {
+        lifecycle_event(previous_owner ? OVERLAY_LIFECYCLE_OWNER_CHANGED
+                                       : OVERLAY_LIFECYCLE_OWNER_ACQUIRED,
+                        instance_id, previous_instance, phys, 4u,
+                        previous_owner, owner, reason);
+    }
+}
+
+void overlay_lifecycle_set_tracking_enabled(int enabled) {
+    if (enabled && !s_lifecycle_tracking_enabled) {
+        s_lifecycle_tracking_enabled = 1;
+        s_lifecycle_tracking_start_frame = (uint32_t)s_frame_count;
+    }
+}
+
+int overlay_lifecycle_tracking_enabled(void) {
+    return s_lifecycle_tracking_enabled;
+}
+
+uint32_t overlay_lifecycle_tracking_started_frame(void) {
+    return s_lifecycle_tracking_start_frame;
+}
+
+int overlay_lifecycle_instance_count(void) {
+    return (int)s_lifecycle_instance_count;
+}
+
+int overlay_lifecycle_get_instance(int index, OverlayLifecycleInstance *out) {
+    if (!out || index < 0 || (uint32_t)index >= s_lifecycle_instance_count)
+        return 0;
+    *out = s_lifecycle_instances[index];
+    return 1;
+}
+
+int overlay_lifecycle_owner_count(void) {
+    return (int)s_execution_owner_count;
+}
+
+int overlay_lifecycle_get_owner(int index, OverlayExecutionOwner *out) {
+    if (!out || index < 0 || (uint32_t)index >= s_execution_owner_count)
+        return 0;
+    int seen = 0;
+    for (uint32_t n = 0; n < OVERLAY_LIFECYCLE_OWNER_CAP; n++) {
+        if (!s_execution_owners[n].owner) continue;
+        if (seen++ == index) {
+            *out = s_execution_owners[n];
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int overlay_lifecycle_owner_at(uint32_t addr, OverlayExecutionOwner *out) {
+    uint32_t phys = addr & 0x1fffffffu;
+    OverlayExecutionOwner *record = lifecycle_owner_slot(phys, 0);
+    if (record && out) {
+        *out = *record;
+        return 1;
+    }
+    DirtyRamPcEntry interpreted;
+    if (!out || !dirty_ram_exec_pc_observed(phys, &interpreted) ||
+        interpreted.last_frame < s_lifecycle_tracking_start_frame) return 0;
+    memset(out, 0, sizeof(*out));
+    out->phys = phys;
+    out->owner = OVERLAY_EXEC_OWNER_INTERPRETER;
+    out->last_observed_frame = interpreted.last_frame;
+    out->hits = interpreted.hits;
+    OverlayLifecycleInstance *instance = lifecycle_find_active(phys);
+    out->instance_id = instance ? instance->instance_id : 0;
+    out->reason = OVERLAY_EXEC_REASON_DIRTY_INTERPRETER;
+    out->watched_generation_at_observation = interpreted.watched_generation;
+    return 1;
+}
+
+int overlay_lifecycle_owner_observation_current(const OverlayExecutionOwner *owner) {
+    if (!owner || !owner->owner || owner->phys >= 0x200000u) return 0;
+    return overlay_watch_pagegen_sum(owner->phys, 4u) ==
+           owner->watched_generation_at_observation;
+}
+
+uint64_t overlay_lifecycle_event_latest_sequence(void) {
+    return s_lifecycle_event_sequence;
+}
+
+uint64_t overlay_lifecycle_event_oldest_sequence(void) {
+    if (!s_lifecycle_event_sequence) return 0;
+    if (s_lifecycle_event_sequence <= OVERLAY_LIFECYCLE_EVENT_CAP) return 1;
+    return s_lifecycle_event_sequence - OVERLAY_LIFECYCLE_EVENT_CAP + 1u;
+}
+
+uint32_t overlay_lifecycle_event_capacity(void) {
+    return OVERLAY_LIFECYCLE_EVENT_CAP;
+}
+
+int overlay_lifecycle_get_event(uint64_t sequence, OverlayLifecycleEvent *out) {
+    uint64_t oldest = overlay_lifecycle_event_oldest_sequence();
+    if (!out || !sequence || sequence < oldest ||
+        sequence > s_lifecycle_event_sequence) return 0;
+    OverlayLifecycleEvent *event =
+        &s_lifecycle_events[(sequence - 1u) % OVERLAY_LIFECYCLE_EVENT_CAP];
+    if (event->sequence != sequence) return 0;
+    *out = *event;
+    return 1;
+}
+
+static uint64_t lifecycle_token_mix(uint64_t hash, uint64_t value) {
+    for (int n = 0; n < 8; n++) {
+        hash ^= (uint8_t)(value >> (n * 8));
+        hash *= UINT64_C(1099511628211);
+    }
+    return hash;
+}
+
+uint64_t overlay_lifecycle_catalog_token(void) {
+    uint64_t hash = UINT64_C(1469598103934665603);
+    hash = lifecycle_token_mix(hash, (uint32_t)s_lifecycle_tracking_enabled);
+    hash = lifecycle_token_mix(hash, s_lifecycle_tracking_start_frame);
+    hash = lifecycle_token_mix(hash, s_lifecycle_instance_count);
+    for (uint32_t n = 0; n < s_lifecycle_instance_count; n++) {
+        const OverlayLifecycleInstance *i = &s_lifecycle_instances[n];
+        hash = lifecycle_token_mix(hash, i->instance_id);
+        hash = lifecycle_token_mix(hash, i->capture_base);
+        hash = lifecycle_token_mix(hash, i->known_length);
+        hash = lifecycle_token_mix(hash, i->capture_crc32);
+        hash = lifecycle_token_mix(hash, (uint32_t)i->active);
+        hash = lifecycle_token_mix(hash, i->successor_id);
+    }
+    for (uint32_t n = 0; n < OVERLAY_LIFECYCLE_OWNER_CAP; n++) {
+        const OverlayExecutionOwner *owner = &s_execution_owners[n];
+        if (!owner->owner) continue;
+        hash = lifecycle_token_mix(hash, owner->phys);
+        hash = lifecycle_token_mix(hash, owner->owner);
+        hash = lifecycle_token_mix(hash, owner->instance_id);
+        hash = lifecycle_token_mix(hash, owner->registration_id);
+        hash = lifecycle_token_mix(hash,
+            overlay_watch_pagegen_sum(owner->phys, 4u));
+    }
+    hash = lifecycle_token_mix(hash, s_lifecycle_event_sequence);
+    hash = lifecycle_token_mix(hash, (uint32_t)s_lifecycle_overflow);
+    return hash;
+}
+
+int overlay_lifecycle_overflowed(void) {
+    return s_lifecycle_overflow;
+}
+
 /* ---- Base64 encoder ----------------------------------------------------- */
 
 static const char k_b64[] =
@@ -79,12 +387,18 @@ void overlay_capture_on_dma(uint32_t load_addr, uint32_t size,
     OvEntry *e;
     extern int fntrace_is_game_started(void);
 
+    if (size == 0 || !bytes) return;
+
+    /* Lifecycle truth is independent of the optional native overlay cache.
+     * The completed CD DMA transfer is the authoritative observation point. */
+    if (!fntrace_is_game_started()) return;
+    if (s_lifecycle_tracking_enabled)
+        lifecycle_create_dma_instance(load_addr, size, bytes);
+
     if (!s_enabled) return;   /* overlay cache disabled in config */
-    if (size == 0) return;
 
     /* Auto-activate on the first post-game-handoff DMA. */
     if (!s_active) {
-        if (!fntrace_is_game_started()) return;
         s_active = 1;
     }
 
