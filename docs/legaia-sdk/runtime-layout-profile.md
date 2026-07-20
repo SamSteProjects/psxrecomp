@@ -1,10 +1,10 @@
 # Legaia runtime layout profile contract
 
-The v1 profile is a deterministic, metadata-only description of a supported runtime revision. It is stored at `integrations/legaia/layouts/scus94254-na-field-v1.json` and validated by both JSON Schema and `integrations.legaia.layouts.validator`.
+The v1 profile is a deterministic, metadata-only description of a supported runtime revision. The base field profile is stored at `integrations/legaia/layouts/scus94254-na-field-v1.json`; the reviewed town0c selection is `integrations/legaia/layouts/scus94254-na-town0c-field-v1.json`. Both are validated by JSON Schema and `integrations.legaia.layouts.validator`.
 
 ## Identity and selection
 
-`profile_id` is stable and revisioned: `legaia-na-scus94254-field-v1`. Schema version and profile version are separate. An incompatible format change increments `schema_version`; a new executable, overlay layout or materially different field mapping gets a new profile ID/file.
+`profile_id` is stable and revisioned. Schema version and profile version are separate. An incompatible format change increments `schema_version`; a new executable, overlay layout or materially different field mapping gets a new profile ID/file. A scene-specific profile may use only a single same-directory base-profile filename plus scene/evidence/unresolved overrides; the loader resolves the full document before validation and forbids path traversal, multi-hop inheritance, and changes to shared safety/execution contracts.
 
 Selection is fail closed. A consumer must match:
 
@@ -82,9 +82,10 @@ The profile now requires protocol 1.5 and derives a scoped observation guard
 from its existing scene signals, actor-list-head candidate, and three execution
 witnesses. Stable town01 boundary-only sampling has been observed across fresh
 launches. A transition-only client accepted a normal town0c round trip using a
-metadata-only research selection derived from the field profile. A reviewed,
-revisioned town0c profile is still required before actor traversal, which
-remains fail closed.
+metadata-only research selection derived from the field profile. That selection
+is now the reviewed `legaia-na-scus94254-town0c-field-v1` profile. Fresh-process
+re-acceptance and state-equivalent world-map measurement remain required before
+actor traversal, which remains fail closed.
 
 ## Live identity status
 

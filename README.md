@@ -27,7 +27,7 @@ disc; retail assets are not included in this repository.
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
 | Generic PSXRecomp observer protocol | Protocol 1.5 adds stateless profile-scoped observation guards and guarded bounded reads |
-| Headless Legaia runtime observer | Stable retail town01 boundary plus a read-only town0c exit/re-entry acceptance; actor traversal remains separately gated |
+| Headless Legaia runtime observer | Stable retail town01 boundary, revisioned town0c selection, and a read-only town0c exit/re-entry acceptance; fresh-process and world-map A/B gates remain before traversal |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Retail live actor snapshots, imported-to-runtime actor matching, RAM editing,

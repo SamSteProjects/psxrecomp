@@ -145,6 +145,11 @@ Prefer bridge-side interpretation. If runtime-only knowledge is unavoidable, add
 
 These require evidence from symbol maps, code, bounded RAM observations and traces. They must not be “solved” with temporary printf logging.
 
+World-map performance work follows the same rule: the generic runtime exposes
+bounded backend and lifecycle counters, while title-specific scene signals live
+in revisioned Legaia benchmark metadata. No cache or timing switch is used as a
+diagnostic shortcut. See `world-map-performance-analysis.md`.
+
 ## Compatibility and safety
 
 - One request produces one structured response; large data uses bounded paging or existing file-dump variants.
