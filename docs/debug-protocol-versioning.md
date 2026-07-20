@@ -6,7 +6,7 @@ Identity support is an additive protocol revision:
 
 - name: `psxrecomp-debug`
 - major: 1
-- minor: 3
+- minor: 5
 
 A major change may remove or reinterpret fields and is incompatible unless a
 client explicitly supports it. A minor change may add commands, capabilities,
@@ -25,6 +25,8 @@ The native server advertises:
 - `executable_catalog`
 - `executable_image_lifecycle`
 - `executable_regions`
+- `execution_witness`
+- `observation_guard`
 - `read_ram`
 - `read_regions`
 - `runtime_identity`
@@ -54,6 +56,10 @@ The v1.1 native limits are:
 | `executable_regions` records per page | 8 default, 8 maximum |
 | `executable_catalog` records per page | 8 default, 8 maximum |
 | `executable_lifecycle` records per page | 8 default, 8 maximum |
+| Observation-guard RAM regions | 16 |
+| One observation-guard RAM region | 256 bytes |
+| Aggregate observation-guard RAM | 2,048 bytes |
+| Observation-guard execution witnesses | 8 |
 
 An overlong request, malformed range, overflow, or response-budget violation
 fails closed with the existing `{id,ok:false,error}` envelope. Unsupported
@@ -77,4 +83,7 @@ bounded image lifecycle and exact-PC execution-owner observations described in
 valid. Protocol 1.4 adds the bounded exact-instruction `execution_witness`
 command described in `docs/execution-witness-protocol.md`; it is additive and
 is advertised only by backends with authoritative ownership and watched-page
-generation semantics.
+generation semantics. Protocol 1.5 adds the stateless `observation_guard` and
+optional guarded `read_regions` contract described in
+`docs/observation-guard-protocol.md`. It scopes consistency to declared RAM
+signals and witnesses while retaining the broader global token as a diagnostic.
