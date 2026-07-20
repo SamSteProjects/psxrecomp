@@ -252,6 +252,49 @@ extern "C" uint16_t psx_read_half(uint32_t addr);
 extern "C" void     psx_write_half(uint32_t addr, uint16_t val);
 extern "C" uint8_t  psx_read_byte(uint32_t addr);
 extern "C" void     psx_write_byte(uint32_t addr, uint8_t val);
+
+#if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
+/* Generic bridge to a game-owned retail debug menu.  The game project supplies
+ * all guest addresses and the controller chord; the runtime merely performs a
+ * bounded released-frame/chord-frame sequence. */
+static bool g_guest_debug_bridge_enabled = false;
+static int g_guest_debug_bridge_frames = 0;
+static bool g_guest_debug_chord_this_vblank = false;
+
+static bool guest_debug_bridge_ready(void) {
+#ifdef PSX_GUEST_DEBUG_READY_ADDR
+    return psx_read_word((uint32_t)PSX_GUEST_DEBUG_READY_ADDR) ==
+           (uint32_t)PSX_GUEST_DEBUG_READY_VALUE;
+#else
+    return true;
+#endif
+}
+
+static void guest_debug_bridge_arm(void) {
+    if (!guest_debug_bridge_ready()) {
+        std::fprintf(stderr,
+                     "psxrecomp: guest debug menu unavailable in current state\n");
+        return;
+    }
+    g_guest_debug_bridge_enabled = true;
+    g_guest_debug_bridge_frames = 2;
+    std::fprintf(stderr, "psxrecomp: opening game-owned debug menu\n");
+}
+
+static void guest_debug_bridge_sample(void) {
+    if (g_guest_debug_bridge_enabled)
+        psx_write_byte((uint32_t)PSX_GUEST_DEBUG_GATE_ADDR, 1u);
+    g_guest_debug_chord_this_vblank = g_guest_debug_bridge_frames == 1;
+    if (g_guest_debug_bridge_frames == 2) {
+        sio_set_pad_state_slot((int)PSX_GUEST_DEBUG_PAD_SLOT, 0xFFFFu);
+        --g_guest_debug_bridge_frames;
+    } else if (g_guest_debug_chord_this_vblank) {
+        sio_set_pad_state_slot((int)PSX_GUEST_DEBUG_PAD_SLOT,
+                               (uint16_t)PSX_GUEST_DEBUG_PAD_CHORD);
+        --g_guest_debug_bridge_frames;
+    }
+}
+#endif
 /* Guest-side data-read wrappers: same as psx_read_* but charge PS1 main-RAM
  * read wait states (R3000A has no D-cache). Wired to cpu->read_* below so the
  * timing applies to recompiled + interpreted guest loads, not debug/device reads. */
@@ -2317,6 +2360,14 @@ static void sdl_vblank_present(void) {
                 }
             } else if (ev.type == SDL_KEYDOWN) {
                 const Uint16 mod = ev.key.keysym.mod;
+#if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
+                if (ev.key.keysym.sym == SDLK_m &&
+                    (mod & (KMOD_CTRL | KMOD_SHIFT)) ==
+                        (KMOD_CTRL | KMOD_SHIFT)) {
+                    guest_debug_bridge_arm();
+                }
+                else
+#endif
                 /* Save states: Shift+F1-F12 = save slot 0-11, F1-F12 = load.
                  * (F11 is a save slot per the user's spec, so fullscreen is
                  * Alt+Enter / Cmd+Ctrl+F only — no F11.) */
@@ -2346,6 +2397,9 @@ static void sdl_vblank_present(void) {
      * FMV-skip paths that early-return before pacing. */
     if (g_headless) sample_headless_pad_into_sio(override);
     else            sample_pad_into_sio(override);
+#if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
+    guest_debug_bridge_sample();
+#endif
 
     /* Latency ring: open this present cycle's slot, stamping when input was
      * sampled into SIO.  Always-on; queried via the debug server "latency". */
@@ -2514,6 +2568,11 @@ static void sdl_vblank_present(void) {
         SDL_GameControllerUpdate();  /* refresh pad state after the wait */
         SDL_PumpEvents();            /* refresh keyboard state */
         sample_pad_into_sio(override);
+#if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
+        if (g_guest_debug_chord_this_vblank)
+            sio_set_pad_state_slot((int)PSX_GUEST_DEBUG_PAD_SLOT,
+                                   (uint16_t)PSX_GUEST_DEBUG_PAD_CHORD);
+#endif
         latency_ring_restamp_input();
     }
 
