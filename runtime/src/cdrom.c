@@ -127,7 +127,16 @@ static int s_response_visibility_delay = -1;
 static int response_visibility_delayed(void) {
     if (s_response_visibility_delay < 0) {
         const char *value = getenv("PSX_CD_RESPONSE_VISIBILITY_DELAY");
-        s_response_visibility_delay = value && value[0] == '1';
+        if (value && value[0]) {
+            s_response_visibility_delay = value[0] == '1';
+        } else {
+#ifdef PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT
+            s_response_visibility_delay =
+                PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT ? 1 : 0;
+#else
+            s_response_visibility_delay = 0;
+#endif
+        }
     }
     return s_response_visibility_delay && irq_flag != 0 &&
            cdrom_irq_present_delay > 0;

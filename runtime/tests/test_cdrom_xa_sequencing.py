@@ -73,6 +73,11 @@ def main() -> int:
         visibility,
         "response-visibility compatibility switch is missing",
     )
+    require(
+        r"PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT",
+        visibility,
+        "response visibility has no per-game build default",
+    )
     for expression in (
         r"!response_visibility_delayed\(\).*response_read\s*<\s*response_count",
         r"response_visibility_delayed\(\)\s*\?\s*0xE0\s*:\s*irq_flag",
