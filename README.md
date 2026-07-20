@@ -26,12 +26,12 @@ disc; retail assets are not included in this repository.
 | Legaia Trace inspector | Implemented as a local, read-only metadata viewer |
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
-| Generic PSXRecomp observer protocol | Protocol 1.3 implemented with bounded catalog and lifecycle paging |
+| Generic PSXRecomp observer protocol | Protocol 1.4 implemented with bounded catalog, lifecycle, and execution witnesses |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Live Legaia actor observation, imported-to-runtime actor matching, RAM editing,
-and authored game changes have not started. The current runtime-identity blocker
-must be resolved before actor traversal begins.
+and authored game changes have not started. A fail-closed field execution
+identity is now accepted; actor traversal remains a separately gated next phase.
 
 ## Vision
 
@@ -159,7 +159,7 @@ field map and selection rules.
 
 ### Generic PSXRecomp Observer Protocol
 
-The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.3**. It
+The generic newline-delimited JSON protocol is `psxrecomp-debug` **1.4**. It
 provides:
 
 - protocol and capability negotiation;
@@ -167,6 +167,8 @@ provides:
 - distinct executable-image, structural-range, and registration inspection;
 - token-bound catalog paging and structured ownership reasons;
 - process-local executable-image lifecycle and backend-owner observations;
+- bounded exact-instruction execution witnesses with live identity and
+  watched-generation currentness;
 - authoritative watched-page generation state;
 - bounded multi-region RAM reads;
 - frame-before and frame-after stamps;
@@ -188,14 +190,13 @@ observation:
   native code dispatchable;
 - current RAM is revalidated before native dispatch becomes eligible again;
 - Windows/MSVC startup portability issues were corrected; and
-- fresh native launch and protocol 1.2 wire acceptance passed; protocol 1.3
-  lifecycle acceptance is tracked separately.
+- fresh native launch and protocol 1.4 witness acceptance passed.
 
 These fixes establish correct failure behavior and a bounded generic ownership
 catalog, but they do not establish the title-specific field-overlay identity
 described next.
 
-## Current Technical Blocker
+## Current Runtime Boundary
 
 The generic runtime now models the following relationships explicitly:
 
@@ -209,17 +210,16 @@ The generic runtime now models the following relationships explicitly:
 - exact-PC backend execution observations; and
 - bounded DMA capture-instance creation and supersession.
 
-The renewed field-overlay 0897 identity was deliberately **not accepted**. A
-complete town01 catalog was retrieved in bounded pages, and duplicate static
-registrations were grouped deterministically, but the expected candidate base
-did not appear as an authoritative loaded-image event. Protocol 1.3 confirms
-that known field code is currently interpreter-owned despite invalid static
-native registrations. That exact instruction still has no authoritative image
-instance, and the candidate base remains unresolved, so the layout profile
-remains fail closed.
+The whole-image interpretation of field overlay 0897 remains deliberately
+unaccepted: `0x801CE818` is not an authoritative image event and no canonical
+whole-overlay range/hash is claimed. Protocol 1.4 instead establishes a
+fail-closed **field execution identity** from three independent current
+instruction witnesses, combined with executable build and scene signals. This
+identity repeated across field-scene replacements and fresh launches.
 
-Actor traversal has not begun because executable ownership must be trustworthy
-before RAM structures can be interpreted safely.
+Actor traversal has not begun. The next phase must establish observer-owned
+scene epochs and take bounded read-only snapshots without conflating runtime
+slots with imported actors.
 
 ## What Is Not Implemented Yet
 
@@ -427,13 +427,14 @@ by this integration.
 - read-only Legaia Trace inspector;
 - runtime-layout research and revisioned profile;
 - generic observer protocol;
-- executable image/range/registration modeling and bounded catalog paging; and
+- executable image/range/registration modeling and bounded catalog paging;
+- accepted multi-witness field execution identity; and
 - stale-cache correction and native startup acceptance.
 
 **In progress**
 
-- authoritative field-overlay load/lifecycle evidence; and
-- canonical field-overlay identity.
+- headless observer design around the accepted witness-set gate; and
+- scene-epoch snapshot boundaries.
 
 **Next**
 
@@ -465,11 +466,14 @@ evidence, compatibility, and data-boundary review.
 - [Future correlation signals](docs/legaia-sdk/runtime-correlation-signals.md)
 - [Runtime bridge](docs/legaia-sdk/runtime-bridge.md)
 - [Field-overlay 0897 identity attempt](docs/legaia-sdk/field-overlay-0897-identity.md)
+- [Accepted field execution identity](docs/legaia-sdk/field-execution-identity.md)
 - [Debug protocol versioning](docs/debug-protocol-versioning.md)
 - [Executable identity](docs/executable-identity.md)
 - [Executable image model](docs/executable-image-model.md)
 - [Executable image lifecycle](docs/executable-image-lifecycle.md)
 - [Backend-neutral execution ownership](docs/execution-ownership.md)
+- [Execution witness model](docs/execution-witness-model.md)
+- [Execution witness protocol](docs/execution-witness-protocol.md)
 - [Executable lifecycle protocol](docs/executable-lifecycle-protocol.md)
 - [Executable catalog pagination](docs/executable-catalog-pagination.md)
 - [Executable ownership diagnostics](docs/executable-ownership-diagnostics.md)

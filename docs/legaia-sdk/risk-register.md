@@ -44,18 +44,19 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Undo mutates imported/live data | M | H | Command log targets authored sparse overlays only | project model |
 | Collision census mistaken for owning actor pool | H | H | Profile distinguishes linked owning nodes from the filtered 32-pointer per-frame census; no slot-index identity | runtime profile |
 | Actor subclass fields conflated | H | H | Scope `.MAP` object fields separately from MAN NPCs; neutral names for `+0x50`/`+0x94` | runtime profile/provenance |
-| Source overlay hash mistaken for live identity | H | H | Protocol 1.3 keeps source, exact DMA capture, registration validation and current live identities distinct and declares comparability; require an accepted canonical field-overlay model | runtime bridge |
+| Source overlay hash mistaken for live identity | H | H | Protocol 1.4 keeps source, capture, registration, live, and execution-witness identities distinct; the profile uses exact instruction witnesses rather than a guessed whole-overlay hash | runtime bridge |
 | Mixed-epoch multi-read snapshot | M | H | Use bounded `read_regions`; reject differing frame or executable-state stamps and re-check scene-epoch signals | runtime bridge |
 | Executable-region census exceeds one bounded response | M | H | Use protocol 1.2's eight-record byte-budgeted pages and token-bound cursor; treat ownership-token changes separately | runtime bridge |
 | Static structural variant mistaken for loaded image | H | H | Image catalog labels structural variants honestly; require an authoritative load/capture lifecycle before accepting a retail image base | runtime/overlay build |
-| Field code has no authoritative native owner | H | H | Keep overlay 0897 identity null; preserve exact source/live guards and collect authoritative image-lifecycle evidence | runtime/overlay build |
+| Field code has mixed native/interpreter ownership | M | H | Require the accepted backend for each current exact-instruction witness; never require native ownership universally | runtime/profile |
+| One weak execution witness mistaken for field identity | H | H | Require all three independent current witnesses plus executable, scene, watched-generation, executable-state, and lifecycle boundaries | runtime/profile |
 | Last execution owner mistaken for current owner after mutation | M | H | Bind exact-PC observations to watched generation; expose stale observations with `observation_current:false` and no current owner | runtime bridge |
 | DMA fragment mistaken for a complete overlay | H | H | Label exact transfer spans as fragments; never group adjacent transfers or claim a whole-image identity without a traced transformation/load relationship | runtime/overlay build |
 
 ## Highest-priority validation items
 
 1. Prove the semantic export can remain narrow and deterministic without linking clean-room code into PSXRecomp.
-2. Resolve canonical loaded-image/lifecycle identity for field overlay 0897 using the generic catalog plus authoritative loader evidence so the revisioned profile can select a runtime.
+2. Validate observer-owned scene epochs and bounded linked-node snapshots behind the accepted field execution identity.
 3. Prove linked actor-node lifecycle and imported-to-live correlation without census/list-order assumptions.
 4. Establish explicit evidence for any NPC → interaction → flag → dialogue chain before presenting it as resolved.
 5. Add and test proprietary-data ignore/scanning policy before any extraction/cache command writes inside the project.

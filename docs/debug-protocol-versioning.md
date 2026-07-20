@@ -74,4 +74,7 @@ Build and acceptance evidence for this revision is recorded in
 catalog described in `docs/executable-catalog-pagination.md`. Protocol 1.3 adds
 bounded image lifecycle and exact-PC execution-owner observations described in
 `docs/executable-lifecycle-protocol.md`; older clients and commands remain
-valid.
+valid. Protocol 1.4 adds the bounded exact-instruction `execution_witness`
+command described in `docs/execution-witness-protocol.md`; it is additive and
+is advertised only by backends with authoritative ownership and watched-page
+generation semantics.
