@@ -201,6 +201,7 @@ global token. A stateless observation guard hashes only the profile-declared
 scene signals and exact execution witnesses, and guarded `read_regions`
 withholds payload on mismatch. Repeated town01 boundary-only passes retained a
 stable guard while unrelated global watched-page/lifecycle state changed.
-However, live scene-exit and re-entry invalidation are still unaccepted, so the
-observer CLI remains boundary-only and actor traversal remains gated. See
-`scoped-scene-epoch.md`.
+However, live scene-exit and re-entry invalidation are still unaccepted. The
+observer CLI now offers a transition-only manual watch mode, but actor traversal
+remains gated until it passes against a compatible normal `town01` save. See
+`scoped-scene-epoch.md` and `scene-transition-acceptance.md`.

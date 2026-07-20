@@ -36,9 +36,11 @@ process and scoped tokens changed across fresh launches as designed.
 
 ## Remaining transition gate
 
-Normal bounded navigation did not reach a town01 exit in this acceptance pass.
-Therefore live scene-exit invalidation and re-entry epoch creation are not yet
-accepted. Synthetic coverage proves that scene, head, witness, lifecycle, and
-runtime changes reject the guard, but it is not a substitute for that live
+A transition-only state machine and manual `--transition-watch` CLI now prove
+old-token rejection, stable outside sampling, and re-entry stabilization in
+synthetic tests without actor reads. Retail acceptance remains pending: fresh
+New Game has a story-locked south gate, while the available memory-card save
+loads a later transformed Rim Elm revision rather than the accepted `town01`
+profile. Synthetic coverage is not a substitute for the normal live
 transition. Retail actor-node traversal remains disabled until the transition
-gate is completed.
+gate is completed. See `scene-transition-acceptance.md`.
