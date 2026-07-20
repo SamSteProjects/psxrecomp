@@ -36,6 +36,10 @@ def main() -> int:
             "bridge bypasses the normal controller input path")
     require("sio_set_pad_connected((int)PSX_GUEST_DEBUG_PAD_SLOT, 1)", MAIN,
             "configured debug pad remains disconnected and cannot be polled")
+    require("connected = connected || guest_debug_bridge_owns_slot(s)", MAIN,
+            "device refresh can disconnect the configured debug pad")
+    if MAIN.count("connected = connected || guest_debug_bridge_owns_slot(s)") < 2:
+        raise AssertionError("debug pad must be present at boot and after SDL refresh")
     require("psx_write_byte((uint32_t)PSX_GUEST_DEBUG_GATE_ADDR, 1u)", MAIN,
             "configured game-owned gate is not asserted")
     require("(mod & KMOD_CTRL) != 0 && (mod & KMOD_SHIFT) != 0", MAIN,

@@ -261,6 +261,10 @@ static bool g_guest_debug_bridge_enabled = false;
 static int g_guest_debug_bridge_frames = 0;
 static bool g_guest_debug_chord_this_vblank = false;
 
+static bool guest_debug_bridge_owns_slot(int slot) {
+    return slot == (int)PSX_GUEST_DEBUG_PAD_SLOT;
+}
+
 static bool guest_debug_bridge_ready(void) {
 #ifdef PSX_GUEST_DEBUG_READY_ADDR
     return psx_read_word((uint32_t)PSX_GUEST_DEBUG_READY_ADDR) ==
@@ -1693,7 +1697,11 @@ static void refresh_player_devices(void) {
         PlayerInput& p = g_players[s];
         if (p.kind != 2) close_player(p);           /* keyboard/none: no handle */
         else open_player(p, g_players[s ^ 1]);
-        sio_set_pad_connected(s, p.kind != 0 ? 1 : 0);
+        bool connected = p.kind != 0;
+#if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
+        connected = connected || guest_debug_bridge_owns_slot(s);
+#endif
+        sio_set_pad_connected(s, connected ? 1 : 0);
         sio_set_pad_analog(s, pad_mode_boot_analog(p.mode), 0x80, 0x80, 0x80, 0x80);
         /* DIGITAL mode == a plain digital controller that ignores the DualShock
          * config-mode commands (real SCPH-1080 behaviour); ANALOG/HYBRID == a
@@ -3761,7 +3769,11 @@ int main(int argc, char** argv) {
         /* Dev-any-input keeps P1 connected even with no assigned controller so the
          * keyboard / any plugged-in controller can drive port 1 standalone. */
         const bool dev_p1 = (dev_any_input_enabled() && s == 0);
-        sio_set_pad_connected(s, (g_players[s].kind != 0 || dev_p1) ? 1 : 0);
+        bool connected = g_players[s].kind != 0 || dev_p1;
+#if !defined(PSX_NO_DEBUG_TOOLS) && defined(PSX_GUEST_DEBUG_GATE_ADDR)
+        connected = connected || guest_debug_bridge_owns_slot(s);
+#endif
+        sio_set_pad_connected(s, connected ? 1 : 0);
         sio_set_pad_analog(s, pad_mode_boot_analog(g_players[s].mode), 0x80, 0x80, 0x80, 0x80);
     }
     /* SPU float-shadow gate must be set before spu_init() (which runs
