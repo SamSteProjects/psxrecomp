@@ -139,3 +139,24 @@ Settled-town01 five-query averages were approximately 9–19 ms per end-to-end
 Python request, including connection and client overhead. Hit counts advanced
 and frame progression continued. No debugger RAM write, raw code response, or
 title-specific runtime command was used.
+
+## 2026-07-19 headless Legaia observer attempt
+
+A fresh RelWithDebInfo runtime reached town01, PROT 3, and mode 3 in three
+observer attempts. The first attempt correctly rejected a comparison between
+the complete ISO executable-file hash and runtime protocol's exact
+`ps-x-exe-body` hash. Two short fresh launches repeated the body identity and
+the revisioned profile now stores both domains explicitly.
+
+After that correction, profile scene and witness data were individually valid,
+but the observer rejected all snapshot attempts before actor traversal. In ten
+settled-town01 diagnostic groups, each `read_regions` and `execution_witness`
+response was internally stable, yet no group retained one executable-state
+token across the scene read and all three witness requests. The token churn was
+continuous rather than a brief transition settle.
+
+No retail node prefix was read, no snapshot JSON was accepted, no RAM write was
+issued, and no input command occurred during observation. The observer's
+synthetic suite passes 33 fail-closed scenarios. Retail acceptance requires a
+separately approved generic multi-request boundary mechanism; weakening the
+existing token check is not acceptable.
