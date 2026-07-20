@@ -165,6 +165,8 @@ typedef struct {
                           * below the local-flow floor every taken branch
                           * re-dispatches, so chain blocks dominate. entry_hits
                           * is the evidence stream for interior-alias seeds. */
+    uint32_t last_frame; /* most recent frame observed (exec table) */
+    uint32_t watched_generation; /* exact-PC page generation at observation */
 } DirtyRamPcEntry;
 extern DirtyRamPcEntry g_dirty_ram_pc_table[DIRTY_RAM_PC_TABLE_SIZE];
 /* Every aligned main-RAM word is a possible instruction PC.  Execution
@@ -184,6 +186,10 @@ extern uint32_t g_dirty_ram_exec_page_bitmap[DIRTY_RAM_EXEC_PAGE_BITMAP_WORDS];
  * counter table remains for telemetry, while capture can snapshot/reset this
  * compact evidence independently at overlay-generation boundaries. */
 extern uint32_t g_dirty_ram_dispatch_pc_bitmap[DIRTY_RAM_EXEC_BITMAP_WORDS];
+/* Companion table: every PC the interpreter actually executes (not just block
+ * entries). overlay_capture uses both to report execution-verified seeds. */
+extern DirtyRamPcEntry g_dirty_ram_exec_pc_table[DIRTY_RAM_PC_TABLE_SIZE];
+int dirty_ram_exec_pc_observed(uint32_t pc, DirtyRamPcEntry *out);
 
 /* Block-entry ring buffer. Records every dispatch into dirty RAM with the
  * caller's RA at entry, plus argument context — answers

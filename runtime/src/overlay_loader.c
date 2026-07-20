@@ -10,6 +10,7 @@
 #include "psx_cycles.h"
 #include "lockstep.h"
 #include "overlay_posix.h"
+#include "overlay_capture.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -3544,6 +3545,11 @@ retry_candidates:
                     s_active_stack[s_active_depth++] = ci;
                 s_disp_native++;
                 cpu->pc = addr;          /* route the func's entry-switch to the block */
+                overlay_lifecycle_note_execution(
+                    addr,
+                    c->dll >= 0 ? OVERLAY_EXEC_OWNER_CACHED_NATIVE
+                                : OVERLAY_EXEC_OWNER_RUNTIME_NATIVE,
+                    (uint32_t)ci + 1u, OVERLAY_EXEC_REASON_NATIVE_DISPATCH);
                 {
                     int prev_phase = g_exec_phase;
                     OverlayFlushFn prev_flush = overlay_flush_enter(c);
@@ -3683,6 +3689,11 @@ retry_candidates:
             if (s_active_depth < (int)(sizeof(s_active_stack) / sizeof(s_active_stack[0])))
                 s_active_stack[s_active_depth++] = i;
             s_disp_native++;
+            overlay_lifecycle_note_execution(
+                addr,
+                c->dll >= 0 ? OVERLAY_EXEC_OWNER_CACHED_NATIVE
+                            : OVERLAY_EXEC_OWNER_RUNTIME_NATIVE,
+                (uint32_t)i + 1u, OVERLAY_EXEC_REASON_NATIVE_DISPATCH);
             /* Delimit this native execution in the interp insn ring (native code
              * emits no per-insn entries; markers keep the timeline alignable). */
 #ifndef PSX_NO_DEBUG_TOOLS
