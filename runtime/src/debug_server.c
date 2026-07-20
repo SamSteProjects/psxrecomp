@@ -4423,6 +4423,10 @@ static void handle_frame(int id, const char *json)
 #define OBS_MAX_REGION_BYTES 4096
 #define OBS_MAX_TOTAL_BYTES 16384
 #define OBS_MAX_RESPONSE_BYTES 65536
+#define OBS_GUARD_MAX_RAM_REGIONS 16
+#define OBS_GUARD_MAX_REGION_BYTES 256
+#define OBS_GUARD_MAX_TOTAL_BYTES 2048
+#define OBS_GUARD_MAX_WITNESSES 8
 #define EXEC_REGION_PAGE_DEFAULT 8
 #define EXEC_REGION_PAGE_MAX 8
 #define EXEC_CATALOG_PAGE_DEFAULT 8
@@ -4434,6 +4438,39 @@ static void sha_u32(PSXSha256 *ctx, uint32_t v) {
     uint8_t b[4] = {(uint8_t)v, (uint8_t)(v >> 8),
                     (uint8_t)(v >> 16), (uint8_t)(v >> 24)};
     psx_sha256_update(ctx, b, sizeof(b));
+}
+
+static void sha_u64(PSXSha256 *ctx, uint64_t v) {
+    sha_u32(ctx, (uint32_t)v);
+    sha_u32(ctx, (uint32_t)(v >> 32));
+}
+
+/* Process-local identity for stateless observation guards. It is deliberately
+ * not a host PID or path. The monotonic/performance clocks and ASLR address
+ * make restarts distinct in practice; SHA-256 defines the collision contract.
+ * This identity is initialized once and remains immutable for the process. */
+static uint8_t s_runtime_instance_digest[32];
+static char s_runtime_instance_id[65];
+static int s_runtime_instance_initialized;
+
+static void ensure_runtime_instance_identity(void) {
+    if (s_runtime_instance_initialized) return;
+    static const char domain[] = "psxrecomp-runtime-instance-v1";
+    PSXSha256 ctx;
+    uint64_t perf = SDL_GetPerformanceCounter();
+    uint64_t ticks = SDL_GetTicks64();
+    uint64_t wall = (uint64_t)time(NULL);
+    uintptr_t aslr = (uintptr_t)&s_runtime_instance_digest;
+    psx_sha256_init(&ctx);
+    psx_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    sha_u64(&ctx, perf);
+    sha_u64(&ctx, ticks);
+    sha_u64(&ctx, wall);
+    sha_u64(&ctx, (uint64_t)aslr);
+    sha_u32(&ctx, (uint32_t)s_port);
+    psx_sha256_final(&ctx, s_runtime_instance_digest);
+    psx_sha256_hex(s_runtime_instance_digest, s_runtime_instance_id);
+    s_runtime_instance_initialized = 1;
 }
 
 static void executable_state_token(char out[65]) {
@@ -4465,13 +4502,43 @@ static void executable_state_token(char out[65]) {
     psx_sha256_hex(digest, out);
 }
 
+static void executable_state_component_tokens(char watched_out[65],
+                                              char registration_out[17],
+                                              char lifecycle_out[17]) {
+    static const char domain[] = "psxrecomp-exec-watched-components-v1";
+    PSXSha256 ctx;
+    psx_sha256_init(&ctx);
+    psx_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    uint32_t page_size = overlay_watch_page_size();
+    uint32_t page_count = overlay_watch_page_count();
+    uint32_t covered[16] = {0};
+    overlay_loader_executable_watch_bitmap(covered, (page_count + 31u) / 32u);
+    sha_u32(&ctx, page_size);
+    for (uint32_t page = 0; page < page_count; page++) {
+        if (!(covered[page >> 5] & (1u << (page & 31u)))) continue;
+        sha_u32(&ctx, page);
+        sha_u32(&ctx, overlay_watch_page_generation(page));
+    }
+    extern uint32_t dirty_ram_text_diverged_bitmap_word(uint32_t word_index);
+    for (uint32_t word = 0; word < (page_count + 31u) / 32u; word++)
+        sha_u32(&ctx, dirty_ram_text_diverged_bitmap_word(word));
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, watched_out);
+    snprintf(registration_out, 17, "%016llx",
+             (unsigned long long)overlay_loader_registration_state_token());
+    snprintf(lifecycle_out, 17, "%016llx",
+             (unsigned long long)overlay_lifecycle_catalog_token());
+}
+
 static void handle_protocol_info(int id, const char *json) {
     (void)json;
     overlay_lifecycle_set_tracking_enabled(1);
+    ensure_runtime_instance_identity();
     send_fmt("{\"id\":%d,\"ok\":true,"
-             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":4},"
+             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":5},"
              "\"server\":{\"kind\":\"native\"},"
-             "\"capabilities\":[\"executable_catalog\",\"executable_image_lifecycle\",\"executable_regions\",\"execution_witness\",\"read_ram\",\"read_regions\","
+             "\"capabilities\":[\"executable_catalog\",\"executable_image_lifecycle\",\"executable_regions\",\"execution_witness\",\"observation_guard\",\"read_ram\",\"read_regions\","
              "\"runtime_identity\",\"watched_page_generation\"],"
              "\"limits\":{\"max_request_bytes\":8191,\"max_read_ram_bytes\":2097152,"
              "\"max_regions_per_request\":%d,\"max_bytes_per_region\":%d,"
@@ -4480,10 +4547,15 @@ static void handle_protocol_info(int id, const char *json) {
              "\"max_executable_catalog_records_per_response\":%d,"
              "\"max_executable_lifecycle_records_per_response\":%d,"
              "\"max_executable_lifecycle_events_retained\":%u,"
-             "\"execution_witness_range_bytes\":4},\"frame\":%llu}",
+             "\"execution_witness_range_bytes\":4,"
+             "\"max_guard_ram_regions\":%d,\"max_guard_bytes_per_region\":%d,"
+             "\"max_guard_total_ram_bytes\":%d,\"max_guard_execution_witnesses\":%d},"
+             "\"frame\":%llu}",
              id, OBS_MAX_REGIONS, OBS_MAX_REGION_BYTES, OBS_MAX_TOTAL_BYTES,
              OBS_MAX_RESPONSE_BYTES, EXEC_REGION_PAGE_MAX, EXEC_CATALOG_PAGE_MAX,
              EXEC_LIFECYCLE_PAGE_MAX, overlay_lifecycle_event_capacity(),
+             OBS_GUARD_MAX_RAM_REGIONS, OBS_GUARD_MAX_REGION_BYTES,
+             OBS_GUARD_MAX_TOTAL_BYTES, OBS_GUARD_MAX_WITNESSES,
              (unsigned long long)s_frame_count);
 }
 
@@ -4730,26 +4802,30 @@ static void handle_runtime_identity(int id, const char *json) {
     char bios_hex[65], source_hex[65];
     uint32_t base = 0, len = 0;
     memory_get_bios_sha256(bios);
+    ensure_runtime_instance_identity();
     psx_sha256_hex(bios, bios_hex);
     int has_text = dirty_ram_text_identity(&base, &len, source);
     if (has_text) psx_sha256_hex(source, source_hex);
     if (has_text) {
         send_fmt("{\"id\":%d,\"ok\":true,\"runtime\":{\"implementation\":\"psxrecomp\","
-                 "\"build_revision\":\"%s\"},\"server\":{\"kind\":\"native\"},"
+                 "\"build_revision\":\"%s\",\"process_instance_id\":\"proc-%s\"},"
+                 "\"server\":{\"kind\":\"native\"},"
                  "\"guest_architecture\":\"mips-r3000a\","
                  "\"bios\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"length\":524288},"
                  "\"main_executable\":{\"serial\":\"%s\",\"guest_base\":\"0x%08X\","
                  "\"canonical_length\":%u,\"source_identity\":{\"algorithm\":\"sha256\","
                  "\"sha256\":\"%s\",\"scope\":\"ps-x-exe-body\"}},\"frame\":%llu}",
-                 id, PSX_BUILD_REV, bios_hex, s_program_serial, base | 0x80000000u,
+                 id, PSX_BUILD_REV, s_runtime_instance_id, bios_hex, s_program_serial, base | 0x80000000u,
                  len, source_hex, (unsigned long long)s_frame_count);
     } else {
         send_fmt("{\"id\":%d,\"ok\":true,\"runtime\":{\"implementation\":\"psxrecomp\","
-                 "\"build_revision\":\"%s\"},\"server\":{\"kind\":\"native\"},"
+                 "\"build_revision\":\"%s\",\"process_instance_id\":\"proc-%s\"},"
+                 "\"server\":{\"kind\":\"native\"},"
                  "\"guest_architecture\":\"mips-r3000a\","
                  "\"bios\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"length\":524288},"
                  "\"main_executable\":null,\"frame\":%llu}",
-                 id, PSX_BUILD_REV, bios_hex, (unsigned long long)s_frame_count);
+                 id, PSX_BUILD_REV, s_runtime_instance_id, bios_hex,
+                 (unsigned long long)s_frame_count);
     }
 }
 
@@ -5422,6 +5498,55 @@ typedef struct {
     uint32_t len;
 } ObserverReadRegion;
 
+typedef struct {
+    char key[65];
+    uint32_t addr;
+    uint32_t phys;
+    uint32_t len;
+} ObservationGuardRegion;
+
+typedef struct {
+    uint32_t pc;
+    int require_current;
+} ObservationGuardWitness;
+
+typedef struct {
+    ObservationGuardRegion ram_regions[OBS_GUARD_MAX_RAM_REGIONS];
+    ObservationGuardWitness witnesses[OBS_GUARD_MAX_WITNESSES];
+    int ram_region_count;
+    int witness_count;
+    uint32_t total_ram_bytes;
+    char expected_token[65];
+    int has_expected_token;
+} ObservationGuardDescriptor;
+
+typedef struct {
+    char sha256[65];
+} ObservationGuardRamEvidence;
+
+typedef struct {
+    uint32_t pc;
+    uint32_t backend;
+    uint32_t reason;
+    uint32_t range_base;
+    uint32_t range_length;
+    char live_sha256[65];
+    char generation_digest[65];
+    int current;
+    uint64_t lifecycle_instance_id;
+    uint32_t lifecycle_generation;
+    uint32_t registration_id;
+    const char *status;
+} ObservationGuardWitnessEvidence;
+
+typedef struct {
+    char token[65];
+    int valid;
+    char failure_reason[96];
+    ObservationGuardRamEvidence ram[OBS_GUARD_MAX_RAM_REGIONS];
+    ObservationGuardWitnessEvidence witnesses[OBS_GUARD_MAX_WITNESSES];
+} ObservationGuardEvaluation;
+
 static int observer_key_valid(const char *s) {
     if (!s || !*s) return 0;
     for (; *s; s++) {
@@ -5430,6 +5555,348 @@ static int observer_key_valid(const char *s) {
               (c >= '0' && c <= '9') || c == '_' || c == '.' ||
               c == ':' || c == '-')) return 0;
     }
+    return 1;
+}
+
+static int observer_sha256_valid(const char *s) {
+    if (!s || strlen(s) != 64u) return 0;
+    for (int i = 0; i < 64; i++)
+        if (!((s[i] >= '0' && s[i] <= '9') || (s[i] >= 'a' && s[i] <= 'f')))
+            return 0;
+    return 1;
+}
+
+/* Extract one named JSON object without accepting a truncated prefix. This is
+ * intentionally small: guard descriptors contain only bounded arrays of flat
+ * records and scalar fields. Strings and escapes are still honored while
+ * matching braces. */
+static int json_extract_named_object(const char *json, const char *name,
+                                     char *out, size_t cap) {
+    char pattern[96];
+    snprintf(pattern, sizeof(pattern), "\"%s\"", name);
+    const char *p = strstr(json, pattern);
+    if (!p) return 0;
+    p += strlen(pattern);
+    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ':') p++;
+    if (*p != '{') return -1;
+    const char *start = p;
+    int depth = 0, quoted = 0, escaped = 0;
+    for (; *p; p++) {
+        char c = *p;
+        if (quoted) {
+            if (escaped) escaped = 0;
+            else if (c == '\\') escaped = 1;
+            else if (c == '"') quoted = 0;
+            continue;
+        }
+        if (c == '"') { quoted = 1; continue; }
+        if (c == '{') depth++;
+        else if (c == '}' && --depth == 0) {
+            size_t n = (size_t)(p - start + 1);
+            if (n + 1u > cap) return -1;
+            memcpy(out, start, n); out[n] = '\0'; return 1;
+        }
+    }
+    return -1;
+}
+
+static int guard_region_compare(const void *a, const void *b) {
+    const ObservationGuardRegion *left = (const ObservationGuardRegion *)a;
+    const ObservationGuardRegion *right = (const ObservationGuardRegion *)b;
+    if (left->phys != right->phys) return left->phys < right->phys ? -1 : 1;
+    if (left->len != right->len) return left->len < right->len ? -1 : 1;
+    return strcmp(left->key, right->key);
+}
+
+static int guard_witness_compare(const void *a, const void *b) {
+    const ObservationGuardWitness *left = (const ObservationGuardWitness *)a;
+    const ObservationGuardWitness *right = (const ObservationGuardWitness *)b;
+    return left->pc < right->pc ? -1 : left->pc > right->pc ? 1 : 0;
+}
+
+static int parse_guard_regions(const char *guard, ObservationGuardDescriptor *out,
+                               const char **error_out) {
+    const char *tag = strstr(guard, "\"ram_regions\"");
+    if (!tag || !(tag = strchr(tag, '['))) {
+        *error_out = "missing guard ram_regions"; return 0;
+    }
+    const char *p = tag + 1;
+    while (1) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',') p++;
+        if (*p == ']') break;
+        if (*p != '{') { *error_out = "invalid guard ram_regions array"; return 0; }
+        if (out->ram_region_count >= OBS_GUARD_MAX_RAM_REGIONS) {
+            *error_out = "too many guard ram regions"; return 0;
+        }
+        const char *end = strchr(p, '}');
+        if (!end || end - p >= 511) { *error_out = "invalid guard ram region"; return 0; }
+        char obj[512], addr_s[32];
+        size_t n = (size_t)(end - p + 1); memcpy(obj, p, n); obj[n] = '\0';
+        ObservationGuardRegion *r = &out->ram_regions[out->ram_region_count];
+        memset(r, 0, sizeof(*r));
+        if (!json_get_str(obj, "key", r->key, sizeof(r->key)) || !observer_key_valid(r->key)) {
+            *error_out = "invalid guard ram region key"; return 0;
+        }
+        if (!json_get_str(obj, "addr", addr_s, sizeof(addr_s)) || addr_s[0] == '-') {
+            *error_out = "invalid guard ram region address"; return 0;
+        }
+        long length = json_get_int(obj, "len", INT_MIN);
+        if (length <= 0) { *error_out = "invalid guard ram region length"; return 0; }
+        if (length > OBS_GUARD_MAX_REGION_BYTES) {
+            *error_out = "guard ram region byte limit exceeded"; return 0;
+        }
+        unsigned long long parsed = strtoull(addr_s, NULL, 0);
+        if (parsed > 0xFFFFFFFFULL) { *error_out = "guard ram region address overflow"; return 0; }
+        r->addr = (uint32_t)parsed;
+        r->phys = r->addr & 0x1fffffffu;
+        if (r->phys < 0x00800000u) r->phys &= 0x001fffffu;
+        else { *error_out = "guard ram region is not main RAM"; return 0; }
+        r->len = (uint32_t)length;
+        if (r->len > 0x200000u - r->phys) {
+            *error_out = "guard ram region range overflow"; return 0;
+        }
+        if (r->len > OBS_GUARD_MAX_TOTAL_BYTES - out->total_ram_bytes) {
+            *error_out = "aggregate guard ram byte limit exceeded"; return 0;
+        }
+        for (int i = 0; i < out->ram_region_count; i++) {
+            ObservationGuardRegion *old = &out->ram_regions[i];
+            if (!strcmp(old->key, r->key)) {
+                *error_out = "duplicate guard ram region key"; return 0;
+            }
+            if (old->phys == r->phys && old->len == r->len) {
+                *error_out = "duplicate guard ram region range"; return 0;
+            }
+        }
+        out->total_ram_bytes += r->len;
+        out->ram_region_count++;
+        p = end + 1;
+    }
+    return 1;
+}
+
+static int parse_guard_witnesses(const char *guard, ObservationGuardDescriptor *out,
+                                 const char **error_out) {
+    const char *tag = strstr(guard, "\"execution_witnesses\"");
+    if (!tag || !(tag = strchr(tag, '['))) {
+        *error_out = "missing guard execution_witnesses"; return 0;
+    }
+    const char *p = tag + 1;
+    while (1) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',') p++;
+        if (*p == ']') break;
+        if (*p != '{') { *error_out = "invalid guard execution_witnesses array"; return 0; }
+        if (out->witness_count >= OBS_GUARD_MAX_WITNESSES) {
+            *error_out = "too many guard execution witnesses"; return 0;
+        }
+        const char *end = strchr(p, '}');
+        if (!end || end - p >= 255) { *error_out = "invalid guard execution witness"; return 0; }
+        char obj[256], pc_s[32], current_s[16] = "true";
+        size_t n = (size_t)(end - p + 1); memcpy(obj, p, n); obj[n] = '\0';
+        if (!json_get_str(obj, "pc", pc_s, sizeof(pc_s)) || pc_s[0] == '-') {
+            *error_out = "invalid guard execution witness pc"; return 0;
+        }
+        (void)json_get_str(obj, "require_current", current_s, sizeof(current_s));
+        if (strcmp(current_s, "true")) {
+            *error_out = "guard execution witnesses must require currentness"; return 0;
+        }
+        unsigned long long parsed = strtoull(pc_s, NULL, 0);
+        if (parsed > 0xFFFFFFFFULL) { *error_out = "guard execution witness pc overflow"; return 0; }
+        uint32_t pc = (uint32_t)parsed;
+        uint32_t phys = pc & 0x1fffffffu;
+        if (phys >= 0x200000u || (phys & 3u) || phys > 0x1ffffcu) {
+            *error_out = "guard execution witness pc is not aligned main RAM"; return 0;
+        }
+        for (int i = 0; i < out->witness_count; i++)
+            if (out->witnesses[i].pc == pc) {
+                *error_out = "duplicate guard execution witness"; return 0;
+            }
+        out->witnesses[out->witness_count].pc = pc;
+        out->witnesses[out->witness_count].require_current = 1;
+        out->witness_count++;
+        p = end + 1;
+    }
+    return 1;
+}
+
+static int parse_observation_guard(const char *json, ObservationGuardDescriptor *out,
+                                   const char **error_out) {
+    char guard[6144];
+    int extracted = json_extract_named_object(json, "guard", guard, sizeof(guard));
+    if (extracted <= 0) { *error_out = "missing or invalid observation guard"; return 0; }
+    memset(out, 0, sizeof(*out));
+    if (!parse_guard_regions(guard, out, error_out) ||
+        !parse_guard_witnesses(guard, out, error_out)) return 0;
+    if (!out->ram_region_count && !out->witness_count) {
+        *error_out = "observation guard must not be empty"; return 0;
+    }
+    if (json_get_str(guard, "expected_token", out->expected_token,
+                     sizeof(out->expected_token))) {
+        if (!observer_sha256_valid(out->expected_token)) {
+            *error_out = "invalid observation guard expected token"; return 0;
+        }
+        out->has_expected_token = 1;
+    }
+    qsort(out->ram_regions, (size_t)out->ram_region_count,
+          sizeof(out->ram_regions[0]), guard_region_compare);
+    qsort(out->witnesses, (size_t)out->witness_count,
+          sizeof(out->witnesses[0]), guard_witness_compare);
+    return 1;
+}
+
+static void guard_fail(ObservationGuardEvaluation *evaluation, const char *reason) {
+    if (!evaluation->valid || !reason) return;
+    evaluation->valid = 0;
+    snprintf(evaluation->failure_reason, sizeof(evaluation->failure_reason), "%s", reason);
+}
+
+static void evaluate_observation_guard(const ObservationGuardDescriptor *descriptor,
+                                       ObservationGuardEvaluation *evaluation) {
+    static const char domain[] = "psxrecomp-observation-guard-v1";
+    uint8_t *ram = memory_get_ram_ptr();
+    uint8_t source[32]; uint32_t source_base = 0, source_len = 0;
+    int has_source = dirty_ram_text_identity(&source_base, &source_len, source);
+    PSXSha256 ctx;
+    memset(evaluation, 0, sizeof(*evaluation));
+    evaluation->valid = 1;
+    ensure_runtime_instance_identity();
+    psx_sha256_init(&ctx);
+    psx_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    psx_sha256_update(&ctx, s_runtime_instance_digest, sizeof(s_runtime_instance_digest));
+    sha_u32(&ctx, (uint32_t)has_source);
+    sha_u32(&ctx, source_base);
+    sha_u32(&ctx, source_len);
+    if (has_source) psx_sha256_update(&ctx, source, sizeof(source));
+    sha_u32(&ctx, (uint32_t)strlen(s_program_serial));
+    psx_sha256_update(&ctx, s_program_serial, strlen(s_program_serial));
+    sha_u32(&ctx, (uint32_t)descriptor->ram_region_count);
+    for (int i = 0; i < descriptor->ram_region_count; i++) {
+        const ObservationGuardRegion *r = &descriptor->ram_regions[i];
+        uint8_t digest[32];
+        psx_sha256(ram + r->phys, r->len, digest);
+        psx_sha256_hex(digest, evaluation->ram[i].sha256);
+        sha_u32(&ctx, r->phys); sha_u32(&ctx, r->len);
+        sha_u32(&ctx, (uint32_t)strlen(r->key));
+        psx_sha256_update(&ctx, r->key, strlen(r->key));
+        psx_sha256_update(&ctx, digest, sizeof(digest));
+    }
+    sha_u32(&ctx, (uint32_t)descriptor->witness_count);
+    for (int i = 0; i < descriptor->witness_count; i++) {
+        const ObservationGuardWitness *required = &descriptor->witnesses[i];
+        ObservationGuardWitnessEvidence *evidence = &evaluation->witnesses[i];
+        uint32_t phys = required->pc & 0x1fffffffu;
+        OverlayExecutionOwner owner;
+        memset(evidence, 0, sizeof(*evidence));
+        evidence->pc = required->pc;
+        evidence->range_base = phys | 0x80000000u;
+        evidence->range_length = 4u;
+        sha_u32(&ctx, required->pc); sha_u32(&ctx, (uint32_t)required->require_current);
+        if (!overlay_lifecycle_owner_at(phys, &owner)) {
+            evidence->status = "missing";
+            guard_fail(evaluation, "required execution witness is missing");
+            sha_u32(&ctx, 0u);
+            continue;
+        }
+        uint8_t live_digest[32], observed_bytes[4] = {
+            (uint8_t)owner.instruction_word_at_observation,
+            (uint8_t)(owner.instruction_word_at_observation >> 8),
+            (uint8_t)(owner.instruction_word_at_observation >> 16),
+            (uint8_t)(owner.instruction_word_at_observation >> 24)
+        };
+        uint8_t observed_digest[32];
+        psx_sha256(ram + phys, 4u, live_digest);
+        psx_sha256(observed_bytes, sizeof(observed_bytes), observed_digest);
+        psx_sha256_hex(live_digest, evidence->live_sha256);
+        uint32_t lo = phys, len = 4u;
+        if (!watched_generation_digest(&lo, &len, 1,
+                                       evidence->generation_digest, NULL, NULL, NULL)) {
+            evidence->status = "generation-unavailable";
+            guard_fail(evaluation, "required witness generation is unavailable");
+            sha_u32(&ctx, 1u);
+            continue;
+        }
+        evidence->backend = owner.owner;
+        evidence->reason = owner.reason;
+        evidence->lifecycle_instance_id = owner.instance_id;
+        evidence->registration_id = owner.registration_id;
+        if (owner.instance_id && owner.instance_id <= INT_MAX) {
+            OverlayLifecycleInstance instance;
+            if (overlay_lifecycle_get_instance((int)owner.instance_id - 1, &instance) &&
+                instance.instance_id == owner.instance_id)
+                evidence->lifecycle_generation = instance.lifecycle_generation;
+        }
+        evidence->current = !memcmp(live_digest, observed_digest, sizeof(live_digest)) &&
+            overlay_lifecycle_owner_observation_current(&owner) &&
+            owner.owner != OVERLAY_EXEC_OWNER_AMBIGUOUS;
+        evidence->status = owner.owner == OVERLAY_EXEC_OWNER_AMBIGUOUS ? "ambiguous" :
+                           evidence->current ? "current" : "stale";
+        if (owner.owner == OVERLAY_EXEC_OWNER_AMBIGUOUS)
+            guard_fail(evaluation, "required execution witness ownership is ambiguous");
+        else if (required->require_current && !evidence->current)
+            guard_fail(evaluation, "required execution witness is stale");
+        sha_u32(&ctx, 2u); sha_u32(&ctx, owner.owner); sha_u32(&ctx, owner.reason);
+        sha_u32(&ctx, phys); sha_u32(&ctx, 4u);
+        psx_sha256_update(&ctx, live_digest, sizeof(live_digest));
+        psx_sha256_update(&ctx, evidence->generation_digest, 64u);
+        sha_u32(&ctx, (uint32_t)evidence->current);
+        sha_u64(&ctx, owner.instance_id);
+        sha_u32(&ctx, evidence->lifecycle_generation);
+        sha_u32(&ctx, owner.registration_id);
+    }
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, evaluation->token);
+    if (evaluation->valid) snprintf(evaluation->failure_reason,
+                                     sizeof(evaluation->failure_reason), "none");
+}
+
+static int append_guard_evidence(char *out, size_t cap, size_t *pos,
+                                 const ObservationGuardDescriptor *descriptor,
+                                 const ObservationGuardEvaluation *evaluation) {
+    int n = snprintf(out + *pos, cap - *pos,
+        "\"token\":\"%s\",\"valid\":%s,\"failure_reason\":\"%s\","
+        "\"runtime_instance_id\":\"proc-%s\",\"ram_regions\":[",
+        evaluation->token, evaluation->valid ? "true" : "false",
+        evaluation->failure_reason, s_runtime_instance_id);
+    if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    for (int i = 0; i < descriptor->ram_region_count; i++) {
+        const ObservationGuardRegion *r = &descriptor->ram_regions[i];
+        n = snprintf(out + *pos, cap - *pos,
+            "%s{\"key\":\"%s\",\"addr\":\"0x%08X\",\"len\":%u,"
+            "\"sha256\":\"%s\"}", i ? "," : "", r->key,
+            r->phys | 0x80000000u, r->len, evaluation->ram[i].sha256);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    }
+    n = snprintf(out + *pos, cap - *pos, "],\"execution_witnesses\":[");
+    if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    for (int i = 0; i < descriptor->witness_count; i++) {
+        const ObservationGuardWitnessEvidence *w = &evaluation->witnesses[i];
+        char instance[40] = "null", registration[40] = "null";
+        if (w->lifecycle_instance_id) snprintf(instance, sizeof(instance),
+            "\"life-%016llx\"", (unsigned long long)w->lifecycle_instance_id);
+        if (w->registration_id) snprintf(registration, sizeof(registration),
+            "\"reg-%08x\"", w->registration_id);
+        n = snprintf(out + *pos, cap - *pos,
+            "%s{\"pc\":\"0x%08X\",\"status\":\"%s\",\"current\":%s,"
+            "\"backend\":\"%s\",\"reason\":\"%s\","
+            "\"range\":{\"guest_base\":\"0x%08X\",\"length\":%u},"
+            "\"live_sha256\":%s%s%s,\"watched_generation_digest\":%s%s%s,"
+            "\"image_instance_id\":%s,\"lifecycle_generation\":%u,"
+            "\"native_registration_id\":%s}",
+            i ? "," : "", w->pc, w->status ? w->status : "missing",
+            w->current ? "true" : "false", execution_owner_name(w->backend),
+            execution_reason_name(w->reason), w->range_base, w->range_length,
+            w->live_sha256[0] ? "\"" : "", w->live_sha256[0] ? w->live_sha256 : "null",
+            w->live_sha256[0] ? "\"" : "",
+            w->generation_digest[0] ? "\"" : "",
+            w->generation_digest[0] ? w->generation_digest : "null",
+            w->generation_digest[0] ? "\"" : "", instance,
+            w->lifecycle_generation, registration);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    }
+    n = snprintf(out + *pos, cap - *pos,
+        "],\"ram_region_count\":%d,\"execution_witness_count\":%d",
+        descriptor->ram_region_count, descriptor->witness_count);
+    if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
     return 1;
 }
 
@@ -5485,47 +5952,176 @@ static int parse_observer_regions(const char *json, ObserverReadRegion *out,
     *count_out = count; *total_out = total; return 1;
 }
 
+static int append_observer_region_payload(char *out, size_t cap, size_t *pos,
+                                          ObserverReadRegion *regions, int count) {
+    static const char h[] = "0123456789abcdef";
+    uint8_t *ram = memory_get_ram_ptr();
+    for (int i = 0; i < count; i++) {
+        ObserverReadRegion *r = &regions[i];
+        int n = snprintf(out + *pos, cap - *pos,
+                         "%s{%s%s%s\"addr\":\"0x%08X\",\"len\":%u,\"hex\":\"",
+                         i ? "," : "", r->has_key ? "\"key\":\"" : "",
+                         r->has_key ? r->key : "", r->has_key ? "\"," : "",
+                         r->phys | 0x80000000u, r->len);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0;
+        *pos += (size_t)n;
+        if (*pos + (size_t)r->len * 2u + 3u >= cap) return 0;
+        for (uint32_t j = 0; j < r->len; j++) {
+            uint8_t b = ram[r->phys + j];
+            out[(*pos)++] = h[b >> 4]; out[(*pos)++] = h[b & 15];
+        }
+        out[(*pos)++] = '"'; out[(*pos)++] = '}';
+    }
+    return 1;
+}
+
+static void handle_observation_guard(int id, const char *json) {
+    overlay_lifecycle_set_tracking_enabled(1);
+    ObservationGuardDescriptor descriptor;
+    ObservationGuardEvaluation before, after;
+    const char *error = NULL;
+    if (!parse_observation_guard(json, &descriptor, &error)) {
+        send_err(id, error ? error : "invalid observation guard"); return;
+    }
+    uint64_t frame_before = s_frame_count;
+    char global_before[65], global_after[65];
+    char watched_before[65], watched_after[65];
+    char registrations_before[17], registrations_after[17];
+    char lifecycle_before[17], lifecycle_after[17];
+    executable_state_token(global_before);
+    executable_state_component_tokens(watched_before, registrations_before,
+                                      lifecycle_before);
+    evaluate_observation_guard(&descriptor, &before);
+    evaluate_observation_guard(&descriptor, &after);
+    executable_state_token(global_after);
+    executable_state_component_tokens(watched_after, registrations_after,
+                                      lifecycle_after);
+    uint64_t frame_after = s_frame_count;
+    int stable = !strcmp(before.token, after.token);
+    int expected = !descriptor.has_expected_token ||
+                   !strcmp(descriptor.expected_token, before.token);
+    int valid = before.valid && after.valid;
+    int compatible = stable && expected && valid;
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"frame_before\":%llu,\"frame_after\":%llu,"
+        "\"stable_frame\":%s,\"executable_state_before\":\"%s\","
+        "\"executable_state_after\":\"%s\",\"stable_executable_state\":%s,"
+        "\"global_state_components_before\":{\"watched_pages\":\"%s\","
+        "\"registrations\":\"%s\",\"lifecycle_catalog\":\"%s\"},"
+        "\"global_state_components_after\":{\"watched_pages\":\"%s\","
+        "\"registrations\":\"%s\",\"lifecycle_catalog\":\"%s\"},"
+        "\"guard\":{\"token_before\":\"%s\",\"token_after\":\"%s\","
+        "\"expected_token_matched\":%s,\"stable\":%s,\"valid\":%s,"
+        "\"compatible\":%s,\"evidence\":{",
+        id, (unsigned long long)frame_before, (unsigned long long)frame_after,
+        frame_before == frame_after ? "true" : "false", global_before, global_after,
+        !strcmp(global_before, global_after) ? "true" : "false",
+        watched_before, registrations_before, lifecycle_before,
+        watched_after, registrations_after, lifecycle_after,
+        before.token, after.token, expected ? "true" : "false",
+        stable ? "true" : "false", valid ? "true" : "false",
+        compatible ? "true" : "false");
+    if (pos >= OBS_MAX_RESPONSE_BYTES ||
+        !append_guard_evidence(out, OBS_MAX_RESPONSE_BYTES, &pos, &descriptor, &before)) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    int n = snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos, "}}}");
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    debug_server_send_line(out); free(out);
+}
+
 static void handle_read_regions(int id, const char *json) {
     ObserverReadRegion regions[OBS_MAX_REGIONS];
     int count = 0; uint32_t total = 0; const char *error = NULL;
     if (!parse_observer_regions(json, regions, &count, &total, &error)) {
         send_err(id, error ? error : "invalid regions"); return;
     }
-    size_t estimated = 768u + (size_t)total * 2u + (size_t)count * 192u;
+    int has_guard = strstr(json, "\"guard\"") != NULL;
+    ObservationGuardDescriptor descriptor;
+    ObservationGuardEvaluation guard_before, guard_after;
+    if (has_guard && !parse_observation_guard(json, &descriptor, &error)) {
+        send_err(id, error ? error : "invalid observation guard"); return;
+    }
+    size_t estimated = 12288u + (size_t)total * 2u + (size_t)count * 192u;
     if (estimated > OBS_MAX_RESPONSE_BYTES) { send_err(id, "response too large"); return; }
     char *out = (char *)malloc(estimated);
     if (!out) { send_err(id, "alloc failed"); return; }
     uint64_t frame_before = s_frame_count; char state_before[65], state_after[65];
     executable_state_token(state_before);
+    int expected = 1, guard_valid_before = 1;
+    if (has_guard) {
+        evaluate_observation_guard(&descriptor, &guard_before);
+        expected = !descriptor.has_expected_token ||
+                   !strcmp(descriptor.expected_token, guard_before.token);
+        guard_valid_before = guard_before.valid;
+    }
+    /* Build payload only after the expected scoped boundary is accepted. It is
+     * held in memory until the after-token is known and is never returned for
+     * an invalid or mixed guard. */
+    char *payload = (char *)malloc(estimated);
+    if (!payload) { free(out); send_err(id, "alloc failed"); return; }
+    size_t payload_pos = 0;
+    int read_payload = !has_guard || (expected && guard_valid_before);
+    if (read_payload && !append_observer_region_payload(
+            payload, estimated, &payload_pos, regions, count)) {
+        free(payload); free(out); send_err(id, "response too large"); return;
+    }
+    uint64_t frame_after = s_frame_count; executable_state_token(state_after);
+    if (has_guard) evaluate_observation_guard(&descriptor, &guard_after);
+    int stable_frame = frame_before == frame_after;
+    int stable_exec = strcmp(state_before, state_after) == 0;
+    int guard_stable = !has_guard || !strcmp(guard_before.token, guard_after.token);
+    int guard_valid = !has_guard || (guard_before.valid && guard_after.valid);
+    int compatible = !has_guard || (expected && guard_stable && guard_valid);
     size_t pos = (size_t)snprintf(out, estimated,
         "{\"id\":%d,\"ok\":true,\"frame_before\":%llu,"
         "\"executable_state_before\":\"%s\",\"regions\":[",
         id, (unsigned long long)frame_before, state_before);
-    static const char h[] = "0123456789abcdef";
-    uint8_t *ram = memory_get_ram_ptr();
-    for (int i = 0; i < count; i++) {
-        ObserverReadRegion *r = &regions[i];
-        int n = snprintf(out + pos, estimated - pos,
-                         "%s{%s%s%s\"addr\":\"0x%08X\",\"len\":%u,\"hex\":\"",
-                         i ? "," : "", r->has_key ? "\"key\":\"" : "",
-                         r->has_key ? r->key : "", r->has_key ? "\"," : "",
-                         r->phys | 0x80000000u, r->len);
-        if (n < 0 || (size_t)n >= estimated - pos) { free(out); send_err(id,"response too large"); return; }
-        pos += (size_t)n;
-        for (uint32_t j = 0; j < r->len; j++) {
-            uint8_t b = ram[r->phys + j]; out[pos++] = h[b >> 4]; out[pos++] = h[b & 15];
+    if (compatible) {
+        if (pos + payload_pos >= estimated) {
+            free(payload); free(out); send_err(id, "response too large"); return;
         }
-        out[pos++] = '"'; out[pos++] = '}';
+        memcpy(out + pos, payload, payload_pos); pos += payload_pos;
     }
-    uint64_t frame_after = s_frame_count; executable_state_token(state_after);
-    int stable_frame = frame_before == frame_after;
-    int stable_exec = strcmp(state_before, state_after) == 0;
+    free(payload);
     int n = snprintf(out + pos, estimated - pos,
-        "],\"frame_after\":%llu,\"stable_frame\":%s,"
-        "\"executable_state_after\":\"%s\",\"stable_executable_state\":%s}",
-        (unsigned long long)frame_after, stable_frame ? "true" : "false",
-        state_after, stable_exec ? "true" : "false");
-    if (n < 0 || (size_t)n >= estimated - pos) { free(out); send_err(id,"response too large"); return; }
+        "],\"payload_returned\":%s,\"frame_after\":%llu,\"stable_frame\":%s,"
+        "\"executable_state_after\":\"%s\",\"stable_executable_state\":%s",
+        compatible ? "true" : "false", (unsigned long long)frame_after,
+        stable_frame ? "true" : "false", state_after, stable_exec ? "true" : "false");
+    if (n < 0 || (size_t)n >= estimated - pos) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    pos += (size_t)n;
+    if (has_guard) {
+        n = snprintf(out + pos, estimated - pos,
+            ",\"guard\":{\"token_before\":\"%s\",\"token_after\":\"%s\","
+            "\"expected_token_matched\":%s,\"stable\":%s,\"valid\":%s,"
+            "\"compatible\":%s,\"evidence\":{",
+            guard_before.token, guard_after.token, expected ? "true" : "false",
+            guard_stable ? "true" : "false", guard_valid ? "true" : "false",
+            compatible ? "true" : "false");
+        if (n < 0 || (size_t)n >= estimated - pos) {
+            free(out); send_err(id, "response too large"); return;
+        }
+        pos += (size_t)n;
+        if (!append_guard_evidence(out, estimated, &pos, &descriptor, &guard_before)) {
+            free(out); send_err(id, "response too large"); return;
+        }
+        n = snprintf(out + pos, estimated - pos, "}}");
+        if (n < 0 || (size_t)n >= estimated - pos) {
+            free(out); send_err(id, "response too large"); return;
+        }
+        pos += (size_t)n;
+    }
+    n = snprintf(out + pos, estimated - pos, "}");
+    if (n < 0 || (size_t)n >= estimated - pos) {
+        free(out); send_err(id, "response too large"); return;
+    }
     debug_server_send_line(out); free(out);
 }
 
@@ -13276,6 +13872,7 @@ static const CmdEntry s_commands[] = {
     { "executable_lifecycle", handle_executable_lifecycle },
     { "execution_witness", handle_execution_witness },
     { "executable_regions", handle_executable_regions },
+    { "observation_guard", handle_observation_guard },
     { "read_regions",      handle_read_regions },
     { "ping",              handle_ping },
     { "xlate",             handle_xlate },
