@@ -19,6 +19,10 @@ Commands (shared — identical on both servers):
                                 Summarize active executable registrations
     executable-catalog [images|ranges|registrations] [limit]
                                 Safely retrieve a complete token-bound catalog
+    executable-lifecycle [instances|owners|events] [limit]
+                                Retrieve image lifecycle and execution ownership
+    executable-owner <guest-address>
+                                Query one exact-PC execution-owner observation
     read-regions <key=addr:len> [key=addr:len ...]
                                 One bounded, frame-stamped multi-region read
     ping                        Heartbeat + current frame
@@ -262,6 +266,45 @@ def pretty_executable_catalog(resp):
     return "\n".join(lines)
 
 
+def pretty_executable_lifecycle(resp):
+    """Compact lifecycle summary followed by the complete aggregate JSON."""
+    if not resp.get("ok"):
+        return pretty_json(resp)
+    view = resp.get("view")
+    lines = [
+        f"lifecycle={resp.get('lifecycle_token', '?')} view={view} "
+        f"records={len(resp.get('records', []))} pages={resp.get('pages', '?')} "
+        f"overflowed={resp.get('overflowed', False)}"
+    ]
+    for record in resp.get("records", []):
+        if view == "instances":
+            live = record.get("current_live_identity") or {}
+            lines.append(
+                f"{record.get('instance_id', '?')} {record.get('image_kind', '?')} "
+                f"base={record.get('load_or_capture_base', '?')} "
+                f"span={record.get('known_span', '?')} active={record.get('active', False)} "
+                f"live={str(live.get('sha256') or '-')[:12]} "
+                f"owner={record.get('last_execution_owner', '?')}"
+            )
+        elif view in ("owners", "owner"):
+            lines.append(
+                f"{record.get('guest_address', '?')} "
+                f"backend={record.get('last_observed_backend', '?')} "
+                f"image={record.get('image_instance_id', '-')} "
+                f"registration={record.get('native_registration_id', '-')} "
+                f"reason={record.get('reason', '?')}"
+            )
+        else:
+            lines.append(
+                f"seq={record.get('sequence', '?')} frame={record.get('frame', '?')} "
+                f"event={record.get('event', '?')} image={record.get('instance_id', '?')} "
+                f"owner={record.get('previous_owner', '?')}->{record.get('new_owner', '?')}"
+            )
+    lines.append("\nFull JSON:")
+    lines.append(pretty_json(resp))
+    return "\n".join(lines)
+
+
 def fetch_executable_catalog(sock, view="registrations", limit=8, max_pages=4096):
     if view not in ("images", "ranges", "registrations"):
         return {"ok": False, "error": "invalid catalog view"}
@@ -344,6 +387,98 @@ def fetch_executable_catalog(sock, view="registrations", limit=8, max_pages=4096
         "total": expected_total,
         "records": records,
     }
+
+
+def fetch_executable_lifecycle(sock, view="instances", limit=8, max_pages=4096,
+                               address=None):
+    if view not in ("instances", "owners", "owner", "events"):
+        return {"ok": False, "error": "invalid lifecycle view"}
+    if limit < 1:
+        return {"ok": False, "error": "invalid lifecycle limit"}
+    cursor = 0
+    lifecycle_token = None
+    expected_total = None
+    seen_cursors = set()
+    records = []
+    frames = []
+    pages = 0
+    overflowed = False
+    event_oldest = None
+    event_latest = None
+    event_history_truncated = False
+    tracking_started_frame = None
+    peer = None
+    if hasattr(sock, "getpeername"):
+        try:
+            peer = sock.getpeername()
+        except OSError:
+            peer = None
+    while True:
+        if pages >= max_pages:
+            return {"ok": False, "error": "executable lifecycle page limit exceeded"}
+        if cursor in seen_cursors:
+            return {"ok": False, "error": "executable lifecycle cursor loop"}
+        seen_cursors.add(cursor)
+        request = {"cmd": "executable_lifecycle", "view": view,
+                   "cursor": cursor, "limit": limit}
+        if view == "owner":
+            if address is None:
+                return {"ok": False, "error": "missing lifecycle owner address"}
+            request["addr"] = address
+        if lifecycle_token is not None:
+            request["lifecycle_token"] = lifecycle_token
+        page_sock = sock
+        close_page_sock = False
+        if pages > 0 and peer is not None:
+            page_sock = connect(peer[0], peer[1])
+            close_page_sock = True
+        try:
+            page = send_cmd(page_sock, request)
+        finally:
+            if close_page_sock:
+                page_sock.close()
+        pages += 1
+        if not page.get("ok"):
+            return page
+        token = page.get("lifecycle_token")
+        if not isinstance(token, str) or not token:
+            return {"ok": False, "error": "missing executable lifecycle token"}
+        if lifecycle_token is None:
+            lifecycle_token = token
+            expected_total = page.get("total")
+            overflowed = bool(page.get("overflowed"))
+            event_oldest = page.get("event_oldest_sequence")
+            event_latest = page.get("event_latest_sequence")
+            event_history_truncated = bool(page.get("event_history_truncated"))
+            tracking_started_frame = page.get("tracking_started_frame")
+        elif token != lifecycle_token:
+            return {"ok": False, "error": "executable lifecycle changed during paging",
+                    "expected_lifecycle_token": lifecycle_token, "lifecycle_token": token}
+        if page.get("total") != expected_total:
+            return {"ok": False, "error": "executable lifecycle total changed during paging"}
+        page_records = page.get("records")
+        if not isinstance(page_records, list) or page.get("returned") != len(page_records):
+            return {"ok": False, "error": "invalid executable lifecycle page"}
+        records.extend(page_records)
+        frames.append(page.get("frame"))
+        if not page.get("has_more"):
+            if page.get("next_cursor") is not None:
+                return {"ok": False, "error": "terminal executable lifecycle page has cursor"}
+            break
+        next_cursor = page.get("next_cursor")
+        if not isinstance(next_cursor, int) or isinstance(next_cursor, bool) or next_cursor <= cursor:
+            return {"ok": False, "error": "invalid executable lifecycle continuation cursor"}
+        cursor = next_cursor
+    if len(records) != expected_total:
+        return {"ok": False, "error": "incomplete executable lifecycle",
+                "expected": expected_total, "received": len(records)}
+    return {"ok": True, "view": view, "lifecycle_token": lifecycle_token,
+            "pages": pages, "total": expected_total, "records": records,
+            "frames": frames, "stable_frame": len(set(frames)) == 1,
+            "overflowed": overflowed, "event_oldest_sequence": event_oldest,
+            "event_latest_sequence": event_latest,
+            "event_history_truncated": event_history_truncated,
+            "tracking_started_frame": tracking_started_frame}
 
 
 # ---------------------------------------------------------------------------
@@ -790,6 +925,15 @@ def run_command(sock, args, host=DEFAULT_HOST):
         view = args[1].lower() if len(args) > 1 else "registrations"
         limit = int(args[2], 0) if len(args) > 2 else 8
         return pretty_executable_catalog(fetch_executable_catalog(sock, view, limit))
+    if cmd in ("executable-lifecycle", "executable_lifecycle"):
+        view = args[1].lower() if len(args) > 1 else "instances"
+        limit = int(args[2], 0) if len(args) > 2 else 8
+        return pretty_executable_lifecycle(fetch_executable_lifecycle(sock, view, limit))
+    if cmd in ("executable-owner", "executable_owner"):
+        if len(args) < 2:
+            return "Usage: executable-owner <guest-address>"
+        return pretty_executable_lifecycle(
+            fetch_executable_lifecycle(sock, "owner", 1, address=args[1]))
 
     cmd_dict, fmt = build_cmd(args)
     if cmd_dict is None:

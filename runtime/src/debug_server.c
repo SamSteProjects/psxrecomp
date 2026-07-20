@@ -45,6 +45,7 @@
 #include "gpu_gl_renderer.h"
 #include "lockstep.h"
 #include "sha256.h"
+#include "crc32.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -4426,6 +4427,7 @@ static void handle_frame(int id, const char *json)
 #define EXEC_REGION_PAGE_MAX 8
 #define EXEC_CATALOG_PAGE_DEFAULT 8
 #define EXEC_CATALOG_PAGE_MAX 8
+#define EXEC_LIFECYCLE_PAGE_MAX 8
 #define EXEC_CATALOG_RECORD_BUDGET 60000
 
 static void sha_u32(PSXSha256 *ctx, uint32_t v) {
@@ -4455,6 +4457,9 @@ static void executable_state_token(char out[65]) {
     uint64_t registration_state = overlay_loader_registration_state_token();
     sha_u32(&ctx, (uint32_t)registration_state);
     sha_u32(&ctx, (uint32_t)(registration_state >> 32));
+    uint64_t lifecycle_state = overlay_lifecycle_catalog_token();
+    sha_u32(&ctx, (uint32_t)lifecycle_state);
+    sha_u32(&ctx, (uint32_t)(lifecycle_state >> 32));
     uint8_t digest[32];
     psx_sha256_final(&ctx, digest);
     psx_sha256_hex(digest, out);
@@ -4462,19 +4467,260 @@ static void executable_state_token(char out[65]) {
 
 static void handle_protocol_info(int id, const char *json) {
     (void)json;
+    overlay_lifecycle_set_tracking_enabled(1);
     send_fmt("{\"id\":%d,\"ok\":true,"
-             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":2},"
+             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":3},"
              "\"server\":{\"kind\":\"native\"},"
-             "\"capabilities\":[\"executable_catalog\",\"executable_regions\",\"read_ram\",\"read_regions\","
+             "\"capabilities\":[\"executable_catalog\",\"executable_image_lifecycle\",\"executable_regions\",\"read_ram\",\"read_regions\","
              "\"runtime_identity\",\"watched_page_generation\"],"
              "\"limits\":{\"max_request_bytes\":8191,\"max_read_ram_bytes\":2097152,"
              "\"max_regions_per_request\":%d,\"max_bytes_per_region\":%d,"
              "\"max_total_region_bytes\":%d,\"max_response_bytes\":%d,"
              "\"max_executable_regions_per_response\":%d,"
-             "\"max_executable_catalog_records_per_response\":%d},\"frame\":%llu}",
+             "\"max_executable_catalog_records_per_response\":%d,"
+             "\"max_executable_lifecycle_records_per_response\":%d,"
+             "\"max_executable_lifecycle_events_retained\":%u},\"frame\":%llu}",
              id, OBS_MAX_REGIONS, OBS_MAX_REGION_BYTES, OBS_MAX_TOTAL_BYTES,
              OBS_MAX_RESPONSE_BYTES, EXEC_REGION_PAGE_MAX, EXEC_CATALOG_PAGE_MAX,
+             EXEC_LIFECYCLE_PAGE_MAX, overlay_lifecycle_event_capacity(),
              (unsigned long long)s_frame_count);
+}
+
+static const char *execution_owner_name(uint32_t owner) {
+    switch (owner) {
+    case OVERLAY_EXEC_OWNER_STATIC_NATIVE: return "static-native";
+    case OVERLAY_EXEC_OWNER_CACHED_NATIVE: return "cached-native";
+    case OVERLAY_EXEC_OWNER_RUNTIME_NATIVE: return "runtime-native";
+    case OVERLAY_EXEC_OWNER_INTERPRETER: return "interpreter";
+    case OVERLAY_EXEC_OWNER_AMBIGUOUS: return "ambiguous";
+    default: return "unavailable";
+    }
+}
+
+static const char *execution_reason_name(uint32_t reason) {
+    switch (reason) {
+    case OVERLAY_EXEC_REASON_MAIN_COMPILED: return "main-compiled-dispatch";
+    case OVERLAY_EXEC_REASON_STATIC_COMPILED: return "static-overlay-dispatch";
+    case OVERLAY_EXEC_REASON_NATIVE_DISPATCH: return "validated-native-dispatch";
+    case OVERLAY_EXEC_REASON_NATIVE_VALIDATION_FALLBACK: return "native-validation-fallback";
+    case OVERLAY_EXEC_REASON_DIRTY_INTERPRETER: return "dirty-ram-interpreter";
+    default: return "none";
+    }
+}
+
+static const char *lifecycle_event_name(uint32_t kind) {
+    switch (kind) {
+    case OVERLAY_LIFECYCLE_CREATED: return "created";
+    case OVERLAY_LIFECYCLE_SUPERSEDED: return "superseded";
+    case OVERLAY_LIFECYCLE_OWNER_ACQUIRED: return "owner-acquired";
+    case OVERLAY_LIFECYCLE_OWNER_CHANGED: return "owner-changed";
+    default: return "unknown";
+    }
+}
+
+static int execution_owner_compare(const void *a, const void *b) {
+    const OverlayExecutionOwner *left = (const OverlayExecutionOwner *)a;
+    const OverlayExecutionOwner *right = (const OverlayExecutionOwner *)b;
+    return left->phys < right->phys ? -1 : left->phys > right->phys ? 1 : 0;
+}
+
+static void handle_executable_lifecycle(int id, const char *json) {
+    overlay_lifecycle_set_tracking_enabled(1);
+    char view[16] = "instances", requested_token[32] = {0}, cursor_text[32] = {0};
+    char address_text[32] = {0};
+    (void)json_get_str(json, "view", view, sizeof(view));
+    (void)json_get_str(json, "lifecycle_token", requested_token, sizeof(requested_token));
+    int has_cursor = json_get_str(json, "cursor", cursor_text, sizeof(cursor_text)) != NULL;
+    uint64_t cursor = has_cursor ? strtoull(cursor_text, NULL, 0) : 0;
+    int limit = json_get_int(json, "limit", EXEC_LIFECYCLE_PAGE_MAX);
+    if (strcmp(view, "instances") && strcmp(view, "owners") &&
+        strcmp(view, "owner") && strcmp(view, "events")) {
+        send_err(id, "invalid lifecycle view"); return;
+    }
+    if (limit < 1 || limit > EXEC_LIFECYCLE_PAGE_MAX) {
+        send_err(id, "invalid lifecycle limit"); return;
+    }
+    char token[17];
+    snprintf(token, sizeof(token), "%016llx",
+             (unsigned long long)overlay_lifecycle_catalog_token());
+    if (cursor && (!requested_token[0] || strcmp(requested_token, token))) {
+        send_fmt("{\"id\":%d,\"ok\":false,\"error\":\"lifecycle_changed\","
+                 "\"lifecycle_token\":\"%s\"}", id, token);
+        return;
+    }
+
+    int owner_total = overlay_lifecycle_owner_count();
+    OverlayExecutionOwner *owners = NULL;
+    if (!strcmp(view, "owner")) {
+        if (!json_get_str(json, "addr", address_text, sizeof(address_text))) {
+            send_err(id, "missing lifecycle owner address"); return;
+        }
+        uint32_t address = hex_to_u32(address_text);
+        uint32_t phys = address & 0x1fffffffu;
+        if (phys >= 0x200000u) {
+            send_err(id, "lifecycle owner address is not main RAM"); return;
+        }
+        owners = (OverlayExecutionOwner *)calloc(1u, sizeof(*owners));
+        if (!owners) { send_err(id, "alloc failed"); return; }
+        owner_total = overlay_lifecycle_owner_at(phys, owners) ? 1 : 0;
+    } else if (!strcmp(view, "owners") && owner_total) {
+        owners = (OverlayExecutionOwner *)calloc((size_t)owner_total, sizeof(*owners));
+        if (!owners) { send_err(id, "alloc failed"); return; }
+        for (int n = 0; n < owner_total; n++)
+            if (!overlay_lifecycle_get_owner(n, &owners[n])) {
+                free(owners); send_err(id, "invalid execution owner metadata"); return;
+            }
+        qsort(owners, (size_t)owner_total, sizeof(*owners), execution_owner_compare);
+    }
+
+    uint64_t oldest = overlay_lifecycle_event_oldest_sequence();
+    uint64_t latest = overlay_lifecycle_event_latest_sequence();
+    uint64_t total = !strcmp(view, "instances")
+        ? (uint64_t)overlay_lifecycle_instance_count()
+        : (!strcmp(view, "owners") || !strcmp(view, "owner"))
+            ? (uint64_t)owner_total
+        : (latest >= oldest && oldest ? latest - oldest + 1u : 0u);
+    uint64_t logical = cursor;
+    if (!strcmp(view, "events")) {
+        if (!logical) logical = oldest;
+        if (logical && oldest && logical < oldest) {
+            free(owners); send_err(id, "lifecycle event cursor evicted"); return;
+        }
+        if (logical > latest + 1u) {
+            free(owners); send_err(id, "lifecycle cursor past end"); return;
+        }
+    } else if (logical > total) {
+        free(owners); send_err(id, "lifecycle cursor past end"); return;
+    }
+
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { free(owners); send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"view\":\"%s\",\"ordering\":\"%s\","
+        "\"cursor\":%llu,\"requested_limit\":%d,\"effective_limit\":%d,"
+        "\"total\":%llu,\"lifecycle_token\":\"%s\",\"overflowed\":%s,"
+        "\"event_history_truncated\":%s,\"tracking_started_frame\":%u,"
+        "\"event_oldest_sequence\":%llu,\"event_latest_sequence\":%llu,\"records\":[",
+        id, view, !strcmp(view, "instances") ? "creation" :
+                  (!strcmp(view, "owners") || !strcmp(view, "owner"))
+                    ? "guest-address" : "sequence",
+        (unsigned long long)cursor, limit, limit, (unsigned long long)total, token,
+        overlay_lifecycle_overflowed() ? "true" : "false",
+        latest > overlay_lifecycle_event_capacity() ? "true" : "false",
+        overlay_lifecycle_tracking_started_frame(),
+        (unsigned long long)oldest, (unsigned long long)latest);
+    int emitted = 0;
+    uint8_t *ram = memory_get_ram_ptr();
+    while (emitted < limit) {
+        char record[2048]; int n = -1;
+        if (!strcmp(view, "instances")) {
+            if (logical >= total) break;
+            OverlayLifecycleInstance instance;
+            if (!overlay_lifecycle_get_instance((int)logical, &instance)) break;
+            uint8_t digest[32]; char live_sha[65];
+            psx_sha256(ram + instance.capture_base, instance.known_length, digest);
+            psx_sha256_hex(digest, live_sha);
+            uint32_t live_crc = crc32_compute(ram + instance.capture_base,
+                                              instance.known_length);
+            char predecessor[40] = "null", successor[40] = "null";
+            if (instance.predecessor_id) snprintf(predecessor, sizeof(predecessor),
+                "\"life-%016llx\"", (unsigned long long)instance.predecessor_id);
+            if (instance.successor_id) snprintf(successor, sizeof(successor),
+                "\"life-%016llx\"", (unsigned long long)instance.successor_id);
+            n = snprintf(record, sizeof(record),
+                "{\"instance_id\":\"life-%016llx\",\"image_kind\":\"dma-load-fragment\","
+                "\"lifecycle_generation\":%u,\"creation_reason\":\"cdrom-dma-complete\","
+                "\"first_observed_frame\":%u,\"last_observed_frame\":%u,"
+                "\"last_execution_frame\":%u,\"active\":%s,\"status\":\"%s\","
+                "\"load_or_capture_base\":\"0x%08X\",\"known_span\":%u,"
+                "\"capture_identity\":{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+                "\"scope\":\"exact-dma-transfer\"},\"current_live_identity\":{\"algorithm\":\"sha256\","
+                "\"sha256\":\"%s\",\"scope\":\"exact-known-span\"},"
+                "\"capture_live_comparison\":{\"comparable\":true,\"matches\":%s},"
+                "\"transformed_source_identity\":null,\"whole_image_identity\":null,"
+                "\"predecessor_instance_id\":%s,\"successor_instance_id\":%s,"
+                "\"last_execution_owner\":\"%s\"}",
+                (unsigned long long)instance.instance_id, instance.lifecycle_generation,
+                instance.first_observed_frame, instance.last_observed_frame,
+                instance.last_execution_frame, instance.active ? "true" : "false",
+                instance.active ? "active" : "superseded",
+                instance.capture_base | 0x80000000u, instance.known_length,
+                instance.capture_crc32, live_sha,
+                live_crc == instance.capture_crc32 ? "true" : "false",
+                predecessor, successor,
+                execution_owner_name(instance.last_execution_owner));
+            logical++;
+        } else if (!strcmp(view, "owners") || !strcmp(view, "owner")) {
+            if (logical >= total) break;
+            OverlayExecutionOwner *owner = &owners[logical++];
+            char instance_id[40] = "null", registration_id[40] = "null";
+            int observation_current =
+                overlay_lifecycle_owner_observation_current(owner);
+            char current_owner[40] = "null";
+            char first_frame[24] = "null";
+            if (observation_current) snprintf(current_owner, sizeof(current_owner),
+                "\"%s\"", execution_owner_name(owner->owner));
+            if (owner->first_observed_frame) snprintf(first_frame, sizeof(first_frame),
+                "%u", owner->first_observed_frame);
+            if (owner->instance_id) snprintf(instance_id, sizeof(instance_id),
+                "\"life-%016llx\"", (unsigned long long)owner->instance_id);
+            if (owner->registration_id) snprintf(registration_id, sizeof(registration_id),
+                "\"reg-%08x\"", owner->registration_id);
+            n = snprintf(record, sizeof(record),
+                "{\"guest_address\":\"0x%08X\",\"last_observed_backend\":\"%s\","
+                "\"current_execution_owner\":%s,\"observation_current\":%s,"
+                "\"watched_generation_at_observation\":%u,"
+                "\"reason\":\"%s\",\"first_observed_frame\":%s,"
+                "\"last_observed_frame\":%u,\"hits\":%llu,"
+                "\"image_instance_id\":%s,\"native_registration_id\":%s}",
+                owner->phys | 0x80000000u, execution_owner_name(owner->owner),
+                current_owner,
+                observation_current ? "true" : "false",
+                owner->watched_generation_at_observation,
+                execution_reason_name(owner->reason), first_frame,
+                owner->last_observed_frame, (unsigned long long)owner->hits,
+                instance_id, registration_id);
+        } else {
+            if (!oldest || logical > latest) break;
+            OverlayLifecycleEvent event;
+            if (!overlay_lifecycle_get_event(logical, &event)) break;
+            char related[40] = "null";
+            char event_instance[40] = "null";
+            if (event.instance_id) snprintf(event_instance, sizeof(event_instance),
+                "\"life-%016llx\"", (unsigned long long)event.instance_id);
+            if (event.related_instance_id) snprintf(related, sizeof(related),
+                "\"life-%016llx\"", (unsigned long long)event.related_instance_id);
+            n = snprintf(record, sizeof(record),
+                "{\"sequence\":%llu,\"frame\":%u,\"event\":\"%s\","
+                "\"instance_id\":%s,\"related_instance_id\":%s,"
+                "\"guest_base\":\"0x%08X\",\"length\":%u,"
+                "\"previous_owner\":\"%s\",\"new_owner\":\"%s\",\"reason\":\"%s\"}",
+                (unsigned long long)event.sequence, event.frame,
+                lifecycle_event_name(event.kind), event_instance, related,
+                event.base | 0x80000000u, event.length,
+                execution_owner_name(event.previous_owner),
+                execution_owner_name(event.new_owner), execution_reason_name(event.reason));
+            logical++;
+        }
+        if (n < 0 || (size_t)n >= sizeof(record) ||
+            pos + (size_t)n + 256u >= OBS_MAX_RESPONSE_BYTES) break;
+        if (emitted) out[pos++] = ',';
+        memcpy(out + pos, record, (size_t)n); pos += (size_t)n; emitted++;
+    }
+    int has_more = !strcmp(view, "events") ? (oldest && logical <= latest)
+                                             : logical < total;
+    int n = has_more
+        ? snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+            "],\"returned\":%d,\"has_more\":true,\"next_cursor\":%llu,\"frame\":%llu}",
+            emitted, (unsigned long long)logical, (unsigned long long)s_frame_count)
+        : snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+            "],\"returned\":%d,\"has_more\":false,\"next_cursor\":null,\"frame\":%llu}",
+            emitted, (unsigned long long)s_frame_count);
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(owners); send_err(id, "response too large"); return;
+    }
+    debug_server_send_line(out);
+    free(out); free(owners);
 }
 
 static void handle_runtime_identity(int id, const char *json) {
@@ -4608,8 +4854,29 @@ static int append_exec_record(char *out, size_t cap, size_t *pos,
         if (n < 0 || (size_t)n >= cap - *pos) return 0;
         *pos += (size_t)n;
     }
-    n = snprintf(out + *pos, cap - *pos, "],\"frame_observed\":%llu}",
-                 (unsigned long long)s_frame_count);
+    OverlayExecutionOwner execution_owner;
+    int has_execution_owner = overlay_lifecycle_owner_at(r->entry, &execution_owner);
+    if (has_execution_owner) {
+        char instance_id[40] = "null", registration_id[40] = "null";
+        if (execution_owner.instance_id) snprintf(instance_id, sizeof(instance_id),
+            "\"life-%016llx\"", (unsigned long long)execution_owner.instance_id);
+        if (execution_owner.registration_id) snprintf(registration_id, sizeof(registration_id),
+            "\"reg-%08x\"", execution_owner.registration_id);
+        n = snprintf(out + *pos, cap - *pos,
+            "],\"execution_owner\":{\"last_observed_backend\":\"%s\",\"reason\":\"%s\","
+            "\"scope\":\"last-observed-exact-pc\",\"observation_current\":%s,"
+            "\"image_instance_id\":%s,\"native_registration_id\":%s},"
+            "\"frame_observed\":%llu}",
+            execution_owner_name(execution_owner.owner),
+            execution_reason_name(execution_owner.reason),
+            overlay_lifecycle_owner_observation_current(&execution_owner) ? "true" : "false",
+            instance_id, registration_id,
+            (unsigned long long)s_frame_count);
+    } else {
+        n = snprintf(out + *pos, cap - *pos,
+            "],\"execution_owner\":null,\"frame_observed\":%llu}",
+            (unsigned long long)s_frame_count);
+    }
     if (n < 0 || (size_t)n >= cap - *pos) return 0;
     *pos += (size_t)n;
     return 1;
@@ -4788,7 +5055,25 @@ static int append_catalog_registration(char *out, size_t cap,
         if (n < 0 || (size_t)n >= cap - pos) return -1;
         pos += (size_t)n;
     }
-    n = snprintf(out + pos, cap - pos, "]}");
+    OverlayExecutionOwner execution_owner;
+    int has_execution_owner = overlay_lifecycle_owner_at(r->entry, &execution_owner);
+    if (has_execution_owner) {
+        char instance_id[40] = "null", registration_id[40] = "null";
+        if (execution_owner.instance_id) snprintf(instance_id, sizeof(instance_id),
+            "\"life-%016llx\"", (unsigned long long)execution_owner.instance_id);
+        if (execution_owner.registration_id) snprintf(registration_id, sizeof(registration_id),
+            "\"reg-%08x\"", execution_owner.registration_id);
+        n = snprintf(out + pos, cap - pos,
+            "],\"execution_owner\":{\"last_observed_backend\":\"%s\",\"reason\":\"%s\","
+            "\"scope\":\"last-observed-exact-pc\",\"observation_current\":%s,"
+            "\"image_instance_id\":%s,\"native_registration_id\":%s}}",
+            execution_owner_name(execution_owner.owner),
+            execution_reason_name(execution_owner.reason),
+            overlay_lifecycle_owner_observation_current(&execution_owner) ? "true" : "false",
+            instance_id, registration_id);
+    } else {
+        n = snprintf(out + pos, cap - pos, "],\"execution_owner\":null}");
+    }
     if (n < 0 || (size_t)n >= cap - pos) return -1;
     return (int)(pos + (size_t)n);
 }
@@ -12854,6 +13139,7 @@ static const CmdEntry s_commands[] = {
     { "protocol_info",     handle_protocol_info },
     { "runtime_identity",  handle_runtime_identity },
     { "executable_catalog", handle_executable_catalog },
+    { "executable_lifecycle", handle_executable_lifecycle },
     { "executable_regions", handle_executable_regions },
     { "read_regions",      handle_read_regions },
     { "ping",              handle_ping },
