@@ -118,6 +118,21 @@ static uint32_t cdrom_intc_latched_generation;
 #define CDROM_IRQ_PRESENT_DELAY 5000
 static int cdrom_irq_present_delay;
 
+/* Optional controller-response visibility correction.  The INTC edge is
+ * already delayed, but without this mode a guest polling the controller from
+ * a callback can see and consume the response FIFO immediately.  Keep the
+ * compatibility switch opt-in until it has broad cross-title coverage. */
+static int s_response_visibility_delay = -1;
+
+static int response_visibility_delayed(void) {
+    if (s_response_visibility_delay < 0) {
+        const char *value = getenv("PSX_CD_RESPONSE_VISIBILITY_DELAY");
+        s_response_visibility_delay = value && value[0] == '1';
+    }
+    return s_response_visibility_delay && irq_flag != 0 &&
+           cdrom_irq_present_delay > 0;
+}
+
 /* Parameter FIFO */
 #define PARAM_FIFO_SIZE 16
 static uint8_t param_fifo[PARAM_FIFO_SIZE];
@@ -1318,7 +1333,11 @@ static int read_sector_at(int min, int sec, int sect) {
                     delivery.xa_coding,
                     0);
     }
-    return delivery.data_delivered ? 1 : 0;
+    /* Filtered realtime XA is consumed by the controller's ADPCM path rather
+     * than exposed through the CPU/DMA data FIFO, but it is still a physical
+     * sector arrival and raises INT1.  The return value controls that event;
+     * sector_available above continues to control FIFO visibility. */
+    return 1;
 }
 
 static void advance_msf(int* m, int* s, int* f) {
@@ -2089,6 +2108,10 @@ static void process_pending(uint32_t cycles) {
     case 0x16: /* SeekP complete */
         stat_reg &= ~CDSTAT_SEEK;
         setloc_seek_far = 0;
+        /* A completed seek moves the drive's reported position immediately.
+         * The first subsequently delivered sector will replace the remaining
+         * header/subheader state through the normal path. */
+        last_sector_lba = msf_to_lba(seek_min, seek_sec, seek_sect);
         response_push(stat_reg);
         set_irq(CDIRQ_COMPLETE);
         fire_cdrom_irq();
@@ -2312,7 +2335,8 @@ uint32_t cdrom_read(uint32_t addr) {
          * init down a different branch from real hardware. */
         if (param_count == 0) s |= (1 << 3);
         if (param_count < PARAM_FIFO_SIZE) s |= (1 << 4);
-        if (response_read < response_count) s |= (1 << 5);
+        if (!response_visibility_delayed() && response_read < response_count)
+            s |= (1 << 5);
         if (data_fifo_ready()) s |= (1 << 6);
         /* Bit 7 BUSYSTS: command written but not yet executed (our queued
          * path; the synchronous path leaves no guest-observable window).
@@ -2323,7 +2347,7 @@ uint32_t cdrom_read(uint32_t addr) {
     }
 
     case 0x1F801801:
-        if (response_read < response_count) {
+        if (!response_visibility_delayed() && response_read < response_count) {
             ret = response_fifo[response_read++];
         }
         break;
@@ -2341,7 +2365,7 @@ uint32_t cdrom_read(uint32_t addr) {
         if (index_reg == 0 || index_reg == 2) {
             ret = irq_enable;
         } else {
-            ret = irq_flag | 0xE0;
+            ret = response_visibility_delayed() ? 0xE0 : irq_flag | 0xE0;
         }
         break;
 
