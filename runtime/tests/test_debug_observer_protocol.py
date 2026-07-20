@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthetic and structural regressions for debug protocol 1.4.
+"""Synthetic and structural regressions for debug protocol 1.5.
 
 No retail bytes, executable payloads, host paths, or emulator state are used.
 The executable models below exercise the documented bounds and authoritative
@@ -356,8 +356,8 @@ class CompatibilityAndHygieneTests(unittest.TestCase):
             self.assertNotIn(forbidden, identity_handler)
 
     def test_38_no_raw_executable_bytes_in_identity_responses(self) -> None:
-        handlers = NATIVE[NATIVE.index("handle_runtime_identity"):NATIVE.index("typedef struct {", NATIVE.index("handle_read_regions"))]
-        self.assertNotIn('\\"hex\\"', handlers[:handlers.index("handle_read_regions")])
+        handlers = NATIVE[NATIVE.index("handle_runtime_identity"):NATIVE.index("hash_live_ranges")]
+        self.assertNotIn('\\"hex\\"', handlers)
         self.assertIn('\\"sha256\\"', handlers)
 
     def test_39_fixtures_are_synthetic_and_metadata_only(self) -> None:
@@ -478,10 +478,11 @@ class ExecutableCatalogModelTests(unittest.TestCase):
         self.assertIn('next_cursor\\\":', NATIVE)
 
     def test_61_protocol_minor_and_capability_are_additive(self) -> None:
-        self.assertIn('major\\\":1,\\\"minor\\\":4', NATIVE)
+        self.assertIn('major\\\":1,\\\"minor\\\":5', NATIVE)
         self.assertIn('\\\"executable_catalog\\\"', NATIVE)
         self.assertIn('\\\"executable_image_lifecycle\\\"', NATIVE)
         self.assertIn('\\\"execution_witness\\\"', NATIVE)
+        self.assertIn('\\\"observation_guard\\\"', NATIVE)
         self.assertIn('{ "executable_regions", handle_executable_regions }', NATIVE)
 
     def test_62_complete_client_paging(self) -> None:

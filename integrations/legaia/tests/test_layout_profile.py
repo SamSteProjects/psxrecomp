@@ -40,7 +40,7 @@ def context(value: dict | None = None) -> dict:
         "runtime_protocol": {
             "name": "psxrecomp-debug",
             "major": 1,
-            "minor": 4,
+            "minor": value["supported_runtime_protocol"]["minimum_minor"],
             "capabilities": copy.deepcopy(value["supported_runtime_protocol"]["required_capabilities"]),
         },
         "overlays": [
@@ -70,6 +70,7 @@ def context(value: dict | None = None) -> dict:
         "observation_boundary": {
             "stable_executable_state": True,
             "stable_lifecycle_state": True,
+            "stable_observation_guard": True,
         },
         "actor_count": 7,
     }
@@ -272,16 +273,20 @@ class RuntimeLayoutProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(LayoutProfileError, "watched generation changed"):
             validate_observation_context(value, observed)
 
-    def test_30_mixed_executable_state(self) -> None:
+    def test_30_global_executable_state_is_diagnostic(self) -> None:
         value = runnable_profile(); observed = context(value)
         observed["observation_boundary"]["stable_executable_state"] = False
-        with self.assertRaisesRegex(LayoutProfileError, "executable-state boundary"):
-            validate_observation_context(value, observed)
+        validate_observation_context(value, observed)
 
-    def test_31_mixed_lifecycle_state(self) -> None:
+    def test_31_global_lifecycle_state_is_diagnostic(self) -> None:
         value = runnable_profile(); observed = context(value)
         observed["observation_boundary"]["stable_lifecycle_state"] = False
-        with self.assertRaisesRegex(LayoutProfileError, "lifecycle boundary"):
+        validate_observation_context(value, observed)
+
+    def test_31b_mixed_observation_guard_rejected(self) -> None:
+        value = runnable_profile(); observed = context(value)
+        observed["observation_boundary"]["stable_observation_guard"] = False
+        with self.assertRaisesRegex(LayoutProfileError, "scoped observation guard"):
             validate_observation_context(value, observed)
 
     def test_32_ambiguous_execution_owner(self) -> None:
@@ -307,12 +312,12 @@ class RuntimeLayoutProfileTests(unittest.TestCase):
 
     def test_36_protocol_minor_compatibility(self) -> None:
         value = runnable_profile(); observed = context(value)
-        observed["runtime_protocol"]["minor"] = 5
+        observed["runtime_protocol"]["minor"] = 6
         self.assertEqual(validate_observation_context(value, observed)["actor_count"], 7)
 
     def test_37_protocol_minor_too_old(self) -> None:
         value = runnable_profile(); observed = context(value)
-        observed["runtime_protocol"]["minor"] = 3
+        observed["runtime_protocol"]["minor"] = 4
         with self.assertRaisesRegex(LayoutProfileError, "minor is too old"):
             validate_observation_context(value, observed)
 
