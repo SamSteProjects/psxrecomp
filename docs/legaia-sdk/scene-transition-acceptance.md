@@ -84,6 +84,14 @@ save, but it loads a later transformed Rim Elm scene rather than the accepted
 story-locked; arbitrary directional input therefore cannot provide a valid
 normal exit/re-entry proof.
 
+The implemented transition watcher was also exercised live through the normal
+fresh-game opening. It established the initial town01 epoch with 13 compatible
+samples, frames continued advancing, and it then stopped at the deliberately
+short exit timeout. The bounded check used 32 observer requests, made zero
+actor-node requests, read zero actor bytes, performed zero RAM writes, and the
+runtime exited normally. This proves the live negotiation and initial
+stabilization path, not exit/re-entry acceptance.
+
 No RAM write, save-state injection, teleport, actor-node read, or profile
 weakening was used to bypass that gate. Retail transition acceptance remains
 open until a normal `town01` save with the south gate accessible is supplied.
