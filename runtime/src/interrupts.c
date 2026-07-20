@@ -332,7 +332,12 @@ static void fire_vblank_edge(void) {
 
 void interrupts_service_scheduled_events(void) {
     note_sio_progress_cycle();
-    if (in_exception) return;
+    /* Device deadlines continue while guest code is inside an exception
+     * handler.  In particular, a CD callback may synchronously wait for a
+     * VBlank; suppressing the edge here makes that wait impossible to
+     * satisfy.  This only raises the device edge.  Nested exception delivery
+     * remains governed by the guest COP0 interrupt state and the existing
+     * exception-depth guards in psx_check_interrupts(). */
     while (cycles_since_vblank >= VBLANK_CYCLES) {
         if (should_defer_vblank_for_sio()) return;
         fire_vblank_edge();
