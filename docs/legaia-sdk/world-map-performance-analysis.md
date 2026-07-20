@@ -46,3 +46,8 @@ The normal retail debug menu may be used to warp; debugger RAM writes, save-stat
 | Frame pacing | emulated frames versus wall time | harness-ready |
 
 The current implementation was synthetically exercised with both target states, idle and 2 Hz polling, repeated aggregation, failed target rejection, bounded counter deltas, and privacy checks. A live benchmark result must be produced only while the verified target is stable; no synthetic result is presented as a retail performance measurement.
+
+The fresh runtime probe used for this change remained in the normal boot/menu
+state. It was deliberately not navigated by injection or RAM modification, so it
+produced no live town0c or map01 benchmark sample. The table above consequently
+remains unmeasured live.

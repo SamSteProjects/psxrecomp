@@ -27,6 +27,15 @@ The profile retains the profile-derived observation guard: scene name, PROT base
 
 No process-local guard token, RAM content, host path, actor bytes, disc bytes, or save state appears in the profile.
 
+## Fresh-process status
+
+One fresh RelWithDebInfo process was started only to verify the debug protocol and
+main-executable identity. It remained at the normal boot/menu state, so it did
+not yield a town0c selection or transition observation and is not counted as
+profile evidence. Reaching town0c/map01 requires normal retail navigation; this
+work did not use input injection, debugger writes, warps outside the retail menu,
+or save-state injection to manufacture that state.
+
 ## Unresolved fields
 
 - There is no authoritative whole-image identity for the field overlay; the profile therefore continues to rely on current generation-matched execution witnesses rather than pretending that the source-entry digest is live-image identity.
