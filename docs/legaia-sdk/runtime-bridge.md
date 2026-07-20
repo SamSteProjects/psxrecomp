@@ -168,9 +168,9 @@ The first revisioned profile now lives at `integrations/legaia/layouts/scus94254
 
 The research changes the proposed actor read from a contiguous table read to a bounded pointer-census read. Retail field actors are linked, individually allocated nodes. Field overlay 0897 rebuilds a filtered, 32-pointer collision census each frame; its four-byte entries are not actor records and its indices are not identity. A future observer should read the 128-byte census, validate each pointer, then read only the documented `0x9C`-byte node prefix.
 
-The generic transport prerequisites now exist. A later observer can negotiate
-protocol 1.4, verify program identity, require the accepted three-witness field
-execution identity, and discard mixed frame/executable/lifecycle snapshots.
+The generic transport prerequisites now exist. An observer can negotiate
+protocol 1.5, verify program identity, require the accepted three-witness field
+execution identity, and discard scoped-guard mismatches.
 The profile no longer requires a guessed whole-overlay range. This enables a
 separately approved headless read-only observer phase; it is not permission to
 correlate imported records or write RAM. No Legaia-specific command or runtime
@@ -195,3 +195,12 @@ three required witness requests. Ten settled-town01 diagnostic groups produced
 no common token across all four commands. The observer therefore discarded all
 attempts before actor traversal. See `headless-runtime-observer.md` and
 `scene-epoch-observation.md`.
+
+Protocol 1.5 resolves the cross-request scope problem without weakening the
+global token. A stateless observation guard hashes only the profile-declared
+scene signals and exact execution witnesses, and guarded `read_regions`
+withholds payload on mismatch. Repeated town01 boundary-only passes retained a
+stable guard while unrelated global watched-page/lifecycle state changed.
+However, live scene-exit and re-entry invalidation are still unaccepted, so the
+observer CLI remains boundary-only and actor traversal remains gated. See
+`scoped-scene-epoch.md`.
