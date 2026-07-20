@@ -18,6 +18,8 @@ from integrations.legaia.observer import (  # noqa: E402
     ObserverError,
     ProtocolClient,
     RuntimeObserver,
+    SceneTransitionWatcher,
+    TransitionLimits,
 )
 
 
@@ -47,6 +49,17 @@ def main(argv: list[str] | None = None) -> int:
         default=10,
         help="additional compatible guard-only samples (default: 10)",
     )
+    parser.add_argument(
+        "--transition-watch",
+        action="store_true",
+        help="watch a manual normal exit and re-entry without actor reads",
+    )
+    parser.add_argument("--poll-interval", type=float, default=0.1)
+    parser.add_argument("--initial-timeout", type=float, default=30.0)
+    parser.add_argument("--exit-timeout", type=float, default=180.0)
+    parser.add_argument("--outside-timeout", type=float, default=30.0)
+    parser.add_argument("--reentry-timeout", type=float, default=180.0)
+    parser.add_argument("--stabilization-timeout", type=float, default=30.0)
     parser.add_argument("--full-json", action="store_true", help="also print the metadata JSON to stdout")
     args = parser.parse_args(argv)
     try:
@@ -58,11 +71,28 @@ def main(argv: list[str] | None = None) -> int:
             request_timeout=args.request_timeout,
         ) as client:
             observer = RuntimeObserver(client, profile)
-            if not args.boundary_only:
-                raise ValueError(
-                    "retail actor traversal remains gated; use --boundary-only"
+            if args.boundary_only and args.transition_watch:
+                raise ValueError("choose either --boundary-only or --transition-watch")
+            if args.transition_watch:
+                watcher = SceneTransitionWatcher(
+                    observer.selector,
+                    profile,
+                    limits=TransitionLimits(
+                        poll_interval_seconds=args.poll_interval,
+                        initial_timeout_seconds=args.initial_timeout,
+                        exit_timeout_seconds=args.exit_timeout,
+                        outside_timeout_seconds=args.outside_timeout,
+                        reentry_timeout_seconds=args.reentry_timeout,
+                        stabilization_timeout_seconds=args.stabilization_timeout,
+                    ),
                 )
-            snapshot = observer.capture_boundary(args.boundary_samples)
+                snapshot = watcher.run()
+            elif args.boundary_only:
+                snapshot = observer.capture_boundary(args.boundary_samples)
+            else:
+                raise ValueError(
+                    "retail actor traversal remains gated; use --boundary-only or --transition-watch"
+                )
         encoded = json.dumps(
             snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         ) + "\n"
@@ -71,15 +101,25 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError, ObserverError) as exc:
         parser.exit(2, f"legaia-observe: error: {exc}\n")
     metrics = snapshot["metrics"]
-    print(
-        f"Accepted scoped boundary: epoch={snapshot['epoch']['epoch_id'][:18]}... "
-        f"guard={snapshot['guard']['token'][:12]} "
-        f"samples={snapshot['guard']['compatible_sample_count']} "
-        f"frames={snapshot['frames']['first']}->{snapshot['frames']['last']} "
-        f"requests={metrics['request_count']} actor_bytes=0 "
-        f"duration_ms={metrics['duration_ms']}"
-    )
-    print(f"Saved metadata-only boundary diagnostic to {args.output}")
+    if args.transition_watch:
+        print(
+            "Accepted town01 transition: "
+            f"initial={snapshot['initial_epoch']['token'][:12]} "
+            f"reentry={snapshot['reentry_epoch']['token'][:12]} "
+            f"requests={metrics['request_count']} actor_bytes=0 "
+            f"duration_ms={metrics['duration_ms']}"
+        )
+        print(f"Saved metadata-only transition report to {args.output}")
+    else:
+        print(
+            f"Accepted scoped boundary: epoch={snapshot['epoch']['epoch_id'][:18]}... "
+            f"guard={snapshot['guard']['token'][:12]} "
+            f"samples={snapshot['guard']['compatible_sample_count']} "
+            f"frames={snapshot['frames']['first']}->{snapshot['frames']['last']} "
+            f"requests={metrics['request_count']} actor_bytes=0 "
+            f"duration_ms={metrics['duration_ms']}"
+        )
+        print(f"Saved metadata-only boundary diagnostic to {args.output}")
     if args.full_json:
         print(json.dumps(snapshot, indent=2, ensure_ascii=False))
     return 0
