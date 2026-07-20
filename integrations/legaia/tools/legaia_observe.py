@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     metrics = snapshot["metrics"]
     if args.transition_watch:
         print(
-            "Accepted town01 transition: "
+            "Accepted profiled scene transition: "
             f"initial={snapshot['initial_epoch']['token'][:12]} "
             f"reentry={snapshot['reentry_epoch']['token'][:12]} "
             f"requests={metrics['request_count']} actor_bytes=0 "

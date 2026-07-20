@@ -86,6 +86,8 @@ class FakeSelector:
         self.client.request_count += 2
 
     def _token(self) -> str:
+        if self.scenario == "token_reuse" and self.phase == "reentry":
+            return "1" * 64
         return ("1" if self.phase == "initial" else "2") * 64
 
     def _signals(self) -> dict[str, Any]:
@@ -286,6 +288,16 @@ class TransitionObserverTests(unittest.TestCase):
 
     def test_17_new_token_differs(self):
         result, _, _ = self.run_transition(); self.assertNotEqual(result["initial_epoch"]["token"], result["reentry_epoch"]["token"])
+
+    def test_17b_reentry_may_restore_same_scoped_state(self):
+        result, _, _ = self.run_transition("token_reuse")
+        self.assertEqual(result["initial_epoch"]["token"], result["reentry_epoch"]["token"])
+        self.assertFalse(result["reentry_epoch"]["token_differs_from_initial"])
+        self.assertTrue(result["reentry_epoch"]["token_reuse_is_state_equivalence"])
+        self.assertNotEqual(
+            result["initial_epoch"]["epoch"]["epoch_id"],
+            result["reentry_epoch"]["epoch"]["epoch_id"],
+        )
 
     def test_18_ten_reentry_samples(self):
         result, _, _ = self.run_transition(); self.assertGreaterEqual(result["reentry_epoch"]["stable_sample_count"], 13)
