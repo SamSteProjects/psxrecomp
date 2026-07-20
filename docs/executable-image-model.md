@@ -19,6 +19,15 @@ based on any game's scene or overlay numbering.
    separate even when their ranges are identical.
 4. **Native ownership** means that a registration passes every current dispatch
    predicate and is the candidate dispatch would select for its entry.
+5. An **execution-owner observation** records the backend that actually acquired
+   one exact guest PC. It may be static native, cached native, runtime native,
+   or the interpreter. Its watched generation determines whether that last
+   observation is still current.
+
+Completed post-game CD DMA transfers also create process-local
+`dma-load-fragment` lifecycle instances. These are authoritative exact capture
+spans but are not automatically whole overlays. Overlapping later transfers
+supersede earlier instances; adjacent transfers are not grouped.
 
 The catalog also keeps three identity domains separate:
 
@@ -62,3 +71,5 @@ Observers must select an image, range, and registration using all required
 identity fields. A source hash, live hash, watched generation, or overlapping
 address alone is insufficient. Missing image lifecycle metadata remains
 explicitly unresolved rather than being inferred from neighboring addresses.
+See [Executable image lifecycle](executable-image-lifecycle.md) for the event
+and identity contracts.

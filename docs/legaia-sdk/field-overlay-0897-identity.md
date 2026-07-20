@@ -81,3 +81,33 @@ The generic catalog prerequisite is accepted; a Legaia observer is not. The
 next safe work is evidence collection for the actual overlay load/capture event
 or another authoritative generic image lifecycle source. Actor traversal and
 imported/runtime correlation remain premature.
+
+## Protocol 1.3 lifecycle result
+
+A later fresh `RelWithDebInfo` run enabled lifecycle tracking during protocol
+negotiation and reached the same stable `town01` / PROT `3` / master-mode `3`
+boundary through normal controller input. No debugger RAM write was used.
+
+The exact field instruction at `0x801CF754` was observed executing through the
+dirty-RAM interpreter. Two fresh runs agreed on the backend. In the final run,
+the observation was current at query time, had 3,814 prior hits, and advanced
+while repeated queries were made. The record had no native registration ID and
+no DMA-image-instance parent. This resolves the execution backend without
+promoting any mismatched static registration to native-valid.
+
+The earlier base candidate `0x801CE818` had no exact execution-owner observation
+and was not an authoritative DMA capture base containing the observed field
+instruction. This narrows the result but does not prove whether the address is
+a decompression destination, allocation/data base, or an incorrect prior
+interpretation. It remains unresolved.
+
+The first lifecycle run exceeded the initial diagnostic-table capacity during
+the long opening sequence. Raising the bounded instance and exact-owner tables
+above that observed working set produced `overflowed:false` in the repeat
+town01 run. The 4,096-event ring correctly reported older history as truncated;
+this is bounded retention, not silent loss.
+
+Overlay 0897 is still **not accepted**. The interpreter backend is repeatable,
+but it cannot be linked to a bounded active executable-image instance, source
+or capture identity, deterministic child range set, or authoritative base and
+length. The layout profile remains unchanged and fail closed.

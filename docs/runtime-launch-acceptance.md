@@ -99,3 +99,29 @@ Use identity negotiation once, small `read_regions` polling at no more than
 10 Hz, and `executable_regions` only at startup or transition suspicion. Do not
 poll full live hashes at frame rate.
 
+## Protocol 1.3 lifecycle follow-up
+
+A later freshly linked RelWithDebInfo runtime accepted the additive
+`psxrecomp-debug` 1.3 lifecycle extension over the native wire. The native
+capability set now also includes `executable_catalog` and
+`executable_image_lifecycle`. Bounded lifecycle responses expose exact capture
+spans, replacement relationships, backend-neutral execution ownership, and an
+eviction-aware event history without returning executable bytes.
+
+During two fresh launches reaching the accepted `town01` state, exact address
+ownership queries repeatedly identified field code at `0x801CF754` as executing
+through the guarded dirty-RAM interpreter. The observations remained current as
+the hit count advanced and did not claim a native registration or image owner.
+The earlier `0x801CE818` candidate had no exact execution-owner record and could
+not be connected to an authoritative lifecycle image. Consequently no canonical
+field-overlay base, length, or live identity was accepted, and the Legaia layout
+profile remains deliberately fail-closed.
+
+The final acceptance run reported no lifecycle-table overflow. Its bounded
+event ring correctly reported history truncation after eviction. Multi-page
+lifecycle enumeration rejected state changes during traversal, while the exact
+owner query provided a bounded current answer. Low-frequency end-to-end CLI
+samples, including Python startup, averaged approximately 189 ms for exact
+owner queries and 150 ms for small `read_regions` requests; frame progression
+continued throughout. These figures do not replace the earlier wire-only
+latencies above.

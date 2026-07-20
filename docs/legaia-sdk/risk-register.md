@@ -44,11 +44,13 @@ Scales: likelihood and impact are `low`, `medium`, or `high`. Owners name the ar
 | Undo mutates imported/live data | M | H | Command log targets authored sparse overlays only | project model |
 | Collision census mistaken for owning actor pool | H | H | Profile distinguishes linked owning nodes from the filtered 32-pointer per-frame census; no slot-index identity | runtime profile |
 | Actor subclass fields conflated | H | H | Scope `.MAP` object fields separately from MAN NPCs; neutral names for `+0x50`/`+0x94` | runtime profile/provenance |
-| Source overlay hash mistaken for live identity | H | H | Protocol 1.2 keeps image source, exact registration source, prior validation and current live identities distinct; require an accepted canonical field-overlay model | runtime bridge |
+| Source overlay hash mistaken for live identity | H | H | Protocol 1.3 keeps source, exact DMA capture, registration validation and current live identities distinct and declares comparability; require an accepted canonical field-overlay model | runtime bridge |
 | Mixed-epoch multi-read snapshot | M | H | Use bounded `read_regions`; reject differing frame or executable-state stamps and re-check scene-epoch signals | runtime bridge |
 | Executable-region census exceeds one bounded response | M | H | Use protocol 1.2's eight-record byte-budgeted pages and token-bound cursor; treat ownership-token changes separately | runtime bridge |
 | Static structural variant mistaken for loaded image | H | H | Image catalog labels structural variants honestly; require an authoritative load/capture lifecycle before accepting a retail image base | runtime/overlay build |
 | Field code has no authoritative native owner | H | H | Keep overlay 0897 identity null; preserve exact source/live guards and collect authoritative image-lifecycle evidence | runtime/overlay build |
+| Last execution owner mistaken for current owner after mutation | M | H | Bind exact-PC observations to watched generation; expose stale observations with `observation_current:false` and no current owner | runtime bridge |
+| DMA fragment mistaken for a complete overlay | H | H | Label exact transfer spans as fragments; never group adjacent transfers or claim a whole-image identity without a traced transformation/load relationship | runtime/overlay build |
 
 ## Highest-priority validation items
 

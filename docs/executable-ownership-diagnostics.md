@@ -42,3 +42,14 @@ therefore marked non-comparable to a child registration's live identity.
 `registration_time_validated_identity` is null until the registration has
 actually passed validation. Static registrations retain that validation
 history after later invalidation, while current ownership remains false.
+
+## Execution ownership
+
+`execution_owner` is an exact-PC, last-observed backend record and does not
+replace the native predicates above. Its `observation_current` flag compares
+the authoritative watched generation sampled at dispatch with the current
+generation. A mutation can therefore make a formerly observed native or
+interpreter backend stale without inventing a replacement owner. The next real
+dispatch records the backend that actually acquires the PC.
+
+See [Backend-neutral execution ownership](execution-ownership.md).
