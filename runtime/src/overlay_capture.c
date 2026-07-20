@@ -180,6 +180,7 @@ static int s_lifecycle_overflow;
 static int s_lifecycle_tracking_enabled;
 static uint32_t s_lifecycle_tracking_start_frame;
 extern uint64_t s_frame_count;
+extern uint8_t *memory_get_ram_ptr(void);
 extern void overlay_watch_set_range(uint32_t phys, uint32_t len);
 extern uint32_t overlay_watch_pagegen_sum(uint32_t phys, uint32_t len);
 
@@ -312,6 +313,8 @@ void overlay_lifecycle_note_execution(uint32_t addr, uint32_t owner,
     record->reason = reason;
     record->watched_generation_at_observation =
         overlay_watch_pagegen_sum(phys, 4u);
+    memcpy(&record->instruction_word_at_observation,
+           memory_get_ram_ptr() + phys, sizeof(uint32_t));
 
     if (instance) {
         instance->last_observed_frame = (uint32_t)s_frame_count;
@@ -393,6 +396,7 @@ int overlay_lifecycle_owner_at(uint32_t addr, OverlayExecutionOwner *out) {
     out->instance_id = instance ? instance->instance_id : 0;
     out->reason = OVERLAY_EXEC_REASON_DIRTY_INTERPRETER;
     out->watched_generation_at_observation = interpreted.watched_generation;
+    out->instruction_word_at_observation = interpreted.instruction_word;
     return 1;
 }
 

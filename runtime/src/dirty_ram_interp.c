@@ -233,7 +233,7 @@ extern uint64_t s_frame_count;
  * overlay_capture can report execution-verified seeds for the region. A PSX
  * instruction is aligned, making this a single direct bitmap OR rather than a
  * cache-unfriendly open-addressed lookup on every guest instruction. */
-static inline void exec_pc_table_record(uint32_t pc) {
+static inline void exec_pc_table_record(uint32_t pc, uint32_t instruction_word) {
     uint32_t phys = pc & 0x1FFFFFFFu;
     if (phys < 2u * 1024u * 1024u && (phys & 3u) == 0u) {
         uint32_t word = phys >> 2;
@@ -252,6 +252,7 @@ static inline void exec_pc_table_record(uint32_t pc) {
                 e->hits = 1;
                 e->last_frame = (uint32_t)s_frame_count;
                 e->watched_generation = overlay_watch_pagegen_sum(phys, 4u);
+                e->instruction_word = instruction_word;
             }
         }
     }
@@ -1203,7 +1204,7 @@ static void exec_delay_slot(CPUState *cpu, uint32_t pc) {
 
 static int exec_one_fetched(CPUState *cpu, uint32_t pc, uint32_t insn,
                             uint32_t *next_pc_out) {
-    exec_pc_table_record(pc);
+    exec_pc_table_record(pc, insn);
     uint32_t opc  = op_field(insn);
     uint32_t rs   = rs_field(insn);
     uint32_t rt   = rt_field(insn);
