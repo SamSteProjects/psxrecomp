@@ -473,6 +473,12 @@ function(psxrecomp_add_runtime_target target)
     else()
         target_link_libraries(${target} PRIVATE ${SDL2_LIBRARIES})
     endif()
+    if(WIN32)
+        # frame_pacing.c requests a process-local 1 ms timer resolution while
+        # pacing is active, avoiding default-quantum oversleeps and catch-up
+        # cadence on Windows.
+        target_link_libraries(${target} PRIVATE winmm)
+    endif()
 
     # Build identity: stamp the psxrecomp commit into the binary so a crash report
     # can be correlated to an exact build (issue #1 user reports had no version).
