@@ -7,6 +7,20 @@
 /* FRAME_PACING_PURE_ONLY: tests compile only the SDL-free decision
  * function (tests/test_frame_pacing.c includes this file directly). */
 #ifndef FRAME_PACING_PURE_ONLY
+
+/* SDL already requests a 1 ms Windows timer resolution by default, but a
+ * high-resolution sleep may still wake several milliseconds late under normal
+ * desktop scheduling. The old one-millisecond spin tail then misses a 59.94 Hz
+ * deadline and the bounded catch-up policy deliberately emits a short next
+ * frame. That creates a persistent long/short cadence even though average FPS
+ * is correct. Reserve three additional milliseconds for the precise spin only
+ * on Windows: the guest deadline, emulated cycles, and audio rate are unchanged
+ * while the host has a four-millisecond wake-up margin. */
+#if defined(_WIN32)
+#define FRAME_PACER_WINDOWS_SLEEP_GUARD_MS 3u
+#else
+#define FRAME_PACER_WINDOWS_SLEEP_GUARD_MS 0u
+#endif
 #include <SDL.h>
 #endif
 
@@ -64,6 +78,10 @@ void frame_pacer_wait(FramePacer *p, double period_ms) {
     for (;;) {
         now = SDL_GetPerformanceCounter();     /* ONE read per iteration */
         uint32_t ms = frame_pacing_sleep_ms(now, p->next_deadline, freq, period);
+        if (ms > FRAME_PACER_WINDOWS_SLEEP_GUARD_MS)
+            ms -= FRAME_PACER_WINDOWS_SLEEP_GUARD_MS;
+        else
+            ms = 0;
         if (ms == 0) break;
         SDL_Delay(ms);
     }
