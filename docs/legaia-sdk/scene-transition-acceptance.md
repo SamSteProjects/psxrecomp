@@ -1,9 +1,8 @@
 # Scene-transition acceptance
 
-Status: implementation, synthetic validation, and one same-process retail
-`town0c -> map01 -> town0c` acceptance pass complete. The former research
-selection has been replaced by `legaia-na-scus94254-town0c-field-v1`; a fresh
-process repeat remains required before actor traversal.
+Status: implementation, synthetic validation, and repeated fresh-process retail
+`town0c -> map01 -> town0c` acceptance complete with
+`legaia-na-scus94254-town0c-field-v1`.
 
 ## Scope
 
@@ -108,10 +107,12 @@ earlier assumption that this fingerprint must differ. The intervening map state
 rejected the token, while the observer sequence produced a distinct epoch; no
 stale epoch was accepted.
 
-## Remaining gate
+## Final transition gate result
 
-Retail actor traversal stays disabled. The town0c research selection is now a
-reviewed revisioned profile, but a second fresh-process round trip and
-state-equivalent world-map observer-overhead A/B remain hard gates. Bounded
-guarded traversal can then be considered as a separately approved phase.
-Imported/runtime correlation remains later work even after traversal is enabled.
+The fresh-process repeat and state-equivalent world-map A/B are complete. Each
+round trip produced a stable map01 sample, explicit old-token rejection, and a
+stable town0c re-entry with twelve compatible samples. The guard fingerprint
+returned to its prior value when the exact scoped state returned; process-local
+runtime identities differed across launches. Zero actor-node requests, zero
+actor bytes, and zero RAM writes were recorded. One separately approved bounded
+read-only traversal is now safe; imported/runtime correlation is not.

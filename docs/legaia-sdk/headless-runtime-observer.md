@@ -1,7 +1,8 @@
 # Headless runtime observer
 
-Status: boundary-only town01 and transition-only town0c retail acceptance
-passed; actor traversal remains separately gated.
+Status: boundary-only town01 and repeated fresh-process transition-only town0c
+retail acceptance passed. One bounded read-only actor traversal is now safe as a
+separately approved phase; no traversal has yet been performed.
 
 The observer lives under `integrations/legaia/observer` and consumes the generic
 `psxrecomp-debug` 1.5 protocol externally. It adds no Legaia command or runtime
@@ -56,6 +57,7 @@ navigation, explicit old-token rejection, stable outside-scene samples, and a
 two-sample plus ten-sample re-entry gate. Retail testing established the real
 `town01 -> map01 -> town0c` lifecycle and completed a same-process
 `town0c -> map01 -> town0c` round trip with zero actor reads and writes. The
-revisioned town0c profile now exists; fresh-process acceptance, world-map A/B,
-and separate traversal approval remain required. See
-`scene-transition-acceptance.md`. Actor correlation remains out of scope.
+revisioned town0c profile now exists. Fresh-process acceptance, world-map A/B,
+and the formal readiness review have passed. See
+`scene-transition-acceptance.md`. Actor traversal remains absent from this phase,
+and actor correlation remains out of scope.

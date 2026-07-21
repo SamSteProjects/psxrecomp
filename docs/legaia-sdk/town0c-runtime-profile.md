@@ -1,6 +1,6 @@
 # town0c runtime profile
 
-Status: revisioned profile and synthetic validation complete; a second fresh-process retail transition remains an acceptance prerequisite.
+Status: revisioned profile, synthetic validation, and repeated fresh-process retail transition acceptance complete.
 
 `integrations/legaia/layouts/scus94254-na-town0c-field-v1.json` is the revisioned selection document for the normal post-map01 Rim Elm state. Its resolved profile ID is `legaia-na-scus94254-town0c-field-v1`. It uses a same-directory, single-hop metadata-only base reference to the existing field profile; the loader resolves and validates the complete resulting document before an observer can use it. This avoids a second divergent copy of the shared executable, witness, guard, node-prefix, and safety contract.
 
@@ -27,17 +27,18 @@ The profile retains the profile-derived observation guard: scene name, PROT base
 
 No process-local guard token, RAM content, host path, actor bytes, disc bytes, or save state appears in the profile.
 
-## Fresh-process status
+## Fresh-process acceptance
 
-One fresh RelWithDebInfo process was started only to verify the debug protocol and
-main-executable identity. It remained at the normal boot/menu state, so it did
-not yield a town0c selection or transition observation and is not counted as
-profile evidence. Reaching town0c/map01 requires normal retail navigation; this
-work did not use input injection, debugger writes, warps outside the retail menu,
-or save-state injection to manufacture that state.
+The revisioned profile selected successfully in two fresh `RelWithDebInfo`
+processes. Each process loaded memory-card slot 1/save 1 normally, established a
+twelve-sample town0c boundary, entered stable map01 through the north gate,
+rejected the old expected token, returned normally, and established another
+twelve-sample boundary. Process identities and process-local tokens differed
+across launches. The same structural profile behavior repeated without save-state
+injection, debugger RAM writes, actor reads, or profile weakening.
 
 ## Unresolved fields
 
 - There is no authoritative whole-image identity for the field overlay; the profile therefore continues to rely on current generation-matched execution witnesses rather than pretending that the source-entry digest is live-image identity.
 - List membership, allocation size, node reuse semantics, and node-to-import identity remain unresolved.
-- A fresh-process retail transition must pass before any separately approved bounded node-prefix read. This phase does not read a node prefix.
+- Node membership, allocation size, and semantic actor identity remain unresolved even though one separately approved bounded read-only traversal is now considered safe.
