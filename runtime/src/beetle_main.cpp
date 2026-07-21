@@ -201,7 +201,6 @@ int main(int argc, char** argv) {
                 SDL_DestroyTexture(tex);
                 SDL_DestroyRenderer(ren);
                 SDL_DestroyWindow(win);
-                frame_pacer_shutdown();
                 SDL_Quit();
                 return 0;
             }

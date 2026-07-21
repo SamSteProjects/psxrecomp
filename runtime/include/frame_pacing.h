@@ -45,11 +45,6 @@ uint32_t frame_pacing_sleep_ms(uint64_t now, uint64_t deadline,
  * period in milliseconds (e.g. 1000.0 / 59.94). */
 void frame_pacer_wait(FramePacer *p, double period_ms);
 
-/* Release the optional host timer-resolution request made by the pacer. This
- * affects only host sleep precision; it never changes guest timing. Safe to
- * call when no request was acquired. */
-void frame_pacer_shutdown(void);
-
 #ifdef __cplusplus
 }
 #endif
