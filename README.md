@@ -27,12 +27,14 @@ disc; retail assets are not included in this repository.
 | Model asset identity and provenance | Accepted for `town01` |
 | Revisioned runtime-layout research | Implemented with explicit unknowns |
 | Generic PSXRecomp observer protocol | Protocol 1.5 adds stateless profile-scoped observation guards and guarded bounded reads |
-| Headless Legaia runtime observer | Stable retail town01 boundary, revisioned town0c selection, and a read-only town0c exit/re-entry acceptance; fresh-process and world-map A/B gates remain before traversal |
+| Headless Legaia runtime observer | Stable retail town01 boundary plus repeated fresh-process town0c/map01/town0c acceptance; one bounded read-only traversal is now safe but has not been run |
 | Windows startup and stale-cache correctness | Corrected with regression coverage |
 
 Retail live actor snapshots, imported-to-runtime actor matching, RAM editing,
-and authored game changes have not been accepted. The observer can establish a
-scoped town01 boundary, but it still fails closed before actor traversal.
+and authored game changes have not been accepted. The observer can establish
+profile-scoped field epochs. The prerequisites now permit one separately
+approved bounded read-only traversal; this branch still contains no accepted
+retail actor snapshot.
 
 ## Vision
 
@@ -231,8 +233,10 @@ exit and the available save is a later transformed Rim Elm revision. Retail
 The actual Rim Elm lifecycle is asymmetric: the one-time night scene exits as
 `town01 -> map01`, while later entry resolves to `town0c`. A read-only
 `town0c -> map01 -> town0c` round trip has now validated old-epoch rejection
-and new observer-epoch establishment. Actor traversal remains disabled pending
-a revisioned town0c profile and a separately approved pass.
+and new observer-epoch establishment in two fresh processes. A four-case A/B
+also found no material 2 Hz polling penalty and measured map01 as primarily
+interpreter-owned. One bounded read-only traversal is safe as the next
+separately approved phase; no live actor snapshot or correlation is claimed.
 
 ## What Is Not Implemented Yet
 
@@ -447,13 +451,12 @@ by this integration.
 
 **In progress**
 
-- live scene-exit invalidation and re-entry epoch acceptance; and
-- keeping retail actor traversal gated until that transition proof exists.
+- preparing one profile-guarded, bounded read-only actor-node traversal; and
+- retaining explicit separation between runtime node observations and imported actors.
 
 **Next**
 
-- complete live transition acceptance for the scoped scene epoch;
-- accepted linked actor-node snapshots;
+- perform and validate one bounded linked actor-node snapshot;
 - evidence-backed runtime fields; and
 - imported/runtime correlation research.
 
