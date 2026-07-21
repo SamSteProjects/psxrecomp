@@ -8,6 +8,10 @@
  * function (tests/test_frame_pacing.c includes this file directly). */
 #ifndef FRAME_PACING_PURE_ONLY
 #include <SDL.h>
+#if defined(_WIN32)
+#include <windows.h>
+#include <mmsystem.h>
+#endif
 #endif
 
 uint32_t frame_pacing_sleep_ms(uint64_t now, uint64_t deadline,
@@ -23,6 +27,23 @@ uint32_t frame_pacing_sleep_ms(uint64_t now, uint64_t deadline,
 }
 
 #ifndef FRAME_PACING_PURE_ONLY
+
+#if defined(_WIN32)
+/* Windows' legacy default timer quantum can round an 11-12 ms SDL_Delay up to
+ * roughly 15.6 ms. At a 59.94 Hz deadline that produces a 20 ms frame followed
+ * by a deliberately unpaced catch-up frame, visible as 12/21 ms cadence even
+ * though the long-run average is 60 Hz. Request 1 ms precision only while a
+ * paced runtime is active. This changes host sleep granularity, not emulated
+ * cycles, interrupt timing, audio scheduling, or the guest frame rate. */
+static int s_high_resolution_timer_active = 0;
+
+static void frame_pacer_enable_high_resolution_timer(void) {
+    if (!s_high_resolution_timer_active && timeBeginPeriod(1) == TIMERR_NOERROR)
+        s_high_resolution_timer_active = 1;
+}
+#else
+static void frame_pacer_enable_high_resolution_timer(void) { }
+#endif
 
 /* Bounded catch-up window, in periods. A transient stall (heavy frame, CD
  * burst) leaves next_deadline in the past; KEEPING that debt and running
@@ -43,6 +64,7 @@ uint32_t frame_pacing_sleep_ms(uint64_t now, uint64_t deadline,
 #define FRAME_PACER_CATCHUP_MAX_PERIODS 12u
 
 void frame_pacer_wait(FramePacer *p, double period_ms) {
+    frame_pacer_enable_high_resolution_timer();
     uint64_t freq = SDL_GetPerformanceFrequency();
     uint64_t period = (uint64_t)((double)freq * (period_ms / 1000.0));
     uint64_t now = SDL_GetPerformanceCounter();
@@ -71,5 +93,14 @@ void frame_pacer_wait(FramePacer *p, double period_ms) {
         /* final sub-ms spin */
     }
     p->next_deadline += period;
+}
+
+void frame_pacer_shutdown(void) {
+#if defined(_WIN32)
+    if (s_high_resolution_timer_active) {
+        timeEndPeriod(1);
+        s_high_resolution_timer_active = 0;
+    }
+#endif
 }
 #endif /* FRAME_PACING_PURE_ONLY */
