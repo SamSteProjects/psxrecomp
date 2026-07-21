@@ -194,7 +194,7 @@ class PerformanceHarness:
     def _counters(self) -> dict[str, Any]:
         dispatch = self.client.performance_stats("dispatch_stats")
         dirty = self.client.performance_stats("dirty_ram_stats")
-        overlay = self.client.performance_stats("overlay_status")
+        overlay = self.client.performance_stats("overlay_loader_status")
         lifecycle = self.client.lifecycle_token()
         return {
             "dispatch": _numeric(dispatch, ("static_hits", "miss_total", "miss_unique")),

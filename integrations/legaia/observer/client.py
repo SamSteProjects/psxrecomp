@@ -16,7 +16,7 @@ READ_ONLY_COMMANDS = {
     "dirty_ram_stats",
     "protocol_info",
     "runtime_identity",
-    "overlay_status",
+    "overlay_loader_status",
     "phase_profile",
     "read_regions",
     "execution_witness",
@@ -181,6 +181,6 @@ class ProtocolClient:
         prevents benchmark tooling from gaining a configuration, write, trace,
         or cache-control escape hatch.
         """
-        if command not in {"dispatch_stats", "dirty_ram_stats", "overlay_status", "phase_profile"}:
+        if command not in {"dispatch_stats", "dirty_ram_stats", "overlay_loader_status", "phase_profile"}:
             raise ProtocolError(f"performance command is not permitted: {command}")
         return self.request(command, **params)
