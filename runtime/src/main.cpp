@@ -4368,7 +4368,6 @@ int main(int argc, char** argv) {
     SDL_DestroyTexture(sdl_texture);   /* NULL-safe in GL mode */
     SDL_DestroyRenderer(sdl_renderer); /* NULL-safe in GL mode */
     SDL_DestroyWindow(sdl_window);
-    frame_pacer_shutdown();
     SDL_Quit();
 
     return 0;
