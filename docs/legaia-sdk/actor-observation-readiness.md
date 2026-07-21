@@ -1,22 +1,17 @@
 # Actor-observation readiness
 
-Decision: **NOT YET SAFE** to begin one bounded read-only actor traversal.
+Decision: **SAFE TO BEGIN ONE BOUNDED READ-ONLY ACTOR TRAVERSAL**.
 
 ## Completed prerequisites
 
 - `legaia-na-scus94254-town0c-field-v1` now resolves to a fully validated, revisioned field profile.
 - The shared protocol, executable identity, execution-witness, guarded observation, node-prefix and traversal-limit contracts remain fail closed.
-- The prior same-process transition report demonstrated old-token rejection, map01 outside-state observation, re-entry witness recovery, a new epoch, and zero actor-node requests, zero actor bytes, and zero RAM writes.
-- The world-map A/B harness is bounded, metadata-only, target-validated, and has synthetic coverage for repeat aggregation, idle versus modest polling, counter deltas, failed target rejection, and privacy.
+- Two fresh runtime processes selected the revisioned profile, established twelve-sample town0c boundaries, entered stable map01 normally, rejected the old expected token with payload withheld, and restored twelve-sample town0c boundaries on re-entry.
+- The actor-head locator remained valid, all three witnesses recovered as current, and frame progression continued. Address reuse is structural metadata, never actor identity.
+- The four-case retail A/B completed with zero actor-node requests, zero actor bytes, and zero RAM writes. Two-hertz polling caused no repeatable slowdown beyond the three-run variance.
 
-## Outstanding gates
+## Bounded traversal authorization
 
-1. Repeat `town0c -> map01 -> town0c` in a **fresh** runtime process using the revisioned profile, two compatible initial samples, ten subsequent stable samples, explicit old-token rejection, ten stable re-entry samples, final guard validation, and frame progress.
-2. Run the state-equivalent map01 A/B cases. If polling materially changes the result, reduce or redesign observer cadence before traversal.
-3. Confirm the fresh run still has an accepted actor-list-head locator and current witnesses. Address reuse is never actor identity.
+The next separately approved phase may perform exactly one profile-guarded traversal of the accepted `0x9C` node prefix. It must retain loop, count, byte, request, time, pointer, epoch, and before/after guard limits; discard any mixed boundary; and emit metadata only.
 
-No actor-node prefix was requested in this phase, no actor snapshot was emitted, and no imported/runtime correlation was attempted. Even after a future `SAFE TO BEGIN ONE BOUNDED READ-ONLY ACTOR TRAVERSAL` decision, correlating observed nodes to imported town actors remains a separate, later approval.
-
-A fresh debug-server process was probed only at boot/menu to validate protocol and
-executable identity; that is explicitly not a substitute for the required retail
-town0c transition.
+No actor-node prefix was requested in this acceptance, no actor snapshot was emitted, and no imported/runtime correlation was attempted. Correlating observed nodes to imported town actors remains premature and requires a separate evidence review.
