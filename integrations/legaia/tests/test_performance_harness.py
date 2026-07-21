@@ -26,6 +26,7 @@ class FakeClock:
 class FakeClient:
     def __init__(self, scene: str = "town0c") -> None:
         self.scene, self.frame, self.request_count = scene, 100, 0
+        self.performance_commands: list[str] = []
 
     def runtime_identity(self) -> dict[str, Any]:
         self.request_count += 1
@@ -44,10 +45,11 @@ class FakeClient:
 
     def performance_stats(self, command: str, **params: Any) -> dict[str, Any]:
         self.request_count += 1
+        self.performance_commands.append(command)
         scale = self.frame
         if command == "dispatch_stats": return {"static_hits": scale * 3, "miss_total": scale, "miss_unique": 2}
         if command == "dirty_ram_stats": return {"blocks_run": scale * 2, "insns_run": scale * 8, "aborts": 0, "guard_yields": 0, "native_handoffs": scale}
-        if command == "overlay_status": return {"loads": 1, "invalidations": 0, "revalidations": 0, "unregistered_funcs": 0, "dispatch_native": scale, "dispatch_interp_fallback": scale * 2, "stale_blocked": 0, "cache_dir": "C:\\not-exported"}
+        if command == "overlay_loader_status": return {"loads": 1, "invalidations": 0, "revalidations": 0, "unregistered_funcs": 0, "dispatch_native": scale, "dispatch_interp_fallback": scale * 2, "stale_blocked": 0, "cache_dir": "C:\\not-exported"}
         if command == "phase_profile": return {"samples": 10, "interp_samples": 6, "native_samples": 1, "static_samples": 2, "gpu_samples": 0, "other_samples": 1, "exc_samples": 0, "interp_share": .6, "native_share": .1, "static_share": .2, "gpu_share": 0.0, "other_share": .1, "exc_share": 0.0}
         raise AssertionError(command)
 
@@ -101,6 +103,8 @@ class PerformanceHarnessTests(unittest.TestCase):
         self.assertIn("dirty_ram", report["runs"][0]["counter_delta"])
         self.assertIn("effective_fps_stdev", report["aggregate"])
         self.assertEqual(report["runs"][0]["target"]["id"], "map01-world-map")
+        self.assertIn("overlay_loader_status", client.performance_commands)
+        self.assertNotIn("overlay_status", client.performance_commands)
 
 
 if __name__ == "__main__":
