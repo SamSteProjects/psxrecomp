@@ -1,6 +1,6 @@
 # World-map performance analysis
 
-Status: reproducible read-only A/B harness implemented. No claim that missing static MAPDSIP coverage is the slowdown cause is made here.
+Status: reproducible read-only A/B harness implemented and accepted live. Missing static MAPDSIP coverage is not, by itself, claimed as the cause.
 
 ## Current path and known limits
 
@@ -35,19 +35,43 @@ The normal retail debug menu may be used to warp; debugger RAM writes, save-stat
 
 | Hypothesis | Evidence the harness supplies | Current status |
 |---|---|---|
-| Interpreter execution volume | dirty-RAM blocks/instructions plus phase share | unmeasured live |
-| Repeated decode cost | block/instruction deltas and native handoffs | unmeasured live |
-| Repeated overlay replacement | lifecycle-event, load, invalidation, revalidation deltas | unmeasured live |
-| Missing runtime-native/static coverage | native/interpreter dispatch and phase distribution | unmeasured live |
-| Native registration mismatch | static variant/address misses and stale-blocked counters | unmeasured live |
+| Interpreter execution volume | dirty-RAM blocks/instructions plus phase share | strongly supported; map01 averaged about 198.2M interpreted instructions per 15 s versus 0.877M in town0c |
+| Repeated decode cost | block/instruction deltas and native handoffs | decode cache hit/miss counters unavailable; no native handoffs were observed |
+| Repeated overlay replacement | lifecycle-event, load, invalidation, revalidation deltas | not supported during stable intervals; all measured deltas were zero |
+| Missing runtime-native/static coverage | native/interpreter dispatch and phase distribution | supported as an execution-mix difference, not yet as a complete MAPDSIP identity claim |
+| Native registration mismatch | static variant/address misses and stale-blocked counters | no invalidation or stale-owner activity observed during stable intervals |
 | CD/XA contribution | existing CD/XA diagnostics may be sampled separately; no causal claim here | unmeasured live |
 | GPU/presentation contribution | headless/presented comparison is a separately launched, state-equivalent case | unmeasured live |
 | Protocol overhead | idle versus 2 Hz polling comparison | harness-ready |
 | Frame pacing | emulated frames versus wall time | harness-ready |
 
-The current implementation was synthetically exercised with both target states, idle and 2 Hz polling, repeated aggregation, failed target rejection, bounded counter deltas, and privacy checks. A live benchmark result must be produced only while the verified target is stable; no synthetic result is presented as a retail performance measurement.
+## Retail A/B result
 
-The fresh runtime probe used for this change remained in the normal boot/menu
-state. It was deliberately not navigated by injection or RAM modification, so it
-produced no live town0c or map01 benchmark sample. The table above consequently
-remains unmeasured live.
+The accepted run used the same fresh `RelWithDebInfo` build and presented-mode
+configuration for every case, with 5 s warm-up, 15 s measurement, three
+repetitions, idle controller state, and 2 Hz bounded scene polling. Detailed
+metadata stayed outside the repository.
+
+| Case | Mean FPS | Run standard deviation | Observer polls per run |
+|---|---:|---:|---:|
+| town0c idle | 59.9979 | 0.0012 | 0 |
+| town0c polling | 59.9760 | 0.0378 | 30 |
+| map01 idle | 59.2657 | 0.2673 | 0 |
+| map01 polling | 59.6871 | 0.1018 | 30 |
+
+Town polling differed from idle by -0.0365%. Map polling was +0.7110%, an
+ordering/variance result rather than evidence that polling improves execution.
+The stable map idle result was 1.2204% below town idle. More importantly, map01
+averaged a 79.42% interpreter phase share versus 2.56% in town0c and about 226
+times the interpreted instruction volume. Stable intervals recorded no overlay
+loads, lifecycle events, invalidations, or revalidations. The evidence therefore
+classifies the execution difference as **primarily interpreter execution
+volume**. It does not prove which missing MAPDSIP coverage or decode mechanism
+would be the correct optimization.
+
+The live run exposed and corrected one harness defect: it requested nonexistent
+`overlay_status` instead of the runtime's read-only `overlay_loader_status`.
+Regression coverage now requires the real command. Dynamic overlay caching
+remains disabled; the next performance investigation should profile broader
+static coverage or interpreter/decode optimization without weakening stale-code
+correctness.
