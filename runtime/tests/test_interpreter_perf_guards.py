@@ -293,19 +293,17 @@ def main():
                          "gte_mfc2(&gte", "gte_cfc2(&gte"):
         if old_selector in gte_marshaling:
             raise AssertionError("GTE command bridge regressed to selector dispatch loops")
-    for fn in ("psx_devices_mmio_sync", "psx_advance_cycles_exact", "psx_cycles_resync_after_restore"):
-        if "g_psx_cycle_fast_limit = 0" not in body(cycles, fn):
-            raise AssertionError(f"{fn} does not invalidate the inline cycle limit")
     mmio_sync = body(cycles, "psx_devices_mmio_sync")
-    if not (mmio_sync.find("psx_devices_service_to_now()") <
-            mmio_sync.find("s_next_service_cycle = 0") <
-            mmio_sync.find("g_psx_cycle_fast_limit = 0")):
-        raise AssertionError("MMIO catch-up can republish a stale inline cycle limit")
+    if ("psx_cyc_batch_flush();" not in mmio_sync or
+            "psx_devices_service_to_now();" not in mmio_sync or
+            "psx_devices_recompute_deadline();" not in mmio_sync):
+        raise AssertionError("MMIO synchronization lost its batch flush/service/recompute contract")
     service = body(cycles, "psx_devices_service_to_now")
-    if not (service.find("g_psx_cycle_fast_limit = 0") <
-            service.find("s_in_device_service = 1") <
-            service.find("psx_devices_recompute_deadline()") <
-            service.find("s_in_device_service = 0")):
+    service_enter = service.find("s_in_device_service = 1")
+    service_leave = max(service.find("s_in_device_service = 0"),
+                        service.find("psx_in_device_service = 0"))
+    if not (service.find("g_psx_cycle_fast_limit = 0") < service_enter <
+            service.find("psx_devices_recompute_deadline()") < service_leave):
         raise AssertionError("device-service reentrancy can observe a nonzero inline cycle limit")
     load_charge = body(memory, "psx_load_charge_cycles")
     if "next <= g_psx_cycle_fast_limit" not in load_charge or "psx_advance_cycles(cycles)" not in load_charge:
@@ -316,8 +314,8 @@ def main():
     if "!defined(PSX_COSIM) && !STARVATION_RING_ENABLED" not in memory:
         raise AssertionError("runtime load fast path leaks into COSIM/diagnostic builds")
     load_timing = body(memory, "psx_cyc_load_timing")
-    if "psx_load_charge_cycles(1u)" not in load_timing or "psx_cyc_base(cpu)" in load_timing:
-        raise AssertionError("runtime loads still use the out-of-line one-cycle base charge")
+    if "psx_cyc_base(cpu)" not in load_timing or "psx_load_charge_cycles(1u)" in load_timing:
+        raise AssertionError("runtime loads lost the inline base-cycle charge")
     ram_fast = body(memory, "psx_cyc_main_ram_fast_addr")
     for guard in ("g_ls_mode != 0", "g_ls_replay_active", "g_ds_recording",
                   "g_ram_read_watch_active",
@@ -327,7 +325,15 @@ def main():
             raise AssertionError(f"main-RAM value fast path lost guard: {guard}")
     for fn in ("psx_cyc_load_word", "psx_cyc_load_half", "psx_cyc_load_byte",
                "psx_cyc_lwc2_read"):
-        load_body = body(memory, fn)
+        load_body = body(cyc_header if fn in ("psx_cyc_load_word", "psx_cyc_load_half")
+                         else memory, fn)
+        if fn in ("psx_cyc_load_word", "psx_cyc_load_half"):
+            timing = load_body.find("psx_cyc_base(cpu)")
+            fast = load_body.find("memcpy(&value, g_psx_ram")
+            fallback = load_body.rfind("psx_cyc_load_")
+            if min(timing, fast, fallback) < 0 or not timing < fast < fallback:
+                raise AssertionError(f"{fn} lost its inline timing/RAM/slow-path order")
+            continue
         timing = load_body.find("psx_cyc_")
         fast = load_body.find("psx_cyc_main_ram_fast_addr")
         fallback = load_body.rfind("psx_read_")

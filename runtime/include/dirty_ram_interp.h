@@ -187,9 +187,8 @@ extern uint32_t g_dirty_ram_exec_page_bitmap[DIRTY_RAM_EXEC_PAGE_BITMAP_WORDS];
  * counter table remains for telemetry, while capture can snapshot/reset this
  * compact evidence independently at overlay-generation boundaries. */
 extern uint32_t g_dirty_ram_dispatch_pc_bitmap[DIRTY_RAM_EXEC_BITMAP_WORDS];
-/* Companion table: every PC the interpreter actually executes (not just block
- * entries). overlay_capture uses both to report execution-verified seeds. */
-extern DirtyRamPcEntry g_dirty_ram_exec_pc_table[DIRTY_RAM_PC_TABLE_SIZE];
+/* Bitmap-backed query: reports execution evidence only when the exact aligned
+ * PC has been observed since its page's evidence was last invalidated. */
 int dirty_ram_exec_pc_observed(uint32_t pc, DirtyRamPcEntry *out);
 
 /* Block-entry ring buffer. Records every dispatch into dirty RAM with the

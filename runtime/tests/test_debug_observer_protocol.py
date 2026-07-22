@@ -822,8 +822,8 @@ class ExecutionWitnessTests(unittest.TestCase):
 
     def test_112_delay_slots_are_independently_recorded(self) -> None:
         delay = DIRTY[DIRTY.index("static void exec_delay_slot"):
-                      DIRTY.index("static int exec_one(CPUState", DIRTY.index("static void exec_delay_slot"))]
-        self.assertIn("exec_one(cpu, pc, &dummy_next)", delay)
+                      DIRTY.index("static int exec_one_fetched(CPUState", DIRTY.index("static void exec_delay_slot"))]
+        self.assertIn("exec_one_fetched(cpu, pc, insn, &dummy_next)", delay)
         self.assertIn("exec_pc_table_record(pc, insn)", DIRTY)
 
     def test_113_witness_id_scope_is_not_cross_process(self) -> None:

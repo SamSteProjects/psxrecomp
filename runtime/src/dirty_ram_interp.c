@@ -189,7 +189,6 @@ uint32_t g_dirty_ram_last_unsupported_insn = 0;
 const char *g_dirty_ram_last_unsupported_reason = NULL;
 
 DirtyRamPcEntry g_dirty_ram_pc_table[DIRTY_RAM_PC_TABLE_SIZE] = {0};
-DirtyRamPcEntry g_dirty_ram_exec_pc_table[DIRTY_RAM_PC_TABLE_SIZE] = {0};
 uint32_t g_dirty_ram_exec_pc_bitmap[DIRTY_RAM_EXEC_BITMAP_WORDS] = {0};
 uint32_t g_dirty_ram_exec_page_bitmap[DIRTY_RAM_EXEC_PAGE_BITMAP_WORDS] = {0};
 uint32_t g_dirty_ram_dispatch_pc_bitmap[DIRTY_RAM_EXEC_BITMAP_WORDS] = {0};
@@ -243,34 +242,30 @@ static inline void exec_pc_table_record(uint32_t pc, uint32_t instruction_word) 
             *slot |= mask;
             uint32_t page = phys >> 12;
             g_dirty_ram_exec_page_bitmap[page >> 5] |= 1u << (page & 31u);
-            extern void overlay_watch_set_range(uint32_t phys, uint32_t len);
-            extern uint32_t overlay_watch_pagegen_sum(uint32_t phys, uint32_t len);
-            overlay_watch_set_range(phys & ~0xfffu, 4096u);
-            DirtyRamPcEntry *e =
-                pc_table_get_or_insert_in(g_dirty_ram_exec_pc_table, phys);
-            if (e) {
-                e->hits = 1;
-                e->last_frame = (uint32_t)s_frame_count;
-                e->watched_generation = overlay_watch_pagegen_sum(phys, 4u);
-                e->instruction_word = instruction_word;
-            }
         }
     }
 }
 
 int dirty_ram_exec_pc_observed(uint32_t pc, DirtyRamPcEntry *out) {
     uint32_t phys = pc & 0x1fffffffu;
-    uint32_t h = (phys * 2654435761u) & (DIRTY_RAM_PC_TABLE_SIZE - 1);
-    for (uint32_t i = 0; i < 128u; i++) {
-        DirtyRamPcEntry *entry =
-            &g_dirty_ram_exec_pc_table[(h + i) & (DIRTY_RAM_PC_TABLE_SIZE - 1)];
-        if (entry->pc == phys) {
-            if (out) *out = *entry;
-            return entry->hits != 0;
-        }
-        if (!entry->pc) return 0;
+    if (phys >= 2u * 1024u * 1024u || (phys & 3u)) return 0;
+    uint32_t word = phys >> 2;
+    if ((g_dirty_ram_exec_pc_bitmap[word >> 5] & (1u << (word & 31u))) == 0u)
+        return 0;
+    if (out) {
+        const uint8_t *ram = memory_get_ram_ptr();
+        extern uint32_t overlay_watch_pagegen_sum(uint32_t phys, uint32_t len);
+        memset(out, 0, sizeof(*out));
+        out->pc = phys;
+        out->hits = 1;
+        out->last_frame = (uint32_t)s_frame_count;
+        out->watched_generation = overlay_watch_pagegen_sum(phys, 4u);
+        out->instruction_word = ram
+            ? (uint32_t)ram[phys] | ((uint32_t)ram[phys + 1] << 8) |
+              ((uint32_t)ram[phys + 2] << 16) | ((uint32_t)ram[phys + 3] << 24)
+            : 0;
     }
-    return 0;
+    return 1;
 }
 
 /* From debug_server.c — keep our outer-frame attribution coherent. */
