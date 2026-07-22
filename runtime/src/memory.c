@@ -22,7 +22,6 @@
 #include "data_shards.h"
 #include "dirty_ram_interp.h"
 #include "psx_cycles.h"
-<<<<<<< HEAD
 #include "sha256.h"
 #include "starvation_ring.h"
 #include <stdint.h>

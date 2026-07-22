@@ -202,6 +202,7 @@ uint64_t              g_dirty_ram_insn_log_seq = 0;
 
 /* Current frame counter, defined in debug_server.c. */
 extern uint64_t s_frame_count;
+extern uint8_t *memory_get_ram_ptr(void);
 
 /* Linear-probed insert/lookup keyed on entry PC.  Probe length is HARD
  * BOUNDED: a saturated table must degrade to "stop tracking" (NULL) at O(1)

@@ -4651,7 +4651,7 @@ static int candidate_protocol_native_valid(const Candidate *c, int source_match)
         cand_gensum(c) != c->val_gen || !s_active || !s_native_exec ||
         c->state == ENTRY_BLACKLIST || c->device_touch ||
         overlay_native_blocked(c->addr)) return 0;
-    int want_diff = s_diff_mode || (s_sljit_live && c->dll < 0);
+    int want_diff = s_diff_mode;
     if (want_diff && c->addr < 0x10000u) want_diff = 0;
     return !(want_diff && c->diff_passes < OVERLAY_DIFF_BUDGET);
 }
