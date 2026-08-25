@@ -412,6 +412,9 @@ if(BUILD_TESTING)
         add_test(NAME msvc_startup_portability_test
                  COMMAND ${Python3_EXECUTABLE}
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_msvc_startup_portability.py)
+        add_test(NAME cdrom_xa_callback_regression_test
+                 COMMAND ${Python3_EXECUTABLE}
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cdrom_xa_callback_regression.py)
     endif()
 
     # DISABLED, not de-registered. It links and runs, but 147 of its 309 checks

@@ -125,6 +125,31 @@ static uint32_t cdrom_intc_latched_generation;
  * 0 = no presentation hold. Relative remaining is derived for snaps/digests. */
 static uint64_t cdrom_irq_present_due;
 
+/* Some libcd clients poll the controller directly from their callback.  Keep
+ * response visibility aligned with the already-modelled IRQ presentation edge
+ * when explicitly requested by a title launcher; otherwise those clients can
+ * consume a response recursively before the callback returns. */
+static int s_response_visibility_delay = -1;
+
+static int response_visibility_delayed(void) {
+    if (s_response_visibility_delay < 0) {
+        const char *value = getenv("PSX_CD_RESPONSE_VISIBILITY_DELAY");
+        if (value && value[0]) {
+            s_response_visibility_delay = value[0] == '1';
+        } else {
+#ifdef PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT
+            s_response_visibility_delay =
+                PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT ? 1 : 0;
+#else
+            s_response_visibility_delay = 0;
+#endif
+        }
+    }
+    return s_response_visibility_delay && irq_flag != 0 &&
+           cdrom_irq_present_due != 0 &&
+           psx_cycle_count < cdrom_irq_present_due;
+}
+
 /* Parameter FIFO */
 #define PARAM_FIFO_SIZE 16
 static uint8_t param_fifo[PARAM_FIFO_SIZE];
@@ -1407,7 +1432,10 @@ static int read_sector_at(int min, int sec, int sect) {
                     delivery.xa_coding,
                     0);
     }
-    return delivery.data_delivered ? 1 : 0;
+    /* Realtime XA is consumed by the ADPCM path rather than exposed through
+     * the CPU/DMA FIFO, but it still arrived physically and must produce its
+     * INT1 event.  sector_available above remains the FIFO visibility gate. */
+    return 1;
 }
 
 static void advance_msf(int* m, int* s, int* f) {
@@ -2329,6 +2357,10 @@ static void process_pending(uint32_t cycles) {
     case 0x16: /* SeekP complete */
         stat_reg &= ~CDSTAT_SEEK;
         setloc_seek_far = 0;
+        /* The reported drive position changes on seek completion.  Without
+         * this, a following XA clip can inherit the previous clip's final
+         * sector and be paused before it begins. */
+        last_sector_lba = msf_to_lba(seek_min, seek_sec, seek_sect);
         response_push(stat_reg);
         set_irq(CDIRQ_COMPLETE);
         fire_cdrom_irq();
@@ -2576,7 +2608,8 @@ uint32_t cdrom_read(uint32_t addr) {
          * init down a different branch from real hardware. */
         if (param_count == 0) s |= (1 << 3);
         if (param_count < PARAM_FIFO_SIZE) s |= (1 << 4);
-        if (response_read < response_count) s |= (1 << 5);
+        if (!response_visibility_delayed() && response_read < response_count)
+            s |= (1 << 5);
         if (data_fifo_ready()) s |= (1 << 6);
         /* Bit 7 BUSYSTS: command written but not yet executed (our queued
          * path; the synchronous path leaves no guest-observable window).
@@ -2587,7 +2620,7 @@ uint32_t cdrom_read(uint32_t addr) {
     }
 
     case 0x1F801801:
-        if (response_read < response_count) {
+        if (!response_visibility_delayed() && response_read < response_count) {
             ret = response_fifo[response_read++];
         }
         break;
@@ -2605,7 +2638,7 @@ uint32_t cdrom_read(uint32_t addr) {
         if (index_reg == 0 || index_reg == 2) {
             ret = irq_enable;
         } else {
-            ret = irq_flag | 0xE0;
+            ret = response_visibility_delayed() ? 0xE0 : irq_flag | 0xE0;
         }
         break;
 

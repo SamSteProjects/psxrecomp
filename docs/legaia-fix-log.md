@@ -3,6 +3,28 @@
 This is a user-visible regression log for the Legaia recompile. A fix is
 recorded here only after it has been rebuilt and exercised in-game.
 
+## 2026-08-24 — Healing Leaf regression restored after upstream reconciliation
+
+**Status:** verified in-game with Healing Leaf after the rebuilt runtime.
+
+**Regression:** the current-upstream reconciliation removed the four runtime
+corrections that previously protected Legaia's libcd battle callback. The
+launcher still enabled response-visibility delay, but the runtime no longer
+implemented that setting. It also suppressed scheduled VBlank edges while the
+callback was in exception context, recreating the synchronous `VSync` wait
+that freezes Healing Leaf and Spirit actions.
+
+**Restored behavior:** scheduled device deadlines continue during exception
+handlers without forcing nested interrupt delivery; the opt-in CD response
+visibility gate again holds controller status/FIFO data until the normal IRQ
+presentation deadline; realtime XA sector arrivals still raise their physical
+event; and completed seeks refresh the reported drive position for subsequent
+clips. A source-level regression test pins all four contracts.
+
+**Required check:** use Healing Leaf in battle, then test Spirit and a
+back-to-back Hyper Art sequence. The result must complete without a freeze,
+and the later Hyper Art must retain its XA audio.
+
 ## 2026-07-17 — Healing Leaf and spirit-action deadlock fixed
 
 **Status:** verified in the first battle tutorial.

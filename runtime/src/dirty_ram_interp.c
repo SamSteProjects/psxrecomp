@@ -2791,6 +2791,12 @@ static int dirty_ram_dispatch_inner(CPUState* cpu, uint32_t addr, uint32_t stop_
         if (psx_overlay_dispatch(cpu, addr)) return 1;
     }
 #endif
+#ifdef PSX_HAS_OVERLAY_STATIC_EXTRA_SOURCE
+    {
+        extern int psx_overlay_static_extra_dispatch(CPUState *cpu, uint32_t addr);
+        if (psx_overlay_static_extra_dispatch(cpu, addr)) return 1;
+    }
+#endif
 
     /* A-1: dynamically-loaded overlay DLL functions, checked before the
      * interpreter.  No-op (returns 0) until overlay_loader_init() runs, which

@@ -411,7 +411,11 @@ static void fire_vblank_edge(void) {
 
 void interrupts_service_scheduled_events(void) {
     note_sio_progress_cycle();
-    if (in_exception) return;
+    /* Device deadlines continue while guest code is inside an exception
+     * handler. A libcd callback may synchronously wait for VBlank; suppressing
+     * the edge here makes that wait impossible to satisfy. This only advances
+     * device time: nested exception delivery remains gated below by COP0 IE
+     * and the existing nesting/escape guards. */
     while (cycles_since_vblank >= VBLANK_CYCLES) {
         if (should_defer_vblank_for_sio()) return;
         fire_vblank_edge();

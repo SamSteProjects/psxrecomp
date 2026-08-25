@@ -792,7 +792,16 @@ function(psxrecomp_add_runtime_target target)
     # monolithic full.c, so this argument may carry 1..N paths. A single path
     # is just a one-element list, so games still passing one file are
     # unaffected.
-    set(multiValueArgs EXTRAS_SOURCES GAME_GENERATED_FULL_C)
+    set(multiValueArgs EXTRAS_SOURCES GAME_GENERATED_FULL_C
+        GAME_OVERLAY_STATIC_EXTRA_C)
+    # An embedding project can also supply a local second static recipe without
+    # editing its CMakeLists. This is useful for a title-owned, ignored capture
+    # produced after the project was initially configured.
+    if(DEFINED PSXRECOMP_GAME_OVERLAY_STATIC_EXTRA_C AND
+       NOT "${PSXRECOMP_GAME_OVERLAY_STATIC_EXTRA_C}" STREQUAL "")
+        list(APPEND ARGN GAME_OVERLAY_STATIC_EXTRA_C
+            "${PSXRECOMP_GAME_OVERLAY_STATIC_EXTRA_C}")
+    endif()
     cmake_parse_arguments(PSXRT "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # DEBUG_PORT and WINDOW_TITLE were previously required cmake-time defaults.
@@ -894,6 +903,22 @@ function(psxrecomp_add_runtime_target target)
         set_source_files_properties("${PSXRT_GAME_OVERLAY_STATIC_C}" PROPERTIES GENERATED TRUE)
         list(APPEND generated_sources "${PSXRT_GAME_OVERLAY_STATIC_C}")
         set(has_overlay_dispatch TRUE)
+        set(has_overlay_static_source TRUE)
+    endif()
+    # Some titles keep a small, separately verified static overlay recipe next
+    # to a larger generated table.  Compile it as an independent source and
+    # rename its public dispatch/stat symbols so both tables remain content
+    # gated and can be queried in a stable order at runtime.
+    if(PSXRT_GAME_OVERLAY_STATIC_EXTRA_C)
+        foreach(_static_extra_src IN LISTS PSXRT_GAME_OVERLAY_STATIC_EXTRA_C)
+            set_source_files_properties("${_static_extra_src}" PROPERTIES
+                GENERATED TRUE
+                COMPILE_DEFINITIONS
+                "psx_overlay_dispatch=psx_overlay_static_extra_dispatch;psx_overlay_static_get_stats=psx_overlay_static_extra_get_stats")
+            list(APPEND generated_sources "${_static_extra_src}")
+        endforeach()
+        set(has_overlay_dispatch TRUE)
+        set(has_overlay_static_extra_source TRUE)
     endif()
 
     if(PSXRT_ORACLE)
@@ -1331,6 +1356,12 @@ function(psxrecomp_add_runtime_target target)
     endif()
     if(has_overlay_dispatch)
         target_compile_definitions(${target} PRIVATE PSX_HAS_OVERLAY_DISPATCH=1)
+    endif()
+    if(has_overlay_static_source)
+        target_compile_definitions(${target} PRIVATE PSX_HAS_OVERLAY_STATIC_SOURCE=1)
+    endif()
+    if(has_overlay_static_extra_source)
+        target_compile_definitions(${target} PRIVATE PSX_HAS_OVERLAY_STATIC_EXTRA_SOURCE=1)
     endif()
 
     # PSX_DEBUG_TOOLS option declared at the top of runtime.cmake so it's
