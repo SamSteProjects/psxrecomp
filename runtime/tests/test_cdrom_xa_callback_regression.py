@@ -14,6 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 CDROM = (ROOT / "runtime" / "src" / "cdrom.c").read_text(encoding="utf-8")
 INTERRUPTS = (ROOT / "runtime" / "src" / "interrupts.c").read_text(encoding="utf-8")
+RUNTIME_CMAKE = (ROOT / "runtime" / "runtime.cmake").read_text(encoding="utf-8")
 
 
 def body(source: str, name: str) -> str:
@@ -63,6 +64,13 @@ def main() -> int:
     scheduled = body(INTERRUPTS, "interrupts_service_scheduled_events")
     if re.search(r"if\s*\(\s*in_exception\s*\)\s*return\s*;", scheduled):
         raise AssertionError("scheduled VBlank edges are suppressed inside callbacks")
+
+    require(r"PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT.*CACHE\s+STRING",
+            RUNTIME_CMAKE,
+            "runtime cannot bake the response-visibility default into a packaged title")
+    require(r"PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT=\$\{PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT\}",
+            RUNTIME_CMAKE,
+            "configured response-visibility default is not propagated to the target")
 
     print("PASS: CD/XA callback scheduling contract is present")
     return 0

@@ -1370,6 +1370,21 @@ function(psxrecomp_add_runtime_target target)
         target_compile_definitions(${target} PRIVATE PSX_NO_DEBUG_TOOLS=1)
     endif()
 
+    # A title launcher can set PSX_CD_RESPONSE_VISIBILITY_DELAY at process
+    # start, but packaged applications should not depend on a shell wrapper for
+    # a correctness-critical CD callback policy.  Keep the framework default
+    # unset, and let an embedding project opt in with -D...=0 or 1.
+    set(PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT "" CACHE STRING
+        "Default CD response visibility delay when the environment does not override it (0 or 1; empty disables)")
+    if(NOT "${PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT}" STREQUAL "")
+        if(NOT PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT MATCHES "^[01]$")
+            message(FATAL_ERROR
+                "PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT must be empty, 0, or 1")
+        endif()
+        target_compile_definitions(${target} PRIVATE
+            PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT=${PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT})
+    endif()
+
     if(PSXRECOMP_HAS_RECOMP_NET)
         target_compile_definitions(${target} PRIVATE PSX_HAS_RECOMP_NET=1)
         target_link_libraries(${target} PRIVATE recomp_net)
