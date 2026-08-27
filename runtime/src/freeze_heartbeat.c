@@ -83,6 +83,7 @@ static int    s_sym_initialized = 0;
 #endif
 
 #define HB_FILE        "psx_freeze_heartbeat.json"
+#define HITCH_FILE     "psx_hitch_report.json"
 #define HB_INTERVAL_MS 100u
 
 /* Wedge detection.
@@ -123,6 +124,14 @@ static int    s_sym_initialized = 0;
 #define WEDGE_WINDOW_TICKS 20u
 #define WEDGE_EXC_REENTRY_PER_FRAME_THRESHOLD 20000u /* ~10x chronic 2K/frame */
 #define WEDGE_SLOW_FRAMES_MAX_DELTA 10u   /* <5 fps avg over the 2s window */
+
+/* Short recovered hitches never reach the two-second wedge detector. Preserve
+ * the rolling heartbeat when no more than one frame advances across roughly
+ * half a second. A healthy half-second re-arms the detector. The report is a
+ * bounded overwrite, not an ever-growing trace. */
+#define HITCH_WINDOW_TICKS 6u
+#define HITCH_MAX_FRAME_DELTA 1u
+#define HITCH_REARM_MIN_FRAME_DELTA 6u
 
 /* Per-ring caps for auto-dump. Newest-first window. The old 4-16K caps
  * spanned well under a second of activity — too short to cross a
@@ -169,6 +178,18 @@ static uint32_t    s_ring_count = 0;
  *                  firing, re-armed when the wedge clears (healthy tick). */
 static int      s_dump_armed = 1;
 static uint32_t s_last_wedge_kind = 0;  /* informational, last detected kind */
+/* Do not classify frame-zero initialization as a user-visible hitch. The
+ * detector becomes armed only after observing one healthy short window. */
+static int      s_hitch_armed = 0;
+static volatile long s_snapshot_requested = 0;
+
+void freeze_heartbeat_request_snapshot(void) {
+#ifdef _WIN32
+    InterlockedExchange((volatile LONG *)&s_snapshot_requested, 1);
+#else
+    __sync_lock_test_and_set(&s_snapshot_requested, 1);
+#endif
+}
 
 #ifdef _WIN32
 /* Capture the main thread's call stack at the moment of a hard freeze.
@@ -757,6 +778,37 @@ static void heartbeat_write(void) {
     s_ring_head = (s_ring_head + 1) % RING_CAP;
     if (s_ring_count < RING_CAP) s_ring_count++;
 
+    /* Manual flushes and brief recovered hitches use the same compact rolling
+     * report. The main thread only sets a flag; this heartbeat thread owns all
+     * serialization and file replacement. */
+    int manual_capture = 0;
+#ifdef _WIN32
+    manual_capture = (int)InterlockedExchange(
+        (volatile LONG *)&s_snapshot_requested, 0);
+#else
+    manual_capture = (int)__sync_lock_test_and_set(&s_snapshot_requested, 0);
+#endif
+    int auto_hitch_capture = 0;
+    uint64_t hitch_frame_delta = 0;
+    if (s_ring_count >= HITCH_WINDOW_TICKS) {
+        uint32_t newest_idx = (s_ring_head + RING_CAP - 1u) % RING_CAP;
+        uint32_t oldest_idx =
+            (s_ring_head + RING_CAP - HITCH_WINDOW_TICKS) % RING_CAP;
+        uint64_t newest_frame = s_ring[newest_idx].frame_count;
+        uint64_t oldest_frame = s_ring[oldest_idx].frame_count;
+        hitch_frame_delta = (newest_frame >= oldest_frame)
+            ? (newest_frame - oldest_frame) : 0;
+        if (hitch_frame_delta <= HITCH_MAX_FRAME_DELTA) {
+            if (s_hitch_armed) {
+                auto_hitch_capture = 1;
+                s_hitch_armed = 0;
+            }
+        } else if (hitch_frame_delta >= HITCH_REARM_MIN_FRAME_DELTA) {
+            s_hitch_armed = 1;
+        }
+    }
+    const int preserve_hitch_report = manual_capture || auto_hitch_capture;
+
     /* ---- Wedge detection: arm-once auto-dump ----
      * Walk back WEDGE_WINDOW_TICKS in the heartbeat ring (just pushed
      * above) and compute deltas. Trigger if any of:
@@ -909,6 +961,8 @@ static void heartbeat_write(void) {
         "  \"vblank_deliver_count\":%llu,\n"
         "  \"vblank_ack_count\":%llu,\n"
         "  \"irq_deliver_count\":%llu,\n"
+        "  \"capture\":{\"manual\":%d,\"auto_hitch\":%d,"
+          "\"window_ticks\":%u,\"frame_delta\":%llu},\n"
         "  \"tcp_send_stall_ms\":%llu,\n"
         "  \"tcp_clients_dropped\":%u,\n"
         "  \"bail_first\":%llu,\n"
@@ -968,6 +1022,10 @@ static void heartbeat_write(void) {
         (unsigned long long)g_vblank_deliver_count,
         (unsigned long long)g_vblank_ack_count,
         (unsigned long long)g_irq_deliver_count,
+        manual_capture ? 1 : 0,
+        auto_hitch_capture ? 1 : 0,
+        (unsigned)HITCH_WINDOW_TICKS,
+        (unsigned long long)hitch_frame_delta,
         (unsigned long long)debug_server_get_tcp_stall_ms(),
         debug_server_get_tcp_drops(),
         (unsigned long long)g_psx_bail_first,
@@ -1047,6 +1105,22 @@ static void heartbeat_write(void) {
 #else
     rename(tmp_path, HB_FILE);
 #endif
+
+    if (preserve_hitch_report) {
+        char hitch_tmp_path[64];
+        snprintf(hitch_tmp_path, sizeof(hitch_tmp_path), HITCH_FILE ".tmp");
+        FILE *hf = fopen(hitch_tmp_path, "wb");
+        if (hf) {
+            fwrite(buf, 1, (size_t)n, hf);
+            fclose(hf);
+#ifdef _WIN32
+            MoveFileExA(hitch_tmp_path, HITCH_FILE,
+                        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+#else
+            rename(hitch_tmp_path, HITCH_FILE);
+#endif
+        }
+    }
 }
 
 #ifdef _WIN32

@@ -40,6 +40,7 @@
 #include "cpu_state.h"
 #include "psx_bss.h"
 #include "crash_trace.h"
+#include "freeze_heartbeat.h"
 #include "autocompile.h"   /* autocompile_degraded_reason — stamp a degraded
                             * (interpreter-only) run into its own report */
 
@@ -835,6 +836,37 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
         fwrite(buf, 1, pos, f);
         fclose(f);
     }
+}
+
+static void copy_report_file(const char *source, const char *destination) {
+    FILE *src = fopen(source, "rb");
+    if (!src)
+        return;
+    FILE *dst = fopen(destination, "wb");
+    if (!dst) {
+        fclose(src);
+        return;
+    }
+    char copy_buf[8192];
+    size_t copy_n;
+    while ((copy_n = fread(copy_buf, 1, sizeof(copy_buf), src)) != 0)
+        fwrite(copy_buf, 1, copy_n, dst);
+    fclose(dst);
+    fclose(src);
+}
+
+void psx_crash_trace_manual_snapshot(void) {
+    /* Keep a bounded latest/previous pair. A later atexit or crash report may
+     * overwrite psx_last_run_report.json, but it cannot erase the manual
+     * capture the tester explicitly requested. */
+    copy_report_file("psx_manual_snapshot.json",
+                     "psx_manual_snapshot_prev.json");
+    psx_crash_trace_dump("manual_snapshot", NULL);
+    copy_report_file(kReportPath, "psx_manual_snapshot.json");
+
+    /* Preserve the always-on pre-hitch history on the heartbeat thread too.
+     * It will atomically write psx_hitch_report.json within one tick. */
+    freeze_heartbeat_request_snapshot();
 }
 
 /* ── Fatal halt ──────────────────────────────────────────────────────── */

@@ -25,6 +25,11 @@ extern "C" {
  * binary produced the file. */
 void freeze_heartbeat_start(const char *backend_label);
 
+/* Ask the heartbeat thread to preserve its next bounded rolling snapshot as
+ * `psx_hitch_report.json`. Safe to call from the main/input thread; the
+ * heartbeat thread remains the only writer. */
+void freeze_heartbeat_request_snapshot(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -5504,6 +5504,10 @@ enum {
 #define PSX_HOTKEY_PAD_SELECT_R1 \
     PSX_HOTKEY_PAD_BUTTON_COMBO(((uint32_t)1u << SDL_CONTROLLER_BUTTON_BACK) | \
                                 ((uint32_t)1u << SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
+#define PSX_HOTKEY_PAD_DIAGNOSTIC_SNAPSHOT \
+    PSX_HOTKEY_PAD_BUTTON_COMBO(((uint32_t)1u << SDL_CONTROLLER_BUTTON_BACK) | \
+                                ((uint32_t)1u << SDL_CONTROLLER_BUTTON_LEFTSTICK) | \
+                                ((uint32_t)1u << SDL_CONTROLLER_BUTTON_RIGHTSTICK))
 
 static int normalize_hotkey_pad_binding(int binding, int fallback) {
     if (PSX_HOTKEY_PAD_IS_BUTTON(binding)) {
@@ -5737,9 +5741,30 @@ static int rewind_toggle_buttons_down(void) {
     return hotkey_pad_binding_down(g_hotkey_pad_rewind);
 }
 
+static int diagnostic_snapshot_buttons_down(void) {
+    return hotkey_pad_binding_down(PSX_HOTKEY_PAD_DIAGNOSTIC_SNAPSHOT);
+}
+
+static void diagnostic_snapshot_capture(void) {
+    psx_crash_trace_manual_snapshot();
+    host_osd_push("Diagnostic snapshot saved", 1800);
+}
+
+static void diagnostic_snapshot_poll_buttons(void) {
+    static int was_down;
+    int down = diagnostic_snapshot_buttons_down();
+    if (down && !was_down)
+        diagnostic_snapshot_capture();
+    was_down = down;
+}
+
 static void rewind_poll_toggle_buttons(void) {
     static int was_down;
     int down = rewind_toggle_buttons_down();
+    /* Select+L3+R3 is the diagnostic chord and contains Select+R3, the
+     * default rewind chord. Do not open rewind while taking a snapshot. */
+    if (diagnostic_snapshot_buttons_down())
+        down = 0;
     if (down && !was_down && !psx_rewind_is_open())
         psx_rewind_toggle();
     was_down = down;
@@ -6096,7 +6121,10 @@ static NetplayVblankEpilogue sdl_vblank_present_body(void) {
                     netplay_soft_exit("netplay_escape");
                     return ep;
                 }
-                if (!key_repeat &&
+                if (!key_repeat && key == SDLK_F12 && (mod & KMOD_CTRL)) {
+                    diagnostic_snapshot_capture();
+                }
+                else if (!key_repeat &&
                     host_keymap_match(HOST_KEYMAP_REWIND, (int)key, (int)mod)) {
                     psx_rewind_toggle();
                 }
@@ -6153,6 +6181,7 @@ static NetplayVblankEpilogue sdl_vblank_present_body(void) {
             }
         }
         savestate_menu_poll_toggle_buttons();
+        diagnostic_snapshot_poll_buttons();
         rewind_poll_toggle_buttons();
         psx_rewind_note_frame();
         psx_rewind_present_tick((uint32_t)SDL_GetTicks());
