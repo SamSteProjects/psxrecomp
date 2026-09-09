@@ -42,6 +42,7 @@ Run the tracked tests with `LEGAIA_DISC_BIN` set to the user's disc path:
 `python -m unittest discover -s integrations/legaia/tests -p test_importer_animation.py`.
 
 Unsupported: live equipment descriptor swaps, scene NPC/scripted and battle
-animation associations, exact GTE arithmetic, and shared party texture uploads.
-These are reported explicitly in preview metadata. The source disc is never
-modified.
+animation associations, and exact GTE arithmetic. Shared party texture uploads
+are now supported separately; see `field-party-textures-20260909.md` for their
+model-scoped source validation and independent VRAM control. Remaining limits
+are reported explicitly in preview metadata. The source disc is never modified.

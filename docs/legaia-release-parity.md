@@ -5,6 +5,45 @@ stability and input fixes from the supplied SDK prompts. The subsequent SDK
 buildout adds an integrated editor, generic guarded observation protocol and
 private placement-package workflow; see `FEATURE_MATRIX.md` for current limits.
 
+## Reproduced FMV stall fixed
+
+Commit `58794999` repairs a generic CD controller error in
+`runtime/src/cdrom.c`: `read_sector_at()` reported CPU data readiness when a
+realtime XA-only sector had supplied no CPU data. Its caller raised INT1 and
+the guest DMA copied the previous video header. Retail STR chunk validation
+then discarded incomplete frames. A cold no-input run reproduced the stall
+after 17 decoded frames; Ghidra inspection of the retail header validator
+`8005F294` and nine paired DMA observations established the mechanism.
+
+Realtime audio is now routed away from CPU data-ready delivery according to
+the controller mode, regardless of host mute, filter rejection or unsupported
+audio coding. Physical sector and XA progress still advance. This follows
+[PSX-SPX's XA interrupt rule](https://psx-spx.consoledev.net/cdromdrive/#playing-xa-adpcm-sectors-compressed-audio-data)
+and was cross-checked against DuckStation's `ProcessDataSector` routing. It is
+a class-level fix, with no Legaia address patch or FMV-skip workaround.
+
+The actual production controller/ADPCM regression fails against the previous
+source and passes after the fix, including nine mode/filter/mute/coding cases
+and three DMA scheduling paths. Fresh optimized MSVC execution, with no input,
+restore or FMV skip, decoded 1,337 frames, showed distinct movie images, and
+left 24-bit movie mode. A paired interval contained 32 video header DMAs and
+eight XA-only sectors with zero header DMA on XA. The owned process exited 0.
+The first acceptance stopped at a white transition. A subsequent independent
+no-input cold run decoded 1,337 frames and visibly reached the title menu with
+New Game / Continue about 20 seconds after movie exit. Its evidence is in
+`fmv-title-after-fix.json` and `fmv-title-post-20.png` in the same private folder.
+Other movies and audible continuity remain open.
+
+Tested executable SHA-256:
+`148c66b1d509d4728d4ea3fcd24e7267776da5ee8104db72f27cfffed625ba6e`.
+Its embedded CMake label remained `nightly-16-ga9478f88-dirty`; the exact binary
+hash and CD source SHA-256
+`835f0a766262f5703b8dbea69fde901a05bcfbd5dee2647cf6031c570ffdc30c`
+identify the fix independently. Private evidence is retained in
+`local-output/sdk-20260909/fmv-root-cause-evidence.json`, `fmv-after-fix.json`
+and `fmv-fixed-sector-dma-proof.json`. Earlier unresolved-FMV observations
+below are historical and superseded for this reproduced failure only.
+
 ## Latest field and authoring acceptance
 
 The later cold runs consumed the complete authored MAN overlay: 24,894 bytes

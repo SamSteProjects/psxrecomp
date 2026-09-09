@@ -43,6 +43,10 @@ material. No proprietary payload was added to these commits.
 | `a9478f88` | Give runtime identity the compiled source-revision stamp. |
 | `85fba8a5` | Reusable authored transform templates with provenance, undo/redo and persistence. |
 | `cf3a51ae` | Validate actor requirements per HTTP command so template deletion works. |
+| `58794999` | Route realtime XA away from CPU data-ready interrupts; fix reproduced 17-frame FMV stall. |
+| `c8378677` | Six reference-scoped field-party idle/walk clips with assembled poses, stepping and playback. |
+| `487e1716` | Build verified retail baselines after clearing or reverting authored placements. |
+| `d4f01910` | Decode model-scoped shared party texture uploads with independent VRAM validation. |
 
 The earlier reapplied release fixes include CD/XA response visibility,
 seek-position refresh, VBlank handling and Windows startup. Current frame
@@ -62,8 +66,10 @@ values remain separate, and failed observation clears transient candidates.
 Retail town01 import resolves 52 actors and 119 models. All 29 actor-referenced
 models decode. The 96-TIM catalog yields 38 uniquely matched textured material
 crops, 26 untextured materials and eight explicitly unresolved materials among
-72 references. These are object-local previews; skeletal pose, runtime texture
-residency and animated palettes are not reconstructed.
+72 references. A separate verified party bank resolves all eight used textured
+materials for F0/F1/F2. Six idle/walk clips assemble ten rigid object channels,
+with frame stepping and playback in the preview. General NPC/battle animation,
+live equipment state, texture residency and animated palettes remain pending.
 
 Authored templates transfer saved position axes to another imported actor,
 preserving unspecified axes. The browser capture/apply/undo/redo/save workflow
@@ -84,7 +90,7 @@ captures from the earlier builds are not performance truth. Software rendering
 is the tested backend. HLE is the current shipping tier; LLE/oracle parity is a
 separate acceptance task.
 
-The latest compiled runtime contains the runtime changes through `a9478f88`:
+The earlier optimized runtime contained the runtime changes through `a9478f88`:
 SHA-256 `99d4e3b6742c864c3087a73c356f0d0de51bdc623accb0e1dd8e026052e94afa`.
 The protocol now reports `nightly-16-ga9478f88-dirty`. The dirty suffix includes
 in-progress documentation/editor work; the ignored final validation manifest
@@ -96,15 +102,30 @@ bytes; 94 requests; 1,114.530 ms total) and all 90 binding samples (2,670 bytes;
 identities. Actor0001's candidate header still carried X9984 and its world
 position was parked. Stop exited normally and cleared the Live candidates.
 
-One later optimized run entered an opening-FMV retry: STR frame acquisition
-timed out while CD/XA and VBlank continued; MDEC was idle after 17 decoded
-frames. Input had been delayed several minutes after launch, unlike the earlier
-successful route. The cause is unproven and is not attributed to optimization.
-Private probes and the failed run are preserved; FMV continuity is unaccepted.
+The opening-FMV retry was subsequently reproduced without input or restore
+and traced to erroneous CPU data-ready interrupts on XA-only sectors. The old
+FIFO video header was copied again, causing retail chunk validation to discard
+partial frames. Commit `58794999` fixes generic sector routing. The corrected
+optimized executable has SHA-256
+`148c66b1d509d4728d4ea3fcd24e7267776da5ee8104db72f27cfffed625ba6e`. Its
+embedded configure-time label is stale; exact binary and source hashes are
+recorded independently. Two no-input cold runs decoded 1,337 movie frames;
+the later run visibly reached New Game / Continue and subsequently restarted
+attract playback. Both exited normally. Other FMVs and audible quality remain
+separate acceptance tasks. See the release ledger for root-cause evidence.
+
+A new authored savepoint build moved town01 actor0052 from retail `(9792,8512)`
+to `(4480,11904)`. Its short source script contains no own position override.
+The cold game displayed the purple savepoint beside Vahn in the opening
+Village Elder dialogue, and the guarded candidate carried both the edited MAN
+header and world position `(4480,-128,11904)`. All 24,894 overlay bytes were
+consumed without guard failure. This proves the chosen visible edit; generic
+identity correlation remains conservatively classified as a candidate. A
+separate retail-baseline run is required to complete revert acceptance.
 
 ## Focused validation
 
-- All 46 importer/project/serialization/texture tests passed with the local
+- All 56 importer/project/serialization/texture/animation tests passed with the local
   retail disc configured, including the retail-gated cases.
 - Twelve observer/profile/correlation tests passed, including stale identity,
   wrong backend/hash, bounded reads, ambiguity and transient-layer clearing.
@@ -128,14 +149,13 @@ manifest, screenshots, PCM and full guarded observations are retained under
 
 ## Remaining implementation and acceptance
 
-The next runtime investigation is the STR frame-ring/header and callback
-ownership path behind the observed FMV retry. Muscle Dome relocation also
-remains unresolved: the cited old change documents a repair but contains no
+The reproduced STR/XA stall is fixed and reaches the title menu. Muscle Dome
+relocation remains unresolved: the cited old change documents a repair but contains no
 recovered implementation. A title-layer fix requires the failing lifecycle and
 retail comparison, not a guessed runtime address patch.
 
-The next SDK vertical slice must prove a visibly edited existing actor and
-revert in a running game. Full posed scene rendering, skeleton/animation tools,
+The SDK now proves a visible savepoint edit; revert acceptance is the remaining
+step of that vertical slice. Full posed scene rendering, general animation tools,
 asset replacement, native entity/templates, dialogue encoding and editing,
 script opcode/CFG tools, event flags, transitions and world-map authoring are
 still incomplete. Unknown semantics remain explicit. Audio continuity,

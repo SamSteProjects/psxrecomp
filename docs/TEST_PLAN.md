@@ -86,3 +86,19 @@ Attach / Stop / upright textured-preview checks. These do not replace the
 16-layer campaign above. Keep visible placement/revert, audible continuity,
 full field-transition coverage and cold-versus-restored performance as separate
 acceptance gates; a single matching MAN header is insufficient for them.
+
+The next pass also completed a production CD controller regression that fails
+against the previous unconditional XA data-ready behavior. It covers nine
+mode/filter/mute/coding cases and immediate/pending/active DMA scheduling paths.
+A no-input cold retail movie advanced from the former 17-frame stall to 1,337
+decoded frames and movie-mode exit. This is acceptance of that reproduced stall;
+a further no-input run also visibly reached the title menu after transition.
+Other FMVs and audible quality require their own recorded results.
+
+Party animation controls compare all six supported clips against unchanged
+pinned reference transform functions (20,845 vertex cases). Shared textures
+match an independent full-VRAM fingerprint and standalone palette crops while
+preserving town01's existing catalog. Retail baseline builds also pass a real
+disc serializer check: clear edits or set a retail-equivalent override, rebuild
+to the same manifest-only package digest, and preserve the prior authored
+package. Actual visible placement/revert remains a separate runtime check.

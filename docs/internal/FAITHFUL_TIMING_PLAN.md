@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (XA data-ready correction and posed SDK assets):** Reproduced
+  the 17-frame FMV stall without input or restore. Actual sector/DMA evidence
+  plus retail Ghidra validation showed XA-only arrivals reissuing the previous
+  video header through erroneous INT1. Generic CD routing now returns actual
+  CPU data readiness and keeps realtime XA away from CPU delivery; no title
+  patch. Production-controller tests fail before/pass after, including mode,
+  filter, mute, coding and DMA scheduling cases. The fixed optimized binary
+  decoded 1,337 movie frames and exited movie mode; a further no-input cold run
+  visibly reached the title menu and attract playback. Audible quality remains
+  unaccepted. SDK party idle/walk
+  poses and source-scoped shared textures match independent pinned controls;
+  retail baseline builds support revert without fake unchanged overlays.
+
 - **2026-09-09 (snapshot transaction and SDK run verification):** All known
   snapshot sections validate/prepare before guest mutation; partial MDEC
   commands reserve full expected input capacity. Caller resume-PC rejection

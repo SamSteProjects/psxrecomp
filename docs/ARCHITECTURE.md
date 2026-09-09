@@ -36,6 +36,15 @@ matches produce textures; missing or ambiguous associations remain explicit.
 Raw object coordinates are preserved; the preview converts PSX Y-down for
 upright display using pinned reference evidence.
 
+`importer/animation.py` adds provenance-scoped F0/F1/F2 field-party idle/walk
+clips from PROT0874 section1. Ten rigid object channels form a posed preview;
+equipment descriptor templates are excluded. Clip IDs, frame counts, source
+spans and reference-derived timing remain separate from live animation state.
+The editor can select clips, step frames and play/pause. Shared party texture
+uploads from section2 use a model-scoped catalog rather than being merged into
+every scene texture bank. Neither path invents a skeletal parent hierarchy or
+claims exact GTE arithmetic, live equipment state or general NPC animation.
+
 `observer/correlation.py` samples bounded MAN-header and model evidence under
 the same scene epoch. `RuntimeCandidates` components are transient and cleared
 when attachment or observation fails. Single candidates remain candidates;
@@ -78,6 +87,12 @@ not modify the stock image. Unsupported authored fields and compressed growth
 fail before publishing a package. Visual actor-change acceptance is distinct
 from successful package construction or boot. See `FEATURE_MATRIX.md` for
 current coverage and `TEST_PLAN.md` for the acceptance gates.
+
+Clearing all effective edits also has a build result: a verified retail baseline
+with a manifest-only package and zero data overlays. Build reimports the source
+scenes to check provenance, records `build_kind=retail`, and does not manufacture
+unchanged payload patches. Prior authored packages remain available, so the
+same private Run lifecycle can compare an authored build against its revert.
 
 ## Two programs: the recompiler and the runtime
 
