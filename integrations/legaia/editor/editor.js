@@ -10,7 +10,7 @@ let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
 sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
-const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build a private mod package from supported authored placements';$('save-button').after(buildButton);
+const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build the project with supported edits or as a verified retail baseline';$('save-button').after(buildButton);
 const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';document.body.append(buildDialog);
 const templateDialog=document.createElement('dialog');templateDialog.id='template-dialog';document.body.append(templateDialog);
 const templateButton=document.createElement('button');templateButton.className='template-library-button';templateButton.textContent='Authored transform templates…';$('assets').before(templateButton);
@@ -22,7 +22,7 @@ let runPoll=null, runRibbonKey=null;
 runButton.onclick=()=>showRunDialog();
 function showRunDialog(){
   const config=state.launch_config ?? {};
-  runDialog.innerHTML=`<form id="run-form"><div class="dialog-heading"><h2>Build & Run</h2><button type="button" id="close-run" aria-label="Close">×</button></div><p>Launch a private copy of your selected runtime with this project's authored placement package.</p><label>Runtime executable<input id="run-exe" required value="${escapeHTML(config.runtime_executable)}" placeholder="C:\\path\\to\\LegaiaRecomp.exe" spellcheck="false"></label><label>BIOS image<input id="run-bios" required value="${escapeHTML(config.bios)}" placeholder="C:\\path\\to\\SCPH1001.BIN" spellcheck="false"></label><label>Game configuration<input id="run-config" required value="${escapeHTML(config.game_config)}" placeholder="C:\\path\\to\\game.toml" spellcheck="false"></label><label>Renderer<select id="run-renderer"><option value="software">Software</option><option value="opengl">OpenGL</option><option value="vulkan">Vulkan (requires runtime support)</option></select></label><label>Runtime debug port<input id="run-port" required type="number" min="1024" max="65535" value="${escapeHTML(config.debug_port ?? 4391)}"></label><p class="field-note">Each run has private mods, saves and logs under the project. Readiness verifies the game and enabled package; it does not establish gameplay correctness.</p><div id="run-summary"></div><div class="dialog-actions"><button type="submit" class="accent" id="launch-run">Build & launch</button></div><p class="dialog-error" role="alert"></p></form>`;
+  runDialog.innerHTML=`<form id="run-form"><div class="dialog-heading"><h2>Build & Run</h2><button type="button" id="close-run" aria-label="Close">×</button></div><p>Launch a private copy of your selected runtime with this project's build.</p><label>Runtime executable<input id="run-exe" required value="${escapeHTML(config.runtime_executable)}" placeholder="C:\\path\\to\\LegaiaRecomp.exe" spellcheck="false"></label><label>BIOS image<input id="run-bios" required value="${escapeHTML(config.bios)}" placeholder="C:\\path\\to\\SCPH1001.BIN" spellcheck="false"></label><label>Game configuration<input id="run-config" required value="${escapeHTML(config.game_config)}" placeholder="C:\\path\\to\\game.toml" spellcheck="false"></label><label>Renderer<select id="run-renderer"><option value="software">Software</option><option value="opengl">OpenGL</option><option value="vulkan">Vulkan (requires runtime support)</option></select></label><label>Runtime debug port<input id="run-port" required type="number" min="1024" max="65535" value="${escapeHTML(config.debug_port ?? 4391)}"></label><p class="field-note">Each run has private mods, saves and logs under the project. Readiness verifies the game and enabled package; it does not establish gameplay correctness.</p><div id="run-summary"></div><div class="dialog-actions"><button type="submit" class="accent" id="launch-run">Build & launch</button></div><p class="dialog-error" role="alert"></p></form>`;
   $('run-renderer').value=config.renderer ?? 'software';
   $('close-run').onclick=()=>runDialog.close();
   $('run-form').onsubmit=async event=>{
@@ -51,7 +51,7 @@ function scheduleRunPoll(){
 buildButton.onclick=async()=>{
   if(await api('/api/build',{})){
     const result=state.build;
-    buildDialog.innerHTML=`<div class="dialog-heading"><h2>Private mod package built</h2><button id="close-build" aria-label="Close">×</button></div><p>${escapeHTML(result.changed_fields)} placement fields · ${escapeHTML(result.overlay_count)} scene overlays</p><p>Runtime launch has not been validated for this package.</p><label>Package path<input readonly value="${escapeHTML(result.path)}"></label><p>${escapeHTML(result.install_instruction)}</p>`;
+    buildDialog.innerHTML=`<div class="dialog-heading"><h2>${result.build_kind==='retail'?'Retail baseline built':'Private mod package built'}</h2><button id="close-build" aria-label="Close">×</button></div><p>${result.build_kind==='retail'?'Retail baseline · no modified bytes':`${escapeHTML(result.changed_fields)} placement fields · ${escapeHTML(result.overlay_count)} scene overlays`}</p><p>Runtime launch has not been validated for this package.</p><label>Package path<input readonly value="${escapeHTML(result.path)}"></label><p>${escapeHTML(result.install_instruction)}</p>`;
     $('close-build').onclick=()=>buildDialog.close();buildDialog.showModal();
   }
 };
@@ -208,6 +208,8 @@ function renderInspector(){
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
   $('inspector').innerHTML=html;
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
+  const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
+  if(animatedAsset && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview reference locomotion';button.title='Decoded idle/walk clips for this model; separate from the placement animation ID';button.onclick=()=>openModel(animatedAsset.id,'idle');$('inspect-model').after(button);}
   if($('inspect-templates'))$('inspect-templates').onclick=showTemplates;
   $('inspector').querySelectorAll('[data-axis]').forEach(input=>input.addEventListener('change',async()=>{
     const axis=input.dataset.axis;
@@ -273,19 +275,21 @@ canvas.addEventListener('pointerup',async event=>{
 canvas.addEventListener('pointercancel',()=>{drag=null;draft=null;canvas.classList.remove('dragging');draw();});
 canvas.addEventListener('wheel',event=>{event.preventDefault();camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(event.deltaY*.001)));draw();},{passive:false});
 
-// Object previews deliberately do not assemble multipart assets into an invented pose.
+// Unposed assets stay object-local. Only decoder-provided frames assemble objects.
 const modelCanvas=$('model-canvas'), modelContext=modelCanvas.getContext('2d');
 let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
+let modelAssetId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
-async function openModel(assetId){
-  if(busy)return;setBusy(true);const request=++modelRequest;
+async function openModel(assetId,clipId=null){
+  if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest;
   try{
-    const response=await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:assetId})});
+    const response=await fetch(clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
     const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
-    model=data;$('model-dialog').querySelector('h2').textContent=assetId.split('/').slice(-2).join(' / ');
+    if(clipId && (!Array.isArray(data.frames) || !data.frames.length || data.frames.length*data.vertices.length>1000000 || data.frames.some(frame=>frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(frame.vertices)||frame.vertices.length!==data.vertices.length||frame.vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(numeric)))))throw new Error('Animation service returned an invalid or oversized posed vertex stream.');
+    model=data;modelAssetId=assetId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=assetId.split('/').slice(-2).join(' / ');
     modelTextures=new Map();$('model-textures').replaceChildren();
     for(const texture of model.textures ?? []){
       const card=document.createElement('div');card.className='texture-card';
@@ -297,20 +301,53 @@ async function openModel(assetId){
       const statusLabel={address_match:'Matched texture',missing:'Texture not found',ambiguous:'Multiple possible textures',unsupported:'Unsupported texture',untextured:'Vertex colors'}[texture.status] ?? 'Texture unavailable';
       const label=document.createElement('span');label.textContent=`Material ${texture.material_index} · ${statusLabel}${texture.width?' · '+texture.width+'×'+texture.height:''}`;card.append(label);card.title=texture.reason ?? 'Static texture addresses; runtime residency is not confirmed'; $('model-textures').append(card);
     }
-    $('model-description').textContent=`Drag to orbit · Scroll to zoom · Retail object-local geometry · Unposed · ${modelTextures.size?'Static texture address matches':'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
+    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId?'Decoded rigid animation pose':'Retail object-local geometry · Unposed'} · ${modelTextures.size?'Static texture address matches':'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
     $('model-object').replaceChildren();
+    if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
-    $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? JSON.stringify(d)).join(' · ');
+    $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? (d.kind==='equipment_templates_excluded'?'Equipment template objects 10 and 11 are excluded from this pose.':JSON.stringify(d))).join(' · ');
+    configureAnimation(clipId);
     if(!$('model-dialog').open)$('model-dialog').showModal();
     fitModelObject();
-  }catch(error){notify(error.message,true);}finally{setBusy(false);}
+  }catch(error){if($('model-dialog').open){$('model-error').textContent=error.message;$('animation-clip').value=model?.animation?.clip_id ?? '';}else notify(error.message,true);}finally{$('animation-clip').disabled=false;setBusy(false);}
 }
+function modelObject(){return $('model-object').value==='all' && model?.frames?.length?{vertex_start:0,vertex_count:model.vertices.length,triangle_start:0,triangle_count:model.triangles.length}:model?.objects[Number($('model-object').value)];}
+function frameVertices(){return model?.frames?.[animationFrame]?.vertices ?? model?.vertices ?? [];}
+function configureAnimation(clipId){
+  const support=model.animation_support ?? {},clips=support.clips ?? [],frames=model.frames ?? [];
+  $('animation-controls').hidden=!support.supported && !frames.length;
+  $('animation-clip').replaceChildren();const unposed=document.createElement('option');unposed.value='';unposed.textContent='Object-local geometry (unposed)';$('animation-clip').append(unposed);
+  for(const clip of clips){const option=document.createElement('option');option.value=clip.id;option.textContent=clip.label;$('animation-clip').append(option);}
+  $('animation-clip').value=clipId ?? '';
+  const timing=model.animation?.timing ?? model.timing ?? {},fps=numeric(timing.fps)?timing.fps:10;
+  $('animation-rate').value=fps;$('animation-rate').parentElement.querySelector('span').textContent=numeric(timing.fps)?`Reference rate: ${timing.fps} fps; not verified against a live trace.`:'Preview setting; retail timing is unresolved.';
+  $('animation-evidence').textContent=JSON.stringify(model.animation?{...model.animation,geometry_diagnostics:model.diagnostics}:support,null,2);
+  $('animation-error').textContent='';
+  for(const id of ['animation-play','animation-previous','animation-next','animation-frame','animation-rate'])$(id).disabled=!frames.length;
+  $('animation-frame').max=Math.max(0,frames.length-1);$('animation-frame').value=0;
+  $('animation-frame-label').textContent=frames.length?`1 / ${frames.length}`:'No clip loaded';
+}
+function stopAnimation(){if(animationTick!==null)cancelAnimationFrame(animationTick);animationTick=null;animationClock=null;$('animation-play').textContent='Play';}
+function setAnimationFrame(index){const count=model?.frames?.length ?? 0;if(!count)return;animationFrame=((index%count)+count)%count;$('animation-frame').value=animationFrame;$('animation-frame-label').textContent=`${animationFrame+1} / ${count}`;drawModel();}
+$('animation-clip').onchange=()=>openModel(modelAssetId,$('animation-clip').value || null);
+$('animation-frame').oninput=()=>{stopAnimation();setAnimationFrame(Number($('animation-frame').value));};
+$('animation-previous').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame-1);};
+$('animation-next').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame+1);};
+$('animation-rate').onchange=()=>{const rate=Number($('animation-rate').value);$('animation-rate').value=Number.isFinite(rate)?Math.max(1,Math.min(60,rate)):10;animationClock=null;};
+$('animation-play').onclick=()=>{
+  if(animationTick!==null){stopAnimation();return;}if(!model?.frames?.length)return;
+  $('animation-play').textContent='Pause';
+  const tick=time=>{if(!$('model-dialog').open){stopAnimation();return;}if(animationClock===null)animationClock=time;const step=1000/Math.max(1,Math.min(60,Number($('animation-rate').value)||10)),advance=Math.floor((time-animationClock)/step);if(advance){animationClock+=advance*step;setAnimationFrame(animationFrame+advance);}animationTick=requestAnimationFrame(tick);};
+  animationTick=requestAnimationFrame(tick);
+};
+$('model-dialog').addEventListener('close',()=>{stopAnimation();modelRequest++;});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAnimation();});
 function fitModelObject(){
-  const object=model?.objects[Number($('model-object').value)];if(!object)return;
-  const vertices=model.vertices.slice(object.vertex_start,object.vertex_start+object.vertex_count);
+  const object=modelObject();if(!object)return;
+  const streams=model.frames?.length?model.frames.map(frame=>frame.vertices):[model.vertices];
   const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
-  for(const vertex of vertices)for(let axis=0;axis<3;axis++){min[axis]=Math.min(min[axis],vertex[axis]);max[axis]=Math.max(max[axis],vertex[axis]);}
-  modelView.center=vertices.length?min.map((v,i)=>(v+max[i])/2):[0,0,0];modelView.radius=vertices.length?Math.max(1,Math.hypot(...max.map((v,i)=>v-min[i]))/2):1;modelView.zoom=1;
+  for(const vertices of streams)for(let index=object.vertex_start;index<object.vertex_start+object.vertex_count;index++)for(let axis=0;axis<3;axis++){min[axis]=Math.min(min[axis],vertices[index][axis]);max[axis]=Math.max(max[axis],vertices[index][axis]);}
+  modelView.center=object.vertex_count?min.map((v,i)=>(v+max[i])/2):[0,0,0];modelView.radius=object.vertex_count?Math.max(1,Math.hypot(...max.map((v,i)=>v-min[i]))/2):1;modelView.zoom=1;
   $('model-counts').textContent=`${object.vertex_count} vertices · ${object.triangle_count} triangles`;
   drawModel();
 }
@@ -318,9 +355,9 @@ $('model-object').onchange=fitModelObject;
 function drawModel(){
   const rect=modelCanvas.getBoundingClientRect(),w=rect.width,h=rect.height,dpr=window.devicePixelRatio||1;if(!w||!h)return;
   modelCanvas.width=Math.round(w*dpr);modelCanvas.height=Math.round(h*dpr);modelContext.setTransform(dpr,0,0,dpr,0,0);modelContext.clearRect(0,0,w,h);
-  const object=model?.objects[Number($('model-object').value)];if(!object)return;
+  const object=modelObject();if(!object)return;
   const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch),distance=modelView.radius*4/modelView.zoom,f=Math.min(w,h)*1.3;
-  const projectedModel=model.vertices.map(v=>{
+  const projectedModel=frameVertices().map(v=>{
     // PSX local +Y points down. Match pinned LegaiaRE d6e64c68 scene_gltf's
     // diag(1,-1,1) display conversion without changing the decoded vertices.
     const x=v[0]-modelView.center[0],y=-(v[1]-modelView.center[1]),z=v[2]-modelView.center[2];const rx=x*c+z*s,rz=-x*s+z*c,ry=y*cp-rz*sp,depth=y*sp+rz*cp+distance;

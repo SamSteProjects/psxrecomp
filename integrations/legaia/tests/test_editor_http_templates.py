@@ -28,10 +28,10 @@ class TemplateHTTPWorkflow(unittest.TestCase):
                 thread = threading.Thread(target=server.serve_forever, daemon=True)
                 thread.start()
 
-                def command(body, expected_status=200):
+                def command(body, expected_status=200, route="/api/command"):
                     connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=3)
                     try:
-                        connection.request("POST", "/api/command", json.dumps(body), {"Content-Type": "application/json"})
+                        connection.request("POST", route, json.dumps(body), {"Content-Type": "application/json"})
                         response = connection.getresponse()
                         result = json.loads(response.read())
                         self.assertEqual(response.status, expected_status, result)
@@ -60,6 +60,14 @@ class TemplateHTTPWorkflow(unittest.TestCase):
                             rejected = command(body, 400)
                             self.assertIn("entity_id", rejected["error"])
                     command({"type": "delete_actor_template", "template_id": "missing"}, 400)
+                    self.assertEqual(project.state(), before)
+                    # Unsupported decoder errors must return JSON, not drop the socket.
+                    # Capability rejection occurs before this nonexistent disc is opened.
+                    project.disc_path = str(Path(directory) / "not-read.bin")
+                    before = deepcopy(project.state())
+                    rejected = command({"asset_id": "asset://fixture/model/0", "clip_id": "idle"},
+                                       400, "/api/animation-preview")
+                    self.assertIn("support animation preview", rejected["error"])
                     self.assertEqual(project.state(), before)
                 finally:
                     server.shutdown()

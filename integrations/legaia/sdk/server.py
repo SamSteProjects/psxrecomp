@@ -10,6 +10,7 @@ import socket
 import threading
 from urllib.parse import urlsplit
 
+from importer.core import ImportError as RetailImportError
 from .project import ProjectError, ProjectService
 
 
@@ -38,12 +39,16 @@ class EditorServer(ThreadingHTTPServer):
         super().__init__(address, EditorHandler)
 
     def state(self) -> dict:
+        from importer.animation import animation_capabilities
         state = self.project.state()
         state["runtime"] = self.live_status
         state["capabilities"]["live_mode"] = self.live_status.get("available", False)
         state["capabilities"]["runtime_discovery"] = True
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
-        state["capabilities"]["build"] = bool(self.project.disc_path and self.project.overrides)
+        state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
+        for asset in state["assets"]:
+            asset["animation_support"] = animation_capabilities(asset)
+        state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
         state["build"] = self.last_build
         state["run"] = self.runs.status()
         try:
@@ -58,11 +63,19 @@ class EditorServer(ThreadingHTTPServer):
         self.observer.close()
         super().server_close()
 
-    def model_preview(self, asset: dict) -> dict:
+    def model_preview(self, asset: dict, clip_id: str | None = None) -> dict:
         from importer.assets import load_model_preview
+        from importer.animation import animation_capabilities, load_animation_preview
         from importer.textures import associate_material, load_scene_texture_catalog
         project = self.project
-        preview = load_model_preview(Path(project.disc_path), asset)
+        if clip_id is not None:
+            animation = load_animation_preview(Path(project.disc_path), asset, clip_id)
+            preview = animation.pop("geometry")
+            preview["frames"] = animation.pop("frames")
+            preview["animation"] = animation
+        else:
+            preview = load_model_preview(Path(project.disc_path), asset)
+        preview["animation_support"] = animation_capabilities(asset)
         scene = asset.get("source_record", {}).get("prot_entry_name")
         if scene == "befect_data":
             scene = project.imports.get(project.active_scene, {}).get("scene", {}).get("name")
@@ -79,10 +92,13 @@ class EditorServer(ThreadingHTTPServer):
         preview["textures"] = []
         budget = 2 * 1024 * 1024
         for index, material in enumerate(preview.get("materials", [])):
+            if not material.get("textured"):
+                preview["textures"].append({"material_index": index, "status": "untextured", "reason": "Material uses vertex colors"})
+                continue
             uvs = [uv for triangle_index, material_index in enumerate(preview["triangle_materials"])
                    if material_index == index for uv in (preview["triangle_uvs"][triangle_index] or [])]
             if not uvs or index >= 32:
-                preview["textures"].append({"material_index": index, "status": "unsupported", "reason": "Untextured material or bounded preview limit"})
+                preview["textures"].append({"material_index": index, "status": "unsupported", "reason": "Missing texture coordinates or bounded preview limit"})
                 continue
             bounds = (min(uv[0] for uv in uvs), min(uv[1] for uv in uvs), max(uv[0] for uv in uvs), max(uv[1] for uv in uvs))
             result = associate_material(catalog, material, bounds)
@@ -169,19 +185,24 @@ class EditorHandler(BaseHTTPRequestHandler):
             if not isinstance(body, dict):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
-                if urlsplit(self.path).path == "/api/preview":
-                    from importer.assets import load_model_preview
+                route = urlsplit(self.path).path
+                if route in ("/api/preview", "/api/animation-preview"):
                     project = self.server.project
                     if not project.disc_path:
                         raise ProjectError("Model preview requires the project's user-owned disc")
+                    if not isinstance(body.get("asset_id"), str):
+                        raise ProjectError("asset_id must be a model asset string")
                     asset = project.assets.records.get(body.get("asset_id"))
                     if asset is None:
                         raise ProjectError("Unknown model asset")
-                    self._json(200, self.server.model_preview(asset))
+                    clip_id = body.get("clip_id") if route == "/api/animation-preview" else None
+                    if route == "/api/animation-preview" and clip_id not in ("idle", "walk"):
+                        raise ProjectError("Choose a supported animation clip: idle or walk")
+                    self._json(200, self.server.model_preview(asset, clip_id))
                     return
                 self._command(urlsplit(self.path).path, body)
                 self._json(200, self.server.state())
-        except (ProjectError, ValueError, KeyError, TypeError, OSError) as exc:
+        except (RetailImportError, ProjectError, ValueError, KeyError, TypeError, OSError) as exc:
             self._json(400, {"error": str(exc)})
 
     def _command(self, route: str, body: dict) -> None:
