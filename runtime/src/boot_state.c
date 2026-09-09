@@ -730,6 +730,7 @@ int boot_state_check_buffer(const uint8_t* file, size_t file_len,
                             char* reason, size_t reason_cap) {
     BootStateHeader h;
     char part[96];
+    int compatible = 1;
 
     if (reason && reason_cap)
         reason[0] = '\0';
@@ -750,6 +751,7 @@ int boot_state_check_buffer(const uint8_t* file, size_t file_len,
     if (h.magic != BOOT_STATE_MAGIC) {
         snprintf(part, sizeof(part), "magic=%08X(want %08X)",
                  (unsigned)h.magic, (unsigned)BOOT_STATE_MAGIC);
+        compatible = 0;
         boot_state_append_reason(reason, reason_cap, part);
     }
     if (h.version < BOOT_STATE_VERSION_MIN_READ ||
@@ -757,38 +759,43 @@ int boot_state_check_buffer(const uint8_t* file, size_t file_len,
         snprintf(part, sizeof(part), "version=%u(want %u..%u)",
                  (unsigned)h.version, (unsigned)BOOT_STATE_VERSION_MIN_READ,
                  (unsigned)BOOT_STATE_VERSION);
+        compatible = 0;
         boot_state_append_reason(reason, reason_cap, part);
     }
     if (h.bios_checksum != bios_checksum) {
         snprintf(part, sizeof(part), "bios=%08X(want %08X)",
                  (unsigned)h.bios_checksum, (unsigned)bios_checksum);
+        compatible = 0;
         boot_state_append_reason(reason, reason_cap, part);
     }
     if (h.entry_pc != entry_pc) {
         snprintf(part, sizeof(part), "entry=%08X(want %08X)",
                  (unsigned)h.entry_pc, (unsigned)entry_pc);
+        compatible = 0;
         boot_state_append_reason(reason, reason_cap, part);
     }
     if (h.codegen_hash != (uint32_t)PSX_OVERLAY_CODEGEN_HASH) {
         snprintf(part, sizeof(part), "codegen_hash=%08X(want %08X)",
                  (unsigned)h.codegen_hash,
                  (unsigned)PSX_OVERLAY_CODEGEN_HASH);
+        compatible = 0;
         boot_state_append_reason(reason, reason_cap, part);
     }
     if (h.abi_tag != (int32_t)PSX_OVERLAY_ABI_TAG) {
         snprintf(part, sizeof(part), "abi_tag=%d(want %d)",
                  (int)h.abi_tag, (int)PSX_OVERLAY_ABI_TAG);
+        compatible = 0;
         boot_state_append_reason(reason, reason_cap, part);
     }
     if (h.codegen_ver != (uint32_t)PSX_OVERLAY_CODEGEN_VER) {
         snprintf(part, sizeof(part), "codegen_ver=%u(want %u)",
                  (unsigned)h.codegen_ver, (unsigned)PSX_OVERLAY_CODEGEN_VER);
+        compatible = 0;
         boot_state_append_reason(reason, reason_cap, part);
     }
 
-    if (reason && reason_cap && reason[0])
-        return 0;
-    return 1;
+    /* Diagnostic storage is optional; it must never decide acceptance. */
+    return compatible;
 }
 
 int boot_state_load_buffer(const uint8_t* file, size_t file_len,

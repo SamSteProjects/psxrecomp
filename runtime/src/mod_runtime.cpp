@@ -268,7 +268,11 @@ bool sha256_file(const std::filesystem::path& path, std::string& out,
         return true;
     }
 
-    std::array<uint8_t, 1024 * 1024> buffer{};
+    /* Fingerprinting also runs in tools and host threads with the default
+     * Windows 1 MiB stack. A 1 MiB local buffer exhausted that stack before
+     * the file could even be opened. SHA-256 is incremental; keep the I/O
+     * chunk bounded independently of the runtime executable's stack size. */
+    std::array<uint8_t, 64 * 1024> buffer{};
     std::ifstream file(input, std::ios::binary);
     if (!file) {
         if (error) *error = "cannot fingerprint image: " + input.string();
