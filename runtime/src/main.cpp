@@ -209,6 +209,7 @@ extern "C" {
     extern int      g_psx_dispatch_depth;
     /* interrupts.c */
     extern uint32_t vblank_cycles;
+    extern CPUState *debug_cpu_ptr;
 }
 
 /* memory.c */
@@ -5988,6 +5989,10 @@ enum {
 #define PSX_HOTKEY_PAD_SELECT_L1 \
     PSX_HOTKEY_PAD_BUTTON_COMBO(((uint32_t)1u << SDL_CONTROLLER_BUTTON_BACK) | \
                                 ((uint32_t)1u << SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+#define PSX_HOTKEY_PAD_DIAGNOSTIC_SNAPSHOT \
+    PSX_HOTKEY_PAD_BUTTON_COMBO(((uint32_t)1u << SDL_CONTROLLER_BUTTON_BACK) | \
+                                ((uint32_t)1u << SDL_CONTROLLER_BUTTON_LEFTSTICK) | \
+                                 ((uint32_t)1u << SDL_CONTROLLER_BUTTON_RIGHTSTICK))
 
 static int normalize_hotkey_pad_binding(int binding, int fallback) {
     if (PSX_HOTKEY_PAD_IS_BUTTON(binding)) {
@@ -6222,9 +6227,30 @@ static int rewind_toggle_buttons_down(void) {
     return hotkey_pad_binding_down(g_hotkey_pad_rewind);
 }
 
+static int diagnostic_snapshot_buttons_down(void) {
+    return hotkey_pad_binding_down(PSX_HOTKEY_PAD_DIAGNOSTIC_SNAPSHOT);
+}
+
+static void diagnostic_snapshot_capture(void) {
+    psx_crash_trace_manual_snapshot();
+    host_osd_push("Diagnostic snapshot saved", 1800);
+}
+
+static void diagnostic_snapshot_poll_buttons(void) {
+    static int was_down;
+    int down = diagnostic_snapshot_buttons_down();
+    if (down && !was_down)
+        diagnostic_snapshot_capture();
+    was_down = down;
+}
+
 static void rewind_poll_toggle_buttons(void) {
     static int was_down;
     int down = rewind_toggle_buttons_down();
+    /* Select+L3+R3 is the diagnostic chord and contains Select+R3, the
+     * default rewind chord. Do not open rewind while taking a snapshot. */
+    if (diagnostic_snapshot_buttons_down())
+        down = 0;
     if (down && !was_down && !psx_rewind_is_open())
         psx_rewind_toggle();
     was_down = down;
@@ -6623,7 +6649,10 @@ static NetplayVblankEpilogue sdl_vblank_present_body(void) {
                     netplay_soft_exit("netplay_escape");
                     return ep;
                 }
-                if (!key_repeat &&
+                if (!key_repeat && key == SDLK_F12 && (mod & KMOD_CTRL)) {
+                    diagnostic_snapshot_capture();
+                }
+                else if (!key_repeat &&
                     host_keymap_match_event(HOST_KEYMAP_REWIND, (int)key,
                                             (int)scancode, (int)mod)) {
                     psx_rewind_toggle();
@@ -6703,6 +6732,7 @@ static NetplayVblankEpilogue sdl_vblank_present_body(void) {
             }
         }
         savestate_menu_poll_toggle_buttons();
+        diagnostic_snapshot_poll_buttons();
         rewind_poll_toggle_buttons();
         fast_forward_toggle_poll_buttons();
         psx_rewind_note_frame();
@@ -12069,9 +12099,16 @@ namespace {
 #endif
 
 int main(int argc, char** argv) {
-    /* Force line-buffered output so messages appear even if killed. */
-    std::setvbuf(stdout, nullptr, _IOLBF, BUFSIZ);
-    std::setvbuf(stderr, nullptr, _IOLBF, BUFSIZ);
+    /* Windows UCRT rejects the zero-sized line-buffer configuration used by
+     * the POSIX path.  Keep crash/startup diagnostics immediately visible
+     * without tripping its invalid-parameter handler. */
+#ifdef _WIN32
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+#else
+    std::setvbuf(stdout, nullptr, _IOLBF, 0);
+    std::setvbuf(stderr, nullptr, _IOLBF, 0);
+#endif
     std::fprintf(stderr, "psxrecomp: main() entered\n");
     std::fflush(stderr);
 #if defined(RECOMP_LAUNCHER)
@@ -12436,7 +12473,6 @@ int main(int argc, char** argv) {
                     "psxrecomp: turbo_audio_sink enabled (opt-in)\n");
             }
             {
-                extern int g_idle_skip_enabled;
                 const char *idle_env = std::getenv("PSX_IDLE_SKIP");
                 g_idle_skip_enabled = idle_env
                     ? (idle_env[0] == '1' ? 1 : 0)
@@ -15470,7 +15506,6 @@ session_reboot:
         /* Idle-skip advances guest cycles without CD/device aging in lockstep —
          * force off so both peers share the same CD FSM (dig_c folds CD). */
         {
-            extern int g_idle_skip_enabled;
             if (g_idle_skip_enabled != 0) {
                 g_idle_skip_enabled = 0;
                 std::printf("psxrecomp: netplay — idle_skip forced off\n");

@@ -40,6 +40,7 @@
 #include "cpu_state.h"
 #include "psx_bss.h"
 #include "crash_trace.h"
+#include "freeze_heartbeat.h"
 #include "autocompile.h"   /* autocompile_degraded_reason — stamp a degraded
                             * (interpreter-only) run into its own report */
 
@@ -629,6 +630,34 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
             (unsigned long long)disp_interp);
     }
 
+    /* A generated static-overlay source dispatches directly rather than through
+     * overlay_loader's dynamic candidate table.  Keep its bounded matching
+     * counters in the one-shot report so a freeze can distinguish “not matched”
+     * from a fault inside a matched static variant. */
+#ifdef PSX_HAS_OVERLAY_STATIC_SOURCE
+    {
+        uint64_t checks = 0, hits = 0, variant_misses = 0, address_misses = 0;
+        uint64_t rehashes = 0, crc_misses = 0, gen_fastpath = 0;
+        extern void psx_overlay_static_get_stats(uint64_t *, uint64_t *,
+                                                 uint64_t *, uint64_t *);
+        extern void overlay_loader_static_match_stats(uint64_t *, uint64_t *,
+                                                      uint64_t *);
+        psx_overlay_static_get_stats(&checks, &hits, &variant_misses,
+                                     &address_misses);
+        overlay_loader_static_match_stats(&rehashes, &crc_misses, &gen_fastpath);
+        append_fmt(buf, sizeof(buf), &pos,
+            "  \"static_overlay\": {\"checks\": %llu, \"hits\": %llu, "
+            "\"variant_misses\": %llu, \"address_misses\": %llu, "
+            "\"rehashes\": %llu, \"crc_misses\": %llu, "
+            "\"generation_fastpath\": %llu},\n",
+            (unsigned long long)checks, (unsigned long long)hits,
+            (unsigned long long)variant_misses,
+            (unsigned long long)address_misses,
+            (unsigned long long)rehashes, (unsigned long long)crc_misses,
+            (unsigned long long)gen_fastpath);
+    }
+#endif
+
     /* Recursion fingerprint (build-independent GUEST addresses): the func entered
      * when the native stack guard tripped, plus the recent recompiled-function-
      * entry ring — for a runaway, recent_fn's tail repeats the recursing func, so
@@ -807,6 +836,37 @@ void psx_crash_trace_dump(const char *reason, void *seh_info) {
         fwrite(buf, 1, pos, f);
         fclose(f);
     }
+}
+
+static void copy_report_file(const char *source, const char *destination) {
+    FILE *src = fopen(source, "rb");
+    if (!src)
+        return;
+    FILE *dst = fopen(destination, "wb");
+    if (!dst) {
+        fclose(src);
+        return;
+    }
+    char copy_buf[8192];
+    size_t copy_n;
+    while ((copy_n = fread(copy_buf, 1, sizeof(copy_buf), src)) != 0)
+        fwrite(copy_buf, 1, copy_n, dst);
+    fclose(dst);
+    fclose(src);
+}
+
+void psx_crash_trace_manual_snapshot(void) {
+    /* Keep a bounded latest/previous pair. A later atexit or crash report may
+     * overwrite psx_last_run_report.json, but it cannot erase the manual
+     * capture the tester explicitly requested. */
+    copy_report_file("psx_manual_snapshot.json",
+                     "psx_manual_snapshot_prev.json");
+    psx_crash_trace_dump("manual_snapshot", NULL);
+    copy_report_file(kReportPath, "psx_manual_snapshot.json");
+
+    /* Preserve the always-on pre-hitch history on the heartbeat thread too.
+     * It will atomically write psx_hitch_report.json within one tick. */
+    freeze_heartbeat_request_snapshot();
 }
 
 /* ── Fatal halt ──────────────────────────────────────────────────────── */

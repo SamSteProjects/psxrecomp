@@ -214,7 +214,16 @@ These are the 3 most important folders to be aware of:
 
 **Other Folders** the other folders produced are generated from template files by the setup script run above, which provide various features and tools specific to the title itself and might be referenced by the compiler, or by diagnostics/dev software.
 
-### New here? 
+### Legend of Legaia research acknowledgement
+
+The Legaia-specific overlay mapping and validation work in this fork was
+informed by [Andrew Altimit's Legend of Legaia reverse-engineering
+documentation](https://github.com/AndrewAltimit/legend-of-legaia-re). Its
+documentation of streamed overlay identities, load locations, and
+minigame/field/battle behavior materially shortened the investigation and
+guided the runtime's overlay-cache fixes.
+
+### New here?
 
 **The fastest way in:**
 

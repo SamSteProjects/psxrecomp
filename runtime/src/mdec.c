@@ -322,6 +322,11 @@ static void idct_block_scalar(int16_t *block)
 }
 
 #if defined(MDEC_HAVE_SSE2)
+#if defined(_MSC_VER)
+#define MDEC_ALIGN16 __declspec(align(16))
+#else
+#define MDEC_ALIGN16 __attribute__((aligned(16)))
+#endif
 /* Horizontal sum of 4×i32 after madd_epi16 — same reduce as Beetle mdec.c. */
 static int idct_sse2_dot8(const int16_t *src8, const int16_t *scale8)
 {

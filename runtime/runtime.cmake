@@ -1222,7 +1222,16 @@ function(psxrecomp_add_runtime_target target)
     # monolithic full.c, so this argument may carry 1..N paths. A single path
     # is just a one-element list, so games still passing one file are
     # unaffected.
-    set(multiValueArgs EXTRAS_SOURCES GAME_GENERATED_FULL_C)
+    set(multiValueArgs EXTRAS_SOURCES GAME_GENERATED_FULL_C
+        GAME_OVERLAY_STATIC_EXTRA_C)
+    # An embedding project can also supply a local second static recipe without
+    # editing its CMakeLists. This is useful for a title-owned, ignored capture
+    # produced after the project was initially configured.
+    if(DEFINED PSXRECOMP_GAME_OVERLAY_STATIC_EXTRA_C AND
+       NOT "${PSXRECOMP_GAME_OVERLAY_STATIC_EXTRA_C}" STREQUAL "")
+        list(APPEND ARGN GAME_OVERLAY_STATIC_EXTRA_C
+            "${PSXRECOMP_GAME_OVERLAY_STATIC_EXTRA_C}")
+    endif()
     cmake_parse_arguments(PSXRT "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # DEBUG_PORT and WINDOW_TITLE were previously required cmake-time defaults.
@@ -1317,9 +1326,10 @@ function(psxrecomp_add_runtime_target target)
             endif()
         endif()
     endif()
-    # Layer B: statically-compiled overlay dispatch. Inert unless a game
-    # provides a generated overlays_static.c — no target sets this yet.
-    if(PSXRT_GAME_OVERLAY_STATIC_C AND EXISTS "${PSXRT_GAME_OVERLAY_STATIC_C}")
+    # Layer B: a game can provide a generated overlays_static.c. Mark it as
+    # generated so the file may be produced by a custom command after CMake
+    # configures the consuming project.
+    if(PSXRT_GAME_OVERLAY_STATIC_C)
         set_source_files_properties("${PSXRT_GAME_OVERLAY_STATIC_C}" PROPERTIES GENERATED TRUE)
         list(APPEND generated_sources "${PSXRT_GAME_OVERLAY_STATIC_C}")
         # compile_overlays.py --static splits its output: overlays_static.c is
@@ -1338,6 +1348,22 @@ function(psxrecomp_add_runtime_target target)
         endforeach()
         list(APPEND generated_sources ${_ov_static_parts})
         set(has_overlay_dispatch TRUE)
+        set(has_overlay_static_source TRUE)
+    endif()
+    # Some titles keep a small, separately verified static overlay recipe next
+    # to a larger generated table.  Compile it as an independent source and
+    # rename its public dispatch/stat symbols so both tables remain content
+    # gated and can be queried in a stable order at runtime.
+    if(PSXRT_GAME_OVERLAY_STATIC_EXTRA_C)
+        foreach(_static_extra_src IN LISTS PSXRT_GAME_OVERLAY_STATIC_EXTRA_C)
+            set_source_files_properties("${_static_extra_src}" PROPERTIES
+                GENERATED TRUE
+                COMPILE_DEFINITIONS
+                "psx_overlay_dispatch=psx_overlay_static_extra_dispatch;psx_overlay_static_get_stats=psx_overlay_static_extra_get_stats")
+            list(APPEND generated_sources "${_static_extra_src}")
+        endforeach()
+        set(has_overlay_dispatch TRUE)
+        set(has_overlay_static_extra_source TRUE)
     endif()
 
     if(PSXRT_ORACLE)
@@ -1820,11 +1846,32 @@ function(psxrecomp_add_runtime_target target)
     if(has_overlay_dispatch)
         target_compile_definitions(${target} PRIVATE PSX_HAS_OVERLAY_DISPATCH=1)
     endif()
+    if(has_overlay_static_source)
+        target_compile_definitions(${target} PRIVATE PSX_HAS_OVERLAY_STATIC_SOURCE=1)
+    endif()
+    if(has_overlay_static_extra_source)
+        target_compile_definitions(${target} PRIVATE PSX_HAS_OVERLAY_STATIC_EXTRA_SOURCE=1)
+    endif()
 
     # PSX_DEBUG_TOOLS option declared at the top of runtime.cmake so it's
     # also visible to psx-beetle / non-runtime-helper targets.
     if(NOT PSX_DEBUG_TOOLS)
         target_compile_definitions(${target} PRIVATE PSX_NO_DEBUG_TOOLS=1)
+    endif()
+
+    # A title launcher can set PSX_CD_RESPONSE_VISIBILITY_DELAY at process
+    # start, but packaged applications should not depend on a shell wrapper for
+    # a correctness-critical CD callback policy.  Keep the framework default
+    # unset, and let an embedding project opt in with -D...=0 or 1.
+    set(PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT "" CACHE STRING
+        "Default CD response visibility delay when the environment does not override it (0 or 1; empty disables)")
+    if(NOT "${PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT}" STREQUAL "")
+        if(NOT PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT MATCHES "^[01]$")
+            message(FATAL_ERROR
+                "PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT must be empty, 0, or 1")
+        endif()
+        target_compile_definitions(${target} PRIVATE
+            PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT=${PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT})
     endif()
 
     if(PSXRECOMP_HAS_RECOMP_NET)
@@ -2143,6 +2190,12 @@ function(psxrecomp_add_runtime_target target)
             target_link_options(${target} PRIVATE -static -static-libgcc -static-libstdc++)
         endif()
     elseif(MSVC)
+        target_compile_definitions(${target} PRIVATE NOMINMAX)
+        # Enable MSVC C atomics for the audio trace translation unit.
+        set_source_files_properties(
+            ${PSXRECOMP_ROOT}/runtime/src/audio_trace.c
+            PROPERTIES COMPILE_OPTIONS "/experimental:c11atomics")
+        target_compile_options(${target} PRIVATE /experimental:c11atomics)
         target_compile_options(${target} PRIVATE /GS- /guard:cf-)
         # Visual Studio project files cannot represent language-specific target
         # options on a mixed C/C++ target. Scope the experimental MSVC atomics

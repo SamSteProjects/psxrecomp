@@ -109,7 +109,10 @@ static int stat_obj(char *buf, int cap, const char *name,
 }
 
 int latency_ring_summary_json(char *buf, int buf_size, int window) {
-    static double tmp[LAT_RING_SIZE];
+    /* The heartbeat and TCP observer may request summaries concurrently.
+     * Keep sorting scratch per caller so qsort cannot race another summary.
+     * The underlying producer ring remains intentionally best-effort. */
+    double tmp[LAT_RING_SIZE];
     if (window <= 0) window = 240;
     int off = 0;
     off += snprintf(buf + off, buf_size - off,

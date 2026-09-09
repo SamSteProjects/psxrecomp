@@ -690,6 +690,12 @@ if(BUILD_TESTING)
         add_test(NAME release_stage_cache_test
                  COMMAND ${Python3_EXECUTABLE}
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_release_stage_cache.py)
+        add_test(NAME msvc_startup_portability_test
+                 COMMAND ${Python3_EXECUTABLE}
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_msvc_startup_portability.py)
+        add_test(NAME cdrom_xa_callback_regression_test
+                 COMMAND ${Python3_EXECUTABLE}
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cdrom_xa_callback_regression.py)
     endif()
 
     # Full card protocol regression: read, write, address echo, per-slot state,

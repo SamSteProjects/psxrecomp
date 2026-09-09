@@ -5,6 +5,10 @@
 #include "debug_server.h"
 #include "crash_trace.h"   /* g_psx_fatal_reason */
 #include "cpu_state.h"     /* g_psx_bail_* call-contract counters */
+#include "audio_trace.h"
+#include "cdrom.h"
+#include "latency_ring.h"
+#include "overlay_loader.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -84,6 +88,7 @@ static int    s_sym_initialized = 0;
 #endif
 
 #define HB_FILE        "psx_freeze_heartbeat.json"
+#define HITCH_FILE     "psx_hitch_report.json"
 #define HB_INTERVAL_MS 100u
 
 /* Wedge detection.
@@ -125,6 +130,16 @@ static int    s_sym_initialized = 0;
 #define WEDGE_EXC_REENTRY_PER_FRAME_THRESHOLD 20000u /* ~10x chronic 2K/frame */
 #define WEDGE_SLOW_FRAMES_MAX_DELTA 10u   /* <5 fps avg over the 2s window */
 
+/* Short recovered hitches never reach the two-second wedge detector. Preserve
+ * the rolling heartbeat for both a near-total stop and a sustained slowdown
+ * below roughly 36 fps across the half-second window. Healthy progression
+ * re-arms the detector. The report is a bounded overwrite, not an ever-growing
+ * trace. */
+#define HITCH_WINDOW_TICKS 6u
+#define HITCH_HARD_MAX_FRAME_DELTA 1u
+#define HITCH_SLOW_MAX_FRAME_DELTA 18u
+#define HITCH_REARM_MIN_FRAME_DELTA 24u
+
 /* Per-ring caps for auto-dump. Newest-first window. The old 4-16K caps
  * spanned well under a second of activity — too short to cross a
  * degradation transition (attract-idle investigation, 2026-06-10). The
@@ -147,6 +162,7 @@ static int    s_sym_initialized = 0;
 typedef struct {
     uint64_t frame_count;
     uint64_t psx_cycle_count;
+    uint64_t interrupt_checks;
     uint64_t exc_reentry;
     uint64_t dirty_ram_insns;
     uint32_t current_func;
@@ -160,6 +176,24 @@ typedef struct {
     uint64_t tcp_stall_ms;
     uint16_t t1_count;        /* Timer1/RCnt1 counter — must advance if the wait is to complete */
     uint64_t t1_irq_fired;    /* Timer1 IRQ-fire count — flat == RCnt IRQ never fires */
+    uint64_t overlay_native;
+    uint64_t overlay_interp;
+    uint32_t overlay_loads;
+    uint32_t overlay_invalidations;
+    uint32_t overlay_revalidations;
+    uint64_t overlay_stale_blocked;
+    uint64_t audio_pump_calls;
+    uint64_t audio_pump_skips;
+    uint64_t audio_underruns;
+    uint64_t audio_spu_frames;
+    uint64_t audio_cd_frames;
+    uint64_t audio_host_frames;
+    uint64_t cd_sectors;
+    uint64_t cd_commands;
+    uint64_t cd_irq_deliveries;
+    uint64_t xa_sectors;
+    uint64_t xa_pcm_frames;
+    uint8_t  xa_active;
 } HbRingEntry;
 static HbRingEntry s_ring[RING_CAP];
 static uint32_t    s_ring_head = 0;
@@ -173,6 +207,19 @@ static volatile int s_wedge_classification_paused = 0;
 
 void freeze_heartbeat_set_paused(int paused) {
     s_wedge_classification_paused = paused ? 1 : 0;
+}
+
+/* Do not classify frame-zero initialization as a user-visible hitch. The
+ * detector becomes armed only after observing one healthy short window. */
+static int      s_hitch_armed = 0;
+static volatile long s_snapshot_requested = 0;
+
+void freeze_heartbeat_request_snapshot(void) {
+#ifdef _WIN32
+    InterlockedExchange((volatile LONG *)&s_snapshot_requested, 1);
+#else
+    __sync_lock_test_and_set(&s_snapshot_requested, 1);
+#endif
 }
 
 #ifdef _WIN32
@@ -741,6 +788,22 @@ static void heartbeat_write(void) {
     int mc_max = sio_get_mc_max_state();
     int tx_writes = sio_get_tx_writes();
 
+    uint32_t overlay_loads = 0, overlay_invalidations = 0;
+    uint32_t overlay_revalidations = 0;
+    uint64_t overlay_native = 0, overlay_interp = 0;
+    uint64_t overlay_stale_blocked = 0;
+    overlay_loader_get_counters(&overlay_loads, &overlay_invalidations, NULL,
+                                &overlay_native, &overlay_interp,
+                                &overlay_stale_blocked, NULL, NULL, NULL,
+                                NULL, &overlay_revalidations);
+
+    AudioTraceStats audio_stats;
+    audio_trace_get_stats(&audio_stats);
+
+    CDROMTelemetry cd_stats;
+    cdrom_get_telemetry(&cd_stats);
+    extern uint64_t g_cdrom_deliver_count;
+
     /* Wall-clock seconds since epoch — coarse but enough to spot stalls. */
     long long wall = (long long)time(NULL);
 
@@ -751,6 +814,7 @@ static void heartbeat_write(void) {
     HbRingEntry *re = &s_ring[s_ring_head];
     re->frame_count     = frame;
     re->psx_cycle_count = cyc;
+    re->interrupt_checks = total_checks;
     re->exc_reentry     = exc_reentry;
     re->dirty_ram_insns = g_dirty_ram_insns_run;
     re->current_func    = cur_fn;
@@ -765,8 +829,60 @@ static void heartbeat_write(void) {
     { uint16_t _t1c = 0; uint64_t _t1f = 0;
       timers_get_debug(1, &_t1c, NULL, NULL, &_t1f);
       re->t1_count = _t1c; re->t1_irq_fired = _t1f; }
+    re->overlay_native = overlay_native;
+    re->overlay_interp = overlay_interp;
+    re->overlay_loads = overlay_loads;
+    re->overlay_invalidations = overlay_invalidations;
+    re->overlay_revalidations = overlay_revalidations;
+    re->overlay_stale_blocked = overlay_stale_blocked;
+    re->audio_pump_calls = audio_stats.pump_calls;
+    re->audio_pump_skips = audio_stats.pump_skips;
+    re->audio_underruns = audio_stats.underruns;
+    re->audio_spu_frames = audio_stats.tap_frames[AUDIO_TAP_SPU_OUT];
+    re->audio_cd_frames = audio_stats.tap_frames[AUDIO_TAP_CD_IN];
+    re->audio_host_frames = audio_stats.tap_frames[AUDIO_TAP_HOST];
+    re->cd_sectors = cd_stats.sectors_total;
+    re->cd_commands = cd_stats.commands_total;
+    re->cd_irq_deliveries = g_cdrom_deliver_count;
+    re->xa_sectors = cd_stats.xa_sectors_delivered;
+    re->xa_pcm_frames = cd_stats.xa_pcm_frames;
+    re->xa_active = cd_stats.stream_active;
     s_ring_head = (s_ring_head + 1) % RING_CAP;
     if (s_ring_count < RING_CAP) s_ring_count++;
+
+    /* Manual flushes and brief recovered hitches use the same compact rolling
+     * report. The main thread only sets a flag; this heartbeat thread owns all
+     * serialization and file replacement. */
+    int manual_capture = 0;
+#ifdef _WIN32
+    manual_capture = (int)InterlockedExchange(
+        (volatile LONG *)&s_snapshot_requested, 0);
+#else
+    manual_capture = (int)__sync_lock_test_and_set(&s_snapshot_requested, 0);
+#endif
+    int auto_hitch_capture = 0;
+    int auto_hitch_kind = 0; /* 0=none, 1=hard stop, 2=sustained slowdown */
+    uint64_t hitch_frame_delta = 0;
+    if (s_ring_count >= HITCH_WINDOW_TICKS) {
+        uint32_t newest_idx = (s_ring_head + RING_CAP - 1u) % RING_CAP;
+        uint32_t oldest_idx =
+            (s_ring_head + RING_CAP - HITCH_WINDOW_TICKS) % RING_CAP;
+        uint64_t newest_frame = s_ring[newest_idx].frame_count;
+        uint64_t oldest_frame = s_ring[oldest_idx].frame_count;
+        hitch_frame_delta = (newest_frame >= oldest_frame)
+            ? (newest_frame - oldest_frame) : 0;
+        if (hitch_frame_delta <= HITCH_SLOW_MAX_FRAME_DELTA) {
+            if (s_hitch_armed) {
+                auto_hitch_capture = 1;
+                auto_hitch_kind = hitch_frame_delta <= HITCH_HARD_MAX_FRAME_DELTA
+                    ? 1 : 2;
+                s_hitch_armed = 0;
+            }
+        } else if (hitch_frame_delta >= HITCH_REARM_MIN_FRAME_DELTA) {
+            s_hitch_armed = 1;
+        }
+    }
+    const int preserve_hitch_report = manual_capture || auto_hitch_capture;
 
     /* ---- Wedge detection: bounded automatic dump ----
      * Walk back WEDGE_WINDOW_TICKS in the heartbeat ring (just pushed
@@ -921,6 +1037,9 @@ static void heartbeat_write(void) {
         "  \"vblank_deliver_count\":%llu,\n"
         "  \"vblank_ack_count\":%llu,\n"
         "  \"irq_deliver_count\":%llu,\n"
+        "  \"capture\":{\"manual\":%d,\"auto_hitch\":%d,"
+          "\"auto_hitch_kind\":%d,\"window_ticks\":%u,"
+          "\"frame_delta\":%llu},\n"
         "  \"tcp_send_stall_ms\":%llu,\n"
         "  \"tcp_clients_dropped\":%u,\n"
         "  \"bail_first\":%llu,\n"
@@ -984,6 +1103,11 @@ static void heartbeat_write(void) {
         (unsigned long long)g_vblank_deliver_count,
         (unsigned long long)g_vblank_ack_count,
         (unsigned long long)g_irq_deliver_count,
+        manual_capture ? 1 : 0,
+        auto_hitch_capture ? 1 : 0,
+        auto_hitch_kind,
+        (unsigned)HITCH_WINDOW_TICKS,
+        (unsigned long long)hitch_frame_delta,
         (unsigned long long)debug_server_get_tcp_stall_ms(),
         debug_server_get_tcp_drops(),
         (unsigned long long)g_psx_bail_first,
@@ -1008,7 +1132,56 @@ static void heartbeat_write(void) {
     if (n > 0 && buf[n - 1] == '}')  n--;     /* drop closing brace */
     if (n > 0 && buf[n - 1] == '\n') n--;     /* and any preceding newline */
 
-    int m = snprintf(buf + n, sizeof(buf) - (size_t)n, ",\n  \"ring\":[\n");
+    char latency_json[2048];
+    int latency_len = latency_ring_summary_json(latency_json,
+                                                (int)sizeof(latency_json), 120);
+    if (latency_len <= 0 || latency_len >= (int)sizeof(latency_json))
+        strcpy(latency_json, "{}");
+
+    int m = snprintf(buf + n, sizeof(buf) - (size_t)n,
+        ",\n  \"execution\":{\"overlay_native\":%llu,"
+          "\"overlay_interp\":%llu,\"interrupt_checks\":%llu,"
+          "\"dirty_interp_insns\":%llu,"
+          "\"loads\":%u,\"invalidations\":%u,\"revalidations\":%u,"
+          "\"stale_blocked\":%llu},\n"
+        "  \"audio\":{\"pump_calls\":%llu,\"pump_skips\":%llu,"
+          "\"underruns\":%llu,\"queue_lowater\":%u,\"queue_hiwater\":%u,"
+          "\"spu_frames\":%llu,\"cd_frames\":%llu,\"host_frames\":%llu},\n"
+        "  \"cdrom\":{\"sectors\":%llu,\"commands\":%llu,"
+          "\"dataready_fires\":%llu,\"irq_deliveries\":%llu,"
+          "\"irq_generation\":%u,\"xa_sectors\":%llu,\"xa_pcm_frames\":%llu,"
+          "\"xa_active\":%u,\"reading\":%u,\"last_lba\":%d,"
+          "\"int1_pended\":%llu,\"int1_lost\":%llu,"
+          "\"int1_pending_now\":%u},\n"
+        "  \"latency\":%s,\n"
+        "  \"ring\":[\n",
+        (unsigned long long)overlay_native,
+        (unsigned long long)overlay_interp,
+        (unsigned long long)total_checks,
+        (unsigned long long)g_dirty_ram_insns_run,
+        overlay_loads, overlay_invalidations, overlay_revalidations,
+        (unsigned long long)overlay_stale_blocked,
+        (unsigned long long)audio_stats.pump_calls,
+        (unsigned long long)audio_stats.pump_skips,
+        (unsigned long long)audio_stats.underruns,
+        audio_stats.queue_lowater, audio_stats.queue_hiwater,
+        (unsigned long long)audio_stats.tap_frames[AUDIO_TAP_SPU_OUT],
+        (unsigned long long)audio_stats.tap_frames[AUDIO_TAP_CD_IN],
+        (unsigned long long)audio_stats.tap_frames[AUDIO_TAP_HOST],
+        (unsigned long long)cd_stats.sectors_total,
+        (unsigned long long)cd_stats.commands_total,
+        (unsigned long long)cd_stats.dataready_fires,
+        (unsigned long long)g_cdrom_deliver_count,
+        cd_stats.irq_generation,
+        (unsigned long long)cd_stats.xa_sectors_delivered,
+        (unsigned long long)cd_stats.xa_pcm_frames,
+        (unsigned)cd_stats.stream_active,
+        (unsigned)cd_stats.reading,
+        (int)cd_stats.last_lba,
+        (unsigned long long)cd_stats.int1_pended,
+        (unsigned long long)cd_stats.int1_lost,
+        (unsigned)cd_stats.int1_pending_now,
+        latency_json);
     if (m > 0) n += m;
 
     uint32_t avail = s_ring_count;
@@ -1023,6 +1196,13 @@ static void heartbeat_write(void) {
             "\"i_stat\":\"0x%08X\",\"sio_stat\":\"0x%04X\","
             "\"sio_ctrl\":\"0x%04X\",\"in_exc\":%u,\"mc_max\":%u,"
             "\"t1_count\":%u,\"t1_irq_fired\":%llu,"
+            "\"checks\":%llu,\"ovl_native\":%llu,\"ovl_interp\":%llu,"
+            "\"ovl_loads\":%u,"
+            "\"ovl_inv\":%u,\"ovl_reval\":%u,\"stale\":%llu,"
+            "\"aud_pump\":%llu,\"aud_skip\":%llu,\"aud_under\":%llu,"
+            "\"aud_spu\":%llu,\"aud_cd\":%llu,\"aud_host\":%llu,"
+            "\"cd_sec\":%llu,\"cd_cmd\":%llu,\"cd_irq\":%llu,"
+            "\"xa_sec\":%llu,\"xa_pcm\":%llu,\"xa_on\":%u,"
             "\"tcp_ms\":%llu}%s\n",
             e->wall_clock,
             (unsigned long long)e->frame_count,
@@ -1033,6 +1213,24 @@ static void heartbeat_write(void) {
             e->i_stat, (unsigned)e->sio_stat, (unsigned)e->sio_ctrl,
             (unsigned)e->in_exception, (unsigned)e->mc_max_state,
             (unsigned)e->t1_count, (unsigned long long)e->t1_irq_fired,
+            (unsigned long long)e->interrupt_checks,
+            (unsigned long long)e->overlay_native,
+            (unsigned long long)e->overlay_interp,
+            e->overlay_loads, e->overlay_invalidations,
+            e->overlay_revalidations,
+            (unsigned long long)e->overlay_stale_blocked,
+            (unsigned long long)e->audio_pump_calls,
+            (unsigned long long)e->audio_pump_skips,
+            (unsigned long long)e->audio_underruns,
+            (unsigned long long)e->audio_spu_frames,
+            (unsigned long long)e->audio_cd_frames,
+            (unsigned long long)e->audio_host_frames,
+            (unsigned long long)e->cd_sectors,
+            (unsigned long long)e->cd_commands,
+            (unsigned long long)e->cd_irq_deliveries,
+            (unsigned long long)e->xa_sectors,
+            (unsigned long long)e->xa_pcm_frames,
+            (unsigned)e->xa_active,
             (unsigned long long)e->tcp_stall_ms,
             (i + 1 < avail) ? "," : "");
         if (m <= 0 || (size_t)(n + m) >= sizeof(buf)) break;
@@ -1067,6 +1265,22 @@ static void heartbeat_write(void) {
 #else
     rename(tmp_path, HB_FILE);
 #endif
+
+    if (preserve_hitch_report) {
+        char hitch_tmp_path[64];
+        snprintf(hitch_tmp_path, sizeof(hitch_tmp_path), HITCH_FILE ".tmp");
+        FILE *hf = fopen(hitch_tmp_path, "wb");
+        if (hf) {
+            fwrite(buf, 1, (size_t)n, hf);
+            fclose(hf);
+#ifdef _WIN32
+            MoveFileExA(hitch_tmp_path, HITCH_FILE,
+                        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+#else
+            rename(hitch_tmp_path, HITCH_FILE);
+#endif
+        }
+    }
 }
 
 #ifdef _WIN32

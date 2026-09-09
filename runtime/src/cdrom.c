@@ -128,6 +128,31 @@ static uint32_t cdrom_intc_latched_generation;
  * 0 = no presentation hold. Relative remaining is derived for snaps/digests. */
 static uint64_t cdrom_irq_present_due;
 
+/* Some libcd clients poll the controller directly from their callback.  Keep
+ * response visibility aligned with the already-modelled IRQ presentation edge
+ * when explicitly requested by a title launcher; otherwise those clients can
+ * consume a response recursively before the callback returns. */
+static int s_response_visibility_delay = -1;
+
+static int response_visibility_delayed(void) {
+    if (s_response_visibility_delay < 0) {
+        const char *value = getenv("PSX_CD_RESPONSE_VISIBILITY_DELAY");
+        if (value && value[0]) {
+            s_response_visibility_delay = value[0] == '1';
+        } else {
+#ifdef PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT
+            s_response_visibility_delay =
+                PSX_CD_RESPONSE_VISIBILITY_DELAY_DEFAULT ? 1 : 0;
+#else
+            s_response_visibility_delay = 0;
+#endif
+        }
+    }
+    return s_response_visibility_delay && irq_flag != 0 &&
+           cdrom_irq_present_due != 0 &&
+           psx_cycle_count < cdrom_irq_present_due;
+}
+
 /* Parameter FIFO */
 #define PARAM_FIFO_SIZE 16
 static uint8_t param_fifo[PARAM_FIFO_SIZE];
@@ -203,6 +228,10 @@ static CDROMSectorHistoryEntry sector_history[CDROM_SECTOR_HISTORY_CAP];
 static uint64_t sector_history_seq;
 static CDROMCommandHistoryEntry command_history[CDROM_COMMAND_HISTORY_CAP];
 static uint64_t command_history_seq;
+static uint64_t s_telemetry_sectors_total;
+static uint64_t s_telemetry_commands_total;
+static uint64_t s_xa_audio_sectors_delivered;
+static uint64_t s_xa_pcm_frames_delivered;
 
 /* Seek target */
 static uint8_t seek_min, seek_sec, seek_sect;
@@ -790,6 +819,7 @@ static void trace_cdrom(uint8_t kind, uint32_t addr, uint32_t val, uint8_t width
 
 static void record_command_history(uint8_t kind, uint8_t cmd,
                                    const uint8_t* params, int count) {
+    s_telemetry_commands_total++;
     CDROMCommandHistoryEntry *e =
         &command_history[command_history_seq % CDROM_COMMAND_HISTORY_CAP];
     memset(e, 0, sizeof(*e));
@@ -851,6 +881,7 @@ static CDROMSectorDelivery classify_raw_sector(const uint8_t *raw_data, int have
 static void record_sector_history(int lba, int size, uint8_t mode, int have_raw,
                                   const uint8_t *bytes,
                                   const CDROMSectorDelivery *delivery) {
+    s_telemetry_sectors_total++;
     CDROMSectorHistoryEntry *e =
         &sector_history[sector_history_seq % CDROM_SECTOR_HISTORY_CAP];
     e->seq = sector_history_seq++;
@@ -1408,6 +1439,8 @@ static int maybe_deliver_xa_audio(const uint8_t* raw_data, int lba,
     cd_apply_decode_volume(pcm_44100, out_frames);
     xa_zero_scan(pcm_44100, out_frames, lba, 1);
     spu_cd_audio_push(pcm_44100, out_frames);
+    s_xa_audio_sectors_delivered++;
+    s_xa_pcm_frames_delivered += (uint64_t)out_frames;
     trace_cdrom('A', 0,
                 ((uint32_t)file << 24) | ((uint32_t)channel << 16) |
                 ((uint32_t)coding << 8) | ((uint32_t)(out_frames / 32) & 0xFFu),
@@ -1518,7 +1551,10 @@ static int read_sector_at(int min, int sec, int sect) {
                     delivery.xa_coding,
                     0);
     }
-    return delivery.data_delivered ? 1 : 0;
+    /* Realtime XA is consumed by the ADPCM path rather than exposed through
+     * the CPU/DMA FIFO, but it still arrived physically and must produce its
+     * INT1 event.  sector_available above remains the FIFO visibility gate. */
+    return 1;
 }
 
 static void advance_msf(int* m, int* s, int* f) {
@@ -1855,6 +1891,23 @@ static int data_fifo_ready(void) {
 
 static uint64_t s_dataready_fires;  /* INT1 (data-ready) raised per streamed sector — FMV dispatch probe */
 uint64_t cdrom_get_dataready_fires(void) { return s_dataready_fires; }
+
+void cdrom_get_telemetry(CDROMTelemetry* out) {
+    if (!out) return;
+    memset(out, 0, sizeof(*out));
+    out->sectors_total = s_telemetry_sectors_total;
+    out->commands_total = s_telemetry_commands_total;
+    out->dataready_fires = s_dataready_fires;
+    out->xa_sectors_delivered = s_xa_audio_sectors_delivered;
+    out->xa_pcm_frames = s_xa_pcm_frames_delivered;
+    out->irq_generation = cdrom_irq_generation;
+    out->int1_pended = s_int1_pended;
+    out->int1_lost = s_int1_lost;
+    out->last_lba = last_sector_lba;
+    out->stream_active = (uint8_t)(cdrom_xa_stream_active() ? 1 : 0);
+    out->reading = (uint8_t)(reading ? 1 : 0);
+    out->int1_pending_now = (uint8_t)(pending_dataready ? 1 : 0);
+}
 
 static int deliver_read_sector(void) {
     int delivered = read_sector_at(read_min, read_sec, read_sect);
@@ -2568,7 +2621,11 @@ static void process_pending(uint32_t cycles) {
         stat_reg &= ~CDSTAT_SEEK;
         stat_reg |= CDSTAT_READ;   /* PSX-CD-003: GT1 waits for READ after seek */
         setloc_seek_far = 0;
-    setloc_pending = 0;
+        setloc_pending = 0;
+        /* The reported drive position changes on seek completion.  Without
+         * this, a following XA clip can inherit the previous clip's final
+         * sector and be paused before it begins. */
+        last_sector_lba = msf_to_lba(seek_min, seek_sec, seek_sect);
         response_push(stat_reg);
         set_irq(CDIRQ_COMPLETE);
         fire_cdrom_irq();
@@ -2886,7 +2943,8 @@ uint32_t cdrom_read(uint32_t addr) {
          * init down a different branch from real hardware. */
         if (param_count == 0) s |= (1 << 3);
         if (param_count < PARAM_FIFO_SIZE) s |= (1 << 4);
-        if (response_read < response_count) s |= (1 << 5);
+        if (!response_visibility_delayed() && response_read < response_count)
+            s |= (1 << 5);
         if (data_fifo_ready()) s |= (1 << 6);
         /* Bit 7 BUSYSTS: command written but not yet executed (our queued
          * path; the synchronous path leaves no guest-observable window).
@@ -2897,7 +2955,7 @@ uint32_t cdrom_read(uint32_t addr) {
     }
 
     case 0x1F801801:
-        if (response_read < response_count) {
+        if (!response_visibility_delayed() && response_read < response_count) {
             ret = response_fifo[response_read++];
         }
         break;
@@ -2912,7 +2970,7 @@ uint32_t cdrom_read(uint32_t addr) {
         if (index_reg == 0 || index_reg == 2) {
             ret = irq_enable;
         } else {
-            ret = irq_flag | 0xE0;
+            ret = response_visibility_delayed() ? 0xE0 : irq_flag | 0xE0;
         }
         break;
 

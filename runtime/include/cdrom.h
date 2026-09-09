@@ -107,6 +107,27 @@ int cdrom_load_in_progress(void);
  * bridge used by cdrom_load_in_progress(). Diagnostics only. */
 int cdrom_data_read_active(void);
 
+/* Bounded process-scoped telemetry for hitch attribution. These counters are
+ * diagnostic only: reading them does not alter CD scheduling, IRQ delivery,
+ * stream state, or guest-visible state. */
+typedef struct CDROMTelemetry {
+    uint64_t sectors_total;
+    uint64_t commands_total;
+    uint64_t dataready_fires;
+    uint64_t xa_sectors_delivered;
+    uint64_t xa_pcm_frames;
+    uint32_t irq_generation;
+    uint64_t int1_pended;
+    uint64_t int1_lost;
+    int32_t  last_lba;
+    uint8_t  stream_active;
+    uint8_t  reading;
+    uint8_t  int1_pending_now;
+    uint8_t  reserved;
+} CDROMTelemetry;
+
+void cdrom_get_telemetry(CDROMTelemetry* out);
+
 /* boot_state / netplay digest — full controller FSM (sector FIFOs included). */
 uint32_t cdrom_snapshot_bytes(void);
 void     cdrom_snapshot_write(uint8_t *p);
