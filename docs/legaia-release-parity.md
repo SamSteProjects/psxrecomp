@@ -1,8 +1,57 @@
 # Legaia stability and release parity
 
-Audit date: 2026-09-09. This pass implements runtime/precompilation stability
-and input fixes from the two supplied SDK prompts. The broader editor product
-described by those prompts is not implemented by this patch set.
+Audit date: 2026-09-09. The initial pass implements runtime/precompilation
+stability and input fixes from the supplied SDK prompts. The subsequent SDK
+buildout adds an integrated editor, generic guarded observation protocol and
+private placement-package workflow; see `FEATURE_MATRIX.md` for current limits.
+
+## Subsequent SDK runtime validation
+
+The generic observer port restores protocol discovery, main executable source
+identity, executable registration/lifecycle catalogues, requested-PC witnesses,
+scoped guards and bounded RAM-region reads from our prior SDK implementation.
+It adapts the current SHA API and preserves bitmap interpreter tracking.
+Strict scalar parsing rejects malformed addresses, fractions and overflow;
+only physical/KSEG0/KSEG1 RAM aliases are accepted. Speculative shadow/replay
+execution cannot publish witnesses. Soft reboot rotates the session identity;
+restore invalidates ownership without reviving prior observations.
+
+Source provenance includes `5874ead2` (identity), `f3e9ed62`/`f40f8dda`
+(lifecycle), `340298cc`/`fd996246` (witnesses), and `7f29231f` (guards).
+Executable lifecycle/bounds harnesses and the original two restore/five
+pair-dedup scenarios pass after adapting their explicit fixture dependencies.
+The Windows Release build and live executable hash/capability negotiation pass.
+The title screen and opening story render. At those stages the field profile
+correctly withholds observations for a missing required execution witness.
+This is not accepted field actor traversal or a performance oracle.
+
+The SDK's private format-6 disc-user package passed the real package parser,
+installer, fresh-process selection reload and resolver, including wrong-disc
+rejection. A concrete generic installer defect was fixed: parsed asset paths
+retained their staging location after installation. The installer now re-reads
+and validates the final manifest before publishing manager state, with rollback
+on failure. The new regression fails against the old code and passes with the
+fix. Runtime boot with the enabled package reaches the opening story; visible
+authored actor placement remains a separate acceptance gate.
+
+The final `mod_status` build exposes bounded plan/disc identity and actual
+overlay-copy counters. In the private package run it reported the expected
+fingerprint, one active overlay, matching disc SHA-256 and no guard failure.
+It remained at zero copied overlay bytes during the bounded opening narrative;
+that scene had not demonstrated consumption of the town01 replacement. The
+later field-profile attempt rejected an execution-witness backend mismatch at
+`0x801CF754`. Do not label this run accepted live field traversal or a visible
+modified actor. The executable mod-runtime tests independently prove exact
+sector/byte accounting, repeated reads, restore retention and reset semantics.
+
+SDK milestones are `4d7e955f` (editor/import/project/model inspection),
+`aa3b22ab` (placement package build), `bae00098` (installer final-path fix), and
+`be90a25d` (guarded runtime observer and mod-consumption diagnostics). The final
+MSVC validation executable is SHA-256
+`bc6cf5b04cfda6fe90c0d6ee6c9e87148a540e9653ef6b39988eb01bda7e5d4a`.
+Its source mapping and private run evidence are recorded in ignored
+`local-output/sdk-20260909/validation-manifest.json`; it was compiled before
+the final commit, so its embedded revision carries a dirty-worktree suffix.
 
 ## Source and artifact identity
 
@@ -42,7 +91,60 @@ described by those prompts is not implemented by this patch set.
 | Restore reuses stale ownership or retains negative owner memo | Real loader/DLL fixture reproduces stale native call under generation collision | Fixed `overlay_loader_resync_validation_after_restore`: explicit unvalidated state, clear manifest/negative/range/static memos, retain semantic/self-modification blacklists. No DLL unloading or new dynamic-cache enablement. Generic. | Entry and CPS continuation tests reject stale bytes and regain native execution after repeated restores. This fixes the demonstrated class; the reported retail savestate performance issue still needs in-game measurement. |
 | Debug injection cannot select PSX port 2 | Historical SDK input API; current SDL/SIO already supports two ports | Port-selectable debug input, default port 1, bounded validation and release/neutralization; normal input sampled on unaffected ports. Generic. | Focused protocol/routing tests and fresh build; physical controller test remains manual. |
 | Stale same-address static overlay | Existing static match/range validation and watched-generation checks | Preserved. Restored memory explicitly invalidates static match cache. | Existing inactive-loader guard passes; runtime-native same-address replacement fixture passes. Retail field transition remains manual. |
-| Muscle Dome loss-return TMD pointer crash | `docs/legaia-fix-log.md` records a title-owned relocation before `FUN_80024D78` via `FUN_800268DC` | **Unresolved provenance/implementation gap.** No corresponding tracked hook or relocation prologue was found in current generated function. Do not invent a generic game-address hook or edit generated C. | Recover original title-layer patch and validate against retail engine before porting. Not claimed fixed. |
+| Muscle Dome loss-return TMD pointer crash | `docs/legaia-fix-log.md` records a title-owned relocation before `FUN_80024D78` via `FUN_800268DC` | **Documented claim absent from the proven reference binary function.** Current generated function also lacks the guard; no tracked implementation recovered. See investigation below. | Recover original title-layer patch or independently establish the defect and correct layer against the retail engine. No unverified patch ported; not claimed fixed. |
+
+### Muscle Dome relocation provenance investigation (2026-09-09)
+
+The original July 18 commit `c44d0e24b3ddf9fd0f8afc3dbc56dbc4ce06632c`
+adds the relocation claim to `docs/legaia-fix-log.md`, but its implementation
+diff in `runtime/src/main.cpp` concerns developer-menu input and fishing entry.
+It does not implement the described TMD guard. Narrow all-ref pickaxe searches
+over owned C/C++/Python sources found no implementation containing either
+`80024D78` or `800268DC`. Current sibling generated source
+`LegaiaRecomp/generated/SCUS_942.54_full_05.c:15091` enters the original actor
+resource lookup after normal continuation/timing instrumentation.
+
+The retained reference build provides stronger evidence than its mixed source
+timestamps:
+
+- Reference executable: `C:\Users\sammo\OneDrive\Documents\LegaiaRecomp\build\Release\LegaiaRecomp.exe`,
+  SHA-256 `cd863e57f4750aa0a22ef6b7e621e297a7228d3b948dcbb310b21f4621b72d08`.
+- Retained object: `C:\Users\sammo\OneDrive\Documents\LegaiaRecomp\build\psx-runtime.dir\Release\SCUS_942.54_full.obj`,
+  SHA-256 `aa79f2969fc567a57bf8d6da108638a3f879da131f097ca23f87b5ebde880441`.
+- COFF symbol `func_80024D78` belongs to section 298, whose raw body starts at
+  object offset `0x17C32B` and spans 2,967 bytes. Its unique initial 64-byte
+  signature occurs at executable file offset `0x5EA740`. Comparing all 2,967
+  bytes while masking the 240 bytes described by COFF linker relocations found
+  **zero other mismatches**. This ties the inspected object function to the
+  actual retained executable, without inferring a whole-build source revision.
+- Its relocation targets comprise timing, guest-load, debug-entry and store-PC
+  helpers. There is no call target for `func_800268DC` or a TMD validation helper.
+  Native disassembly enters the original actor `+0x64` lookup after ordinary
+  instrumentation; no TMD-header validation/relocation prologue was found.
+
+Fresh read-only Ghidra calls against program `SCUS_942.54` confirm the retail
+mechanisms, using exact addresses because the functions have descriptive names:
+`80024D78` (`InitItemPointerTableFromResourceIndex`) selects
+`0x8007C018[actor+0x64]`, reads its object count at `+8`, and builds the actor's
+`+0x44` table from descriptors beginning at TMD `+0x0C`. It does not call a
+relocator. `800268DC` (`relocate_packed_table_entries_once`) checks whether
+TMD `+4` equals 1; otherwise it sets that flag and rebases descriptor fields
+`+0`, `+8`, and `+0x10` by masking their low two bits and adding TMD `+0x0C`.
+The descriptors are `0x1C` bytes each. Its identified retail caller is
+`80026B4C` (`Model_RegisterAndInit`), which validates header `0x80000002` before
+registration and relocation. The actor-table builder's identified caller is
+`80020F88` (`Actor_LoadOrRefreshStateFromResource`).
+
+This establishes that the documented extra guard is absent from the inspected
+reference function, **not** that every possible external runtime hook has been
+disproved or that a fresh Muscle Dome failure has been reproduced. No source
+patch with sufficient provenance was recovered, and none was ported. A future
+title-owned repair must first establish the failing lifecycle and compare it
+with the retail engine. Existing trusted function-entry plugin infrastructure
+(`mod_plugins.h` and `[recompiler] mod_function_entry_funcs`) offers an explicit
+integration boundary if a title repair is justified; it is not evidence that
+this repair already exists. Generic runtime address checks and direct edits to
+generated C remain inappropriate substitutes.
 
 ## Overlay inventory and project boundaries
 

@@ -16,7 +16,7 @@ is complete. Runtime fixes from the preceding milestone are committed as
 | Scene model | FUNCTIONAL | Imported actor entities and evidenced Transform/ModelRenderer/Animation/RetailMetadata components. Triggers/collision/dialogue/scripts remain unresolved. |
 | Project authoring | FUNCTIONAL | XYZ overrides, selection, undo/redo, dirty state, content-addressed imported evidence, digest-checked save/reopen. Heading/model/animation editing and templates pending. |
 | Editor | PARTIAL | Browser-verified selection/edit/clear/undo/redo/save/reopen and actual model preview; responsive workspace tabs, placement markers and transform handles. Real posed scene rendering remains pending. |
-| Live bridge | PARTIAL | Generic identity/guard/witness/read-regions protocol ported; live executable identity and capability negotiation pass. Field observation correctly rejects missing witnesses at title; accepted retail field traversal remains pending. |
+| Live bridge | PARTIAL | Generic identity/guard/witness/read-regions protocol ported; live executable identity and capability negotiation pass. Title lacks field witnesses; later intro observation rejects a backend mismatch at 0x801CF754. Accepted retail field traversal remains pending. |
 | Correlation | FOUNDATION | Structural imported identities and epoch-scoped runtime nodes exist separately. No guessed list-order mapping; matching engine pending. |
 | Scripts/dialogue/flags | FOUNDATION | Unknown fields retained with provenance. Decoders, editor tools and bounded round-trip serializers pending. |
 | Transitions/world map | FOUNDATION | Prior observation vocabulary retained. Transition graph, MAPDSIP coverage and world-map authoring pending. |
