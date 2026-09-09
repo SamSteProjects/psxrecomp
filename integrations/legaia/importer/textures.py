@@ -14,13 +14,16 @@ from dataclasses import dataclass, field
 import struct
 from typing import Any
 
-from .core import ImportError, decompress_lzs, is_scene_tmd_stream, parse_scene_table
-from .pipeline import REFERENCE_COMMIT, _bounded_scene_range, _disc_context
+from .core import (ImportError, decompress_lzs, global_special_tmd_pool,
+                   is_scene_tmd_stream, parse_lzs_sections, parse_scene_table)
+from .pipeline import (REFERENCE_COMMIT, _bounded_scene_range, _disc_context,
+                       _model_source_locator)
 
 MAX_TIM_BYTES = 2 * 1024 * 1024
 MAX_CATALOG_BYTES = 16 * 1024 * 1024
 MAX_TEXTURES = 1024
 MAX_ENTRY_BYTES = 8 * 1024 * 1024
+_FIELD_PARTY_IDS = tuple(f"asset://legaia/models/global-special/{i:04x}" for i in range(0xF0, 0xF3))
 
 
 @dataclass(frozen=True)
@@ -239,6 +242,75 @@ def load_scene_texture_catalog(disc: Any, scene: str = "town01") -> TextureCatal
                         raise
                     catalog.diagnostics.append(f"entry {index} descriptor {descriptor.index}: {exc}")
         return catalog
+
+
+def uses_field_party_textures(asset: dict[str, Any]) -> bool:
+    """Cheap routing hint only; loading revalidates the complete disc locator."""
+    return isinstance(asset, dict) and asset.get("semantic_id") in _FIELD_PARTY_IDS
+
+
+def _field_party_catalog(raw: bytes, digest: str) -> TextureCatalog:
+    """Decode only the pinned player.lzs section-2 loader path.
+
+    FUN_8001E890 sends these pack members through FUN_800198E0. Images use
+    their declared rectangles and CLUTs use flat strips with no STP forcing.
+    No scene palette or conditional resource is mixed into this address view.
+    """
+    if len(raw) > MAX_ENTRY_BYTES:
+        raise ImportError("field texture source exceeds byte limit")
+    sections = parse_lzs_sections(raw)
+    if len(sections) != 3:
+        raise ImportError("unsupported field texture container descriptor count")
+    section = sections[2]
+    data, consumed = decompress_lzs(raw[section.stream_offset:], section.decoded_size)
+    ranges = _pack_members(data, False)
+    if len(ranges) != 8:
+        raise ImportError("field texture pack does not match pinned eight-member layout")
+    catalog = TextureCatalog("global-field-party", digest)
+    catalog.diagnostics.append("Pinned field player loader uploads only; live residency, equipment swaps, blend emulation and palette animation are not reconstructed.")
+    total = 0
+    for slot, (start, end) in enumerate(ranges):
+        tim = parse_tim(data[start:end])
+        if tim.clut is None or tim.bpp != 4:
+            raise ImportError("unsupported field texture member mode: expected indexed 4-bpp TIM with CLUT")
+        if tim.clut.x + tim.clut.width_words * tim.clut.height > 1024:
+            raise ImportError("field texture CLUT strip extends outside VRAM")
+        total += tim.byte_length
+        if total > MAX_CATALOG_BYTES:
+            raise ImportError("field texture catalog exceeds byte limit")
+        catalog.textures.append((tim, {
+            "semantic_id": f"texture://legaia/field-party/874/2/{slot}",
+            "disc": {"sha256": digest, "serial": "SCUS-94254"}, "iso_file": "PROT.DAT",
+            "prot_entry_index": 874, "container_section": 2, "pack_slot": slot,
+            "compressed_stream_offset": section.stream_offset,
+            "compressed_bytes_consumed": consumed, "byte_offset": start,
+            "byte_length": tim.byte_length, "containing_size": len(data),
+            "byte_coordinate_space": "decoded_lzs_section",
+            "upload_evidence": "field_char_textures.rs:FUN_8001E890_to_FUN_800198E0",
+            "force_stp": False,
+        }))
+    return catalog
+
+
+def load_asset_texture_catalog(disc: Any, asset: dict[str, Any],
+                               scene_catalog: TextureCatalog) -> TextureCatalog:
+    """Select an evidenced upload scope without changing the scene catalog.
+
+    F0/F1/F2 use the independently verified shared player texture bank. Other
+    assets retain the caller's scene catalog. A routing ID alone is never
+    sufficient to establish the shared-bank source association.
+    """
+    if not uses_field_party_textures(asset):
+        if asset.get("source_record", {}).get("disc", {}).get("sha256") != scene_catalog.disc_sha256:
+            raise ImportError("model and scene texture catalog disc provenance do not match")
+        return scene_catalog
+    slot = _FIELD_PARTY_IDS.index(asset["semantic_id"])
+    with _disc_context(disc) as (_, digest, _, archive):
+        record = global_special_tmd_pool(archive)[slot]
+        if asset.get("source_record") != _model_source_locator(digest, "", record):
+            raise ImportError("field texture model provenance does not match the verified global pack record")
+        raw = archive.read_entry(archive.entry(874), extended=True)
+        return _field_party_catalog(raw, digest)
 
 
 def associate_material(catalog: TextureCatalog, material: dict[str, Any],
