@@ -4,6 +4,51 @@ How PSXRecomp is put together, end to end. For the higher-level "why three ways
 of running code" story, read [`EXECUTION_MODEL.md`](EXECUTION_MODEL.md) first;
 this doc is the component-level view.
 
+## Legaia SDK and authoring editor
+
+The title-specific product lives under `integrations/legaia`; it does not put
+retail addresses or asset layouts into the generic runtime. Its local editor
+is served by `tools/legaia_editor.py` within that directory.
+
+```text
+User-owned disc -> ImportService -> imported metadata -> AssetDatabase
+                                                   -> Scene / components
+ProjectService -> authored overrides -> Undo commands -> effective editor view
+                                                   -> project.legaia.json
+Generic runtime protocol -> guarded ObserverService -> separate Live view
+```
+
+`sdk/project.py` owns project persistence, the asset catalog, scene projection,
+selection and undo commands. `sdk/server.py` serializes mutations and exposes
+the loopback editor API. `editor/` is the user interface. `importer/` owns
+verified disc/container/record decoding. `observer/` and `layouts/` own the
+read-only runtime adapter and title-specific evidence profiles.
+
+One project has one verified disc identity. Structural scene/actor/model IDs
+remain stable across import and reopen, and are scoped by that disc identity;
+runtime pointers are never asset IDs. Each entity projects Transform,
+ModelRenderer, Animation and RetailMetadata components only where evidence
+exists. Unknown retail height, initial facing and animation asset resolution
+remain explicit. Merely exposing a component does not establish its semantics.
+
+Imported metadata is copied into content-addressed `Imported/` records and
+checked on reopen and save. `project.legaia.json` contains source identity,
+local disc reference, import digests and authored component overrides. It does
+not embed game binaries or model payloads. Undo/redo changes only authored
+state; an effective transform merges authored fields with imported fields.
+An authored height does not turn an unknown imported height into a known fact.
+Reimport rejects changed evidence underneath authored actors.
+
+The data layers are imported (retail facts), derived (decoded previews and
+indexes), authored (project edits), live (epoch-scoped observations) and
+generated (future build output). Live observation never changes imported or
+authored state. Missing runtime identity, guards or witnesses produce an
+unavailable response, not an unguarded RAM read. Live mode cannot issue editor
+authoring commands. A build pipeline must eventually consume authored values
+through independently validated serializers; the current transform editor does
+not yet claim to modify a playable game. See `FEATURE_MATRIX.md` for current
+coverage and `TEST_PLAN.md` for the acceptance gates.
+
 ## Two programs: the recompiler and the runtime
 
 PSXRecomp is split into two CMake projects that are built and run separately:

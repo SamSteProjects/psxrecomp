@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SamSteProjects/psxrecomp/integrations/legaia/schemas/runtime-layout-profile.v1.schema.json",
+  "title": "Legend of Legaia runtime layout profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile_id"],
+  "allOf": [
+    {
+      "if": { "required": ["extends"] },
+      "then": { "required": ["extends", "overrides"] },
+      "else": {
+        "required": [
+          "game", "region", "executable_identity", "supported_runtime_protocol",
+          "overlay_requirements", "execution_identity", "scene_identity",
+          "scene_epoch", "actor_pool", "actor_fields", "safety_bounds",
+          "observation_policy", "evidence", "unresolved"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "profile_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-v[0-9]+$" },
+    "extends": { "$ref": "#/$defs/profileExtension" },
+    "overrides": { "$ref": "#/$defs/profileOverrides" },
+    "game": { "const": "Legend of Legaia" },
+    "region": { "const": "North America" },
+    "executable_identity": { "$ref": "#/$defs/executableIdentity" },
+    "supported_runtime_protocol": { "$ref": "#/$defs/protocol" },
+    "overlay_requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/overlay" }
+    },
+    "execution_identity": { "$ref": "#/$defs/executionIdentity" },
+    "scene_identity": { "$ref": "#/$defs/sceneIdentity" },
+    "scene_epoch": { "$ref": "#/$defs/sceneEpoch" },
+    "actor_pool": { "$ref": "#/$defs/actorPool" },
+    "actor_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/actorField" }
+    },
+    "safety_bounds": { "$ref": "#/$defs/safetyBounds" },
+    "observation_policy": { "$ref": "#/$defs/observationPolicy" },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+    "unresolved": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "profileExtension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "file_name"],
+      "properties": {
+        "profile_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-v[0-9]+$" },
+        "file_name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*-v[0-9]+\\.json$" }
+      }
+    },
+    "profileOverrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene_identity", "evidence", "unresolved"],
+      "properties": {
+        "scene_identity": { "$ref": "#/$defs/sceneIdentity" },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "unresolved": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "address": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{8}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "confidence": {
+      "enum": ["confirmed", "strongly_inferred", "tentative", "unknown", "contradictory"]
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["property", "value", "confidence", "evidence", "notes"],
+      "properties": {
+        "property": { "type": "string" },
+        "value": {},
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "alternatives": { "type": "array", "minItems": 2, "items": {} }
+      }
+    },
+    "executableIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["serial", "sha256", "file_size", "load_address", "runtime_source_identity", "claim"],
+      "properties": {
+        "serial": { "const": "SCUS-94254" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "file_size": { "type": "integer", "minimum": 1 },
+        "load_address": { "$ref": "#/$defs/address" },
+        "runtime_source_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "scope", "length", "guest_base", "sha256", "claim"],
+          "properties": {
+            "algorithm": { "const": "sha256" },
+            "scope": { "const": "ps-x-exe-body" },
+            "length": { "type": "integer", "minimum": 1 },
+            "guest_base": { "$ref": "#/$defs/address" },
+            "sha256": { "$ref": "#/$defs/sha256" },
+            "claim": { "$ref": "#/$defs/claim" }
+          }
+        },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "required_runtime_implementation", "minimum_major", "minimum_minor", "required_capabilities"],
+      "properties": {
+        "name": { "const": "psxrecomp-debug" },
+        "required_runtime_implementation": { "const": "psxrecomp" },
+        "minimum_major": { "const": 1 },
+        "minimum_minor": { "type": "integer", "minimum": 1 },
+        "required_capabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "overlayIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "prot_entry", "load_address", "content_sha256", "source_entry_sha256"],
+      "properties": {
+        "id": { "type": "string" },
+        "prot_entry": { "type": "integer", "minimum": 0 },
+        "load_address": { "$ref": "#/$defs/address" },
+        "content_sha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "source_entry_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "overlay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "identity", "owner", "claim"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "identity": { "$ref": "#/$defs/overlayIdentity" },
+        "owner": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "executionWitnessRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "base", "length"],
+      "properties": {
+        "kind": { "const": "executed-instruction" },
+        "base": { "$ref": "#/$defs/address" },
+        "length": { "const": 4 }
+      }
+    },
+    "executionWitness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pc", "backend", "range", "live_sha256", "require_current", "require_watched_generation_match", "confidence", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "pc": { "$ref": "#/$defs/address" },
+        "backend": { "enum": ["static-native", "cached-native", "runtime-native", "interpreter"] },
+        "range": { "$ref": "#/$defs/executionWitnessRange" },
+        "live_sha256": { "$ref": "#/$defs/sha256" },
+        "require_current": { "const": true },
+        "require_watched_generation_match": { "const": true },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "executionIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "minimum_required_witnesses", "require_stable_executable_state", "require_stable_lifecycle_state", "require_stable_observation_guard", "required_witnesses"],
+      "properties": {
+        "kind": { "const": "field_execution_witness_set" },
+        "minimum_required_witnesses": { "type": "integer", "minimum": 2 },
+        "require_stable_executable_state": { "const": false },
+        "require_stable_lifecycle_state": { "const": false },
+        "require_stable_observation_guard": { "const": true },
+        "required_witnesses": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/executionWitness" } }
+      }
+    },
+    "sceneSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "address", "width", "type", "expected", "owner", "lifecycle", "claim"],
+      "properties": {
+        "id": { "type": "string" },
+        "address": { "$ref": "#/$defs/address" },
+        "width": { "enum": [1, 2, 4, 8, 16] },
+        "type": { "type": "string" },
+        "expected": {},
+        "owner": { "type": "string" },
+        "lifecycle": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "sceneIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene_key", "strategy", "required_signals"],
+      "properties": {
+        "scene_key": { "enum": ["town01", "town0c"] },
+        "strategy": { "type": "string" },
+        "required_signals": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/sceneSignal" } }
+      }
+    },
+    "sceneEpoch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observer_owned", "stability_samples", "invalidation_signals", "contract"],
+      "properties": {
+        "observer_owned": { "const": true },
+        "stability_samples": { "type": "integer", "minimum": 2 },
+        "invalidation_signals": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+        "contract": { "type": "string" }
+      }
+    },
+    "count": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "width", "type", "claim"],
+      "properties": {
+        "address": { "$ref": "#/$defs/address" },
+        "width": { "enum": [1, 2, 4] },
+        "type": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "pointerCensus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_address", "entry_stride", "maximum_slots", "count", "rebuild_function", "lifecycle", "claim"],
+      "properties": {
+        "base_address": { "$ref": "#/$defs/address" },
+        "entry_stride": { "const": 4 },
+        "maximum_slots": { "type": "integer", "minimum": 1 },
+        "count": { "$ref": "#/$defs/count" },
+        "rebuild_function": { "$ref": "#/$defs/address" },
+        "lifecycle": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "linkedListHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "owner", "claim"],
+      "properties": {
+        "address": { "$ref": "#/$defs/address" },
+        "owner": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "actorRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allocation", "contiguous_stride", "bounded_read_size", "alignment", "claim"],
+      "properties": {
+        "allocation": { "type": "string" },
+        "contiguous_stride": { "type": "null" },
+        "bounded_read_size": { "type": "integer", "minimum": 1 },
+        "alignment": { "type": "integer", "minimum": 1 },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "actorPool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage_kind", "pointer_census", "linked_list_head", "actor_record", "initializers", "updaters", "teardown", "unresolved"],
+      "properties": {
+        "storage_kind": { "const": "linked_nodes_with_pointer_census" },
+        "pointer_census": { "$ref": "#/$defs/pointerCensus" },
+        "linked_list_head": { "$ref": "#/$defs/linkedListHead" },
+        "actor_record": { "$ref": "#/$defs/actorRecord" },
+        "initializers": { "type": "array", "items": { "$ref": "#/$defs/address" } },
+        "updaters": { "type": "array", "items": { "$ref": "#/$defs/address" } },
+        "teardown": { "type": "array", "items": { "$ref": "#/$defs/address" } },
+        "unresolved": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "actorField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "offset", "width", "type", "signed", "representation", "observation", "correlation_value", "owner", "claim"],
+      "properties": {
+        "id": { "type": "string" },
+        "offset": { "type": "integer", "minimum": 0 },
+        "width": { "enum": [1, 2, 4] },
+        "type": { "type": "string" },
+        "signed": { "type": "boolean" },
+        "representation": { "type": "string" },
+        "observation": { "enum": ["safe", "conditional", "unsafe"] },
+        "correlation_value": { "enum": ["strong", "supporting", "weak", "unsafe"] },
+        "owner": { "type": "string" },
+        "claim": { "$ref": "#/$defs/claim" }
+      }
+    },
+    "safetyBounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["main_ram_start", "main_ram_end_exclusive", "maximum_read_bytes", "maximum_poll_hz", "mixed_epoch_policy"],
+      "properties": {
+        "main_ram_start": { "$ref": "#/$defs/address" },
+        "main_ram_end_exclusive": { "$ref": "#/$defs/address" },
+        "maximum_read_bytes": { "type": "integer", "minimum": 1 },
+        "maximum_poll_hz": { "type": "number", "exclusiveMinimum": 0 },
+        "mixed_epoch_policy": { "const": "discard" }
+      }
+    },
+    "observationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["guard", "head_pointer", "traversal", "snapshot"],
+      "properties": {
+        "guard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["capability", "token_domain", "ram_regions_from", "execution_witnesses_from", "require_witness_currentness", "require_before_after_stability", "require_expected_token_match"],
+          "properties": {
+            "capability": { "const": "observation_guard" },
+            "token_domain": { "const": "psxrecomp-observation-guard-v1" },
+            "ram_regions_from": { "const": "scene_identity.required_signals+actor_pool.linked_list_head" },
+            "execution_witnesses_from": { "const": "execution_identity.required_witnesses" },
+            "require_witness_currentness": { "const": true },
+            "require_before_after_stability": { "const": true },
+            "require_expected_token_match": { "const": true }
+          }
+        },
+        "head_pointer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "type", "endianness", "accepted_segments", "alignment", "epoch_relevant"],
+          "properties": {
+            "width": { "const": 4 },
+            "type": { "const": "ram_pointer" },
+            "endianness": { "const": "little" },
+            "accepted_segments": { "const": ["kseg0"] },
+            "alignment": { "const": 4 },
+            "epoch_relevant": { "const": true }
+          }
+        },
+        "traversal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prefix_length", "next_pointer_offset", "maximum_nodes", "maximum_aggregate_bytes", "maximum_requests", "maximum_duration_ms", "partial_snapshots", "claim"],
+          "properties": {
+            "prefix_length": { "const": 156 },
+            "next_pointer_offset": { "const": 0 },
+            "maximum_nodes": { "type": "integer", "minimum": 1, "maximum": 4096 },
+            "maximum_aggregate_bytes": { "type": "integer", "minimum": 156 },
+            "maximum_requests": { "type": "integer", "minimum": 1, "maximum": 4096 },
+            "maximum_duration_ms": { "type": "integer", "minimum": 1, "maximum": 60000 },
+            "partial_snapshots": { "const": "reject" },
+            "claim": { "$ref": "#/$defs/claim" }
+          }
+        },
+        "snapshot": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stability_samples", "maximum_attempts", "mixed_boundary_policy"],
+          "properties": {
+            "stability_samples": { "type": "integer", "minimum": 2, "maximum": 8 },
+            "maximum_attempts": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "mixed_boundary_policy": { "const": "discard" }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "repository", "revision", "path", "symbol_or_function", "role"],
+      "properties": {
+        "id": { "type": "string" },
+        "repository": { "type": "string" },
+        "revision": { "type": "string" },
+        "path": { "type": "string" },
+        "symbol_or_function": { "type": "string" },
+        "role": { "type": "string" }
+      }
+    }
+  }
+}

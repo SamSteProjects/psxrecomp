@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (Legaia SDK authoring):** Restored evidence-backed field import
+  and bounded observer/profile services; added a central project/asset/scene
+  model, separate authored transform commands, persistence and local editor.
+  The runtime observation protocol still requires a coordinated generic port;
+  no timing or retail gameplay acceptance is implied by editor validation.
+
 - **2026-09-09 (Legaia stability parity):** Preserved current CD/XA scheduling,
   startup, bounded hitch telemetry and host frame pacing. Added explicit
   savestate overlay-ownership invalidation and build-time split-source

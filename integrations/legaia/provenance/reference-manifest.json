@@ -1,0 +1,78 @@
+{
+  "manifest_version": 1,
+  "reference": {
+    "repository": "AndrewAltimit/legend-of-legaia-re",
+    "commit": "d6e64c68ede25813d35db20980da82a1a025549b",
+    "role": "development reference and optional parity oracle; never a build or runtime dependency"
+  },
+  "implementation": {
+    "repository": "SamSteProjects/psxrecomp",
+    "component": "integrations/legaia/importer",
+    "method": "independent implementation from documented structures and cited runtime evidence"
+  },
+  "interpretations": [
+    {
+      "topic": "Mode 2/2352 and ISO9660 lookup",
+      "source_file": "crates/iso/src/raw.rs; crates/iso/src/iso9660.rs",
+      "documentation_file": "README.md (supported disc table)",
+      "reference_symbol": "RawImage; Iso9660",
+      "independently_implemented": "streaming sector reader, user-data view, PVD and directory records",
+      "evidence": "ISO9660 CD001 PVD structure plus Mode 2 sector framing",
+      "difference": "read-only subset with no Rust dependency"
+    },
+    {
+      "topic": "PROT archive table",
+      "source_file": "crates/prot/src/archive.rs",
+      "documentation_file": "docs/formats/prot.md; docs/subsystems/boot.md",
+      "reference_symbol": "Archive::from_reader; Entry",
+      "independently_implemented": "header detection, TOC sizes, and bounded extended footprints",
+      "evidence": "retail boot TOC loader FUN_8003E4E8 and documented trailing-sector behavior",
+      "difference": "reads through the ISO view and exposes no extraction API"
+    },
+    {
+      "topic": "CDNAME raw-index conversion",
+      "source_file": "crates/prot/src/cdname.rs",
+      "documentation_file": "docs/formats/cdname.md",
+      "reference_symbol": "block_range_for_name_extraction",
+      "independently_implemented": "#define parsing and raw TOC index minus two scene window",
+      "evidence": "retail TOC header rows and loader index space",
+      "difference": "supports exact scene lookup only"
+    },
+    {
+      "topic": "scene asset table and MAN carrier",
+      "source_file": "crates/asset/src/scene_asset_table.rs; crates/engine-core/src/scene_bundle.rs",
+      "documentation_file": "docs/formats/scene-bundles.md; docs/subsystems/asset-loader.md",
+      "reference_symbol": "scene_asset_table::detect; find_bundle; extract_man_payload",
+      "independently_implemented": "count-6/count-7 validation and type-3 LZS payload resolution",
+      "evidence": "FUN_8001F7C0/FUN_8001F05C and town01 count-6 corpus evidence",
+      "difference": "only MAN-bearing table carriers needed by town01 are accepted"
+    },
+    {
+      "topic": "Legaia LZS decode",
+      "source_file": "crates/lzs/src/lib.rs",
+      "documentation_file": "docs/formats/asset-type.md",
+      "reference_symbol": "decompress_tracked",
+      "independently_implemented": "bounded 4 KiB ring-buffer decoder with consumed-length accounting",
+      "evidence": "retail FUN_8001A55C behavior",
+      "difference": "decoder only; no compressor or container support"
+    },
+    {
+      "topic": "MAN partitions and actor placement",
+      "source_file": "crates/asset/src/man_section.rs; crates/engine-core/src/man_field_scripts.rs",
+      "documentation_file": "docs/subsystems/field-locomotion.md",
+      "reference_symbol": "ManFile::actor_placements; record_end_bound; ActorPlacement",
+      "independently_implemented": "partition offsets, section chain, bounded P1 records, model/animation/tile fields, and world X/Z",
+      "evidence": "FUN_8003A1E4/FUN_8003D0BC and runtime-pinned placement semantics",
+      "difference": "does not decode scripts, facing, dialogue, story flags, assets, or live state"
+    },
+    {
+      "topic": "model pool selection",
+      "source_file": "crates/web-viewer/src/field_npc.rs; crates/asset/src/man_section.rs",
+      "documentation_file": "docs/subsystems/field-locomotion.md",
+      "reference_symbol": "build_npc_catalog_impl; ActorPlacement::special_model",
+      "independently_implemented": "metadata-only pool selector and unresolved asset-record link",
+      "evidence": "runtime-pinned model byte threshold at 0xF0",
+      "difference": "does not build SceneResources or export model data"
+    }
+  ]
+}

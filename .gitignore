@@ -51,6 +51,7 @@ sdl2-msvc/
 *.log
 *.jsonl
 /.aot_capture_history/
+/local-output/
 
 # Local additive overlay-capture store configuration and game-derived data.
 .psxrecomp.env
