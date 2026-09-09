@@ -188,8 +188,10 @@ class EditorHandler(BaseHTTPRequestHandler):
         project = self.server.project
         # Reject malformed field types before they reach filesystem/importer services.
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
-                            "/api/import": ("disc",), "/api/scene": ("scene_id",),
-                            "/api/command": ("entity_id",)}
+                            "/api/import": ("disc",), "/api/scene": ("scene_id",)}
+        if route == "/api/command" and body.get("type") in (
+                "set_transform", "clear_transform", "create_actor_template", "apply_actor_template"):
+            required_strings[route] = ("entity_id",)
         for key in required_strings.get(route, ()):
             if not isinstance(body.get(key), str) or not body[key].strip():
                 raise ProjectError(f"{key} must be a nonempty string")
