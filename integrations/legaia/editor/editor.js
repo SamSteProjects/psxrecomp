@@ -277,6 +277,7 @@ canvas.addEventListener('wheel',event=>{event.preventDefault();camera.distance=M
 
 // Unposed assets stay object-local. Only decoder-provided frames assemble objects.
 const modelCanvas=$('model-canvas'), modelContext=modelCanvas.getContext('2d');
+const exportDialog=document.createElement('dialog');document.body.append(exportDialog);
 let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
 let modelAssetId=null, animationFrame=0, animationTick=null, animationClock=null;
@@ -301,7 +302,7 @@ async function openModel(assetId,clipId=null){
       const statusLabel={address_match:'Matched texture',missing:'Texture not found',ambiguous:'Multiple possible textures',unsupported:'Unsupported texture',untextured:'Vertex colors'}[texture.status] ?? 'Texture unavailable';
       const label=document.createElement('span');label.textContent=`Material ${texture.material_index} · ${statusLabel}${texture.width?' · '+texture.width+'×'+texture.height:''}`;card.append(label);card.title=texture.reason ?? 'Static texture addresses; runtime residency is not confirmed'; $('model-textures').append(card);
     }
-    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId?'Decoded rigid animation pose':'Retail object-local geometry · Unposed'} · ${modelTextures.size?'Static texture address matches':'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
+    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId?'Decoded rigid animation pose':'Retail object-local geometry · Unposed'} · ${modelTextures.size?(model.texture_scope==='field_party'?'Shared party texture bank':'Static texture address matches'):'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
     $('model-object').replaceChildren();
     if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
@@ -321,7 +322,7 @@ function configureAnimation(clipId){
   $('animation-clip').value=clipId ?? '';
   const timing=model.animation?.timing ?? model.timing ?? {},fps=numeric(timing.fps)?timing.fps:10;
   $('animation-rate').value=fps;$('animation-rate').parentElement.querySelector('span').textContent=numeric(timing.fps)?`Reference rate: ${timing.fps} fps; not verified against a live trace.`:'Preview setting; retail timing is unresolved.';
-  $('animation-evidence').textContent=JSON.stringify(model.animation?{...model.animation,geometry_diagnostics:model.diagnostics}:support,null,2);
+  $('animation-evidence').textContent=JSON.stringify(model.animation?{...model.animation,geometry_diagnostics:model.diagnostics,texture_catalog:model.texture_catalog}:support,null,2);
   $('animation-error').textContent='';
   for(const id of ['animation-play','animation-previous','animation-next','animation-frame','animation-rate'])$(id).disabled=!frames.length;
   $('animation-frame').max=Math.max(0,frames.length-1);$('animation-frame').value=0;
@@ -342,6 +343,16 @@ $('animation-play').onclick=()=>{
 };
 $('model-dialog').addEventListener('close',()=>{stopAnimation();modelRequest++;});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAnimation();});
+$('model-export').onclick=async()=>{
+  if(busy||!modelAssetId)return;stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
+  const clip=model.animation?.clip_id,payload={asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
+  try{
+    const response=await fetch('/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Model export failed');
+    exportDialog.innerHTML=`<div class="dialog-heading"><h2>${result.audit.posed?'Static posed model exported':'Object-local model exported'}</h2><button id="close-export" aria-label="Close">×</button></div><p>${result.audit.object_count} objects · ${result.audit.triangle_count} triangles · ${result.audit.texture_count} embedded textures${result.audit.posed?' · Frame '+(result.audit.frame_index+1):''}</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><p>Full model export${result.audit.posed?' with the displayed animation frame baked into geometry':''}. Source units are retained; physical meter scale is unknown. Animation channels and skin hierarchy are not exported.</p><details><summary>Export provenance and limitations</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
+    $('close-export').onclick=()=>exportDialog.close();exportDialog.showModal();
+  }catch(error){$('model-error').textContent=error.message;}finally{$('model-export').disabled=false;setBusy(false);}
+};
 function fitModelObject(){
   const object=modelObject();if(!object)return;
   const streams=model.frames?.length?model.frames.map(frame=>frame.vertices):[model.vertices];

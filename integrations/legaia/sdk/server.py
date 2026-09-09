@@ -66,7 +66,8 @@ class EditorServer(ThreadingHTTPServer):
     def model_preview(self, asset: dict, clip_id: str | None = None) -> dict:
         from importer.assets import load_model_preview
         from importer.animation import animation_capabilities, load_animation_preview
-        from importer.textures import associate_material, load_scene_texture_catalog
+        from importer.textures import (associate_material, load_asset_texture_catalog,
+                                       load_scene_texture_catalog, uses_field_party_textures)
         project = self.project
         if clip_id is not None:
             animation = load_animation_preview(Path(project.disc_path), asset, clip_id)
@@ -87,7 +88,9 @@ class EditorServer(ThreadingHTTPServer):
             if len(self.texture_catalogs) >= 2:
                 self.texture_catalogs.clear()
             self.texture_catalogs[key] = load_scene_texture_catalog(project.disc_path, scene)
-        catalog = self.texture_catalogs[key]
+        # The selected shared bank never replaces or merges into the scene cache.
+        catalog = load_asset_texture_catalog(project.disc_path, asset, self.texture_catalogs[key])
+        preview["texture_scope"] = "field_party" if uses_field_party_textures(asset) else "scene"
         preview["texture_catalog"] = catalog.metadata()
         preview["textures"] = []
         budget = 2 * 1024 * 1024
@@ -186,7 +189,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
-                if route in ("/api/preview", "/api/animation-preview"):
+                if route in ("/api/preview", "/api/animation-preview", "/api/export/model"):
                     project = self.server.project
                     if not project.disc_path:
                         raise ProjectError("Model preview requires the project's user-owned disc")
@@ -195,9 +198,28 @@ class EditorHandler(BaseHTTPRequestHandler):
                     asset = project.assets.records.get(body.get("asset_id"))
                     if asset is None:
                         raise ProjectError("Unknown model asset")
-                    clip_id = body.get("clip_id") if route == "/api/animation-preview" else None
-                    if route == "/api/animation-preview" and clip_id not in ("idle", "walk"):
+                    clip_id = body.get("clip_id") if route != "/api/preview" else None
+                    if (route == "/api/animation-preview" or clip_id is not None) and clip_id not in ("idle", "walk"):
                         raise ProjectError("Choose a supported animation clip: idle or walk")
+                    if route == "/api/export/model":
+                        from .build import _guard_output
+                        from .project import atomic_write
+                        from importer.export import write_model_export
+                        if set(body) - {"asset_id", "clip_id", "frame_index"}:
+                            raise ProjectError("Export accepts asset, clip and frame only; geometry and output paths are project-controlled")
+                        frame_index = body.get("frame_index")
+                        if clip_id is None and frame_index is not None:
+                            raise ProjectError("A frame export requires a supported animation clip")
+                        if clip_id is not None and (type(frame_index) is not int or frame_index < 0):
+                            raise ProjectError("Choose a nonnegative animation frame index to export")
+                        output = project.root / "Exports"
+                        _guard_output(output / ".gitignore", project.root)
+                        preview = self.server.model_preview(asset, clip_id)
+                        result = write_model_export(preview, output, frame_index)
+                        if not (output / ".gitignore").exists():
+                            atomic_write(output / ".gitignore", b"*\n")
+                        self._json(200, result)
+                        return
                     self._json(200, self.server.model_preview(asset, clip_id))
                     return
                 self._command(urlsplit(self.path).path, body)

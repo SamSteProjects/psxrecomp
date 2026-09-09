@@ -68,6 +68,12 @@ class TemplateHTTPWorkflow(unittest.TestCase):
                     rejected = command({"asset_id": "asset://fixture/model/0", "clip_id": "idle"},
                                        400, "/api/animation-preview")
                     self.assertIn("support animation preview", rejected["error"])
+                    for body in ({"asset_id": "asset://fixture/model/0", "output_path": "../outside.glb"},
+                                 {"asset_id": "asset://fixture/model/0", "vertices": [[1, 2, 3]]},
+                                 {"asset_id": "asset://fixture/model/0", "frame_index": 0},
+                                 {"asset_id": "asset://fixture/model/0", "clip_id": "idle", "frame_index": True}):
+                        command(body, 400, "/api/export/model")
+                    self.assertFalse((project.root / "Exports").exists())
                     self.assertEqual(project.state(), before)
                 finally:
                     server.shutdown()
