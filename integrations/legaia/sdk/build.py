@@ -56,7 +56,8 @@ def _write_exact(path: Path, content: bytes, boundary: Path) -> None:
 def build_project(project, output_dir: Path | str | None = None) -> dict:
     """Emit a deterministic .psxmod archive, package sources and bounded audit.
 
-    Supports representable authored field X/Z placement only. The input disc
+    Supports representable authored field X/Z placement and unchanged retail
+    builds after clearing overrides. The input disc
     and imported metadata remain unchanged. Installation/enabling and a live
     launch are separate actions; this function does not claim runtime testing.
     """
@@ -69,8 +70,8 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 def _build_project(project, output_dir) -> dict:
     if not project.disc_path:
         raise BuildError("Build requires the project's verified user-owned retail disc")
-    if not project.overrides:
-        raise BuildError("No authored placement changes to build")
+    if not project.imports:
+        raise BuildError("Build requires at least one verified imported scene")
     scene_edits: dict[str, dict] = {}
     entity_lookup = {actor["semantic_id"]: (scene_id, actor)
                      for scene_id, document in project.imports.items()
@@ -90,7 +91,7 @@ def _build_project(project, output_dir) -> dict:
 
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
-    for scene_id in scene_edits:
+    for scene_id in scene_edits or project.imports:
         document = project.imports[scene_id]
         fresh = import_scene(project.disc_path, document["scene"]["name"])
         if canonical_json(document) != canonical_json(fresh):
@@ -135,18 +136,18 @@ def _build_project(project, output_dir) -> dict:
             })
             for change in changes:
                 audit_edits.append({"scene": scene, "semantic_id": f"scene://{scene}/actors/man-p1/{change['record_index']:04d}", **change})
-    if not overlays:
-        raise BuildError("Authored values match retail; no changed placement bytes to build")
+    build_kind = "authored" if overlays else "retail"
     ordered = sorted(overlays, key=lambda item: item["offset"])
     if any(a["offset"] + a["size"] > b["offset"] for a, b in zip(ordered, ordered[1:])):
         raise BuildError("Generated scene overlays overlap; refusing ambiguous build")
     audit = {
         "schema_version": "legaia.build-audit.v1", "disc_sha256": disc_hash,
-        "game_id": "SCUS-94254", "project_name": project.name,
+        "game_id": "SCUS-94254", "project_name": project.name, "build_kind": build_kind,
         "edits": audit_edits,
         "overlays": [{key: value for key, value in overlay.items() if key != "payload"} for overlay in overlays],
         "validation": {"retail_provenance": "fresh_import_match", "unchanged_opaque_bytes": True,
-                       "lz_decode_round_trip": True, "live_runtime": "not_run"},
+                       "lz_decode_round_trip": True if overlays else "not_required_unmodified_disc",
+                       "live_runtime": "not_run"},
     }
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
     build_id = _hash(audit_bytes)[:16]
@@ -161,7 +162,7 @@ def _build_project(project, output_dir) -> dict:
     package_dir = destination / "package"
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
-        f"name = {json.dumps(project.name + ' authored placements')}",
+        f"name = {json.dumps(project.name + (' authored placements' if overlays else ' retail baseline'))}",
         'author = "Local SDK project"', 'description = "Private authored field placements for the verified retail disc."',
         'license = "Private user-owned retail derivative; not for redistribution"', 'resolver = "declarative"',
         "", "[[target]]", 'game_id = "SCUS-94254"', f'disc_sha256 = "{disc_hash}"',
@@ -212,9 +213,10 @@ def _build_project(project, output_dir) -> dict:
             if _hash(archive_file.read(overlay["file"])) != overlay["sha256"]:
                 raise BuildError("Packaged overlay payload hash mismatch")
     return {
-        "path": str(archive_path), "audit": str(destination / "build-audit.json"),
+        "path": str(archive_path), "audit": str(destination / "build-audit.json"), "build_kind": build_kind,
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
         "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
         "runtime_status": "package_built_not_launched", "feature_id": "placements",
-        "install_instruction": "Import the .psxmod in the runtime mod manager, enable Authored actor placements, then launch against the matching stock disc.",
+        "install_instruction": ("Import the .psxmod in the runtime mod manager, enable Authored actor placements, then launch against the matching stock disc."
+                                if overlays else "This verified retail baseline has no modified bytes. Build & Run starts a fresh private run without previous placement overlays."),
     }

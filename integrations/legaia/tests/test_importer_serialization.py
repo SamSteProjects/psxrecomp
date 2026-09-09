@@ -97,6 +97,12 @@ class RetailBuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             project = ProjectService(Path(raw), "Synthetic authoring validation")
             project.import_metadata(metadata, disc)
+            baseline = build_project(project)
+            self.assertEqual(baseline["build_kind"], "retail")
+            self.assertEqual(baseline["overlay_count"], 0)
+            import zipfile
+            with zipfile.ZipFile(baseline["path"]) as package:
+                self.assertEqual(package.namelist(), ["manifest.toml"])
             project.command({"type": "set_transform", "entity_id": actor["semantic_id"],
                              "position": {"x": actor["imported_transform"]["position"]["x"] + 32}})
             with self.assertRaisesRegex(BuildError, "multiple of 64"):
@@ -109,6 +115,14 @@ class RetailBuildTests(unittest.TestCase):
             self.assertEqual(first["sha256"], second["sha256"])
             self.assertEqual(first["changed_fields"], 1)
             self.assertTrue(Path(first["path"]).is_file())
+            project.undo()
+            reverted = build_project(project)
+            self.assertEqual(reverted["sha256"], baseline["sha256"])
+            self.assertEqual(reverted["changed_fields"], 0)
+            self.assertTrue(Path(first["path"]).is_file())
+            project.command({"type": "set_transform", "entity_id": actor["semantic_id"],
+                             "position": {"x": actor["imported_transform"]["position"]["x"]}})
+            self.assertEqual(build_project(project)["sha256"], baseline["sha256"])
 
 
 if __name__ == "__main__":
