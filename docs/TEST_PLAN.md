@@ -62,3 +62,27 @@ identify the entity, property and supported encoding rather than silently round.
 The lightweight checks already implemented should remain small. Add new suites
 at the listed risk boundaries when the corresponding feature is substantial;
 do not generate implementation-mirroring tests merely to increase test counts.
+
+## Additional completed targeted checks
+
+Production snapshot tests now reject missing/duplicate/truncated known sections
+before mutation, preserve MDEC FIFO contents on either allocation failure, and
+resume a partially supplied MDEC command after restore. Raw and compressed
+round trips, reordered sections and repeated loads pass. Unknown sections skip
+within their encoded bounds; an unexpected commit-contract failure terminates
+instead of returning to a partially restored machine.
+
+The real savestate caller also rejects invalid incoming resume addresses before
+guest mutation through both file and blob paths. Template acceptance now covers
+capture/apply/undo/redo/save/reopen and an HTTP-level regression for the exact
+Create/Apply/Delete payloads. Component tests alone had missed the Delete
+route's inappropriate entity requirement; the former route fails this test.
+
+The subsequent feature pass added executable snapshot-header rejection tests
+(including omitted/truncated diagnostics), default-stack Windows mod-runtime
+validation, TIM/material crops with retail provenance, strict v2 field-profile
+rejection cases, conservative actor-candidate tests, and browser Build & Run /
+Attach / Stop / upright textured-preview checks. These do not replace the
+16-layer campaign above. Keep visible placement/revert, audible continuity,
+full field-transition coverage and cold-versus-restored performance as separate
+acceptance gates; a single matching MAN header is insufficient for them.

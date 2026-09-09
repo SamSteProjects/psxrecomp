@@ -24,6 +24,23 @@ the loopback editor API. `editor/` is the user interface. `importer/` owns
 verified disc/container/record decoding. `observer/` and `layouts/` own the
 read-only runtime adapter and title-specific evidence profiles.
 
+`sdk/run.py` owns one private Windows child process. It validates the selected
+runtime, configured retail executable, BIOS and generated mod package, creates
+project-local run resources, and checks listener PID plus runtime/mod identity
+before exposing Attach. Stop addresses only that retained process. Readiness
+proves identity and activation; field gameplay is a separate acceptance step.
+
+`importer/textures.py` decodes structural TIM packs and resolves TMD UV crops
+against uploaded pixel/CLUT address candidates. Only unique static address
+matches produce textures; missing or ambiguous associations remain explicit.
+Raw object coordinates are preserved; the preview converts PSX Y-down for
+upright display using pinned reference evidence.
+
+`observer/correlation.py` samples bounded MAN-header and model evidence under
+the same scene epoch. `RuntimeCandidates` components are transient and cleared
+when attachment or observation fails. Single candidates remain candidates;
+addresses, list order and nearest positions never become imported IDs.
+
 One project has one verified disc identity. Structural scene/actor/model IDs
 remain stable across import and reopen, and are scoped by that disc identity;
 runtime pointers are never asset IDs. Each entity projects Transform,
@@ -38,6 +55,13 @@ not embed game binaries or model payloads. Undo/redo changes only authored
 state; an effective transform merges authored fields with imported fields.
 An authored height does not turn an unknown imported height into a known fact.
 Reimport rejects changed evidence underneath authored actors.
+
+Authored transform templates are separate project records with source disc,
+scene and actor provenance. They capture only explicitly authored position
+axes and apply absolute values through the normal undo command to an existing
+same-disc actor. Unspecified axes and imported facts remain intact. Templates
+neither create native entities nor imply model/animation replacement support;
+Build applies the same representable-field checks as ordinary edits.
 
 The data layers are imported (retail facts), derived (decoded previews and
 indexes), authored (project edits), live (epoch-scoped observations) and

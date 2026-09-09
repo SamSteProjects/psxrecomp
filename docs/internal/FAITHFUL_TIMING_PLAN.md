@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (snapshot transaction and SDK run verification):** All known
+  snapshot sections validate/prepare before guest mutation; partial MDEC
+  commands reserve full expected input capacity. Caller resume-PC rejection
+  also occurs before commit. Production corruption/OOM/reordered/raw/zlib and
+  caller regressions pass. Runtime identity now receives the build revision.
+  Authored transform templates and private Build & Run are connected and
+  verified. One late-input FMV run exhibited a repeated STR acquisition
+  timeout with advancing CD/XA/VBlank and idle MDEC; cause remains unproven.
+  Do not attribute it to optimization or claim FMV/audio acceptance. A fresh
+  early-input optimized run reached New Game/name selection and consumed the
+  complete guarded MAN overlay. No restored run was used as timing truth.
+
+- **2026-09-09 (SDK connected field workflow):** Cold town01 runs consumed the
+  guarded MAN replacement (24,894 bytes / 13 sectors); revisioned field-v2
+  observation accepted 90 actor nodes and conservative MAN-header candidates.
+  Editor Build & Run verifies private runtime identity and mod activation,
+  with graceful owned-process Stop. TIM previews retain explicit association
+  limits. Default-stack disc fingerprinting and diagnostic-independent snapshot
+  identity rejection are fixed. Initial private field builds lacked generic
+  optimization flags, so their timing is not performance evidence; subsequent
+  private MSVC configuration explicitly restores `/O2 /Ob2 /DNDEBUG /EHsc`.
+  Malformed-state transaction validation is handled separately from guest
+  timing or post-restore performance acceptance.
+
+
 - **2026-09-09 (Legaia SDK authoring):** Restored evidence-backed field import
   and bounded observer/profile services; added a central project/asset/scene
   model, separate authored transform commands, persistence and local editor.

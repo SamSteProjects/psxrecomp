@@ -71,8 +71,8 @@ The initial live sampler examined 32 of the 90 nodes: 31 valid headers yielded
 55 candidate links, including 16 single-candidate entities, 15 ambiguous
 entities and 21 unmatched entities. These counts are from that explicitly
 partial sample. The final implementation batches up to 128 nodes within 45
-requests, 4,096 bytes and four seconds; its full-node retail acceptance remains
-separate from the initial sample.
+requests, 4,096 bytes and four seconds; later full-node acceptance is recorded
+below, separately from the initial sample.
 
 The candidate for actor 0001 contains MAN-header X=9984, agreeing with the
 authored override and differing from imported X=9920. Its observed world
@@ -85,3 +85,33 @@ Private evidence is retained under `local-output/sdk-20260909/package-runtime/`:
 `field-v2-live.json`, `man-binding-live.json`, `man-correlation-live.json` and
 `authored-man-candidate-live.json`. Runtime captures, screenshots and slot-9
 savestate remain ignored and are not repository fixtures.
+
+## Later optimized runtime and full binding sample
+
+The final cold run used runtime changes through `a9478f88`, standard MSVC
+`/O2 /Ob2 /DNDEBUG`, C++ `/GR /EHsc`, and the same private package. Executable
+SHA-256 is `99d4e3b6742c864c3087a73c356f0d0de51bdc623accb0e1dd8e026052e94afa`;
+the protocol reports `nightly-16-ga9478f88-dirty`. Exact source hashes are in
+the ignored final validation manifest. No snapshot was restored.
+
+The game reached New Game, default-name selection and Rim Elm. Package
+consumption again totaled 24,894 bytes over 13 sectors. Name selection correctly
+rejected field observation until the relevant execution witnesses existed.
+After confirmation, the editor's Observe actors action accepted 90 prefixes:
+14,040 bytes, 94 total requests, 1,114.530 ms total. The MAN binding pass sampled
+all 90 nodes with 31 requests and 2,670 bytes in 414.146 ms, within frames
+24157–24197 of one guarded epoch. It produced 82 candidate links and zero
+confirmed identities. Actor0001's candidate header retained authored X9984;
+its world X/Z remained parked at 16320.
+
+The screenshot shows Vahn and the Village Elder at Rim Elm's tree. The editor
+kept authored fields disabled in Live mode. Its Stop action exited the owned
+runtime with code zero and cleared candidate count to zero. Evidence files
+are `cold-editor-actor-state.json`, `cold-town01.png` and
+`final-validation-manifest.json` under `local-output/sdk-20260909/`.
+
+A separate run with input delayed several minutes entered an opening-FMV STR
+frame-acquisition retry. CD/XA/VBlank advanced while MDEC remained idle. Its
+cause is unresolved; neither optimization blame nor audible/FMVs acceptance
+follows from these captures. The retry probes and unsuccessful acceptance
+record were preserved separately.

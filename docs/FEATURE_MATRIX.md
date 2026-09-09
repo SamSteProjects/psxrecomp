@@ -7,20 +7,22 @@ is complete. Runtime fixes from the preceding milestone are committed as
 
 | Subsystem | Status | Implemented evidence / remaining acceptance |
 |---|---|---|
-| Release parity | PARTIAL | Stability/source audit in `legaia-release-parity.md`; Windows build, rendered title/opening story and bounded process/audio samples passed. Field gameplay, FMV continuity and audible quality remain unaccepted. |
+| Release parity | PARTIAL | Stability/source audit in `legaia-release-parity.md`; Windows build, rendered title/opening story/town01 arrival and bounded process/audio samples passed. Full field gameplay, FMV continuity and audible quality remain unaccepted. |
 | Overlay precompilation | FUNCTIONAL | Build-time split discovery; growth/shrink/body edits and helper isolation checked with compiled fixtures. Ten intended retail roles; MAPDSIP completeness not claimed. |
 | Restore ownership | FUNCTIONAL | Explicit native invalidation and lazy-cache reset; repeated restore fixtures pass. Restored retail performance remains a separate gate. |
+| Snapshot integrity | FUNCTIONAL / BOUNDED | Header identity rejects independently of diagnostic storage. All known sections validate and prepare before commit; corrupt input and MDEC allocation failure preserve guest state. Executable raw/zlib/reordered/repeated/partial-command regressions pass. Retail scheduler restoration is a separate gate. |
 | Disc / scene import | FUNCTIONAL | Exact SCUS-94254 disc identity, ISO/PROT/CDNAME/LZS/MAN readers; town01 52 actors/119 models/52 resolved and town0c 44/115/44. Unsupported bundle layouts fail explicitly. |
-| Asset database | FOUNDATION | Disc-scoped structural model IDs, source records and dependencies field. Rich dependency graph, textures, replacement assets and animation catalog pending. |
-| Model preview | PARTIAL | All 29 town01 referenced models decode; individual object triangles visibly render in the editor. Skeletal pose, ETMD breadth and texture association need separate acceptance. |
+| Asset database | FOUNDATION | Disc-scoped structural model IDs and provenance; texture catalog supplies static address-based material dependencies. Central animation/replacement asset catalog remains pending. |
+| Model preview | PARTIAL | All 29 town01 actor-referenced models decode. Browser-verified upright object-local geometry with matched textures; skeletal pose, ETMD breadth and animated rendering remain pending. |
+| Textures | FUNCTIONAL / READ-ONLY | Bounded 4/8/16/24-bit TIM decoding; town01 96 TIMs, 38 uniquely matched textured material crops, 26 untextured and 8 unresolved among 72 materials. Runtime residency, blend and animated palettes are not reconstructed. |
 | Scene model | FUNCTIONAL | Imported actor entities and evidenced Transform/ModelRenderer/Animation/RetailMetadata components. Triggers/collision/dialogue/scripts remain unresolved. |
-| Project authoring | FUNCTIONAL | XYZ overrides, selection, undo/redo, dirty state, content-addressed imported evidence, digest-checked save/reopen. Heading/model/animation editing and templates pending. |
-| Editor | PARTIAL | Browser-verified selection/edit/clear/undo/redo/save/reopen and actual model preview; responsive workspace tabs, placement markers and transform handles. Real posed scene rendering remains pending. |
-| Live bridge | PARTIAL | Generic identity/guard/witness/read-regions protocol ported; live executable identity and capability negotiation pass. Title lacks field witnesses; later intro observation rejects a backend mismatch at 0x801CF754. Accepted retail field traversal remains pending. |
-| Correlation | FOUNDATION | Structural imported identities and epoch-scoped runtime nodes exist separately. No guessed list-order mapping; matching engine pending. |
+| Project authoring | FUNCTIONAL | XYZ overrides, selection, undo/redo, dirty state, content-addressed imported evidence, digest-checked save/reopen. Authored transform templates capture/apply supported axes with provenance and undo/redo; native actor creation and heading/model/animation editing remain pending. |
+| Editor | PARTIAL | Verified selection/edit/clear/undo/redo/save/reopen, textured object preview, private Build & Run, attach and graceful Stop. Scene viewport still uses placement markers; posed scene rendering remains pending. |
+| Live bridge | PARTIAL / LIVE-VALIDATED | Cold town01 v2 capture accepted 90 nodes under executable/witness/scene/epoch guards. Archived v1 remains strict; title rejects and town0c/transition acceptance remains pending. |
+| Correlation | PARTIAL / READ-ONLY | Guarded MAN-header/model evidence yields explicit candidates and ambiguity. Authored actor0001 X9984 is present in a live candidate header; identity and visible placement remain unconfirmed. |
 | Scripts/dialogue/flags | FOUNDATION | Unknown fields retained with provenance. Decoders, editor tools and bounded round-trip serializers pending. |
 | Transitions/world map | FOUNDATION | Prior observation vocabulary retained. Transition graph, MAPDSIP coverage and world-map authoring pending. |
-| Build and Run | PARTIAL | Representable X/Z edits serialize to hash-guarded streaming disc overlays in a private .psxmod. Retail one-byte edit round trip, package parser/installer and enabled runtime boot pass. Actual patched-sector consumption and visible authored actor placement require further acceptance. |
+| Build and Run | FUNCTIONAL / PARTIAL ACCEPTANCE | Supported X/Z edits build into guarded private .psxmod packages. Editor-owned Windows launch verifies executable/BIOS/disc/mod identity; Attach and Stop pass. Cold game consumed 24894 patched bytes over13sectors and rendered town01. Visible actor location and revert acceptance remain pending. |
 
 The primary acceptance path is import -> hierarchy/viewport -> select -> edit ->
 undo/redo -> save -> reopen with original retail evidence unchanged. The later

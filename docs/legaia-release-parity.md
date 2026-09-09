@@ -5,7 +5,71 @@ stability and input fixes from the supplied SDK prompts. The subsequent SDK
 buildout adds an integrated editor, generic guarded observation protocol and
 private placement-package workflow; see `FEATURE_MATRIX.md` for current limits.
 
-## Subsequent SDK runtime validation
+## Latest field and authoring acceptance
+
+The later cold runs consumed the complete authored MAN overlay: 24,894 bytes
+across 13 sectors, no guard failure, and a rendered Rim Elm arrival scene.
+The new explicit field-v2 profile accepted 90 nodes in town01 with unchanged
+instruction hashes and strict backend/generation/scene guards. A candidate
+MAN header contains authored X=9984 versus imported X=9920; its world position
+was parked, so visible placement and confirmed actor identity remain pending.
+See [the field evidence record](legaia-sdk/live-field-20260909.md).
+
+The latest optimized cold run independently repeated package consumption and
+Rim Elm rendering with runtime source through `a9478f88`, executable SHA-256
+`99d4e3b6742c864c3087a73c356f0d0de51bdc623accb0e1dd8e026052e94afa`.
+After default-name confirmation, editor observation accepted all 90 actors
+and all 90 bounded MAN binding samples. There were 82 candidate links and no
+confirmed identities. Graceful Stop exited zero and cleared transient Live
+state. A separate late-input run encountered an unresolved STR frame-acquisition
+retry during the opening FMV; this successful route does not close that gate.
+
+Additional generic stability fixes in `c8e69ccd`:
+
+- Disc fingerprinting used a 1 MiB stack buffer, reproducing Windows
+  `0xC00000FD` in the real mod-runtime tests with a default 1 MiB stack.
+  A 64 KiB incremental buffer retains the hash contract; the same tests pass.
+- Snapshot header rejection depended on writable diagnostic text. With null,
+  zero-capacity or one-byte diagnostics, all seven incompatible identity fields
+  could be accepted. Acceptance now uses its own boolean; executable regressions
+  reject each mismatch regardless of diagnostic capacity.
+
+The initial private field build had empty generic C/C++ Release flags. Its
+captures are functional evidence, not optimized timing or audio-continuity
+acceptance. A subsequent private build restores standard MSVC optimization and
+C++ exception-unwind flags. Source hashes and compiler flags must accompany
+future fresh-versus-restored performance comparisons.
+
+`d1b3b229` makes snapshot restoration staged: every known section is bounded,
+decoded, validated and prepared before any guest state is committed. Missing,
+duplicate, truncated and malformed known sections reject without a partial
+restore. Unknown sections retain bounded forward-compatible skipping. The
+raw path borrows the input buffer and avoids a full-machine backup; compressed
+staging has a 64 MiB aggregate limit. MDEC reserves capacity for the complete
+pending command, not just its existing words, before restoring FIFO contents.
+Production-code regressions exercise raw/zlib round trips, changed section
+order, repeated restoration, allocation failure and partial MDEC continuation.
+An internal commit-contract violation terminates rather than returning to a
+mixed runnable machine. Renderer callbacks and post-restore retail scheduling
+still require separate acceptance.
+
+`946c76d8` closes the caller-level rejection boundary: savestate blob and file
+loads apply the existing resume-address policy to the incoming serialized PC
+before committing guest state. Existing boot-state APIs retain their behavior.
+The check avoids pre-load RAM or overlay ownership. Six rejected PCs, compressed
+input, unchanged guest state and successful incoming-state resume are covered
+by the production caller harness; the former caller fails that regression.
+This preserves current policy and does not prove every accepted PC executable.
+`a9478f88` supplies the existing source-revision stamp to the debug protocol as
+well as crash diagnostics; the former protocol incorrectly reported unknown.
+
+The private editor launch path also removes an unnecessary Windows directory
+rename (`5d8337da`). Each run already owns a fresh directory; package validation
+finishes there before the child starts. The original failure started no game.
+The subsequent launch verified the owned process, executable, BIOS, disc and
+enabled package plan. This does not change the generic mod-manager installer.
+
+## Earlier SDK runtime validation
 
 The generic observer port restores protocol discovery, main executable source
 identity, executable registration/lifecycle catalogues, requested-PC witnesses,
@@ -221,7 +285,7 @@ unsuitable as performance truth until the retail comparison below passes.
 | Priority | Check | Fixture / platform | Acceptance |
 | --- | --- | --- | --- |
 | P0 | Restore/replacement matrix | Synthetic loader; Windows and Linux | Positive/negative owner decisions revalidate, quarantines persist, stale native body never executes; static and dynamic owners covered. |
-| P0 | Savestate file failure integrity | Synthetic whole-machine snapshots | Truncated/malformed sections cannot leave a partly applied runnable machine. Current serializer needs separate transactional validation work. |
+| P0 | Savestate file failure integrity | Synthetic whole-machine snapshots | Staged raw/zlib/corrupt/reordered/OOM and caller resume-PC rejection regressions pass. Renderer/scheduler retail lifecycle acceptance remains. |
 | P0 | Muscle Dome relocation | Authorized retail input; Windows | Recover title patch, prove idempotent relocation and finish loss/win return paths. |
 | P1 | Fresh vs restored same scene | Authorized retail input; Windows | Compare native/interpreted instructions and frame timings after restore and return; no restore-only sustained fallback. |
 | P1 | CD/XA battle sequence | Authorized retail input; Windows; manual audio | Healing Leaf, Spirit, two Hyper Arts and summon finish with synchronized audible audio. |
