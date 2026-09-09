@@ -19,7 +19,7 @@ def main():
     env["PATH"] = str(Path(cc).parent) + os.pathsep + env.get("PATH", "")
     with tempfile.TemporaryDirectory(prefix="boot-state-transaction-") as tmp:
         objects = []
-        for name in ("boot_state", "mdec", "dma", "sio"):
+        for name in ("boot_state", "mdec", "dma", "sio", "savestate"):
             obj = Path(tmp) / (name + ".o")
             extra = ["-Dmalloc=bs_test_malloc", "-Dfree=bs_test_free"] if name == "boot_state" else []
             if name == "mdec":
@@ -33,7 +33,7 @@ def main():
         subprocess.run([cc, "-std=c11", "-O2", "-flto", "-I" + str(ROOT / "runtime/include"),
                         str(ROOT / "runtime/tests/test_boot_state_transaction.c"), *objects,
                         "-Wl,--gc-sections", "-lz", "-o", str(binary)], env=env, check=True)
-        subprocess.run([str(binary)], env=env, check=True)
+        subprocess.run([str(binary), tmp], env=env, check=True)
         invariant = subprocess.run([str(binary), "--commit-failure"], env=env,
                                    capture_output=True, text=True)
         assert invariant.returncode != 0

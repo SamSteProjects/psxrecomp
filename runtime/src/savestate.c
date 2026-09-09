@@ -102,10 +102,24 @@ static uint32_t savestate_resolve_resume_pc(const CPUState* cpu, uint32_t hint)
     return 0;
 }
 
+static int savestate_resume_pc_address_ok(uint32_t pc)
+{
+    return pc != 0u && (pc & 3u) == 0u && pc != PSX_EXC_SENTINEL_PC &&
+           pc != 0x80000080u && pc != 0xbfc00180u && pc != 0x80000000u;
+}
+
 static int savestate_resume_pc_ok(uint32_t pc)
 {
-    return pc != 0u && (pc & 3u) == 0u && psx_is_dispatchable(pc) &&
-           pc != 0x80000080u && pc != 0xbfc00180u && pc != 0x80000000u;
+    return savestate_resume_pc_address_ok(pc) && psx_is_dispatchable(pc);
+}
+
+static int savestate_restore_pc_check(uint32_t incoming_pc, void* context)
+{
+    (void)context;
+    /* This matches today's traps.c dispatchability predicate without asking
+     * about live overlays/RAM. If dispatchability later becomes ownership-
+     * aware, it cannot safely run against the pre-load timeline here. */
+    return savestate_resume_pc_address_ok(incoming_pc);
 }
 
 extern int psx_hle_scheduler_enabled(void);
@@ -866,8 +880,9 @@ void savestate_poll(CPUState* cpu, uint32_t resume_pc) {
         path[0] = '\0';
         if (s_load_blob && s_load_blob_len > 0) {
             const size_t blob_len = s_load_blob_len;
-            loaded = boot_state_load_buffer(s_load_blob, blob_len,
-                                            s_bios_checksum, s_entry_pc, cpu);
+            loaded = boot_state_load_buffer_checked(s_load_blob, blob_len,
+                         s_bios_checksum, s_entry_pc, cpu,
+                         savestate_restore_pc_check, NULL);
             clear_load_blob();
             if (!loaded) {
                 fprintf(stderr,
@@ -877,7 +892,8 @@ void savestate_poll(CPUState* cpu, uint32_t resume_pc) {
                 psx_frontend_on_savestate_notify(1, slot, 0);
             }
         } else if (savestate_slot_path(slot, path, sizeof(path))) {
-            loaded = boot_state_load(path, s_bios_checksum, s_entry_pc, cpu);
+            loaded = boot_state_load_checked(path, s_bios_checksum, s_entry_pc,
+                                             cpu, savestate_restore_pc_check, NULL);
             if (!loaded) {
                 fprintf(stderr,
                         "savestate: LOAD FAILED slot %d %s\n",
@@ -887,15 +903,6 @@ void savestate_poll(CPUState* cpu, uint32_t resume_pc) {
             }
         } else {
             fprintf(stderr, "savestate: LOAD FAILED slot %d (no path)\n", slot);
-            s_load_failed = 1;
-            psx_frontend_on_savestate_notify(1, slot, 0);
-        }
-        if (loaded && !savestate_resume_pc_ok(cpu->pc)) {
-            fprintf(stderr,
-                    "savestate: LOAD FAILED slot %d — resume pc=0x%08X "
-                    "(null/undispatchable)%s\n",
-                    slot, (unsigned)cpu->pc, path[0] ? "" : " [blob]");
-            loaded = 0;
             s_load_failed = 1;
             psx_frontend_on_savestate_notify(1, slot, 0);
         }

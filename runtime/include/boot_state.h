@@ -145,6 +145,20 @@ int  boot_state_load_buffer(const uint8_t* file, size_t file_len,
                             uint32_t bios_checksum, uint32_t entry_pc,
                             CPUState* cpu);
 
+/* Optional caller policy, evaluated on the incoming serialized PC after full
+ * wire validation and before guest mutation. The callback must be a pure
+ * address predicate: it must not inspect current RAM/overlay ownership, mutate
+ * state, or retain input. Such state belongs to the pre-load timeline.
+ * Return zero to reject normally with the running machine unchanged. */
+typedef int (*BootStateResumeCheck)(uint32_t incoming_pc, void* context);
+int boot_state_load_buffer_checked(const uint8_t* file, size_t file_len,
+                                   uint32_t bios_checksum, uint32_t entry_pc,
+                                   CPUState* cpu, BootStateResumeCheck check,
+                                   void* context);
+int boot_state_load_checked(const char* path, uint32_t bios_checksum,
+                            uint32_t entry_pc, CPUState* cpu,
+                            BootStateResumeCheck check, void* context);
+
 /* Header-only integrity check (no section inflate/apply). Returns 1 if this
  * build can load the image; 0 and fills reason (when non-NULL) on reject. */
 int  boot_state_check_buffer(const uint8_t* file, size_t file_len,

@@ -3,6 +3,8 @@
 #include "boot_state.h"
 #include "overlay_api.h"
 #include "mdec.h"
+#include "savestate.h"
+#include "gpu.h"
 #include "pst_wire.h"
 #include <assert.h>
 #include <stdio.h>
@@ -27,6 +29,26 @@ static size_t last_realloc_size;
 static int fail_at = -1, live_boot_allocations;
 static int commit_failure;
 static uint64_t cd_restore_clock;
+static uint32_t resumed_pc;
+static unsigned load_fail_notices;
+static int live_dispatchable = 1;
+int psx_hle_scheduler_enabled(void) { return 1; }
+int psx_is_dispatchable(uint32_t pc) { return live_dispatchable && pc && pc!=PSX_EXC_SENTINEL_PC; }
+int psx_irq_resume_context_snapshot_site(void) { return 0; }
+uint32_t psx_irq_resume_context_snapshot_pc(void) { return 0; }
+uint32_t psx_compiled_irq_resume_pc(void) { return 0; }
+uint32_t psx_last_irq_check_pc(void) { return 0; }
+uint32_t psx_netplay_rb_sticky_bb_pc(void) { return 0; }
+int psx_irq_resume_context_snapshot_safe_at(uint32_t pc) { (void)pc;return 1; }
+void psx_frontend_on_savestate_notify(int load,int slot,int ok) { (void)slot;if(load&&!ok)load_fail_notices++; }
+void psx_frontend_on_savestate_loaded(void) { side_effects++; }
+void psx_cycles_resync_after_restore(CPUState* cpu) { (void)cpu;side_effects++; }
+void interrupts_resync_after_restore(void) { side_effects++; }
+void cdrom_accelerate_after_savestate(void) { side_effects++; }
+/* Production unwinds here; the test records its target and returns for checks. */
+void psx_scheduler_resume_at(uint32_t pc) { resumed_pc=pc; }
+void gpu_get_display_info(GpuDisplayInfo* out) { memset(out,0,sizeof *out); }
+uint32_t gpu_display_pixel_argb(const GpuDisplayInfo* di,uint32_t x,uint32_t y) { (void)di;(void)x;(void)y;return 0; }
 
 void* bs_test_malloc(size_t n) {
     if ((int)allocations++ == fail_at) return NULL;
@@ -47,7 +69,7 @@ uint8_t* memory_get_ram_ptr(void) { return ram; }
 uint8_t* memory_get_scratchpad_ptr(void) { return spad; }
 uint8_t* spu_get_ram_ptr(void) { return spuram; }
 uint32_t spu_get_ram_bytes(void) { return sizeof spuram; }
-uint16_t* gpu_get_vram(void) { return vram; }
+const uint16_t* gpu_get_vram(void) { return vram; }
 void gr_vram_transfer_in(int x, int y, int w, int h, const uint16_t* p) {
     (void)x;(void)y;(void)w;(void)h; memcpy(vram,p,sizeof vram); side_effects++;
 }
@@ -224,6 +246,43 @@ int main(int argc, char** argv) {
     free(partial_saved);
     /* Return to the original snapshot before the final whole-state proof. */
     assert(boot_state_load_buffer(base,n,0x12345678,0x80010000,&cpu));
+    if(argc==2) {
+        /* Exercise the real savestate_poll for both blob and file requests.
+         * Invalid incoming PCs reject before CPU/RAM/device mutation. */
+        savestate_configure(argv[1],0x12345678,0x80010000,NULL,0);
+        const uint32_t invalid[]={0,PSX_EXC_SENTINEL_PC,0x80000080,0xBFC00180,0x80000000,0x80010002};
+        for(unsigned disk=0;disk<2;disk++)for(unsigned i=0;i<sizeof invalid/sizeof invalid[0];i++) {
+            memcpy(wire,base,n);put32(wire+cpu_off+16+128,invalid[i]);
+            put32(wire+cpu_off+16+12,456);
+            unsigned effects=side_effects,notices=load_fail_notices;
+            if(disk) {
+                assert(savestate_write_slot(0,wire,n));assert(savestate_request_load_protocol(0));
+            } else assert(savestate_request_load_blob_protocol(wire,n));
+            savestate_poll(&cpu,cpu.pc);
+            assert(savestate_take_load_failed() && !savestate_take_load_completed());
+            assert(side_effects==effects && load_fail_notices==notices+1);
+            snapshot(&cpu,&again,&again_n);assert(again_n==n&&!memcmp(base,again,n));bs_test_free(again);
+        }
+        /* The callback sees the decompressed CPU wire too. */
+        CPUState bad_cpu=cpu;bad_cpu.pc=0;
+        assert(boot_state_save_buffer(&bad_cpu,0x12345678,0x80010000,&compressed,&compressed_n));
+        unsigned effects=side_effects;
+        assert(savestate_request_load_blob_protocol(compressed,compressed_n));
+        savestate_poll(&cpu,cpu.pc);assert(savestate_take_load_failed());
+        assert(side_effects==effects);bs_test_free(compressed);
+        /* Incoming address policy must not consult old live overlay ownership.
+         * A valid address plus changed incoming CPU/RAM commits and resumes. */
+        memcpy(wire,base,n);put32(wire+cpu_off+16+128,0x80123450);
+        put32(wire+cpu_off+16+12,456);wire[section(wire,n,BS_SEC_RAM)+16]=0x44;
+        live_dispatchable=0;
+        assert(savestate_request_load_blob_protocol(wire,n));
+        savestate_poll(&cpu,cpu.pc);
+        assert(resumed_pc==0x80123450 && cpu.pc==resumed_pc && cpu.gpr[3]==456 && ram[0]==0x44);
+        assert(savestate_take_load_completed()&&!savestate_take_load_failed());
+        live_dispatchable=1;
+        assert(boot_state_load_buffer(base,n,0x12345678,0x80010000,&cpu));
+        puts("PASS real savestate blob/file resume-PC rejection precedes mutation and valid incoming state resumes");
+    }
     bs_test_free(base);free(wire);assert(live_boot_allocations==0);
     puts("PASS staged snapshot corruption rejection, raw/zlib roundtrip, unknown sections and repeat restore");
     return 0;

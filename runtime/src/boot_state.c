@@ -796,9 +796,10 @@ typedef struct BsStagedSection {
     uint32_t len;
 } BsStagedSection;
 
-int boot_state_load_buffer(const uint8_t* file, size_t file_len,
-                           uint32_t bios_checksum, uint32_t entry_pc,
-                           CPUState* cpu) {
+int boot_state_load_buffer_checked(const uint8_t* file, size_t file_len,
+                                   uint32_t bios_checksum, uint32_t entry_pc,
+                                   CPUState* cpu, BootStateResumeCheck check,
+                                   void* context) {
     const uint8_t* cur;
     const uint8_t* end;
     BootStateHeader h;
@@ -883,6 +884,15 @@ int boot_state_load_buffer(const uint8_t* file, size_t file_len,
         if (!validate_section(tag, sec->data, sec->len)) goto cleanup;
     }
     if (cur != end || (seen & required) != required) goto cleanup;
+    if (check) {
+        PstR r;
+        uint32_t incoming_pc;
+        /* CPU wire stores 32 GPRs before PC. Do not decode/canonicalize into
+         * the caller's live CPU just to evaluate a resume-address policy. */
+        pst_r_init(&r, staged[BS_SEC_CPU].data + 32u * 4u, 4u);
+        if (!pst_r_u32(&r, &incoming_pc) || !check(incoming_pc, context))
+            goto cleanup;
+    }
     if (!memory_get_ram_ptr() || !memory_get_scratchpad_ptr() || !spu_get_ram_ptr())
         goto cleanup;
 
@@ -950,8 +960,15 @@ cleanup:
     return ok;
 }
 
-int boot_state_load(const char* path, uint32_t bios_checksum,
-                    uint32_t entry_pc, CPUState* cpu) {
+int boot_state_load_buffer(const uint8_t* file, size_t file_len,
+                           uint32_t bios_checksum, uint32_t entry_pc, CPUState* cpu) {
+    return boot_state_load_buffer_checked(file, file_len, bios_checksum,
+                                          entry_pc, cpu, NULL, NULL);
+}
+
+int boot_state_load_checked(const char* path, uint32_t bios_checksum,
+                            uint32_t entry_pc, CPUState* cpu,
+                            BootStateResumeCheck check, void* context) {
     FILE* f = fopen(path, "rb");
     long sz;
     uint8_t* file = NULL;
@@ -987,9 +1004,15 @@ int boot_state_load(const char* path, uint32_t bios_checksum,
     (void)t0;
     (void)t_after_read;
 
-    ok = boot_state_load_buffer(file, file_len, bios_checksum, entry_pc, cpu);
+    ok = boot_state_load_buffer_checked(file, file_len, bios_checksum, entry_pc,
+                                        cpu, check, context);
     free(file);
     return ok;
+}
+
+int boot_state_load(const char* path, uint32_t bios_checksum,
+                    uint32_t entry_pc, CPUState* cpu) {
+    return boot_state_load_checked(path, bios_checksum, entry_pc, cpu, NULL, NULL);
 }
 
 void boot_state_set_capture(const char* path, uint32_t bios_checksum,
