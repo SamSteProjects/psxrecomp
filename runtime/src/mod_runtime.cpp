@@ -62,10 +62,17 @@ struct RuntimeMods {
     std::string error;
     std::string exe_sha256;
     std::string disc_sha256;
+    std::string committed_disc_sha256;
     std::filesystem::path disc_path;
     std::filesystem::path effective_disc_path;
     uint32_t entry_phys = 0;
     bool initialized = false;
+    bool plan_committed = false;
+    uint64_t counter_epoch = 0;
+    uint64_t overlay_sector_applications = 0;
+    uint64_t overlay_bytes_copied = 0;
+    bool has_last_overlay_lba = false;
+    uint32_t last_overlay_lba = 0;
     bool main_applied = false;
     bool disc_enabled = false;
     bool disc_guard_failed = false;
@@ -75,6 +82,14 @@ struct RuntimeMods {
 RuntimeMods& state() {
     static RuntimeMods value;
     return value;
+}
+
+void reset_disc_observation(RuntimeMods& s) {
+    ++s.counter_epoch;
+    s.overlay_sector_applications = 0;
+    s.overlay_bytes_copied = 0;
+    s.has_last_overlay_lba = false;
+    s.last_overlay_lba = 0;
 }
 
 struct FunctionEntryPlugin {
@@ -1099,6 +1114,9 @@ bool mod_runtime_initialize(const std::filesystem::path& root,
                             const std::filesystem::path& exe_path,
                             std::string* error) {
     RuntimeMods& s = state();
+    reset_disc_observation(s);
+    s.plan_committed = false;
+    s.committed_disc_sha256.clear();
     s.manager.set_root({});
     s.plan = {};
     s.validation = {};
@@ -1141,6 +1159,9 @@ bool mod_runtime_initialize(const std::filesystem::path& root,
 
 bool mod_runtime_clear_for_netplay(std::string* error) {
     RuntimeMods& s = state();
+    reset_disc_observation(s);
+    s.plan_committed = false;
+    s.committed_disc_sha256.clear();
     if (!s.initialized) {
         if (error) error->clear();
         return true;
@@ -1207,6 +1228,9 @@ bool mod_runtime_commit(const std::filesystem::path& disc_path, std::string* err
         return false;
     }
     s.plan = std::move(plan);
+    s.plan_committed = true;
+    s.committed_disc_sha256 = s.disc_sha256;
+    reset_disc_observation(s);
     build_disc_index(s);
     s.effective_disc_path = std::move(effective_disc);
     s.main_applied = false;
@@ -1229,6 +1253,28 @@ const RecompLauncherCModProvider* mod_runtime_launcher_provider() {
 #endif
 
 } // namespace PSXRecompV4
+
+extern "C" void mod_runtime_get_status(ModRuntimeStatus* out) {
+    if (!out) return;
+    const auto& s = PSXRecompV4::state();
+    std::memset(out, 0, sizeof(*out));
+    out->initialized = s.initialized;
+    out->plan_committed = s.plan_committed;
+    out->main_applied = s.main_applied;
+    out->disc_enabled = s.disc_enabled;
+    out->disc_guard_failed = s.disc_guard_failed;
+    out->active_write_count = s.plan.writes.size();
+    out->active_overlay_count = s.plan.overlays.size();
+    out->counter_epoch = s.counter_epoch;
+    out->overlay_sector_applications = s.overlay_sector_applications;
+    out->overlay_bytes_copied = s.overlay_bytes_copied;
+    out->has_last_overlay_lba = s.has_last_overlay_lba;
+    out->last_overlay_lba = s.last_overlay_lba;
+    std::snprintf(out->plan_fingerprint, sizeof(out->plan_fingerprint), "%s",
+                  s.plan.fingerprint.c_str());
+    std::snprintf(out->disc_sha256, sizeof(out->disc_sha256), "%s",
+                  s.committed_disc_sha256.c_str());
+}
 
 extern "C" void mod_runtime_on_dispatch(uint32_t target) {
     using namespace PSXRecompV4;
@@ -1512,6 +1558,7 @@ extern "C" void mod_runtime_patch_disc_sector(uint32_t lba, int raw_sector,
         }
     }
     if (overlay_sector != overlay_index.end()) {
+        bool counted_sector = false;
         for (size_t overlay_index_value : overlay_sector->second) {
             const ModResolution::Overlay& overlay =
                 s.plan.overlays[overlay_index_value];
@@ -1525,6 +1572,18 @@ extern "C" void mod_runtime_patch_disc_sector(uint32_t lba, int raw_sector,
             const size_t count = (size_t)(copy_end - copy_begin);
             std::memcpy(bytes + destination,
                         overlay.payload.data() + source, count);
+            /* Count only completed payload copies. Multiple overlays in one
+             * target sector count as one application; raw/user views and
+             * repeated reads remain separate host I/O applications. */
+            if (!counted_sector) {
+                if (s.overlay_sector_applications != UINT64_MAX)
+                    ++s.overlay_sector_applications;
+                counted_sector = true;
+            }
+            s.overlay_bytes_copied = count > UINT64_MAX - s.overlay_bytes_copied
+                ? UINT64_MAX : s.overlay_bytes_copied + count;
+            s.has_last_overlay_lba = true;
+            s.last_overlay_lba = lba;
         }
     }
     if (has_mode2_form1_user_data && !s.disc_guard_failed)

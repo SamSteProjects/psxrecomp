@@ -179,6 +179,10 @@ int      dirty_ram_text_native_ok_ranges_from(const uint32_t *lo_len_pairs,
                                              uint32_t exec_pc);
 int      dirty_ram_text_native_ok_ranges(const uint32_t *lo_len_pairs,
                                         uint32_t count);
+uint32_t overlay_watch_page_size(void);
+uint32_t overlay_watch_page_count(void);
+uint32_t overlay_watch_page_generation(uint32_t page);
+int dirty_ram_text_identity(uint32_t *phys_lo, uint32_t *len, uint8_t source_sha256[32]);
 int      dirty_ram_text_image_registered(void);
 /* Bless an intentional runtime data patch (e.g. text_xlate string/glyph tables)
  * into the text reference image so it is not mistaken for self-modifying code. */

@@ -200,6 +200,8 @@ int debug_server_get_input_override(void);
 int debug_server_get_input_port(void);
 
 /* Discard host input/route state across a fresh emulation session. */
+void debug_server_set_program_identity(const char *serial);
+void debug_server_begin_session(void);
 void debug_server_reset_input(void);
 
 /* Optional analog-stick override set alongside set_input (lx/ly/rx/ry,

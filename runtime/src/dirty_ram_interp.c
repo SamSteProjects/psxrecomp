@@ -36,6 +36,7 @@
 #include "starvation_ring.h"
 #include "fntrace.h"  /* fntrace_is_game_started / fntrace_mark_game_started */
 
+#include "overlay_capture.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -254,9 +255,11 @@ static DirtyRamPcEntry *pc_table_get_or_insert(uint32_t pc) {
  * overlay_capture can report execution-verified seeds for the region. A PSX
  * instruction is aligned, making this a single direct bitmap OR rather than a
  * cache-unfriendly open-addressed lookup on every guest instruction. */
-static inline void exec_pc_table_record(uint32_t pc) {
+static inline void exec_pc_table_record(uint32_t pc, uint32_t instruction) {
     uint32_t phys = pc & 0x1FFFFFFFu;
     if (phys < 2u * 1024u * 1024u && (phys & 3u) == 0u) {
+        if (g_overlay_witness_request_bitmap[phys >> 7] & (1u << ((phys >> 2) & 31u)))
+            overlay_lifecycle_observe_interpreter(pc, instruction);
         uint32_t word = phys >> 2;
         uint32_t mask = 1u << (word & 31u);
         uint32_t *slot = &g_dirty_ram_exec_pc_bitmap[word >> 5];
@@ -1497,7 +1500,7 @@ static int exec_one_fetched(CPUState *cpu, uint32_t pc, uint32_t insn,
 
 static int exec_one_fetched_inner(CPUState *cpu, uint32_t pc, uint32_t insn,
                                   uint32_t *next_pc_out) {
-    exec_pc_table_record(pc);
+    exec_pc_table_record(pc, insn);
     uint32_t opc  = op_field(insn);
     uint32_t rs   = rs_field(insn);
     uint32_t rt   = rt_field(insn);

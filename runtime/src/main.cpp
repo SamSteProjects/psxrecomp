@@ -12448,6 +12448,9 @@ int main(int argc, char** argv) {
             const auto gc = PSXRecompV4::load_game_config(game_config_path);
             game_name = gc.name;
             game_id   = gc.id;
+#ifndef PSX_NO_DEBUG_TOOLS
+            debug_server_set_program_identity(game_id.c_str());
+#endif
             game_region = gc.region;
             game_players = gc.players;
             apply_offline_pad_count(game_players, multitap_enabled);
@@ -14428,6 +14431,9 @@ int main(int argc, char** argv) {
     }
 
 session_reboot:
+#ifndef PSX_NO_DEBUG_TOOLS
+    debug_server_begin_session();
+#endif
     /* Rematch after lobby soft-return re-enters here with updated net_cfg. */
     static int s_emu_session = 0;
     const bool rematch_session = (++s_emu_session > 1);

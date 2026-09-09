@@ -116,6 +116,9 @@ void overlay_loader_get_load_timing(uint64_t *total_us, uint64_t *max_us,
 /* Opt-in PSX_RUNTIME_PERF_DIAG sampler: returns and clears the hottest native
  * owner since the preceding call. Disabled runs pay no table update cost. */
 void overlay_loader_take_hot_native(uint32_t *pc, uint64_t *calls);
+/* Read-only observation hook: speculative executions cannot publish live evidence. */
+int overlay_loader_observation_is_speculative(void);
+
 /* Exact shadow-differential summary for opt-in perf diagnostics. */
 void overlay_loader_get_shadow_summary(uint64_t *calls, uint64_t *divergences,
                                        uint32_t *first_divergence_pc);
@@ -143,6 +146,59 @@ void overlay_loader_get_ci_skip_diag(uint64_t *unit, uint64_t *supp,
                                      uint64_t *none, uint64_t *sr,
                                      uint64_t *deliv, uint64_t *enter);
 int  overlay_loader_call_unit_depth(void);
+
+#define OVERLAY_EXEC_MAX_RANGES 16
+typedef struct {
+    uint32_t registration_id;
+    uint32_t image_id;
+    uint32_t image_load_base;
+    uint32_t image_source_crc32;
+    uint32_t entry;
+    uint32_t source_crc32;
+    uint32_t live_crc32;
+    uint32_t validated_crc32;
+    uint32_t validated_generation_sum;
+    uint32_t watched_generation_sum;
+    uint32_t range_lo[OVERLAY_EXEC_MAX_RANGES];
+    uint32_t range_len[OVERLAY_EXEC_MAX_RANGES];
+    int range_count;
+    int kind;       /* 1=static overlay, 2=native DLL, 3=runtime compiled */
+    int state;      /* 0=valid, 1=invalid, 2=blacklisted */
+    int has_image_load_base;
+    int has_image_source_identity;
+    int has_validated_identity;
+    int source_live_comparable;
+    int generation_current;
+    int loader_active;
+    int native_enabled;
+    int backend_eligible;
+    int dispatch_guard_valid;
+    int source_matches_live;
+    int native_registration_valid;
+    int active_owner;
+    int ownership_reason;
+} OverlayExecutableRegion;
+
+enum {
+    OVERLAY_OWNERSHIP_VALID = 0,
+    OVERLAY_OWNERSHIP_VALIDATED_BYTES_MISMATCH = 1,
+    OVERLAY_OWNERSHIP_GENERATION_INVALIDATED = 2,
+    OVERLAY_OWNERSHIP_REGISTRATION_INACTIVE = 3,
+    OVERLAY_OWNERSHIP_SHADOWED = 4,
+    OVERLAY_OWNERSHIP_BLACKLISTED = 5,
+    OVERLAY_OWNERSHIP_NATIVE_DISABLED = 6,
+    OVERLAY_OWNERSHIP_DISPATCH_GUARD_FAILED = 7,
+    OVERLAY_OWNERSHIP_BACKEND_INELIGIBLE = 8,
+    OVERLAY_OWNERSHIP_UNKNOWN = 9
+};
+
+/* Side-effect-free observer snapshot. Records are ordered by registration ID.
+ * A negative/too-large index fails closed. */
+int overlay_loader_executable_region_count(void);
+int overlay_loader_get_executable_region(int index, OverlayExecutableRegion *out);
+uint64_t overlay_loader_registration_state_token(void);
+uint64_t overlay_loader_catalog_token(void);
+void overlay_loader_executable_watch_bitmap(uint32_t *words, uint32_t word_count);
 
 #ifdef __cplusplus
 }

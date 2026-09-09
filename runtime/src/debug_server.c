@@ -16,11 +16,15 @@
 #  define _POSIX_C_SOURCE 200809L
 #endif
 #include <time.h>
+#include "psx_sha256.h"
+#include "crc32.h"
+#include <limits.h>
 #include "debug_server.h"
 #include "psx_bss.h"
 #include "nd_intro_ot.h"
 #include "latency_ring.h"
 #include "overlay_loader.h"
+#include "overlay_api.h"
 #include "overlay_capture.h"
 #include "code_provider.h"
 #include "overlay_backend.h"
@@ -34,6 +38,7 @@
 #include "cdrom.h"
 #include "sio.h"
 #include "memcard.h"
+#include "mod_runtime.h"
 #include "spu.h"
 #include "audio_trace.h"
 #include "mdec.h"
@@ -96,6 +101,24 @@ extern void     psx_write_word(uint32_t addr, uint32_t val);
 extern uint8_t  psx_read_byte(uint32_t addr);
 extern void     psx_write_byte(uint32_t addr, uint8_t val);
 
+extern uint8_t *memory_get_ram_ptr(void);
+extern void memory_get_bios_sha256(uint8_t out[32]);
+#ifndef PSX_BUILD_REV
+#define PSX_BUILD_REV "unknown"
+#endif
+static char s_program_serial[64] = {0};
+
+void debug_server_set_program_identity(const char *serial) {
+    size_t n = 0;
+    if (!serial) { s_program_serial[0] = '\0'; return; }
+    while (*serial && n + 1 < sizeof(s_program_serial)) {
+        unsigned char c = (unsigned char)*serial++;
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.')
+            s_program_serial[n++] = (char)c;
+    }
+    s_program_serial[n] = '\0';
+}
 /* ---- Server state ---- */
 static sock_t s_listen  = SOCK_INVALID;
 static sock_t s_client  = SOCK_INVALID;
@@ -2055,10 +2078,17 @@ static inline void cyc_watch_observe(uint32_t block_leader_phys);  /* defined be
  * actually ran. Entry-stamp attribution is leaf-biased but honest. */
 volatile uint32_t g_psx_last_fn_entry = 0;
 
+void debug_server_note_static_execution(uint32_t func_addr) {
+    extern int psx_exec_phase(void);
+    if (psx_exec_phase() != 2)
+        overlay_lifecycle_note_execution(func_addr, OVERLAY_EXEC_OWNER_STATIC_NATIVE,
+                                        0, OVERLAY_EXEC_REASON_STATIC_COMPILED);
+}
+
 /* Addressable entry for overlay CPS callbacks (header inlines the Release path). */
 void debug_server_log_call_entry_fn(uint32_t func_addr) {
 #ifdef PSX_NO_DEBUG_TOOLS
-    g_psx_last_fn_entry = func_addr;
+    debug_server_log_call_entry(func_addr);
 #else
     debug_server_log_call_entry(func_addr);
 #endif
@@ -2072,6 +2102,16 @@ void debug_server_log_call_entry(uint32_t func_addr) {
      * overwrite live trace/stack-watch state. Architectural CPU state is
      * compared by the caller; these observers are intentionally inert. */
     { extern int g_ls_replay_active; if (g_ls_replay_active) return; }
+    { uint32_t phys = func_addr & 0x1FFFFFFFu;
+      if (phys < 0x200000u && (g_overlay_witness_request_bitmap[phys >> 7] &
+                              (1u << ((phys >> 2) & 31u)))) {
+          extern int psx_exec_phase(void);
+          if (psx_exec_phase() != 2)
+              overlay_lifecycle_note_execution(func_addr, OVERLAY_EXEC_OWNER_STATIC_NATIVE,
+                                              0, OVERLAY_EXEC_REASON_STATIC_COMPILED);
+      }
+    }
+
     g_psx_last_fn_entry = func_addr;
 #ifdef PSX_STACK_GUARD
     g_psx_recent_fn[g_psx_recent_fn_i++ & (PSX_RECENT_FN_CAP - 1u)] = func_addr;
@@ -4932,6 +4972,1831 @@ static void send_ok(int id)
 static void send_err(int id, const char *msg)
 {
     send_fmt("{\"id\":%d,\"ok\":false,\"error\":\"%s\"}", id, msg);
+}
+
+static void observer_sha256_update(psx_sha256_ctx *ctx, const void *data, size_t size) {
+    psx_sha256_update(ctx, (const uint8_t *)data, size);
+}
+static void psx_sha256_hex(const uint8_t digest[32], char out[65]) {
+    static const char digits[] = "0123456789abcdef";
+    for (int i = 0; i < 32; ++i) { out[i*2] = digits[digest[i] >> 4]; out[i*2+1] = digits[digest[i] & 15]; }
+    out[64] = 0;
+}
+/* Observer fields reject truncated strings and partial numeric prefixes. */
+static int observer_scalar(const char *json, const char *key, char *out, size_t cap) {
+    char pattern[96];
+    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+    const char *p = strstr(json, pattern);
+    if (!p) return 0;
+    p += strlen(pattern);
+    if (strstr(p, pattern)) return -1;
+    p += strspn(p, " \t\r\n");
+    if (*p++ != ':') return -1;
+    p += strspn(p, " \t\r\n");
+    int quoted = *p == '"';
+    if (quoted) ++p;
+    size_t n = 0;
+    while (*p && (quoted ? *p != '"' :
+           *p != ',' && *p != '}' && *p != ']' && !strchr(" \t\r\n", *p))) {
+        if (n + 1 >= cap || *p == '\\' || *p == '"' ||
+            (unsigned char)*p < 0x20) return -1;
+        out[n++] = *p++;
+    }
+    if (quoted && *p++ != '"') return -1;
+    p += strspn(p, " \t\r\n");
+    if (*p != ',' && *p != '}' && *p != ']') return -1;
+    out[n] = '\0';
+    return 1;
+}
+
+static int observer_uint(const char *json, const char *key, uint64_t max, uint64_t *out) {
+    char text[32];
+    int found = observer_scalar(json, key, text, sizeof(text));
+    if (found != 1) return found;
+    const char *p = text;
+    unsigned base = 10;
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) { base = 16; p += 2; }
+    if (!*p) return -1;
+    uint64_t value = 0;
+    for (; *p; ++p) {
+        unsigned digit;
+        if (*p >= '0' && *p <= '9') digit = (unsigned)(*p - '0');
+        else if (*p >= 'a' && *p <= 'f') digit = (unsigned)(*p - 'a' + 10);
+        else if (*p >= 'A' && *p <= 'F') digit = (unsigned)(*p - 'A' + 10);
+        else return -1;
+        if (digit >= base || digit > max || value > (max - digit) / base) return -1;
+        value = value * base + digit;
+    }
+    *out = value;
+    return 1;
+}
+
+/* Main RAM's physical and KSEG0/KSEG1 aliases, including its 8 MiB mirrors. */
+static int observer_ram_phys(uint32_t addr, uint32_t *phys) {
+    if (!(addr < 0x00800000u ||
+          (addr >= 0x80000000u && addr < 0x80800000u) ||
+          (addr >= 0xA0000000u && addr < 0xA0800000u))) return 0;
+    *phys = addr & 0x001FFFFFu;
+    return 1;
+}
+
+static int observer_int(const char *json, const char *key, int fallback) {
+    uint64_t value;
+    int found = observer_uint(json, key, INT_MAX, &value);
+    return found == 0 ? fallback : found == 1 ? (int)value : -1;
+}
+
+#define OBS_MAX_REGIONS 32
+#define OBS_MAX_REGION_BYTES 4096
+#define OBS_MAX_TOTAL_BYTES 16384
+#define OBS_MAX_RESPONSE_BYTES 65536
+#define OBS_GUARD_MAX_RAM_REGIONS 16
+#define OBS_GUARD_MAX_REGION_BYTES 256
+#define OBS_GUARD_MAX_TOTAL_BYTES 2048
+#define OBS_GUARD_MAX_WITNESSES 8
+#define EXEC_REGION_PAGE_DEFAULT 8
+#define EXEC_REGION_PAGE_MAX 8
+#define EXEC_CATALOG_PAGE_DEFAULT 8
+#define EXEC_CATALOG_PAGE_MAX 8
+#define EXEC_LIFECYCLE_PAGE_MAX 8
+#define EXEC_CATALOG_RECORD_BUDGET 60000
+
+static void sha_u32(psx_sha256_ctx *ctx, uint32_t v) {
+    uint8_t b[4] = {(uint8_t)v, (uint8_t)(v >> 8),
+                    (uint8_t)(v >> 16), (uint8_t)(v >> 24)};
+    observer_sha256_update(ctx, b, sizeof(b));
+}
+
+static void sha_u64(psx_sha256_ctx *ctx, uint64_t v) {
+    sha_u32(ctx, (uint32_t)v);
+    sha_u32(ctx, (uint32_t)(v >> 32));
+}
+
+/* Process-local identity for stateless observation guards. It is deliberately
+ * not a host PID or path. The monotonic/performance clocks and ASLR address
+ * make restarts distinct in practice; SHA-256 defines the collision contract.
+ * This identity remains immutable for one game session; soft reboots renew it. */
+static uint8_t s_runtime_instance_digest[32];
+static char s_runtime_instance_id[65];
+static int s_runtime_instance_initialized;
+
+static void ensure_runtime_instance_identity(void) {
+    if (s_runtime_instance_initialized) return;
+    static const char domain[] = "psxrecomp-runtime-instance-v1";
+    psx_sha256_ctx ctx;
+    uint64_t perf = SDL_GetPerformanceCounter();
+    uint64_t ticks = SDL_GetTicks64();
+    uint64_t wall = (uint64_t)time(NULL);
+    uintptr_t aslr = (uintptr_t)&s_runtime_instance_digest;
+    psx_sha256_init(&ctx);
+    observer_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    sha_u64(&ctx, perf);
+    sha_u64(&ctx, ticks);
+    sha_u64(&ctx, wall);
+    sha_u64(&ctx, (uint64_t)aslr);
+    sha_u32(&ctx, (uint32_t)s_port);
+    psx_sha256_final(&ctx, s_runtime_instance_digest);
+    psx_sha256_hex(s_runtime_instance_digest, s_runtime_instance_id);
+    s_runtime_instance_initialized = 1;
+}
+void debug_server_begin_session(void) {
+    s_runtime_instance_initialized = 0;
+    memset(g_overlay_witness_request_bitmap, 0, sizeof(g_overlay_witness_request_bitmap));
+    overlay_lifecycle_reset();
+}
+
+
+static void executable_state_token(char out[65]) {
+    static const char domain[] = "psxrecomp-exec-ownership-v2";
+    psx_sha256_ctx ctx;
+    psx_sha256_init(&ctx);
+    observer_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    uint32_t page_size = overlay_watch_page_size();
+    uint32_t page_count = overlay_watch_page_count();
+    uint32_t covered[16] = {0};
+    overlay_loader_executable_watch_bitmap(covered, (page_count + 31u) / 32u);
+    sha_u32(&ctx, page_size);
+    for (uint32_t page = 0; page < page_count; page++) {
+        if (!(covered[page >> 5] & (1u << (page & 31u)))) continue;
+        sha_u32(&ctx, page);
+        sha_u32(&ctx, overlay_watch_page_generation(page));
+    }
+    extern uint32_t dirty_ram_text_diverged_bitmap_word(uint32_t word_index);
+    for (uint32_t word = 0; word < (page_count + 31u) / 32u; word++)
+        sha_u32(&ctx, dirty_ram_text_diverged_bitmap_word(word));
+    uint64_t registration_state = overlay_loader_registration_state_token();
+    sha_u32(&ctx, (uint32_t)registration_state);
+    sha_u32(&ctx, (uint32_t)(registration_state >> 32));
+    uint64_t lifecycle_state = overlay_lifecycle_catalog_token();
+    sha_u32(&ctx, (uint32_t)lifecycle_state);
+    sha_u32(&ctx, (uint32_t)(lifecycle_state >> 32));
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, out);
+}
+
+static void executable_state_component_tokens(char watched_out[65],
+                                              char registration_out[17],
+                                              char lifecycle_out[17]) {
+    static const char domain[] = "psxrecomp-exec-watched-components-v1";
+    psx_sha256_ctx ctx;
+    psx_sha256_init(&ctx);
+    observer_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    uint32_t page_size = overlay_watch_page_size();
+    uint32_t page_count = overlay_watch_page_count();
+    uint32_t covered[16] = {0};
+    overlay_loader_executable_watch_bitmap(covered, (page_count + 31u) / 32u);
+    sha_u32(&ctx, page_size);
+    for (uint32_t page = 0; page < page_count; page++) {
+        if (!(covered[page >> 5] & (1u << (page & 31u)))) continue;
+        sha_u32(&ctx, page);
+        sha_u32(&ctx, overlay_watch_page_generation(page));
+    }
+    extern uint32_t dirty_ram_text_diverged_bitmap_word(uint32_t word_index);
+    for (uint32_t word = 0; word < (page_count + 31u) / 32u; word++)
+        sha_u32(&ctx, dirty_ram_text_diverged_bitmap_word(word));
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, watched_out);
+    snprintf(registration_out, 17, "%016llx",
+             (unsigned long long)overlay_loader_registration_state_token());
+    snprintf(lifecycle_out, 17, "%016llx",
+             (unsigned long long)overlay_lifecycle_catalog_token());
+}
+
+static void handle_protocol_info(int id, const char *json) {
+    (void)json;
+    overlay_lifecycle_set_tracking_enabled(1);
+    ensure_runtime_instance_identity();
+    send_fmt("{\"id\":%d,\"ok\":true,"
+             "\"protocol\":{\"name\":\"psxrecomp-debug\",\"major\":1,\"minor\":5},"
+             "\"server\":{\"kind\":\"native\"},"
+             "\"capabilities\":[\"executable_catalog\",\"executable_image_lifecycle\",\"executable_regions\",\"execution_witness\",\"observation_guard\",\"read_ram\",\"read_regions\","
+             "\"runtime_identity\",\"watched_page_generation\"],"
+             "\"limits\":{\"max_request_bytes\":8191,\"max_read_ram_bytes\":2097152,"
+             "\"max_regions_per_request\":%d,\"max_bytes_per_region\":%d,"
+             "\"max_total_region_bytes\":%d,\"max_response_bytes\":%d,"
+             "\"max_executable_regions_per_response\":%d,"
+             "\"max_executable_catalog_records_per_response\":%d,"
+             "\"max_executable_lifecycle_records_per_response\":%d,"
+             "\"max_executable_lifecycle_events_retained\":%u,"
+             "\"execution_witness_range_bytes\":4,"
+             "\"max_guard_ram_regions\":%d,\"max_guard_bytes_per_region\":%d,"
+             "\"max_guard_total_ram_bytes\":%d,\"max_guard_execution_witnesses\":%d},"
+             "\"frame\":%llu}",
+             id, OBS_MAX_REGIONS, OBS_MAX_REGION_BYTES, OBS_MAX_TOTAL_BYTES,
+             OBS_MAX_RESPONSE_BYTES, EXEC_REGION_PAGE_MAX, EXEC_CATALOG_PAGE_MAX,
+             EXEC_LIFECYCLE_PAGE_MAX, overlay_lifecycle_event_capacity(),
+             OBS_GUARD_MAX_RAM_REGIONS, OBS_GUARD_MAX_REGION_BYTES,
+             OBS_GUARD_MAX_TOTAL_BYTES, OBS_GUARD_MAX_WITNESSES,
+             (unsigned long long)s_frame_count);
+}
+
+static const char *execution_owner_name(uint32_t owner) {
+    switch (owner) {
+    case OVERLAY_EXEC_OWNER_STATIC_NATIVE: return "static-native";
+    case OVERLAY_EXEC_OWNER_CACHED_NATIVE: return "cached-native";
+    case OVERLAY_EXEC_OWNER_RUNTIME_NATIVE: return "runtime-native";
+    case OVERLAY_EXEC_OWNER_INTERPRETER: return "interpreter";
+    case OVERLAY_EXEC_OWNER_AMBIGUOUS: return "ambiguous";
+    default: return "unavailable";
+    }
+}
+
+static const char *execution_reason_name(uint32_t reason) {
+    switch (reason) {
+    case OVERLAY_EXEC_REASON_MAIN_COMPILED: return "main-compiled-dispatch";
+    case OVERLAY_EXEC_REASON_STATIC_COMPILED: return "static-overlay-dispatch";
+    case OVERLAY_EXEC_REASON_NATIVE_DISPATCH: return "validated-native-dispatch";
+    case OVERLAY_EXEC_REASON_NATIVE_VALIDATION_FALLBACK: return "native-validation-fallback";
+    case OVERLAY_EXEC_REASON_DIRTY_INTERPRETER: return "dirty-ram-interpreter";
+    default: return "none";
+    }
+}
+
+static const char *lifecycle_event_name(uint32_t kind) {
+    switch (kind) {
+    case OVERLAY_LIFECYCLE_CREATED: return "created";
+    case OVERLAY_LIFECYCLE_SUPERSEDED: return "superseded";
+    case OVERLAY_LIFECYCLE_OWNER_ACQUIRED: return "owner-acquired";
+    case OVERLAY_LIFECYCLE_OWNER_CHANGED: return "owner-changed";
+    default: return "unknown";
+    }
+}
+
+static int execution_owner_compare(const void *a, const void *b) {
+    const OverlayExecutionOwner *left = (const OverlayExecutionOwner *)a;
+    const OverlayExecutionOwner *right = (const OverlayExecutionOwner *)b;
+    return left->phys < right->phys ? -1 : left->phys > right->phys ? 1 : 0;
+}
+
+static void handle_executable_lifecycle(int id, const char *json) {
+    overlay_lifecycle_set_tracking_enabled(1);
+    char view[16] = "instances", requested_token[32] = {0}, cursor_text[32] = {0};
+    char address_text[32] = {0};
+    (void)json_get_str(json, "view", view, sizeof(view));
+    (void)json_get_str(json, "lifecycle_token", requested_token, sizeof(requested_token));
+    int has_cursor = json_get_str(json, "cursor", cursor_text, sizeof(cursor_text)) != NULL;
+    uint64_t cursor = 0;
+    if (has_cursor && observer_uint(json, "cursor", UINT64_MAX, &cursor) != 1) {
+        send_err(id, "invalid lifecycle cursor"); return;
+    }
+    int limit = observer_int(json, "limit", EXEC_LIFECYCLE_PAGE_MAX);
+    if (strcmp(view, "instances") && strcmp(view, "owners") &&
+        strcmp(view, "owner") && strcmp(view, "events")) {
+        send_err(id, "invalid lifecycle view"); return;
+    }
+    if (limit < 1 || limit > EXEC_LIFECYCLE_PAGE_MAX) {
+        send_err(id, "invalid lifecycle limit"); return;
+    }
+    char token[17];
+    snprintf(token, sizeof(token), "%016llx",
+             (unsigned long long)overlay_lifecycle_catalog_token());
+    if (cursor && (!requested_token[0] || strcmp(requested_token, token))) {
+        send_fmt("{\"id\":%d,\"ok\":false,\"error\":\"lifecycle_changed\","
+                 "\"lifecycle_token\":\"%s\"}", id, token);
+        return;
+    }
+
+    int owner_total = overlay_lifecycle_owner_count();
+    OverlayExecutionOwner *owners = NULL;
+    if (!strcmp(view, "owner")) {
+        if (!json_get_str(json, "addr", address_text, sizeof(address_text))) {
+            send_err(id, "missing lifecycle owner address"); return;
+        }
+        uint64_t parsed_addr;
+        if (observer_uint(json, "addr", UINT32_MAX, &parsed_addr) != 1) {
+            send_err(id, "invalid lifecycle owner address"); return;
+        }
+        uint32_t address = (uint32_t)parsed_addr;
+        uint32_t phys;
+        if (!observer_ram_phys(address, &phys) || (phys & 3u)) {
+            send_err(id, "lifecycle owner address is not main RAM"); return;
+        }
+        owners = (OverlayExecutionOwner *)calloc(1u, sizeof(*owners));
+        if (!owners) { send_err(id, "alloc failed"); return; }
+        owner_total = overlay_lifecycle_owner_at(phys, owners) ? 1 : 0;
+    } else if (!strcmp(view, "owners") && owner_total) {
+        owners = (OverlayExecutionOwner *)calloc((size_t)owner_total, sizeof(*owners));
+        if (!owners) { send_err(id, "alloc failed"); return; }
+        for (int n = 0; n < owner_total; n++)
+            if (!overlay_lifecycle_get_owner(n, &owners[n])) {
+                free(owners); send_err(id, "invalid execution owner metadata"); return;
+            }
+        qsort(owners, (size_t)owner_total, sizeof(*owners), execution_owner_compare);
+    }
+
+    uint64_t oldest = overlay_lifecycle_event_oldest_sequence();
+    uint64_t latest = overlay_lifecycle_event_latest_sequence();
+    uint64_t total = !strcmp(view, "instances")
+        ? (uint64_t)overlay_lifecycle_instance_count()
+        : (!strcmp(view, "owners") || !strcmp(view, "owner"))
+            ? (uint64_t)owner_total
+        : (latest >= oldest && oldest ? latest - oldest + 1u : 0u);
+    uint64_t logical = cursor;
+    if (!strcmp(view, "events")) {
+        if (!logical) logical = oldest;
+        if (logical && oldest && logical < oldest) {
+            free(owners); send_err(id, "lifecycle event cursor evicted"); return;
+        }
+        if (logical > latest + 1u) {
+            free(owners); send_err(id, "lifecycle cursor past end"); return;
+        }
+    } else if (logical > total) {
+        free(owners); send_err(id, "lifecycle cursor past end"); return;
+    }
+
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { free(owners); send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"view\":\"%s\",\"ordering\":\"%s\","
+        "\"cursor\":%llu,\"requested_limit\":%d,\"effective_limit\":%d,"
+        "\"total\":%llu,\"lifecycle_token\":\"%s\",\"overflowed\":%s,"
+        "\"event_history_truncated\":%s,\"tracking_started_frame\":%u,"
+        "\"event_oldest_sequence\":%llu,\"event_latest_sequence\":%llu,\"records\":[",
+        id, view, !strcmp(view, "instances") ? "creation" :
+                  (!strcmp(view, "owners") || !strcmp(view, "owner"))
+                    ? "guest-address" : "sequence",
+        (unsigned long long)cursor, limit, limit, (unsigned long long)total, token,
+        overlay_lifecycle_overflowed() ? "true" : "false",
+        latest > overlay_lifecycle_event_capacity() ? "true" : "false",
+        overlay_lifecycle_tracking_started_frame(),
+        (unsigned long long)oldest, (unsigned long long)latest);
+    int emitted = 0;
+    uint8_t *ram = memory_get_ram_ptr();
+    while (emitted < limit) {
+        char record[2048]; int n = -1;
+        if (!strcmp(view, "instances")) {
+            if (logical >= total) break;
+            OverlayLifecycleInstance instance;
+            if (!overlay_lifecycle_get_instance((int)logical, &instance)) break;
+            uint8_t digest[32]; char live_sha[65];
+            psx_sha256_compute(ram + instance.capture_base, instance.known_length, digest);
+            psx_sha256_hex(digest, live_sha);
+            uint32_t live_crc = crc32_compute(ram + instance.capture_base,
+                                              instance.known_length);
+            char predecessor[40] = "null", successor[40] = "null";
+            if (instance.predecessor_id) snprintf(predecessor, sizeof(predecessor),
+                "\"life-%016llx\"", (unsigned long long)instance.predecessor_id);
+            if (instance.successor_id) snprintf(successor, sizeof(successor),
+                "\"life-%016llx\"", (unsigned long long)instance.successor_id);
+            n = snprintf(record, sizeof(record),
+                "{\"instance_id\":\"life-%016llx\",\"image_kind\":\"dma-load-fragment\","
+                "\"lifecycle_generation\":%u,\"creation_reason\":\"cdrom-dma-complete\","
+                "\"first_observed_frame\":%u,\"last_observed_frame\":%u,"
+                "\"last_execution_frame\":%u,\"active\":%s,\"status\":\"%s\","
+                "\"load_or_capture_base\":\"0x%08X\",\"known_span\":%u,"
+                "\"capture_identity\":{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+                "\"scope\":\"exact-dma-transfer\"},\"current_live_identity\":{\"algorithm\":\"sha256\","
+                "\"sha256\":\"%s\",\"scope\":\"exact-known-span\"},"
+                "\"capture_live_comparison\":{\"comparable\":true,\"matches\":%s},"
+                "\"transformed_source_identity\":null,\"whole_image_identity\":null,"
+                "\"predecessor_instance_id\":%s,\"successor_instance_id\":%s,"
+                "\"last_execution_owner\":\"%s\"}",
+                (unsigned long long)instance.instance_id, instance.lifecycle_generation,
+                instance.first_observed_frame, instance.last_observed_frame,
+                instance.last_execution_frame, instance.active ? "true" : "false",
+                instance.active ? "active" : "superseded",
+                instance.capture_base | 0x80000000u, instance.known_length,
+                instance.capture_crc32, live_sha,
+                live_crc == instance.capture_crc32 ? "true" : "false",
+                predecessor, successor,
+                execution_owner_name(instance.last_execution_owner));
+            logical++;
+        } else if (!strcmp(view, "owners") || !strcmp(view, "owner")) {
+            if (logical >= total) break;
+            OverlayExecutionOwner *owner = &owners[logical++];
+            char instance_id[40] = "null", registration_id[40] = "null";
+            int observation_current =
+                overlay_lifecycle_owner_observation_current(owner);
+            char current_owner[40] = "null";
+            char first_frame[24] = "null";
+            if (observation_current) snprintf(current_owner, sizeof(current_owner),
+                "\"%s\"", execution_owner_name(owner->owner));
+            if (owner->first_observed_frame) snprintf(first_frame, sizeof(first_frame),
+                "%u", owner->first_observed_frame);
+            if (owner->instance_id) snprintf(instance_id, sizeof(instance_id),
+                "\"life-%016llx\"", (unsigned long long)owner->instance_id);
+            if (owner->registration_id) snprintf(registration_id, sizeof(registration_id),
+                "\"reg-%08x\"", owner->registration_id);
+            n = snprintf(record, sizeof(record),
+                "{\"guest_address\":\"0x%08X\",\"last_observed_backend\":\"%s\","
+                "\"current_execution_owner\":%s,\"observation_current\":%s,"
+                "\"watched_generation_at_observation\":%u,"
+                "\"reason\":\"%s\",\"first_observed_frame\":%s,"
+                "\"last_observed_frame\":%u,\"hits\":%llu,"
+                "\"image_instance_id\":%s,\"native_registration_id\":%s}",
+                owner->phys | 0x80000000u, execution_owner_name(owner->owner),
+                current_owner,
+                observation_current ? "true" : "false",
+                owner->watched_generation_at_observation,
+                execution_reason_name(owner->reason), first_frame,
+                owner->last_observed_frame, (unsigned long long)owner->hits,
+                instance_id, registration_id);
+        } else {
+            if (!oldest || logical > latest) break;
+            OverlayLifecycleEvent event;
+            if (!overlay_lifecycle_get_event(logical, &event)) break;
+            char related[40] = "null";
+            char event_instance[40] = "null";
+            if (event.instance_id) snprintf(event_instance, sizeof(event_instance),
+                "\"life-%016llx\"", (unsigned long long)event.instance_id);
+            if (event.related_instance_id) snprintf(related, sizeof(related),
+                "\"life-%016llx\"", (unsigned long long)event.related_instance_id);
+            n = snprintf(record, sizeof(record),
+                "{\"sequence\":%llu,\"frame\":%u,\"event\":\"%s\","
+                "\"instance_id\":%s,\"related_instance_id\":%s,"
+                "\"guest_base\":\"0x%08X\",\"length\":%u,"
+                "\"previous_owner\":\"%s\",\"new_owner\":\"%s\",\"reason\":\"%s\"}",
+                (unsigned long long)event.sequence, event.frame,
+                lifecycle_event_name(event.kind), event_instance, related,
+                event.base | 0x80000000u, event.length,
+                execution_owner_name(event.previous_owner),
+                execution_owner_name(event.new_owner), execution_reason_name(event.reason));
+            logical++;
+        }
+        if (n < 0 || (size_t)n >= sizeof(record) ||
+            pos + (size_t)n + 256u >= OBS_MAX_RESPONSE_BYTES) break;
+        if (emitted) out[pos++] = ',';
+        memcpy(out + pos, record, (size_t)n); pos += (size_t)n; emitted++;
+    }
+    int has_more = !strcmp(view, "events") ? (oldest && logical <= latest)
+                                             : logical < total;
+    int n = has_more
+        ? snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+            "],\"returned\":%d,\"has_more\":true,\"next_cursor\":%llu,\"frame\":%llu}",
+            emitted, (unsigned long long)logical, (unsigned long long)s_frame_count)
+        : snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+            "],\"returned\":%d,\"has_more\":false,\"next_cursor\":null,\"frame\":%llu}",
+            emitted, (unsigned long long)s_frame_count);
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(owners); send_err(id, "response too large"); return;
+    }
+    debug_server_send_line(out);
+    free(out); free(owners);
+}
+
+static void handle_runtime_identity(int id, const char *json) {
+    (void)json;
+    uint8_t bios[32], source[32];
+    char bios_hex[65], source_hex[65];
+    uint32_t base = 0, len = 0;
+    memory_get_bios_sha256(bios);
+    ensure_runtime_instance_identity();
+    psx_sha256_hex(bios, bios_hex);
+    int has_text = dirty_ram_text_identity(&base, &len, source);
+    if (has_text) psx_sha256_hex(source, source_hex);
+    if (has_text) {
+        send_fmt("{\"id\":%d,\"ok\":true,\"runtime\":{\"implementation\":\"psxrecomp\","
+                 "\"build_revision\":\"%s\",\"process_instance_id\":\"proc-%s\"},"
+                 "\"server\":{\"kind\":\"native\"},"
+                 "\"guest_architecture\":\"mips-r3000a\","
+                 "\"bios\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"length\":524288},"
+                 "\"main_executable\":{\"serial\":\"%s\",\"guest_base\":\"0x%08X\","
+                 "\"canonical_length\":%u,\"source_identity\":{\"algorithm\":\"sha256\","
+                 "\"sha256\":\"%s\",\"scope\":\"ps-x-exe-body\"}},\"frame\":%llu}",
+                 id, PSX_BUILD_REV, s_runtime_instance_id, bios_hex, s_program_serial, base | 0x80000000u,
+                 len, source_hex, (unsigned long long)s_frame_count);
+    } else {
+        send_fmt("{\"id\":%d,\"ok\":true,\"runtime\":{\"implementation\":\"psxrecomp\","
+                 "\"build_revision\":\"%s\",\"process_instance_id\":\"proc-%s\"},"
+                 "\"server\":{\"kind\":\"native\"},"
+                 "\"guest_architecture\":\"mips-r3000a\","
+                 "\"bios\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"length\":524288},"
+                 "\"main_executable\":null,\"frame\":%llu}",
+                 id, PSX_BUILD_REV, s_runtime_instance_id, bios_hex,
+                 (unsigned long long)s_frame_count);
+    }
+}
+
+static int hash_live_ranges(const uint32_t *lo, const uint32_t *len, int count,
+                            char out[65]) {
+    uint8_t *ram = memory_get_ram_ptr();
+    if (!ram || !lo || !len || count < 1 || count > OVERLAY_EXEC_MAX_RANGES) return 0;
+    psx_sha256_ctx ctx; psx_sha256_init(&ctx);
+    for (int i = 0; i < count; i++) {
+        if (lo[i] >= 0x200000u || len[i] == 0 || len[i] > 0x200000u - lo[i]) return 0;
+        observer_sha256_update(&ctx, ram + lo[i], len[i]);
+    }
+    uint8_t digest[32]; psx_sha256_final(&ctx, digest); psx_sha256_hex(digest, out);
+    return 1;
+}
+
+static int watched_generation_digest(const uint32_t *lo, const uint32_t *len,
+                                     int count, char out[65], uint32_t *sum_out,
+                                     uint32_t *first_out, uint32_t *count_out) {
+    uint8_t pages[512] = {0};
+    uint32_t page_size = overlay_watch_page_size();
+    uint32_t page_count = overlay_watch_page_count();
+    if (!lo || !len || count < 1 || page_count > sizeof(pages)) return 0;
+    for (int i = 0; i < count; i++) {
+        if (lo[i] >= 0x200000u || len[i] == 0 || len[i] > 0x200000u - lo[i]) return 0;
+        uint32_t first = lo[i] / page_size;
+        uint32_t last = (lo[i] + len[i] - 1u) / page_size;
+        for (uint32_t page = first; page <= last; page++) pages[page] = 1;
+    }
+    static const char domain[] = "psxrecomp-watch-v1";
+    psx_sha256_ctx ctx; psx_sha256_init(&ctx);
+    observer_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    uint32_t first = page_count, covered = 0, sum = 0;
+    for (uint32_t page = 0; page < page_count; page++) {
+        if (!pages[page]) continue;
+        uint32_t gen = overlay_watch_page_generation(page);
+        if (first == page_count) first = page;
+        covered++; sum += gen; sha_u32(&ctx, page); sha_u32(&ctx, gen);
+    }
+    uint8_t digest[32]; psx_sha256_final(&ctx, digest); psx_sha256_hex(digest, out);
+    if (sum_out) *sum_out = sum;
+    if (first_out) *first_out = first == page_count ? 0 : first;
+    if (count_out) *count_out = covered;
+    return covered != 0;
+}
+
+static void execution_witness_id(const OverlayExecutionOwner *owner,
+                                 char out[65]) {
+    static const char domain[] = "psxrecomp-execution-witness-v1";
+    psx_sha256_ctx ctx;
+    psx_sha256_init(&ctx);
+    observer_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    sha_u32(&ctx, owner->phys);
+    sha_u32(&ctx, 4u);
+    sha_u32(&ctx, owner->owner);
+    sha_u32(&ctx, owner->instruction_word_at_observation);
+    sha_u32(&ctx, owner->watched_generation_at_observation);
+    sha_u32(&ctx, (uint32_t)owner->instance_id);
+    sha_u32(&ctx, (uint32_t)(owner->instance_id >> 32));
+    sha_u32(&ctx, owner->registration_id);
+    sha_u32(&ctx, owner->first_observed_frame);
+    sha_u32(&ctx, overlay_lifecycle_tracking_started_frame());
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, out);
+}
+
+/* Exact-PC execution witness. The dirty interpreter has no decoded-block
+ * cache or retained block boundary, so its strongest authoritative byte
+ * domain is the one four-byte instruction actually fetched by exec_one.
+ * Native acquisition points use the same exact dispatch-PC representation.
+ * This must never be widened into a guessed function, page, or overlay. */
+static void handle_execution_witness(int id, const char *json) {
+    overlay_lifecycle_set_tracking_enabled(1);
+    char pc_text[32] = {0};
+    if (!json_get_str(json, "pc", pc_text, sizeof(pc_text))) {
+        send_err(id, "missing execution witness pc"); return;
+    }
+    uint64_t parsed_pc;
+    if (observer_uint(json, "pc", UINT32_MAX, &parsed_pc) != 1) {
+        send_err(id, "invalid execution witness pc"); return;
+    }
+    uint32_t requested = (uint32_t)parsed_pc;
+    uint32_t phys;
+    if (!observer_ram_phys(requested, &phys) || (phys & 3u) != 0) {
+        send_err(id, "execution witness pc is not aligned main RAM"); return;
+    }
+
+    uint64_t frame_before = s_frame_count;
+    char state_before[65], state_after[65];
+    executable_state_token(state_before);
+    uint64_t life_before = overlay_lifecycle_catalog_token();
+
+    OverlayExecutionOwner owner;
+    int found = overlay_lifecycle_owner_at(phys, &owner);
+    if (!found) {
+        executable_state_token(state_after);
+        uint64_t life_after = overlay_lifecycle_catalog_token();
+        send_fmt("{\"id\":%d,\"ok\":true,\"status\":\"missing\","
+                 "\"requested_pc\":\"0x%08X\",\"witness\":null,"
+                 "\"frame_before\":%llu,\"frame_after\":%llu,"
+                 "\"executable_state_before\":\"%s\",\"executable_state_after\":\"%s\","
+                 "\"lifecycle_token_before\":\"%016llx\",\"lifecycle_token_after\":\"%016llx\","
+                 "\"stable_observation_boundary\":%s}", id, requested,
+                 (unsigned long long)frame_before, (unsigned long long)s_frame_count,
+                 state_before, state_after, (unsigned long long)life_before,
+                 (unsigned long long)life_after,
+                 frame_before == s_frame_count && !strcmp(state_before, state_after) &&
+                 life_before == life_after ? "true" : "false");
+        return;
+    }
+
+    uint8_t observed_bytes[4] = {
+        (uint8_t)owner.instruction_word_at_observation,
+        (uint8_t)(owner.instruction_word_at_observation >> 8),
+        (uint8_t)(owner.instruction_word_at_observation >> 16),
+        (uint8_t)(owner.instruction_word_at_observation >> 24)
+    };
+    uint8_t observed_digest[32], live_digest[32];
+    char observed_sha[65], live_sha[65], generation_sha[65], witness_id[65];
+    psx_sha256_compute(observed_bytes, sizeof(observed_bytes), observed_digest);
+    psx_sha256_hex(observed_digest, observed_sha);
+    uint8_t *ram = memory_get_ram_ptr();
+    psx_sha256_compute(ram + phys, 4u, live_digest);
+    psx_sha256_hex(live_digest, live_sha);
+    uint32_t lo = phys, len = 4u, generation_sum = 0, first_page = 0, pages = 0;
+    if (!watched_generation_digest(&lo, &len, 1, generation_sha,
+                                   &generation_sum, &first_page, &pages)) {
+        send_err(id, "execution witness generation unavailable"); return;
+    }
+    execution_witness_id(&owner, witness_id);
+    int bytes_match = !memcmp(observed_digest, live_digest, sizeof(live_digest));
+    int owner_current = overlay_lifecycle_owner_observation_current(&owner);
+    int current = bytes_match && owner_current &&
+                  owner.owner != OVERLAY_EXEC_OWNER_AMBIGUOUS;
+    const char *status = owner.owner == OVERLAY_EXEC_OWNER_AMBIGUOUS ? "ambiguous" :
+                         current ? "current" : "stale";
+    char instance_id[40] = "null", registration_id[40] = "null";
+    if (owner.instance_id) snprintf(instance_id, sizeof(instance_id),
+        "\"life-%016llx\"", (unsigned long long)owner.instance_id);
+    if (owner.registration_id) snprintf(registration_id, sizeof(registration_id),
+        "\"reg-%08x\"", owner.registration_id);
+
+    executable_state_token(state_after);
+    uint64_t life_after = overlay_lifecycle_catalog_token();
+    uint64_t frame_after = s_frame_count;
+    int stable = frame_before == frame_after && !strcmp(state_before, state_after) &&
+                 life_before == life_after;
+    send_fmt("{\"id\":%d,\"ok\":true,\"status\":\"%s\","
+        "\"requested_pc\":\"0x%08X\",\"witness\":{"
+        "\"witness_id\":\"wit-%s\",\"id_scope\":\"process-local-observation\","
+        "\"resolved_pc\":\"0x%08X\",\"backend\":\"%s\",\"reason\":\"%s\","
+        "\"range\":{\"kind\":\"executed-instruction\",\"guest_base\":\"0x%08X\","
+        "\"length\":4,\"instruction_count\":1,\"block_range_available\":false},"
+        "\"observed_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+        "\"scope\":\"exact-executed-instruction\"},"
+        "\"current_live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+        "\"scope\":\"exact-executed-instruction\"},\"source_matches_live\":%s,"
+        "\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
+        "\"digest\":\"%s\",\"page_size\":%u,\"first_page\":%u,\"page_count\":%u,"
+        "\"current_legacy_sum\":%u,\"observed_legacy_sum\":%u},"
+        "\"first_observed_frame\":%u,\"last_observed_frame\":%u,\"hit_count\":%llu,"
+        "\"observation_current\":%s,\"image_instance_id\":%s,"
+        "\"native_registration_id\":%s,\"memory_provenance\":{"
+        "\"lifecycle_fragment\":%s,\"native_registration\":%s},"
+        "\"unresolved\":[\"decoded-block-boundary\",\"function-boundary\","
+        "\"whole-image-association\"]},\"frame_before\":%llu,\"frame_after\":%llu,"
+        "\"executable_state_before\":\"%s\",\"executable_state_after\":\"%s\","
+        "\"lifecycle_token_before\":\"%016llx\",\"lifecycle_token_after\":\"%016llx\","
+        "\"stable_observation_boundary\":%s}",
+        id, status, requested, witness_id, owner.phys | 0x80000000u,
+        execution_owner_name(owner.owner), execution_reason_name(owner.reason),
+        owner.phys | 0x80000000u, observed_sha, live_sha,
+        bytes_match ? "true" : "false", generation_sha, overlay_watch_page_size(),
+        first_page, pages, generation_sum, owner.watched_generation_at_observation,
+        owner.first_observed_frame, owner.last_observed_frame,
+        (unsigned long long)owner.hits, current ? "true" : "false",
+        instance_id, registration_id, instance_id, registration_id,
+        (unsigned long long)frame_before, (unsigned long long)frame_after,
+        state_before, state_after, (unsigned long long)life_before,
+        (unsigned long long)life_after, stable ? "true" : "false");
+}
+
+static const char *ownership_reason_name(int reason) {
+    switch (reason) {
+    case OVERLAY_OWNERSHIP_VALID: return "valid";
+    case OVERLAY_OWNERSHIP_VALIDATED_BYTES_MISMATCH: return "validated-bytes-mismatch";
+    case OVERLAY_OWNERSHIP_GENERATION_INVALIDATED: return "generation-invalidated";
+    case OVERLAY_OWNERSHIP_REGISTRATION_INACTIVE: return "registration-inactive";
+    case OVERLAY_OWNERSHIP_SHADOWED: return "shadowed";
+    case OVERLAY_OWNERSHIP_BLACKLISTED: return "blacklisted";
+    case OVERLAY_OWNERSHIP_NATIVE_DISABLED: return "native-disabled";
+    case OVERLAY_OWNERSHIP_DISPATCH_GUARD_FAILED: return "dispatch-guard-failed";
+    case OVERLAY_OWNERSHIP_BACKEND_INELIGIBLE: return "backend-ineligible";
+    default: return "unknown";
+    }
+}
+
+static int append_exec_record(char *out, size_t cap, size_t *pos,
+                              const OverlayExecutableRegion *r, int comma) {
+    char live_sha[65], gen_sha[65];
+    uint32_t gen_sum = 0, first_page = 0, covered_pages = 0;
+    if (!hash_live_ranges(r->range_lo, r->range_len, r->range_count, live_sha) ||
+        !watched_generation_digest(r->range_lo, r->range_len, r->range_count,
+                                   gen_sha, &gen_sum, &first_page, &covered_pages)) return 0;
+    const char *kind = r->kind == 1 ? "static_overlay" :
+                       r->kind == 3 ? "runtime_compiled_overlay" : "native_overlay";
+    const char *backend = r->kind == 1 ? "static" : r->kind == 3 ? "sljit" : "native_dll";
+    uint32_t total_len = 0;
+    for (int i = 0; i < r->range_count; i++) {
+        if (r->range_len[i] > UINT32_MAX - total_len) return 0;
+        total_len += r->range_len[i];
+    }
+    int n = snprintf(out + *pos, cap - *pos,
+        "%s{\"region_id\":\"ovl-%08x-%08x-%08x\",\"kind\":\"%s\","
+        "\"guest_base\":\"0x%08X\",\"length\":%u,\"backend\":\"%s\",\"active\":%s,"
+        "\"source_identity\":{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+        "\"overlay_abi_tag\":%d,\"codegen_version\":%d},"
+        "\"live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\"},"
+        "\"source_matches_live\":%s,\"native_registration_valid\":%s,"
+        "\"active_owner\":%s,\"ownership_reason\":\"%s\","
+        "\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
+        "\"digest\":\"%s\",\"page_size\":%u,\"first_page\":%u,\"page_count\":%u,"
+        "\"legacy_sum\":%u,\"validated_legacy_sum\":%u},\"ranges\":[",
+        comma ? "," : "", r->registration_id, r->entry, r->source_crc32, kind,
+        r->entry | 0x80000000u, total_len, backend,
+        r->active_owner ? "true" : "false",
+        r->source_crc32, PSX_OVERLAY_ABI_TAG, PSX_OVERLAY_CODEGEN_VER, live_sha,
+        r->source_matches_live ? "true" : "false",
+        r->native_registration_valid ? "true" : "false",
+        r->active_owner ? "true" : "false", ownership_reason_name(r->ownership_reason),
+        gen_sha, overlay_watch_page_size(),
+        first_page, covered_pages, gen_sum, r->validated_generation_sum);
+    if (n < 0 || (size_t)n >= cap - *pos) return 0;
+    *pos += (size_t)n;
+    for (int i = 0; i < r->range_count; i++) {
+        n = snprintf(out + *pos, cap - *pos,
+                     "%s{\"guest_base\":\"0x%08X\",\"length\":%u}",
+                     i ? "," : "", r->range_lo[i] | 0x80000000u, r->range_len[i]);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0;
+        *pos += (size_t)n;
+    }
+    OverlayExecutionOwner execution_owner;
+    int has_execution_owner = overlay_lifecycle_owner_at(r->entry, &execution_owner);
+    if (has_execution_owner) {
+        char instance_id[40] = "null", registration_id[40] = "null";
+        if (execution_owner.instance_id) snprintf(instance_id, sizeof(instance_id),
+            "\"life-%016llx\"", (unsigned long long)execution_owner.instance_id);
+        if (execution_owner.registration_id) snprintf(registration_id, sizeof(registration_id),
+            "\"reg-%08x\"", execution_owner.registration_id);
+        n = snprintf(out + *pos, cap - *pos,
+            "],\"execution_owner\":{\"last_observed_backend\":\"%s\",\"reason\":\"%s\","
+            "\"scope\":\"last-observed-exact-pc\",\"observation_current\":%s,"
+            "\"image_instance_id\":%s,\"native_registration_id\":%s},"
+            "\"frame_observed\":%llu}",
+            execution_owner_name(execution_owner.owner),
+            execution_reason_name(execution_owner.reason),
+            overlay_lifecycle_owner_observation_current(&execution_owner) ? "true" : "false",
+            instance_id, registration_id,
+            (unsigned long long)s_frame_count);
+    } else {
+        n = snprintf(out + *pos, cap - *pos,
+            "],\"execution_owner\":null,\"frame_observed\":%llu}",
+            (unsigned long long)s_frame_count);
+    }
+    if (n < 0 || (size_t)n >= cap - *pos) return 0;
+    *pos += (size_t)n;
+    return 1;
+}
+
+static void handle_executable_regions(int id, const char *json) {
+    int offset = observer_int(json, "offset", 0);
+    int limit = observer_int(json, "limit", EXEC_REGION_PAGE_DEFAULT);
+    if (offset < 0) { send_err(id, "invalid offset"); return; }
+    if (limit < 1 || limit > EXEC_REGION_PAGE_MAX) { send_err(id, "invalid limit"); return; }
+    uint32_t main_base = 0, main_len = 0; uint8_t main_source[32];
+    int has_main = dirty_ram_text_identity(&main_base, &main_len, main_source);
+    int overlay_total = overlay_loader_executable_region_count();
+    int total = overlay_total + (has_main ? 1 : 0);
+    if (offset > total) { send_err(id, "offset past end"); return; }
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"ordering\":\"registration\",\"offset\":%d,"
+        "\"limit\":%d,\"total\":%d,\"regions\":[", id, offset, limit, total);
+    int emitted = 0;
+    for (int logical = offset; logical < total && emitted < limit; logical++) {
+        if (has_main && logical == 0) {
+            uint32_t lo[1] = {main_base}, len[1] = {main_len};
+            char source_hex[65], live_hex[65], gen_hex[65]; uint8_t live[32];
+            uint32_t gen_sum=0, first=0, pages=0;
+            psx_sha256_hex(main_source, source_hex);
+            psx_sha256_compute(memory_get_ram_ptr()+main_base, main_len, live); psx_sha256_hex(live, live_hex);
+            watched_generation_digest(lo,len,1,gen_hex,&gen_sum,&first,&pages);
+            int match = memcmp(main_source, live, 32) == 0;
+            int n = snprintf(out+pos, OBS_MAX_RESPONSE_BYTES-pos,
+                "%s{\"region_id\":\"main-%.*s\",\"kind\":\"main_executable\","
+                "\"guest_base\":\"0x%08X\",\"length\":%u,\"backend\":\"static\","
+                "\"active\":true,\"source_identity\":{\"algorithm\":\"sha256\","
+                "\"sha256\":\"%s\",\"scope\":\"ps-x-exe-body\"},"
+                "\"live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\"},"
+                "\"source_matches_live\":%s,\"native_registration_valid\":%s,"
+                "\"active_owner\":%s,\"watched_generation\":{\"algorithm\":"
+                "\"sha256-page-vector-v1\",\"digest\":\"%s\",\"page_size\":%u,"
+                "\"first_page\":%u,\"page_count\":%u,\"legacy_sum\":%u},"
+                "\"frame_observed\":%llu}", emitted?",":"",16,source_hex,
+                main_base|0x80000000u,main_len,source_hex,live_hex,match?"true":"false",
+                match?"true":"false",match?"true":"false",gen_hex,overlay_watch_page_size(),
+                first,pages,gen_sum,(unsigned long long)s_frame_count);
+            if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES-pos) { free(out); send_err(id,"response too large"); return; }
+            pos += (size_t)n;
+        } else {
+            int oi = logical - (has_main ? 1 : 0);
+            OverlayExecutableRegion r;
+            if (!overlay_loader_get_executable_region(oi, &r) ||
+                !append_exec_record(out, OBS_MAX_RESPONSE_BYTES, &pos, &r, emitted != 0)) {
+                free(out); send_err(id, "invalid executable registration"); return;
+            }
+        }
+        emitted++;
+    }
+    char state[65]; executable_state_token(state);
+    int n = snprintf(out+pos, OBS_MAX_RESPONSE_BYTES-pos,
+        "],\"returned\":%d,\"has_more\":%s,\"executable_state\":\"%s\",\"frame\":%llu}",
+        emitted,(offset+emitted<total)?"true":"false",state,(unsigned long long)s_frame_count);
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES-pos) { free(out); send_err(id,"response too large"); return; }
+    debug_server_send_line(out); free(out);
+}
+
+typedef struct {
+    uint32_t image_id;
+    int kind;
+    uint32_t load_base;
+    int has_load_base;
+    uint32_t structural_lo;
+    uint32_t structural_hi;
+    uint32_t source_crc32;
+    int has_source;
+    int source_live_comparable;
+    int registration_count;
+    int structural_range_count;
+    int active_owner;
+} ObserverExecutableImage;
+
+typedef struct {
+    uint32_t image_id;
+    uint32_t lo;
+    uint32_t len;
+    int registration_count;
+    int active_owner;
+} ObserverExecutableRange;
+
+static void executable_catalog_token(char out[17]) {
+    uint64_t token = overlay_loader_catalog_token();
+    uint32_t base = 0, len = 0;
+    uint8_t source[32] = {0};
+    if (dirty_ram_text_identity(&base, &len, source)) {
+        token ^= ((uint64_t)base << 32) | len;
+        for (int i = 0; i < 32; i++) {
+            token ^= source[i];
+            token *= 1099511628211ULL;
+        }
+    }
+    snprintf(out, 17, "%016llx", (unsigned long long)token);
+}
+
+static const char *catalog_image_kind(int kind) {
+    return kind == 1 ? "static-overlay-variant" :
+           kind == 3 ? "runtime-compiled-fragment" : "native-overlay-bundle";
+}
+
+static const char *catalog_registration_kind(int kind) {
+    return kind == 1 ? "static-native" :
+           kind == 3 ? "runtime-native" : "cached-native";
+}
+
+static const char *catalog_backend(int kind) {
+    return kind == 1 ? "static" : kind == 3 ? "sljit" : "native-dll";
+}
+
+static int append_catalog_registration(char *out, size_t cap,
+                                       const OverlayExecutableRegion *r) {
+    char live_sha[65], gen_sha[65];
+    uint32_t gen_sum = 0, first_page = 0, covered_pages = 0;
+    if (!hash_live_ranges(r->range_lo, r->range_len, r->range_count, live_sha) ||
+        !watched_generation_digest(r->range_lo, r->range_len, r->range_count,
+                                   gen_sha, &gen_sum, &first_page, &covered_pages)) return -1;
+    size_t pos = 0;
+    int n = snprintf(out, cap,
+        "{\"registration_id\":\"reg-%08x\",\"image_id\":\"img-%08x\","
+        "\"kind\":\"%s\",\"backend\":\"%s\",\"entry\":\"0x%08X\","
+        "\"source_identity\":{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+        "\"scope\":\"exact-registration-ranges\",\"overlay_abi_tag\":%d,"
+        "\"codegen_version\":%d},\"source_live_comparison\":{\"comparable\":%s,"
+        "\"reason\":\"same-exact-ranges\",\"matches\":%s},"
+        "\"registration_time_validated_identity\":",
+        r->registration_id, r->image_id, catalog_registration_kind(r->kind),
+        catalog_backend(r->kind), r->entry | 0x80000000u, r->source_crc32,
+        PSX_OVERLAY_ABI_TAG, PSX_OVERLAY_CODEGEN_VER,
+        r->source_live_comparable ? "true" : "false",
+        r->source_matches_live ? "true" : "false");
+    if (n < 0 || (size_t)n >= cap) return -1;
+    pos = (size_t)n;
+    if (r->has_validated_identity) {
+        n = snprintf(out + pos, cap - pos,
+            "{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+            "\"scope\":\"exact-registration-ranges\",\"watched_generation_sum\":%u}",
+            r->validated_crc32, r->validated_generation_sum);
+    } else {
+        n = snprintf(out + pos, cap - pos, "null");
+    }
+    if (n < 0 || (size_t)n >= cap - pos) return -1;
+    pos += (size_t)n;
+    n = snprintf(out + pos, cap - pos,
+        ",\"current_live_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+        "\"scope\":\"exact-registration-ranges\"},"
+        "\"watched_generation\":{\"algorithm\":\"sha256-page-vector-v1\","
+        "\"digest\":\"%s\",\"page_size\":%u,\"first_page\":%u,"
+        "\"page_count\":%u,\"legacy_sum\":%u,\"validated_legacy_sum\":%u},"
+        "\"predicates\":{\"source_matches_live\":%s,\"generation_current\":%s,"
+        "\"loader_active\":%s,\"native_enabled\":%s,\"backend_eligible\":%s,"
+        "\"dispatch_guard_valid\":%s},\"native_registration_valid\":%s,"
+        "\"active_owner\":%s,\"ownership_reason\":\"%s\",\"ranges\":[",
+        live_sha, gen_sha, overlay_watch_page_size(), first_page, covered_pages,
+        gen_sum, r->validated_generation_sum,
+        r->source_matches_live ? "true" : "false",
+        r->generation_current ? "true" : "false",
+        r->loader_active ? "true" : "false",
+        r->native_enabled ? "true" : "false",
+        r->backend_eligible ? "true" : "false",
+        r->dispatch_guard_valid ? "true" : "false",
+        r->native_registration_valid ? "true" : "false",
+        r->active_owner ? "true" : "false", ownership_reason_name(r->ownership_reason));
+    if (n < 0 || (size_t)n >= cap - pos) return -1;
+    pos += (size_t)n;
+    for (int i = 0; i < r->range_count; i++) {
+        n = snprintf(out + pos, cap - pos,
+            "%s{\"range_id\":\"rng-%08x-%08x-%08x\",\"guest_base\":\"0x%08X\","
+            "\"length\":%u}", i ? "," : "", r->image_id, r->range_lo[i],
+            r->range_len[i], r->range_lo[i] | 0x80000000u, r->range_len[i]);
+        if (n < 0 || (size_t)n >= cap - pos) return -1;
+        pos += (size_t)n;
+    }
+    OverlayExecutionOwner execution_owner;
+    int has_execution_owner = overlay_lifecycle_owner_at(r->entry, &execution_owner);
+    if (has_execution_owner) {
+        char instance_id[40] = "null", registration_id[40] = "null";
+        if (execution_owner.instance_id) snprintf(instance_id, sizeof(instance_id),
+            "\"life-%016llx\"", (unsigned long long)execution_owner.instance_id);
+        if (execution_owner.registration_id) snprintf(registration_id, sizeof(registration_id),
+            "\"reg-%08x\"", execution_owner.registration_id);
+        n = snprintf(out + pos, cap - pos,
+            "],\"execution_owner\":{\"last_observed_backend\":\"%s\",\"reason\":\"%s\","
+            "\"scope\":\"last-observed-exact-pc\",\"observation_current\":%s,"
+            "\"image_instance_id\":%s,\"native_registration_id\":%s}}",
+            execution_owner_name(execution_owner.owner),
+            execution_reason_name(execution_owner.reason),
+            overlay_lifecycle_owner_observation_current(&execution_owner) ? "true" : "false",
+            instance_id, registration_id);
+    } else {
+        n = snprintf(out + pos, cap - pos, "],\"execution_owner\":null}");
+    }
+    if (n < 0 || (size_t)n >= cap - pos) return -1;
+    return (int)(pos + (size_t)n);
+}
+
+static void handle_executable_catalog(int id, const char *json) {
+    char view[24] = "registrations";
+    char requested_token[32] = {0};
+    (void)json_get_str(json, "view", view, sizeof(view));
+    (void)json_get_str(json, "catalog_token", requested_token, sizeof(requested_token));
+    int cursor = observer_int(json, "cursor", 0);
+    int limit = observer_int(json, "limit", EXEC_CATALOG_PAGE_DEFAULT);
+    if (strcmp(view, "images") != 0 && strcmp(view, "ranges") != 0 &&
+        strcmp(view, "registrations") != 0) { send_err(id, "invalid catalog view"); return; }
+    if (cursor < 0) { send_err(id, "invalid catalog cursor"); return; }
+    if (limit < 1 || limit > EXEC_CATALOG_PAGE_MAX) { send_err(id, "invalid catalog limit"); return; }
+
+    char catalog_token[17], ownership_token[65];
+    executable_catalog_token(catalog_token);
+    executable_state_token(ownership_token);
+    if (cursor > 0 && (!requested_token[0] || strcmp(requested_token, catalog_token) != 0)) {
+        send_fmt("{\"id\":%d,\"ok\":false,\"error\":\"catalog_changed\","
+                 "\"catalog_token\":\"%s\"}", id, catalog_token);
+        return;
+    }
+
+    int registration_count = overlay_loader_executable_region_count();
+    OverlayExecutableRegion *registrations = registration_count > 0
+        ? (OverlayExecutableRegion *)calloc((size_t)registration_count, sizeof(*registrations)) : NULL;
+    if (registration_count > 0 && !registrations) { send_err(id, "alloc failed"); return; }
+    for (int i = 0; i < registration_count; i++) {
+        if (!overlay_loader_get_executable_region(i, &registrations[i])) {
+            free(registrations); send_err(id, "invalid executable registration metadata"); return;
+        }
+    }
+
+    ObserverExecutableImage *images = (ObserverExecutableImage *)calloc(
+        (size_t)registration_count + 1u, sizeof(*images));
+    ObserverExecutableRange *ranges = (ObserverExecutableRange *)calloc(
+        (size_t)registration_count * OVERLAY_EXEC_MAX_RANGES + 1u, sizeof(*ranges));
+    if (!images || !ranges) {
+        free(ranges); free(images); free(registrations); send_err(id, "alloc failed"); return;
+    }
+    int image_count = 0, range_count = 0;
+    uint32_t main_base = 0, main_len = 0; uint8_t main_source[32];
+    int has_main = dirty_ram_text_identity(&main_base, &main_len, main_source);
+    if (has_main) {
+        images[image_count].image_id = 0;
+        images[image_count].kind = 0;
+        images[image_count].load_base = main_base;
+        images[image_count].structural_lo = main_base;
+        images[image_count].structural_hi = main_base + main_len;
+        images[image_count].structural_range_count = 1;
+        image_count++;
+        ranges[range_count].image_id = 0;
+        ranges[range_count].lo = main_base;
+        ranges[range_count].len = main_len;
+        range_count++;
+    }
+    for (int i = 0; i < registration_count; i++) {
+        OverlayExecutableRegion *r = &registrations[i];
+        int image_index = -1;
+        for (int j = 0; j < image_count; j++) if (images[j].image_id == r->image_id) { image_index = j; break; }
+        if (image_index < 0) {
+            image_index = image_count++;
+            images[image_index].image_id = r->image_id;
+            images[image_index].kind = r->kind;
+            images[image_index].load_base = r->image_load_base;
+            images[image_index].has_load_base = r->has_image_load_base;
+            images[image_index].structural_lo = UINT32_MAX;
+            images[image_index].source_crc32 = r->image_source_crc32;
+            images[image_index].has_source = r->has_image_source_identity;
+            images[image_index].source_live_comparable = r->kind == 1 || r->kind == 3;
+        }
+        ObserverExecutableImage *image = &images[image_index];
+        image->registration_count++;
+        if (r->active_owner) image->active_owner = 1;
+        for (int k = 0; k < r->range_count; k++) {
+            if (r->range_lo[k] < image->structural_lo) image->structural_lo = r->range_lo[k];
+            uint32_t hi = r->range_lo[k] + r->range_len[k];
+            if (hi > image->structural_hi) image->structural_hi = hi;
+            int range_index = -1;
+            for (int j = 0; j < range_count; j++) {
+                if (ranges[j].image_id == r->image_id && ranges[j].lo == r->range_lo[k] &&
+                    ranges[j].len == r->range_len[k]) { range_index = j; break; }
+            }
+            if (range_index < 0) {
+                range_index = range_count++;
+                ranges[range_index].image_id = r->image_id;
+                ranges[range_index].lo = r->range_lo[k];
+                ranges[range_index].len = r->range_len[k];
+                image->structural_range_count++;
+            }
+            ranges[range_index].registration_count++;
+            if (r->active_owner) ranges[range_index].active_owner = 1;
+        }
+    }
+
+    int total = strcmp(view, "images") == 0 ? image_count :
+                strcmp(view, "ranges") == 0 ? range_count : registration_count;
+    if (cursor > total) {
+        free(ranges); free(images); free(registrations); send_err(id, "catalog cursor past end"); return;
+    }
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { free(ranges); free(images); free(registrations); send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"view\":\"%s\",\"ordering\":\"catalog\","
+        "\"cursor\":%d,\"requested_limit\":%d,\"effective_limit\":%d,"
+        "\"total\":%d,\"catalog_token\":\"%s\",\"ownership_token\":\"%s\","
+        "\"records\":[", id, view, cursor, limit, limit, total, catalog_token, ownership_token);
+    int emitted = 0;
+    for (int logical = cursor; logical < total && emitted < limit; logical++) {
+        char record[8192]; int n = -1;
+        if (strcmp(view, "registrations") == 0) {
+            n = append_catalog_registration(record, sizeof(record), &registrations[logical]);
+        } else if (strcmp(view, "ranges") == 0) {
+            ObserverExecutableRange *r = &ranges[logical];
+            n = snprintf(record, sizeof(record),
+                "{\"range_id\":\"rng-%08x-%08x-%08x\",\"image_id\":\"img-%08x\","
+                "\"guest_base\":\"0x%08X\",\"length\":%u,\"registration_count\":%d,"
+                "\"active_owner\":%s}", r->image_id, r->lo, r->len, r->image_id,
+                r->lo | 0x80000000u, r->len, r->registration_count,
+                r->active_owner ? "true" : "false");
+        } else {
+            ObserverExecutableImage *image = &images[logical];
+            if (image->kind == 0) {
+                char source_hex[65], live_hex[65]; uint8_t live[32];
+                psx_sha256_hex(main_source, source_hex);
+                psx_sha256_compute(memory_get_ram_ptr() + main_base, main_len, live);
+                psx_sha256_hex(live, live_hex);
+                n = snprintf(record, sizeof(record),
+                    "{\"image_id\":\"img-00000000\",\"kind\":\"main-executable\","
+                    "\"load_base\":\"0x%08X\",\"loaded_length\":%u,"
+                    "\"source_identity\":{\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+                    "\"scope\":\"ps-x-exe-body\"},\"current_live_identity\":{"
+                    "\"algorithm\":\"sha256\",\"sha256\":\"%s\",\"scope\":\"ps-x-exe-body\"},"
+                    "\"registration_count\":0,\"structural_range_count\":1,"
+                    "\"ownership_model\":\"per-dispatch-range-not-cataloged\"}",
+                    main_base | 0x80000000u, main_len, source_hex, live_hex);
+            } else {
+                char source[160];
+                char load_base[24];
+                if (image->has_load_base)
+                    snprintf(load_base, sizeof(load_base), "\"0x%08X\"",
+                             image->load_base | 0x80000000u);
+                else
+                    snprintf(load_base, sizeof(load_base), "null");
+                if (image->has_source) snprintf(source, sizeof(source),
+                    "{\"algorithm\":\"crc32-ieee\",\"crc32\":\"%08x\","
+                    "\"scope\":\"%s\"}", image->source_crc32,
+                    image->source_live_comparable ? "exact-structural-ranges"
+                                                  : "captured-image-key");
+                else snprintf(source, sizeof(source), "null");
+                n = snprintf(record, sizeof(record),
+                    "{\"image_id\":\"img-%08x\",\"kind\":\"%s\","
+                    "\"load_base\":%s,\"loaded_length\":null,"
+                    "\"structural_envelope\":{\"guest_base\":\"0x%08X\",\"length\":%u},"
+                    "\"source_identity\":%s,\"source_live_comparable\":%s,"
+                    "\"source_live_comparability_reason\":\"%s\","
+                    "\"structural_range_count\":%d,\"registration_count\":%d,"
+                    "\"active_owner\":%s}", image->image_id,
+                    catalog_image_kind(image->kind), load_base,
+                    image->structural_lo | 0x80000000u,
+                    image->structural_hi - image->structural_lo, source,
+                    image->source_live_comparable ? "true" : "false",
+                    image->source_live_comparable ? "comparison-reported-by-child-registrations"
+                                                  : "image-source-domain-differs-from-child-ranges",
+                    image->structural_range_count, image->registration_count,
+                    image->active_owner ? "true" : "false");
+            }
+        }
+        if (n < 0 || (size_t)n >= sizeof(record)) {
+            free(out); free(ranges); free(images); free(registrations);
+            send_err(id, "catalog record exceeds response budget"); return;
+        }
+        size_t needed = (emitted ? 1u : 0u) + (size_t)n + 256u;
+        if (pos + needed > EXEC_CATALOG_RECORD_BUDGET) break;
+        if (emitted) out[pos++] = ',';
+        memcpy(out + pos, record, (size_t)n); pos += (size_t)n; emitted++;
+    }
+    if (emitted == 0 && cursor < total) {
+        free(out); free(ranges); free(images); free(registrations);
+        send_err(id, "catalog record exceeds response budget"); return;
+    }
+    int next = cursor + emitted;
+    int n = snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+        "],\"returned\":%d,\"has_more\":%s,\"next_cursor\":",
+        emitted, next < total ? "true" : "false");
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(ranges); free(images); free(registrations); send_err(id, "response too large"); return;
+    }
+    pos += (size_t)n;
+    n = next < total ? snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos, "%d", next)
+                     : snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos, "null");
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(ranges); free(images); free(registrations); send_err(id, "response too large"); return;
+    }
+    pos += (size_t)n;
+    n = snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos,
+        ",\"frame\":%llu}", (unsigned long long)s_frame_count);
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); free(ranges); free(images); free(registrations); send_err(id, "response too large"); return;
+    }
+    debug_server_send_line(out);
+    free(out); free(ranges); free(images); free(registrations);
+}
+
+typedef struct {
+    char key[65];
+    int has_key;
+    uint32_t addr;
+    uint32_t phys;
+    uint32_t len;
+} ObserverReadRegion;
+
+typedef struct {
+    char key[65];
+    uint32_t addr;
+    uint32_t phys;
+    uint32_t len;
+} ObservationGuardRegion;
+
+typedef struct {
+    uint32_t pc;
+    int require_current;
+} ObservationGuardWitness;
+
+typedef struct {
+    ObservationGuardRegion ram_regions[OBS_GUARD_MAX_RAM_REGIONS];
+    ObservationGuardWitness witnesses[OBS_GUARD_MAX_WITNESSES];
+    int ram_region_count;
+    int witness_count;
+    uint32_t total_ram_bytes;
+    char expected_token[65];
+    int has_expected_token;
+} ObservationGuardDescriptor;
+
+typedef struct {
+    char sha256[65];
+} ObservationGuardRamEvidence;
+
+typedef struct {
+    uint32_t pc;
+    uint32_t backend;
+    uint32_t reason;
+    uint32_t range_base;
+    uint32_t range_length;
+    char live_sha256[65];
+    char generation_digest[65];
+    int current;
+    uint64_t lifecycle_instance_id;
+    uint32_t lifecycle_generation;
+    uint32_t registration_id;
+    const char *status;
+} ObservationGuardWitnessEvidence;
+
+typedef struct {
+    char token[65];
+    int valid;
+    char failure_reason[96];
+    ObservationGuardRamEvidence ram[OBS_GUARD_MAX_RAM_REGIONS];
+    ObservationGuardWitnessEvidence witnesses[OBS_GUARD_MAX_WITNESSES];
+} ObservationGuardEvaluation;
+
+static int observer_key_valid(const char *s) {
+    if (!s || !*s) return 0;
+    for (; *s; s++) {
+        unsigned char c = (unsigned char)*s;
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+              (c >= '0' && c <= '9') || c == '_' || c == '.' ||
+              c == ':' || c == '-')) return 0;
+    }
+    return 1;
+}
+
+static int observer_sha256_valid(const char *s) {
+    if (!s || strlen(s) != 64u) return 0;
+    for (int i = 0; i < 64; i++)
+        if (!((s[i] >= '0' && s[i] <= '9') || (s[i] >= 'a' && s[i] <= 'f')))
+            return 0;
+    return 1;
+}
+
+/* Extract one named JSON object without accepting a truncated prefix. This is
+ * intentionally small: guard descriptors contain only bounded arrays of flat
+ * records and scalar fields. Strings and escapes are still honored while
+ * matching braces. */
+static int json_extract_named_object(const char *json, const char *name,
+                                     char *out, size_t cap) {
+    char pattern[96];
+    snprintf(pattern, sizeof(pattern), "\"%s\"", name);
+    const char *p = strstr(json, pattern);
+    if (!p) return 0;
+    p += strlen(pattern);
+    while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ':') p++;
+    if (*p != '{') return -1;
+    const char *start = p;
+    int depth = 0, quoted = 0, escaped = 0;
+    for (; *p; p++) {
+        char c = *p;
+        if (quoted) {
+            if (escaped) escaped = 0;
+            else if (c == '\\') escaped = 1;
+            else if (c == '"') quoted = 0;
+            continue;
+        }
+        if (c == '"') { quoted = 1; continue; }
+        if (c == '{') depth++;
+        else if (c == '}' && --depth == 0) {
+            size_t n = (size_t)(p - start + 1);
+            if (n + 1u > cap) return -1;
+            memcpy(out, start, n); out[n] = '\0'; return 1;
+        }
+    }
+    return -1;
+}
+
+static int guard_region_compare(const void *a, const void *b) {
+    const ObservationGuardRegion *left = (const ObservationGuardRegion *)a;
+    const ObservationGuardRegion *right = (const ObservationGuardRegion *)b;
+    if (left->phys != right->phys) return left->phys < right->phys ? -1 : 1;
+    if (left->len != right->len) return left->len < right->len ? -1 : 1;
+    return strcmp(left->key, right->key);
+}
+
+static int guard_witness_compare(const void *a, const void *b) {
+    const ObservationGuardWitness *left = (const ObservationGuardWitness *)a;
+    const ObservationGuardWitness *right = (const ObservationGuardWitness *)b;
+    return left->pc < right->pc ? -1 : left->pc > right->pc ? 1 : 0;
+}
+
+static int parse_guard_regions(const char *guard, ObservationGuardDescriptor *out,
+                               const char **error_out) {
+    const char *tag = strstr(guard, "\"ram_regions\"");
+    if (!tag || !(tag = strchr(tag, '['))) {
+        *error_out = "missing guard ram_regions"; return 0;
+    }
+    const char *p = tag + 1;
+    while (1) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',') p++;
+        if (*p == ']') break;
+        if (*p != '{') { *error_out = "invalid guard ram_regions array"; return 0; }
+        if (out->ram_region_count >= OBS_GUARD_MAX_RAM_REGIONS) {
+            *error_out = "too many guard ram regions"; return 0;
+        }
+        const char *end = strchr(p, '}');
+        if (!end || end - p >= 511) { *error_out = "invalid guard ram region"; return 0; }
+        char obj[512], addr_s[32];
+        size_t n = (size_t)(end - p + 1); memcpy(obj, p, n); obj[n] = '\0';
+        ObservationGuardRegion *r = &out->ram_regions[out->ram_region_count];
+        memset(r, 0, sizeof(*r));
+        if (observer_scalar(obj, "key", r->key, sizeof(r->key)) != 1 || !observer_key_valid(r->key)) {
+            *error_out = "invalid guard ram region key"; return 0;
+        }
+        if (observer_scalar(obj, "addr", addr_s, sizeof(addr_s)) != 1) {
+            *error_out = "invalid guard ram region address"; return 0;
+        }
+        long length = observer_int(obj, "len", INT_MIN);
+        if (length <= 0) { *error_out = "invalid guard ram region length"; return 0; }
+        if (length > OBS_GUARD_MAX_REGION_BYTES) {
+            *error_out = "guard ram region byte limit exceeded"; return 0;
+        }
+        uint64_t parsed;
+        if (observer_uint(obj, "addr", UINT32_MAX, &parsed) != 1) { *error_out = "guard ram region address overflow"; return 0; }
+        r->addr = (uint32_t)parsed;
+        if (!observer_ram_phys(r->addr, &r->phys)) { *error_out = "guard ram region is not main RAM"; return 0; }
+        r->len = (uint32_t)length;
+        if (r->len > 0x200000u - r->phys) {
+            *error_out = "guard ram region range overflow"; return 0;
+        }
+        if (r->len > OBS_GUARD_MAX_TOTAL_BYTES - out->total_ram_bytes) {
+            *error_out = "aggregate guard ram byte limit exceeded"; return 0;
+        }
+        for (int i = 0; i < out->ram_region_count; i++) {
+            ObservationGuardRegion *old = &out->ram_regions[i];
+            if (!strcmp(old->key, r->key)) {
+                *error_out = "duplicate guard ram region key"; return 0;
+            }
+            if (old->phys == r->phys && old->len == r->len) {
+                *error_out = "duplicate guard ram region range"; return 0;
+            }
+        }
+        out->total_ram_bytes += r->len;
+        out->ram_region_count++;
+        p = end + 1;
+    }
+    return 1;
+}
+
+static int parse_guard_witnesses(const char *guard, ObservationGuardDescriptor *out,
+                                 const char **error_out) {
+    const char *tag = strstr(guard, "\"execution_witnesses\"");
+    if (!tag || !(tag = strchr(tag, '['))) {
+        *error_out = "missing guard execution_witnesses"; return 0;
+    }
+    const char *p = tag + 1;
+    while (1) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',') p++;
+        if (*p == ']') break;
+        if (*p != '{') { *error_out = "invalid guard execution_witnesses array"; return 0; }
+        if (out->witness_count >= OBS_GUARD_MAX_WITNESSES) {
+            *error_out = "too many guard execution witnesses"; return 0;
+        }
+        const char *end = strchr(p, '}');
+        if (!end || end - p >= 255) { *error_out = "invalid guard execution witness"; return 0; }
+        char obj[256], pc_s[32], current_s[16] = "true";
+        size_t n = (size_t)(end - p + 1); memcpy(obj, p, n); obj[n] = '\0';
+        if (observer_scalar(obj, "pc", pc_s, sizeof(pc_s)) != 1) {
+            *error_out = "invalid guard execution witness pc"; return 0;
+        }
+        if (observer_scalar(obj, "require_current", current_s, sizeof(current_s)) < 0) {
+            *error_out = "invalid guard currentness"; return 0;
+        }
+        if (strcmp(current_s, "true")) {
+            *error_out = "guard execution witnesses must require currentness"; return 0;
+        }
+        uint64_t parsed;
+        if (observer_uint(obj, "pc", UINT32_MAX, &parsed) != 1) { *error_out = "guard execution witness pc overflow"; return 0; }
+        uint32_t pc = (uint32_t)parsed;
+        uint32_t phys;
+        if (!observer_ram_phys(pc, &phys) || (phys & 3u)) {
+            *error_out = "guard execution witness pc is not aligned main RAM"; return 0;
+        }
+        pc = phys | 0x80000000u;
+        for (int i = 0; i < out->witness_count; i++)
+            if (out->witnesses[i].pc == pc) {
+                *error_out = "duplicate guard execution witness"; return 0;
+            }
+        out->witnesses[out->witness_count].pc = pc;
+        out->witnesses[out->witness_count].require_current = 1;
+        out->witness_count++;
+        p = end + 1;
+    }
+    return 1;
+}
+
+static int parse_observation_guard(const char *json, ObservationGuardDescriptor *out,
+                                   const char **error_out) {
+    char guard[6144];
+    int extracted = json_extract_named_object(json, "guard", guard, sizeof(guard));
+    if (extracted <= 0) { *error_out = "missing or invalid observation guard"; return 0; }
+    memset(out, 0, sizeof(*out));
+    if (!parse_guard_regions(guard, out, error_out) ||
+        !parse_guard_witnesses(guard, out, error_out)) return 0;
+    if (!out->ram_region_count && !out->witness_count) {
+        *error_out = "observation guard must not be empty"; return 0;
+    }
+    int token_present = observer_scalar(guard, "expected_token", out->expected_token,
+                                        sizeof(out->expected_token));
+    if (token_present < 0) { *error_out = "invalid observation guard expected token"; return 0; }
+    if (token_present) {
+        if (!observer_sha256_valid(out->expected_token)) {
+            *error_out = "invalid observation guard expected token"; return 0;
+        }
+        out->has_expected_token = 1;
+    }
+    qsort(out->ram_regions, (size_t)out->ram_region_count,
+          sizeof(out->ram_regions[0]), guard_region_compare);
+    qsort(out->witnesses, (size_t)out->witness_count,
+          sizeof(out->witnesses[0]), guard_witness_compare);
+    return 1;
+}
+
+static void guard_fail(ObservationGuardEvaluation *evaluation, const char *reason) {
+    if (!evaluation->valid || !reason) return;
+    evaluation->valid = 0;
+    snprintf(evaluation->failure_reason, sizeof(evaluation->failure_reason), "%s", reason);
+}
+
+static void evaluate_observation_guard(const ObservationGuardDescriptor *descriptor,
+                                       ObservationGuardEvaluation *evaluation) {
+    static const char domain[] = "psxrecomp-observation-guard-v1";
+    uint8_t *ram = memory_get_ram_ptr();
+    uint8_t source[32]; uint32_t source_base = 0, source_len = 0;
+    int has_source = dirty_ram_text_identity(&source_base, &source_len, source);
+    psx_sha256_ctx ctx;
+    memset(evaluation, 0, sizeof(*evaluation));
+    evaluation->valid = 1;
+    ensure_runtime_instance_identity();
+    psx_sha256_init(&ctx);
+    observer_sha256_update(&ctx, domain, sizeof(domain) - 1);
+    observer_sha256_update(&ctx, s_runtime_instance_digest, sizeof(s_runtime_instance_digest));
+    sha_u32(&ctx, (uint32_t)has_source);
+    sha_u32(&ctx, source_base);
+    sha_u32(&ctx, source_len);
+    if (has_source) observer_sha256_update(&ctx, source, sizeof(source));
+    sha_u32(&ctx, (uint32_t)strlen(s_program_serial));
+    observer_sha256_update(&ctx, s_program_serial, strlen(s_program_serial));
+    sha_u32(&ctx, (uint32_t)descriptor->ram_region_count);
+    for (int i = 0; i < descriptor->ram_region_count; i++) {
+        const ObservationGuardRegion *r = &descriptor->ram_regions[i];
+        uint8_t digest[32];
+        psx_sha256_compute(ram + r->phys, r->len, digest);
+        psx_sha256_hex(digest, evaluation->ram[i].sha256);
+        sha_u32(&ctx, r->phys); sha_u32(&ctx, r->len);
+        sha_u32(&ctx, (uint32_t)strlen(r->key));
+        observer_sha256_update(&ctx, r->key, strlen(r->key));
+        observer_sha256_update(&ctx, digest, sizeof(digest));
+    }
+    sha_u32(&ctx, (uint32_t)descriptor->witness_count);
+    for (int i = 0; i < descriptor->witness_count; i++) {
+        const ObservationGuardWitness *required = &descriptor->witnesses[i];
+        ObservationGuardWitnessEvidence *evidence = &evaluation->witnesses[i];
+        uint32_t phys = required->pc & 0x1fffffffu;
+        OverlayExecutionOwner owner;
+        memset(evidence, 0, sizeof(*evidence));
+        evidence->pc = required->pc;
+        evidence->range_base = phys | 0x80000000u;
+        evidence->range_length = 4u;
+        sha_u32(&ctx, required->pc); sha_u32(&ctx, (uint32_t)required->require_current);
+        if (!overlay_lifecycle_owner_at(phys, &owner)) {
+            evidence->status = "missing";
+            guard_fail(evaluation, "required execution witness is missing");
+            sha_u32(&ctx, 0u);
+            continue;
+        }
+        uint8_t live_digest[32], observed_bytes[4] = {
+            (uint8_t)owner.instruction_word_at_observation,
+            (uint8_t)(owner.instruction_word_at_observation >> 8),
+            (uint8_t)(owner.instruction_word_at_observation >> 16),
+            (uint8_t)(owner.instruction_word_at_observation >> 24)
+        };
+        uint8_t observed_digest[32];
+        psx_sha256_compute(ram + phys, 4u, live_digest);
+        psx_sha256_compute(observed_bytes, sizeof(observed_bytes), observed_digest);
+        psx_sha256_hex(live_digest, evidence->live_sha256);
+        uint32_t lo = phys, len = 4u;
+        if (!watched_generation_digest(&lo, &len, 1,
+                                       evidence->generation_digest, NULL, NULL, NULL)) {
+            evidence->status = "generation-unavailable";
+            guard_fail(evaluation, "required witness generation is unavailable");
+            sha_u32(&ctx, 1u);
+            continue;
+        }
+        evidence->backend = owner.owner;
+        evidence->reason = owner.reason;
+        evidence->lifecycle_instance_id = owner.instance_id;
+        evidence->registration_id = owner.registration_id;
+        if (owner.instance_id && owner.instance_id <= INT_MAX) {
+            OverlayLifecycleInstance instance;
+            if (overlay_lifecycle_get_instance((int)owner.instance_id - 1, &instance) &&
+                instance.instance_id == owner.instance_id)
+                evidence->lifecycle_generation = instance.lifecycle_generation;
+        }
+        evidence->current = !memcmp(live_digest, observed_digest, sizeof(live_digest)) &&
+            overlay_lifecycle_owner_observation_current(&owner) &&
+            owner.owner != OVERLAY_EXEC_OWNER_AMBIGUOUS;
+        evidence->status = owner.owner == OVERLAY_EXEC_OWNER_AMBIGUOUS ? "ambiguous" :
+                           evidence->current ? "current" : "stale";
+        if (owner.owner == OVERLAY_EXEC_OWNER_AMBIGUOUS)
+            guard_fail(evaluation, "required execution witness ownership is ambiguous");
+        else if (required->require_current && !evidence->current)
+            guard_fail(evaluation, "required execution witness is stale");
+        sha_u32(&ctx, 2u); sha_u32(&ctx, owner.owner); sha_u32(&ctx, owner.reason);
+        sha_u32(&ctx, phys); sha_u32(&ctx, 4u);
+        observer_sha256_update(&ctx, live_digest, sizeof(live_digest));
+        observer_sha256_update(&ctx, evidence->generation_digest, 64u);
+        sha_u32(&ctx, (uint32_t)evidence->current);
+        sha_u64(&ctx, owner.instance_id);
+        sha_u32(&ctx, evidence->lifecycle_generation);
+        sha_u32(&ctx, owner.registration_id);
+    }
+    uint8_t digest[32];
+    psx_sha256_final(&ctx, digest);
+    psx_sha256_hex(digest, evaluation->token);
+    if (evaluation->valid) snprintf(evaluation->failure_reason,
+                                     sizeof(evaluation->failure_reason), "none");
+}
+
+static int append_guard_evidence(char *out, size_t cap, size_t *pos,
+                                 const ObservationGuardDescriptor *descriptor,
+                                 const ObservationGuardEvaluation *evaluation) {
+    int n = snprintf(out + *pos, cap - *pos,
+        "\"token\":\"%s\",\"valid\":%s,\"failure_reason\":\"%s\","
+        "\"runtime_instance_id\":\"proc-%s\",\"ram_regions\":[",
+        evaluation->token, evaluation->valid ? "true" : "false",
+        evaluation->failure_reason, s_runtime_instance_id);
+    if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    for (int i = 0; i < descriptor->ram_region_count; i++) {
+        const ObservationGuardRegion *r = &descriptor->ram_regions[i];
+        n = snprintf(out + *pos, cap - *pos,
+            "%s{\"key\":\"%s\",\"addr\":\"0x%08X\",\"len\":%u,"
+            "\"sha256\":\"%s\"}", i ? "," : "", r->key,
+            r->phys | 0x80000000u, r->len, evaluation->ram[i].sha256);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    }
+    n = snprintf(out + *pos, cap - *pos, "],\"execution_witnesses\":[");
+    if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    for (int i = 0; i < descriptor->witness_count; i++) {
+        const ObservationGuardWitnessEvidence *w = &evaluation->witnesses[i];
+        char instance[40] = "null", registration[40] = "null";
+        if (w->lifecycle_instance_id) snprintf(instance, sizeof(instance),
+            "\"life-%016llx\"", (unsigned long long)w->lifecycle_instance_id);
+        if (w->registration_id) snprintf(registration, sizeof(registration),
+            "\"reg-%08x\"", w->registration_id);
+        n = snprintf(out + *pos, cap - *pos,
+            "%s{\"pc\":\"0x%08X\",\"status\":\"%s\",\"current\":%s,"
+            "\"backend\":\"%s\",\"reason\":\"%s\","
+            "\"range\":{\"guest_base\":\"0x%08X\",\"length\":%u},"
+            "\"live_sha256\":%s%s%s,\"watched_generation_digest\":%s%s%s,"
+            "\"image_instance_id\":%s,\"lifecycle_generation\":%u,"
+            "\"native_registration_id\":%s}",
+            i ? "," : "", w->pc, w->status ? w->status : "missing",
+            w->current ? "true" : "false", execution_owner_name(w->backend),
+            execution_reason_name(w->reason), w->range_base, w->range_length,
+            w->live_sha256[0] ? "\"" : "", w->live_sha256[0] ? w->live_sha256 : "null",
+            w->live_sha256[0] ? "\"" : "",
+            w->generation_digest[0] ? "\"" : "",
+            w->generation_digest[0] ? w->generation_digest : "null",
+            w->generation_digest[0] ? "\"" : "", instance,
+            w->lifecycle_generation, registration);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    }
+    n = snprintf(out + *pos, cap - *pos,
+        "],\"ram_region_count\":%d,\"execution_witness_count\":%d",
+        descriptor->ram_region_count, descriptor->witness_count);
+    if (n < 0 || (size_t)n >= cap - *pos) return 0; *pos += (size_t)n;
+    return 1;
+}
+
+static int parse_observer_regions(const char *json, ObserverReadRegion *out,
+                                  int *count_out, uint32_t *total_out,
+                                  const char **error_out) {
+    const char *tag = strstr(json, "\"regions\"");
+    if (!tag || !(tag = strchr(tag, '['))) { *error_out = "missing regions"; return 0; }
+    const char *p = tag + 1;
+    int count = 0; uint32_t total = 0;
+    for (;;) {
+        while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n' || *p == ',') p++;
+        if (*p == ']') break;
+        if (*p != '{') { *error_out = "invalid regions array"; return 0; }
+        if (count >= OBS_MAX_REGIONS) { *error_out = "too many regions"; return 0; }
+        const char *end = strchr(p, '}');
+        if (!end || end - p >= 511) { *error_out = "invalid region object"; return 0; }
+        char obj[512]; size_t obj_len = (size_t)(end - p + 1);
+        memcpy(obj, p, obj_len); obj[obj_len] = '\0';
+        char addr_s[32];
+        if (observer_scalar(obj, "addr", addr_s, sizeof(addr_s)) != 1) {
+            *error_out = "invalid region address"; return 0;
+        }
+        long length = observer_int(obj, "len", INT_MIN);
+        if (length <= 0) { *error_out = "invalid region length"; return 0; }
+        if (length > OBS_MAX_REGION_BYTES) { *error_out = "region byte limit exceeded"; return 0; }
+        uint64_t parsed;
+        if (observer_uint(obj, "addr", UINT32_MAX, &parsed) != 1) { *error_out = "region address overflow"; return 0; }
+        uint32_t addr = (uint32_t)parsed;
+        uint32_t phys;
+        if (!observer_ram_phys(addr, &phys)) { *error_out = "region is not main RAM"; return 0; }
+        if ((uint32_t)length > 0x200000u - phys) {
+            *error_out = "region range overflow"; return 0;
+        }
+        if ((uint32_t)length > OBS_MAX_TOTAL_BYTES - total) {
+            *error_out = "aggregate byte limit exceeded"; return 0;
+        }
+        ObserverReadRegion *r = &out[count];
+        memset(r, 0, sizeof(*r)); r->addr = addr; r->phys = phys; r->len = (uint32_t)length;
+        int key_present = observer_scalar(obj, "key", r->key, sizeof(r->key));
+        if (key_present < 0) { *error_out = "invalid region key"; return 0; }
+        if (key_present) {
+            if (!observer_key_valid(r->key)) { *error_out = "invalid region key"; return 0; }
+            r->has_key = 1;
+            for (int i = 0; i < count; i++) {
+                if (out[i].has_key && strcmp(out[i].key, r->key) == 0) {
+                    *error_out = "duplicate region key"; return 0;
+                }
+            }
+        }
+        total += r->len; count++; p = end + 1;
+    }
+    if (count == 0) { *error_out = "regions must not be empty"; return 0; }
+    *count_out = count; *total_out = total; return 1;
+}
+
+static int append_observer_region_payload(char *out, size_t cap, size_t *pos,
+                                          ObserverReadRegion *regions, int count) {
+    static const char h[] = "0123456789abcdef";
+    uint8_t *ram = memory_get_ram_ptr();
+    for (int i = 0; i < count; i++) {
+        ObserverReadRegion *r = &regions[i];
+        int n = snprintf(out + *pos, cap - *pos,
+                         "%s{%s%s%s\"addr\":\"0x%08X\",\"len\":%u,\"hex\":\"",
+                         i ? "," : "", r->has_key ? "\"key\":\"" : "",
+                         r->has_key ? r->key : "", r->has_key ? "\"," : "",
+                         r->phys | 0x80000000u, r->len);
+        if (n < 0 || (size_t)n >= cap - *pos) return 0;
+        *pos += (size_t)n;
+        if (*pos + (size_t)r->len * 2u + 3u >= cap) return 0;
+        for (uint32_t j = 0; j < r->len; j++) {
+            uint8_t b = ram[r->phys + j];
+            out[(*pos)++] = h[b >> 4]; out[(*pos)++] = h[b & 15];
+        }
+        out[(*pos)++] = '"'; out[(*pos)++] = '}';
+    }
+    return 1;
+}
+
+static void handle_observation_guard(int id, const char *json) {
+    overlay_lifecycle_set_tracking_enabled(1);
+    ObservationGuardDescriptor descriptor;
+    ObservationGuardEvaluation before, after;
+    const char *error = NULL;
+    if (!parse_observation_guard(json, &descriptor, &error)) {
+        send_err(id, error ? error : "invalid observation guard"); return;
+    }
+    uint64_t frame_before = s_frame_count;
+    char global_before[65], global_after[65];
+    char watched_before[65], watched_after[65];
+    char registrations_before[17], registrations_after[17];
+    char lifecycle_before[17], lifecycle_after[17];
+    executable_state_token(global_before);
+    executable_state_component_tokens(watched_before, registrations_before,
+                                      lifecycle_before);
+    evaluate_observation_guard(&descriptor, &before);
+    evaluate_observation_guard(&descriptor, &after);
+    executable_state_token(global_after);
+    executable_state_component_tokens(watched_after, registrations_after,
+                                      lifecycle_after);
+    uint64_t frame_after = s_frame_count;
+    int stable = !strcmp(before.token, after.token);
+    int expected = !descriptor.has_expected_token ||
+                   !strcmp(descriptor.expected_token, before.token);
+    int valid = before.valid && after.valid;
+    int compatible = stable && expected && valid;
+    char *out = (char *)malloc(OBS_MAX_RESPONSE_BYTES);
+    if (!out) { send_err(id, "alloc failed"); return; }
+    size_t pos = (size_t)snprintf(out, OBS_MAX_RESPONSE_BYTES,
+        "{\"id\":%d,\"ok\":true,\"frame_before\":%llu,\"frame_after\":%llu,"
+        "\"stable_frame\":%s,\"executable_state_before\":\"%s\","
+        "\"executable_state_after\":\"%s\",\"stable_executable_state\":%s,"
+        "\"global_state_components_before\":{\"watched_pages\":\"%s\","
+        "\"registrations\":\"%s\",\"lifecycle_catalog\":\"%s\"},"
+        "\"global_state_components_after\":{\"watched_pages\":\"%s\","
+        "\"registrations\":\"%s\",\"lifecycle_catalog\":\"%s\"},"
+        "\"guard\":{\"token_before\":\"%s\",\"token_after\":\"%s\","
+        "\"expected_token_matched\":%s,\"stable\":%s,\"valid\":%s,"
+        "\"compatible\":%s,\"evidence\":{",
+        id, (unsigned long long)frame_before, (unsigned long long)frame_after,
+        frame_before == frame_after ? "true" : "false", global_before, global_after,
+        !strcmp(global_before, global_after) ? "true" : "false",
+        watched_before, registrations_before, lifecycle_before,
+        watched_after, registrations_after, lifecycle_after,
+        before.token, after.token, expected ? "true" : "false",
+        stable ? "true" : "false", valid ? "true" : "false",
+        compatible ? "true" : "false");
+    if (pos >= OBS_MAX_RESPONSE_BYTES ||
+        !append_guard_evidence(out, OBS_MAX_RESPONSE_BYTES, &pos, &descriptor, &before)) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    int n = snprintf(out + pos, OBS_MAX_RESPONSE_BYTES - pos, "}}}");
+    if (n < 0 || (size_t)n >= OBS_MAX_RESPONSE_BYTES - pos) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    debug_server_send_line(out); free(out);
+}
+
+static void handle_read_regions(int id, const char *json) {
+    ObserverReadRegion regions[OBS_MAX_REGIONS];
+    int count = 0; uint32_t total = 0; const char *error = NULL;
+    if (!parse_observer_regions(json, regions, &count, &total, &error)) {
+        send_err(id, error ? error : "invalid regions"); return;
+    }
+    int has_guard = strstr(json, "\"guard\"") != NULL;
+    ObservationGuardDescriptor descriptor;
+    ObservationGuardEvaluation guard_before, guard_after;
+    if (has_guard && !parse_observation_guard(json, &descriptor, &error)) {
+        send_err(id, error ? error : "invalid observation guard"); return;
+    }
+    size_t estimated = 12288u + (size_t)total * 2u + (size_t)count * 192u;
+    if (estimated > OBS_MAX_RESPONSE_BYTES) { send_err(id, "response too large"); return; }
+    char *out = (char *)malloc(estimated);
+    if (!out) { send_err(id, "alloc failed"); return; }
+    uint64_t frame_before = s_frame_count; char state_before[65], state_after[65];
+    executable_state_token(state_before);
+    int expected = 1, guard_valid_before = 1;
+    if (has_guard) {
+        evaluate_observation_guard(&descriptor, &guard_before);
+        expected = !descriptor.has_expected_token ||
+                   !strcmp(descriptor.expected_token, guard_before.token);
+        guard_valid_before = guard_before.valid;
+    }
+    /* Build payload only after the expected scoped boundary is accepted. It is
+     * held in memory until the after-token is known and is never returned for
+     * an invalid or mixed guard. */
+    char *payload = (char *)malloc(estimated);
+    if (!payload) { free(out); send_err(id, "alloc failed"); return; }
+    size_t payload_pos = 0;
+    int read_payload = !has_guard || (expected && guard_valid_before);
+    if (read_payload && !append_observer_region_payload(
+            payload, estimated, &payload_pos, regions, count)) {
+        free(payload); free(out); send_err(id, "response too large"); return;
+    }
+    uint64_t frame_after = s_frame_count; executable_state_token(state_after);
+    if (has_guard) evaluate_observation_guard(&descriptor, &guard_after);
+    int stable_frame = frame_before == frame_after;
+    int stable_exec = strcmp(state_before, state_after) == 0;
+    int guard_stable = !has_guard || !strcmp(guard_before.token, guard_after.token);
+    int guard_valid = !has_guard || (guard_before.valid && guard_after.valid);
+    int compatible = !has_guard || (expected && guard_stable && guard_valid);
+    size_t pos = (size_t)snprintf(out, estimated,
+        "{\"id\":%d,\"ok\":true,\"frame_before\":%llu,"
+        "\"executable_state_before\":\"%s\",\"regions\":[",
+        id, (unsigned long long)frame_before, state_before);
+    if (compatible) {
+        if (pos + payload_pos >= estimated) {
+            free(payload); free(out); send_err(id, "response too large"); return;
+        }
+        memcpy(out + pos, payload, payload_pos); pos += payload_pos;
+    }
+    free(payload);
+    int n = snprintf(out + pos, estimated - pos,
+        "],\"payload_returned\":%s,\"frame_after\":%llu,\"stable_frame\":%s,"
+        "\"executable_state_after\":\"%s\",\"stable_executable_state\":%s",
+        compatible ? "true" : "false", (unsigned long long)frame_after,
+        stable_frame ? "true" : "false", state_after, stable_exec ? "true" : "false");
+    if (n < 0 || (size_t)n >= estimated - pos) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    pos += (size_t)n;
+    if (has_guard) {
+        n = snprintf(out + pos, estimated - pos,
+            ",\"guard\":{\"token_before\":\"%s\",\"token_after\":\"%s\","
+            "\"expected_token_matched\":%s,\"stable\":%s,\"valid\":%s,"
+            "\"compatible\":%s,\"evidence\":{",
+            guard_before.token, guard_after.token, expected ? "true" : "false",
+            guard_stable ? "true" : "false", guard_valid ? "true" : "false",
+            compatible ? "true" : "false");
+        if (n < 0 || (size_t)n >= estimated - pos) {
+            free(out); send_err(id, "response too large"); return;
+        }
+        pos += (size_t)n;
+        if (!append_guard_evidence(out, estimated, &pos, &descriptor, &guard_before)) {
+            free(out); send_err(id, "response too large"); return;
+        }
+        n = snprintf(out + pos, estimated - pos, "}}");
+        if (n < 0 || (size_t)n >= estimated - pos) {
+            free(out); send_err(id, "response too large"); return;
+        }
+        pos += (size_t)n;
+    }
+    n = snprintf(out + pos, estimated - pos, "}");
+    if (n < 0 || (size_t)n >= estimated - pos) {
+        free(out); send_err(id, "response too large"); return;
+    }
+    debug_server_send_line(out); free(out);
+}
+static void handle_mod_status(int id, const char *json) {
+    (void)json;
+    ModRuntimeStatus status;
+    mod_runtime_get_status(&status);
+    char last_lba[24] = "null";
+    if (status.has_last_overlay_lba)
+        snprintf(last_lba, sizeof(last_lba), "%u", status.last_overlay_lba);
+    send_fmt("{\"id\":%d,\"ok\":true,\"initialized\":%s,\"plan_committed\":%s,"
+             "\"main_applied\":%s,\"disc_enabled\":%s,\"disc_guard_failed\":%s,"
+             "\"plan_fingerprint\":\"%s\",\"active_write_count\":%llu,"
+             "\"active_overlay_count\":%llu,\"disc_identity\":{"
+             "\"available\":%s,\"algorithm\":\"sha256\",\"sha256\":\"%s\","
+             "\"scope\":\"committed-source-disc\"},\"overlay_consumption\":{"
+             "\"counter_scope\":\"host-cumulative-since-plan-reset\","
+             "\"includes_repeated_reads_and_replay\":true,\"counter_epoch\":%llu,"
+             "\"sector_applications\":%llu,\"bytes_copied\":%llu,\"last_lba\":%s}}",
+             id, status.initialized ? "true" : "false",
+             status.plan_committed ? "true" : "false", status.main_applied ? "true" : "false",
+             status.disc_enabled ? "true" : "false", status.disc_guard_failed ? "true" : "false",
+             status.plan_fingerprint, (unsigned long long)status.active_write_count,
+             (unsigned long long)status.active_overlay_count,
+             status.disc_sha256[0] ? "true" : "false", status.disc_sha256,
+             (unsigned long long)status.counter_epoch,
+             (unsigned long long)status.overlay_sector_applications,
+             (unsigned long long)status.overlay_bytes_copied, last_lba);
 }
 
 /* ---- Command handlers ---- */
@@ -13613,6 +15478,15 @@ static const CmdEntry s_commands[] = {
     { "idle_skip",         handle_idle_skip },
     { "lockstep",          handle_lockstep },
     { "lockstep_func",     handle_lockstep_func },
+    { "protocol_info", handle_protocol_info },
+    { "runtime_identity", handle_runtime_identity },
+    { "executable_catalog", handle_executable_catalog },
+    { "executable_lifecycle", handle_executable_lifecycle },
+    { "execution_witness", handle_execution_witness },
+    { "executable_regions", handle_executable_regions },
+    { "observation_guard", handle_observation_guard },
+    { "read_regions", handle_read_regions },
+    { "mod_status",        handle_mod_status },
     { "ping",              handle_ping },
     { "xlate",             handle_xlate },
     { "parity_dump",       handle_parity_dump },

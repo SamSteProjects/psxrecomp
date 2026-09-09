@@ -1,6 +1,7 @@
 #define PSX_OVERLAY_DLL_BUILD 1
 #include "overlay_loader.h"
 #undef PSX_OVERLAY_DLL_BUILD
+#include "overlay_capture.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -29,6 +30,28 @@ uint32_t g_debug_last_store_pc;
 uint32_t g_overlay_region_floor;
 uint32_t i_stat, i_mask;
 int g_exec_phase;
+int g_ls_replay_active;
+static uint32_t s_observation_count;
+static uint32_t s_observed_pc;
+static uint32_t s_observed_registration;
+
+/* Explicit loader-only observation sink. Check dispatch metadata, but never
+ * simulate a runtime lifecycle, modify guest RAM, or influence native routing. */
+void overlay_lifecycle_note_execution(uint32_t addr, uint32_t owner,
+                                      uint32_t registration_id, uint32_t reason) {
+    if (addr < 0x80010000u || addr > 0x8001000Cu || (addr & 3u) ||
+        owner != OVERLAY_EXEC_OWNER_CACHED_NATIVE ||
+        registration_id == 0 || registration_id > PSX_OVERLAY_TEST_CANDIDATE_CAP ||
+        reason != OVERLAY_EXEC_REASON_NATIVE_DISPATCH ||
+        overlay_loader_observation_is_speculative()) {
+        fputs("invalid observation callback in loader fixture\n", stderr);
+        abort();
+    }
+    ++s_observation_count;
+    s_observed_pc = addr;
+    s_observed_registration = registration_id;
+}
+
 int g_idle_note_suppress;
 int g_psx_call_bail;
 uint32_t g_dirty_ram_code_gen;
@@ -312,6 +335,9 @@ static int restore_scenario(const char *scenario, const char *library) {
                 ? 0x80010000u : 0x80010004u;
     g_psx_cps_mode = 1;
     ok &= expect_int("initial native owner", overlay_loader_dispatch(&cpu, pc), 1);
+    ok &= expect_int("initial observation", s_observation_count, 1);
+    ok &= expect_int("observed entry or continuation", s_observed_pc, pc);
+    ok &= expect_int("observed compiled registration", s_observed_registration, 1);
 
     /* Bulk RAM replacement does not go through the guest-store hooks. A
      * generation sum can wrap/collide, and repeated restores can occur with
@@ -323,6 +349,7 @@ static int restore_scenario(const char *scenario, const char *library) {
     overlay_loader_resync_validation_after_restore();
     ok &= expect_int("stale native rejected", overlay_loader_dispatch(&cpu, pc), 0);
     ok &= expect_int("stale body never called", counter_value(library, "test_call_count"), 1);
+    ok &= expect_int("rejected native publishes no observation", s_observation_count, 1);
 
     s_ram[0x10000] = 0;
     /* No ordinary write notification here: restore must also drop the lazy
@@ -333,6 +360,7 @@ static int restore_scenario(const char *scenario, const char *library) {
     ok &= expect_int("restored body called", counter_value(library, "test_call_count"), 2);
     ok &= expect_int("warm native retained", overlay_loader_dispatch(&cpu, pc), 1);
     ok &= expect_int("compiled owner retained", overlay_loader_registered_count(), 1);
+    ok &= expect_int("recovered and warm dispatch observations", s_observation_count, 3);
     return ok;
 }
 
@@ -345,6 +373,10 @@ int main(int argc, char **argv) {
     const char *scenario = argv[2];
     const char *first = argv[3];
     const char *second = argv[4];
+    if (overlay_loader_observation_is_speculative()) return 4;
+    g_ls_replay_active = 1;
+    if (!overlay_loader_observation_is_speculative()) return 4;
+    g_ls_replay_active = 0;
     memset(s_ram, 0, sizeof(s_ram));
     overlay_loader_init(argv[1], "PAIR-TEST", 0);
 
@@ -405,6 +437,9 @@ int main(int argc, char **argv) {
         ok &= expect_int("redundant flush count",
                          counter_value(second, "test_flush_count"), 0);
     }
+
+    ok &= expect_int("observations only for real dispatch", s_observation_count, alias ? 1 : 0);
+    if (alias) ok &= expect_int("canonical observed pc", s_observed_pc, 0x80010000u);
 
     /* A second rescan must neither reacquire an alias handle nor publish
      * another owner/candidate set for an already satisfied physical path. */

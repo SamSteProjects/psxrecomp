@@ -24,6 +24,8 @@
 #include "dirty_ram_interp.h"
 #include "psx_cycles.h"
 #include "starvation_ring.h"
+#include "psx_sha256.h"
+#include "overlay_capture.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -399,6 +401,7 @@ void dirty_ram_clear_image_baseline(void) {
  * code — see dirty_ram_text_native_ok / dirty_ram_text_bless. */
 static uint8_t *text_ref_image = NULL;
 static uint32_t text_ref_lo = 0, text_ref_hi = 0;
+static uint8_t text_source_sha256[32];
 static uint32_t text_modified_bitmap[DIRTY_RAM_BITMAP_WORDS];
 static uint32_t text_diverged_bitmap[DIRTY_RAM_BITMAP_WORDS];
 static uint64_t g_text_native_blocked = 0;
@@ -410,6 +413,7 @@ static uint32_t g_text_exact_last_mismatch = 0;
 static uint32_t g_text_exact_last_live = 0;
 static uint32_t g_text_exact_last_ref = 0;
 
+void overlay_watch_set_range(uint32_t phys, uint32_t len);
 void dirty_ram_register_text_image(uint32_t phys_lo, const uint8_t *bytes,
                                    uint32_t len) {
     if (!bytes || len == 0 || phys_lo >= RAM_SIZE) return;
@@ -417,6 +421,8 @@ void dirty_ram_register_text_image(uint32_t phys_lo, const uint8_t *bytes,
     text_ref_image = (uint8_t *)bytes;  /* runtime-owned mutable heap buffer */
     text_ref_lo = phys_lo;
     text_ref_hi = phys_lo + len;
+    psx_sha256_compute(bytes, len, text_source_sha256);
+    overlay_watch_set_range(phys_lo, len);
     memset(text_modified_bitmap, 0, sizeof(text_modified_bitmap));
     memset(text_diverged_bitmap, 0, sizeof(text_diverged_bitmap));
     g_text_native_blocked = 0;
@@ -431,6 +437,14 @@ void dirty_ram_register_text_image(uint32_t phys_lo, const uint8_t *bytes,
 
 int dirty_ram_text_image_registered(void) { return text_ref_image != NULL; }
 
+int dirty_ram_text_identity(uint32_t *phys_lo, uint32_t *len,
+                            uint8_t source_sha256[32]) {
+    if (!text_ref_image) return 0;
+    if (phys_lo) *phys_lo = text_ref_lo;
+    if (len) *len = text_ref_hi - text_ref_lo;
+    if (source_sha256) memcpy(source_sha256, text_source_sha256, 32);
+    return 1;
+}
 static inline void text_guard_note_write(uint32_t phys, uint32_t val, int size) {
     if (!text_ref_image) return;
     if (phys < text_ref_lo || phys + (uint32_t)size > text_ref_hi) return;
@@ -772,6 +786,10 @@ void dirty_ram_text_guard_resync_after_restore(void) {
     g_text_diverged_pages = 0;
 }
 
+uint32_t overlay_watch_page_size(void) { return 1u << DIRTY_RAM_PAGE_SHIFT; }
+uint32_t overlay_watch_page_count(void) { return DIRTY_RAM_PAGE_COUNT; }
+uint32_t overlay_watch_page_generation(uint32_t page) { return page < DIRTY_RAM_PAGE_COUNT ? overlay_page_gen[page] : 0; }
+
 void overlay_watch_invalidate_after_ram_restore(void) {
     for (uint32_t pg = 0; pg < DIRTY_RAM_PAGE_COUNT; pg++)
         overlay_page_gen[pg]++;
@@ -781,6 +799,7 @@ void overlay_watch_invalidate_after_ram_restore(void) {
     dirty_ram_text_guard_resync_after_restore();
     psx_kernel_bless_resync_after_restore();
     overlay_loader_resync_validation_after_restore();
+    overlay_lifecycle_reset();
 }
 
 static inline void overlay_watch_note_write(uint32_t phys, uint32_t size) {
@@ -999,6 +1018,8 @@ void memory_set_sr_ptr(const uint32_t *p) { sr_ptr = p; }
 uint32_t memory_get_sr(void) { return sr_ptr ? *sr_ptr : 0; }
 
 static uint32_t s_bios_checksum = 0;
+static uint8_t s_bios_sha256[32];
+void memory_get_bios_sha256(uint8_t out[32]) { memcpy(out, s_bios_sha256, 32); }
 uint32_t memory_get_bios_checksum(void) { return s_bios_checksum; }
 
 void memory_init(const char* bios_path) {
@@ -1027,6 +1048,7 @@ void memory_init(const char* bios_path) {
                 bios_path, n, BIOS_ROM_SIZE);
         exit(1);
     }
+    psx_sha256_compute(bios_rom, BIOS_ROM_SIZE, s_bios_sha256);
     s_bios_checksum = 0;
     for (uint32_t i = 0; i < BIOS_ROM_SIZE / 4; i++)
         s_bios_checksum += ((const uint32_t*)bios_rom)[i];

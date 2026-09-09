@@ -36,6 +36,28 @@ const ::RecompLauncherCModProvider* mod_runtime_launcher_provider();
 extern "C" {
 #endif
 
+/* Bounded, read-only snapshot. Read on the runtime thread, like disc patching.
+ * Counters measure actual overlay memcpy work, including repeated reads and
+ * replay. They reset on initialize, successful commit and clear, never rewind
+ * with guest savestates, and do not claim unique sectors or guest execution. */
+typedef struct ModRuntimeStatus {
+    uint32_t initialized;
+    uint32_t plan_committed;
+    uint32_t main_applied;
+    uint32_t disc_enabled;
+    uint32_t disc_guard_failed;
+    uint64_t active_write_count;
+    uint64_t active_overlay_count;
+    uint64_t counter_epoch;
+    uint64_t overlay_sector_applications;
+    uint64_t overlay_bytes_copied;
+    uint32_t has_last_overlay_lba;
+    uint32_t last_overlay_lba;
+    char plan_fingerprint[65];
+    char disc_sha256[65]; /* Committed source-disc identity; empty if unavailable. */
+} ModRuntimeStatus;
+void mod_runtime_get_status(ModRuntimeStatus* out);
+
 /* Called before a guest dispatch. Applies the complete main-EXE plan
  * transactionally on the first dispatch to the configured entry point. */
 void mod_runtime_on_dispatch(uint32_t target);

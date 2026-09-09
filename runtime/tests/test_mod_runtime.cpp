@@ -312,6 +312,17 @@ int main() {
           error.c_str());
     check(PSXRecompV4::mod_runtime_commit(cue_path, &error),
           "CUE and its data-track BIN must have the same mod target identity");
+    ModRuntimeStatus status{};
+    mod_runtime_get_status(&status);
+    check(status.initialized && status.plan_committed && !status.disc_enabled &&
+              !status.disc_guard_failed && status.active_write_count > 0 &&
+              status.active_overlay_count == 1 && status.overlay_bytes_copied == 0 &&
+              status.overlay_sector_applications == 0 && !status.has_last_overlay_lba,
+          "committed status must expose the plan without claiming consumption");
+    check(status.plan_fingerprint == PSXRecompV4::mod_runtime_fingerprint() &&
+              status.disc_sha256 == sha256_hex(stock),
+          "status must identify the committed plan and source disc");
+    const uint64_t first_counter_epoch = status.counter_epoch;
     mod_runtime_activate_plugins();
     check(activation_calls == 1,
           "resolved trusted plugin must activate before runtime startup");
@@ -356,6 +367,9 @@ int main() {
     sector[10] = 0xaa;
     mod_runtime_patch_disc_sector(2, 1, sector.data(), (uint32_t)sector.size());
     check(sector[10] == 0xaa, "disc overlay must stay off during reference reads");
+    mod_runtime_get_status(&status);
+    check(!status.disc_enabled && status.overlay_bytes_copied == 0,
+          "disabled reference reads must not increment consumption counters");
     mod_runtime_enable_disc_patches();
     mod_runtime_patch_disc_sector(2, 1, sector.data(), (uint32_t)sector.size());
     check(sector[10] == 0xbb, "raw disc overlay must patch matching sectors");
@@ -380,6 +394,26 @@ int main() {
               overlay_sector[295] == overlay[2999] &&
               overlay_sector[296] == 0,
           "file overlay must patch the head of its final sector");
+    mod_runtime_get_status(&status);
+    check(status.disc_enabled && status.overlay_bytes_copied == overlay.size() &&
+              status.overlay_sector_applications == 3 && status.has_last_overlay_lba &&
+              status.last_overlay_lba == 6,
+          "status must count exact copied overlay bytes and sector applications");
+    overlay_sector.fill(0);
+    mod_runtime_patch_disc_sector(6, 1, overlay_sector.data(), (uint32_t)overlay_sector.size());
+    mod_runtime_get_status(&status);
+    check(status.overlay_bytes_copied == overlay.size() + 296 &&
+              status.overlay_sector_applications == 4,
+          "host counters must include actual repeated sector applications");
+    mod_runtime_on_savestate_loaded();
+    mod_runtime_get_status(&status);
+    check(status.counter_epoch == first_counter_epoch && status.overlay_sector_applications == 4,
+          "guest savestate restores must not rewind host consumption evidence");
+    check(PSXRecompV4::mod_runtime_commit(cue_path, &error), error.c_str());
+    mod_runtime_get_status(&status);
+    check(status.counter_epoch != first_counter_epoch && status.overlay_bytes_copied == 0 &&
+              status.overlay_sector_applications == 0 && !status.has_last_overlay_lba,
+          "successful commit must reset consumption evidence for the new plan epoch");
 
     std::array<uint8_t, 2352> mode2_sector{};
     mode2_sector[15] = 2;
@@ -471,6 +505,17 @@ int main() {
               bad_sparse_disc[24 + 22] == 0x33,
           "a failed sparse disc guard must leave every write in the sector "
           "untouched");
+    mod_runtime_get_status(&status);
+    check(status.disc_guard_failed && status.overlay_bytes_copied == 0,
+          "failed disc guards must be visible without claiming copied overlay bytes");
+    const uint64_t failed_epoch = status.counter_epoch;
+    check(PSXRecompV4::mod_runtime_clear_for_netplay(&error), error.c_str());
+    mod_runtime_get_status(&status);
+    check(status.counter_epoch != failed_epoch && !status.plan_committed &&
+              !status.disc_enabled && !status.disc_guard_failed &&
+              status.active_overlay_count == 0 && status.active_write_count == 0 &&
+              status.disc_sha256[0] == '\0' && status.overlay_bytes_copied == 0,
+          "clearing the plan must clear consumption and committed disc identity");
 
     /*
      * Display geometry passthrough. Ape Escape scans out 384 while its mode
