@@ -41,13 +41,19 @@ Reimport rejects changed evidence underneath authored actors.
 
 The data layers are imported (retail facts), derived (decoded previews and
 indexes), authored (project edits), live (epoch-scoped observations) and
-generated (future build output). Live observation never changes imported or
+generated (private build output). Live observation never changes imported or
 authored state. Missing runtime identity, guards or witnesses produce an
 unavailable response, not an unguarded RAM read. Live mode cannot issue editor
 authoring commands. A build pipeline must eventually consume authored values
-through independently validated serializers; the current transform editor does
-not yet claim to modify a playable game. See `FEATURE_MATRIX.md` for current
-coverage and `TEST_PLAN.md` for the acceptance gates.
+through independently validated serializers. `importer/serialization.py` now
+implements the representable MAN X/Z inverse and bounded deterministic LZS
+encoding. `sdk/build.py` verifies a fresh retail import, preserves opaque bytes,
+and emits a hash-guarded `.psxmod` using the framework's format-6 `disc_user`
+overlays. The runtime applies these to data sectors as they are read; it does
+not modify the stock image. Unsupported authored fields and compressed growth
+fail before publishing a package. Visual actor-change acceptance is distinct
+from successful package construction or boot. See `FEATURE_MATRIX.md` for
+current coverage and `TEST_PLAN.md` for the acceptance gates.
 
 ## Two programs: the recompiler and the runtime
 

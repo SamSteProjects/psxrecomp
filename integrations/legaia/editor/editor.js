@@ -10,6 +10,15 @@ let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
 sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
+const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build a private mod package from supported authored placements';$('save-button').after(buildButton);
+const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';document.body.append(buildDialog);
+buildButton.onclick=async()=>{
+  if(await api('/api/build',{})){
+    const result=state.build;
+    buildDialog.innerHTML=`<div class="dialog-heading"><h2>Private mod package built</h2><button id="close-build" aria-label="Close">×</button></div><p>${escapeHTML(result.changed_fields)} placement fields · ${escapeHTML(result.overlay_count)} scene overlays</p><p>Runtime launch has not been validated for this package.</p><label>Package path<input readonly value="${escapeHTML(result.path)}"></label><p>${escapeHTML(result.install_instruction)}</p>`;
+    $('close-build').onclick=()=>buildDialog.close();buildDialog.showModal();
+  }
+};
 document.querySelectorAll('[data-panel]').forEach(button=>{if(button.tagName==='BUTTON')button.onclick=()=>{document.querySelector('.workspace').dataset.panel=button.dataset.panel;document.querySelectorAll('.workspace-tabs button').forEach(tab=>tab.classList.toggle('active',tab===button));resize();};});
 
 function notify(message, error=false) {
@@ -21,6 +30,7 @@ function setBusy(value) {
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
+  buildButton.disabled=value || !state.capabilities?.build || !canEdit();
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
 }
 async function api(path, payload, {dialog,success}={}) {

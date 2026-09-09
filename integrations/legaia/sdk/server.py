@@ -26,6 +26,7 @@ class EditorServer(ThreadingHTTPServer):
             raise ProjectError("Editor service must bind to loopback")
         from integrations.legaia.observer.service import ObserverService
         self.project = project
+        self.last_build = None
         self.observer = ObserverService(port=runtime_port)
         self.live_status = {"available": False, "state": "disconnected", "reason": {"message": "Runtime has not been checked"}}
         self.command_lock = threading.RLock()
@@ -38,6 +39,8 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["live_mode"] = self.live_status.get("available", False)
         state["capabilities"]["runtime_discovery"] = True
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["build"] = bool(self.project.disc_path and self.project.overrides)
+        state["build"] = self.last_build
         return state
 
     def server_close(self) -> None:
@@ -156,6 +159,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                 self.server.project = ProjectService(path, name.strip())
         elif route == "/api/project/save":
             project.save()
+        elif route == "/api/build":
+            from .build import build_project
+            if project.mode != "edit":
+                raise ProjectError("Build requires Edit mode")
+            self.server.last_build = None
+            self.server.last_build = build_project(project)
         elif route == "/api/import":
             from importer.pipeline import import_scene
             metadata = import_scene(Path(body["disc"]), body.get("scene", "town01"))
@@ -193,6 +202,8 @@ class EditorHandler(BaseHTTPRequestHandler):
             project.mode = mode
         else:
             raise ProjectError("Unsupported editor command route")
+        if route in ("/api/project/new", "/api/project/open", "/api/import", "/api/command", "/api/undo", "/api/redo"):
+            self.server.last_build = None
 
 
 def main(argv: list[str] | None = None) -> int:

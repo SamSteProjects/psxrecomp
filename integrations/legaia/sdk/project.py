@@ -323,7 +323,7 @@ class ProjectService:
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "assets": deepcopy(list(self.assets.records.values())), "selection": {"entity_id": self.selected},
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
-                "diagnostics": ["Viewport uses placement markers until model geometry is decoded.",
+                "diagnostics": ["Scene viewport uses placement markers; decoded model objects can be inspected separately.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
-                                "Playable build serialization is not available in this milestone."],
+                                "Build supports representable X/Z placements; authored height and facing cannot yet be serialized."],
                 "capabilities": {"edit_transform": True, "live_mode": False, "build": False, "model_preview": False}}
