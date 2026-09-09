@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
@@ -27,6 +28,9 @@ class EditorServer(ThreadingHTTPServer):
         from integrations.legaia.observer.service import ObserverService
         self.project = project
         self.last_build = None
+        self.texture_catalogs = {}
+        from .run import RunService
+        self.runs = RunService()
         self.observer = ObserverService(port=runtime_port)
         self.live_status = {"available": False, "state": "disconnected", "reason": {"message": "Runtime has not been checked"}}
         self.command_lock = threading.RLock()
@@ -41,11 +45,58 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.overrides)
         state["build"] = self.last_build
+        state["run"] = self.runs.status()
+        try:
+            state["launch_config"] = self.runs.config(self.project)
+        except (ProjectError, ValueError, OSError) as exc:
+            state["launch_config"] = {}
+            state["diagnostics"].append("Launch configuration: " + str(exc))
+        state["capabilities"]["build_and_run"] = state["capabilities"]["build"]
         return state
 
     def server_close(self) -> None:
         self.observer.close()
         super().server_close()
+
+    def model_preview(self, asset: dict) -> dict:
+        from importer.assets import load_model_preview
+        from importer.textures import associate_material, load_scene_texture_catalog
+        project = self.project
+        preview = load_model_preview(Path(project.disc_path), asset)
+        scene = asset.get("source_record", {}).get("prot_entry_name")
+        if scene == "befect_data":
+            scene = project.imports.get(project.active_scene, {}).get("scene", {}).get("name")
+        if not scene:
+            preview["textures"] = []
+            return preview
+        key = (project.disc_path, scene)
+        if key not in self.texture_catalogs:
+            if len(self.texture_catalogs) >= 2:
+                self.texture_catalogs.clear()
+            self.texture_catalogs[key] = load_scene_texture_catalog(project.disc_path, scene)
+        catalog = self.texture_catalogs[key]
+        preview["texture_catalog"] = catalog.metadata()
+        preview["textures"] = []
+        budget = 2 * 1024 * 1024
+        for index, material in enumerate(preview.get("materials", [])):
+            uvs = [uv for triangle_index, material_index in enumerate(preview["triangle_materials"])
+                   if material_index == index for uv in (preview["triangle_uvs"][triangle_index] or [])]
+            if not uvs or index >= 32:
+                preview["textures"].append({"material_index": index, "status": "unsupported", "reason": "Untextured material or bounded preview limit"})
+                continue
+            bounds = (min(uv[0] for uv in uvs), min(uv[1] for uv in uvs), max(uv[0] for uv in uvs), max(uv[1] for uv in uvs))
+            result = associate_material(catalog, material, bounds)
+            rgba = result.pop("rgba", None)
+            result.pop("stp", None)
+            if rgba is not None:
+                if len(rgba) > budget:
+                    result = {"status": "unsupported", "reason": "Decoded texture preview byte budget exceeded"}
+                else:
+                    budget -= len(rgba)
+                    result["rgba_base64"] = base64.b64encode(rgba).decode("ascii")
+            result["material_index"] = index
+            preview["textures"].append(result)
+        return preview
 
 
 class EditorHandler(BaseHTTPRequestHandler):
@@ -86,6 +137,9 @@ class EditorHandler(BaseHTTPRequestHandler):
             return
         route = urlsplit(self.path).path
         with self.server.command_lock:
+            if route == "/api/run/status":
+                self._json(200, {"run": self.server.runs.status()})
+                return
             if route == "/api/state":
                 self._json(200, self.server.state())
                 return
@@ -123,7 +177,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     asset = project.assets.records.get(body.get("asset_id"))
                     if asset is None:
                         raise ProjectError("Unknown model asset")
-                    self._json(200, load_model_preview(Path(project.disc_path), asset))
+                    self._json(200, self.server.model_preview(asset))
                     return
                 self._command(urlsplit(self.path).path, body)
                 self._json(200, self.server.state())
@@ -165,6 +219,38 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Build requires Edit mode")
             self.server.last_build = None
             self.server.last_build = build_project(project)
+        elif route == "/api/run/configure":
+            self.server.runs.configure(project, body)
+        elif route == "/api/run":
+            from .build import build_project
+            if project.mode != "edit":
+                raise ProjectError("Build & Run requires Edit mode")
+            self.server.last_build = build_project(project)
+            self.server.runs.start(project, self.server.last_build)
+        elif route == "/api/run/stop":
+            run = self.server.runs.status()
+            self.server.runs.stop()
+            if run and self.server.observer.port == run.get("debug_port"):
+                self.server.observer.close()
+                self.server.live_status = {"available": False, "state": "unavailable", "reason": {"message": "Owned runtime stopped"}}
+                project.mode = "edit"
+                project.correlate_runtime(self.server.live_status)
+        elif route == "/api/run/attach":
+            run = self.server.runs.status()
+            if not run or not run.get("ready") or run.get("project") != str(project.root):
+                raise ProjectError("This project's owned runtime has not passed readiness checks")
+            from integrations.legaia.observer.service import ObserverService
+            self.server.observer.close()
+            self.server.observer = ObserverService(port=run["debug_port"])
+            self.server.live_status = self.server.observer.discover(body.get("profile_id"))
+            observed = (self.server.live_status.get("runtime") or {}).get("runtime", {})
+            expected = run["runtime_identity"]["runtime"]["process_instance_id"]
+            if observed.get("process_instance_id") != expected:
+                self.server.observer.close()
+                self.server.live_status = {"available": False, "state": "unavailable", "reason": {"message": "Runtime identity changed before attach"}}
+                project.mode = "edit"
+                project.correlate_runtime(self.server.live_status)
+                raise ProjectError("Runtime identity changed before attach")
         elif route == "/api/import":
             from importer.pipeline import import_scene
             metadata = import_scene(Path(body["disc"]), body.get("scene", "town01"))
@@ -198,12 +284,18 @@ class EditorHandler(BaseHTTPRequestHandler):
             if mode == "live":
                 self.server.live_status = self.server.observer.observe(body.get("profile_id"))
                 if not self.server.live_status["available"]:
+                    project.mode = "edit"
+                    project.correlate_runtime(self.server.live_status)
                     raise ProjectError(self.server.live_status["reason"]["message"])
             project.mode = mode
         else:
             raise ProjectError("Unsupported editor command route")
         if route in ("/api/project/new", "/api/project/open", "/api/import", "/api/command", "/api/undo", "/api/redo"):
             self.server.last_build = None
+        if route in ("/api/project/new", "/api/project/open", "/api/import"):
+            self.server.texture_catalogs.clear()
+        if route in ("/api/runtime/discover", "/api/runtime/observe", "/api/run/attach", "/api/mode"):
+            project.correlate_runtime(self.server.live_status)
 
 
 def main(argv: list[str] | None = None) -> int:

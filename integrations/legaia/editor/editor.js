@@ -12,6 +12,39 @@ sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
 const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build a private mod package from supported authored placements';$('save-button').after(buildButton);
 const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';document.body.append(buildDialog);
+const runButton=document.createElement('button');runButton.id='run-button';runButton.textContent='Build & Run';runButton.className='accent';buildButton.after(runButton);
+const runDialog=document.createElement('dialog');runDialog.id='run-dialog';document.body.append(runDialog);
+const runRibbon=document.createElement('div');runRibbon.className='run-ribbon';runRibbon.hidden=true;document.querySelector('.viewport-toolbar').after(runRibbon);
+let runPoll=null, runRibbonKey=null;
+runButton.onclick=()=>showRunDialog();
+function showRunDialog(){
+  const config=state.launch_config ?? {};
+  runDialog.innerHTML=`<form id="run-form"><div class="dialog-heading"><h2>Build & Run</h2><button type="button" id="close-run" aria-label="Close">×</button></div><p>Launch a private copy of your selected runtime with this project's authored placement package.</p><label>Runtime executable<input id="run-exe" required value="${escapeHTML(config.runtime_executable)}" placeholder="C:\\path\\to\\LegaiaRecomp.exe" spellcheck="false"></label><label>BIOS image<input id="run-bios" required value="${escapeHTML(config.bios)}" placeholder="C:\\path\\to\\SCPH1001.BIN" spellcheck="false"></label><label>Game configuration<input id="run-config" required value="${escapeHTML(config.game_config)}" placeholder="C:\\path\\to\\game.toml" spellcheck="false"></label><label>Renderer<select id="run-renderer"><option value="software">Software</option><option value="opengl">OpenGL</option><option value="vulkan">Vulkan (requires runtime support)</option></select></label><label>Runtime debug port<input id="run-port" required type="number" min="1024" max="65535" value="${escapeHTML(config.debug_port ?? 4391)}"></label><p class="field-note">Each run has private mods, saves and logs under the project. Readiness verifies the game and enabled package; it does not establish gameplay correctness.</p><div id="run-summary"></div><div class="dialog-actions"><button type="submit" class="accent" id="launch-run">Build & launch</button></div><p class="dialog-error" role="alert"></p></form>`;
+  $('run-renderer').value=config.renderer ?? 'software';
+  $('close-run').onclick=()=>runDialog.close();
+  $('run-form').onsubmit=async event=>{
+    event.preventDefault();
+    const config={runtime_executable:$('run-exe').value,bios:$('run-bios').value,game_config:$('run-config').value,debug_port:Number($('run-port').value),renderer:$('run-renderer').value};
+    if(await api('/api/run/configure',config)){
+      if(await api('/api/run',{}, {dialog:runDialog,success:'Private runtime launched. Checking identity and mod plan…'}))scheduleRunPoll();
+    }
+  };
+  renderRunStatus();runDialog.showModal();
+}
+function renderRunStatus(){
+  const run=state.run,active=run && (run.running || !['failed','exited','stopped'].includes(run.state));
+  runRibbon.hidden=!run;
+  const ribbonKey=JSON.stringify([run?.state,run?.pid,run?.ready,active]);
+  if(run && ribbonKey!==runRibbonKey){runRibbon.replaceChildren();const text=document.createElement('span');text.textContent=`Run ${run.state}${run.pid?' · PID '+run.pid:''}${run.ready?' · Identity and mod plan verified':''}`;const details=document.createElement('button');details.textContent='Details';details.onclick=showRunDialog;runRibbon.append(text,details);if(active){const stop=document.createElement('button');stop.textContent='Stop';stop.onclick=()=>api('/api/run/stop',{});runRibbon.append(stop);}if(run.ready){const attach=document.createElement('button');attach.textContent='Attach';attach.onclick=()=>api('/api/run/attach',{});runRibbon.append(attach);}}
+  runRibbonKey=ribbonKey;
+  if($('run-summary')){$('run-summary').innerHTML=run?`<p><strong>${escapeHTML(run.state)}</strong> · ${escapeHTML(run.reason ?? '')}</p><label>Run folder<input readonly value="${escapeHTML(run.directory)}"></label><details><summary>Runtime and package evidence</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify({pid:run.pid,executable_sha256:run.runtime_executable_sha256,identity:run.runtime_identity,mods:run.mod_status},null,2))}</pre></details>`:'';$('launch-run').disabled=busy||!!active;}
+  runButton.disabled=busy||!state.capabilities?.build_and_run||!canEdit()||!!active;
+}
+function scheduleRunPoll(){
+  clearTimeout(runPoll);
+  if(!state.run || (!state.run.running && ['failed','exited','stopped'].includes(state.run.state)))return;
+  runPoll=setTimeout(async()=>{try{const response=await fetch('/api/run/status');const data=await response.json();if(response.ok){state.run=data.run;renderRunStatus();}}catch(error){notify('Runtime status is unavailable: '+error.message,true);}scheduleRunPoll();},2000);
+}
 buildButton.onclick=async()=>{
   if(await api('/api/build',{})){
     const result=state.build;
@@ -31,6 +64,7 @@ function setBusy(value) {
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
   buildButton.disabled=value || !state.capabilities?.build || !canEdit();
+  renderRunStatus();
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
 }
 async function api(path, payload, {dialog,success}={}) {
@@ -48,6 +82,11 @@ async function api(path, payload, {dialog,success}={}) {
     if(success) notify(success);
     return true;
   } catch(error) {
+    // Failed runtime capture can clear transient state; a launch failure can
+    // still leave an owned child that must remain reachable through Stop.
+    if(path.startsWith('/api/run') || path.startsWith('/api/runtime') || path==='/api/mode'){
+      try{const response=await fetch('/api/state');const fresh=await response.json();if(response.ok && fresh.project && 'scene' in fresh){state=fresh;render();}}catch{}
+    }
     if(dialog) dialog.querySelector('.dialog-error').textContent=error.message;
     else notify(error.message,true);
     $('status').textContent=error.message;
@@ -106,9 +145,12 @@ function render(){
   $('live-mode').title=state.capabilities?.live_mode?'Observe runtime state':state.runtime?.reason?.message ?? 'Runtime observation is unavailable';
   runtimeBox.replaceChildren();runtimeBox.hidden=!state.capabilities?.runtime_discovery;
   if(!runtimeBox.hidden){const text=document.createElement('span');text.textContent=state.runtime?.available?'Runtime connected · Read-only observation':state.runtime?.reason?.message ?? 'Runtime has not been checked';const button=document.createElement('button');button.textContent='Check runtime';button.onclick=()=>api('/api/runtime/discover',{});runtimeBox.append(text,button);}
+  if(state.runtime?.available){const observe=document.createElement('button');observe.textContent='Observe actors';observe.onclick=()=>api('/api/runtime/observe',{include_actors:true});runtimeBox.append(observe);}
+  document.querySelector('.preview-badge span').textContent=live?'Authored scene reference · Live samples in Inspector':'Markers · models inspected separately';
   $('frame-selected').disabled=!selected();
   $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
   renderHierarchy();renderAssets();renderInspector();
+  renderRunStatus();scheduleRunPoll();
   if(lastSceneId!==state.scene?.id){lastSceneId=state.scene?.id;frame();}else draw();
 }
 function renderHierarchy(){
@@ -137,6 +179,7 @@ function renderInspector(){
   html+='</div><p class="field-note">Edits are project overrides. Empty authored fields inherit the imported value. Unknown heights appear at zero in this preview.</p></section>';
   if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${property('Asset',model.asset_id)}${property('Resolution',model.resolution_status)}<p class="field-note">The scene uses placement markers. Inspect decoded objects separately, without assuming a skeleton or pose.</p>${model.asset_id?'<button id="inspect-model" class="model-preview-button">Inspect model objects</button>':''}</section>`;}
   if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">An association is not a verified playable animation.</p></section>`;
+  if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>Runtime observation <small>Read only · sampled</small></h3>${property('Correlation',correlation.status ?? correlation.state ?? 'Unresolved')}<p class="field-note">Candidate associations preserve ambiguity. They do not replace imported or authored values.</p><details><summary>Epoch, candidates and evidence</summary><pre>${escapeHTML(JSON.stringify(correlation,null,2))}</pre></details></section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
   $('inspector').innerHTML=html;
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
@@ -207,6 +250,7 @@ canvas.addEventListener('wheel',event=>{event.preventDefault();camera.distance=M
 // Object previews deliberately do not assemble multipart assets into an invented pose.
 const modelCanvas=$('model-canvas'), modelContext=modelCanvas.getContext('2d');
 let model=null, modelDrag=null, modelRequest=0;
+let modelTextures=new Map();
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
 async function openModel(assetId){
   if(busy)return;setBusy(true);const request=++modelRequest;
@@ -216,6 +260,18 @@ async function openModel(assetId){
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
     model=data;$('model-dialog').querySelector('h2').textContent=assetId.split('/').slice(-2).join(' / ');
+    modelTextures=new Map();$('model-textures').replaceChildren();
+    for(const texture of model.textures ?? []){
+      const card=document.createElement('div');card.className='texture-card';
+      if(texture.status==='address_match' && texture.rgba_base64){
+        const bytes=Uint8ClampedArray.from(atob(texture.rgba_base64),c=>c.charCodeAt(0));
+        if(bytes.length!==texture.width*texture.height*4 || bytes.length>2*1024*1024)throw new Error('Invalid decoded texture size');
+        const image=document.createElement('canvas');image.width=texture.width;image.height=texture.height;image.getContext('2d').putImageData(new ImageData(bytes,texture.width,texture.height),0,0);card.append(image);modelTextures.set(texture.material_index,{image,origin:texture.uv_origin});
+      }
+      const statusLabel={address_match:'Matched texture',missing:'Texture not found',ambiguous:'Multiple possible textures',unsupported:'Unsupported texture',untextured:'Vertex colors'}[texture.status] ?? 'Texture unavailable';
+      const label=document.createElement('span');label.textContent=`Material ${texture.material_index} · ${statusLabel}${texture.width?' · '+texture.width+'×'+texture.height:''}`;card.append(label);card.title=texture.reason ?? 'Static texture addresses; runtime residency is not confirmed'; $('model-textures').append(card);
+    }
+    $('model-description').textContent=`Drag to orbit · Scroll to zoom · Retail object-local geometry · Unposed · ${modelTextures.size?'Static texture address matches':'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
     $('model-object').replaceChildren();
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
     $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? JSON.stringify(d)).join(' · ');
@@ -239,7 +295,9 @@ function drawModel(){
   const object=model?.objects[Number($('model-object').value)];if(!object)return;
   const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch),distance=modelView.radius*4/modelView.zoom,f=Math.min(w,h)*1.3;
   const projectedModel=model.vertices.map(v=>{
-    const x=v[0]-modelView.center[0],y=v[1]-modelView.center[1],z=v[2]-modelView.center[2];const rx=x*c+z*s,rz=-x*s+z*c,ry=y*cp-rz*sp,depth=y*sp+rz*cp+distance;
+    // PSX local +Y points down. Match pinned LegaiaRE d6e64c68 scene_gltf's
+    // diag(1,-1,1) display conversion without changing the decoded vertices.
+    const x=v[0]-modelView.center[0],y=-(v[1]-modelView.center[1]),z=v[2]-modelView.center[2];const rx=x*c+z*s,rz=-x*s+z*c,ry=y*cp-rz*sp,depth=y*sp+rz*cp+distance;
     return depth>modelView.radius*.02?{x:w/2+rx*f/depth,y:h/2-ry*f/depth,z:depth}:null;
   });
   const faces=[];
@@ -247,11 +305,19 @@ function drawModel(){
     const triangle=model.triangles[i];if(!triangle)continue;const points=triangle.map(index=>projectedModel[index]);if(points.some(p=>!p))continue;
     const colors=model.triangle_colors?.[i];let rgb=[153,187,167];
     if(Array.isArray(colors)&&colors.length){rgb=Array.isArray(colors[0])?[0,1,2].map(axis=>Math.round(colors.reduce((sum,color)=>sum+(Number(color[axis])||0),0)/colors.length)):colors.slice(0,3);}
-    faces.push({points,z:points.reduce((sum,p)=>sum+p.z,0)/3,color:`rgb(${rgb.map(value=>Math.max(0,Math.min(255,value))).join(',')})`});
+    faces.push({points,z:points.reduce((sum,p)=>sum+p.z,0)/3,color:`rgb(${rgb.map(value=>Math.max(0,Math.min(255,value))).join(',')})`,texture:modelTextures.get(model.triangle_materials?.[i]),uvs:model.triangle_uvs?.[i]});
   }
   faces.sort((a,b)=>b.z-a.z);
-  for(const face of faces){modelContext.beginPath();modelContext.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))modelContext.lineTo(p.x,p.y);modelContext.closePath();modelContext.fillStyle=face.color;modelContext.fill();modelContext.strokeStyle='#10201825';modelContext.lineWidth=.35;modelContext.stroke();}
+  for(const face of faces){modelContext.beginPath();modelContext.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))modelContext.lineTo(p.x,p.y);modelContext.closePath();if(!drawTexturedFace(face)){modelContext.fillStyle=face.color;modelContext.fill();}modelContext.strokeStyle='#10201825';modelContext.lineWidth=.35;modelContext.stroke();}
   if(!faces.length){modelContext.fillStyle='#819b94';modelContext.font='13px "Segoe UI",sans-serif';modelContext.textAlign='center';modelContext.fillText('This object has no supported drawable triangles.',w/2,h/2);modelContext.textAlign='left';}
+}
+function drawTexturedFace(face){
+  if(!face.texture || !face.uvs)return false;
+  const uv=face.uvs.map(p=>[p[0]-face.texture.origin[0]+.5,p[1]-face.texture.origin[1]+.5]),p=face.points;
+  const [u0,v0]=uv[0],[u1,v1]=uv[1],[u2,v2]=uv[2];
+  const determinant=u0*(v1-v2)+u1*(v2-v0)+u2*(v0-v1);if(Math.abs(determinant)<1e-8)return false;
+  const solve=axis=>[(p[0][axis]*(v1-v2)+p[1][axis]*(v2-v0)+p[2][axis]*(v0-v1))/determinant,(p[0][axis]*(u2-u1)+p[1][axis]*(u0-u2)+p[2][axis]*(u1-u0))/determinant,(p[0][axis]*(u1*v2-u2*v1)+p[1][axis]*(u2*v0-u0*v2)+p[2][axis]*(u0*v1-u1*v0))/determinant];
+  const x=solve('x'),y=solve('y');modelContext.save();modelContext.clip();modelContext.transform(x[0],y[0],x[1],y[1],x[2],y[2]);modelContext.imageSmoothingEnabled=false;modelContext.drawImage(face.texture.image,0,0);modelContext.restore();return true;
 }
 new ResizeObserver(drawModel).observe(modelCanvas);
 modelCanvas.addEventListener('pointerdown',event=>{modelCanvas.setPointerCapture(event.pointerId);modelDrag={x:event.clientX,y:event.clientY};});
