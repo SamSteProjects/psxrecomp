@@ -264,8 +264,13 @@ class RunService:
             allowed = {"manifest.toml", *(item["file"] for item in overlays)}
             if set(names) != allowed:
                 raise ProjectError("Build package contains unexpected files")
-            staging = run / "package-staging"
-            staging.mkdir()
+            # The whole run directory is new and no process can read it until
+            # start() completes this validation. Install directly into its final
+            # private location: renaming a freshly written directory can fail
+            # under Windows file-indexer sharing locks (including OneDrive).
+            staging = run / "mods" / "installed" / build["package_id"] / build["version"]
+            _guard_output(staging, run)
+            staging.mkdir(parents=True, exist_ok=False)
             for item in infos:
                 relative = PurePosixPath(item.filename)
                 if relative.is_absolute() or ".." in relative.parts or "\\" in item.filename or ":" in item.filename:
@@ -281,9 +286,6 @@ class RunService:
                 raise ProjectError("Build target is not SCUS-94254")
             self._status["expected_disc_sha256"] = targets[0]["disc_sha256"]
             self._status["expected_overlay_count"] = len(overlays)
-            destination = run / "mods" / "installed" / build["package_id"] / build["version"]
-            destination.parent.mkdir(parents=True)
-            staging.replace(destination)
             state = ("format_version = 2\n\n[[package]]\nid = " + json.dumps(build["package_id"]) +
                      "\nversion = " + json.dumps(build["version"]) + "\n\n[[feature]]\npackage_id = " +
                      json.dumps(build["package_id"]) + "\nid = " + json.dumps(build["feature_id"]) + "\nenabled = true\n")
