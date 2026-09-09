@@ -1701,6 +1701,7 @@ function(psxrecomp_add_runtime_target target)
     )
     set_source_files_properties(
         "${PSXRECOMP_ROOT}/runtime/src/crash_trace.c"
+        "${PSXRECOMP_ROOT}/runtime/src/debug_server.c"
         PROPERTIES COMPILE_DEFINITIONS "PSX_BUILD_REV=\"${PSX_GIT_REV}\""
     )
 
