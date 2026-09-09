@@ -1473,8 +1473,10 @@ static int read_sector_at(int min, int sec, int sect) {
     delivery.xa_audio_delivered =
         (uint8_t)maybe_deliver_xa_audio(raw_data, lba, &delivery);
     delivery.data_delivered = 1;
-    if (delivery.xa_audio_delivered ||
-        ((mode_reg & 0x08u) && xa_is_audio_realtime(&delivery))) {
+    /* Routing is independent of whether host audio was muted, filtered or
+     * its coding is supported by this decoder. XA enable/filter consumes
+     * realtime audio sectors outside the CPU data path. */
+    if ((mode_reg & 0x48u) && xa_is_audio_realtime(&delivery)) {
         delivery.data_delivered = 0;
         delivery.skip_reason = CDROM_SKIP_XA_AUDIO_REALTIME;
     }
@@ -1551,10 +1553,11 @@ static int read_sector_at(int min, int sec, int sect) {
                     delivery.xa_coding,
                     0);
     }
-    /* Realtime XA is consumed by the ADPCM path rather than exposed through
-     * the CPU/DMA FIFO, but it still arrived physically and must produce its
-     * INT1 event.  sector_available above remains the FIFO visibility gate. */
-    return 1;
+    /* Physical arrival still advances the drive, XA audio and telemetry.
+     * INT1 announces CPU-visible data only (PSX-SPX: Playing XA-ADPCM
+     * Sectors). Announcing an audio-only arrival replays the previous FIFO:
+     * a streaming callback can reset BFRD and DMA the old STR header again. */
+    return delivery.data_delivered;
 }
 
 static void advance_msf(int* m, int* s, int* f) {

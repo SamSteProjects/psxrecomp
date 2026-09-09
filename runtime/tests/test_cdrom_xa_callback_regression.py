@@ -53,9 +53,9 @@ def main() -> int:
     ):
         require(expression, read, "controller response is visible before IRQ presentation")
 
-    sector = body(CDROM, "read_sector_at")
-    require(r"Realtime XA[\s\S]*?return\s+1\s*;", sector,
-            "realtime XA arrival no longer raises its physical-sector event")
+    # CPU data-ready versus XA/audio-only arrival is exercised by the
+    # production controller in test_cdrom_xa_data_ready.py. A former source
+    # assertion here required the wrong unconditional INT1 behavior.
 
     pending = body(CDROM, "process_pending")
     require(r"case\s+0x15[\s\S]*?case\s+0x16[\s\S]*?last_sector_lba\s*=\s*msf_to_lba", pending,
