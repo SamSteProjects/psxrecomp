@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (visible revert, restore comparison and export):** Cold authored
+  and retail runs now prove savepoint0052 move/revert with the same binary,
+  corresponding guarded world coordinates, and zero overlays in the retail
+  baseline. Both exited 0. One idle save/load retained 59.85/60.02 FPS
+  cold/restored, matching frame-period p95 and recurrent static ownership;
+  no settled CRC churn or new audio underruns. The nonrecurrent VM witness was
+  correctly cleared and remained unavailable, so full observer reacquisition
+  and repeated/cross-scene restore acceptance stay open. Textured party
+  idle/walk preview and private static GLB export now work in the editor;
+  Khronos validation and Blender import/render pass for Vahn and a scene tree.
+
 - **2026-09-09 (XA data-ready correction and posed SDK assets):** Reproduced
   the 17-frame FMV stall without input or restore. Actual sector/DMA evidence
   plus retail Ghidra validation showed XA-only arrivals reissuing the previous

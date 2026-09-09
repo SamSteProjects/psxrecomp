@@ -102,3 +102,26 @@ preserving town01's existing catalog. Retail baseline builds also pass a real
 disc serializer check: clear edits or set a retail-equivalent override, rebuild
 to the same manifest-only package digest, and preserve the prior authored
 package. Actual visible placement/revert remains a separate runtime check.
+
+A single idle retail save/load also completed with paired three-by-ten-second
+cold/restored windows: no sustained FPS/frame-period regression, recurrent
+static-owner loss, CRC churn or new audio underruns. The nonrecurrent field VM
+witness remained unavailable after lifecycle reset, so the full observer
+profile correctly rejected; do not count that as observer-reacquisition
+acceptance. Repeat the broader transition/restore campaign only against fresh
+cold evidence, with current witness and scene guards.
+
+Visible placement/revert acceptance now passes for town01 actor0052. The
+authored savepoint appears beside Vahn at X4480/Z11904; the fresh retail build
+has zero overlays, removes it from that location, and reports original
+X9792/Z8512. Both runs use the same exact binary. Compare the same first-dialogue
+screenshots; record that the retail guarded coordinate capture followed one
+dialogue advance to reacquire a required VM execution witness.
+
+Static GLB export checks now include binary/accessor/PNG roundtrips, path and
+malformed-preview rejection, two real retail exports, Khronos validation and
+Blender import/render. Editor HTTP checks reject client geometry/output paths
+and invalid frame selection without writing exports or modifying project data.
+The browser's selected idle frame2 also exported successfully and its actual
+GLB passed Khronos validation. Animation channels and retail replacement remain
+separate future features; static export acceptance does not imply them.

@@ -46,6 +46,23 @@ below are historical and superseded for this reproduced failure only.
 
 ## Latest field and authoring acceptance
 
+The newest vertical slice now proves visible edit and revert. Town01 savepoint
+actor0052 was authored from X9792/Z8512 to X4480/Z11904. Its short retail script
+has no own position-setting instruction. The cold game displayed the moved
+savepoint beside Vahn and a guarded candidate had world `(4480,-128,11904)`.
+Clearing the edit, saving and invoking Build & Run produced a manifest-only
+retail baseline: zero overlays, zero copied bytes, no moved savepoint in the
+same opening dialogue, and guarded retail world `(9792,0,8512)`. Both runs used
+the exact fixed `148c66b1...` executable and exited 0. The candidate remains a
+candidate in the SDK; visual change is independent acceptance evidence.
+
+The retail coordinate capture followed one dialogue advance because the VM
+witness had not executed since observation was armed. Earlier unavailable
+captures and the unchanged guards are preserved. See private
+`local-output/sdk-20260909/visible-placement-revert-acceptance.json` for paired
+identities, packages, mod counters and screenshot hashes. The earlier
+actor0001/0049 header-only trials below did not establish visible placement.
+
 The later cold runs consumed the complete authored MAN overlay: 24,894 bytes
 across 13 sectors, no guard failure, and a rendered Rim Elm arrival scene.
 The new explicit field-v2 profile accepted 90 nodes in town01 with unchanged
@@ -320,6 +337,25 @@ Dome return, or town0c/map01 performance. Savestate-restored runs remain
 unsuitable as performance truth until the retail comparison below passes.
 
 ## Remaining targeted acceptance
+
+A bounded same-scene retail restore comparison now passes on the fixed
+`148c66b1...` binary. Three ten-second windows before and after one successful
+slot11 save/load measured median FPS 59.847 / 60.021, frame-period p95
+16.6897 / 16.6894 ms, and static hits/second 5,131.4 / 5,122.9. Settled windows
+added no CRC misses, rehash churn, audio underruns or overflow drops. Internal
+load/poll completion took 11.2 ms; the separately measured protocol receipt
+took 63.4 ms. The same Village Elder dialogue and authored savepoint remained
+visible. Cold evidence was saved before the load and never replaced by restored
+timing. Private `restore-comparison.json` and `restore-comparison-summary.json`
+retain the full observations.
+
+This establishes no persistent slowdown or recurrent static-owner loss in
+that idle scene. It does not close repeated/cross-scene restore acceptance.
+The Live profile correctly rejected missing VM witness `801DE840` after the
+lifecycle reset. That witness was already nonrecurrent throughout the cold
+windows (hits162, last frame18718), so its absence is not evidence of fallback.
+Other recurrent static/interpreter witnesses reacquired. Full Live-profile
+reacquisition remains unaccepted; stale pre-restore evidence was not reused.
 
 | Priority | Check | Fixture / platform | Acceptance |
 | --- | --- | --- | --- |

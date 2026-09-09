@@ -94,6 +94,15 @@ scenes to check provenance, records `build_kind=retail`, and does not manufactur
 unchanged payload patches. Prior authored packages remain available, so the
 same private Run lifecycle can compare an authored build against its revert.
 
+`importer/export.py` encodes the verified preview into a standalone GLB with
+embedded PNG textures, bounded accessors and source provenance. The editor
+submits only the asset/clip/frame identity; the server regenerates verified
+geometry and writes a unique file under the private project `Exports` folder.
+Client geometry and output paths are rejected. Export is a full raw model or
+one baked pose, with a single display-axis conversion and corrected winding;
+it does not author replacement retail data or invent glTF animation channels,
+joint hierarchy or physical meter scale.
+
 ## Two programs: the recompiler and the runtime
 
 PSXRecomp is split into two CMake projects that are built and run separately:

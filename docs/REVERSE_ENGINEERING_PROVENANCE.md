@@ -49,3 +49,10 @@ Detailed animation and shared-texture controls are recorded in
 `integrations/legaia/provenance/field-party-textures-20260909.md`. The independently
 implemented pose decoder matched 20,845 posed vertices within 0.0001 units;
 the independently reconstructed shared VRAM matched FNV64 `64615c6915ba9a80`.
+
+Static GLB interchange reuses those verified previews without new retail
+semantic claims. `integrations/legaia/provenance/model-export-20260909.md`
+records accessor/color/UV conventions, bounded static-pose scope, the Khronos
+validator result and independent Blender import/render. The exporter embeds
+source provenance, preserves source units with unknown physical scale, and
+does not invent skin hierarchy or animation channels.

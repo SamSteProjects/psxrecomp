@@ -47,6 +47,8 @@ material. No proprietary payload was added to these commits.
 | `c8378677` | Six reference-scoped field-party idle/walk clips with assembled poses, stepping and playback. |
 | `487e1716` | Build verified retail baselines after clearing or reverting authored placements. |
 | `d4f01910` | Decode model-scoped shared party texture uploads with independent VRAM validation. |
+| `0f98218c` | Export supported textured models and static poses as private, validated GLB files. |
+| `392de27f` | Connect shared party textures and current-pose GLB export to the editor. |
 
 The earlier reapplied release fixes include CD/XA response visibility,
 seek-position refresh, VBlank handling and Windows startup. Current frame
@@ -121,11 +123,25 @@ Village Elder dialogue, and the guarded candidate carried both the edited MAN
 header and world position `(4480,-128,11904)`. All 24,894 overlay bytes were
 consumed without guard failure. This proves the chosen visible edit; generic
 identity correlation remains conservatively classified as a candidate. A
-separate retail-baseline run is required to complete revert acceptance.
+fresh retail-baseline run completed revert acceptance: zero overlays and zero
+modified bytes, no savepoint beside Vahn in the same first dialogue, and a
+guarded candidate back at retail world `(9792,0,8512)`. That final coordinate
+sample followed one dialogue advance to execute the required VM witness; the
+guard was never weakened. Both private processes exited 0. The complete pair
+is recorded in `local-output/sdk-20260909/visible-placement-revert-acceptance.json`.
 
 ## Focused validation
 
-- All 56 importer/project/serialization/texture/animation tests passed with the local
+One retail idle save/restore comparison now passes on the fixed binary.
+Three ten-second windows measured cold/restored median 59.85/60.02 FPS and
+16.6897/16.6894 ms frame-period p95; static hits remained about 5,100/second.
+Save/load completed, the same scene stayed visible, and settled windows added
+no audio underruns or ownership-validation churn. A nonrecurrent VM witness
+was cleared by restore and did not execute again, so the strict full Live
+profile correctly remained unavailable. This bounded result does not establish
+cross-scene or repeated-restore performance, nor observer reacquisition.
+
+- All 62 importer/project/serialization/texture/animation/export tests passed with the local
   retail disc configured, including the retail-gated cases.
 - Twelve observer/profile/correlation tests passed, including stale identity,
   wrong backend/hash, bounded reads, ambiguity and transient-layer clearing.
@@ -147,6 +163,14 @@ physical-controller, battle and transition acceptance. The final private
 manifest, screenshots, PCM and full guarded observations are retained under
 `local-output/sdk-20260909/`; none is tracked source.
 
+The editor now also exports the displayed party pose or a full supported raw
+model through Export GLB into private project `Exports`. Vahn and tree outputs
+pass Khronos validation with zero errors/warnings and import/render in Blender
+5.2.1. The browser selected idle frame2 and produced a ten-object, 496-triangle,
+four-texture export with explicit static-pose limits. All three party idle/walk
+previews were visually checked with face/clothing textures and frame controls.
+No animated GLB channels, native replacement or physical-meter scale is claimed.
+
 ## Remaining implementation and acceptance
 
 The reproduced STR/XA stall is fixed and reaches the title menu. Muscle Dome
@@ -154,10 +178,10 @@ relocation remains unresolved: the cited old change documents a repair but conta
 recovered implementation. A title-layer fix requires the failing lifecycle and
 retail comparison, not a guessed runtime address patch.
 
-The SDK now proves a visible savepoint edit; revert acceptance is the remaining
-step of that vertical slice. Full posed scene rendering, general animation tools,
-asset replacement, native entity/templates, dialogue encoding and editing,
+The SDK now proves a visible savepoint edit and fresh retail revert. Full
+posed scene rendering, general animation tools, asset replacement, native
+entity/templates, dialogue encoding and editing,
 script opcode/CFG tools, event flags, transitions and world-map authoring are
 still incomplete. Unknown semantics remain explicit. Audio continuity,
 field/battle/world-map transitions, physical controller behavior and
-cold-versus-restored performance also remain unaccepted.
+cross-scene/repeated restore performance also remain unaccepted.
