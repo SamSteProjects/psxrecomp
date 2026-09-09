@@ -71,12 +71,16 @@ extern int      cdrom_snapshot_read(const uint8_t* p, uint32_t len);
 extern uint32_t dma_snapshot_bytes(void);
 extern void     dma_snapshot_write(uint8_t* p);
 extern int      dma_snapshot_read(const uint8_t* p, uint32_t len);
+extern int      dma_snapshot_validate(const uint8_t* p, uint32_t len);
 extern uint32_t sio_snapshot_bytes(void);
 extern void     sio_snapshot_write(uint8_t* p);
 extern int      sio_snapshot_read(const uint8_t* p, uint32_t len);
+extern int      sio_snapshot_validate(const uint8_t* p, uint32_t len);
 extern uint32_t mdec_snapshot_bytes(void);
 extern void     mdec_snapshot_write(uint8_t* p);
 extern int      mdec_snapshot_read(const uint8_t* p, uint32_t len);
+extern int      mdec_snapshot_validate(const uint8_t* p, uint32_t len);
+extern int      mdec_snapshot_prepare(const uint8_t* p, uint32_t len);
 
 /* CPU regs wire: 32+3+32+32+32 LE u32 = 131 * 4 = 524 bytes (no padding). */
 #define CPU_REGS_WIRE_BYTES (524u)
@@ -600,8 +604,7 @@ static int apply_section(uint32_t tag, const uint8_t* p, uint32_t len,
         return gpu_snapshot_read(p, len);
     case BS_SEC_VRAM: {
         if (len != VRAM_SIZE) return 0;
-#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-        /* Wire == host layout: upload straight from the section buffer. */
+        /* Preflight has converted to host endian on big-endian hosts. */
         gr_vram_transfer_in(0, 0, VRAM_W, VRAM_H, (const uint16_t*)p);
         if (gpu_vram_dirty_tracking()) {
             memcpy(s_vram_mirror, p, VRAM_SIZE);
@@ -611,29 +614,6 @@ static int apply_section(uint32_t tag, const uint8_t* p, uint32_t len,
             s_vram_mirror_valid = 0;
         }
         return 1;
-#else
-        {
-            uint16_t* vbuf;
-            PstR r;
-            vbuf = (uint16_t*)malloc(VRAM_SIZE);
-            if (!vbuf) return 0;
-            pst_r_init(&r, p, len);
-            if (!pst_r_pod(&r, vbuf, VRAM_SIZE, 2)) {
-                free(vbuf);
-                return 0;
-            }
-            gr_vram_transfer_in(0, 0, VRAM_W, VRAM_H, vbuf);
-            if (gpu_vram_dirty_tracking()) {
-                memcpy(s_vram_mirror, vbuf, VRAM_SIZE);
-                s_vram_mirror_valid = 1;
-                gpu_vram_dirty_clear();
-            } else {
-                s_vram_mirror_valid = 0;
-            }
-            free(vbuf);
-            return 1;
-        }
-#endif
     }
     case BS_SEC_SPU:
         return spu_snapshot_read(p, len);
@@ -649,25 +629,10 @@ static int apply_section(uint32_t tag, const uint8_t* p, uint32_t len,
         return sio_snapshot_read(p, len);
     case BS_SEC_MDEC:
         return mdec_snapshot_read(p, len);
-    case BS_SEC_DIRTY: {
-        uint32_t wc;
-        uint32_t* words;
-        PstR r;
-        if (len % 4u) return 0;
-        wc = len / 4u;
-        words = (uint32_t*)malloc(len ? len : 1);
-        if (!words) return 0;
-        pst_r_init(&r, p, len);
-        for (uint32_t i = 0; i < wc; i++) {
-            if (!pst_r_u32(&r, &words[i])) {
-                free(words);
-                return 0;
-            }
-        }
-        dirty_ram_set_bitmap_words(words, wc);
-        free(words);
+    case BS_SEC_DIRTY:
+        /* Preflight provided aligned, native-endian words of the exact size. */
+        dirty_ram_set_bitmap_words((const uint32_t*)p, len / 4u);
         return 1;
-    }
     case BS_SEC_ICACHE: {
         PstR r;
         if (len != 1024u * 4u) return 0;
@@ -798,6 +763,39 @@ int boot_state_check_buffer(const uint8_t* file, size_t file_len,
     return compatible;
 }
 
+/* Fixed-size module readers only consume scalar/array fields: the exact wire
+ * size proves their parse cannot fail. DMA and MDEC additionally reject field
+ * values; SIO accepts two wire sizes. Keep these preconditions with the readers
+ * whenever their formats change. This is validation, not a guest-state backup. */
+static int validate_section(uint32_t tag, const uint8_t* p, uint32_t len) {
+    switch (tag) {
+    case BS_SEC_CPU: return len == CPU_REGS_WIRE_BYTES;
+    case BS_SEC_RAM: return len == RAM_SIZE;
+    case BS_SEC_SPAD: return len == SPAD_SIZE;
+    case BS_SEC_IRQ: return len == 8u || len == 12u;
+    case BS_SEC_TIMER: return len == TIMER_REGS_WIRE_BYTES;
+    case BS_SEC_CLOCK: return len == 8u;
+    case BS_SEC_GPU: return len == gpu_snapshot_bytes();
+    case BS_SEC_VRAM: return len == VRAM_SIZE;
+    case BS_SEC_SPU: return len == spu_snapshot_bytes();
+    case BS_SEC_SPURAM: return len == spu_get_ram_bytes();
+    case BS_SEC_CDROM: return len == cdrom_snapshot_bytes();
+    case BS_SEC_DMA: return dma_snapshot_validate(p, len);
+    case BS_SEC_SIO: return sio_snapshot_validate(p, len);
+    case BS_SEC_MDEC: return mdec_snapshot_validate(p, len);
+    case BS_SEC_DIRTY:
+        return (uint64_t)len == (uint64_t)dirty_ram_get_bitmap_word_count() * 4u;
+    case BS_SEC_ICACHE: return len == 1024u * 4u;
+    default: return 0;
+    }
+}
+
+typedef struct BsStagedSection {
+    const uint8_t* data;
+    uint8_t* owned;
+    uint32_t len;
+} BsStagedSection;
+
 int boot_state_load_buffer(const uint8_t* file, size_t file_len,
                            uint32_t bios_checksum, uint32_t entry_pc,
                            CPUState* cpu) {
@@ -810,8 +808,11 @@ int boot_state_load_buffer(const uint8_t* file, size_t file_len,
         (1u<<BS_SEC_TIMER)|(1u<<BS_SEC_CLOCK)|(1u<<BS_SEC_GPU)|(1u<<BS_SEC_VRAM)|
         (1u<<BS_SEC_SPU)|(1u<<BS_SEC_SPURAM)|(1u<<BS_SEC_CDROM)|(1u<<BS_SEC_DMA)|
         (1u<<BS_SEC_SIO)|(1u<<BS_SEC_MDEC)|(1u<<BS_SEC_DIRTY);
+    BsStagedSection staged[BS_SEC_ICACHE + 1] = {{0}};
+    const size_t allocation_limit = 64u * 1024u * 1024u;
+    size_t allocated = 0;
     uint32_t seen = 0;
-    int ok = 1;
+    int ok = 0;
     const double t0 = boot_state_mono_ms();
     double inflate_ms = 0.0;
     double apply_ram_ms = 0.0;
@@ -819,105 +820,134 @@ int boot_state_load_buffer(const uint8_t* file, size_t file_len,
     double apply_spuram_ms = 0.0;
     double apply_other_ms = 0.0;
 
-    if (!boot_state_check_buffer(file, file_len, bios_checksum, entry_pc,
-                                 reject, sizeof(reject))) {
-        fprintf(stderr, "boot_state: reject — %s\n",
-                reject[0] ? reject : "unknown");
+    if (!cpu || !boot_state_check_buffer(file, file_len, bios_checksum, entry_pc,
+                                         reject, sizeof(reject))) {
+        if (cpu) fprintf(stderr, "boot_state: reject: %s\n",
+                         reject[0] ? reject : "unknown");
         return 0;
     }
-    if (!boot_state_parse_header(file, file_len, &h))
-        return 0;
-
+    if (!boot_state_parse_header(file, file_len, &h)) return 0;
     cur = file + BOOT_STATE_HEADER_WIRE_BYTES;
     end = file + file_len;
+    if (h.section_count > (size_t)(end - cur) / 16u) goto cleanup;
 
-    for (uint32_t i = 0; ok && i < h.section_count; i++) {
+    /* Phase 1: parse, inflate once, and validate every known section. Raw
+     * netplay sections borrow the caller's immutable buffer; no RAM/VRAM copy
+     * or full-machine backup is needed before commit. */
+    for (uint32_t i = 0; i < h.section_count; i++) {
         PstR sh;
-        uint32_t tag = 0, pad = 0;
-        uint64_t len = 0;
+        uint32_t tag, flags;
+        uint64_t len;
         const uint8_t* payload;
-        uint8_t* inflated = NULL;
-        const uint8_t* apply_ptr;
-        uint32_t apply_len;
-        double t_sec;
-
-        if ((size_t)(end - cur) < 16u) { ok = 0; break; }
+        BsStagedSection* sec;
+        if ((size_t)(end - cur) < 16u) goto cleanup;
         pst_r_init(&sh, cur, 16);
-        if (!pst_r_u32(&sh, &tag) || !pst_r_u32(&sh, &pad) || !pst_r_u64(&sh, &len)) {
-            ok = 0; break;
-        }
+        if (!pst_r_u32(&sh, &tag) || !pst_r_u32(&sh, &flags) || !pst_r_u64(&sh, &len))
+            goto cleanup;
         cur += 16;
-        if (len > 64u * 1024u * 1024u || (uint64_t)(end - cur) < len) {
-            ok = 0; break;
-        }
+        if (len > allocation_limit || len > (uint64_t)(end - cur)) goto cleanup;
         payload = cur;
         cur += (size_t)len;
-
-        if (h.version >= 4u && pad == BOOT_STATE_SEC_ZLIB) {
+        /* An unknown tag has no understood codec/flags. Skip its bounded
+         * encoded extent, including future flag values, without allocating or
+         * decompressing it. Known-tag flags remain strict. */
+        if (tag < BS_SEC_CPU || tag > BS_SEC_ICACHE) continue;
+        if (seen & (1u << tag)) goto cleanup;
+        seen |= 1u << tag;
+        sec = &staged[tag];
+        if (h.version >= 4u && flags == BOOT_STATE_SEC_ZLIB) {
             PstR lr;
-            uint32_t raw_len = 0;
-            uLong dest_len;
+            uint32_t raw_len;
+            uLong dest_len, source_len;
             double t_inf;
-            if (len < 4u) { ok = 0; break; }
+            if (len < 4u) goto cleanup;
             pst_r_init(&lr, payload, 4);
-            if (!pst_r_u32(&lr, &raw_len) || raw_len == 0 ||
-                raw_len > 64u * 1024u * 1024u) {
-                ok = 0; break;
-            }
-            inflated = (uint8_t*)malloc(raw_len);
-            if (!inflated) { ok = 0; break; }
-            dest_len = (uLong)raw_len;
+            if (!pst_r_u32(&lr, &raw_len) || !raw_len ||
+                raw_len > allocation_limit - allocated) goto cleanup;
+            sec->owned = (uint8_t*)malloc(raw_len);
+            if (!sec->owned) goto cleanup;
+            allocated += raw_len;
+            dest_len = raw_len;
+            source_len = (uLong)(len - 4u);
             t_inf = boot_state_mono_ms();
-            if (uncompress(inflated, &dest_len, payload + 4,
-                           (uLong)(len - 4u)) != Z_OK ||
-                dest_len != (uLong)raw_len) {
-                free(inflated);
-                ok = 0;
-                break;
-            }
+            if (uncompress2(sec->owned, &dest_len, payload + 4, &source_len) != Z_OK ||
+                dest_len != raw_len || source_len != len - 4u) goto cleanup;
             inflate_ms += boot_state_mono_ms() - t_inf;
-            apply_ptr = inflated;
-            apply_len = raw_len;
-        } else if (pad != 0u) {
-            /* v3 requires pad==0; v4 unknown/extra flags are a hard reject. */
-            ok = 0;
-            break;
+            sec->data = sec->owned;
+            sec->len = raw_len;
         } else {
-            if (len > 0xffffffffu) { ok = 0; break; }
-            apply_ptr = payload;
-            apply_len = (uint32_t)len;
+            if (flags != 0u) goto cleanup;
+            sec->data = payload;
+            sec->len = (uint32_t)len;
         }
+        if (!validate_section(tag, sec->data, sec->len)) goto cleanup;
+    }
+    if (cur != end || (seen & required) != required) goto cleanup;
+    if (!memory_get_ram_ptr() || !memory_get_scratchpad_ptr() || !spu_get_ram_ptr())
+        goto cleanup;
 
+    /* Phase 2: finish all fallible preparation before touching guest state.
+     * The bitmap needs aligned native words even when section offsets are odd.
+     * Big-endian hosts also stage the native VRAM representation here. */
+    for (uint32_t tag = BS_SEC_CPU; tag <= BS_SEC_ICACHE; tag++) {
+        BsStagedSection* sec = &staged[tag];
+        size_t elem = tag == BS_SEC_DIRTY ? 4u : 0u;
+#if !defined(__BYTE_ORDER__) || (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+        if (tag == BS_SEC_VRAM) elem = 2u;
+#endif
+        if (elem && (seen & (1u << tag))) {
+            PstR r;
+            if (!sec->owned) {
+                if (sec->len > allocation_limit - allocated) goto cleanup;
+                sec->owned = (uint8_t*)malloc(sec->len ? sec->len : 1u);
+                if (!sec->owned) goto cleanup;
+                allocated += sec->len;
+            }
+            pst_r_init(&r, sec->data, sec->len);
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+            if (sec->data != sec->owned)
+#endif
+            if (!pst_r_pod(&r, sec->owned, sec->len, elem)) goto cleanup;
+            sec->data = sec->owned;
+        }
+    }
+    if (!mdec_snapshot_prepare(staged[BS_SEC_MDEC].data, staged[BS_SEC_MDEC].len))
+        goto cleanup;
+
+    /* Commit cannot reject this validated wire or allocate restore buffers.
+     * Clock precedes deadline reconstruction; RAM/VRAM precede DMA prepasses.
+     * Snapshot callers must pause emulation and keep `file` immutable through
+     * this call. Renderer/device callbacks are void and are not rollbackable. */
+    for (uint32_t tag = BS_SEC_CPU; tag <= BS_SEC_ICACHE; tag++) {
+        double t_sec, dt;
+        if (!(seen & (1u << tag))) continue;
         t_sec = boot_state_mono_ms();
-        if (!apply_section(tag, apply_ptr, apply_len, cpu, entry_pc)) ok = 0;
-        else if (tag < 32) seen |= (1u << tag);
-        {
-            double dt = boot_state_mono_ms() - t_sec;
-            if (tag == BS_SEC_RAM) apply_ram_ms += dt;
-            else if (tag == BS_SEC_VRAM) apply_vram_ms += dt;
-            else if (tag == BS_SEC_SPURAM) apply_spuram_ms += dt;
-            else apply_other_ms += dt;
+        if (!apply_section(tag, staged[tag].data, staged[tag].len, cpu, entry_pc)) {
+            /* A reader gaining a new failure condition must add a validator
+             * above; this is an internal invariant failure, not a parse path. */
+            fprintf(stderr, "boot_state: validated section %u failed during commit\n", tag);
+            /* Returning ordinary failure would let the caller resume a mixed
+             * machine. Fail closed on a broken internal validator contract. */
+            abort();
         }
-        free(inflated);
+        dt = boot_state_mono_ms() - t_sec;
+        if (tag == BS_SEC_RAM) apply_ram_ms += dt;
+        else if (tag == BS_SEC_VRAM) apply_vram_ms += dt;
+        else if (tag == BS_SEC_SPURAM) apply_spuram_ms += dt;
+        else apply_other_ms += dt;
     }
-
-    if (!ok || (seen & required) != required)
-        return 0;
-
-    /* RAM was memcpy'd; force overlay revalidation before resume. */
     overlay_watch_invalidate_after_ram_restore();
-
-    {
-        const double total_ms = boot_state_mono_ms() - t0;
-        fprintf(stderr,
-                "savestate: load_timing read=0.0 inflate=%.1f "
-                "apply_ram=%.1f apply_vram=%.1f apply_spuram=%.1f "
-                "apply_other=%.1f total=%.1f ms (file=%zu)\n",
-                inflate_ms,
-                apply_ram_ms, apply_vram_ms, apply_spuram_ms,
-                apply_other_ms, total_ms, file_len);
-    }
-    return 1;
+    ok = 1;
+    fprintf(stderr,
+            "savestate: load_timing read=0.0 inflate=%.1f "
+            "apply_ram=%.1f apply_vram=%.1f apply_spuram=%.1f "
+            "apply_other=%.1f total=%.1f ms (file=%zu)\n",
+            inflate_ms, apply_ram_ms, apply_vram_ms, apply_spuram_ms,
+            apply_other_ms, boot_state_mono_ms() - t0, file_len);
+cleanup:
+    for (uint32_t tag = BS_SEC_CPU; tag <= BS_SEC_ICACHE; tag++)
+        free(staged[tag].owned);
+    return ok;
 }
 
 int boot_state_load(const char* path, uint32_t bios_checksum,

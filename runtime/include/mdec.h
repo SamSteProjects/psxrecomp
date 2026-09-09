@@ -85,6 +85,10 @@ void mdec_debug_dma_out_end(uint32_t addr, uint32_t words);
 uint32_t mdec_snapshot_bytes(void);
 void     mdec_snapshot_write(uint8_t *p);
 int      mdec_snapshot_read(const uint8_t *p, uint32_t len);
+/* Validate without guest mutation; prepare may grow host FIFO capacities but
+ * preserves the live guest state even if an allocation fails. */
+int      mdec_snapshot_validate(const uint8_t *p, uint32_t len);
+int      mdec_snapshot_prepare(const uint8_t *p, uint32_t len);
 
 #ifdef __cplusplus
 }

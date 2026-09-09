@@ -1440,10 +1440,28 @@ void dma_snapshot_write(uint8_t *p) {
         dma_w_delay(&w, &delayed_complete[i]);
 }
 
+int dma_snapshot_validate(const uint8_t *p, uint32_t len) {
+    PstR r;
+    DMAAsyncChannel async;
+    DMAGPULinkedList linked;
+    DMADelayedComplete delayed;
+    if (!p || len != DMA_SNAP_WIRE_BYTES) return 0;
+    pst_r_init(&r, p, len);
+    /* Channel registers and DPCR/DICR are fixed-width scalar fields. The
+     * linked-list cursor is the only content-dependent parser rejection. */
+    if (!pst_r_bytes(&r, NULL, 7u * 12u + 8u)) return 0;
+    for (int i = 0; i < 3; i++)
+        if (!dma_r_async(&r, &async)) return 0;
+    if (!dma_r_gpu_ll(&r, &linked)) return 0;
+    for (int i = 0; i < 7; i++)
+        if (!dma_r_delay(&r, &delayed)) return 0;
+    return r.p == r.end;
+}
+
 int dma_snapshot_read(const uint8_t *p, uint32_t len) {
     PstR r;
     int gpu_ll_was_active = gpu_linked_list.active != 0;
-    if (len != DMA_SNAP_WIRE_BYTES) return 0;
+    if (!dma_snapshot_validate(p, len)) return 0;
     pst_r_init(&r, p, len);
     for (int i = 0; i < 7; i++) {
         if (!pst_r_u32(&r, &channels[i].madr) || !pst_r_u32(&r, &channels[i].bcr) ||

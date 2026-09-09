@@ -136,7 +136,11 @@ void boot_state_vram_mirror_reset(void);
 int  boot_state_load(const char* path, uint32_t bios_checksum,
                      uint32_t entry_pc, CPUState* cpu);
 
-/* Same as boot_state_load, but from an already-buffered .pst image (netplay). */
+/* Same as boot_state_load, but from an already-buffered .pst image (netplay).
+ * Malformed/incomplete sections and preparation OOM leave guest state intact.
+ * Emulation must be paused and the input buffer immutable for the whole call.
+ * Preparation may grow host MDEC capacities; renderer callbacks are not an
+ * external side-effect transaction. Unknown section tags/flags are skipped. */
 int  boot_state_load_buffer(const uint8_t* file, size_t file_len,
                             uint32_t bios_checksum, uint32_t entry_pc,
                             CPUState* cpu);
