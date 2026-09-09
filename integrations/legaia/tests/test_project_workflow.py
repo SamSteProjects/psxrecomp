@@ -78,6 +78,91 @@ class ProjectWorkflow(unittest.TestCase):
                 project.import_metadata(changed)
             self.assertEqual(project.state(), before)
 
+    def test_authored_templates_capture_apply_history_and_persist(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            metadata = synthetic_scene()
+            second = deepcopy(metadata["actors"][0])
+            second["semantic_id"] = "scene://fixture/actors/man-p1/0002"
+            second["imported_transform"]["position"]["x"] = 500
+            metadata["actors"].append(second)
+            project.import_metadata(metadata)
+            first_id, second_id = [actor["semantic_id"] for actor in metadata["actors"]]
+            project.command({"type": "set_transform", "entity_id": first_id, "position": {"x": 128}})
+            project.command({"type": "set_transform", "entity_id": second_id, "position": {"z": 256}})
+            project.save()
+            project.command({"type": "create_actor_template", "entity_id": first_id, "name": "Courtyard"})
+            template_id = next(iter(project.actor_templates))
+            template = deepcopy(project.actor_templates[template_id])
+            self.assertEqual(template["components"], {"Transform": {"position": {"x": 128}}})
+            self.assertEqual(template["source"]["entity_id"], first_id)
+            self.assertTrue(project.dirty)
+            project.undo()
+            self.assertFalse(project.dirty)
+            self.assertEqual(project.actor_templates, {})
+            project.redo()
+            project.command({"type": "set_transform", "entity_id": first_id, "position": {"x": 320}})
+            self.assertEqual(project.actor_templates[template_id], template)
+            project.command({"type": "apply_actor_template", "entity_id": second_id, "template_id": template_id})
+            self.assertEqual(project.overrides[second_id]["Transform"]["position"], {"x": 128, "z": 256})
+            target = project.state()["scene"]["entities"][1]["components"]["Transform"]
+            self.assertEqual(target["imported"]["position"], {"x": 500, "y": None, "z": 200})
+            self.assertEqual(target["effective"]["position"], {"x": 128, "y": None, "z": 256})
+            project.undo()
+            self.assertEqual(project.overrides[second_id]["Transform"]["position"], {"z": 256})
+            project.redo()
+            project.command({"type": "delete_actor_template", "template_id": template_id})
+            self.assertEqual(project.actor_templates, {})
+            project.undo()
+            restored = ProjectService.open(project.save())
+            self.assertEqual(restored.actor_templates, project.actor_templates)
+            self.assertEqual(restored.overrides, project.overrides)
+            self.assertEqual(restored.imports["scene://fixture"], metadata)
+            self.assertFalse(restored.dirty)
+
+    def test_template_failures_are_transactional_and_scope_checked_on_open(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            metadata = synthetic_scene()
+            project.import_metadata(metadata)
+            actor_id = metadata["actors"][0]["semantic_id"]
+            with self.assertRaisesRegex(ProjectError, "Author one"):
+                project.command({"type": "create_actor_template", "entity_id": actor_id, "name": "Empty"})
+            self.assertEqual(project.actor_templates, {})
+            project.command({"type": "set_transform", "entity_id": actor_id, "position": {"y": 8, "z": 128}})
+            project.command({"type": "create_actor_template", "entity_id": actor_id, "name": "Project height"})
+            identifier = next(iter(project.actor_templates))
+            before = deepcopy(project.state())
+            for command in ({"type": "create_actor_template", "entity_id": actor_id, "name": "project HEIGHT"},
+                            {"type": "apply_actor_template", "entity_id": "missing", "template_id": identifier},
+                            {"type": "delete_actor_template", "template_id": "missing"}):
+                with self.assertRaises(ProjectError):
+                    project.command(command)
+                self.assertEqual(project.state(), before)
+            project.mode = "live"
+            with self.assertRaisesRegex(ProjectError, "Edit mode"):
+                project.command({"type": "apply_actor_template", "entity_id": actor_id, "template_id": identifier})
+            project.mode = "edit"
+            path = project.save()
+            original = json.loads(path.read_text())
+            for mutation in ("other_disc", "model_component", "bad_position"):
+                raw = deepcopy(original)
+                template = raw["actor_templates"][identifier]
+                if mutation == "other_disc":
+                    template["source"]["disc_identity"] = "synthetic:other-disc"
+                elif mutation == "model_component":
+                    template["components"]["ModelRenderer"] = {"asset_id": "invented"}
+                else:
+                    template["components"]["Transform"]["position"]["x"] = True
+                path.write_text(json.dumps(raw), encoding="utf-8")
+                with self.assertRaises(ProjectError):
+                    ProjectService.open(path)
+            # Provenance remains useful even after the source instance is absent.
+            raw = deepcopy(original)
+            raw["actor_templates"][identifier]["source"]["entity_id"] = "scene://previous/actor"
+            path.write_text(json.dumps(raw), encoding="utf-8")
+            self.assertIn(identifier, ProjectService.open(path).actor_templates)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,9 @@ sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
 const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build a private mod package from supported authored placements';$('save-button').after(buildButton);
 const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';document.body.append(buildDialog);
+const templateDialog=document.createElement('dialog');templateDialog.id='template-dialog';document.body.append(templateDialog);
+const templateButton=document.createElement('button');templateButton.className='template-library-button';templateButton.textContent='Authored transform templates…';$('assets').before(templateButton);
+templateButton.onclick=()=>showTemplates();
 const runButton=document.createElement('button');runButton.id='run-button';runButton.textContent='Build & Run';runButton.className='accent';buildButton.after(runButton);
 const runDialog=document.createElement('dialog');runDialog.id='run-dialog';document.body.append(runDialog);
 const runRibbon=document.createElement('div');runRibbon.className='run-ribbon';runRibbon.hidden=true;document.querySelector('.viewport-toolbar').after(runRibbon);
@@ -150,6 +153,8 @@ function render(){
   $('frame-selected').disabled=!selected();
   $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
   renderHierarchy();renderAssets();renderInspector();
+  templateButton.disabled=!state.capabilities?.authored_transform_templates;
+  if(templateDialog.open)renderTemplates();
   renderRunStatus();scheduleRunPoll();
   if(lastSceneId!==state.scene?.id){lastSceneId=state.scene?.id;frame();}else draw();
 }
@@ -169,6 +174,25 @@ function renderAssets(){
   if(!list.children.length){const p=document.createElement('div');p.className='field-note';p.style.gridColumn='1 / -1';p.textContent='Stable asset references from your imported scene.';list.append(p);}
 }
 function property(label,value){return `<dl class="property"><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value ?? 'Unknown')}</dd></dl>`;}
+function showTemplates(){renderTemplates();templateDialog.showModal();}
+function renderTemplates(){
+  const entity=selected(),position=entity?.components?.Transform?.authored?.position ?? {},templates=state.actor_templates ?? [];
+  const axes=Object.entries(position).map(([axis,value])=>`${axis.toUpperCase()} ${format(value)}`).join(' · ');
+  templateDialog.innerHTML=`<div class="dialog-heading"><h2>Authored transform templates</h2><button type="button" id="close-templates" aria-label="Close">×</button></div><p>Save authored position axes and apply their absolute values to an existing imported actor. Other axes stay unchanged.</p><p class="field-note">Position only: no native actor spawning, model or animation presets. Height stays project-only; Build still requires representable X/Z values.</p><form id="create-template-form"><label>Template name<input id="template-name" required maxlength="80" placeholder="For example, courtyard position" ${canEdit() && axes?'':'disabled'}></label><p class="field-note">${entity?`Selected: ${escapeHTML(entity.name)} · ${axes?escapeHTML(axes):'Author a position axis to capture a template.'}`:'Select an imported actor to capture or apply a template.'}</p><button type="submit" ${canEdit() && axes?'':'disabled'}>Capture authored position</button></form><div id="template-list" class="template-list"></div><p class="field-note">Template changes use Undo / Redo. Save the project to keep the library.</p>`;
+  $('close-templates').onclick=()=>templateDialog.close();
+  const errorMessage=document.createElement('p');errorMessage.className='dialog-error';errorMessage.setAttribute('role','alert');templateDialog.append(errorMessage);
+  const command=async body=>{const result=await api('/api/command',body);if(!result)errorMessage.textContent=$('status').textContent;return result;};
+  $('create-template-form').onsubmit=async event=>{event.preventDefault();await command({type:'create_actor_template',entity_id:entity.id,name:$('template-name').value});};
+  for(const template of templates){
+    const card=document.createElement('section');card.className='template-card';
+    const values=Object.entries(template.components.Transform.position).map(([axis,value])=>`${axis.toUpperCase()} ${format(value)}`).join(' · ');
+    card.innerHTML=`<strong>${escapeHTML(template.name)}</strong><p>${escapeHTML(values)}</p><details><summary>Source provenance</summary><p>${escapeHTML(template.source.scene_id)}<br>${escapeHTML(template.source.entity_id)}</p><code>${escapeHTML(template.source.disc_identity)}</code></details><div class="template-actions"><button data-apply ${canEdit() && entity?'':'disabled'}>Apply to ${escapeHTML(entity?.name ?? 'selected actor')}</button><button data-delete ${canEdit()?'':'disabled'}>Delete</button></div>`;
+    card.querySelector('[data-apply]').onclick=()=>command({type:'apply_actor_template',template_id:template.id,entity_id:entity.id});
+    card.querySelector('[data-delete]').onclick=()=>command({type:'delete_actor_template',template_id:template.id});
+    $('template-list').append(card);
+  }
+  if(!templates.length)$('template-list').innerHTML='<p class="field-note">No authored transform templates yet.</p>';
+}
 function renderInspector(){
   const entity=selected();
   $('selection-summary').textContent=entity?entity.name ?? entity.id:'No entity selected';
@@ -177,12 +201,14 @@ function renderInspector(){
   let html=`<div class="entity-heading"><h2>${escapeHTML(entity.name ?? entity.id)}</h2><code>${escapeHTML(entity.id)}</code></div><section class="component"><h3>Transform <small>Scene units</small></h3><div class="transform-table"><span></span><span class="column-title">Imported</span><span class="column-title">Authored</span><span class="column-title">Effective</span>`;
   for(const axis of ['x','y','z'])html+=`<span class="axis-${axis}">${axis.toUpperCase()}</span><output title="${format(original[axis])}">${format(original[axis])}</output><input data-axis="${axis}" aria-label="Authored ${axis.toUpperCase()}" type="number" step="1" placeholder="—" value="${numeric(override[axis])?override[axis]:''}" ${canEdit()?'':'disabled'}><output class="effective">${format(effective[axis])}</output>`;
   html+='</div><p class="field-note">Edits are project overrides. Empty authored fields inherit the imported value. Unknown heights appear at zero in this preview.</p></section>';
+  if(state.capabilities?.authored_transform_templates)html+='<section class="component"><h3>Authored templates <small>Position only</small></h3><p class="field-note">Capture authored axes or apply saved positions to this existing actor.</p><button id="inspect-templates">Open transform templates…</button></section>';
   if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${property('Asset',model.asset_id)}${property('Resolution',model.resolution_status)}<p class="field-note">The scene uses placement markers. Inspect decoded objects separately, without assuming a skeleton or pose.</p>${model.asset_id?'<button id="inspect-model" class="model-preview-button">Inspect model objects</button>':''}</section>`;}
   if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">An association is not a verified playable animation.</p></section>`;
   if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>Runtime observation <small>Read only · sampled</small></h3>${property('Correlation',correlation.status ?? correlation.state ?? 'Unresolved')}<p class="field-note">Candidate associations preserve ambiguity. They do not replace imported or authored values.</p><details><summary>Epoch, candidates and evidence</summary><pre>${escapeHTML(JSON.stringify(correlation,null,2))}</pre></details></section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
   $('inspector').innerHTML=html;
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
+  if($('inspect-templates'))$('inspect-templates').onclick=showTemplates;
   $('inspector').querySelectorAll('[data-axis]').forEach(input=>input.addEventListener('change',async()=>{
     const axis=input.dataset.axis;
     if(input.value===''){await api('/api/command',{type:'clear_transform',entity_id:entity.id,axes:[axis]});return;}

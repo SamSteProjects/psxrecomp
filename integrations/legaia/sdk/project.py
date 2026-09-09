@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import tempfile
+import uuid
 from typing import Any
 
 
@@ -81,6 +82,7 @@ class ProjectService:
         self.imports: dict[str, dict] = {}
         self.assets = AssetDatabase()
         self.overrides: dict[str, dict] = {}
+        self.actor_templates: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
         self.undo_stack: list[dict] = []
@@ -125,7 +127,8 @@ class ProjectService:
                                   "disc_identity": next(iter(self.imports.values()))["source"]["disc_identity"] if self.imports else None},
                 "imports": [{"scene": key, "file": f"Imported/{digest(value)}.json", "sha256": digest(value)}
                             for key, value in sorted(self.imports.items())],
-                "active_scene": self.active_scene, "authored": deepcopy(self.overrides)}
+                "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
+                "actor_templates": deepcopy(self.actor_templates)}
 
     @property
     def dirty(self) -> bool:
@@ -210,6 +213,9 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get("type") in ("create_actor_template", "apply_actor_template", "delete_actor_template"):
+            self._template_command(command)
+            return
         if command.get("type") not in ("set_transform", "clear_transform"):
             raise ProjectError("Unsupported authoring command")
         identifier = command.get("entity_id")
@@ -235,11 +241,7 @@ class ProjectService:
                 self.redo_stack.clear()
             return
         position = command.get("position")
-        if not isinstance(position, dict) or not position or set(position) - {"x", "y", "z"}:
-            raise ProjectError("Position must contain one or more X/Y/Z values")
-        for value in position.values():
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or abs(value) > 32767:
-                raise ProjectError("Authored coordinates must be finite numbers between -32767 and 32767")
+        self._validate_position(position)
         before = deepcopy(self.overrides.get(identifier))
         after = deepcopy(before or {})
         after.setdefault("Transform", {}).setdefault("position", {}).update(position)
@@ -249,6 +251,83 @@ class ProjectService:
         self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
         self.redo_stack.clear()
 
+    @staticmethod
+    def _validate_position(position: dict) -> None:
+        if not isinstance(position, dict) or not position or set(position) - {"x", "y", "z"}:
+            raise ProjectError("Position must contain one or more X/Y/Z values")
+        for value in position.values():
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or abs(value) > 32767:
+                raise ProjectError("Authored coordinates must be finite numbers between -32767 and 32767")
+
+    def _validate_template(self, identifier: str, template: dict) -> None:
+        if not isinstance(identifier, str) or not identifier.startswith("template://"):
+            raise ProjectError("Invalid authored template identity")
+        try:
+            if str(uuid.UUID(identifier[11:])) != identifier[11:]:
+                raise ValueError("noncanonical UUID")
+        except ValueError as exc:
+            raise ProjectError("Invalid authored template identity") from exc
+        if not isinstance(template, dict) or set(template) != {"id", "name", "scope", "source", "components"}:
+            raise ProjectError("Invalid authored transform template")
+        if template["id"] != identifier or template["scope"] != "authored-position-v1":
+            raise ProjectError("Unsupported authored template scope")
+        name = template["name"]
+        if not isinstance(name, str) or name != name.strip() or not 1 <= len(name) <= 80:
+            raise ProjectError("Template name must contain 1 to 80 characters")
+        source = template["source"]
+        if not isinstance(source, dict) or set(source) != {"disc_identity", "scene_id", "entity_id"} or any(not isinstance(value, str) or not value for value in source.values()):
+            raise ProjectError("Template requires source disc, scene and actor provenance")
+        disc = next(iter(self.imports.values()))["source"]["disc_identity"] if self.imports else None
+        if source["disc_identity"] != disc:
+            raise ProjectError("Template belongs to a different imported disc")
+        components = template["components"]
+        if not isinstance(components, dict) or set(components) != {"Transform"} or not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
+            raise ProjectError("Templates support authored position only")
+        self._validate_position(components["Transform"]["position"])
+
+    def _template_command(self, command: dict) -> None:
+        kind = command["type"]
+        if kind == "create_actor_template":
+            entity_id = command.get("entity_id")
+            self._actor(entity_id)
+            name = command.get("name")
+            if not isinstance(name, str):
+                raise ProjectError("Template name must be a string")
+            if len(self.actor_templates) >= 128:
+                raise ProjectError("Project supports at most 128 authored transform templates")
+            if any(value["name"].casefold() == name.strip().casefold() for value in self.actor_templates.values()):
+                raise ProjectError("An authored template already uses that name")
+            position = self.overrides.get(entity_id, {}).get("Transform", {}).get("position", {})
+            if not position:
+                raise ProjectError("Author one or more position axes before creating a template")
+            scene_id, document = next((key, value) for key, value in self.imports.items()
+                                      if any(actor["semantic_id"] == entity_id for actor in value["actors"]))
+            identifier = "template://" + str(uuid.uuid4())
+            template = {"id": identifier, "name": name.strip(), "scope": "authored-position-v1",
+                        "source": {"disc_identity": document["source"]["disc_identity"], "scene_id": scene_id, "entity_id": entity_id},
+                        "components": {"Transform": {"position": deepcopy(position)}}}
+            self._validate_template(identifier, template)
+            self.actor_templates[identifier] = template
+            self.undo_stack.append({"target": "actor_templates", "template_id": identifier, "entity_id": entity_id,
+                                    "before": None, "after": deepcopy(template)})
+            self.redo_stack.clear()
+            return
+        identifier = command.get("template_id")
+        if not isinstance(identifier, str) or identifier not in self.actor_templates:
+            raise ProjectError("Unknown authored transform template")
+        template = self.actor_templates[identifier]
+        self._validate_template(identifier, template)
+        if kind == "apply_actor_template":
+            # All currently imported actors expose the same project Transform schema.
+            # This merges absolute authored axes; it never instantiates native actors.
+            self.command({"type": "set_transform", "entity_id": command.get("entity_id"),
+                          "position": deepcopy(template["components"]["Transform"]["position"])})
+        else:
+            self.actor_templates.pop(identifier)
+            self.undo_stack.append({"target": "actor_templates", "template_id": identifier,
+                                    "entity_id": template["source"]["entity_id"], "before": deepcopy(template), "after": None})
+            self.redo_stack.clear()
+
     def _apply_history(self, source: list, target: list, field: str) -> None:
         if self.mode != "edit":
             raise ProjectError("Undo and redo require Edit mode")
@@ -256,10 +335,12 @@ class ProjectService:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
         entry = source.pop()
         value = deepcopy(entry[field])
+        collection = self.actor_templates if entry.get("target") == "actor_templates" else self.overrides
+        identifier = entry["template_id"] if entry.get("target") == "actor_templates" else entry["entity_id"]
         if value is None:
-            self.overrides.pop(entry["entity_id"], None)
+            collection.pop(identifier, None)
         else:
-            self.overrides[entry["entity_id"]] = value
+            collection[identifier] = value
         target.append(entry)
 
     def undo(self) -> None:
@@ -328,6 +409,16 @@ class ProjectService:
                 raise ProjectError("Unsupported authored component")
             result.command({"type": "set_transform", "entity_id": identifier,
                             "position": components["Transform"]["position"]})
+        templates = raw.get("actor_templates", {})
+        if not isinstance(templates, dict) or len(templates) > 128:
+            raise ProjectError("Invalid authored template collection")
+        names = set()
+        for identifier, template in templates.items():
+            result._validate_template(identifier, template)
+            if template["name"].casefold() in names:
+                raise ProjectError("Duplicate authored template name")
+            names.add(template["name"].casefold())
+        result.actor_templates = deepcopy(templates)
         if raw.get("active_scene") is not None:
             result.set_scene(raw["active_scene"])
         result.undo_stack.clear()
@@ -356,9 +447,11 @@ class ProjectService:
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,
+                "actor_templates": deepcopy(list(self.actor_templates.values())),
                 "assets": deepcopy(list(self.assets.records.values())), "selection": {"entity_id": self.selected},
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses placement markers; decoded model objects can be inspected separately.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
                                 "Build supports representable X/Z placements; authored height and facing cannot yet be serialized."],
-                "capabilities": {"edit_transform": True, "live_mode": False, "build": False, "model_preview": False}}
+                "capabilities": {"edit_transform": True, "authored_transform_templates": True,
+                                 "live_mode": False, "build": False, "model_preview": False}}
