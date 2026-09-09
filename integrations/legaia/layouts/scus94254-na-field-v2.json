@@ -1,0 +1,854 @@
+{
+  "schema_version": 1,
+  "profile_id": "legaia-na-scus94254-field-v2",
+  "game": "Legend of Legaia",
+  "region": "North America",
+  "executable_identity": {
+    "serial": "SCUS-94254",
+    "sha256": "292256e2e66db42727f613406785e444254d3f699569e611f65fcf1c6d2f3482",
+    "file_size": 442368,
+    "load_address": "0x80010000",
+    "runtime_source_identity": {
+      "algorithm": "sha256",
+      "scope": "ps-x-exe-body",
+      "length": 440320,
+      "guest_base": "0x80010000",
+      "sha256": "185d3362e57441a6a8328fba376a469341c55a2e7a7ef35c0e64d04601fc0f68",
+      "claim": {
+        "property": "runtime_main_executable_source_identity",
+        "value": "ps-x-exe-body:185d3362e57441a6a8328fba376a469341c55a2e7a7ef35c0e64d04601fc0f68",
+        "confidence": "confirmed",
+        "evidence": [
+          "psxrecomp-protocol-1.4-live-runs",
+          "psxrecomp-game-config"
+        ],
+        "notes": "This is the canonical loaded PS-X EXE body identity exposed by runtime_identity. It is deliberately distinct from the SHA-256 of the complete 442,368-byte ISO file."
+      }
+    },
+    "claim": {
+      "property": "executable_identity",
+      "value": "SCUS-94254:292256e2e66db42727f613406785e444254d3f699569e611f65fcf1c6d2f3482",
+      "confidence": "confirmed",
+      "evidence": [
+        "psxrecomp-game-config",
+        "local-disc-executable-hash"
+      ],
+      "notes": "Hash computed locally from the ISO9660 SCUS_942.54 file; no executable bytes or local path are stored."
+    }
+  },
+  "supported_runtime_protocol": {
+    "name": "psxrecomp-debug",
+    "required_runtime_implementation": "psxrecomp",
+    "minimum_major": 1,
+    "minimum_minor": 5,
+    "required_capabilities": [
+      "executable_regions",
+      "execution_witness",
+      "observation_guard",
+      "read_regions",
+      "runtime_identity",
+      "watched_page_generation"
+    ]
+  },
+  "overlay_requirements": [
+    {
+      "required": false,
+      "identity": {
+        "id": "field-overlay-0897",
+        "prot_entry": 897,
+        "load_address": "0x801CE818",
+        "content_sha256": null,
+        "source_entry_sha256": "216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b"
+      },
+      "owner": "field overlay",
+      "claim": {
+        "property": "active_field_overlay",
+        "value": "field-overlay-0897",
+        "confidence": "strongly_inferred",
+        "evidence": [
+          "andrew-boot-mode-table",
+          "andrew-field-overlay-functions",
+          "local-disc-prot897-hash"
+        ],
+        "notes": "PROT 897 and its slot-A base are supported by loader traces. The source-entry hash is not a canonical live-memory overlay hash. This structural overlay hypothesis is not used for profile selection; the accepted field execution identity below supplies the fail-closed executable-state gate."
+      }
+    }
+  ],
+  "execution_identity": {
+    "kind": "field_execution_witness_set",
+    "minimum_required_witnesses": 3,
+    "require_stable_executable_state": false,
+    "require_stable_lifecycle_state": false,
+    "require_stable_observation_guard": true,
+    "required_witnesses": [
+      {
+        "id": "field-collision-census-rebuild",
+        "pc": "0x801CF754",
+        "backend": "static-native",
+        "range": {
+          "kind": "executed-instruction",
+          "base": "0x801CF754",
+          "length": 4
+        },
+        "live_sha256": "bad69a1914bdcaf9db0344c046a9731c78aae2d93bb2b842b5d7123b36fbf4bc",
+        "require_current": true,
+        "require_watched_generation_match": true,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-collision",
+          "psxrecomp-sdk-field-20260909"
+        ]
+      },
+      {
+        "id": "field-vm-dispatch",
+        "pc": "0x801DE840",
+        "backend": "static-native",
+        "range": {
+          "kind": "executed-instruction",
+          "base": "0x801DE840",
+          "length": 4
+        },
+        "live_sha256": "ec4f4d5323b718c7b0c2a96aa7da96280e5e363fa61672bde6a0044ea9a621dd",
+        "require_current": true,
+        "require_watched_generation_match": true,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-vm",
+          "psxrecomp-sdk-field-20260909"
+        ]
+      },
+      {
+        "id": "field-actor-helper",
+        "pc": "0x801D79E8",
+        "backend": "interpreter",
+        "range": {
+          "kind": "executed-instruction",
+          "base": "0x801D79E8",
+          "length": 4
+        },
+        "live_sha256": "2ed3561c68bb654f8e2ad2ad487bde2c12f773777e92956e1ff0e7f27ad6b1d9",
+        "require_current": true,
+        "require_watched_generation_match": true,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-locomotion",
+          "psxrecomp-sdk-field-20260909"
+        ]
+      }
+    ]
+  },
+  "scene_identity": {
+    "scene_key": "town01",
+    "strategy": "Require the active scene name, runtime PROT base index, field-run master mode, executable identity and all current field execution witnesses to agree under one profile-scoped observation guard.",
+    "required_signals": [
+      {
+        "id": "active_scene_name",
+        "address": "0x80084548",
+        "width": 8,
+        "type": "ascii_nul_terminated",
+        "expected": "town01",
+        "owner": "SCUS_942.54",
+        "lifecycle": "Updated during named scene transition; valid active buffer after field initialization.",
+        "claim": {
+          "property": "active_scene_name",
+          "value": "town01",
+          "confidence": "confirmed",
+          "evidence": [
+            "andrew-asset-loader",
+            "andrew-runtime-probes"
+          ],
+          "notes": "The 0x8007050C pending/mirror name is supporting only and is not sufficient by itself."
+        }
+      },
+      {
+        "id": "active_scene_prot_base",
+        "address": "0x80084540",
+        "width": 2,
+        "type": "u16_le",
+        "expected": 3,
+        "owner": "SCUS_942.54",
+        "lifecycle": "Resolved from CDNAME and consumed by the retail field loader; changes for inter-scene transitions.",
+        "claim": {
+          "property": "town01_runtime_prot_base",
+          "value": 3,
+          "confidence": "confirmed",
+          "evidence": [
+            "retail-cdname",
+            "andrew-field-loader-trace",
+            "psxrecomp-importer"
+          ],
+          "notes": "Runtime/CDNAME index 3 corresponds to extraction-frame start 1; the two numbering spaces must not be conflated."
+        }
+      },
+      {
+        "id": "master_game_mode",
+        "address": "0x8007B83C",
+        "width": 2,
+        "type": "u16_le",
+        "expected": 3,
+        "owner": "SCUS_942.54",
+        "lifecycle": "Mode 2 initializes the field; mode 3 is settled field/town gameplay and changes before other modes.",
+        "claim": {
+          "property": "field_run_mode",
+          "value": 3,
+          "confidence": "confirmed",
+          "evidence": [
+            "andrew-boot-mode-table",
+            "andrew-runtime-probes"
+          ],
+          "notes": "Mode 3 is necessary but not scene-specific."
+        }
+      }
+    ]
+  },
+  "scene_epoch": {
+    "observer_owned": true,
+    "stability_samples": 2,
+    "invalidation_signals": [
+      "active_scene_name",
+      "active_scene_prot_base",
+      "master_game_mode",
+      "field_execution_identity",
+      "actor_list_head",
+      "actor_census_base"
+    ],
+    "contract": "Increment the observer-side epoch only after two profile-scoped guard samples agree. Invalidate immediately on any guarded signal, required witness, runtime instance, executable identity, relevant lifecycle identity, actor-list head or scoped-token change; retain the global executable-state token as diagnostics and discard the mixed snapshot."
+  },
+  "actor_pool": {
+    "storage_kind": "linked_nodes_with_pointer_census",
+    "pointer_census": {
+      "base_address": "0x801C93C8",
+      "entry_stride": 4,
+      "maximum_slots": 32,
+      "count": {
+        "address": "0x8007B6B8",
+        "width": 4,
+        "type": "u32_le",
+        "claim": {
+          "property": "field_actor_census_count",
+          "value": "u32 capped at 32",
+          "confidence": "strongly_inferred",
+          "evidence": [
+            "andrew-field-collision",
+            "andrew-engine-shell-capture-tests",
+            "andrew-s5-actor-probe"
+          ],
+          "notes": "The field tests read u32; one older Lua probe reads u8 and world-map documentation assigns another mode-dependent meaning to this address. Ownership must be gated by field overlay and mode."
+        }
+      },
+      "rebuild_function": "0x801CF754",
+      "lifecycle": "Rebuilt each field frame from the live actor linked list, culling to actors near the player, skipping flags & 3, and capping at 32 entries.",
+      "claim": {
+        "property": "field_actor_pointer_census",
+        "value": "0x801C93C8",
+        "confidence": "strongly_inferred",
+        "evidence": [
+          "andrew-field-collision",
+          "andrew-engine-shell-capture-tests"
+        ],
+        "notes": "This is a collision/interaction candidate census, not the owning actor allocation pool and not a complete list of all MAN placements."
+      }
+    },
+    "linked_list_head": {
+      "address": "0x8007C354",
+      "owner": "SCUS_942.54 global pointing to field actor nodes",
+      "claim": {
+        "property": "field_actor_list_head",
+        "value": "0x8007C354",
+        "confidence": "strongly_inferred",
+        "evidence": [
+          "andrew-memory-map",
+          "andrew-field-collision-list-variant",
+          "andrew-motion-vm"
+        ],
+        "notes": "The global is one member of a multi-list actor system. List membership and per-mode meaning require the field-mode gate."
+      }
+    },
+    "actor_record": {
+      "allocation": "individually allocated linked node",
+      "contiguous_stride": null,
+      "bounded_read_size": 156,
+      "alignment": 4,
+      "claim": {
+        "property": "actor_record_storage",
+        "value": "linked variable-address nodes; safe observed prefix 0x9C bytes",
+        "confidence": "strongly_inferred",
+        "evidence": [
+          "andrew-actor-allocators",
+          "andrew-field-spawner",
+          "andrew-field-collision"
+        ],
+        "notes": "No evidence supports actor_base + slot*actor_stride. The 0x9C prefix ends after the collision-partner pointer; full allocation size and allocator free-list lifecycle remain unresolved."
+      }
+    },
+    "initializers": [
+      "0x80020DE0",
+      "0x8003A1E4",
+      "0x8003A55C"
+    ],
+    "updaters": [
+      "0x8002519C",
+      "0x8003BC08",
+      "0x801CF754"
+    ],
+    "teardown": [
+      "0x800204A4"
+    ],
+    "unresolved": [
+      "Exact allocator block size and free-list encoding.",
+      "Whether every MAN partition-1 placement persists as a live node.",
+      "Full ordering and inclusion rules for the 0x8007C354 list.",
+      "Exact unlink/free boundary during scene teardown and same-scene slot reuse."
+    ]
+  },
+  "actor_fields": [
+    {
+      "id": "next_actor",
+      "offset": 0,
+      "width": 4,
+      "type": "ram_pointer",
+      "signed": false,
+      "representation": "KSEG0 pointer or zero",
+      "observation": "safe",
+      "correlation_value": "unsafe",
+      "owner": "generic SCUS actor node",
+      "claim": {
+        "property": "linked_list_next",
+        "value": 0,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-list-walker",
+          "andrew-field-collision-list-variant"
+        ],
+        "notes": "Structural traversal only; address is not semantic identity."
+      }
+    },
+    {
+      "id": "tick_function",
+      "offset": 12,
+      "width": 4,
+      "type": "code_pointer",
+      "signed": false,
+      "representation": "SCUS or active-overlay VA",
+      "observation": "conditional",
+      "correlation_value": "supporting",
+      "owner": "generic SCUS actor node",
+      "claim": {
+        "property": "tick_function",
+        "value": 12,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-memory-map",
+          "andrew-list-walker"
+        ],
+        "notes": "Overlay-local values require overlay identity before interpretation."
+      }
+    },
+    {
+      "id": "flags",
+      "offset": 16,
+      "width": 4,
+      "type": "u32_le",
+      "signed": false,
+      "representation": "bitfield",
+      "observation": "safe",
+      "correlation_value": "supporting",
+      "owner": "generic SCUS actor node",
+      "claim": {
+        "property": "flags",
+        "value": 16,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-collision",
+          "andrew-field-interaction"
+        ],
+        "notes": "Only individually traced bits may be interpreted; flags & 3 disables candidate inclusion and 0x20000 selects the moving collision class."
+      }
+    },
+    {
+      "id": "position_x",
+      "offset": 20,
+      "width": 2,
+      "type": "i16_le",
+      "signed": true,
+      "representation": "integer world units",
+      "observation": "safe",
+      "correlation_value": "supporting",
+      "owner": "field actor node",
+      "claim": {
+        "property": "position_x",
+        "value": 20,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-locomotion-writer-trace",
+          "andrew-field-collision"
+        ],
+        "notes": "Mutable; compare within one scene epoch only."
+      }
+    },
+    {
+      "id": "position_y",
+      "offset": 22,
+      "width": 2,
+      "type": "i16_le",
+      "signed": true,
+      "representation": "integer world units",
+      "observation": "safe",
+      "correlation_value": "weak",
+      "owner": "field actor node",
+      "claim": {
+        "property": "position_y",
+        "value": 22,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-initializer",
+          "andrew-list-walker"
+        ],
+        "notes": "Imported town01 placement has no confirmed Y field, so this cannot correlate directly yet."
+      }
+    },
+    {
+      "id": "position_z",
+      "offset": 24,
+      "width": 2,
+      "type": "i16_le",
+      "signed": true,
+      "representation": "integer world units",
+      "observation": "safe",
+      "correlation_value": "supporting",
+      "owner": "field actor node",
+      "claim": {
+        "property": "position_z",
+        "value": 24,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-locomotion-writer-trace",
+          "andrew-field-collision"
+        ],
+        "notes": "Mutable; compare within one scene epoch only."
+      }
+    },
+    {
+      "id": "heading_yaw",
+      "offset": 38,
+      "width": 2,
+      "type": "u16_le",
+      "signed": false,
+      "representation": "4096 units per revolution",
+      "observation": "safe",
+      "correlation_value": "weak",
+      "owner": "field actor node",
+      "claim": {
+        "property": "heading_yaw",
+        "value": 38,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-locomotion",
+          "andrew-spawn-prologue"
+        ],
+        "notes": "Runtime-derived and mutable; placement records do not carry a confirmed facing byte."
+      }
+    },
+    {
+      "id": "touch_counter",
+      "offset": 42,
+      "width": 2,
+      "type": "u16_le",
+      "signed": false,
+      "representation": "counter",
+      "observation": "conditional",
+      "correlation_value": "unsafe",
+      "owner": "field actor node",
+      "claim": {
+        "property": "touch_counter",
+        "value": 42,
+        "confidence": "strongly_inferred",
+        "evidence": [
+          "andrew-field-interaction"
+        ],
+        "notes": "Interaction lifecycle only; exact saturation/underflow behavior is not profile-critical."
+      }
+    },
+    {
+      "id": "model_object_table_pointer",
+      "offset": 68,
+      "width": 4,
+      "type": "ram_pointer",
+      "signed": false,
+      "representation": "pointer to count plus object pointers",
+      "observation": "conditional",
+      "correlation_value": "supporting",
+      "owner": "generic SCUS actor node",
+      "claim": {
+        "property": "model_object_table_pointer",
+        "value": 68,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-anm",
+          "andrew-model-resolver"
+        ],
+        "notes": "Pointer identity is ephemeral; pointed-to bytes must not be exported."
+      }
+    },
+    {
+      "id": "animation_record_pointer",
+      "offset": 76,
+      "width": 4,
+      "type": "ram_pointer",
+      "signed": false,
+      "representation": "pointer into active animation bank",
+      "observation": "conditional",
+      "correlation_value": "supporting",
+      "owner": "generic SCUS actor node",
+      "claim": {
+        "property": "animation_record_pointer",
+        "value": 76,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-anm",
+          "andrew-actor-vm"
+        ],
+        "notes": "A runtime pointer is not the imported animation-record ID without a separately proven bank mapping."
+      }
+    },
+    {
+      "id": "field_0x50",
+      "offset": 80,
+      "width": 2,
+      "type": "u16_le",
+      "signed": false,
+      "representation": "actor-class-dependent state or bind index",
+      "observation": "conditional",
+      "correlation_value": "unsafe",
+      "owner": "field actor node",
+      "claim": {
+        "property": "field_0x50",
+        "value": "class-dependent",
+        "confidence": "contradictory",
+        "alternatives": [
+          "bind record index",
+          "state selector"
+        ],
+        "evidence": [
+          "andrew-field-collision",
+          "andrew-s5-actor-probe"
+        ],
+        "notes": "Retain neutral naming until class-specific writers/readers are reconciled."
+      }
+    },
+    {
+      "id": "saved_heading",
+      "offset": 90,
+      "width": 2,
+      "type": "u16_le",
+      "signed": false,
+      "representation": "4096 units per revolution",
+      "observation": "conditional",
+      "correlation_value": "unsafe",
+      "owner": "field actor interaction state",
+      "claim": {
+        "property": "saved_heading",
+        "value": 90,
+        "confidence": "strongly_inferred",
+        "evidence": [
+          "andrew-field-interaction"
+        ],
+        "notes": "Saved/restored around an interaction; not stable actor identity."
+      }
+    },
+    {
+      "id": "map_object_record_index",
+      "offset": 96,
+      "width": 1,
+      "type": "u8",
+      "signed": false,
+      "representation": "scene .MAP object-record index",
+      "observation": "conditional",
+      "correlation_value": "unsafe",
+      "owner": "field static-object actor subclass",
+      "claim": {
+        "property": "map_object_record_index",
+        "value": 96,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-collision",
+          "andrew-field-prop-live-tests"
+        ],
+        "notes": "Not a MAN partition-1 record index and not valid for every actor subclass."
+      }
+    },
+    {
+      "id": "map_object_model_pool_index",
+      "offset": 100,
+      "width": 2,
+      "type": "u16_le",
+      "signed": false,
+      "representation": "scene TMD pool index",
+      "observation": "conditional",
+      "correlation_value": "supporting",
+      "owner": "field static-object actor subclass",
+      "claim": {
+        "property": "map_object_model_pool_index",
+        "value": 100,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-world-map-model-resolver"
+        ],
+        "notes": "Confirmed for .MAP object actors; do not apply to MAN NPCs without a class proof."
+      }
+    },
+    {
+      "id": "field_script_pointer",
+      "offset": 144,
+      "width": 4,
+      "type": "ram_pointer",
+      "signed": false,
+      "representation": "class-dependent field script pointer",
+      "observation": "conditional",
+      "correlation_value": "supporting",
+      "owner": "field actor subclasses",
+      "claim": {
+        "property": "field_script_pointer",
+        "value": 144,
+        "confidence": "strongly_inferred",
+        "evidence": [
+          "andrew-field-object-bind",
+          "andrew-field-vm"
+        ],
+        "notes": "Pointer provenance differs between placement, object and system actors."
+      }
+    },
+    {
+      "id": "field_0x94",
+      "offset": 148,
+      "width": 4,
+      "type": "u32_le",
+      "signed": false,
+      "representation": "actor-class-dependent pointer or cursor",
+      "observation": "conditional",
+      "correlation_value": "unsafe",
+      "owner": "field actor subclasses",
+      "claim": {
+        "property": "field_0x94",
+        "value": "class-dependent",
+        "confidence": "contradictory",
+        "alternatives": [
+          "field VM instruction cursor",
+          "encounter record pointer",
+          "effect position channel"
+        ],
+        "evidence": [
+          "andrew-field-vm",
+          "andrew-world-map",
+          "andrew-actor-vm"
+        ],
+        "notes": "The same offset has subclass-dependent semantics; neutral naming is mandatory."
+      }
+    },
+    {
+      "id": "collision_partner_pointer",
+      "offset": 152,
+      "width": 4,
+      "type": "ram_pointer",
+      "signed": false,
+      "representation": "mutual transient actor link or zero",
+      "observation": "safe",
+      "correlation_value": "unsafe",
+      "owner": "field collision system",
+      "claim": {
+        "property": "collision_partner_pointer",
+        "value": 152,
+        "confidence": "confirmed",
+        "evidence": [
+          "andrew-field-collision",
+          "andrew-npc-press-capture"
+        ],
+        "notes": "Transient within a frame and never semantic identity."
+      }
+    }
+  ],
+  "safety_bounds": {
+    "main_ram_start": "0x80000000",
+    "main_ram_end_exclusive": "0x80200000",
+    "maximum_read_bytes": 4096,
+    "maximum_poll_hz": 10,
+    "mixed_epoch_policy": "discard"
+  },
+  "observation_policy": {
+    "guard": {
+      "capability": "observation_guard",
+      "token_domain": "psxrecomp-observation-guard-v1",
+      "ram_regions_from": "scene_identity.required_signals+actor_pool.linked_list_head",
+      "execution_witnesses_from": "execution_identity.required_witnesses",
+      "require_witness_currentness": true,
+      "require_before_after_stability": true,
+      "require_expected_token_match": true
+    },
+    "head_pointer": {
+      "width": 4,
+      "type": "ram_pointer",
+      "endianness": "little",
+      "accepted_segments": [
+        "kseg0"
+      ],
+      "alignment": 4,
+      "epoch_relevant": true
+    },
+    "traversal": {
+      "prefix_length": 156,
+      "next_pointer_offset": 0,
+      "maximum_nodes": 128,
+      "maximum_aggregate_bytes": 19968,
+      "maximum_requests": 128,
+      "maximum_duration_ms": 5000,
+      "partial_snapshots": "reject",
+      "claim": {
+        "property": "observer_traversal_bounds",
+        "value": "at most 128 exact 0x9C-byte node reads",
+        "confidence": "confirmed",
+        "evidence": [
+          "psxrecomp-debug-protocol",
+          "andrew-list-walker"
+        ],
+        "notes": "This is a conservative observer safety policy, not a claim that the retail engine has 128 actors. Reaching any limit rejects the snapshot."
+      }
+    },
+    "snapshot": {
+      "stability_samples": 2,
+      "maximum_attempts": 3,
+      "mixed_boundary_policy": "discard"
+    }
+  },
+  "evidence": [
+    {
+      "id": "psxrecomp-game-config",
+      "repository": "SamSteProjects/psxrecomp",
+      "revision": "3bc6ecc978e65bcbc4ff543c6e67039b3da7af87",
+      "path": "legaia-release/game.toml",
+      "symbol_or_function": "game.load_address/text_size",
+      "role": "Independent executable load contract"
+    },
+    {
+      "id": "psxrecomp-debug-protocol",
+      "repository": "SamSteProjects/psxrecomp",
+      "revision": "3bc6ecc978e65bcbc4ff543c6e67039b3da7af87",
+      "path": "runtime/src/debug_server.c",
+      "symbol_or_function": "handle_read_ram/handle_read_frame_ram/handle_overlay_loader_status",
+      "role": "Existing observation capability and limitations"
+    },
+    {
+      "id": "psxrecomp-runtime-bridge",
+      "repository": "SamSteProjects/psxrecomp",
+      "revision": "3bc6ecc978e65bcbc4ff543c6e67039b3da7af87",
+      "path": "docs/legaia-sdk/runtime-bridge.md",
+      "symbol_or_function": "capability negotiation and scene epoch contract",
+      "role": "SDK boundary"
+    },
+    {
+      "id": "andrew-memory-map",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "docs/reference/memory-map.md",
+      "symbol_or_function": "0x8007C348..0x8007C36C actor globals",
+      "role": "Attributed supporting memory-map evidence"
+    },
+    {
+      "id": "andrew-asset-loader",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "docs/subsystems/asset-loader.md",
+      "symbol_or_function": "FUN_8001FD44/FUN_80021934",
+      "role": "Scene identity and transition lifecycle"
+    },
+    {
+      "id": "andrew-boot-mode-table",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "docs/subsystems/boot.md",
+      "symbol_or_function": "modes 2 and 3; PROT 0897",
+      "role": "Field mode and overlay ownership"
+    },
+    {
+      "id": "andrew-field-collision",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "docs/subsystems/field-locomotion.md",
+      "symbol_or_function": "FUN_801CFC40/FUN_801CF9F4/FUN_801CF754",
+      "role": "Actor census, list, fields and lifecycle"
+    },
+    {
+      "id": "andrew-field-vm",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "docs/subsystems/script-vm.md",
+      "symbol_or_function": "FUN_801DE840",
+      "role": "Field VM dispatcher identity"
+    },
+    {
+      "id": "andrew-field-locomotion",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "docs/subsystems/field-locomotion.md",
+      "symbol_or_function": "FUN_801D79E8",
+      "role": "Field actor helper identity"
+    },
+    {
+      "id": "psxrecomp-protocol-1.4-live-runs",
+      "repository": "SamSteProjects/psxrecomp",
+      "revision": "local acceptance preceding documentation commit",
+      "path": "docs/legaia-sdk/field-execution-identity.md",
+      "symbol_or_function": "execution_witness live acceptance",
+      "role": "Repeatable backend, byte identity and generation evidence"
+    },
+    {
+      "id": "andrew-runtime-probes",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "scripts/pcsx-redux/autorun_state_poll.lua",
+      "symbol_or_function": "scene/mode/player observation",
+      "role": "Runtime supporting evidence"
+    },
+    {
+      "id": "andrew-s5-actor-probe",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "scripts/pcsx-redux/autorun_s5_actors.lua",
+      "symbol_or_function": "town01 active actor census",
+      "role": "Town01 runtime observation"
+    },
+    {
+      "id": "andrew-engine-shell-capture-tests",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "crates/engine-shell/tests/field_collision_discriminator.rs",
+      "symbol_or_function": "live actor census assertions",
+      "role": "Independent capture-backed tests"
+    },
+    {
+      "id": "andrew-list-walker",
+      "repository": "AndrewAltimit/legend-of-legaia-re",
+      "revision": "d6e64c68ede25813d35db20980da82a1a025549b",
+      "path": "scripts/pcsx-redux/walk_actor_lists.py",
+      "symbol_or_function": "linked actor node prefix",
+      "role": "Structural list and field inventory"
+    },
+    {
+      "id": "psxrecomp-sdk-field-20260909",
+      "repository": "SamSteProjects/psxrecomp",
+      "revision": "be90a25d1bf77b9e725e878b6fc1b907862c5810",
+      "path": "docs/legaia-sdk/live-field-20260909.md",
+      "symbol_or_function": "guarded town01 capture; execution_witness and read_regions",
+      "role": "Observed backend tuple for the rebuilt static overlay inventory; all instruction hashes, current-generation checks and scene constraints are unchanged from v1."
+    }
+  ],
+  "unresolved": [
+    "Canonical live-memory identity and exact loaded span for field overlay 0897.",
+    "Exact actor allocator/free-list lifecycle and node allocation size.",
+    "Whether the collision census is sufficient for later observation or the owning linked list must be walked.",
+    "A MAN partition-1 record index on runtime NPC nodes.",
+    "A proven runtime model pool/index field for MAN NPC nodes.",
+    "Animation-record ID to runtime animation-pointer mapping.",
+    "Class-specific meanings of field_0x50 and field_0x94.",
+    "Town01 actor initialization order and same-epoch node reuse behavior."
+  ]
+}
