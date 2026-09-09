@@ -1,4 +1,5 @@
 #include "mod_packages.h"
+#include "crc32.h"
 #include "psx_sha256.h"
 
 #include <algorithm>
@@ -79,6 +80,43 @@ static void write_deflated_package(const fs::path& path) {
     fs::create_directories(path.parent_path());
     std::ofstream out(path, std::ios::binary);
     out.write((const char*)zip.data(), (std::streamsize)zip.size());
+}
+
+static void write_stored_package(
+    const fs::path& path,
+    const std::vector<std::pair<std::string, std::vector<uint8_t>>>& files) {
+    std::vector<uint8_t> zip;
+    std::vector<uint32_t> offsets;
+    auto le16 = [&](uint16_t v) {
+        zip.push_back((uint8_t)v); zip.push_back((uint8_t)(v >> 8));
+    };
+    auto le32 = [&](uint32_t v) {
+        le16((uint16_t)v); le16((uint16_t)(v >> 16));
+    };
+    for (const auto& [name, data] : files) {
+        offsets.push_back((uint32_t)zip.size());
+        le32(0x04034b50); le16(20); le16(0); le16(0); le16(0); le16(0);
+        le32(crc32_compute(data.data(), data.size()));
+        le32((uint32_t)data.size()); le32((uint32_t)data.size());
+        le16((uint16_t)name.size()); le16(0);
+        zip.insert(zip.end(), name.begin(), name.end());
+        zip.insert(zip.end(), data.begin(), data.end());
+    }
+    const uint32_t central_offset = (uint32_t)zip.size();
+    for (size_t i = 0; i < files.size(); ++i) {
+        const auto& [name, data] = files[i];
+        le32(0x02014b50); le16(20); le16(20); le16(0); le16(0); le16(0); le16(0);
+        le32(crc32_compute(data.data(), data.size()));
+        le32((uint32_t)data.size()); le32((uint32_t)data.size());
+        le16((uint16_t)name.size()); le16(0); le16(0); le16(0); le16(0);
+        le32(0); le32(offsets[i]);
+        zip.insert(zip.end(), name.begin(), name.end());
+    }
+    const uint32_t central_size = (uint32_t)zip.size() - central_offset;
+    le32(0x06054b50); le16(0); le16(0);
+    le16((uint16_t)files.size()); le16((uint16_t)files.size());
+    le32(central_size); le32(central_offset); le16(0);
+    write_bytes(path, zip);
 }
 
 static std::string manifest(const std::string& id, const std::string& version,
@@ -162,6 +200,64 @@ int main() {
           error.c_str());
     check(manager.packages().count("zip.mod") == 1,
           "deflated .psxmod must install");
+    {
+        // Exercise install -> enable -> resolve without the scan that used to
+        // hide stale paths into the now-renamed staging directory.
+        ModPackageManager installed(root / "immediate-install");
+        const std::vector<uint8_t> payload = {10, 20, 30, 40};
+        const std::string disc_hash(64, '4');
+        const std::string text = manifest("installed.overlay", "1.0.0",
+            "disc_sha256 = \"" + disc_hash + "\"\n"
+            "[[feature]]\nid = \"asset\"\nname = \"Asset\"\n"
+            "[[overlay]]\nfeature = \"asset\"\ntarget = \"disc_user\"\n"
+            "offset = 100\nfile = \"assets/data.bin\"\nsha256 = \"" +
+            sha256_hex(payload) + "\"\n");
+        const fs::path archive = root / "installed-overlay.psxmod";
+        write_stored_package(archive, {
+            {"manifest.toml", std::vector<uint8_t>(text.begin(), text.end())},
+            {"assets/data.bin", payload}});
+        check(installed.install_archive(archive, nullptr, nullptr, &error),
+              error.c_str());
+        check(installed.set_feature_enabled("installed.overlay", "asset", true,
+                                            &error), error.c_str());
+        const ModResolution immediate = installed.resolve("SLUS-TEST", {}, disc_hash);
+        check(immediate.ok && immediate.overlays.size() == 1 &&
+                  immediate.overlays[0].payload == payload,
+              "newly installed overlay must resolve immediately without scanning");
+        const ModPackage* package = installed.selected_package("installed.overlay");
+        check(package && package->overlays.size() == 1 &&
+                  package->overlays[0].file == package->root / "assets/data.bin" &&
+                  fs::is_regular_file(package->overlays[0].file),
+              "installed overlay file must be rooted in the final package directory");
+        check(installed.save_state(&error), error.c_str());
+        ModPackageManager rescanned(root / "immediate-install");
+        check(rescanned.scan(&error) && rescanned.load_state(&error), error.c_str());
+        check(rescanned.resolve("SLUS-TEST", {}, disc_hash).fingerprint ==
+                  immediate.fingerprint,
+              "immediate install and rescanned plans must have the same fingerprint");
+
+        const std::string derived = manifest("installed.derived", "1.0.0",
+            "[[derived_disc]]\nkind = \"vcdiff\"\npatch = \"assets/data.xdelta3\"\n"
+            "patch_sha256 = \"" + sha256_hex(payload) + "\"\noutput_size = 40\n"
+            "output_sha256 = \"" + std::string(64, '1') + "\"\n");
+        write_stored_package(root / "installed-derived.psxmod", {
+            {"manifest.toml", std::vector<uint8_t>(derived.begin(), derived.end())},
+            {"assets/data.xdelta3", payload}});
+        check(installed.install_archive(root / "installed-derived.psxmod", nullptr,
+                                         nullptr, &error), error.c_str());
+        check(installed.set_enabled("installed.derived", true, &error), error.c_str());
+        const ModResolution derived_plan = installed.resolve("SLUS-TEST", {}, disc_hash);
+        package = installed.selected_package("installed.derived");
+        check(package && derived_plan.ok && derived_plan.derived_discs.size() == 1 &&
+                  derived_plan.derived_discs[0].patch == package->root / "assets/data.xdelta3" &&
+                  fs::is_regular_file(derived_plan.derived_discs[0].patch),
+              "newly installed derived-disc patch must use its final path immediately");
+        const auto count = installed.packages().size();
+        check(!installed.install_archive(archive, nullptr, nullptr, &error) &&
+                  installed.packages().size() == count &&
+                  installed.resolve("SLUS-TEST", {}, disc_hash).ok,
+              "duplicate install failure must preserve the existing live package state");
+    }
     if (const char* external = std::getenv("PSXMOD_TEST_ARCHIVE");
         external && external[0]) {
         std::string installed_id, installed_version;

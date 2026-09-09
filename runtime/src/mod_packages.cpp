@@ -2724,21 +2724,55 @@ bool ModPackageManager::install_archive(const fs::path& archive,
     }
     fs::create_directories(destination.parent_path(), ec);
     if (ec) {
+        const std::string reason = ec.message();
         fs::remove_all(staging, ec);
-        set_error(error, "cannot create package directory: " + ec.message());
+        set_error(error, "cannot create package directory: " + reason);
         return false;
     }
     fs::rename(staging, destination, ec);
     if (ec) {
+        const std::string reason = ec.message();
         fs::remove_all(staging, ec);
-        set_error(error, "cannot publish installed package: " + ec.message());
+        set_error(error, "cannot publish installed package: " + reason);
         return false;
     }
-    package.root = destination;
-    package.origin = ModPackageOrigin::Installed;
-    packages_[package.id][package.version] = package;
-    if (installed_id) *installed_id = package.id;
-    if (installed_version) *installed_version = package.version;
+    /* Manifest readers resolve package-owned paths against their input root.
+     * Reparse after the atomic move so overlays, derived-disc patches, and any
+     * future package-owned assets all point at the installed tree immediately.
+     * Updating root alone leaves their paths pointing at the removed staging
+     * tree until the next scan. Do not publish manager state before validation. */
+    ModPackage installed;
+    std::string validation_error;
+    bool valid = read_manifest(destination / "manifest.toml", installed,
+                               &validation_error);
+    if (valid && (installed.id != package.id ||
+                  installed.version != package.version)) {
+        validation_error = "package identity changed during installation";
+        valid = false;
+    }
+    if (valid && !developer_channel_ && !strip_developer_features(installed)) {
+        validation_error = "installed package has no available features";
+        valid = false;
+    }
+    if (!valid) {
+        /* Restore the staging boundary before cleanup. If rollback fails,
+         * preserve the files and report their exact recovery location. */
+        fs::rename(destination, staging, ec);
+        if (ec) {
+            set_error(error, validation_error + "; install rollback failed: " +
+                      ec.message() + "; package retained at " + destination.string());
+        } else {
+            fs::remove_all(staging, ec);
+            set_error(error, validation_error +
+                      (ec ? "; staging cleanup failed: " + ec.message() +
+                                "; files retained at " + staging.string() : ""));
+        }
+        return false;
+    }
+    installed.origin = ModPackageOrigin::Installed;
+    packages_[installed.id][installed.version] = installed;
+    if (installed_id) *installed_id = installed.id;
+    if (installed_version) *installed_version = installed.version;
     return true;
 }
 
