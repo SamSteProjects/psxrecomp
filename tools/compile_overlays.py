@@ -5938,6 +5938,7 @@ def write_static_outputs(static_out: str, parts: list, variants: list,
         else:
             units.append([part['namespace'], [part]])
     written = []
+    parts_changed = False
     for index, (label, unit_parts) in enumerate(units):
         path = os.path.join(d, f'{stem}_{index:04d}.c')
         # No part COUNT in the header: adding or dropping an overlay must leave
@@ -5945,12 +5946,13 @@ def write_static_outputs(static_out: str, parts: list, variants: list,
         text = (STATIC_HEADER +
                 f'/* Static overlay translation unit {index}: {label} */\n' +
                 ''.join(part['src'] for part in unit_parts))
-        _write_if_changed(path, text)
+        parts_changed = _write_if_changed(path, text) or parts_changed
         written.append(path)
     keep = set(written)
     for p in stale:
         if p not in keep:
             os.remove(p)
+            parts_changed = True
 
     symbols = sorted({variant['symbol'] for variant in variants})
     main = STATIC_HEADER
@@ -5960,7 +5962,12 @@ def write_static_outputs(static_out: str, parts: list, variants: list,
              f'in its own unit; declare them here. */\n')
     main += ''.join(f'void {sym}(CPUState *cpu);\n' for sym in symbols)
     main += dispatch_src
-    _write_if_changed(static_out, main)
+    main_changed = _write_if_changed(static_out, main)
+    if parts_changed and not main_changed:
+        # Embedding builds declare the dispatcher as the codegen output. Its
+        # timestamp must signal changes in split bodies too, or build-tool
+        # restat can skip dependent staging/compilation of changed parts.
+        os.utime(static_out, None)
     return [static_out] + written
 
 

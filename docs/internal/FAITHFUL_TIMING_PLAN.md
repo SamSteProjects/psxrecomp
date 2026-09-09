@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (Legaia stability parity):** Preserved current CD/XA scheduling,
+  startup, bounded hitch telemetry and host frame pacing. Added explicit
+  savestate overlay-ownership invalidation and build-time split-source
+  discovery, with executable regression fixtures. Debug input gains generic
+  port selection without taking over the other physical controller. See
+  `docs/legaia-release-parity.md` for source identities, validation and remaining
+  retail gates; this is not a new timing/oracle acceptance claim.
+
 - **2026-08-31 (GPU DMA2 review correction — source gate passed):**
   The first fork review found two valid timing defects in the DMA2 candidate. The
   linked-list engine now reads and emits one live payload word at each

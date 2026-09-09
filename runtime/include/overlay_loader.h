@@ -55,8 +55,9 @@ int  overlay_loader_load_frozen(void);
  * resim#1 and resim#2 take the same dispatch path. */
 void overlay_loader_clear_lazy_miss(void);
 
-/* After RAM restore: bust overlay candidate gen fast-path + static-match
- * cache so native vs interp is re-decided against restored bytes. */
+/* After RAM restore: invalidate positive/negative candidate, manifest and
+ * lookup memos, preserving blacklists. Re-establish native ownership from
+ * restored bytes even across repeated restores or generation collisions. */
 void overlay_loader_resync_validation_after_restore(void);
 
 /* Step 2.8: re-scan the cache dir for DLLs compiled after init and clear the

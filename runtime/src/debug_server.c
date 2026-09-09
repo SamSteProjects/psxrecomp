@@ -310,6 +310,7 @@ static uint64_t s_dirty_break_hits = 0;
 /* ---- Input override ---- */
 static int s_input_override = -1;
 static int s_input_frames   = 0;
+static int s_input_port     = 1;  /* Public ports 1..2; one active injection. */
 /* Optional analog-stick override (set_input lx/ly/rx/ry, 0..255, 0x80 =
  * centre). Lets injected input drive analog-mode movement; consumed by the
  * pad sampler alongside the button word. */
@@ -7574,14 +7575,39 @@ static void handle_unwatch(int id, const char *json)
     send_err(id, "watchpoint not found");
 }
 
+/* Validate before changing any override state. json_get_int accepts numeric
+ * prefixes (2.5, 2junk) and defaults malformed values; ports must be exact. */
+static int input_command_port(int id, const char *json)
+{
+    const char *p = strstr(json, "\"port\"");
+    if (!p) return 1;
+    p += 6;
+    p += strspn(p, " \t\r\n");
+    if (*p++ != ':') { send_err(id, "invalid port (1|2)"); return 0; }
+    p += strspn(p, " \t\r\n");
+    int quoted = (*p == '"');
+    if (quoted) ++p;
+    int port = *p++ - '0';
+    if (port < 1 || port > 2) { send_err(id, "invalid port (1|2)"); return 0; }
+    if (quoted && *p++ != '"') { send_err(id, "invalid port (1|2)"); return 0; }
+    p += strspn(p, " \t\r\n");
+    if (*p != ',' && *p != '}') { send_err(id, "invalid port (1|2)"); return 0; }
+    if (port > PSX_MAX_PLAYERS) { send_err(id, "port unavailable in this build"); return 0; }
+    return port;
+}
+
 static void handle_set_input(int id, const char *json)
 {
     char val_str[32];
+    int port = input_command_port(id, json);
+    if (!port) return;
+    if (s_input_route_active) { send_err(id, "input route is active"); return; }
     if (!json_get_str(json, "buttons", val_str, sizeof(val_str))) {
         send_err(id, "missing buttons"); return;
     }
     s_input_override = (int)hex_to_u32(val_str);
     s_input_frames = 0;
+    s_input_port = port;
     /* Optional stick override: any of lx/ly/rx/ry (0..255) arms it; omitted
      * axes centre. Absent entirely -> released (buttons-only injection). */
     int ax[4] = { json_get_int(json, "lx", -1), json_get_int(json, "ly", -1),
@@ -7596,11 +7622,16 @@ static void handle_set_input(int id, const char *json)
 
 static void handle_press(int id, const char *json)
 {
+    int port = input_command_port(id, json);
+    if (!port) return;
+    if (s_input_route_active) { send_err(id, "input route is active"); return; }
     int buttons = json_get_int(json, "buttons", -1);
     int frames  = json_get_int(json, "frames", 2);
-    if (buttons < 0) { send_err(id, "missing buttons"); return; }
+    if (buttons < 0 || buttons > 0xFFFF) { send_err(id, "buttons must be a 16-bit pad word"); return; }
+    if (frames <= 0) { send_err(id, "frames must be positive"); return; }
     s_input_override = buttons;
     s_input_frames   = frames;
+    s_input_port     = port;
     int ax[4] = { json_get_int(json, "lx", -1), json_get_int(json, "ly", -1),
                   json_get_int(json, "rx", -1), json_get_int(json, "ry", -1) };
     s_axis_override = (ax[0] >= 0 || ax[1] >= 0 || ax[2] >= 0 || ax[3] >= 0);
@@ -7629,28 +7660,34 @@ static void handle_pad_status(int id, const char *json)
     send_fmt("{\"id\":%d,\"ok\":true,\"pad\":\"0x%04X\","
              "\"slot0\":{\"buttons\":\"0x%04X\",\"connected\":%s,\"analog\":%s,\"sticks\":[%u,%u,%u,%u]},"
              "\"slot1\":{\"buttons\":\"0x%04X\",\"connected\":%s,\"analog\":%s,\"sticks\":[%u,%u,%u,%u]},"
-             "\"override\":%d,\"override_frames\":%d,"
+             "\"override\":%d,\"override_frames\":%d,\"override_port\":%d,"
              "\"override_axes\":[%u,%u,%u,%u],\"override_axes_valid\":%s}\n",
              id, pad0,
              pad0, sio_get_pad_connected(0) ? "true" : "false", sio_get_pad_analog(0) ? "true" : "false",
              sticks0[0], sticks0[1], sticks0[2], sticks0[3],
              pad1, sio_get_pad_connected(1) ? "true" : "false", sio_get_pad_analog(1) ? "true" : "false",
              sticks1[0], sticks1[1], sticks1[2], sticks1[3],
-             s_input_override, s_input_frames,
+             s_input_override, s_input_frames, s_input_port,
              s_axis_st[0], s_axis_st[1], s_axis_st[2], s_axis_st[3],
              s_axis_override ? "true" : "false");
 }
 
-static void handle_clear_input(int id, const char *json)
+void debug_server_reset_input(void)
 {
-    (void)json;
     s_input_route_active = 0;
     s_input_route_index = 0;
     s_input_route_remaining = 0;
     s_input_override = -1;
     s_input_frames   = 0;
+    s_input_port     = 1;
     s_axis_override  = 0;
     s_axis_st[0] = s_axis_st[1] = s_axis_st[2] = s_axis_st[3] = 0x80;
+}
+
+static void handle_clear_input(int id, const char *json)
+{
+    (void)json;
+    debug_server_reset_input();
     send_ok(id);
 }
 
@@ -7689,12 +7726,14 @@ static void handle_input_route_append(int id, const char *json)
 
 static void handle_input_route_start(int id, const char *json)
 {
-    (void)json;
+    int port = input_command_port(id, json);
+    if (!port) return;
     if (s_input_route_count == 0) {
         send_err(id, "input route is empty"); return;
     }
     s_input_override = -1;
     s_input_frames = 0;
+    s_input_port = port;
     s_axis_override = 0;
     s_input_route_index = 0;
     s_input_route_remaining = s_input_route[0].frames;
@@ -14641,6 +14680,12 @@ int debug_server_get_axis_override(unsigned char st[4])
     st[0] = s_axis_st[0]; st[1] = s_axis_st[1];
     st[2] = s_axis_st[2]; st[3] = s_axis_st[3];
     return 1;
+}
+
+int debug_server_get_input_port(void)
+{
+    /* Keep the final timed sample's port until the next command. */
+    return s_input_port;
 }
 
 int debug_server_turbo_enabled(void)

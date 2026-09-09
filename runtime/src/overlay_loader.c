@@ -65,7 +65,10 @@ typedef void (*OverlayFlushFn)(void);
 
 #define MAX_CODE_RANGES 16   /* code ranges per function (coalesced; usually 1) */
 
-enum { ENTRY_VALID = 0, ENTRY_INVALID = 1, ENTRY_BLACKLIST = 2 };
+enum {
+    ENTRY_VALID = 0, ENTRY_INVALID = 1, ENTRY_BLACKLIST = 2,
+    ENTRY_UNVALIDATED = 3
+};
 
 typedef struct {
     uint32_t  addr;                      /* phys entry address                 */
@@ -75,7 +78,7 @@ typedef struct {
     int       nranges;
     uint32_t  crc_code;                  /* hash of code ranges at registration*/
     uint32_t  val_gen;                   /* pagegen sum when last (in)validated*/
-    int       state;                     /* ENTRY_VALID/INVALID/BLACKLIST      */
+    int       state;                     /* ENTRY_* validation/quarantine     */
     int       dll;                       /* source DLL index                   */
     uint8_t   tier;                      /* gcc=2, tcc=1, unknown=0            */
     int       next;                      /* next candidate at same addr, -1 end*/
@@ -2933,14 +2936,23 @@ void overlay_loader_clear_lazy_miss(void)
 
 void overlay_loader_resync_validation_after_restore(void)
 {
-    /* Host-only validation memos. Page gens were already bumped by
-     * overlay_watch_invalidate_after_ram_restore; force every candidate off
-     * the gen fast-path (including ENTRY_INVALID + gen==val_gen skips, and
-     * nranges==0 bodies whose gensum never moves). Static-match cache is the
-     * same class for AOT game/BIOS overlays. */
+    /* A restore is a lifecycle boundary, not an ordinary watched write.
+     * Toggling val_gen is not invalidation: a generation sum can collide with
+     * the sentinel, or two restores without dispatch can undo the toggle.
+     * Both positive and negative ownership decisions must compare live bytes
+     * again. Keep semantic/self-modification quarantines process-sticky. */
     int i;
-    for (i = 0; i < s_cand_n; i++)
-        s_cand[i].val_gen ^= 0x80000000u;
+    for (i = 0; i < s_cand_n; i++) {
+        Candidate *c = &s_cand[i];
+        if (c->state == ENTRY_BLACKLIST) continue;
+        if (c->state == ENTRY_VALID && s_valid_count > 0) s_valid_count--;
+        c->state = ENTRY_UNVALIDATED;
+    }
+    for (i = 0; i < s_lazy_man_n; i++)
+        s_lazy_man[i].state = 0xFF;
+    overlay_loader_clear_lazy_miss();
+    for (i = 0; i < RANGE_PC_CACHE_CAP; i++)
+        s_range_pc_cache[i].cand = -1;
 #ifdef PSX_HAS_OVERLAY_DISPATCH
     memset(s_static_match_cache, 0, sizeof(s_static_match_cache));
 #endif

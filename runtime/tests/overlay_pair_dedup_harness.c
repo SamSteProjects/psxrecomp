@@ -22,6 +22,7 @@ _Static_assert(PSX_OVERLAY_TEST_CANDIDATE_CAP == 4,
 
 static uint8_t s_ram[RAM_SIZE];
 static uint8_t s_scratch[1024];
+static uint32_t s_page_gen;
 
 uint32_t g_debug_current_func_addr;
 uint32_t g_debug_last_store_pc;
@@ -36,10 +37,39 @@ uint64_t s_frame_count;
 int g_shadow_mmio_watch;
 uint64_t g_shadow_mmio_hits;
 
+/* These callbacks are outside this loader-only fixture. Unexpected use must
+ * fail the test instead of simulating hardware or hiding a dependency. */
+int psx_netplay_is_resimulating(void) { return 0; }
+int psx_game_text_native_ok(uint32_t addr) { (void)addr; abort(); }
+uint32_t psx_ws_angle_widen(uint32_t v) { (void)v; abort(); }
+uint32_t psx_ws_cull_keep_result(uint32_t v, uint32_t f) {
+    (void)v; (void)f; abort();
+}
+uint32_t psx_ws_aspect_cone_result(uint32_t site, uint32_t v, uint32_t obj,
+                                  int32_t x, int32_t z, int32_t y) {
+    (void)site; (void)v; (void)obj; (void)x; (void)z; (void)y; abort();
+}
+void psx_pgxp_load(CPUState *c, uint32_t i, uint32_t a, uint32_t v) {
+    (void)c; (void)i; (void)a; (void)v; abort();
+}
+void psx_pgxp_store(CPUState *c, uint32_t i, uint32_t a, uint32_t v) {
+    (void)c; (void)i; (void)a; (void)v; abort();
+}
+void psx_pgxp_alu(CPUState *c, uint32_t i, uint32_t r, uint32_t a, uint32_t b) {
+    (void)c; (void)i; (void)r; (void)a; (void)b; abort();
+}
+void psx_pgxp_muldiv(CPUState *c, uint32_t i, uint32_t h, uint32_t l,
+                     uint32_t a, uint32_t b) {
+    (void)c; (void)i; (void)h; (void)l; (void)a; (void)b; abort();
+}
+void psx_pgxp_cop2(CPUState *c, uint32_t i, uint32_t v, uint32_t a) {
+    (void)c; (void)i; (void)v; (void)a; abort();
+}
+
 uint8_t *memory_get_ram_ptr(void) { return s_ram; }
 uint8_t *memory_get_scratchpad_ptr(void) { return s_scratch; }
 uint32_t overlay_watch_pagegen_sum(uint32_t phys, uint32_t len) {
-    (void)phys; (void)len; return 0;
+    (void)phys; (void)len; return s_page_gen;
 }
 void overlay_watch_set_range(uint32_t phys, uint32_t len) {
     (void)phys; (void)len;
@@ -272,6 +302,40 @@ static int reveal_second_pair(const char *second) {
     return 1;
 }
 
+static int restore_scenario(const char *scenario, const char *library) {
+    extern int g_psx_cps_mode;
+    CPUState cpu;
+    memset(&cpu, 0, sizeof(cpu));
+    int ok = 1;
+    /* A manifested body owns both its entry and a CPS continuation. */
+    uint32_t pc = strcmp(scenario, "restore-entry") == 0
+                ? 0x80010000u : 0x80010004u;
+    g_psx_cps_mode = 1;
+    ok &= expect_int("initial native owner", overlay_loader_dispatch(&cpu, pc), 1);
+
+    /* Bulk RAM replacement does not go through the guest-store hooks. A
+     * generation sum can wrap/collide, and repeated restores can occur with
+     * no dispatch between them. Invalidation must not depend on a sentinel
+     * differing from the restored page sum. */
+    s_ram[0x10000] = 1;
+    s_page_gen = 0x80000000u;
+    overlay_loader_note_code_write();
+    overlay_loader_resync_validation_after_restore();
+    ok &= expect_int("stale native rejected", overlay_loader_dispatch(&cpu, pc), 0);
+    ok &= expect_int("stale body never called", counter_value(library, "test_call_count"), 1);
+
+    s_ram[0x10000] = 0;
+    /* No ordinary write notification here: restore must also drop the lazy
+     * negative lookup left by the failed dispatch above. */
+    overlay_loader_resync_validation_after_restore();
+    overlay_loader_resync_validation_after_restore();
+    ok &= expect_int("restored native recovered", overlay_loader_dispatch(&cpu, pc), 1);
+    ok &= expect_int("restored body called", counter_value(library, "test_call_count"), 2);
+    ok &= expect_int("warm native retained", overlay_loader_dispatch(&cpu, pc), 1);
+    ok &= expect_int("compiled owner retained", overlay_loader_registered_count(), 1);
+    return ok;
+}
+
 int main(int argc, char **argv) {
     if (argc != 5) {
         fprintf(stderr, "usage: %s <cache-root> <scenario> <first> <second>\n",
@@ -283,6 +347,12 @@ int main(int argc, char **argv) {
     const char *second = argv[4];
     memset(s_ram, 0, sizeof(s_ram));
     overlay_loader_init(argv[1], "PAIR-TEST", 0);
+
+    if (strncmp(scenario, "restore-", 8) == 0) {
+        int ok = restore_scenario(scenario, first);
+        if (ok) printf("PASS %s\n", scenario);
+        return ok ? 0 : 1;
+    }
 
     int alias = strcmp(scenario, "alias-at-cap") == 0;
     int partial = strcmp(scenario, "partial-first") == 0;

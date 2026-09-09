@@ -195,6 +195,13 @@ void debug_server_check_watchpoints(void);
  * -1 if no override is active. Value is PS1 16-bit button mask. */
 int debug_server_get_input_override(void);
 
+/* Selected controller port (1 or 2), default 1. Does not advance a press or
+ * queued route. The last frame of a timed press retains its selected port. */
+int debug_server_get_input_port(void);
+
+/* Discard host input/route state across a fresh emulation session. */
+void debug_server_reset_input(void);
+
 /* Optional analog-stick override set alongside set_input (lx/ly/rx/ry,
  * 0..255, 0x80 = centre). Returns 1 and fills st[lx,ly,rx,ry] when armed,
  * 0 when the injection is buttons-only. */

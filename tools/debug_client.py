@@ -36,7 +36,10 @@ Commands (shared — identical on both servers):
     ts <start> <end>            Frame timeseries — compact (max 200)
     set_snapshot <slot> <addr>  Configure RAM snapshot region (slot 0-3)
     get_snapshots               Show snapshot region config
-    input <buttons_hex>         Override controller input
+    input <buttons_hex> [port=1|2] [lx=N ly=N rx=N ry=N]
+                                Override input; native port selection defaults to 1
+    press <buttons_hex> [frames] [port=1|2]
+                                Timed controller override (default 1 frame)
     clear_input                 Remove input override
     quit                        Quit game
 
@@ -273,25 +276,35 @@ def build_cmd(args):
         return {"cmd": "get_snapshots"}, pretty_json
     elif cmd == "input":
         if len(args) < 2:
-            return None, lambda _: "Usage: input <buttons_hex> [lx=N ly=N rx=N ry=N]"
+            return None, lambda _: "Usage: input <buttons_hex> [port=1|2] [lx=N ly=N rx=N ry=N]"
         d = {"cmd": "set_input", "buttons": args[1]}
         for item in args[2:]:
             key, sep, value = item.partition("=")
-            if not sep or key not in ("lx", "ly", "rx", "ry"):
-                return None, lambda _, item=item: f"Invalid analog axis '{item}'"
-            d[key] = int(value, 0)
+            if not sep or key not in ("port", "lx", "ly", "rx", "ry"):
+                return None, lambda _, item=item: f"Invalid input option '{item}'"
+            try:
+                d[key] = int(value, 0)
+            except ValueError:
+                return None, lambda _, item=item: f"Invalid input value '{item}'"
+            if key == "port" and d[key] not in (1, 2):
+                return None, lambda _: "Invalid controller port (1|2)"
         return d, pretty_json
     elif cmd == "press":
         if len(args) < 2:
-            return None, lambda _: "Usage: press <buttons_hex> [frames] [lx=N ly=N rx=N ry=N]"
+            return None, lambda _: "Usage: press <buttons_hex> [frames] [port=1|2] [lx=N ly=N rx=N ry=N]"
         has_frames = len(args) > 2 and "=" not in args[2]
         d = {"cmd": "press", "buttons": int(args[1], 0),
              "frames": int(args[2]) if has_frames else 1}
         for item in args[3 if has_frames else 2:]:
             key, sep, value = item.partition("=")
-            if not sep or key not in ("lx", "ly", "rx", "ry"):
-                return None, lambda _, item=item: f"Invalid analog axis '{item}'"
-            d[key] = int(value, 0)
+            if not sep or key not in ("port", "lx", "ly", "rx", "ry"):
+                return None, lambda _, item=item: f"Invalid input option '{item}'"
+            try:
+                d[key] = int(value, 0)
+            except ValueError:
+                return None, lambda _, item=item: f"Invalid input value '{item}'"
+            if key == "port" and d[key] not in (1, 2):
+                return None, lambda _: "Invalid controller port (1|2)"
         return d, pretty_json
     elif cmd == "clear_input":
         return {"cmd": "clear_input"}, pretty_json

@@ -4941,10 +4941,49 @@ static int savestate_input_guard_active(void) {
  * the resolved type goes through the same coherent request channel as real
  * sampling — never slammed mid-
  * handshake (the v0.5.0 phantom-input lesson). */
-static void apply_input_override_to_sio(int override_word) {
-    PlayerInput& p = g_players[0];
+static int debug_input_override_slot(void) {
+#ifndef PSX_NO_DEBUG_TOOLS
+    const int port = debug_server_get_input_port();
+    return (port == 2 && PSX_MAX_PLAYERS >= 2) ? 1 : 0;
+#else
+    return 0;
+#endif
+}
+
+/* Injection temporarily owns only its selected SIO slot. Restore its prior
+ * connection/type and release buttons/sticks before physical sampling resumes.
+ * This also releases an unassigned port, which capture_pad_slot skips. */
+static void prepare_input_override_slot(int slot) {
+    static int previous_slot = -1;
+    static int previous_connected = 0;
+    static int previous_analog = 0;
+    static bool previous_had_device = false;
+    if (slot < 0 || slot >= PSX_MAX_PLAYERS) slot = -1;
+    if (slot == previous_slot) return;
+    if (previous_slot >= 0) {
+        sio_set_pad_state_slot(previous_slot, 0xFFFFu);
+        sio_set_pad_sticks(previous_slot, 0x80, 0x80, 0x80, 0x80);
+        sio_request_pad_type(previous_slot, previous_analog);
+        const bool has_device = g_players[previous_slot].kind != 0 ||
+            (previous_slot == 0 && dev_any_input_enabled());
+        /* A device may have connected/disconnected during the override. */
+        sio_set_pad_connected(previous_slot, has_device ? 1 :
+                              (previous_had_device ? 0 : previous_connected));
+    }
+    previous_slot = slot;
+    if (slot >= 0) {
+        previous_connected = sio_get_pad_connected(slot);
+        previous_analog = sio_get_pad_analog(slot);
+        previous_had_device = g_players[slot].kind != 0 ||
+            (slot == 0 && dev_any_input_enabled());
+        sio_set_pad_connected(slot, 1);
+    }
+}
+
+static void apply_input_override_to_sio(int override_word, int slot) {
+    PlayerInput& p = g_players[slot];
     const uint16_t w = (uint16_t)override_word;
-    sio_set_pad_state_slot(0, w);
+    sio_set_pad_state_slot(slot, w);
 
     uint8_t st[4] = { 0x80, 0x80, 0x80, 0x80 };
     int axes = 0;
@@ -4964,7 +5003,7 @@ static void apply_input_override_to_sio(int override_word) {
     else                              mode = p.mode;
 
     const int effective_mode = controller_policy_resolve_override_mode(
-        0, 1, mode, w, st, stick_live, dpad_live);
+        slot, slot + 1, mode, w, st, stick_live, dpad_live);
     const int eff_analog =
         effective_mode == (int)PSXRecompV4::PAD_MODE_ANALOG ? 1 : 0;
     /* Injected input only (set_input / dev routing): fold the injected D-pad
@@ -4985,9 +5024,9 @@ static void apply_input_override_to_sio(int override_word) {
         if ((uint16_t)(~w & 0x0020u)) st[0] = 0xFF; /* Right */
     }
     if (!eff_analog) { st[0] = st[1] = st[2] = st[3] = 0x80; }
-    sio_set_pad_sticks(0, st[0], st[1], st[2], st[3]);
-    sio_request_pad_type(0, eff_analog);
-    psx_selfcheck_note_pad(0, w, st[0], st[1], st[2], st[3],
+    sio_set_pad_sticks(slot, st[0], st[1], st[2], st[3]);
+    sio_request_pad_type(slot, eff_analog);
+    psx_selfcheck_note_pad(slot, w, st[0], st[1], st[2], st[3],
                            (uint8_t)(eff_analog ? 1 : 0));
 }
 
@@ -5229,7 +5268,8 @@ static void capture_local_human_pad(PsxNetPad* out) {
 
 /* Build a netplay pad blob from a debug-server override without writing SIO. */
 static void capture_override_pad(int override_word, PsxNetPad* out) {
-    PlayerInput& p = g_players[0];
+    const int slot = debug_input_override_slot();
+    PlayerInput& p = g_players[slot];
     const uint16_t w = (uint16_t)override_word;
     uint8_t st[4] = { 0x80, 0x80, 0x80, 0x80 };
     int axes = 0;
@@ -5246,7 +5286,7 @@ static void capture_override_pad(int override_word, PsxNetPad* out) {
     else                              mode = p.mode;
 
     const int effective_mode = controller_policy_resolve_override_mode(
-        0, 1, mode, w, st, stick_live, dpad_live);
+        slot, slot + 1, mode, w, st, stick_live, dpad_live);
     const int eff_analog =
         effective_mode == (int)PSXRecompV4::PAD_MODE_ANALOG ? 1 : 0;
     /* Injected input only; see the note on the sibling fold above. Not
@@ -5490,7 +5530,10 @@ static void netplay_barrier_admit(int override) {
             (tip_hold && !psx_start_bisect_no_tiphold_capture());
         if (need_sample) {
             PsxNetPad local{};
-            if (override >= 0 && !g_headless) {
+            /* A peer may inject only its own selected controller; an override
+             * for the other port must not replace the local human sample. */
+            if (override >= 0 && !g_headless &&
+                debug_input_override_slot() == psx_netplay_input_player()) {
                 capture_override_pad(override, &local);
             } else if (g_headless) {
                 local.buttons = 0xFFFFu;
@@ -5578,22 +5621,27 @@ done:
 }
 
 static void sample_pad_into_sio(int override) {
+    int override_slot = override >= 0 ? debug_input_override_slot() : -1;
     /* Selfcheck fighter mash owns P1 when enabled (headless-safe). */
     if (override < 0) {
         uint16_t mash = 0xFFFFu;
-        if (psx_selfcheck_mash_override(&mash))
+        if (psx_selfcheck_mash_override(&mash)) {
             override = (int)mash;
+            override_slot = 0;
+        }
     }
-    if (override >= 0) {
-        apply_input_override_to_sio(override);
-        return;
-    }
+    prepare_input_override_slot(override_slot);
     int n = g_offline_pad_count;
     if (n < 1) n = 1;
+    if (n <= override_slot) n = override_slot + 1;
     if (n > PSX_MAX_PLAYERS) n = PSX_MAX_PLAYERS;
     const uint32_t consumer_sim =
         psx_start_consumer_enabled() ? psx_start_consumer_offline_frame() : 0u;
     for (int s = 0; s < n; s++) {
+        if (s == override_slot) {
+            apply_input_override_to_sio(override, s);
+            continue;
+        }
         PsxNetPad pad;
         if (!capture_pad_slot(s, &pad)) continue;  /* no device in this port */
         /* Push sticks every frame; request the pad type (digital/analog) through
@@ -5616,15 +5664,20 @@ static void sample_pad_into_sio(int override) {
 }
 
 static void sample_headless_pad_into_sio(int override) {
+    int override_slot = override >= 0 ? debug_input_override_slot() : -1;
     if (override < 0) {
         uint16_t mash = 0xFFFFu;
-        if (psx_selfcheck_mash_override(&mash))
+        if (psx_selfcheck_mash_override(&mash)) {
             override = (int)mash;
+            override_slot = 0;
+        }
     }
-    if (override >= 0) {
-        apply_input_override_to_sio(override);
-        return;
-    }
+    prepare_input_override_slot(override_slot);
+    for (int s = 0; s < 2 && s < PSX_MAX_PLAYERS; ++s) {
+        if (s == override_slot) {
+            apply_input_override_to_sio(override, s);
+            continue;
+        }
 #ifdef PSX_COSIM
     /* Input-driven cosim (EXPERIMENTAL): the coordinator sets a HELD pad state via the
      * `setpad` TCP command; the headless sampler applies it every frame so the same
@@ -5632,12 +5685,12 @@ static void sample_headless_pad_into_sio(int override) {
      * two instances desync under input, this path is proven nondeterministic and gets
      * stubbed out (see cosim.c). Default 0xFFFF = all released (PSX pad is active-low). */
     { extern volatile int g_cosim_pad_hold[2];
-      sio_set_pad_state_slot(0, (uint16_t)g_cosim_pad_hold[0]);
-      sio_set_pad_state_slot(1, (uint16_t)g_cosim_pad_hold[1]);
-      return; }
+      sio_set_pad_state_slot(s, (uint16_t)g_cosim_pad_hold[s]);
+      continue; }
 #endif
-    sio_set_pad_state_slot(0, 0xFFFFu);
-    sio_set_pad_state_slot(1, 0xFFFFu);
+        sio_set_pad_state_slot(s, 0xFFFFu);
+        sio_set_pad_sticks(s, 0x80, 0x80, 0x80, 0x80);
+    }
 }
 
 /* PSX native vblank cadence: NTSC ≈ 59.94 Hz. Wall-clock target keeps
@@ -6744,7 +6797,7 @@ static NetplayVblankEpilogue sdl_vblank_present_body(void) {
     }
 
     /* Sample each player's device and feed the matching SIO pad slot.
-     * Debug server input override (when active) drives port 1 only. With
+     * Debug server input override drives only its selected port. With
      * g_low_latency_input this early sample is re-done after the pacer wait
      * (below) for the interactive present path; it still covers the turbo /
      * FMV-skip paths that early-return before pacing.
@@ -14584,6 +14637,12 @@ session_reboot:
     mdec_init();
     timers_init();
     interrupts_init();
+    /* Soft-return/rematch starts a new input lifetime. Release old injection
+     * ownership before SIO and the configured device states are initialized. */
+    prepare_input_override_slot(-1);
+#ifndef PSX_NO_DEBUG_TOOLS
+    debug_server_reset_input();
+#endif
     sio_init();
     psx_event_step_conservative_env_init();
     /* Seed per-player device routing from the resolved [controller] config.
