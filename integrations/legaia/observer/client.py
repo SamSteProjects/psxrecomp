@@ -12,6 +12,7 @@ from .errors import ProtocolError
 
 
 READ_ONLY_COMMANDS = {
+    "mod_status",
     "dispatch_stats",
     "dirty_ram_stats",
     "protocol_info",

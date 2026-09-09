@@ -88,6 +88,36 @@ class ProjectService:
         self.saved_digest: str | None = None
         self.disc_path: str | None = None
         self.mode = "edit"
+        self._live_correlation: dict | None = None
+
+    def correlate_runtime(self, live_status: dict) -> dict:
+        from integrations.legaia.observer.correlation import correlate
+        # Always replace prior observations, including on disconnect/rejection.
+        # Nothing from this layer participates in save, dirty state or commands.
+        self._live_correlation = None
+        result = correlate(self.imports.get(self.active_scene), live_status)
+        self._live_correlation = deepcopy(result)
+        return self._current_correlation()
+
+    def _current_correlation(self) -> dict:
+        from integrations.legaia.observer.correlation import unavailable, _digest
+        document = self.imports.get(self.active_scene)
+        current = self._live_correlation
+        if current and current.get("available"):
+            if document is None or current.get("import_digest") != _digest(document):
+                self._live_correlation = None
+                return unavailable("Imported evidence changed since observation")
+        result = deepcopy(self._live_correlation) if self._live_correlation else unavailable("No accepted runtime correlation")
+        for identifier, entry in result.get("entities", {}).items():
+            authored = self.overrides.get(identifier, {}).get("Transform", {}).get("position", {})
+            for candidate in entry.get("candidates", []):
+                candidate["authored_comparison"] = {
+                    "basis": "guarded-MAN-placement-header; candidate identity remains unconfirmed",
+                    "axes": {axis: {"authored": value,
+                                    "observed_header": candidate["placement_position"].get(axis),
+                                    "matches": candidate["placement_position"].get(axis) == value}
+                             for axis, value in authored.items() if axis in ("x", "z")}}
+        return result
 
     def _document(self) -> dict:
         return {"format": self.FORMAT, "name": self.name,
@@ -149,6 +179,7 @@ class ProjectService:
             canonical(staged.state())
         except (KeyError, TypeError, AttributeError, ValueError) as exc:
             raise ProjectError("Imported metadata is not a valid editor scene: " + str(exc)) from exc
+        self._live_correlation = None
         self.imports = staged.imports
         self.assets = staged.assets
         self.active_scene = staged.active_scene
@@ -174,6 +205,7 @@ class ProjectService:
             raise ProjectError("Scene has not been imported")
         self.active_scene = identifier
         self.selected = None
+        self._live_correlation = None
 
     def command(self, command: dict) -> None:
         if self.mode != "edit":
@@ -305,6 +337,7 @@ class ProjectService:
 
     def state(self) -> dict:
         document = self.imports.get(self.active_scene)
+        correlation = self._current_correlation()
         entities = []
         for actor in document["actors"] if document else []:
             identifier = actor["semantic_id"]
@@ -317,10 +350,12 @@ class ProjectService:
                              "components": {"Transform": {"imported": imported, "authored": authored, "effective": effective},
                                             "ModelRenderer": {"asset_id": model.get("asset_semantic_id"), "resolution_status": model.get("resolution_status")},
                                             "Animation": {"imported_id": actor["placement_fields"].get("animation_id"), "resolution_status": "unresolved"},
+                                            "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
         return {"project": {"name": self.name, "path": str(self.root), "dirty": self.dirty, "mode": self.mode},
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
+                "runtime_correlation": correlation,
                 "assets": deepcopy(list(self.assets.records.values())), "selection": {"entity_id": self.selected},
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses placement markers; decoded model objects can be inspected separately.",

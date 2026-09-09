@@ -9,6 +9,7 @@ from typing import Any, Callable
 from integrations.legaia.layouts import load_profile
 
 from .client import ProtocolClient
+from .correlation import sample_man_bindings
 from .errors import ObserverError, ProfileRejected, ProtocolError, SnapshotUnstable
 from .profile import LoadedProfile
 from .snapshot import RuntimeObserver
@@ -36,7 +37,7 @@ class ObserverService:
         self._profiles = {
             profile.document["profile_id"]: profile
             for profile in (LoadedProfile.from_document(load_profile(path))
-                            for path in sorted(LAYOUTS.glob("scus94254-*-v1.json")))
+                            for path in sorted(LAYOUTS.glob("scus94254-*-v[0-9]*.json")))
         }
         self._client: ProtocolClient | None = None
         self._observer: RuntimeObserver | None = None
@@ -46,6 +47,8 @@ class ObserverService:
         return [{
             "profile_id": value.document["profile_id"],
             "profile_hash": value.profile_hash,
+            "profile_revision": value.document["profile_id"].rsplit("-v", 1)[-1],
+            "is_default": value.document["profile_id"] == "legaia-na-scus94254-field-v2",
             "scene": value.document["scene_identity"]["scene_key"],
             "required_protocol": value.document["supported_runtime_protocol"],
             "traversal_bounds": value.document["observation_policy"]["traversal"],
@@ -54,7 +57,7 @@ class ObserverService:
         } for value in self._profiles.values()]
 
     def _select(self, profile_id: str | None) -> LoadedProfile:
-        selected = profile_id or "legaia-na-scus94254-field-v1"
+        selected = profile_id or "legaia-na-scus94254-field-v2"
         try:
             return self._profiles[selected]
         except KeyError as exc:
@@ -118,11 +121,12 @@ class ObserverService:
                         raise SnapshotUnstable("runtime frame moved backwards since the accepted observation")
                 observation = (observer.capture(maximum_attempts=1) if include_actors
                                else observer.capture_boundary(subsequent_samples=1))
+                bindings = sample_man_bindings(self._client, profile, observation) if include_actors else None
                 self._last_epoch = observation["epoch"]
                 return {"available": True, "state": "observed", "read_only": True,
                         "reason": None, "observation": observation,
                         "runtime": observation["runtime"], "ram_writes": 0,
-                        "historical_observation": True,
+                        "historical_observation": True, "actor_bindings": bindings,
                         "correlation": {"available": False,
                                         "reason": "Runtime node addresses are epoch-scoped; imported actor identity is not established."}}
             except (ObserverError, OSError, ValueError) as exc:
