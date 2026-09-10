@@ -135,6 +135,11 @@ function renderBuildStatus(){
 function validBuildReport(report){
   return report?.schema_version==='legaia.build-report.v1'&&Array.isArray(report.changes)&&report.changes.length<=65536&&report.changes.every(change=>change&&typeof change==='object'&&['scene','asset_id','field','scope'].every(key=>typeof change[key]==='string')&&'before' in change&&'after' in change)&&['overlay_bytes','scene_count','change_count'].every(key=>Number.isSafeInteger(report[key])&&report[key]>=0)&&report.validation&&typeof report.validation==='object'&&!Array.isArray(report.validation)&&Object.keys(report.validation).length<=64;
 }
+function projectSaveStatus(){
+  if(!state.project?.dirty)return 'Project saved';
+  const sections=state.project.unsaved_sections;
+  return Array.isArray(sections)&&sections.length?`Unsaved: ${sections.join(' � ')}`:'Project changes are not saved';
+}
 function buildValue(value){return typeof value==='string'?value:JSON.stringify(value) ?? 'Unknown';}
 function buildChangeResource(change){
   if(typeof change.owner_id!=='string')return null;
@@ -703,7 +708,7 @@ function updateTextureActions(){
   $('texture-undo').disabled=busy||pending||!canEditTexture()||!state.history?.can_undo;
   $('texture-redo').disabled=busy||pending||!canEditTexture()||!state.history?.can_redo;
   $('texture-save').disabled=busy||pending||!state.project?.dirty;$('texture-source').disabled=busy;
-  $('texture-project-status').textContent=pending?'Selected file is not applied. Apply or discard before project actions.':busy?'Verifying…':state.project?.dirty?'Applied changes are not saved':'Project saved';
+  $('texture-project-status').textContent=pending?'Selected file is not applied. Apply or discard before project actions.':busy?'Verifying…':projectSaveStatus();
   $('texture-authored').textContent=authored?`Authored TIM replacement · ${authored.byte_length} bytes · SHA-256 ${authored.asset_sha256?.slice(0,12) ?? 'unavailable'}`:'No authored replacement · effective pixels inherit the imported TIM.';
 }
 async function openTexture(record,paletteIndex=0,layer='effective'){
@@ -956,7 +961,7 @@ function updateScriptActions(){
   $('script-undo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_undo;
   $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;
   $('script-save').disabled=busy||pending||!state.project?.dirty;
-  $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':state.project?.dirty?'Applied changes are not saved':'Project saved';
+  $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':projectSaveStatus();
   for(const form of scriptDialog.querySelectorAll('.dialogue-run'))updateDialogueRun(form);
   for(const button of scriptDialog.querySelectorAll('[data-clear-unresolved]'))button.disabled=busy||!canEditDialogue();
 }

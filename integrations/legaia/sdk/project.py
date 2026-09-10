@@ -106,6 +106,7 @@ class ProjectService:
         self.undo_stack: list[dict] = []
         self.redo_stack: list[dict] = []
         self.saved_digest: str | None = None
+        self.saved_sections: dict[str, str] = {}
         self.disc_path: str | None = None
         self.mode = "edit"
         self._live_correlation: dict | None = None
@@ -160,6 +161,23 @@ class ProjectService:
     @property
     def dirty(self) -> bool:
         return digest(self._document()) != self.saved_digest
+
+    @property
+    def unsaved_sections(self) -> list[str]:
+        document = self._document()
+        labels = {"name": "Project name", "retail_source": "Retail source",
+                  "imports": "Imported scenes", "active_scene": "Active scene",
+                  "authored": "Actor and dialogue edits", "actor_templates": "Actor presets",
+                  "texture_overrides": "Texture replacements"}
+        return [label for key, label in labels.items()
+                if digest(document.get(key)) != self.saved_sections.get(key)]
+
+    def _mark_saved(self) -> None:
+        document = self._document()
+        self.saved_digest = digest(document)
+        self.saved_sections = {key: digest(document.get(key)) for key in
+                               ("name", "retail_source", "imports", "active_scene",
+                                "authored", "actor_templates", "texture_overrides")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -655,7 +673,7 @@ class ProjectService:
         document = self._document()
         path = self.root / "project.legaia.json"
         atomic_write(path, canonical(document))
-        self.saved_digest = digest(document)
+        self._mark_saved()
         return path
 
     @classmethod
@@ -738,7 +756,7 @@ class ProjectService:
             result.set_scene(raw["active_scene"])
         result.undo_stack.clear()
         result.redo_stack.clear()
-        result.saved_digest = digest(result._document())
+        result._mark_saved()
         return result
 
     def authored_assets(self) -> list[dict]:
@@ -833,7 +851,7 @@ class ProjectService:
                                                          "limitations": ["Only verified plain-text runs are writable; controls and record boundaries remain fixed. Source capacity is rechecked on edit/build."]},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
-        return {"project": {"name": self.name, "path": str(self.root), "dirty": self.dirty, "mode": self.mode},
+        return {"project": {"name": self.name, "path": str(self.root), "dirty": self.dirty, "unsaved_sections": self.unsaved_sections, "mode": self.mode},
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,

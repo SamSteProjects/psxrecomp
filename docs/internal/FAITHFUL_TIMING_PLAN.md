@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (unsaved project sections):** Previous title visual comparison
+  was evidence-producing progress. ProjectService now retains per-section saved
+  digests alongside the existing dirty digest and exposes unsaved section labels.
+  Texture/dialogue status identifies Active scene versus actor/dialogue edits,
+  texture replacements, presets and other saved metadata. Save/Open initializes
+  section baselines; persistence format remains unchanged. Eight workflow/report
+  tests pass; targeted selection/navigation/edit/Undo/Redo/reopen checks pass;
+  JS syntax/diff clean. Browser label acceptance remains pending. Full goal active.
+
+
 - **2026-09-10 (title restore visual A/B):** Prior repeated-restore probe was
   evidence-producing progress. Separate cold control/save-only and three-load
   runs completed with exit0. Control's final screenshot was also logo-only;
