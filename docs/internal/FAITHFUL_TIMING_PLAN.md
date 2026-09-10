@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Arrival coordinate controls verified in browser
+
+- Previous turn was progress: verified arrival command. Added Arrival X/Z and facing-sector inspector form, exact-grid HTML validation, draft/discard handling and shared project action guards. Existing encoded-byte controls remain available.
+- Private browser tab49/editor4395: town01 P2[0] X12352 ArrowUp ->12416; Apply arrival produced encoded X224 (from96), preserved Z25/direction4 and refreshed preview. Clear restored encoded96 and coordinate12352. Browser errors empty; JavaScript syntax passed. QA root `local-output/sdk-20260909/arrival-browser`; no runtime launched.
+- Facing/draft invalid-input browser paths and live arrival acceptance remain unverified. Full objective active.
+
+
 ### 2026-09-10 — Author exact arrival coordinates through project commands
 
 - Previous turn was progress: retail handler arithmetic matched. Added set_transition_arrival command accepting exact X/Z grid values and facing_sector0..7, translated through the same persisted encoded-entry component/build path. Facing changes preserve upper5 direction bits; omitted fields retain effective source values. Source membership is verified before command mutation.

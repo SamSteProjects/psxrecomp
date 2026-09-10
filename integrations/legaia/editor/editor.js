@@ -1060,6 +1060,19 @@ function renderTransitionAuthoring(){
       if(await api('/api/command',command)){scriptDrafts.delete(entry.semantic_id);await openActorScript(scriptEntity,true);}else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;};
     form.onsubmit=e=>{e.preventDefault();if(!apply.disabled)send('set_transition_entry');};clear.onclick=()=>send('clear_transition_entry');discard.onclick=()=>{scriptDrafts.delete(entry.semantic_id);for(const [field,input] of Object.entries(inputs))input.value=entry.effective_values[field];updateScriptActions();};
     section.append(form);form.updateState();
+    if(entry.effective_interpretation){
+      const arrival=document.createElement('form');arrival.className='transition-entry';const title=document.createElement('h4');title.textContent='Arrival coordinates';arrival.append(title);
+      const draftKey=entry.semantic_id+'/arrival',base={x:entry.effective_interpretation.x,z:entry.effective_interpretation.z,facing_sector:entry.effective_values.direction_encoded&7},fields={};
+      for(const [key,label] of [['x','Arrival X'],['z','Arrival Z'],['facing_sector','Facing sector']]){
+        const row=document.createElement('label'),input=document.createElement('input');row.textContent=label;input.type='number';input.required=true;input.min=key==='facing_sector'?'0':'64';input.max=key==='facing_sector'?'7':'16384';input.step=key==='facing_sector'?'1':'64';input.value=scriptDrafts.get(draftKey)?.[key] ?? base[key];input.setAttribute('aria-label',`${label} at ${scriptOffset(entry.pc)}`);fields[key]=input;row.append(input);arrival.append(row);
+        input.oninput=()=>{scriptDrafts.set(draftKey,Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,v.value])));updateScriptActions();};
+      }
+      const apply=document.createElement('button'),discard=document.createElement('button'),note=document.createElement('p');apply.type='submit';apply.textContent='Apply arrival';discard.type='button';discard.textContent='Discard arrival draft';note.className='field-note';note.textContent='X/Z use exact 64-unit steps. Facing sectors 0–7 select 512-unit angle steps; other direction bits are preserved. Height is unchanged.';arrival.append(apply,discard,note);
+      arrival.updateState=()=>{const editable=!busy&&canEditDialogue();for(const input of Object.values(fields))input.disabled=!editable;apply.disabled=!editable||!Object.values(fields).every(input=>input.value!==''&&input.checkValidity());discard.disabled=busy;discard.hidden=!scriptDrafts.has(draftKey);};
+      discard.onclick=()=>{scriptDrafts.delete(draftKey);for(const [key,input] of Object.entries(fields))input.value=base[key];updateScriptActions();};
+      arrival.onsubmit=async event=>{event.preventDefault();if(apply.disabled)return;const values=Object.fromEntries(Object.entries(fields).map(([k,v])=>[k,Number(v.value)]));if(await api('/api/command',{type:'set_transition_arrival',entity_id:scriptEntity.id,transition_id:entry.semantic_id,arrival:values})){scriptDrafts.delete(draftKey);await openActorScript(scriptEntity,true,entry.semantic_id);}else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;};
+      section.append(arrival);arrival.updateState();
+    }
   }
 }
 
