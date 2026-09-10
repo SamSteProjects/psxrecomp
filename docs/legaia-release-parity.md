@@ -5,6 +5,12 @@ stability and input fixes from the supplied SDK prompts. The subsequent SDK
 buildout adds an integrated editor, generic guarded observation protocol and
 private placement-package workflow; see `FEATURE_MATRIX.md` for current limits.
 
+The later scene-rendering milestone adds verified NPC poses and central editor
+meshes without changing runtime sources or generated game inputs. Its 68
+importer tests pass with the retail disc, and browser appearance/picking/edit/
+undo checks pass. This extends authoring coverage; it does not broaden the
+runtime FMV, restore or transition acceptance recorded below.
+
 ## Reproduced FMV stall fixed
 
 Commit `58794999` repairs a generic CD controller error in

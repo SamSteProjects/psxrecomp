@@ -49,6 +49,9 @@ material. No proprietary payload was added to these commits.
 | `d4f01910` | Decode model-scoped shared party texture uploads with independent VRAM validation. |
 | `0f98218c` | Export supported textured models and static poses as private, validated GLB files. |
 | `392de27f` | Connect shared party textures and current-pose GLB export to the editor. |
+| `29310f0d` | Verify scene-header ANM associations and assemble 39 town01 actor poses. |
+| `c0aabe0d` | Render supported textured scene geometry with mesh picking, focus and authored transforms. |
+| `4f865bb3` | Build source-verified scene payloads with bounded caching and request-scoped disc verification. |
 
 The earlier reapplied release fixes include CD/XA response visibility,
 seek-position refresh, VBlank handling and Windows startup. Current frame
@@ -72,6 +75,17 @@ crops, 26 untextured materials and eight explicitly unresolved materials among
 materials for F0/F1/F2. Six idle/walk clips assemble ten rigid object channels,
 with frame stepping and playback in the preview. General NPC/battle animation,
 live equipment state, texture residency and animated palettes remain pending.
+
+The central viewport now renders 51 of 52 town01 entities using 28 unique
+geometries and 5,920 unique triangles. This includes 39 scene-header poses,
+independently checked across 5,028 vertices, plus supported static models and
+explicit reference party idle poses. One multipart savepoint remains a marker.
+Mesh-body picking, focused textured NPC appearance, authored movement, imported
+position tether, undo and model visibility toggle passed browser inspection.
+The source-verified request hashes the image once and took 2.145 seconds in the
+recorded run. Unknown height/facing and scripted placement/visibility remain
+explicit; parked and overlapping instances are retained. NPC playback UI and
+full asset-category authoring remain outstanding.
 
 Authored templates transfer saved position axes to another imported actor,
 preserving unspecified axes. The browser capture/apply/undo/redo/save workflow

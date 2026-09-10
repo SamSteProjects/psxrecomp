@@ -125,3 +125,15 @@ and invalid frame selection without writing exports or modifying project data.
 The browser's selected idle frame2 also exported successfully and its actual
 GLB passed Khronos validation. Animation channels and retail replacement remain
 separate future features; static export acceptance does not imply them.
+
+Central scene-preview acceptance now covers 51/52 town01 instances, 28 unique
+geometries and 5,920 unique triangles. The complete request hashes the disc
+once and decoded in 2.145 seconds in the recorded run. Focused tests cover
+unchanged imported data, transform/undo cache reuse, returned-data isolation,
+source-change rejection and HTTP rejection of client geometry/scene paths.
+Parent browser inspection accepted a textured NPC's front/back, mesh-body
+picking, X4544 to X4845 movement, imported-position tether, undo restoration,
+and Models on/off. No browser warning/error was reported during that check.
+Unknown height/facing, parked overlapping instances, script visibility and
+exact PSX blending remain explicit limitations. NPC assembly additionally
+passed an independent 5,028-vertex reference comparison and Blender render.

@@ -45,6 +45,24 @@ uploads from section2 use a model-scoped catalog rather than being merged into
 every scene texture bank. Neither path invents a skeletal parent hierarchy or
 claims exact GTE arithmetic, live equipment state or general NPC animation.
 
+`importer/scene_animation.py` verifies MAN header associations against the
+scene's type-5 ANM bank and assembles matching rigid object channels. It keeps
+zero IDs, global banks and mismatched channel counts explicit. Its request
+catalog supplies either one baked pose or a bounded full clip; NPC cadence
+and runtime script clip changes remain unknown.
+
+`sdk/scene_preview.py` combines verified poses and texture associations into
+one bounded geometry cache keyed by project, import digest, scene and source
+file identity. Nested decoders share one verified disc handle only within the
+synchronous request; subsequent operations reverify and source changes reject.
+Authored transforms do not invalidate geometry. `editor/scene-renderer.js`
+consumes SDK matrices and decoded triangles, draws depth-tested textured meshes
+and performs ID-buffer picking. The existing overlay supplies selection and
+gizmos. Unknown Y uses a display ground plane; unknown facing uses identity.
+Source units, overlapping placements and unsupported marker fallbacks remain
+visible. These are authored scene references, not reconstructed runtime
+visibility, ground geometry or live entity poses.
+
 `observer/correlation.py` samples bounded MAN-header and model evidence under
 the same scene epoch. `RuntimeCandidates` components are transient and cleared
 when attachment or observation fails. Single candidates remain candidates;

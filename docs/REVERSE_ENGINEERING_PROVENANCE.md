@@ -22,7 +22,7 @@ LegaiaRecomp and Andrew's checkout are references only.
 | TMD objects | `crates/tmd/src/lib.rs`, `mesh/basic.rs` | Relative pointers, 28-byte objects, signed vectors and quad split; no object pose inference |
 | Legaia primitives | `crates/tmd/src/descriptor.rs`, `legaia_prims.rs` | Grouped packets, renderer mode rows, byte-offset vertex indices, color/UV/CLUT/tpage; retail `FUN_8002735C`, `FUN_80029888`, `DAT_8007326C` |
 | TIM and scene textures | `crates/tim/src/lib.rs`, `crates/prot/src/timpack.rs`, field texture-uploader documentation | Structural pixel/CLUT uploads, static tpage/UV association; runtime residency and animation remain unresolved |
-| Preview display axes | `crates/web-viewer/src/scene_gltf.rs` | PSX mesh-local positive Y is down; display-only Y negation preserves raw model vertices |
+| Preview display axes | `crates/asset/src/scene_gltf.rs` | PSX mesh-local positive Y is down; display-only Y negation preserves raw model vertices |
 | MAN runtime candidates | `docs/subsystems/script-vm.md`, `scripts/pcsx-redux/walk_actor_lists.py`, `crates/web-viewer/src/field_npc.rs` | Guarded actor+0x90 header and independent model-count evidence; no list-order or address identity |
 | Field-party animation | `crates/asset/src/player_anm.rs`, `character_pack.rs`, `crates/engine-core/src/field_anim.rs`, `crates/tmd/src/mesh/{mod,vram_posed}.rs` | Six F0/F1/F2 idle/walk clips; ten rigid object channels; reference-derived 30 Hz; independent transform comparison, no live timing or exact GTE claim |
 | Shared party textures | `crates/asset/src/field_char_textures.rs`, `pack.rs`, `crates/asset/tests/field_char_textures_real.rs` | PROT0874 section2 loader upload/CLUT rules; exact reference VRAM fingerprint and eight used material crops; no general scene residency claim |
@@ -56,3 +56,11 @@ records accessor/color/UV conventions, bounded static-pose scope, the Khronos
 validator result and independent Blender import/render. The exporter embeds
 source provenance, preserves source units with unknown physical scale, and
 does not invent skin hierarchy or animation channels.
+
+Scene-header animation evidence is recorded in
+`integrations/legaia/provenance/scene-animation-20260909.md`. All 39 eligible
+town01 actor poses match the unchanged pinned reference over 5,028 vertices
+within 0.000039 units. The ANM carrier uses descriptor type 0x05 and retains
+the importer's container-relative locator. The central viewport applies one
+Y reflection after pose assembly; heading identity and unknown-height ground
+placement are explicit display conventions, not recovered retail fields.

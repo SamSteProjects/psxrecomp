@@ -19,7 +19,7 @@ is complete. Runtime fixes from the preceding milestone are committed as
 | Animations | PARTIAL / READ-ONLY | Six field-party idle/walk clips, stable provenance, ten rigid object channels, frame stepping and playback. Independent pinned transform comparison covers 20,845 posed vertices. Reference-derived 30 Hz is not a live timing measurement; equipment and general NPC/battle animation remain pending. |
 | Scene model | FUNCTIONAL | Imported actor entities and evidenced Transform/ModelRenderer/Animation/RetailMetadata components. Triggers/collision/dialogue/scripts remain unresolved. |
 | Project authoring | FUNCTIONAL | XYZ overrides, selection, undo/redo, dirty state, content-addressed imported evidence, digest-checked save/reopen. Authored transform templates capture/apply supported axes with provenance and undo/redo; native actor creation and heading/model/animation editing remain pending. |
-| Editor | PARTIAL | Verified selection/edit/clear/undo/redo/save/reopen, textured object preview, private Build & Run, attach and graceful Stop. Scene viewport still uses placement markers; posed scene rendering remains pending. |
+| Editor | PARTIAL | Verified selection/edit/clear/undo/redo/save/reopen, textured object preview, private Build & Run, attach and graceful Stop. Central WebGL scene preview renders 51/52 town01 entities with mesh picking, focus, transform updates and marker fallback. Scripted placement/visibility, retail height/facing and broader editing tools remain pending. |
 | Live bridge | PARTIAL / LIVE-VALIDATED | Cold town01 v2 capture accepted 90 nodes under executable/witness/scene/epoch guards. Archived v1 remains strict; title rejects and town0c/transition acceptance remains pending. |
 | Correlation | PARTIAL / READ-ONLY | Guarded MAN-header/model evidence yields explicit candidates and ambiguity. Actor0052 authored header and world position match `(4480,11904)`, with a visible savepoint beside Vahn. Generic bindings remain candidates; they are not promoted to confirmed identity. |
 | Scripts/dialogue/flags | FOUNDATION | Unknown fields retained with provenance. Decoders, editor tools and bounded round-trip serializers pending. |
@@ -30,3 +30,11 @@ The primary acceptance path is import -> hierarchy/viewport -> select -> edit ->
 undo/redo -> save -> reopen with original retail evidence unchanged. The later
 build acceptance must prove the authored edit in a running game, including
 revert, rather than treating an exported metadata file as a playable build.
+
+The scene preview additionally assembles 39 town01 actors from their verified
+MAN header animation IDs and type-5 ANM bank. Independent comparison covers
+5,028 frame-zero vertices. This extends the party-only animation foundation;
+NPC clip playback controls, runtime clip selection/timing and battle animation
+remain pending. Ten zero-ID actors do not acquire invented poses; supported
+single-object models can render statically, while the multipart savepoint stays
+a marker. Two party instances use explicitly labelled reference idle poses.

@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (central scene geometry and NPC poses):** Added verified
+  scene-header ANM poses and a textured WebGL authoring viewport. Town01
+  renders 51/52 entities; 39 NPC poses match 5,028 independent reference
+  vertices. Browser mesh picking, move/undo and marker toggle pass. Request-
+  scoped disc reuse removes repeated full-image hashing within one preview,
+  with source-change guards and no persistent path-only verification cache.
+  Runtime code and accepted cold/restore evidence are unchanged. Scripted
+  placement/visibility, NPC timing, native entity authoring and broader runtime
+  transition/restore acceptance remain open.
+
 - **2026-09-09 (visible revert, restore comparison and export):** Cold authored
   and retail runs now prove savepoint0052 move/revert with the same binary,
   corresponding guarded world coordinates, and zero overlays in the retail
