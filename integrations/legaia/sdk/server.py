@@ -69,6 +69,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
+        state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_replacement"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
@@ -319,6 +320,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                             raise ProjectError("Authored TIM requires valid base64") from exc
                         self.server.project.set_texture_replacement(body["asset_id"], content)
                         self._json(200, self.server.state())
+                    return
+                if route == "/api/scene-transitions":
+                    if body:
+                        raise ProjectError("Transition discovery uses the active scene; no client source bindings are accepted")
+                    from .resources import scene_transition_graph
+                    self._json(200, scene_transition_graph(self.server.project))
                     return
                 if route == "/api/resource-catalog":
                     if body:

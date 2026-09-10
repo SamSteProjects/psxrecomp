@@ -1,5 +1,14 @@
 # Legaia SDK feature matrix
 
+2026-09-10 scene-transition explorer: the active scene has a source-verified,
+read-only reference graph with script provenance, encoded entry parameters,
+partial/unavailable coverage counts, source-script navigation and navigation to
+already imported destinations. Town01 exposes one encoded map01 reference from
+P2[0] at PC 0x16. The browser verified its source-script link and disabled
+destination navigation when map01 was not imported. This is not a runtime route
+graph; unknown paths, partition-zero scripts and actual transition success
+remain outside its evidence.
+
 2026-09-10 dialogue workflow update: supported MAN partition-two text runs now
 appear in project-wide Authored assets, including after save/open and without a
 derived resource catalog. Selecting a saved script switches to its source scene

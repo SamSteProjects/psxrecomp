@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (scene-transition explorer):** Prior P2 catalog work was progress.
+  Added a pure SDK graph adapter, source-verified active-scene endpoint and
+  read-only editor view. Edges preserve script owner, record provenance, PC,
+  encoded entry and unresolved reachability; unknown names do not become named
+  scenes. The graph reports partial coverage and offers source-script and
+  already-imported destination navigation. Town01 has one map01 reference in
+  P2[0] at PC 0x16 (encoded 96/25/direction4), under a partial script graph.
+  Three focused tests passed, including synthetic unknown/self references,
+  metadata isolation and real HTTP retail source. Browser IAB20/editor4394
+  showed the reference, correctly disabled the unimported destination, and
+  opened P2[0]'s three instructions including SCENE_CHANGE. Error log empty;
+  no screenshot-based layout acceptance claimed. Owned server session76775
+  interrupted after checks (exit1); no runtime or authored mutation. Node
+  syntax and diff whitespace checks passed. Runtime transitions remain open.
+
 - **2026-09-10 (P2 resource catalog):** Previous saved-asset workflow was
   progress. Extended the metadata-only script catalog to all bounded P2 records,
   reusing the verified prefix/record decoder without scanning unknown tails.

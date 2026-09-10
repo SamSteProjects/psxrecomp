@@ -33,6 +33,14 @@ class P2DialogueHTTP(unittest.TestCase):
                 with urlopen(request, timeout=30) as response:
                     return json.load(response)
             try:
+                graph = post("/api/scene-transitions", {})
+                self.assertEqual(len(graph["edges"]), 1)
+                edge = graph["edges"][0]
+                self.assertEqual((edge["source"], edge["target"]), ("scene://town01", "scene://map01"))
+                self.assertEqual(edge["script_id"], "script://town01/scripts/man-p2/0000")
+                self.assertEqual(edge["reachability"], "not_evaluated")
+                self.assertEqual(edge["script_status"], "partial")
+                self.assertEqual(graph["coverage"]["script_count"], 91)
                 trigger = {"asset_id": "trigger://town01/field-map/fallback/kind-1/0008"}
                 report = post("/api/trigger-script", trigger)
                 authoring = report["dialogue_authoring"]

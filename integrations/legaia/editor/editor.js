@@ -169,6 +169,7 @@ function setBusy(value) {
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
+  if($('scene-transitions'))$('scene-transitions').disabled=value || !state.capabilities?.scene_transitions;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
   updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
@@ -321,14 +322,48 @@ $('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
 const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key]);
 $('resource-refresh').onclick=refreshResources;
+const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);
+const transitionsDialog=document.createElement('dialog');transitionsDialog.id='scene-transitions-dialog';document.body.append(transitionsDialog);
+let transitionsAbort=null;
+transitionsDialog.addEventListener('close',()=>{if(transitionsAbort){transitionsAbort.abort();transitionsAbort=null;setBusy(false);}transitionsDialog.replaceChildren();});
+transitionsButton.onclick=openSceneTransitions;
+async function openSceneTransitions(){
+  if(busy||!state.capabilities?.scene_transitions)return;
+  const key=resourceStateKey(),controller=new AbortController();transitionsAbort=controller;setBusy(true);
+  transitionsDialog.innerHTML='<div class="dialog-heading"><h2>Scene transitions</h2><button id="close-scene-transitions" aria-label="Close scene transitions">×</button></div><p id="transitions-summary">Verifying scene scripts…</p><div id="transitions-graph"></div><p class="dialog-error" role="alert"></p>';
+  $('close-scene-transitions').onclick=()=>transitionsDialog.close();transitionsDialog.showModal();
+  try{
+    const response=await fetch('/api/scene-transitions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Transition discovery failed');
+    if(controller.signal.aborted||!transitionsDialog.open)return;
+    if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.edges)||result.edges.length>16384||!Array.isArray(result.nodes)||result.nodes.length>16385)throw new Error('Transition source changed or returned invalid graph bounds.');
+    const nodes=new Map(result.nodes.map(node=>[node.id,node]));
+    $('transitions-summary').textContent=`${result.edges.length} encoded scene-change references · ${result.coverage.script_count} scripts inspected · ${result.coverage.partial_script_count} partial · ${result.coverage.unavailable_script_count} unavailable. Gameplay reachability has not been evaluated.`;
+    const graph=$('transitions-graph');
+    for(const edge of result.edges){
+      const from=nodes.get(edge.source),to=nodes.get(edge.target);if(!from||!to||edge.reachability!=='not_evaluated')throw new Error('Transition graph has an invalid source or destination.');
+      const row=document.createElement('article');row.className='transition-edge';
+      row.innerHTML=`<div class="transition-nodes"><div><small>Source scene</small><strong>${escapeHTML(from.name)}</strong></div><span aria-label="Encoded reference to">→</span><div><small>Encoded destination</small><strong>${escapeHTML(to.name ?? 'Unresolved destination')}</strong><small>${to.imported?'Imported':to.in_scene_index?'In retail scene index · not imported':'Destination not resolved in scene index'}</small></div></div><p>${escapeHTML(edge.script_name)} · ${escapeHTML(scriptOffset(edge.reference.pc))} · ${escapeHTML(resourceLabel(edge.script_status))}</p><p>Encoded entry: X ${escapeHTML(edge.reference.entry_x_encoded)} / Z ${escapeHTML(edge.reference.entry_z_encoded)} / direction ${escapeHTML(edge.reference.direction_encoded)}</p><div class="dialog-actions"><button class="inspect-transition-script">Inspect source script</button><button class="open-transition-scene" ${to.imported?'':'disabled'}>Open imported destination</button></div><details><summary>Reference provenance</summary><pre class="diagnostic-detail"></pre></details>`;
+      row.querySelector('pre').textContent=JSON.stringify(edge,null,2);
+      row.querySelector('.inspect-transition-script').onclick=()=>{if(busy||key!==resourceStateKey())return;const owner=edge.partition===2?{id:edge.owner_id,name:edge.script_name,partitionTwo:true}:entities().find(entity=>entity.id===edge.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}transitionsDialog.close();openActorScript(owner);};
+      row.querySelector('.open-transition-scene').onclick=async()=>{if(busy||!to.imported||key!==resourceStateKey())return;transitionsDialog.close();await api('/api/scene',{scene_id:to.id});};
+      graph.append(row);
+    }
+    if(!result.edges.length)graph.textContent='No scene-change references were decoded in the inspected paths. This does not establish that the scene has no exits.';
+    for(const note of result.limitations ?? []){const p=document.createElement('p');p.className='field-note';p.textContent=note;graph.append(p);}
+  }catch(error){if(error.name!=='AbortError'&&transitionsDialog.open){$('transitions-graph').replaceChildren();transitionsDialog.querySelector('.dialog-error').textContent=error.message;}}
+  finally{if(transitionsAbort===controller){transitionsAbort=null;setBusy(false);}}
+}
 function synchronizeResources(){
   const current=resourceStateKey();
   if(resourceContextKey!==current){
+    if(transitionsDialog.open)transitionsDialog.close();
     resourceContextKey=current;clearFieldMap();clearTriggerScript();if(fieldDialog.open)fieldDialog.close();
     resourceAbort?.abort();resourceRecords=[];resourceLimitations=[];resourceKey=null;resourcePendingKey=null;resourceError=null;
     if(textureDialog.open&&!(textureCommandPending&&textureSession?.projectKey===textureProjectKey()))textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();if(scriptResourceDialog.open)scriptResourceDialog.close();
   }
   updateFieldToggle();
+  transitionsButton.hidden=!state.capabilities?.scene_transitions;transitionsButton.disabled=busy||!state.capabilities?.scene_transitions;
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
   $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue and field-map metadata.');
 }

@@ -48,6 +48,18 @@ def refresh_resource_catalog(project) -> dict:
     return project.assets.register_resources(project.active_scene, key, records, limitations)
 
 
+def scene_transition_graph(project) -> dict:
+    from importer.script_catalog import load_script_asset_catalog
+    from .transitions import build_transition_graph
+    document, key = _scene(project)
+    with _disc_context(project.disc_path):
+        _verify(project, document)
+        catalog = load_script_asset_catalog(project.disc_path, document["scene"]["name"])
+    if key != source_key(project):
+        raise ProjectError("Scene source changed during transition discovery; refresh again")
+    return {**build_transition_graph(catalog, project.imports), "source_key": key}
+
+
 def trigger_script_preview(project, asset_id: str) -> dict:
     from importer.trigger_scripts import inspect_trigger_script
     document, key = _scene(project)
