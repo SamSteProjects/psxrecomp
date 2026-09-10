@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+2026-09-10 environment editor selection: searchable hierarchy rows, viewport-pick
+routing, a read-only transform/source inspector and object framing are connected
+to the combined scene preview. Node syntax passes; browser interaction and visual
+acceptance remain pending. Environment selection is temporary preview UI state,
+not an authored actor or a persistent project edit.
+
 2026-09-10 combined scene-preview service: the HTTP preview now includes textured
 environment instances with full world transforms alongside MAN actors. A fresh
 town01 service run produced46/46 environment meshes and51/52 actor meshes, sharing

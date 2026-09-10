@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Connect environment hierarchy and inspector selection
+
+- Previous turn was progress: combined textured scene service. Added searchable environment hierarchy rows from the current verified scene preview, read-only transform/model/pose/source inspector, geometry framing, and viewport-pick routing. Environment selection is derived preview UI state; actor authoring tools receive no selected actor while it is active.
+- Actor selections clear environment selection; a rebuilt preview clears stale selection. Hierarchy refreshes after geometry arrives and the model badge denominator includes environment instances. Frame button and F key support the selected environment object.
+- Node syntax and git diff whitespace checks pass. Browser rendering/interaction has not yet been verified; no full-scene acceptance claimed. Next launch an isolated editor for visual inspection and selection checks, then implement remaining ground/decorations. Original4388 browser/runtime untouched. Full objective active.
+
 ### 2026-09-10 — Connect textured environment to scene preview service
 
 - Previous turn was progress: resolved environment meshes/poses. ScenePreviewService now accepts the verified environment catalog, shares repeated geometry, runs prepared prop meshes through the existing server texture adapter, and appends separately identified environment instances with source metadata and full world matrices. The HTTP scene-preview route enables this path.

@@ -238,7 +238,7 @@ async function api(path, payload, {dialog,success}={}) {
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
-    state=data; render();
+    if(path==='/api/selection')environmentSelection=null;state=data; render();
     $('connection-dot').classList.add('connected');
     if(dialog) dialog.close();
     if(success) notify(success);
@@ -256,7 +256,12 @@ async function api(path, payload, {dialog,success}={}) {
   } finally {setBusy(false);}
 }
 function entities(){return state.scene?.entities ?? [];}
-function selected(){return entities().find(e=>e.id===state.selection?.entity_id);}
+let environmentSelection=null;
+function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
+function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
+function selected(){return selectedEnvironment()?null:entities().find(e=>e.id===state.selection?.entity_id);}
+function selectEnvironment(identifier){environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
 function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
@@ -276,7 +281,7 @@ $('edit-mode').onclick=()=>api('/api/mode',{mode:'edit'});
 $('live-mode').onclick=()=>api('/api/mode',{mode:'live'});
 $('entity-search').oninput=renderHierarchy;
 $('frame-all').onclick=()=>frame();
-$('frame-selected').onclick=()=>{const entity=selected();if(entity)frame(entity);};
+$('frame-selected').onclick=()=>{if(selectedEnvironment())frameEnvironment();else{const entity=selected();if(entity)frame(entity);}};
 $('grid-toggle').onclick=()=>{grid=!grid;$('grid-toggle').classList.toggle('active',grid);$('grid-toggle').setAttribute('aria-pressed',grid);draw();};
 $('diagnostics-button').onclick=()=>{
   $('diagnostics').replaceChildren();
@@ -291,7 +296,7 @@ document.addEventListener('keydown',event=>{
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!busy)api('/api/project/save',{}, {success:'Project saved.'});}
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='z'){event.preventDefault();const redo=event.shiftKey;if(redo?state.history?.can_redo:state.history?.can_undo)api(redo?'/api/redo':'/api/undo',{});}
-  if(event.key.toLowerCase()==='f' && selected())frame(selected());
+  if(event.key.toLowerCase()==='f'){if(selectedEnvironment())frameEnvironment();else if(selected())frame(selected());}
 });
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
@@ -312,7 +317,7 @@ function render(){
   $('live-mode').title=state.capabilities?.live_mode?'Observe runtime state':state.runtime?.reason?.message ?? 'Runtime observation is unavailable';
   reconcileLiveFollow();renderRuntimeControls();
   document.querySelector('.preview-badge').firstChild.textContent=live?'AUTHORED SCENE · LIVE OBSERVATIONS SEPARATE':'SCENE PREVIEW';
-  $('frame-selected').disabled=!selected();
+  $('frame-selected').disabled=!selected()&&!selectedEnvironment();
   $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
   renderHierarchy();renderAssets();renderInspector();
   templateButton.disabled=!state.capabilities?.authored_transform_templates;
@@ -328,7 +333,7 @@ function updateSceneBadge(){
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
-  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?'Loading supported scene models…':ready?`${count} / ${entities().length} models · unresolved objects remain markers`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
+  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?'Loading supported scene models…':ready?`${count} / ${entities().length+environmentEntities().length} models · unresolved objects remain markers`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
   $('coordinate-note').textContent=activeScenePreview()?'Unknown height: ground plane · unknown facing: preview convention':'Unknown heights are shown on the ground plane.';
   $('coordinate-note').title=JSON.stringify(activeScenePreview()?.limits ?? []);
 }
@@ -346,9 +351,9 @@ async function refreshScenePreview(){
     if(controller.signal.aborted||state.scene_preview_source_key!==key||state.scene?.id!==expectedScene)return;
     if(data.source_key!==key||data.scene_id!==expectedScene)throw new Error('Scene preview source changed while loading; retry models.');
     if(!Array.isArray(data.position_to_display)||data.position_to_display.length!==16||!data.position_to_display.every(numeric))throw new Error('SDK did not provide a valid scene display conversion.');
-    const failures=sceneRenderer.load(data);scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
+    const failures=sceneRenderer.load(data);environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
-    renderInspector();if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
+    renderHierarchy();renderInspector();if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
   }catch(error){if(error.name!=='AbortError'&&state.scene_preview_source_key===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;sceneRenderer?.clear();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();draw();}}
 }
@@ -356,10 +361,13 @@ function renderHierarchy(){
   const list=$('hierarchy');list.replaceChildren();
   const filter=$('entity-search').value.toLowerCase();
   for(const entity of entities().filter(e=>`${e.name} ${e.id}`.toLowerCase().includes(filter))){
-    const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',entity.id===state.selection?.entity_id);row.classList.toggle('selected',entity.id===state.selection?.entity_id);row.title=entity.id;
+    const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedEnvironment()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedEnvironment()&&entity.id===state.selection?.entity_id);row.title=entity.id;
     row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
-    row.onclick=()=>api('/api/selection',{entity_id:entity.id});row.ondblclick=()=>frame(entity);list.append(row);
+    row.onclick=()=>{environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
   }
+  const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
+  if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length}) · read only`;list.append(heading);}
+  for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',item.entity_id===environmentSelection);row.classList.toggle('selected',item.entity_id===environmentSelection);row.textContent=item.name;row.title=item.entity_id;row.onclick=()=>selectEnvironment(item.entity_id);row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
 }
 // Search SDK records already present in project state, including their provenance.
@@ -953,6 +961,13 @@ function runtimeCandidateSummary(correlation,entityId){
   }).join('');
 }
 function renderInspector(){
+  const environment=selectedEnvironment();
+  if(environment){
+    $('selection-summary').textContent=environment.name;
+    const source=environment.source_record,transform=source.imported_transform;
+    $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Imported · read only</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
+    $('frame-environment').onclick=frameEnvironment;return;
+  }
   const entity=selected();
   $('selection-summary').textContent=entity?entity.name ?? entity.id:'No entity selected';
   if(!entity){$('inspector').innerHTML='<div class="empty-panel">Select an entity in the scene<br>or hierarchy to inspect it.</div>';return;}
@@ -1201,7 +1216,7 @@ function draw(){
   drawFieldMap();
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
-    const active=entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
+    const active=!selectedEnvironment()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
     if(rendered&&!active)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();
     ctx.beginPath();ctx.moveTo(p.x,p.y-radius);ctx.lineTo(p.x+radius,p.y);ctx.lineTo(p.x,p.y+radius);ctx.lineTo(p.x-radius,p.y);ctx.closePath();ctx.fillStyle=active?'#c9edce':authored(entity)?'#d2ae70':'#759d8d';ctx.fill();ctx.strokeStyle=active?'#f1fff0':'#a8c6b6';ctx.lineWidth=active?1.5:1;ctx.stroke();
@@ -1257,7 +1272,7 @@ canvas.addEventListener('pointerup',async event=>{
   if(drag.type==='transform'&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis])await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}
-  else if(!finished.moved && event.button===0){let hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;if(!hit&&sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}if(hit)await api('/api/selection',{entity_id:hit});}
+  else if(!finished.moved && event.button===0){let hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;if(!hit&&sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}if(hit){if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}} }
   draw();
 });
 canvas.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
