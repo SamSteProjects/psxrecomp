@@ -722,3 +722,11 @@ Thus the sampled settled-title interval added no drops or underruns; the earlier
 startup drops remain unexplained. This is counter evidence, not subjective
 listening or broader gameplay audio acceptance. Process exited0; private report
 is `local-output/stability-20260909/dma-audio-live/result.json`.
+
+Repeated title restore on97: three acknowledged loads of a fresh title save
+advanced303/301/301frames in five-second sampling windows. Final title image
+remained intact, audio added no drops/underruns, and51 captured GPU commands
+reported kick PC8005A160. Process exited0. Evidence is private under
+`local-output/sdk-20260909/dma-title-restore`. This is bounded title acceptance;
+field/cross-scene restore ownership and immediate in-flight DMA capture remain
+unverified by this run.

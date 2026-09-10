@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Repeated title restore on diagnostic rebuild
+
+- Previous turn was progress: separated startup drops from settled-title counters. Fresh isolated97f0f026... SDK run, port4399/PID33520, saved title slot11 and completed three acknowledged loads. Five-second windows advanced303/301/301frames; final screenshot retains intact title/logo/menu. Runtime exited0. Private evidence `local-output/sdk-20260909/dma-title-restore/acceptance.json`, before.png and after.png.
+- Across all restore samples audio remained active, underruns0 and cumulative overflow_drops71622 without increase. Final GPU dump contains51 commands with kick PC8005A160. This accepts bounded title restoration and resumed capture, not immediate in-flight DMA attribution, field/cross-scene ownership or subjective audio quality.
+- No existing-field-run input, restore or restart. Full SDK objective remains active; next work should return to field rendering/transition evidence rather than repeat settled-title tests.
+
 ### 2026-09-10 — Separate startup audio drops from settled-title behavior
 
 - Previous turn was progress:97 cold title/capture acceptance. Traced overflow_drops to rab_push dropping oldest source frames when its ring fills; the counter is cumulative, not an instantaneous continuity indicator.
