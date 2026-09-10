@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Verify player floor height against saved ramp records
+
+- Traced generated main routine `80019278`: scratchpad `1F8003EC` supplies the field map base, `1F80035C` the signed height LUT, map+4000 the corner tiers, and map+8000 the object-cell flags. The `0800` branch calls `801D5630(2,tile_x,tile_z)` and uses the corner mean minus signed coarse*32 minus packed subcell*16. This agrees with pinned Andrew `world/field_movement.rs` and `world/field_elevation.rs`; generated instructions inspected, not yet a new full retail-byte comparison.
+- Read saved states09/10/11 offline without loading or writing runtime RAM. All three use map base80139530, zero corner tiers and the ramp flag. Primary kind-2 records at80149992/8014992A/8014967A respectively have coarse -4/-3/1 and zero subcell steps, reproducing observed Y128/96/-32 exactly. Private evidence: `local-output/sdk-20260909/arrival-live/floor-height-comparison.json`, with state hashes and record addresses.
+- This excludes a missing-ramp calculation as the simple explanation of these samples; it does not prove terrain geometry, camera transforms or ordering are correct. No speculative runtime patch, savestate restore, process restart or gameplay input this turn. Follow terrain geometry/ordering construction next. Full SDK and release-parity objective remains active.
+
 ### 2026-09-10 — Compare terrain submission placement across visibility views
 
 - Previous turn was progress: opaque terrain sample. GPU comparison shows identified player packets581..707/traversal ranks1708..1716 in invisible frame;565..681/ranks1701..1709 in visible near-step frame. Matching terrain texture quad occurs later in both, but moves from rawY108..138 to143..178; therefore changing screen overlap, not disappearance of player submission, distinguishes these captures. Evidence `arrival-live/ordering-comparison.json`.
