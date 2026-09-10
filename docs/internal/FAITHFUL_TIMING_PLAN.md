@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Trace reference arrival coordinate semantics
+
+- Previous turn was progress: authored graph layers. Read pinned d6e64c68 engine-core world/vm_hosts.rs:815, scene/host/scene_entry.rs:1492 and world/field_loop.rs:275-308. Named transition queues bytes, loads destination, then seats/faces player. Actual seat implementation uses low7*128 plus64/128 selected by bit7; facing is (dir&7)*512. Nearby e2e test prose uses a simpler tile formula, so it is insufficient for high-bit evidence.
+- Added labelled pinned-reference interpretation to transition options with runtime_verified=false and source path; no new world-coordinate write mode or runtime claim. Boundary test covers0/127/128/255 and direction255.
+- Retail FUN_801DE840/table80073F04 parity and live arrival acceptance remain pending. Full objective active.
+
+
 ### 2026-09-10 — Show authored entry layers in scene graph
 
 - Previous turn was progress: shared descriptor guards. Scene-transition graph now carries separate imported/authored/effective entry layers and stable transition IDs; the editor displays authored effective bytes alongside imported provenance. Build revalidation remains explicit; graph reachability stays not evaluated.

@@ -8,6 +8,14 @@ from importer.transition_authoring import patch_transition_entry, TransitionAuth
 from test_importer_dialogue_authoring import fixture, ACTOR
 
 class TransitionEntryTests(unittest.TestCase):
+    def test_reference_interpretation_preserves_half_tile_and_sector_semantics(self):
+        from importer.transition_authoring import reference_entry_interpretation
+        for byte, coordinate in ((0,64),(127,16320),(128,128),(255,16384)):
+            result = reference_entry_interpretation(dict(entry_x_encoded=byte, entry_z_encoded=byte, direction_encoded=255))
+            self.assertEqual((result["x"],result["z"]), (coordinate,coordinate))
+            self.assertEqual(result["facing_angle_12bit"],3584)
+            self.assertFalse(result["runtime_verified"])
+
     def test_verified_man_owner_baseline_and_exact_audit(self):
         source, man = fixture(b"\x3f\x01\x02\x06town01\x03\x04\x05opaque")
         context = TransitionAuthoringContext(source)

@@ -21,6 +21,19 @@ LIMITATIONS = [
 ]
 
 
+def reference_entry_interpretation(values: dict) -> dict:
+    """Pinned engine interpretation, not an observation of the recomp runtime."""
+    if set(values) != set(ENTRY_FIELDS) or any(type(v) is not int or not 0 <= v <= 255 for v in values.values()):
+        raise ImportError("entry interpretation requires all three encoded bytes")
+    def coordinate(value):
+        return (value & 0x7f) * 128 + (128 if value & 0x80 else 64)
+    return {"x": coordinate(values["entry_x_encoded"]),
+            "z": coordinate(values["entry_z_encoded"]),
+            "facing_angle_12bit": (values["direction_encoded"] & 7) * 512,
+            "evidence": "pinned_reference_implementation", "runtime_verified": False,
+            "source": "crates/engine-core/src/world/field_loop.rs:275-308"}
+
+
 class TransitionAuthoringContext:
     """Immutable MAN snapshot with stable transition IDs and audited byte edits."""
 
@@ -55,6 +68,7 @@ class TransitionAuthoringContext:
                     semantic_id=f"script://{owner.removeprefix('scene://')}/transition/{pc:04x}",
                     owner_id=owner, pc=pc, decoded_byte_offset=offset + start,
                     destination=node["operands"]["scene_name_ascii"], values=values,
+                    reference_interpretation=reference_entry_interpretation(values),
                     source_record_sha256=hashlib.sha256(record).hexdigest()))
             if not transitions:
                 reason = "No supported named transitions occur on the inspected paths"
