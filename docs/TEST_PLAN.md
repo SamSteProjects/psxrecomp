@@ -217,3 +217,17 @@ observer. A separate bounded startup verifies automatic readiness preparation,
 with all three PCs primed and scene verification still false. Twelve focused
 service/profile/readiness tests cover identity rejection, missing/current reply
 handling, malformed/partial priming and no fabricated scene acceptance.
+
+A subsequent full cold New Game independently validated automatic preparation:
+town01's unchanged v2 guard accepted 90 nodes and all three current witnesses,
+without manual witness requests or restore. Both owned processes exited zero;
+see `legaia-sdk/automatic-witness-field-acceptance.md`.
+
+Live following (2026-09-10): the focused browserless harness executes the real
+controller source with delayed responses to check epoch chaining, after-response
+cadence, no overlap, command serialization, cancellation, one state refresh on
+HTTP rejection, and no transport retry. Candidate checks cover finite positions,
+display conversion, epoch mismatch and the 128-entry bound. Ten observer-service
+tests pass, including rejection of a revoked token/backwards frame before actor
+traversal and acceptance only after a new guarded capture. These are targeted
+checks, not the complete cross-scene or repeated-restore campaign.

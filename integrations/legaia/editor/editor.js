@@ -13,6 +13,74 @@ modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;sceneP
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
 sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
+const liveFollow={active:false,timer:null,pending:null,controller:null,generation:0,context:null,epoch:null,count:0,reason:'Not following',runPid:null};
+const liveContext=()=>JSON.stringify([state.project?.path,state.scene?.id]);
+const acceptedEpoch=runtime=>{const value=runtime?.available&&runtime.observation?.epoch?.epoch_id;return typeof value==='string'&&value?value:null;};
+runtimeBox.innerHTML='<span id="runtime-message"></span><div class="runtime-actions"><button id="runtime-check">Check runtime</button><button id="runtime-observe">Observe actors</button><button id="runtime-follow" aria-pressed="false">Follow live</button></div><p id="runtime-follow-status" role="status"></p>';
+$('runtime-check').onclick=()=>api('/api/runtime/discover',{});$('runtime-observe').onclick=()=>api('/api/runtime/observe',{include_actors:true});
+$('runtime-follow').onclick=()=>liveFollow.active?stopLiveFollow('Stopped by you'):startLiveFollow();
+function renderRuntimeControls(){
+  runtimeBox.hidden=!state.capabilities?.runtime_discovery;
+  $('runtime-message').textContent=state.runtime?.available?'Runtime connected · read-only observation':state.runtime?.reason?.message ?? 'Runtime has not been checked';
+  $('runtime-check').disabled=busy||liveFollow.active;$('runtime-observe').hidden=!state.runtime?.available;$('runtime-observe').disabled=busy||liveFollow.active;
+  const live=state.project?.mode==='live',button=$('runtime-follow');button.textContent=liveFollow.active?'Stop following':'Follow live';button.setAttribute('aria-pressed',liveFollow.active);button.classList.toggle('active',liveFollow.active);
+  button.disabled=!liveFollow.active&&(busy||!!liveFollow.pending||!live||!state.runtime?.available||document.hidden);button.title=live?'Capture actors every 2 seconds after the previous response; stop on guard failure':'Enter Live mode after a guarded runtime observation';
+  $('runtime-follow-status').textContent=liveFollow.active?`Following · ${liveFollow.pending?'Capturing…':busy?'Waiting for the current action':`${liveFollow.count} actor samples · next capture in 2 seconds`}`:`Stopped · ${liveFollow.reason}`;
+}
+function cancelFollowTimer(){clearTimeout(liveFollow.timer);liveFollow.timer=null;}
+function stopLiveFollow(reason){
+  liveFollow.active=false;liveFollow.generation++;cancelFollowTimer();liveFollow.controller?.abort();liveFollow.epoch=null;liveFollow.context=null;liveFollow.runPid=null;liveFollow.reason=reason;renderRuntimeControls();
+}
+function reconcileLiveFollow(){
+  if(!liveFollow.active)return;
+  if(document.hidden)stopLiveFollow('Page hidden; start again when ready');
+  else if(state.project?.mode!=='live')stopLiveFollow('Edit mode');
+  else if(liveFollow.context!==liveContext())stopLiveFollow('Project or scene changed');
+  else if(!state.runtime?.available)stopLiveFollow(state.runtime?.reason?.message ?? 'Runtime observation unavailable');
+}
+function scheduleLiveFollow(){
+  cancelFollowTimer();if(!liveFollow.active||busy||liveFollow.pending||document.hidden)return;
+  liveFollow.timer=setTimeout(()=>{liveFollow.timer=null;captureLiveFollow();},2000);
+}
+function startLiveFollow(){
+  if(busy||liveFollow.pending||document.hidden||state.project?.mode!=='live'||!state.runtime?.available)return;
+  liveFollow.active=true;liveFollow.generation++;liveFollow.context=liveContext();liveFollow.epoch=null;liveFollow.count=0;liveFollow.reason='';liveFollow.runPid=state.run?.running?state.run.pid:null;captureLiveFollow();
+}
+function clearDisplayedLive(reason){
+  state.capabilities.live_mode=false;$('live-mode').disabled=true;$('live-mode').title=reason;
+  state.runtime={...state.runtime,available:false,state:'unavailable',observation:null,actor_bindings:null,reason:{message:reason},historical_observation:true};
+  state.runtime_correlation={available:false,status:'unavailable',reason,entities:{}};
+  for(const entity of entities())if(entity.components?.RuntimeCorrelation)entity.components.RuntimeCorrelation={status:'unavailable',binding_confirmed:false,candidates:[],reason};
+}
+function captureLiveFollow(){
+  if(!liveFollow.active||busy||liveFollow.pending||document.hidden){scheduleLiveFollow();return;}
+  const generation=liveFollow.generation,context=liveFollow.context,controller=new AbortController(),epoch=liveFollow.epoch;
+  liveFollow.controller=controller;const timeout=setTimeout(()=>controller.abort(),15000);
+  const current=()=>generation===liveFollow.generation&&liveFollow.active&&context===liveContext()&&!document.hidden;
+  const task=(async()=>{
+    try{
+      const response=await fetch('/api/runtime/observe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({include_actors:true,...(epoch?{expected_epoch_id:epoch}:{})}),signal:controller.signal});
+      const data=await response.json();if(!current())return;
+      if(!response.ok||data.error){
+        const reason=typeof data.error==='string'?data.error:'Runtime guard rejected the capture';
+        // Read authoritative cleared state once; this does not reconnect or capture.
+        try{const refresh=await fetch('/api/state',{signal:controller.signal}),fresh=await refresh.json();if(current()&&refresh.ok&&fresh.project&&'scene' in fresh&&JSON.stringify([fresh.project.path,fresh.scene?.id])===context){state=fresh;}}
+        catch{}
+        if(!current())return;clearDisplayedLive(reason);stopLiveFollow(reason);render();return;
+      }
+      if(!data.project||!('scene' in data)||JSON.stringify([data.project.path,data.scene?.id])!==context)throw new Error('Project or scene changed during capture');
+      if(!data.runtime?.available){state=data;stopLiveFollow(data.runtime?.reason?.message ?? 'Runtime observation unavailable');render();return;}
+      const nextEpoch=acceptedEpoch(data.runtime);if(!nextEpoch)throw new Error('Capture did not return an accepted observation epoch');
+      liveFollow.epoch=nextEpoch;liveFollow.count++;state=data;render();
+    }catch(error){if(current()){const reason=error.name==='AbortError'?'Runtime capture timed out':`Runtime capture failed: ${error.message}`;clearDisplayedLive(reason);stopLiveFollow(reason);render();}}
+    finally{clearTimeout(timeout);}
+  })();
+  liveFollow.pending=task;renderRuntimeControls();
+  void task.finally(()=>{if(liveFollow.pending===task){liveFollow.pending=null;liveFollow.controller=null;renderRuntimeControls();scheduleLiveFollow();}});
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&liveFollow.active)stopLiveFollow('Page hidden; start again when ready');else renderRuntimeControls();});
+window.addEventListener('pagehide',()=>{if(liveFollow.active)stopLiveFollow('Page closed');});
+
 const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build the project with supported edits or as a verified retail baseline';$('save-button').after(buildButton);
 const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';buildDialog.id='build-report-dialog';document.body.append(buildDialog);
 const buildReportButton=document.createElement('button');buildReportButton.id='build-report-button';buildReportButton.textContent='Build report';buildReportButton.title='Review the latest build';buildReportButton.hidden=true;buildButton.after(buildReportButton);buildReportButton.onclick=()=>showBuildReport();
@@ -40,6 +108,7 @@ function showRunDialog(){
 }
 function renderRunStatus(){
   const run=state.run,active=run && (run.running || !['failed','exited','stopped'].includes(run.state));
+  if(liveFollow.active&&liveFollow.runPid&&run?.pid===liveFollow.runPid&&!active){clearDisplayedLive('Owned runtime stopped');stopLiveFollow('Owned runtime stopped');renderInspector();draw();}
   runRibbon.hidden=!run;
   const ribbonKey=JSON.stringify([run?.state,run?.pid,run?.ready,active]);
   if(run && ribbonKey!==runRibbonKey){runRibbon.replaceChildren();const text=document.createElement('span');text.textContent=`Run ${run.state}${run.pid?' · PID '+run.pid:''}${run.ready?' · Identity and mod plan verified':''}`;const details=document.createElement('button');details.textContent='Details';details.onclick=showRunDialog;runRibbon.append(text,details);if(active){const stop=document.createElement('button');stop.textContent='Stop';stop.onclick=()=>api('/api/run/stop',{});runRibbon.append(stop);}if(run.ready){const attach=document.createElement('button');attach.textContent='Attach';attach.onclick=()=>api('/api/run/attach',{});runRibbon.append(attach);}}
@@ -91,7 +160,7 @@ function notify(message, error=false) {
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{$('toast').hidden=true;},error?8500:3200);
 }
 function setBusy(value) {
-  busy=value;
+  busy=value;if(value)cancelFollowTimer();
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
@@ -102,13 +171,20 @@ function setBusy(value) {
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
-  updateFieldToggle();
+  updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
+  if(liveFollow.active){
+    const reason=['/api/project/new','/api/project/open','/api/import'].includes(path)?'Project changed':path==='/api/scene'?'Scene changed':path==='/api/mode'?'Mode changed':path==='/api/run/stop'?'Owned runtime stopped':path.startsWith('/api/runtime')||path==='/api/run/attach'?'Manual runtime action':null;
+    if(reason)stopLiveFollow(reason);
+  }
   setBusy(true);
+  // Serialize state-changing API work after this editor's in-flight capture.
+  // Only explicit follow cancellation aborts that capture, never another request.
   if(dialog) dialog.querySelector('.dialog-error').textContent='';
   try {
+    if(liveFollow.pending)await liveFollow.pending;
     const response=await fetch(path,{method:payload===undefined?'GET':'POST',headers:payload===undefined?{}:{'Content-Type':'application/json'},body:payload===undefined?undefined:JSON.stringify(payload)});
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
@@ -183,9 +259,7 @@ function render(){
   $('edit-mode').classList.toggle('active',!live);$('live-mode').classList.toggle('active',live);$('live-mode').disabled=!state.capabilities?.live_mode;
   document.querySelector('.inspector-panel .tag').textContent=live?'LIVE':'EDIT';
   $('live-mode').title=state.capabilities?.live_mode?'Observe runtime state':state.runtime?.reason?.message ?? 'Runtime observation is unavailable';
-  runtimeBox.replaceChildren();runtimeBox.hidden=!state.capabilities?.runtime_discovery;
-  if(!runtimeBox.hidden){const text=document.createElement('span');text.textContent=state.runtime?.available?'Runtime connected · Read-only observation':state.runtime?.reason?.message ?? 'Runtime has not been checked';const button=document.createElement('button');button.textContent='Check runtime';button.onclick=()=>api('/api/runtime/discover',{});runtimeBox.append(text,button);}
-  if(state.runtime?.available){const observe=document.createElement('button');observe.textContent='Observe actors';observe.onclick=()=>api('/api/runtime/observe',{include_actors:true});runtimeBox.append(observe);}
+  reconcileLiveFollow();renderRuntimeControls();
   document.querySelector('.preview-badge').firstChild.textContent=live?'AUTHORED SCENE · LIVE OBSERVATIONS SEPARATE':'SCENE PREVIEW';
   $('frame-selected').disabled=!selected();
   $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
@@ -751,6 +825,23 @@ function groundAt(x,y,planeY){
   return {x:origin.x+t*ray.x,y:planeY,z:origin.z+t*ray.z};
 }
 function line(a,b,color,widthPx=1){const p=project(a),q=project(b);if(!p||!q)return;ctx.strokeStyle=color;ctx.lineWidth=widthPx;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}
+function observedCandidatePoints(){
+  const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation;
+  if(state.project?.mode!=='live'||!epoch||correlation?.available!==true||correlation.epoch_id!==epoch)return [];
+  const candidates=selected()?.components?.RuntimeCorrelation?.candidates;
+  if(!Array.isArray(candidates))return [];
+  return candidates.slice(0,128).filter(candidate=>candidate?.epoch_id===epoch&&['x','y','z'].every(axis=>numeric(candidate.observed_position?.[axis]))).map(candidate=>displayPosition(candidate.observed_position));
+}
+function drawObservedCandidates(){
+  const points=observedCandidatePoints();if(!points.length)return;
+  ctx.save();ctx.strokeStyle='#cea9fa';ctx.fillStyle='#d7bcfa';ctx.lineWidth=1.5;ctx.font='11px "Segoe UI",sans-serif';
+  for(const [index,world] of points.entries()){
+    const p=project(world);if(!p||!numeric(p.x)||!numeric(p.y))continue;
+    ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x-10,p.y);ctx.lineTo(p.x+10,p.y);ctx.moveTo(p.x,p.y-10);ctx.lineTo(p.x,p.y+10);ctx.stroke();
+    ctx.fillText(`Observed candidate${points.length>1?` ${index+1}/${points.length} · ambiguous`:''} · sampled`,p.x+13,p.y+13);
+  }
+  ctx.restore();
+}
 function draw(){
   if(!ctx)return;ctx.clearRect(0,0,width,height);projected=[];handles=[];
   if(sceneModelsReady()){try{sceneRenderer.draw(sceneView());}catch(error){sceneError=error.message;}}
@@ -772,6 +863,7 @@ function draw(){
       if(canEdit()){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
+  drawObservedCandidates();
 }
 function resize(){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;width=rect.width;height=rect.height;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
 new ResizeObserver(resize).observe(canvas);

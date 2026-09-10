@@ -384,7 +384,18 @@ The Live profile correctly rejected missing VM witness `801DE840` after the
 lifecycle reset. That witness was already nonrecurrent throughout the cold
 windows (hits162, last frame18718), so its absence is not evidence of fallback.
 Other recurrent static/interpreter witnesses reacquired. Full Live-profile
-reacquisition remains unaccepted; stale pre-restore evidence was not reused.
+reacquisition remained unaccepted in that earlier idle-only trial; stale
+pre-restore evidence was not reused.
+
+The 2026-09-10 single-restore run on `2be69467...` now accepts full town01 v2
+observation after one normal dialogue advance: 90 nodes and all three witnesses
+current under a new epoch. Separate settled windows measured 60.130/59.999 FPS
+and 16.6902/16.6897 ms frame-period p95, without added static CRC misses,
+rehashes, audio underruns or overflow drops. A private parser error lost the
+first invalidation response; retained pre-input rejection evidence is delayed
+51.9 seconds and is not claimed immediate. See
+`legaia-sdk/restore-live-acceptance.md`. Repeated and cross-scene restores remain
+unaccepted; buffer counters do not prove audible quality.
 
 | Priority | Check | Fixture / platform | Acceptance |
 | --- | --- | --- | --- |

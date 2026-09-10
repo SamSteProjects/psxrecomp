@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (Live follow and restore recovery):** Added opt-in bounded actor
+  following and separate candidate markers, with epoch chaining, cancellation,
+  no overlapping polls and no automatic retry after rejection. Browser checks
+  found and fixed explicit-restart cached-epoch reuse; repeated captures,
+  manual Stop, Edit cancellation and runtime-stop cleanup passed. Ten observer
+  tests and the real-source controller harness pass. One cold same-scene save/
+  load recovered 90-node Live observation after normal dialogue input; settled
+  windows measured 60.130/59.999 FPS without cache misses or buffer underruns.
+  The private parser lost the first invalidation response, so retained pre-input
+  evidence is explicitly delayed. See `legaia-sdk/restore-live-acceptance.md`.
+
 - **2026-09-10 (automatic cold field observation):** The new production launch
   preparation passed a full cold New Game without manual witness requests or
   restore. Opening movie completed 1,337 frames, town01 rendered, and the

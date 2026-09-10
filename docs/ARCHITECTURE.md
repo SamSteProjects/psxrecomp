@@ -139,6 +139,13 @@ controls and opaque data unchanged. Greedy compressed overflow can invoke a
 bounded optimal LZS parse for inputs up to 256 KiB; references expand exactly
 within output bounds. See [dialogue authoring](legaia-sdk/dialogue-authoring.md).
 
+The browser's opt-in Live follower consumes the same guarded observation API.
+It chains accepted epoch IDs, allows only one capture at a time, and stops on
+rejection instead of reconnecting or retrying automatically. Selected observed
+candidate positions are a separate read-only canvas overlay; they never replace
+authored model placements or become confirmed entity bindings. See
+[Live follow](legaia-sdk/live-follow.md).
+
 The data layers are imported (retail facts), derived (decoded previews and
 indexes), authored (project edits), live (epoch-scoped observations) and
 generated (private build output). Live observation never changes imported or

@@ -2,10 +2,10 @@
 
 import unittest
 from copy import deepcopy
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from .client import ProtocolClient
-from .errors import ProtocolError
+from .errors import ProtocolError, SnapshotUnstable
 from .service import ObserverService
 
 
@@ -142,6 +142,50 @@ class ObserverServiceTests(unittest.TestCase):
         self.assertEqual(result["reason"]["code"], "stale_epoch")
         self.assertEqual(UnavailableClient.calls, [])
         self.assertIsNone(result["observation"])
+
+    def test_follow_capture_drops_cached_epoch_before_traversal_on_restore(self):
+        # A following client carries its accepted epoch. A restore can revoke
+        # that token even when the scene and executable bytes remain identical.
+        for guard in (SnapshotUnstable("guard token invalidated by restore"),
+                      {"frame_after": 99}):
+            with self.subTest(guard=guard):
+                service = ObserverService()
+                client, observer = Mock(), Mock()
+                service._client, service._observer = client, observer
+                service._last_epoch = {"epoch_id": "before-restore",
+                                       "observation_guard_token": "old-token",
+                                       "last_validated_frame": 100}
+                if isinstance(guard, Exception):
+                    observer.selector.sample_guard_only.side_effect = guard
+                else:
+                    observer.selector.sample_guard_only.return_value = guard
+                with patch.object(service, "_session", return_value=observer):
+                    result = service.observe(expected_epoch_id="before-restore", include_actors=True)
+                self.assertFalse(result["available"])
+                self.assertEqual(result["reason"]["code"], "stale_epoch")
+                self.assertIsNone(result["observation"])
+                self.assertIsNone(result["runtime"])
+                self.assertIsNone(service._last_epoch)
+                self.assertIsNone(service._observer)
+                client.close.assert_called_once()
+                observer.capture.assert_not_called()
+                observer.selector.sample_guard_only.assert_called_once_with("old-token")
+
+    def test_follow_capture_accepts_new_epoch_only_after_guarded_capture(self):
+        service = ObserverService()
+        observer = Mock()
+        service._last_epoch = {"epoch_id": "previous", "observation_guard_token": "token",
+                               "last_validated_frame": 100}
+        observer.selector.sample_guard_only.return_value = {"frame_after": 101}
+        observation = {"epoch": {"epoch_id": "fresh"}, "runtime": {"identity": "fixture"}}
+        observer.capture.return_value = observation
+        with patch.object(service, "_session", return_value=observer), \
+             patch("integrations.legaia.observer.service.sample_man_bindings", return_value={}) as bindings:
+            result = service.observe(expected_epoch_id="previous", include_actors=True)
+        self.assertTrue(result["available"])
+        self.assertEqual(service._last_epoch, observation["epoch"])
+        observer.capture.assert_called_once_with(maximum_attempts=1)
+        bindings.assert_called_once()
 
     def test_read_only_command_cannot_be_replaced_in_params(self):
         client = ProtocolClient(startup_attempts=1)
