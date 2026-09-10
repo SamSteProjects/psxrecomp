@@ -74,6 +74,10 @@ class TemplateHTTPWorkflow(unittest.TestCase):
                                  {"asset_id": "asset://fixture/model/0", "clip_id": "idle", "frame_index": True}):
                         command(body, 400, "/api/export/model")
                     self.assertFalse((project.root / "Exports").exists())
+                    command({"vertices": [[1, 2, 3]]}, 400, "/api/scene-preview")
+                    command({"scene_id": "scene://not-active"}, 400, "/api/scene-preview")
+                    # Missing private input is JSON failure, never a stale scene payload.
+                    command({}, 400, "/api/scene-preview")
                     self.assertEqual(project.state(), before)
                 finally:
                     server.shutdown()

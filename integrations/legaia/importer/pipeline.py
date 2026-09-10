@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 from .core import (
@@ -19,6 +20,7 @@ from .core import (
     normalize_claims,
     parse_cdname,
     parse_man,
+    resolve_disc_path,
     scene_range,
     scene_tmd_pool,
     sha256_file,
@@ -402,9 +404,31 @@ def project_metadata(
     return output
 
 
+_active_disc_context: ContextVar[tuple | None] = ContextVar("legaia_verified_disc", default=None)
+
+
+def _disc_stamp(path: Path) -> tuple:
+    info = path.stat()
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
 @contextmanager
 def _disc_context(disc: Path | str):
-    with Mode2Image(Path(disc)) as image:
+    """Share a verified handle only inside a synchronous import operation.
+
+    Scene previews compose several decoders. Nested reads of the same image
+    reuse the outer verification, never a process-wide path-only hash cache.
+    File identity/metadata changes reject the operation before publishing it.
+    """
+    path = resolve_disc_path(Path(disc)).resolve()
+    active = _active_disc_context.get()
+    if active is not None and active[0] == path:
+        if _disc_stamp(path) != active[1]:
+            raise ImportError("Disc image changed during the verified import operation")
+        yield active[2]
+        return
+    before = _disc_stamp(path)
+    with Mode2Image(path) as image:
         # Confirm the structural build marker without reading or emitting its bytes.
         image.find("SCUS_942.54")
         digest = sha256_file(image.path)
@@ -423,7 +447,16 @@ def _disc_context(disc: Path | str):
         if not mapping:
             raise ImportError("CDNAME.TXT contains no structural block labels")
         archive = ProtArchive(image, prot_node)
-        yield image, digest, mapping, archive
+        if _disc_stamp(path) != before:
+            raise ImportError("Disc image changed while its identity was being verified")
+        value = (image, digest, mapping, archive)
+        token = _active_disc_context.set((path, before, value))
+        try:
+            yield value
+            if _disc_stamp(path) != before:
+                raise ImportError("Disc image changed during the verified import operation")
+        finally:
+            _active_disc_context.reset(token)
 
 
 def _bounded_scene_range(archive: ProtArchive, mapping: dict[int, str], scene: str) -> tuple[int, int]:

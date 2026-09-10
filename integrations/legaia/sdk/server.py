@@ -30,6 +30,8 @@ class EditorServer(ThreadingHTTPServer):
         self.project = project
         self.last_build = None
         self.texture_catalogs = {}
+        from .scene_preview import ScenePreviewService
+        self.scene_previews = ScenePreviewService()
         from .run import RunService
         self.runs = RunService()
         self.observer = ObserverService(port=runtime_port)
@@ -46,6 +48,12 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["runtime_discovery"] = True
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
+        from .scene_preview import source_key
+        try:
+            state["scene_preview_source_key"] = source_key(self.project)
+        except (RetailImportError, OSError):
+            state["scene_preview_source_key"] = None
+        state["capabilities"]["scene_preview"] = bool(state["scene_preview_source_key"])
         for asset in state["assets"]:
             asset["animation_support"] = animation_capabilities(asset)
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
@@ -63,13 +71,16 @@ class EditorServer(ThreadingHTTPServer):
         self.observer.close()
         super().server_close()
 
-    def model_preview(self, asset: dict, clip_id: str | None = None) -> dict:
+    def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None) -> dict:
         from importer.assets import load_model_preview
         from importer.animation import animation_capabilities, load_animation_preview
         from importer.textures import (associate_material, load_asset_texture_catalog,
                                        load_scene_texture_catalog, uses_field_party_textures)
         project = self.project
-        if clip_id is not None:
+        if prepared is not None:
+            from copy import deepcopy
+            preview = deepcopy(prepared)
+        elif clip_id is not None:
             animation = load_animation_preview(Path(project.disc_path), asset, clip_id)
             preview = animation.pop("geometry")
             preview["frames"] = animation.pop("frames")
@@ -163,7 +174,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 self._json(200, self.server.state())
                 return
         files = {"/": ("index.html", "text/html"), "/editor.js": ("editor.js", "text/javascript"),
-                 "/editor.css": ("editor.css", "text/css")}
+                 "/editor.css": ("editor.css", "text/css"),
+                 "/scene-renderer.js": ("scene-renderer.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})
             return
@@ -189,6 +201,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route == "/api/scene-preview":
+                    if body:
+                        raise ProjectError("Scene preview uses the active imported scene; client geometry and paths are not accepted")
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    self._json(200, self.server.scene_previews.preview(
+                        self.server.project, self.server.model_preview, load_scene_actor_animation_catalog))
+                    return
                 if route in ("/api/preview", "/api/animation-preview", "/api/export/model"):
                     project = self.server.project
                     if not project.disc_path:

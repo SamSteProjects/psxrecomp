@@ -450,7 +450,7 @@ class ProjectService:
                 "actor_templates": deepcopy(list(self.actor_templates.values())),
                 "assets": deepcopy(list(self.assets.records.values())), "selection": {"entity_id": self.selected},
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
-                "diagnostics": ["Scene viewport uses placement markers; decoded model objects can be inspected separately.",
+                "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
                                 "Build supports representable X/Z placements; authored height and facing cannot yet be serialized."],
                 "capabilities": {"edit_transform": True, "authored_transform_templates": True,
