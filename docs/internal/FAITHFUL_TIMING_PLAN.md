@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Trace generated arrival handler operations
+
+- Previous turn was progress: direct retail facing table. Located generated overlay function ov_001CE818_7717AFDB_7D82C23B_func_801DE840 in sibling generated/overlays_static_0000.c (read only). Named path copies length-prefixed destination; 801DEB20..7C extracts low7 X/Z, shifts7, adds64 and substitutes128 on high-bit branches, storing globals80073EF4/80073EF8. 801DEB8C..AC loads trailing direction, masks7, indexes signed-half table80073F04 and stores80073EFC.
+- Private evidence with generated-file SHA and bounded excerpt: `local-output/sdk-20260909/transition-handler-generated.json`. This agrees with pinned reference semantics and the independently observed retail table, but generated instruction words have not yet been matched to the retail overlay payload. No retail parity or live behavior claim added.
+- Next: match named-path instruction window to hashed retail overlay before promoting coordinate semantics. Full objective active; no runtime launched.
+
+
 ### 2026-09-10 — Verify retail arrival-facing table
 
 - Previous turn was progress: pinned reference interpretation. Independently read supported retail SCUS_942.54 through the hashed disc context, verified PS-X EXE header/load span, and resolved virtual80073F04 to file offset411396. Eight little-endian signed entries are0,512,1024,1536,2048,2560,3072,3584, exactly matching the pinned reference table.
