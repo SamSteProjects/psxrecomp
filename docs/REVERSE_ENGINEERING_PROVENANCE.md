@@ -11,6 +11,13 @@ Our previous independently implemented SDK source was recovered from
 Current implementation remains in this Recomp checkout. SDK-Clone,
 LegaiaRecomp and Andrew's checkout are references only.
 
+The texture/animation resource-browser adapters reuse these verified decoders
+without extending their format claims. Town01 discovery exposes 96 structural
+TIM identities and 14 scene ANM identities through 39 validated MAN bindings.
+Resource records contain source hashes/locators and counts, not pixel or frame
+payloads. TIM-local palettes are inspection choices; animation timing and
+unreferenced clip compatibility remain unknown.
+
 | Knowledge | Exact Andrew source | Interpretation and current limit |
 |---|---|---|
 | Mode2/ISO | `crates/iso/src/raw.rs`, `iso9660.rs` | Sector payload and ISO traversal; exact SCUS build hash gate |

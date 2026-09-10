@@ -67,6 +67,8 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
+        state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
+        state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
         state["build"] = self.last_build
         state["run"] = self.runs.status()
@@ -275,6 +277,20 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route == "/api/resource-catalog":
+                    if body:
+                        raise ProjectError("Resource discovery takes no client source bindings")
+                    from .resources import refresh_resource_catalog
+                    self._json(200, refresh_resource_catalog(self.server.project))
+                    return
+                if route == "/api/texture-preview":
+                    if (set(body) != {"asset_id", "palette_index"} or
+                            not isinstance(body.get("asset_id"), str) or not body["asset_id"] or
+                            type(body.get("palette_index")) is not int or body["palette_index"] < 0):
+                        raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
+                    from .resources import texture_preview
+                    self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"]))
+                    return
                 if route in ("/api/actor-appearance-options", "/api/actor-appearance-preview", "/api/export/actor-appearance"):
                     exporting = route == "/api/export/actor-appearance"
                     expected = {"entity_id", "frame_index"} if exporting else {"entity_id"}

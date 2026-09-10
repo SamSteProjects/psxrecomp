@@ -8,6 +8,7 @@ This is imported spawn-pose evidence, not current runtime script state.
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 from typing import Any
 
 from .animation import (MAX_POSED_VERTICES, _bounds, animation_record_ranges,
@@ -82,6 +83,30 @@ class SceneActorAnimationCatalog:
         return dict(supported=True, clips=[dict(id="placement", label=f"Imported animation {index + 1}",
                     record_index=index, frame_count=decoded["frame_count"], bone_count=decoded["bone_count"])],
                     reason=None, evidence="verified_man_header_initial_animation_not_runtime_script_state")
+
+    def referenced_animation_metadata(self) -> dict:
+        """Bounded imported MAN bindings, without geometry or decoded frames.
+
+        Resource incompatibilities stay explicit; an unreferenced ANM table
+        record is not advertised as a compatible actor animation.
+        """
+        if len(self._actors) > 512:
+            raise ImportError("animation catalog exceeds the 512 actor binding bound")
+        bindings, unavailable = [], []
+        for identifier, actor in sorted(self._actors.items()):
+            asset = self._assets.get(actor.get("model_reference", {}).get("asset_semantic_id"), {})
+            try:
+                index, decoded = self._binding(actor, asset)
+            except ImportError as exc:
+                unavailable.append({"actor_semantic_id": identifier, "reason": str(exc)})
+                continue
+            metadata = self._metadata(actor, asset, index, decoded)
+            start, end = self._ranges[index]
+            metadata["source_record"]["record_sha256"] = hashlib.sha256(self._body[start:end]).hexdigest()
+            bindings.append(metadata)
+        return {"scene": self.scene, "source_record": deepcopy(self._source),
+                "scene_anm_record_count": len(self._ranges), "actor_count": len(self._actors),
+                "bindings": bindings, "unavailable_bindings": unavailable}
 
     def _geometry(self, asset, decoded):
         identity = asset["semantic_id"]

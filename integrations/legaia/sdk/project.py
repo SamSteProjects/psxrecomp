@@ -57,6 +57,23 @@ class AssetDatabase:
 
     def __init__(self) -> None:
         self.records: dict[str, dict] = {}
+        self.resource_catalogs: dict[str, dict] = {}
+
+    def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str]) -> dict:
+        """Replace a verified derived catalog without mutating imported project facts."""
+        indexed = {}
+        for item in records:
+            identifier = item.get("semantic_id")
+            kind = item.get("asset_kind")
+            if not isinstance(identifier, str) or kind not in ("texture", "animation") or identifier in indexed:
+                raise ProjectError("Resource catalog has an invalid or duplicate identity")
+            record = deepcopy(item)
+            record.update(id=identifier, kind=kind, layer="derived", scene_id=scene_id)
+            indexed[identifier] = record
+        result = {"scene_id": scene_id, "source_key": source_key,
+                  "records": [indexed[key] for key in sorted(indexed)], "limitations": list(limitations)}
+        self.resource_catalogs[scene_id] = result
+        return deepcopy(result)
 
     def ingest(self, document: dict) -> None:
         disc = document["source"]["disc_identity"]

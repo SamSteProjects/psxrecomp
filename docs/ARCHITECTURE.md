@@ -108,6 +108,22 @@ same-disc actor. Unspecified axes and imported facts remain intact. Templates
 neither create native entities nor imply model/animation replacement support;
 Build applies the same representable-field checks as ordinary edits.
 
+`sdk/resources.py` exposes source-verified texture and animation discovery.
+The central AssetDatabase stores derived catalogs separately from its immutable
+model imports, keyed by scene and current source key. Refresh does not dirty or
+save project content. Opening another project creates a new database; the editor
+discards resource views when the source key changes. A failed refresh removes
+the preceding catalog rather than presenting it as freshly verified.
+
+Texture IDs resolve through the existing bounded scene TIM catalog. Pixel
+responses carry RGBA and separate STP bytes; project metadata contains neither.
+The texture inspector displays TIM-local palette choices without assuming
+runtime palette selection, atlas residency or blend behavior. Animation records
+aggregate verified MAN-to-ANM bindings and retain exact actor/model references.
+The browser requires an explicit actor association before previewing its clip.
+Unreferenced ANM records and shared-party texture uploads remain outside this
+scene-resource catalog's advertised scope.
+
 The data layers are imported (retail facts), derived (decoded previews and
 indexes), authored (project edits), live (epoch-scoped observations) and
 generated (private build output). Live observation never changes imported or

@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (central texture and animation resources):** Added explicit
+  source-verified resource discovery to the central asset database and browser.
+  Town01 exposes 96 TIM textures and 14 animations covering 39 evidenced actor
+  bindings. Texture inspection supports local palette selection; animation
+  inspection resolves an explicit imported actor before using the clip preview.
+  Catalog metadata never dirties imported/authored project state and contains
+  no pixels or frame payloads. Unknown timing, unsupported bindings, shared
+  texture banks and unreferenced ANM records remain explicit scope limits.
+  Runtime source and prior stability acceptance are unchanged.
+
 - **2026-09-09 (donor appearance authoring integration):** Connected verified
   same-scene model/animation pairs to project commands, Undo/Redo, Save/Open,
   the scene viewport, authored frame preview/export and bounded mod builds.

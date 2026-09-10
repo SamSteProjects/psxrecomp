@@ -73,6 +73,7 @@ function setBusy(value) {
   renderRunStatus();
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
+  if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -209,16 +210,43 @@ function renderHierarchy(){
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
-assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option></select><span id="asset-results" role="status"></span>';
+assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
 $('assets').before(assetTools);
 const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Models and actors come from the active imported scene; Scenes lists imported scenes. Textures are inspected with models. Scripts, dialogue, audio and standalone texture catalogs are not available here.</p>';$('assets').after(assetScope);
 const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);
 $('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
+let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
+const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key]);
+$('resource-refresh').onclick=refreshResources;
+function synchronizeResources(){
+  const current=resourceStateKey();
+  if(resourceContextKey!==current){
+    resourceContextKey=current;
+    resourceAbort?.abort();resourceRecords=[];resourceLimitations=[];resourceKey=null;resourcePendingKey=null;resourceError=null;
+    if(textureDialog.open)textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();
+  }
+  $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
+  $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load texture and animation metadata.');
+}
+async function refreshResources(){
+  if(busy||!state.capabilities?.resource_catalog)return;
+  const key=resourceStateKey(),sceneId=state.scene?.id,sourceKey=state.scene_preview_source_key,controller=new AbortController();
+  resourceAbort?.abort();resourceAbort=controller;resourcePendingKey=key;resourceError=null;resourceRecords=[];resourceLimitations=[];resourceKey=null;setBusy(true);renderAssets();
+  try{
+    const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
+    if(controller.signal.aborted||key!==resourceStateKey())return;
+    if(result.scene_id!==sceneId||result.source_key!==sourceKey||!Array.isArray(result.records)||result.records.length>4096||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
+    resourceLimitations=result.limitations ?? [];resourceRecords=[...new Map(result.records.map(record=>[record.semantic_id,{...record,catalog_limitations:result.limitations}])).values()];resourceKey=key;resourcePendingKey=null;renderAssets();
+  }catch(error){if(error.name!=='AbortError'&&key===resourceStateKey()){resourceError=error.message;notify(error.message,true);}}
+  finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
+}
 function assetRecords(){
   return [
     ...(state.assets ?? []).map(asset=>({id:asset.id,type:asset.kind ?? 'model',label:asset.name ?? asset.label ?? `Model ${asset.id.split('/').at(-1)}`,source:asset.source_record?.prot_entry_name ?? asset.scope ?? 'Imported',data:asset})),
     ...entities().map(actor=>({id:actor.id,type:'actor',label:actor.name ?? actor.id,source:state.scene?.name ?? state.scene?.id,data:actor})),
-    ...(state.scenes ?? []).map(scene=>({id:scene.id,type:'scene',label:scene.name ?? scene.id,source:scene.name ?? scene.id,data:scene}))
+    ...(state.scenes ?? []).map(scene=>({id:scene.id,type:'scene',label:scene.name ?? scene.id,source:scene.name ?? scene.id,data:scene})),
+    ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.source_record?.prot_entry_name ?? state.scene?.name,data:record}))
   ];
 }
 function showAssetDetails(record){
@@ -226,17 +254,61 @@ function showAssetDetails(record){
   assetDetails.querySelector('pre').textContent=JSON.stringify(record.data,null,2);$('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();
 }
 function renderAssets(){
+  synchronizeResources();
   const list=$('assets'),query=$('asset-search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('asset-category').value;
-  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Textures are inspected with models. ${state.capabilities?.actor_script_preview?'Read-only script and dialogue inspection is available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio and standalone texture catalogs are not available here.`;
+  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Refresh adds scene texture candidates and referenced scene-header animations; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Read-only script and dialogue inspection is available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
   const records=assetRecords(),filtered=records.filter(record=>(category==='all'||record.type===category)&&query.every(term=>JSON.stringify(record).toLowerCase().includes(term)));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=`${filtered.length} / ${records.length} records`;
   for(const record of filtered){
     const row=document.createElement('div');row.className='asset-result';
     const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.source)}</small><code>${escapeHTML(record.id)}</code>`;
-    card.onclick=async()=>{if(record.type==='actor'){if(await api('/api/selection',{entity_id:record.id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}}else if(record.type==='scene'){if(await api('/api/scene',{scene_id:record.id}))document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}else if(record.type==='model')openModel(record.id);else showAssetDetails(record);};
+    card.onclick=async()=>{if(record.type==='actor'){if(await api('/api/selection',{entity_id:record.id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}}else if(record.type==='scene'){if(await api('/api/scene',{scene_id:record.id}))document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}else if(record.type==='model')openModel(record.id);else if(record.type==='texture')openTexture(record);else if(record.type==='animation')openAnimationResource(record);else showAssetDetails(record);};
     const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
   }
-  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
+  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=['texture','animation'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Texture and animation catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
+}
+const textureDialog=document.createElement('dialog');textureDialog.id='texture-dialog';document.body.append(textureDialog);
+let textureRequest=0,textureAbort=null;
+textureDialog.addEventListener('close',()=>{textureRequest++;textureAbort?.abort();});
+async function openTexture(record,paletteIndex=0){
+  if(busy)return;if(!state.capabilities?.texture_preview){notify('Texture decoding is unavailable in this service.',true);return;}
+  const key=resourceStateKey();if(resourceKey!==key)return;
+  setBusy(true);const request=++textureRequest,controller=new AbortController();textureAbort?.abort();textureAbort=controller;
+  if(!textureDialog.open){
+    textureDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-texture" aria-label="Close texture preview">×</button></div><p id="texture-summary">Verifying texture source…</p><div class="texture-bitmap-wrap"><canvas id="texture-bitmap" aria-label="Decoded texture pixels"></canvas></div><label id="texture-palette-label" hidden>Palette<select id="texture-palette" aria-label="Texture palette"></select></label><p class="field-note">Decoded source pixels. Palette selection is an inspection setting, not an authored edit. Static texture candidates do not establish runtime VRAM residency. PSX semi-transparent blending is not reconstructed.</p><details class="resource-provenance"><summary>Texture source and limitations</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;
+    $('close-texture').onclick=()=>textureDialog.close();textureDialog.showModal();
+  }
+  textureDialog.querySelector('.dialog-error').textContent='';$('texture-palette').disabled=true;$('texture-bitmap').width=1;$('texture-bitmap').height=1;$('texture-summary').textContent=`Verifying texture palette ${paletteIndex}…`;textureDialog.querySelector('pre').textContent='';
+  try{
+    const response=await fetch('/api/texture-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id,palette_index:paletteIndex}),signal:controller.signal});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Texture decoding failed');
+    if(request!==textureRequest||!textureDialog.open||key!==resourceStateKey())return;
+    if(result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.palette_index!==paletteIndex||!Number.isInteger(result.width)||!Number.isInteger(result.height)||result.width<1||result.height<1||result.width*result.height>4194304||!Number.isInteger(result.palette_count)||result.palette_count<0||result.palette_count>4096||typeof result.rgba_base64!=='string'||result.rgba_base64.length>22369624)throw new Error('Texture service returned invalid or oversized pixels.');
+    const bytes=Uint8ClampedArray.from(atob(result.rgba_base64),value=>value.charCodeAt(0));if(bytes.length!==result.width*result.height*4)throw new Error('Decoded texture dimensions do not match the pixel data.');
+    const bitmap=$('texture-bitmap');bitmap.width=result.width;bitmap.height=result.height;bitmap.getContext('2d').putImageData(new ImageData(bytes,result.width,result.height),0,0);
+    $('texture-summary').textContent=`${result.width} × ${result.height} pixels · ${result.bpp} bpp${result.palette_count>0?' · '+result.palette_count+' palettes':''}`;
+    $('texture-palette-label').hidden=result.palette_count<=1;$('texture-palette').replaceChildren();
+    for(let index=0;index<result.palette_count;index++){const option=document.createElement('option');option.value=index;option.textContent=`Palette ${index}`;$('texture-palette').append(option);}
+    $('texture-palette').value=paletteIndex;$('texture-palette').onchange=()=>openTexture(record,Number($('texture-palette').value));
+    const {rgba_base64,stp_base64,...provenance}=result;textureDialog.querySelector('pre').textContent=JSON.stringify({...provenance,stp_flags_present:typeof stp_base64==='string',catalog_record:record.data},null,2);
+  }catch(error){if(error.name!=='AbortError'&&textureDialog.open){textureDialog.querySelector('.dialog-error').textContent=error.message;}}
+  finally{if(textureAbort===controller)textureAbort=null;if(textureDialog.open)$('texture-palette').disabled=false;setBusy(false);}
+}
+const animationResourceDialog=document.createElement('dialog');animationResourceDialog.id='animation-resource-dialog';document.body.append(animationResourceDialog);
+function openAnimationResource(record){
+  if(busy||resourceKey!==resourceStateKey())return;
+  const data=record.data,actorIds=new Set(data.actor_semantic_ids ?? []),assetIds=new Set(data.asset_semantic_ids ?? []);
+  const candidates=entities().filter(entity=>actorIds.has(entity.id)&&assetIds.has(entity.components?.ModelRenderer?.asset_id));
+  animationResourceDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-animation-resource" aria-label="Close animation resource">×</button></div>${property('Stable ID',record.id)}${property('Frames',data.frame_count)}${property('Rigid channels',data.bone_count)}<p>Retail playback timing is unresolved. Preview requires an explicit actor association from the imported scene.</p>${candidates.length?'<label>Imported actor association<select id="resource-animation-actor" aria-label="Animation actor"><option value="">Choose an imported actor…</option></select></label><div class="dialog-actions"><button id="select-resource-actor" disabled>Select actor</button><button id="preview-resource-animation" class="accent" disabled>Preview animation</button></div>':'<p class="field-note">No compatible imported actor association is available in the active scene. The record remains available for source inspection.</p>'}<details class="resource-provenance"><summary>Animation bindings, source and limits</summary><pre class="diagnostic-detail"></pre></details>`;
+  $('close-animation-resource').onclick=()=>animationResourceDialog.close();animationResourceDialog.querySelector('pre').textContent=JSON.stringify(data,null,2);
+  if(candidates.length){
+    for(const entity of candidates){const option=document.createElement('option');option.value=entity.id;option.textContent=`${entity.name} · ${entity.components.ModelRenderer.asset_id.split('/').at(-1)}`;$('resource-animation-actor').append(option);}
+    const choice=()=>candidates.find(entity=>entity.id===$('resource-animation-actor').value);
+    $('resource-animation-actor').onchange=()=>{const missing=!choice();$('select-resource-actor').disabled=missing;$('preview-resource-animation').disabled=missing;};
+    $('select-resource-actor').onclick=async()=>{const entity=choice();if(entity&&await api('/api/selection',{entity_id:entity.id})){animationResourceDialog.close();frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}};
+    $('preview-resource-animation').onclick=()=>{const entity=choice();if(entity){animationResourceDialog.close();openModel(entity.components.ModelRenderer.asset_id,'scene-header',entity.id);}};
+  }
+  animationResourceDialog.showModal();
 }
 function property(label,value){return `<dl class="property"><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value ?? 'Unknown')}</dd></dl>`;}
 function showTemplates(){renderTemplates();templateDialog.showModal();}
