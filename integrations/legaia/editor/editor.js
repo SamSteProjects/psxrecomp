@@ -774,6 +774,16 @@ function renderTemplates(){
   }
   if(!templates.length)$('template-list').innerHTML='<p class="field-note">No authored transform templates yet.</p>';
 }
+function runtimeCandidateSummary(correlation,entityId){
+  const candidates=correlation.candidates??[];
+  if(!candidates.length)return `<p class="field-note">${escapeHTML(correlation.reason??'No accepted candidate observation.')}</p>`;
+  return candidates.map(candidate=>{
+    const layers=(candidate.appearance_layers??[]).map(layer=>({imported:'Imported',effective:'Effective'})[layer]).filter(Boolean);
+    const donor=candidate.effective_donor_id;
+    const position=candidate.observed_position??{};
+    return `<div class="appearance-layer"><h4>Unconfirmed runtime candidate</h4>${property('Captured node',candidate.runtime_node_id)}${property('Appearance match',layers.join(' + ')||'Not classified')}${donor&&donor!==entityId?property('Effective donor',donor):''}${property('Capture frame',candidate.frame)}${property('Captured world position',`X ${format(position.x)} · Y ${format(position.y)} · Z ${format(position.z)}`)}<p class="field-note">Captured evidence only. Structural compatibility does not establish actor identity.</p></div>`;
+  }).join('');
+}
 function renderInspector(){
   const entity=selected();
   $('selection-summary').textContent=entity?entity.name ?? entity.id:'No entity selected';
@@ -786,7 +796,7 @@ function renderInspector(){
   if(state.capabilities?.authored_transform_templates)html+='<section class="component"><h3>Authored templates <small>Position only</small></h3><p class="field-note">Capture authored axes or apply saved positions to this existing actor.</p><button id="inspect-templates">Open transform templates…</button></section>';
   if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${property('Asset',model.asset_id)}${property('Resolution',model.resolution_status)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${model.asset_id?'<button id="inspect-model" class="model-preview-button">Inspect model objects</button>':''}</section>`;}
   if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">${components.Animation.preview_support?.supported?'Imported association is eligible for decoding. Preview verifies the source; retail playback timing and live animation remain unknown.':escapeHTML(components.Animation.preview_support?.reason ?? 'No supported imported animation association is available for this actor.')}</p></section>`;
-  if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>Runtime observation <small>Read only · sampled</small></h3>${property('Correlation',correlation.status ?? correlation.state ?? 'Unresolved')}<p class="field-note">Candidate associations preserve ambiguity. They do not replace imported or authored values.</p><details><summary>Epoch, candidates and evidence</summary><pre>${escapeHTML(JSON.stringify(correlation,null,2))}</pre></details></section>`;}
+  if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>Runtime observation <small>Read only · sampled</small></h3>${property('Correlation',correlation.status ?? correlation.state ?? 'Unresolved')}<p class="field-note">Candidate associations preserve ambiguity. They do not replace imported or authored values.</p>${runtimeCandidateSummary(correlation,entity.id)}<details><summary>Epoch, candidates and evidence</summary><pre>${escapeHTML(JSON.stringify(correlation,null,2))}</pre></details></section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
   if(state.capabilities?.actor_script_preview)html+=`<section class="component"><h3>Script and dialogue <small>${state.capabilities?.actor_dialogue_authoring?'Supported text edits':'Read only'}</small></h3><p class="field-note">Inspect decoded dialogue and supported instruction paths. ${state.capabilities?.actor_dialogue_authoring?'Eligible plain-text runs can be authored within their original byte capacity.':'Unknown instructions stop decoding.'}</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>`;
   $('inspector').innerHTML=html;

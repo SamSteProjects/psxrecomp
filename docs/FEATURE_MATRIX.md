@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+2026-09-10 correlation inspector: unconfirmed candidate cards show the matching
+imported/effective appearance layer, donor when applicable, capture frame and
+captured world position. Retained-capture browser verification displayed the
+effective actor0049 candidate and removed it after clearing the appearance
+override, requesting a new capture. This was not a fresh runtime observation.
+
 2026-09-10 appearance gameplay acceptance: a cold appearance-only run replaced
 town01 actor0049's child model103/animation15 with donor0015 model94/animation18.
 The axe-carrying character appeared at the Genesis Tree, retained the original

@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (correlation inspector integration):** Prior authored correlation
+  fix was progress. Added readable unconfirmed candidate summaries with matched
+  appearance layers, optional donor, capture frame and world position; raw
+  evidence remains available. Isolated browser service replayed the retained
+  appearance capture, explicitly historical: actor0049 showed Effective,
+  donor0015, frame36175, position4288/-128/11712. Clearing the appearance override
+  through the browser removed the candidate after the response completed and
+  displayed the capture-again reason; service state confirmed no authored assets
+  and unavailable correlation. Browser errors empty, JS syntax/diff checks pass,
+  owned session9079 exited0. Private project/final state under
+  `local-output/sdk-20260909/appearance-correlation-browser`. No game was launched
+  or new capture claimed. Fresh live integration and full SDK goal remain open.
+
 - **2026-09-10 (authored appearance correlation fix):** Previous cold appearance
   gameplay was progress and exposed imported-only matching. Correlation now
   evaluates imported/effective appearance variants without changing imported
