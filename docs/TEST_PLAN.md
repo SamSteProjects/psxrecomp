@@ -176,3 +176,10 @@ imported/effective pixels, Clear, Undo, Redo and Save. HTTP checks verified six
 invalid requests leave state unchanged, original download byte identity, model
 pixel propagation with unchanged geometry, and offline reopen. The native file
 picker and in-game texture display/revert were not exercised.
+
+Authored asset browser acceptance (2026-09-10) covers project-wide discovery
+from an inactive scene, snapshot isolation, save/reopen and history removal/
+restoration. Browser checks use town0c to open town01 actor and texture edits,
+open a position template, refresh resources without duplicate rows, and inspect
+authored metadata separately from source provenance. Eight focused project
+tests passed; no runtime launch or new serializer behavior is claimed.

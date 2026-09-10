@@ -688,6 +688,40 @@ class ProjectService:
         result.saved_digest = digest(result._document())
         return result
 
+    def authored_assets(self) -> list[dict]:
+        """Project-wide authored references, independent of derived resource caches."""
+        records = []
+        for scene_id, document in sorted(self.imports.items()):
+            for actor in document["actors"]:
+                identifier = actor["semantic_id"]
+                edits = self.overrides.get(identifier, {})
+                if not edits:
+                    continue
+                changes = []
+                position = edits.get("Transform", {}).get("position", {})
+                if position:
+                    changes.append("Position: " + ", ".join(axis.upper() for axis in sorted(position)))
+                if edits.get("ActorAppearance"):
+                    changes.append("Initial appearance")
+                runs = edits.get("Dialogue", {}).get("runs", {})
+                if runs:
+                    changes.append(f"Dialogue: {len(runs)} text runs")
+                records.append({"id": identifier, "kind": "actor", "name": "Actor " + identifier.rsplit("/", 1)[-1],
+                                "scene_id": scene_id, "source_scene": document["scene"]["name"],
+                                "changes": changes, "authored": deepcopy(edits),
+                                "source_record": deepcopy(actor.get("source_record"))})
+        for identifier, binding in sorted(self.texture_overrides.items()):
+            scene_id = binding["source_scene_id"]
+            records.append({"id": identifier, "kind": "texture", "name": "TIM " + identifier.split("/", 3)[-1].replace("/", " / "),
+                            "scene_id": scene_id, "source_scene": self.imports[scene_id]["scene"]["name"],
+                            "changes": ["TIM replacement"], "authored": deepcopy(binding)})
+        for identifier, template in sorted(self.actor_templates.items()):
+            scene_id = template["source"]["scene_id"]
+            records.append({"id": identifier, "kind": "template", "name": template["name"],
+                            "scene_id": scene_id, "source_scene": self.imports.get(scene_id, {}).get("scene", {}).get("name", scene_id),
+                            "changes": ["Position template"], "authored": deepcopy(template)})
+        return records
+
     def state(self) -> dict:
         document = self.imports.get(self.active_scene)
         correlation = self._current_correlation()
@@ -723,6 +757,7 @@ class ProjectService:
                 "actor_templates": deepcopy(list(self.actor_templates.values())),
                 "assets": deepcopy(list(self.assets.records.values())), "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),
+                "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",

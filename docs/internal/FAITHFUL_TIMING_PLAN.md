@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (authored asset browser):** Connected project-wide actor edits,
+  TIM replacements and position templates to a dedicated browser category.
+  Authored references remain separate from immutable imports and derived
+  catalogs; navigation uses source scene and stable identity. Eight project tests
+  and cross-scene browser routing, template, deduplication and provenance checks
+  passed. Runtime unchanged.
+
 - **2026-09-10 (authored TIM replacements):** Implemented content-addressed
   authored TIM references, project history/persistence, separate imported and
   effective preview layers, and carrier-preserving build integration. Headers,

@@ -212,7 +212,7 @@ function renderHierarchy(){
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
-assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
+assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
 $('assets').before(assetTools);
 const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Models and actors come from the active imported scene; Scenes lists imported scenes. Textures are inspected with models. Scripts, dialogue, audio and standalone texture catalogs are not available here.</p>';$('assets').after(assetScope);
 const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);
@@ -244,30 +244,57 @@ async function refreshResources(){
   finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
 }
 function assetRecords(){
-  return [
+  const records=new Map([
     ...(state.assets ?? []).map(asset=>({id:asset.id,type:asset.kind ?? 'model',label:asset.name ?? asset.label ?? `Model ${asset.id.split('/').at(-1)}`,source:asset.source_record?.prot_entry_name ?? asset.scope ?? 'Imported',data:asset})),
-    ...entities().map(actor=>({id:actor.id,type:'actor',label:actor.name ?? actor.id,source:state.scene?.name ?? state.scene?.id,data:actor})),
+    ...entities().map(actor=>({id:actor.id,type:'actor',label:actor.name ?? actor.id,source:state.scene?.name ?? state.scene?.id,sceneId:state.scene?.id,data:actor})),
     ...(state.scenes ?? []).map(scene=>({id:scene.id,type:'scene',label:scene.name ?? scene.id,source:scene.name ?? scene.id,data:scene})),
-    ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.source_record?.prot_entry_name ?? state.scene?.name,data:record}))
-  ];
+    ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.source_record?.prot_entry_name ?? state.scene?.name,sceneId:state.scene?.id,data:record}))
+  ].map(record=>[record.id,record]));
+  for(const authored of state.authored_assets ?? []){
+    if(typeof authored.id!=='string'||!['actor','texture','template'].includes(authored.kind))continue;
+    const existing=records.get(authored.id);
+    records.set(authored.id,{...(existing ?? {id:authored.id,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
+  }
+  return [...records.values()];
 }
 function showAssetDetails(record){
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.source)}<details open><summary>SDK source and provenance</summary><pre class="diagnostic-detail"></pre></details>`;
-  assetDetails.querySelector('pre').textContent=JSON.stringify(record.data,null,2);$('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();
+  const isAuthored=!!record.authoredRecord;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
+  $('asset-source-data').textContent=JSON.stringify(source,null,2);
+  if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
+  $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();
+}
+async function activateAsset(record){
+  if(busy)return;
+  if(record.type==='template'){showTemplates();return;}
+  if(record.authoredRecord&&['actor','texture'].includes(record.type)&&record.sceneId!==state.scene?.id){
+    if(!record.sceneId){notify('This authored item does not identify an imported source scene.',true);return;}
+    if(!await api('/api/scene',{scene_id:record.sceneId}))return;
+  }
+  if(record.type==='actor'){
+    if(await api('/api/selection',{entity_id:record.id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}
+  }else if(record.type==='scene'){
+    if(await api('/api/scene',{scene_id:record.id}))document.querySelector('.workspace-tabs [data-panel="viewport"]').click();
+  }else if(record.type==='model')openModel(record.id);
+  else if(record.type==='texture')openTexture(record);
+  else if(record.type==='animation')openAnimationResource(record);
+  else if(['script','dialogue'].includes(record.type))openScriptResource(record);
+  else showAssetDetails(record);
 }
 function renderAssets(){
   synchronizeResources();
   const list=$('assets'),query=$('asset-search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('asset-category').value;
-  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Refresh adds scene texture candidates, referenced scene-header animations, actor scripts and dialogue metadata; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
-  const records=assetRecords(),filtered=records.filter(record=>(category==='all'||record.type===category)&&query.every(term=>JSON.stringify(record).toLowerCase().includes(term)));
+  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Authored assets gathers project-wide actor edits, texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor scripts and dialogue metadata; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  const records=assetRecords(),filtered=records.filter(record=>(category==='all'||(category==='authored'?!!record.authoredRecord:record.type===category&&(category!=='actor'||record.sceneId===state.scene?.id)))&&query.every(term=>JSON.stringify(record).toLowerCase().includes(term)));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=`${filtered.length} / ${records.length} records`;
   for(const record of filtered){
     const row=document.createElement('div');row.className='asset-result';
-    const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.source)}</small><code>${escapeHTML(record.id)}</code>`;
-    card.onclick=async()=>{if(record.type==='actor'){if(await api('/api/selection',{entity_id:record.id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}}else if(record.type==='scene'){if(await api('/api/scene',{scene_id:record.id}))document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}else if(record.type==='model')openModel(record.id);else if(record.type==='texture')openTexture(record);else if(record.type==='animation')openAnimationResource(record);else if(['script','dialogue'].includes(record.type))openScriptResource(record);else showAssetDetails(record);};
+    const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
+    card.onclick=()=>activateAsset(record);
     const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.onclick=()=>['script','dialogue'].includes(record.type)?openScriptResource(record):showAssetDetails(record);row.append(card,info);list.append(row);
   }
-  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=['texture','animation','script','dialogue'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
+  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
 }
 const textureDialog=document.createElement('dialog');textureDialog.id='texture-dialog';document.body.append(textureDialog);
 let textureRequest=0,textureAbort=null,textureSession=null,texturePreview=null,textureCommandPending=false;
@@ -292,7 +319,8 @@ function updateTextureActions(){
 async function openTexture(record,paletteIndex=0,layer='effective'){
   if(busy)return;if(!state.capabilities?.texture_preview){notify('Texture decoding is unavailable in this service.',true);return;}
   const key=resourceStateKey(),continuing=textureDialog.open&&textureSession?.record.id===record.id&&textureSession.projectKey===textureProjectKey();
-  if(!continuing&&resourceKey!==key)return;
+  const authoredBinding=state.texture_overrides?.[record.id],trustedAuthored=!!authoredBinding&&typeof state.scene?.id==='string'&&authoredBinding.source_scene_id===state.scene.id;
+  if(!continuing&&resourceKey!==key&&!trustedAuthored){notify('Refresh scene resources or open a current authored texture binding to inspect this texture.',true);return;}
   if(!continuing){
     textureSession={record,projectKey:textureProjectKey(),paletteIndex,layer};texturePreview=null;
     textureDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-texture" aria-label="Close texture preview">×</button></div><div id="texture-history" class="texture-history" hidden><button id="texture-undo">Undo</button><button id="texture-redo">Redo</button><button id="texture-save">Save project</button><span id="texture-project-status"></span></div><div class="texture-view-controls"><label id="texture-layer-label" hidden>Preview layer<select id="texture-layer" aria-label="Texture preview layer"><option value="effective">Effective</option><option value="imported">Imported</option></select></label><label id="texture-palette-label" hidden>Palette<select id="texture-palette" aria-label="Texture palette"></select></label></div><p id="texture-summary">Verifying texture source…</p><div class="texture-bitmap-wrap"><canvas id="texture-bitmap" aria-label="Decoded texture pixels"></canvas></div><section id="texture-authoring" hidden><h3>Authored replacement</h3><p id="texture-authored"></p><button id="texture-source">Download original TIM</button><label>Replacement TIM file<input id="texture-file" type="file" accept=".tim" aria-label="Replacement TIM file"></label><p id="texture-file-status" class="field-note">Choose a TIM file up to 1 MiB. The service requires matching headers, dimensions, bit depth and palette layout.</p><div class="run-actions"><button id="texture-apply" class="accent" disabled>Apply replacement</button><button id="texture-discard" hidden>Discard selected file</button><button id="texture-clear" disabled>Clear override</button></div></section><p class="field-note">Palette and layer selection only affect inspection. Static texture candidates do not establish runtime VRAM residency. PSX semi-transparent blending is not reconstructed.</p><details class="resource-provenance"><summary>Texture source and limitations</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;

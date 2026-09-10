@@ -358,3 +358,11 @@ geometry. Model and scene previews use effective scene TIMs, with separate party
 banks. Builds batch member replacements by source carrier, preserve headers and
 opaque bytes, and reject compressed growth beyond the original allocation.
 See `legaia-sdk/texture-authoring.md` for the exact writable boundary.
+
+ProjectService exposes a project-wide authored asset projection keyed by existing
+actor, texture and template IDs. It derives rows from authored state without
+registering them as imported facts or decoding retail resources. The browser
+merges by stable identity, labels authored settings separately from source
+provenance, and switches through SceneService before selecting an inactive
+scene actor or opening its texture. Replacement previews still verify source
+identity even when launched without a derived catalog refresh.
