@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Reproduce constrained movement below the steps
+
+- Previous turn was progress:97 title restores. Revalidated preserved96 arrival-live process identity through controller guard, captured visible field-resume.png at player3264/128/3440. Down90frames reached3152/32/3182 with no visible player; Right180frames reached3282/96/3246 and remained invisible in east-clearance.png. Images inspected; surrounding NPC/camera rendering remains present. These displacements are constrained, not unrestricted travel farther across the village.
+- Saved fresh slot08 without loading: generation4/pending0/last_ok1. Existing09/10/11 remain available. Evidence and guarded command responses remain in arrival-live/acceptance.json. Current player stays at3282/96/3246; no further input this turn.
+- Floor sampler sets actor flag00800000 according to object-cell1000/0800 state; next investigation should connect these flags/collision restrictions to actor rendering rather than infer a generic GPU ordering defect. Exact flag meaning remains unproven. Edited named transition has not been reached; full objective active.
+
 ### 2026-09-10 — Repeated title restore on diagnostic rebuild
 
 - Previous turn was progress: separated startup drops from settled-title counters. Fresh isolated97f0f026... SDK run, port4399/PID33520, saved title slot11 and completed three acknowledged loads. Five-second windows advanced303/301/301frames; final screenshot retains intact title/logo/menu. Runtime exited0. Private evidence `local-output/sdk-20260909/dma-title-restore/acceptance.json`, before.png and after.png.
