@@ -660,3 +660,16 @@ cleanup and confined batch source edits. The initial direct Python run skipped
 the compiler case; only the subsequent compiler-enabled run supplies that
 acceptance. Existing test-only unclosed-file ResourceWarnings remain recorded.
 No new production fix or retail run was required.
+
+
+## Rebuilt binary repeated-title restore (2026-09-10)
+
+A fresh private zero-overlay launch verified binary96eaf949... and completed
+three slot11 restores, each acknowledged by a new completed status generation
+and last_ok1. Five-second post-load windows advanced300/303/302 frames. All
+samples retained active host output, underruns0 and startup overflow71739 with
+no added drops. The inspected final screenshot shows the complete title menu;
+the owned process stopped with exit0. Private rebuilt-title-restore contains
+protocol evidence and screenshots. This supplies bounded repeated-title restore
+acceptance for the rebuilt binary; field/cross-scene ownership, restored input
+and audible quality remain unaccepted on this executable.

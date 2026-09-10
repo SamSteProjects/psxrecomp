@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (rebuilt-binary restore check):** Previous path search was
+  progress. Exact96eaf949... private baseline completed three title restores;
+  five-second windows advanced300/303/302 frames. Host active, underruns0,
+  cumulative overflow71739 unchanged. Final screenshot full title menu; owned
+  runtime exit0. Private protocol evidence retained. Field/cross-scene/input
+  restore acceptance remains separate; full SDK goal active.
+
+
 - **2026-09-10 (decoded-path search):** Previous precompile consumer audit was
   progress. Added local bounded-query search to shared script paths, retaining
   all graph rows and Back history. Browser4395/tab47 found seven actor0001
