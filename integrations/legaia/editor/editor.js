@@ -170,6 +170,7 @@ function setBusy(value) {
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
   if($('scene-transitions'))$('scene-transitions').disabled=value || !state.capabilities?.scene_transitions;
+  if($('scene-flags'))$('scene-flags').disabled=value || !state.capabilities?.scene_flags;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
   updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
@@ -354,16 +355,50 @@ async function openSceneTransitions(){
   }catch(error){if(error.name!=='AbortError'&&transitionsDialog.open){$('transitions-graph').replaceChildren();transitionsDialog.querySelector('.dialog-error').textContent=error.message;}}
   finally{if(transitionsAbort===controller){transitionsAbort=null;setBusy(false);}}
 }
+const flagsButton=document.createElement('button');flagsButton.id='scene-flags';flagsButton.textContent='Flag references';transitionsButton.after(flagsButton);
+const flagsDialog=document.createElement('dialog');flagsDialog.id='scene-flags-dialog';document.body.append(flagsDialog);
+let flagsAbort=null;
+flagsDialog.addEventListener('close',()=>{if(flagsAbort){flagsAbort.abort();flagsAbort=null;setBusy(false);}flagsDialog.replaceChildren();});
+flagsButton.onclick=async()=>{
+  if(busy||!state.capabilities?.scene_flags)return;
+  const key=resourceStateKey(),controller=new AbortController();flagsAbort=controller;setBusy(true);
+  flagsDialog.innerHTML='<div class="dialog-heading"><h2>Flag references</h2><button aria-label="Close flag references">×</button></div><p class="flags-summary">Verifying scene scripts…</p><input type="search" aria-label="Search flag references" placeholder="Search bank, index, script or operation"><div class="flags-results"></div><p class="dialog-error" role="alert"></p>';
+  flagsDialog.querySelector('button').onclick=()=>flagsDialog.close();flagsDialog.showModal();
+  try{
+    const response=await fetch('/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(result.error??'Flag discovery failed');
+    if(controller.signal.aborted||!flagsDialog.open)return;
+    if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>16384)throw new Error('Flag references do not match the current scene source.');
+    const summary=flagsDialog.querySelector('.flags-summary'),list=flagsDialog.querySelector('.flags-results'),search=flagsDialog.querySelector('input');
+    const render=()=>{
+      const query=search.value.trim().toLowerCase(),groups=result.groups.filter(group=>[group.id,group.script_name,group.bank,String(group.index),...group.references.map(ref=>ref.operation)].join(' ').toLowerCase().includes(query));
+      summary.textContent=`${result.reference_count} encoded references · ${result.groups.length} source-qualified groups · ${result.coverage.script_count} scripts (${result.coverage.partial_script_count} partial, ${result.coverage.unavailable_script_count} unavailable). Showing ${Math.min(groups.length,100)} of ${groups.length} matches; narrow the search for more. Runtime values are unresolved.`;
+      list.replaceChildren();
+      for(const group of groups.slice(0,100)){
+        const row=document.createElement('section');row.className='resource-provenance';
+        row.innerHTML=`<h3>${escapeHTML(group.bank)} ${escapeHTML(group.index)} · ${escapeHTML(group.script_name)}</h3><p>${escapeHTML(group.scope)} · ${escapeHTML(resourceLabel(group.script_status))} · ${group.extended_target===null?'Current script context':`Unresolved extended target ${escapeHTML(group.extended_target)}`}</p><p>${group.references.map(ref=>`${escapeHTML(scriptOffset(ref.pc))}: ${escapeHTML(ref.mnemonic)} (${escapeHTML(resourceLabel(ref.status))})`).join(' · ')}</p><button>Inspect source script</button><details><summary>Source provenance and encoded operands</summary><pre></pre></details>`;
+        row.querySelector('pre').textContent=JSON.stringify(group,null,2);
+        row.querySelector('button').onclick=()=>{if(busy||key!==resourceStateKey())return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner);};
+        list.append(row);
+      }
+      for(const note of result.limitations??[]){const p=document.createElement('p');p.className='field-note';p.textContent=note;list.append(p);}
+    };
+    search.oninput=render;render();
+  }catch(error){if(error.name!=='AbortError'&&flagsDialog.open)flagsDialog.querySelector('.dialog-error').textContent=error.message;}
+  finally{if(flagsAbort===controller){flagsAbort=null;setBusy(false);}}
+};
 function synchronizeResources(){
   const current=resourceStateKey();
   if(resourceContextKey!==current){
     if(transitionsDialog.open)transitionsDialog.close();
+    if(flagsDialog.open)flagsDialog.close();
     resourceContextKey=current;clearFieldMap();clearTriggerScript();if(fieldDialog.open)fieldDialog.close();
     resourceAbort?.abort();resourceRecords=[];resourceLimitations=[];resourceKey=null;resourcePendingKey=null;resourceError=null;
     if(textureDialog.open&&!(textureCommandPending&&textureSession?.projectKey===textureProjectKey()))textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();if(scriptResourceDialog.open)scriptResourceDialog.close();
   }
   updateFieldToggle();
   transitionsButton.hidden=!state.capabilities?.scene_transitions;transitionsButton.disabled=busy||!state.capabilities?.scene_transitions;
+  flagsButton.hidden=!state.capabilities?.scene_flags;flagsButton.disabled=busy||!state.capabilities?.scene_flags;
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
   $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue and field-map metadata.');
 }

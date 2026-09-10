@@ -33,6 +33,16 @@ class P2DialogueHTTP(unittest.TestCase):
                 with urlopen(request, timeout=30) as response:
                     return json.load(response)
             try:
+                flags = post("/api/scene-flags", {})
+                self.assertEqual(flags["reference_count"], 1123)
+                self.assertEqual(flags["coverage"]["script_count"], 91)
+                self.assertEqual(flags["scene_id"], "scene://town01")
+                self.assertTrue(all(group["runtime_binding"] == "unresolved" for group in flags["groups"]))
+                self.assertTrue(any(group["partition"] == 2 for group in flags["groups"]))
+                with self.assertRaises(HTTPError) as error:
+                    post("/api/scene-flags", {"scene_id": "scene://town0c"})
+                self.assertEqual(error.exception.code, 400)
+                error.exception.close()
                 graph = post("/api/scene-transitions", {})
                 self.assertEqual(len(graph["edges"]), 1)
                 edge = graph["edges"][0]

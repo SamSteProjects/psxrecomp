@@ -70,6 +70,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
+        state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_replacement"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
@@ -320,6 +321,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                             raise ProjectError("Authored TIM requires valid base64") from exc
                         self.server.project.set_texture_replacement(body["asset_id"], content)
                         self._json(200, self.server.state())
+                    return
+                if route == "/api/scene-flags":
+                    if body:
+                        raise ProjectError("Flag discovery uses the active scene; no client source bindings are accepted")
+                    from .resources import scene_flag_index
+                    self._json(200, scene_flag_index(self.server.project))
                     return
                 if route == "/api/scene-transitions":
                     if body:

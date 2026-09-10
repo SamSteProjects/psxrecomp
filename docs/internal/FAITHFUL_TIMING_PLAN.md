@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (scene flag reference browser):** Prior cold dialogue acceptance
+  was progress. Added a pure SDK flag-reference index, source-verified active
+  scene endpoint and searchable editor view with P1/P2 source navigation.
+  Groups preserve script, bank, encoded index and extended target rather than
+  merging unproven runtime identities. Unknown paths remain absent; values and
+  runtime bindings remain explicitly unresolved. Town01 has 1123 references,
+  418 groups, 91 scripts (60 partial). Two semantic-isolation tests and the
+  retail HTTP workflow passed (3 tests, 8.582 seconds); JavaScript syntax passed.
+  Browser search for P2[0] found context index 19 / extended target 248 and
+  opened the matching CFLAG_SET at PC 0xC; browser errors were empty. No runtime
+  or authored project mutation was required. Live flag observation, symbolic
+  story-state semantics and editing remain pending; full SDK goal is active.
+
 - **2026-09-10 (dialogue gameplay acceptance):** The preceding failed run was
   progress because it isolated an acceptance-navigation gap. Compared the
   recorded screenshots/inputs: the successful prior title confirmation followed

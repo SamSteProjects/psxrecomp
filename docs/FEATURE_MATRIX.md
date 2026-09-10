@@ -1,5 +1,15 @@
 # Legaia SDK feature matrix
 
+2026-09-10 flag reference browser: a source-verified scene index groups 1,123
+town01 encoded references into 418 script/context-qualified groups. Search,
+source provenance and P1/P2 script navigation are integrated in the editor.
+Matching operands across scripts are not asserted to be the same runtime flag;
+live values, symbolic story names and flag editing remain unresolved.
+
+2026-09-10 dialogue gameplay acceptance: one actor-49 fixed text run visibly
+rendered its authored replacement in a cold town01 run, then closed normally.
+See `legaia-sdk/dialogue-authoring.md`. P2 gameplay remains unaccepted.
+
 2026-09-10 scene-transition explorer: the active scene has a source-verified,
 read-only reference graph with script provenance, encoded entry parameters,
 partial/unavailable coverage counts, source-script navigation and navigation to
@@ -16,7 +26,7 @@ and reopens the shared dialogue workspace through fresh source verification.
 Browser save/open/edit-clear acceptance passed for town01 P2[37]; the real HTTP
 regression verifies matching trigger/direct provenance and rejects wrong-scene,
 wrong-partition and absent-record requests. This extends the script and asset
-browser rows below. In-game text display remains unverified.
+browser rows below. P2 in-game text display remains unverified.
 
 Status recorded during the 2026-09-09 buildout. FUNCTIONAL means the named
 workflow runs within its stated bounds; it does not mean the entire subsystem
@@ -41,7 +51,7 @@ is complete. Runtime fixes from the preceding milestone are committed as
 | Editor | PARTIAL | Verified selection/edit/clear/undo/redo/save/reopen, textured object preview, private Build & Run, attach and graceful Stop. Central WebGL scene preview renders 51/52 town01 entities with mesh picking, focus, transform updates and marker fallback. Opt-in Live follow chains guarded captures, stops on failure, and displays separate selected-actor candidate markers; browser restart/Stop/Edit/runtime-stop checks pass. Scripted placement/visibility, retail height/facing and broader editing tools remain pending. |
 | Live bridge | PARTIAL / LIVE-VALIDATED | Cold town01 v2 capture accepted 90 nodes under executable/witness/scene/epoch guards. Early exact-PC preparation now runs during compatible discovery and owned launch readiness; a fresh cold New Game with automatic preparation passed the unchanged v2 guard with 90 nodes and all three witnesses current. One same-scene restore recovered all three witnesses and 90 nodes after normal dialogue input, without sustained slowdown in the measured window. Late attachment cannot recover unrecorded entry execution. Archived v1 remains strict; repeated/cross-scene restore and town0c/transition acceptance remain pending. |
 | Correlation | PARTIAL / READ-ONLY | Guarded MAN-header/model evidence yields explicit candidates and ambiguity. Actor0052 authored header and world position match `(4480,11904)`, with a visible savepoint beside Vahn. Generic bindings remain candidates; they are not promoted to confirmed identity. |
-| Scripts/dialogue/flags | PARTIAL / BOUNDED TEXT WRITING | Actor inspector decodes supported bounded MAN instruction paths and inline dialogue, with explicit substitution tokens, flag operands, successors, opaque bytes and stop reasons. The asset browser links script/dialogue resources to their actor inspector and records 1,123 source-qualified flag references across P1/P2. Town01 actor0049 shows 23 instructions/seven dialogue segments; actor0001 stops at unsupported0x29. Supported plain-text runs have Apply/Clear, undo/redo, save/open and guarded build serialization; P2[36]/[37] each expose one supported ten-byte run; broader partial graphs remain read-only. No script execution, story-state evaluation, control editing or text relocation. Gameplay text display remains unaccepted. |
+| Scripts/dialogue/flags | PARTIAL / BOUNDED TEXT WRITING | Actor inspector decodes supported bounded MAN instruction paths and inline dialogue, with explicit substitution tokens, flag operands, successors, opaque bytes and stop reasons. The asset browser links script/dialogue resources to their actor inspector and records 1,123 source-qualified flag references across P1/P2. Town01 actor0049 shows 23 instructions/seven dialogue segments; actor0001 stops at unsupported0x29. Supported plain-text runs have Apply/Clear, undo/redo, save/open and guarded build serialization; P2[36]/[37] each expose one supported ten-byte run; broader partial graphs remain read-only. No script execution, story-state evaluation, control editing or text relocation. One actor-49 authored message is cold-gameplay accepted; P2 display remains unaccepted. |
 | Collision and field regions | PARTIAL / READ-ONLY | Field MAP source grid supplies 4,228 blocked subcells in town01, displayed as bounded ground-plane outlines. Source/project changes clear overlays. Fourteen region records expose encoded tile bounds; no floor height, runtime actor blockers or script paints are inferred. |
 | Transitions/world map | FOUNDATION | Prior observation vocabulary retained. Script resources expose encoded named scene-change references when decoded; one occurs in the cataloged town01 P2 paths; reachability is not established. Field MAP discovery adds 99 town01 trigger records: 11 local teleports, 37 object bindings and 51 fallback P2 references. Eligible gate-1 triggers open bounded P2 script inspection with Back navigation; all 51 town01 references resolve, with unsupported paths explicitly partial. All 39 P2 scripts and 79 decoded P2 dialogue segments are directly browsable. Opening P2[3] exposes eight segments before a known halt with unresolved trailing ownership; opening text remains read-only. These do not establish named or reachable scene edges. Reachable transition graphs, MAPDSIP coverage and world-map authoring remain pending. |
 | Build and Run | FUNCTIONAL / PARTIAL ACCEPTANCE | Supported X/Z, donor appearance and bounded text edits build into guarded private .psxmod packages; clearing edits builds a verified zero-overlay retail baseline. A reopenable build report lists audited changes and validation, with stale status after authored edits. Editor-owned Windows launch verifies executable/BIOS/disc/mod identity; Attach and Stop pass. Cold game consumed 24894 patched bytes over13sectors and rendered town01. A moved savepoint visibly appears at its authored location; a fresh zero-overlay retail run removes it there and restores its original world coordinates. |
