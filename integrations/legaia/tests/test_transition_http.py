@@ -37,6 +37,13 @@ class TransitionHTTP(unittest.TestCase):
                 report = post("/api/partition-two-script", {"entity_id": owner})
                 entry = report["transition_authoring"]["transitions"][0]
                 command = dict(entity_id=owner, transition_id=entry["semantic_id"])
+                post("/api/command", dict(command, type="set_transition_arrival", arrival={"x":128, "facing_sector":2}))
+                arrival = post("/api/partition-two-script", {"entity_id":owner})["transition_authoring"]["transitions"][0]
+                self.assertEqual(arrival["effective_values"]["entry_x_encoded"],128)
+                self.assertEqual(arrival["effective_interpretation"]["x"],128)
+                self.assertEqual(arrival["effective_interpretation"]["facing_angle_12bit"],1024)
+                post("/api/undo", {})
+                self.assertFalse(project.overrides)
                 post("/api/command", dict(command, type="set_transition_entry", values={"entry_x_encoded": 99}))
                 edited = post("/api/partition-two-script", {"entity_id": owner})["transition_authoring"]["transitions"][0]
                 self.assertEqual(edited["effective_values"]["entry_x_encoded"], 99)

@@ -492,6 +492,18 @@ class ProjectService:
                                         "before": before, "after": None})
                 self.redo_stack.clear()
             return
+        if command.get("type") == "set_transition_arrival":
+            from importer.transition_authoring import encode_transition_arrival
+            identifier, key = command.get("entity_id"), command.get("transition_id")
+            self._validate_transitions(identifier, {"entries": {key: {"entry_x_encoded": 0}}})
+            options = self.transition_options(identifier)
+            entry = next((e for e in options["transitions"] if e["semantic_id"] == key), None)
+            if entry is None:
+                raise ProjectError("Arrival requires a verified transition entry")
+            values = encode_transition_arrival(command.get("arrival"), entry["effective_values"])
+            self.command({"type": "set_transition_entry", "entity_id": identifier,
+                          "transition_id": key, "values": values})
+            return
         if command.get("type") in ("set_transition_entry", "clear_transition_entry"):
             identifier, key = command.get("entity_id"), command.get("transition_id")
             # Clear also checks owner syntax, but remains possible offline.

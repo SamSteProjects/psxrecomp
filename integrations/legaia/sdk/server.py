@@ -483,6 +483,10 @@ class EditorHandler(BaseHTTPRequestHandler):
             if set(body) != allowed:
                 raise ProjectError("Transition commands accept only owner/transition identities and encoded values")
             required_strings[route] = ("entity_id", "transition_id")
+        if route == "/api/command" and body.get("type") == "set_transition_arrival":
+            if set(body) != {"type", "entity_id", "transition_id", "arrival"}:
+                raise ProjectError("Arrival commands accept only owner/transition identities and arrival fields")
+            required_strings[route] = ("entity_id", "transition_id")
         for key in required_strings.get(route, ()):
             if not isinstance(body.get(key), str) or not body[key].strip():
                 raise ProjectError(f"{key} must be a nonempty string")

@@ -8,6 +8,17 @@ from importer.transition_authoring import patch_transition_entry, TransitionAuth
 from test_importer_dialogue_authoring import fixture, ACTOR
 
 class TransitionEntryTests(unittest.TestCase):
+    def test_arrival_encoder_roundtrips_all_grid_values_and_preserves_direction_bits(self):
+        from importer.transition_authoring import encode_transition_arrival, reference_entry_interpretation
+        for byte in range(256):
+            source = dict(entry_x_encoded=byte, entry_z_encoded=byte, direction_encoded=253)
+            decoded = reference_entry_interpretation(source)
+            result = encode_transition_arrival({"x":decoded["x"], "z":decoded["z"]},source)
+            self.assertEqual(result, source)
+            self.assertEqual(encode_transition_arrival({"facing_sector":2},source)["direction_encoded"],250)
+        for invalid in ({"x":65},{"x":True},{"facing_sector":8},{"facing_sector":False},{"height":0},{}):
+            with self.assertRaises(ImportError): encode_transition_arrival(invalid,source)
+
     def test_reference_interpretation_preserves_half_tile_and_sector_semantics(self):
         from importer.transition_authoring import reference_entry_interpretation
         for byte, coordinate in ((0,64),(127,16320),(128,128),(255,16384)):

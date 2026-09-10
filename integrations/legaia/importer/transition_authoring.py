@@ -35,6 +35,24 @@ def reference_entry_interpretation(values: dict) -> dict:
             "source": "crates/engine-core/src/world/field_loop.rs:275-308"}
 
 
+def encode_transition_arrival(arrival: dict, effective: dict) -> dict:
+    """Encode exact retail grid coordinates while preserving unedited bits."""
+    from .serialization import encode_placement_coordinate
+    if not isinstance(arrival, dict) or not arrival or set(arrival) - {"x", "z", "facing_sector"}:
+        raise ImportError("arrival edits accept only X, Z and facing_sector")
+    reference_entry_interpretation(effective)  # Validate the source byte values.
+    result = dict(effective)
+    for axis in ("x", "z"):
+        if axis in arrival:
+            result[f"entry_{axis}_encoded"] = encode_placement_coordinate(arrival[axis], f"arrival.{axis}")
+    if "facing_sector" in arrival:
+        sector = arrival["facing_sector"]
+        if type(sector) is not int or not 0 <= sector <= 7:
+            raise ImportError("arrival facing sector must be an integer from 0 through 7")
+        result["direction_encoded"] = (effective["direction_encoded"] & 0xf8) | sector
+    return result
+
+
 class TransitionAuthoringContext:
     """Immutable MAN snapshot with stable transition IDs and audited byte edits."""
 

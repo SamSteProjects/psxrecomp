@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Author exact arrival coordinates through project commands
+
+- Previous turn was progress: retail handler arithmetic matched. Added set_transition_arrival command accepting exact X/Z grid values and facing_sector0..7, translated through the same persisted encoded-entry component/build path. Facing changes preserve upper5 direction bits; omitted fields retain effective source values. Source membership is verified before command mutation.
+- Six serializer tests passed, including exhaustive256-byte coordinate roundtrip and invalid-grid/sector rejection. Retail HTTP lifecycle passed (8.133 s): arrival X128 encodes128, facing sector2 previews1024, Undo restores the baseline, and existing byte edit/redo/clear flow still works.
+- Arrival-coordinate UI controls and live scene arrival remain pending; no runtime launched. Full objective active.
+
+
 ### 2026-09-10 — Match arrival arithmetic to retail overlay
 
 - Previous turn was progress: generated-handler trace. Hashed-disc probe found one matching instruction window among the ten retained static roles: PROT897 offset66312, entry SHA216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b. All36 words at generated801DEB20..801DEBAC match the expected retail window, including BEQ delay slots, low7 coordinate extraction, high-bit adjustment, direction&7 and table lookup. Evidence: `local-output/sdk-20260909/transition-handler-retail.json`.
