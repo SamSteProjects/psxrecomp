@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (dialogue cold-run acceptance attempt):** Prior scene-transition
+  explorer work was progress. Created a separate private town01 project at
+  `local-output/sdk-20260909/dialogue-live-20260910` from HEAD d9bc87f6. Actor
+  49's supported 12-byte dialogue run at decoded MAN offset 27164 was changed
+  to `SDK VERIFIED`; the authored build audit proves fixed-span compression,
+  round-trip equality, and unchanged opaque bytes. One overlay loaded with
+  the expected source identities and no disc guard failure. The cold runtime
+  remained responsive but repeated the title/movie sequence despite recorded
+  normal controller inputs; no field arrival or visible edited dialogue was
+  established, and overlay consumption remained zero. This is a failed
+  gameplay acceptance attempt, not evidence of a dialogue serializer defect
+  or a diagnosed core stability bug. Preserved commands, screenshots, audit,
+  and identity evidence in the private QA directory; stopped the owned runtime
+  cleanly (exit 0) and requested graceful editor shutdown. No speculative
+  runtime patch, savestate restore, or gameplay-success claim. Next: resolve
+  title navigation against the earlier accepted cold-run route before another
+  dialogue acceptance attempt; the full SDK goal remains active.
+
 - **2026-09-10 (scene-transition explorer):** Prior P2 catalog work was progress.
   Added a pure SDK graph adapter, source-verified active-scene endpoint and
   read-only editor view. Edges preserve script owner, record provenance, PC,
