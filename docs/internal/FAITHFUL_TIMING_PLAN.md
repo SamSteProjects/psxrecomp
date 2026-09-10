@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (menu browser acceptance and repair):** Previous menu decoder was
+  progress. Isolated editor4395/tab44 opened real actor0001 picker0x6B with four
+  options and correct read-only warning. Screenshot exposed oversized expanded
+  raw operands; collapsed menu details by default, reloaded and visually verified
+  all choices fit in the selected row. Browser errors empty; Node syntax passes.
+  Private picker-browser server stopped via owned sentinel; no runtime launched.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (dialogue option menus):** Previous new-binary startup was
   progress. Located pinned MES picker evidence for27/28/29 and implemented
   structurally bounded read-only menu tables/labels with entry-relative signed

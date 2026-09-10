@@ -177,3 +177,11 @@ show immediate unchanged-axis semantics separately from timed movement operands.
 Extended target contexts remain explicitly unresolved. Encoded operands stay
 inspectable, and no live movement or runtime actor identity is inferred. Syntax
 and focused DOM behavior checks pass; browser layout acceptance is pending.
+
+
+2026-09-10 dialogue menu browser acceptance: a fresh town01 project opened
+actor0001's source-verified four-option picker at0x6B. The shared instruction
+table displays all labels/encoded targets and unresolved continuation, with no
+writable runs. Visual inspection found expanded raw data obscured the choices;
+menu raw operands now default collapsed and all four choices fit in the selected
+row. Reload verification passed with no browser errors. No runtime menu claim.

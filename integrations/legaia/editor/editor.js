@@ -663,7 +663,7 @@ function appendScriptOperands(cell,instruction){
   }
   const details=document.createElement('details'),label=document.createElement('summary'),raw=document.createElement('pre');
   label.textContent='Encoded operands';raw.textContent=typeof operands==='string'?operands:JSON.stringify(operands??{},null,2);
-  details.open=instruction.mnemonic!=='ACTOR_POSITION';details.append(label,raw);cell.append(details);
+  details.open=!['ACTOR_POSITION','DIALOGUE_PICKER'].includes(instruction.mnemonic);details.append(label,raw);cell.append(details);
 }
 function appendScriptInstructions(host,report){
   host.replaceChildren();host.classList.remove('script-table-wrap');
