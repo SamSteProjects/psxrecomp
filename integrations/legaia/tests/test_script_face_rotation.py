@@ -37,6 +37,9 @@ class FaceRotationInspection(unittest.TestCase):
         self.assertEqual(rejected["dialogues"], [])
         self.assertEqual(rejected["instructions"], [])
         self.assertTrue(any("inside" in stop["reason"] for stop in rejected["stops"]))
+        conflict = next(stop for stop in rejected["stops"] if "inside" in stop["reason"])
+        self.assertEqual(conflict["owner_pc"], 0)
+        self.assertEqual(conflict["pc"], 5)
 
     def test_picker_high_bit_is_control_not_extended_target(self):
         for count in (2, 3, 4):

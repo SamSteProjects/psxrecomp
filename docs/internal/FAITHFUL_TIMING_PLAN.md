@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 menu conflict provenance):** Previous menu traversal was
+  progress. Traced P2[20] conflict to camera0x551 targeting0x44 inside emitter
+  0x3D/14bytes. Pinned camera executor agrees with absolute target; retail
+  semantics remain unresolved. Improved conflict stops with owner_pc and
+  readable ownership offset. Six focused and23 retail inspection tests pass.
+  Private trace retained; no guessed branch adjustment or guard relaxation.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (menu choice graph traversal):** Previous flag indexing was
   progress. Followed proved per-choice targets without a guessed fallthrough;
   pager remains unresolved. Same-run prior-decoder comparison isolates113 added

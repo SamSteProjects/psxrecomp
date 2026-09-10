@@ -231,3 +231,15 @@ records exact added/removed IDs. Synthetic coverage proves skipped opaque bytes
 stay unvisited and an edge into a label invalidates the graph. Six focused,
 23 inspection,7 catalog and8 authoring tests pass, with retail enabled where
 applicable. No runtime reachability or new authoring support is claimed.
+
+
+P2[20]'s newly discovered conflict was traced with the production decoder:
+CAMERA_APPLY_JUMP at1361 (0x551), bytes45 C0 44 00, targets68 (0x44).
+That target lies inside EMITTER_SIX_WORDS at61 (0x3D), length14. The pinned
+field/step/camera.rs0xC0 arm explicitly returns the unsigned absolute target;
+there is no evidence here to reinterpret it as a relative jump. The underlying
+retail semantics remain unresolved and the graph stays withdrawn. Private
+p2-menu-conflict.json preserves source and decoded attempts. Conflict diagnostics
+now include owner_pc and name that offset in the user-visible reason, making
+this ownership conflict inspectable without relaxing the guard. Six focused
+and23 retail inspection tests pass.

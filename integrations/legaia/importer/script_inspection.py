@@ -449,7 +449,8 @@ def inspect_record(data: bytes, script_offset: int, *, semantic_id: str = "scrip
             stops.append({"pc": pc, "reason": "encoded target leaves the bounded script region"})
             continue
         if pc in ownership:
-            stops.append({"pc": pc, "reason": "branch target lands inside a decoded instruction or message"})
+            stops.append({"pc": pc, "owner_pc": ownership[pc],
+                          "reason": f"branch target lands inside a decoded instruction or message owned by 0x{ownership[pc]:x}"})
             conflict = True
             continue
         try:
