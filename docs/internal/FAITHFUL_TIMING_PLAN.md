@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Capture GPU frames across same-view visibility change
+
+- Previous turn was progress: offline player-record comparison. Same runtime produced invisible-frame GPU dump57910 with915commands. Initial newest-1 sample had0commands; newest-2 captured a rendered frame. North20 then made Vahn visible within the same village camera view; captured frame59344 with910commands. Screenshots and bounded GP0/GTE captures retained as invisible-render-2/near-step-render under arrival-live.
+- Compared textured-polygon CLUT groups and raw XY bounds. Small groups7780..7783 exist near expected player location in both frames; identity is not yet mapped to Vahn's model, and draw offsets/order matter. No missing-submission conclusion or renderer fix justified yet. Candidate ordering/occlusion investigation remains open.
+- Saved visible same-view checkpoint9 for a closer pair with invisible checkpoint10, with completion receipt in acceptance.json. No loads or RAM writes. Same runtime50140/editor48160/session45118 remains live at visible near-step position. Full objective active.
+
+
 ### 2026-09-10 — Inspect saved visibility states without loading
 
 - Previous turn was progress: paired private checkpoints. Parsed version7 PST header/section wire and zlib RAM sections offline, checking declared lengths and complete file consumption; no live-state restore or RAM write. Checkpoints share player pointer80083794 and flags09820880, and unchanged model-related words in the bounded156-byte record. Changed words include XYZ/duplicate XYZ, heading, offsets2C/30/34,68 and98.
