@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 browser acceptance):** Separate private project
+  `p2-browser-qa`, editor 4394, IAB tab 17: refreshed resources, searched trigger
+  0008, opened referenced P2[37], and entered the shared dialogue workspace.
+  Applied `SDK` to its ten-byte run; UI showed three authored bytes and seven
+  padding spaces, with Clear enabled. Clear restored inherited text and the
+  exact clean baseline (`dirty=false`, Edit); Save was correctly disabled,
+  so no save action was executed. Browser error log was empty. The owned
+  exec server session 60453 was interrupted after verification (exit 1);
+  no runtime was launched. Main editor/project untouched. This verifies the
+  user-facing P2 edit/clear path; gameplay display and opening ownership remain.
+
 - **2026-09-10 (P2 HTTP acceptance):** Added and passed a private-disc test
   against the real EditorServer on an ephemeral loopback port. Trigger 0008
   resolves an authorable P2 owner; command Apply is reflected by a fresh
