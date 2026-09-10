@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (snapped transform browser/build acceptance):** Prior lifecycle
+  fix was progress. Fresh town01 browser physically dragged actor0049 Z handle
+  with256-unit snapping: imported12096 -> authored12288. Undo removed the override,
+  redo restored it, Save/Open existing retained it, and selecting actor49 after
+  reopen showed separate imported/effective values. Build emitted one position.z
+  change and24894 overlay bytes; fresh-import/opaque-byte/LZS checks passed.
+  Package SHA e6e12b3da548662f9e8beb9f33ab3185be7c8f5a2c5625fc126db9a9aba70744
+  verified on disk. Independent ProjectService.open confirmed saved transform.
+  Browser errors empty; private QA under local-output/sdk-20260909/snap-workflow-
+  browser, browser-final-state.json is authoritative after project reopen (the
+  harness final-state.json refers to its original service object). QA server
+  stopped exit0; no runtime launched. Browser API has only completed drag, so
+  Escape mid-gesture remains handler-tested rather than browser-accepted.
+
 - **2026-09-10 (viewport gesture lifecycle):** Previous turn made verified
   snapping progress. Found drag lifetime only handled pointercancel: Escape,
   window blur and lost capture could leave a draft active. Added shared gesture

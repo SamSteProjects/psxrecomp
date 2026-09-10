@@ -132,3 +132,8 @@ at16/64/256/1024 scene units and coordinate feedback. Each completed drag emits
 one existing undoable transform command; cancellation discards the preview.
 Snap settings are session controls, not authored retail properties. Heading
 and native actor creation remain unsupported.
+
+2026-09-10 snapping workflow accepted in browser: actor0049 Z12096 ->12288,
+Undo/Redo, Save/Open existing and Build. Package reports one placement change,
+24894 overlay bytes and passed provenance/opaque/LZS validation. Browser errors
+were empty. This snapped edit has not been run in the game.
