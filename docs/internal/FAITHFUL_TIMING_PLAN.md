@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (central script resources):** Connecting bounded actor scripts
+  and inline dialogue to the asset database and existing authoring inspector.
+  Town01 supplies 52 scripts, 344 segments and 380 flag references. Category
+  search, actor navigation, exact segment focus and project-switch invalidation
+  pass in the browser; ten focused catalog/workflow/HTTP checks pass.
+  Per-instruction flag references and named scene changes retain encoded source
+  provenance and unresolved runtime scope. Catalog metadata is derived and does
+  not alter imported or authored state. Runtime timing/source remains unchanged;
+  actual gameplay routes and flag values are outside static catalog acceptance.
+
 - **2026-09-09 (bounded dialogue authoring and compression):** Added supported
   plain-text run commands, history/persistence, editor controls and guarded
   composition with appearance/placement builds. Source controls and opaque

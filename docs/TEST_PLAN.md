@@ -150,8 +150,16 @@ Script/dialogue UI acceptance includes actor0049's seven readable segments and
 23 supported instructions, with an explicit four-byte opaque tail. Actor0001
 shows a stop at0x6B for unsupported opcode0x29. Instruction rows expose encoded
 successors and record offsets without claiming active runtime branches. Text
-substitutions remain tokens. Broader opcode coverage, dialogue encoding/writes
-and story-state evaluation require their own evidence and serializer campaign.
+substitutions remain tokens. Bounded plain-text writing now passes project,
+browser and package checks described in `legaia-sdk/dialogue-authoring.md`.
+Gameplay display/revert, broader opcode coverage, relocation/control editing
+and story-state evaluation still require their own evidence and campaign.
+
+Central script-resource acceptance should cover metadata-only discovery,
+script/dialogue category filtering, partial-decode status, per-PC flag/transition
+references, parent-script navigation, actor selection and exact segment focus
+in the authoring inspector. Source/project changes must discard stale resources.
+Static references alone never pass live flag or transition-route acceptance.
 
 The content-inspection milestone passed all 83 importer tests with private
 retail input enabled and six focused HTTP/project tests. The donor-assignment

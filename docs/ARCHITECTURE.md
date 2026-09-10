@@ -124,6 +124,13 @@ The browser requires an explicit actor association before previewing its clip.
 Unreferenced ANM records and shared-party texture uploads remain outside this
 scene-resource catalog's advertised scope.
 
+The resource catalog also indexes actor scripts and inline dialogue by their
+existing structural identities. Metadata-only script records carry per-PC flag
+and transition references, partial-decode status and source hashes. Dialogue
+records link to their script and actor; the browser opens the verified inspector
+at that segment. No retail message text is added to the project asset database.
+See [script resources](legaia-sdk/script-resources.md) for scope and evidence.
+
 Supported dialogue text uses authored `Dialogue.runs` keyed by actor and
 record-relative message/run PCs. Set/Clear commands share project history and
 save/open; source verification precedes editing and building. The serializer

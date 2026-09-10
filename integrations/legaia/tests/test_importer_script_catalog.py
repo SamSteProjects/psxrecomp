@@ -1,0 +1,118 @@
+"""Metadata-only resource identities and conservative scoped script references."""
+import json
+import os
+from pathlib import Path
+import sys
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from importer.core import ImportError, validate_metadata_only
+from importer.script_catalog import _catalog, load_script_asset_catalog
+from integrations.legaia.tests.test_importer_dialogue_authoring import fixture
+
+
+def forbidden_fields(value):
+    """The generic metadata validator alone also permits text/hex strings."""
+    found = set()
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in {"text", "raw_hex", "encoded_hex", "tokens", "scene_name_bytes_hex",
+                       "rgba", "stp", "payload", "raw_bytes"}:
+                found.add(key)
+            found.update(forbidden_fields(child))
+    elif isinstance(value, list):
+        for child in value:
+            found.update(forbidden_fields(child))
+    return found
+
+
+def catalog(script):
+    _, man = fixture(script)
+    return _catalog(man, "fixture", {"synthetic": True}, {"town02"})
+
+
+class ScriptAssetCatalogTests(unittest.TestCase):
+    def test_extended_context_width_system_selector_and_extra_flags_remain_scoped(self):
+        # LFLAG ordinary / extended; GFLAG; extended CFLAG; ordinary/extended
+        # system selectors; extra-flags conditional with both successors equal.
+        result = catalog(b"\x2b\x02\xab\x07\x12\x2e\x03\xb1\x08\x05"
+                         b"\x51\x23\xd0\x09\x44\x42\x00\x23\x02\x00")
+        script = result["assets"][0]
+        refs = script["flag_references"]
+        self.assertEqual(len(refs), 7)
+        self.assertEqual([r["bank"] for r in refs], ["local", "local", "global", "context", "system", "system", "extra"])
+        self.assertEqual([r["index"] for r in refs], [2, 18, 3, 5, 0x123, 0x8044, 3])
+        self.assertEqual(refs[1]["extended_target"], 7)
+        self.assertEqual(refs[1]["context_resolution"], "extended_target_unresolved")
+        self.assertEqual(refs[1]["status"], "bank_width_unresolved")
+        self.assertEqual(refs[3]["extended_target"], 8)
+        self.assertEqual(refs[4]["index_semantics"], "encoded_selector_not_resolved_runtime_bit")
+        self.assertEqual(refs[6]["scope"], "host_extra_flags")
+        self.assertTrue(all(r["runtime_value"] is None for r in refs))
+        self.assertEqual(script["status"], "decoded_supported_paths")
+
+    def test_named_transition_preserves_encoded_entry_and_rejects_unclean_name(self):
+        def transition(name):
+            return catalog(b"\x3f\x34\x12" + bytes([len(name)]) + name + b"\x01\x82\x03")
+        known = transition(b"town02")["assets"][0]["transitions"][0]
+        self.assertEqual(known["target_scene_name"], "town02")
+        self.assertTrue(known["target_in_scene_index"])
+        self.assertEqual(known["status"], "encoded_named_reference")
+        self.assertEqual((known["entry_x_encoded"], known["entry_z_encoded"], known["direction_encoded"]), (1, 130, 3))
+        self.assertEqual(known["reachability"], "not_evaluated")
+        absent = transition(b"unknown1")["assets"][0]["transitions"][0]
+        self.assertFalse(absent["target_in_scene_index"])
+        for name in (b"", b"town02\0", b"Town02", b"a" * 13, b"../town02"):
+            ref = transition(name)["assets"][0]["transitions"][0]
+            self.assertEqual(ref["status"], "unsupported_name_encoding")
+            self.assertIsNone(ref["target_scene_name"])
+
+    def test_dialogue_payload_and_unknown_regions_are_not_resource_scanned(self):
+        # Apparent flag/opcode bytes inside MES are glyphs. Unsupported menu
+        # width prevents further decoding, including the apparent named warp.
+        result = catalog(b"\x1f+Q#\0\x4c\x80\x3f\0\0\x06town02\1\2\3")
+        self.assertEqual((result["script_count"], result["dialogue_count"]), (1, 1))
+        self.assertEqual((result["flag_reference_count"], result["transition_count"]), (0, 0))
+        script, message = result["assets"]
+        self.assertEqual(script["status"], "partial")
+        self.assertGreater(script["opaque_byte_count"], 0)
+        self.assertEqual(script["stop_count"], 1)
+        self.assertEqual(message["semantic_id"], "script://fixture/actors/man-p1/0001/dialogue/0005")
+        self.assertEqual(message["script_id"], script["semantic_id"])
+        self.assertEqual(message["text_length"], 3)
+        self.assertEqual(message["token_count"], 3)
+        self.assertEqual(message["script_status"], "partial")
+        self.assertEqual(forbidden_fields(result), set())
+        validate_metadata_only(result)
+        json.dumps(result)
+        with patch("importer.script_catalog.MAX_ASSETS", 1):
+            with self.assertRaisesRegex(ImportError, "asset count"):
+                catalog(b"\x1fHi\0")
+
+
+@unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
+class RetailScriptAssetCatalogTests(unittest.TestCase):
+    def test_actual_town01_counts_ids_partial_coverage_and_payload_free_records(self):
+        from importer.pipeline import _disc_context
+        with _disc_context(os.environ["LEGAIA_DISC_BIN"]):
+            result = load_script_asset_catalog(os.environ["LEGAIA_DISC_BIN"], "town01")
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 52, 344))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (396, 49))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (380, 0))
+            assets = {a["semantic_id"]: a for a in result["assets"]}
+            self.assertEqual(len(assets), result["asset_count"])
+            script_id = "script://town01/actors/man-p1/0049"
+            script = assets[script_id]
+            self.assertEqual((script["instruction_count"], script["dialogue_count"], script["opaque_byte_count"]), (23, 7, 4))
+            self.assertEqual(script["status"], "partial")
+            segment = assets[script_id + "/dialogue/0050"]
+            self.assertEqual(segment["pc"], 0x50)
+            self.assertEqual(segment["text_length"], 30)
+            self.assertEqual(assets["script://town01/actors/man-p1/0001"]["status"], "partial")
+            self.assertEqual(forbidden_fields(result), set())
+            self.assertEqual(result, load_script_asset_catalog(os.environ["LEGAIA_DISC_BIN"], "town01"))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -82,10 +82,14 @@ Retail dialogue remains private; tracked tests use hashes and synthetic text.
 Supported equal-span text writing and its pinned source blobs are documented in
 [dialogue authoring](legaia-sdk/dialogue-authoring.md). Unknown instruction paths
 remain rejected for authoring; no script execution or relocation is inferred.
+The central [script resource catalog](legaia-sdk/script-resources.md) retains
+source-qualified flag operands and named scene-change references. It does not
+infer current flag values, persistent story identities or reachable scene edges.
 
 The writable donor-pair foundation is documented in
 `docs/legaia-sdk/man-assignment-authoring.md`. It uses the existing MAN header,
 scene TMD and ANM associations, restricts changes to evidenced same-scene pairs
 with matching channel counts, and rejects compressed growth. Its retail
 two-byte round trip establishes encoding only, not script or gameplay
-compatibility. Editor/project/build integration is still required.
+compatibility. Subsequent editor/project/build integration passes bounded
+appearance/position/text composition; gameplay appearance remains unverified.

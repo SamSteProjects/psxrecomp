@@ -23,6 +23,7 @@ def _verify(project, document):
 def refresh_resource_catalog(project) -> dict:
     from importer.texture_catalog import load_texture_asset_catalog
     from importer.animation_catalog import load_animation_asset_catalog
+    from importer.script_catalog import load_script_asset_catalog
     document, key = _scene(project)
     # Remove stale metadata before attempting a new source read. A failed refresh
     # must never leave a prior catalog presented as the current verified result.
@@ -30,7 +31,8 @@ def refresh_resource_catalog(project) -> dict:
     records, limitations = [], []
     with _disc_context(project.disc_path):
         _verify(project, document)
-        for kind, loader in (("Textures", load_texture_asset_catalog), ("Animations", load_animation_asset_catalog)):
+        for kind, loader in (("Textures", load_texture_asset_catalog), ("Animations", load_animation_asset_catalog),
+                             ("Scripts and dialogue", load_script_asset_catalog)):
             try:
                 catalog = loader(project.disc_path, document["scene"]["name"])
                 records.extend(catalog["assets"])
