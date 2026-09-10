@@ -30,6 +30,27 @@ Evidence: `local-output/sdk-20260909/audio-output-health/live/acceptance.json`.
 The unavailable driver was confined to the child environment; host settings
 were not changed.
 
+## Title PCM delivery acceptance (2026-09-10)
+
+Two further cold baseline runs of `61d99eac...` reached the title menu without
+input and exited0. These boots recorded MDEC decode count0 and CD-in frames0;
+they do not cover the opening FMV or XA. Nonzero SPU and host tap counts grew
+in both runs. The initial WAV request selected the oldest startup samples,
+which were silent; that artifact is retained under `audio-output-health/movie`
+and is not evidence of title sound. A follow-up tap request used explicit
+recent sample indices.
+
+The corrected ten-second captures in `local-output/sdk-20260909/audio-output-
+health/title` contain441000 stereo frames at44100Hz each. SPU/host peaks were
+21845/21853 and RMS3637.92/3612.03; neither had clipped samples or a fully zero
+stereo frame. During the surrounding20.005-second interval, output remained
+active and underrun/overflow counters both had delta0. Startup's71904 cumulative
+overflow drops remain recorded rather than erased. `pcm-analysis.json` records
+WAV hashes and measurements; `acceptance.json` records identity, protocol
+responses and exit0. This proves bounded nonzero title PCM delivery to the host
+tap, not subjective listening quality, hardware audibility, other music or
+battle/XA synchronization. Retail WAVs/screenshots remain private and untracked.
+
 ## Current stability recheck (2026-09-10)
 
 The user's renewed stability requirement covers the runtime and precompilation

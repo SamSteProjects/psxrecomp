@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (title audio PCM acceptance):** Prior startup checks were verified
+  progress. Two cold baseline runs of61d99eac... reached title and exited0;
+  MDEC0/CD-in0 means no FMV/XA acceptance. Nonzero SPU/host counters advanced.
+  Initial WAV request captured oldest silent startup frames; retained that
+  mistake, then captured recent explicit indices in a second run. Ten-second
+  44100Hz stereo SPU/host captures have peaks21845/21853, RMS3637.92/3612.03,
+  zero clipped samples and zero fully silent frames. Surrounding20.005s window
+  has zero underrun/overflow deltas; startup71904 overflow count retained.
+  Private evidence: local-output/sdk-20260909/audio-output-health/title, including
+  pcm-analysis.json and acceptance.json. This verifies bounded title PCM delivery,
+  not subjective/hardware audibility or battle synchronization. Full goal active.
+
 - **2026-09-10 (audio startup runtime acceptance):** Previous reporter fix and
   MSVC build were progress. Launched exact binary61d99eac... twice with RunService
   identity/mod guards and isolated zero-overlay projects. Normal SDL driver:
