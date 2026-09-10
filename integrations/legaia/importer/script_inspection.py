@@ -159,6 +159,42 @@ def _instruction(data: bytes, pc: int) -> dict:
         args = {"mode": data[operand], "test": data[operand + 1], "delta": delta}
         branches = [{"pc": (operand + 2 + delta) & 0xFFFF, "condition": "test_passed"},
                     {"pc": operand + 4, "condition": "test_failed"}]
+    elif op == 0x45:
+        # Pinned executing step/camera.rs: selector high bits distinguish
+        # a payload, save, absolute jump, and a ten-slot sparse parameter list.
+        need(1)
+        selector = data[operand]
+        form = selector & 0xC0
+        args = {"selector": selector}
+        if form == 0x40:
+            size, mnemonic = 19, "CAMERA_LOAD"
+        elif form == 0x80:
+            size, mnemonic = 1, "CAMERA_SAVE"
+        elif form == 0xC0:
+            size, mnemonic = 3, "CAMERA_APPLY_JUMP"
+            need(size)
+            target = struct.unpack_from("<H", data, operand + 1)[0]
+            args["target"] = target
+            branches = [{"pc": target, "condition": "unconditional"}]
+        else:
+            need(4)
+            mask = (selector << 8) | data[operand + 1]
+            slots = [slot for slot in range(10) if mask & (1 << (9 - slot))]
+            size, mnemonic = 4 + 2 * len(slots), "CAMERA_CONFIGURE"
+            need(size)
+            args.update(mode=(selector >> 2) & 15, mask=mask,
+                        apply_trigger=struct.unpack_from("<H", data, operand + 2)[0],
+                        parameters=[{"slot": slot, "value": struct.unpack_from("<H", data, operand + 4 + 2 * index)[0]}
+                                    for index, slot in enumerate(slots)])
+    elif op == 0x46:
+        # Pinned executing field/step.rs and asset field_disasm/decode.rs
+        # agree: selector 0x24 alone selects the five-byte operand form.
+        need(1)
+        selector = data[operand]
+        size, mnemonic = (5 if selector == 0x24 else 2), "RENDER_CFG"
+        need(size)
+        args = {"selector": selector, "long_form": selector == 0x24,
+                "values": list(data[operand + 1:operand + size])}
     elif op == 0x49:
         need(1)
         sub = data[operand]

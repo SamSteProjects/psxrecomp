@@ -21,6 +21,35 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_camera_and_render_payload_boundaries(self):
+        forms = [b"\x46\x24\x1f\0\xff\x45", b"\x46\x25\x1f",
+                 b"\x45\x7f" + b"\x1f\0" * 9, b"\x45\xbf",
+                 b"\x45\x3c\0\xff\xff",
+                 b"\x45\x3f\xff\xff\xff" + struct.pack("<10H", *range(65526, 65536))]
+        for ordinary in forms:
+            for data in (ordinary, bytes([ordinary[0] | 0x80, 23]) + ordinary[1:]):
+                with self.subTest(data=data):
+                    report = inspect_record(data + b"\x1fHi\0", 0)
+                    self.assertFalse(report["stops"])
+                    self.assertEqual(report["instructions"][0]["length"], len(data))
+                    self.assertEqual([(d["pc"], d["text"]) for d in report["dialogues"]], [(len(data), "Hi")])
+                    for length in range(1, len(data)):
+                        truncated = inspect_record(data[:length], 0)
+                        self.assertEqual(truncated["status"], "partial")
+                        self.assertEqual(truncated["instructions"], [])
+                        self.assertEqual(truncated["dialogues"], [])
+        sparse = inspect_record(b"\x45\x22\x01\x34\x12\xff\xff\x00\x80", 0)["instructions"][0]
+        self.assertEqual(sparse["operands"]["parameters"], [{"slot": 0, "value": 65535}, {"slot": 9, "value": 32768}])
+        self.assertEqual(sparse["operands"]["mode"], 8)
+        self.assertEqual(sparse["operands"]["apply_trigger"], 0x1234)
+
+    def test_camera_absolute_jump_skips_payload_and_checks_targets(self):
+        report = inspect_record(b"\x45\xff\x08\0\x1fNo\0\x1fYes\0", 0)
+        self.assertEqual([d["text"] for d in report["dialogues"]], ["Yes"])
+        self.assertEqual(report["instructions"][0]["successors"], [{"pc": 8, "condition": "unconditional"}])
+        for data in (b"\x45\xc0", b"\x45\xc0\x00", b"\x45\xc0\xff\xff"):
+            self.assertEqual(inspect_record(data, 0)["status"], "partial")
+
     def test_model_animation_unsigned_fields_and_all_new_menu_boundaries(self):
         model = b"\x4c\x81\x1f\xff\x80" + struct.pack("<HH", 65535, 32768)
         row = inspect_record(model, 0)["instructions"][0]

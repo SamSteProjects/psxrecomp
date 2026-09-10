@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (camera and render script coverage):** Implemented both 0x46
+  render layouts and all four 0x45 camera forms: load payload, save, unsigned
+  absolute apply jump and sparse ten-slot configuration. Exact pin d6e64c68
+  executing `field/step.rs` blob `9c7801d1626c6f6eb8bd48f9f7c3e5851379e674`
+  and `step/camera.rs` blob `f0612a77815d9453819a8ee54e44634d98b22fce`
+  establish widths, selector masks and continuations. All 37 focused script,
+  trigger, catalog, dialogue project and build tests pass with the private disc.
+  Opening P2[3] now reaches 34 instructions, stopping at PC 194 MENU_CTRL CD;
+  no opening dialogue is accepted yet. Retail P1 catalog expectations remain
+  unchanged. Runtime and saved editor projects were not modified.
+
 - **2026-09-10 (field menu instruction coverage):** Added pinned MENU_CTRL 0x81
   model/animation operands, 0x30-3F field-state continuations and the 0x40-4D
   ramp family except host-dependent 0x49. Explicitly decode the wider 0x45
