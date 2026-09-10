@@ -75,7 +75,8 @@ def decode_inline_message(data: bytes, pc: int, base_offset: int = 0) -> dict:
 def _instruction(data: bytes, pc: int) -> dict:
     lead = data[pc]
     op = lead & 0x7F
-    header = 2 if lead & 0x80 else 1
+    # MES picker open bytes mask bit7; it does not introduce an actor target.
+    header = 2 if lead & 0x80 and op not in (0x27, 0x28, 0x29) else 1
     operand = pc + header
 
     def need(count):
@@ -94,7 +95,7 @@ def _instruction(data: bytes, pc: int) -> dict:
         size, mnemonic = 2, "MOVE_TO"
         coords = list(data[operand:operand + 2])
         args = {"encoded_xz": coords, "world_xz": [(v & 127) * 128 + (128 if v & 128 else 64) for v in coords]}
-    elif op in (0x27, 0x28, 0x29) and header == 1:
+    elif op in (0x27, 0x28, 0x29):
         # Pinned mes/picker.rs: pager controls, not ordinary field-VM ops.
         # Decode only a structurally complete table + labels at this reached PC.
         # Do not infer the independent post-page continuation or execute choices.
@@ -102,7 +103,7 @@ def _instruction(data: bytes, pc: int) -> dict:
         need(count * 2 + 1)
         cursor = operand + count * 2
         continuation = data[cursor]
-        if continuation in (0x24, 0x25, 0x48):
+        if continuation & 0x7F in (0x24, 0x25, 0x48):
             cursor += 1
         if data[cursor:cursor + 2] == b"\x4c\xff":
             cursor += 2

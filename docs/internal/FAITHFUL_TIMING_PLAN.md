@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (masked menu controls):** Previous browser correction was
+  progress. Implemented pinned high-bit MES picker semantics: A7/A8/A9 do not
+  consume an actor-target byte; masked continuation controls retain one-byte
+  width. Raw bytes and entry-relative targets remain exact. Five focused,
+  twenty-three retail inspection and five retail catalog tests pass. No menu
+  execution or authoring claim; full SDK goal remains active.
+
+
 - **2026-09-10 (menu browser acceptance and repair):** Previous menu decoder was
   progress. Isolated editor4395/tab44 opened real actor0001 picker0x6B with four
   options and correct read-only warning. Screenshot exposed oversized expanded

@@ -24,6 +24,21 @@ class FaceRotationInspection(unittest.TestCase):
                     with self.assertRaises(ImportError):
                         _instruction(encoded[:end], 0)
 
+    def test_picker_high_bit_is_control_not_extended_target(self):
+        for count in (2, 3, 4):
+            for continuation in (b"", b"\xa4", b"\xa5", b"\xc8", b"\x4c\xff"):
+                encoded = bytes([0xA5 + count]) + struct.pack("<h", 20) * count
+                encoded += continuation + b"\x1fChoice\0" * count
+                node = _instruction(encoded, 0)
+                self.assertIsNone(node["target_context"])
+                self.assertEqual(node["length"], len(encoded))
+                self.assertEqual(node["operands"]["options"][0]["entry_pc"], 1)
+                self.assertEqual(node["operands"]["options"][0]["encoded_target"], 21)
+                self.assertEqual(node["raw_hex"], encoded.hex())
+                for end in range(1, len(encoded)):
+                    with self.assertRaises(ImportError):
+                        _instruction(encoded[:end], 0)
+
     def test_flag_word_branch_signed_target_and_context(self):
         for sub in (0xA0, 0xA1, 0xA2):
             for header in (bytes([0x4C]), bytes([0xCC, 5])):

@@ -198,3 +198,14 @@ retail text is not tracked. Four focused tests plus23 inspection and5 catalog
 tests pass with retail enabled, including unchanged catalog totals. Shared
 actor/trigger tables list labels and encoded targets; JavaScript syntax passes,
 while browser layout and actual menu execution remain unverified.
+
+
+The high-bit picker forms are now supported per the same pinned parser:
+A7/A8/A9 still use a one-byte open control, not the field VM's extended target
+header. Their first jump entry remains at open+1; target_context stays absent.
+High-bit24/25/48 continuation controls also retain their one-byte footprint.
+Raw control bytes remain preserved. Focused tests cover all counts, continuation
+forms, raw identity and every truncation; generic extended field instructions
+retain their previous handling. Twenty-eight focused/retail inspection tests
+and five retail catalog tests pass. This supersedes the initial high-bit-form
+limitation above, without resolving menu execution or authoring.
