@@ -110,12 +110,17 @@ class ProjectService:
         self.mode = "edit"
         self._live_correlation: dict | None = None
 
+    def _appearance_donors(self) -> dict:
+        document = self.imports.get(self.active_scene)
+        return {actor["semantic_id"]: self.overrides[actor["semantic_id"]]["ActorAppearance"]["donor_entity_id"]
+                for actor in document["actors"] if self.overrides.get(actor["semantic_id"], {}).get("ActorAppearance")} if document else {}
+
     def correlate_runtime(self, live_status: dict) -> dict:
         from integrations.legaia.observer.correlation import correlate
         # Always replace prior observations, including on disconnect/rejection.
         # Nothing from this layer participates in save, dirty state or commands.
         self._live_correlation = None
-        result = correlate(self.imports.get(self.active_scene), live_status)
+        result = correlate(self.imports.get(self.active_scene), live_status, self._appearance_donors())
         self._live_correlation = deepcopy(result)
         return self._current_correlation()
 
@@ -127,6 +132,9 @@ class ProjectService:
             if document is None or current.get("import_digest") != _digest(document):
                 self._live_correlation = None
                 return unavailable("Imported evidence changed since observation")
+            if current.get("appearance_donors", {}) != self._appearance_donors():
+                self._live_correlation = None
+                return unavailable("Authored appearance changed since observation; capture again")
         result = deepcopy(self._live_correlation) if self._live_correlation else unavailable("No accepted runtime correlation")
         for identifier, entry in result.get("entities", {}).items():
             authored = self.overrides.get(identifier, {}).get("Transform", {}).get("position", {})

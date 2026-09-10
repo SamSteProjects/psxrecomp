@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (authored appearance correlation fix):** Previous cold appearance
+  gameplay was progress and exposed imported-only matching. Correlation now
+  evaluates imported/effective appearance variants without changing imported
+  documents; model/animation come from the donor while the target retains its
+  local-count and placement provenance. Each candidate records matching layers
+  and effective donor; ambiguity/zero confirmed matches remain intact. Project
+  appearance changes invalidate cached correlation, including clear/undo rather
+  than reviving a stale match. Retained gameplay capture replay now finds only
+  effective candidate80080c8c for actor0049; the earlier retail capture matches
+  the imported layer separately. Both replays preserve capture history and do
+  not claim a fresh live observation. Regression run:18tests,17passed/1private
+  disc skip, including different donor local-count, source immutability and
+  invalidation. Private replay script/output beside the appearance acceptance
+  evidence. Fresh browser/live integration remains pending; full goal active.
+
 - **2026-09-10 (appearance cold gameplay):** Prior authored animation preview was
   progress. Fresh project under `local-output/sdk-20260909/appearance-live-20260910`
   authored only actor0049 -> donor0015: model103/animation15 -> model94/animation18.

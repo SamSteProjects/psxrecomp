@@ -87,6 +87,35 @@ def status(count=1):
 
 
 class CorrelationTests(unittest.TestCase):
+    def test_authored_appearance_preserves_target_structure_and_retail_candidates(self):
+        document = imported()
+        target = document["actors"][0]["semantic_id"]
+        donor = deepcopy(document["actors"][0])
+        donor["semantic_id"] = "scene://town01/actors/man-p1/0002"
+        donor["model_reference"].update(model_index=5, normalized_pool_index=5,
+                                        asset_semantic_id="asset://model/5")
+        donor["placement_fields"].update(animation_id=8, local_count=9)
+        document["actors"].append(donor)
+        document["assets"]["models"].append({"semantic_id": "asset://model/5", "source_record": {"object_count": 3}})
+        original = deepcopy(document)
+        donors = {target: donor["semantic_id"]}
+        live = status()
+        live["actor_bindings"]["nodes"][0].update(model_index=5, normalized_pool_index=5, animation_id=8)
+        candidate = correlate(document, live, donors)["entities"][target]
+        self.assertEqual(candidate["status"], "candidate")
+        self.assertFalse(candidate["binding_confirmed"])
+        self.assertEqual(candidate["candidates"][0]["appearance_layers"], ["effective"])
+        self.assertEqual(correlate(document, status(), donors)["entities"][target]["candidates"][0]["appearance_layers"], ["imported"])
+        self.assertEqual(document, original)
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.import_metadata(document)
+            project.overrides[target] = {"ActorAppearance": {"donor_entity_id": donor["semantic_id"]}}
+            self.assertTrue(project.correlate_runtime(live)["available"])
+            project.overrides.clear()
+            self.assertFalse(project.state()["runtime_correlation"]["available"])
+        self.assertFalse(correlate(document, live, {target: "scene://other/actor"})["available"])
+
     def test_guarded_header_and_independent_model_count_form_candidate(self):
         live = status()
         binding = live["actor_bindings"]

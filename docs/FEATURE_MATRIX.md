@@ -5,8 +5,10 @@ town01 actor0049's child model103/animation15 with donor0015 model94/animation18
 The axe-carrying character appeared at the Genesis Tree, retained the original
 dialogue and returned to field control after it closed. The guarded capture
 accepted90nodes and observed the replacement header at placement4544/12096.
-The existing correlation layer still reports the actor unmatched because it
-uses imported appearance only; authored appearance correlation needs correction.
+Correlation now compares imported and effective donor appearance separately,
+retaining the target's local-count prefix and placement evidence. Replay of the
+guarded capture yields an effective-only candidate for actor0049; it remains
+unconfirmed. Changing authored appearance invalidates previous correlation.
 This is bounded acceptance for this donor pair, not general script compatibility.
 Clearing the override builds zero overlays; a new cold revert run remains pending.
 
