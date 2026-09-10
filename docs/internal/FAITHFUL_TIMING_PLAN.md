@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (preset rename browser acceptance):** Previous rename command
+  was implementation progress. Synthetic browser expanded Rename preset,
+  changed Original to Courtyard, submitted Save name and showed the updated
+  card with X128 unchanged. Browser Save plus independent ProjectService.open
+  proved exact original ID/source/components and clean saved state. Browser
+  errors empty; private preset-rename-browser service stopped normally.
+  Full SDK and release-parity goal remains active.
+
+
 - **2026-09-10 (actor preset renaming):** Previous story/title restoration was
   verified progress. Added rename_actor_template to the existing command/history
   path and an inline preset-library form. Names validate before mutation; source,
