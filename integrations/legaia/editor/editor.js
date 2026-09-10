@@ -370,11 +370,15 @@ flagsButton.onclick=async()=>{
     if(controller.signal.aborted||!flagsDialog.open)return;
     if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>16384)throw new Error('Flag references do not match the current scene source.');
     const summary=flagsDialog.querySelector('.flags-summary'),list=flagsDialog.querySelector('.flags-results'),search=flagsDialog.querySelector('input');
+    const pager=document.createElement('div');pager.className='dialog-actions';pager.innerHTML='<button aria-label="Previous flag page">Previous</button><span role="status"></span><button aria-label="Next flag page">Next</button>';list.before(pager);
+    const previous=pager.querySelector('button'),next=pager.querySelector('button:last-child'),pageStatus=pager.querySelector('span');let page=0;
     const render=()=>{
       const query=search.value.trim().toLowerCase(),groups=result.groups.filter(group=>[group.id,group.script_name,group.bank,String(group.index),...group.references.map(ref=>ref.operation)].join(' ').toLowerCase().includes(query));
-      summary.textContent=`${result.reference_count} encoded references · ${result.groups.length} source-qualified groups · ${result.coverage.script_count} scripts (${result.coverage.partial_script_count} partial, ${result.coverage.unavailable_script_count} unavailable). Showing ${Math.min(groups.length,100)} of ${groups.length} matches; narrow the search for more. Runtime values are unresolved.`;
+      const pages=Math.max(1,Math.ceil(groups.length/100));page=Math.min(page,pages-1);const start=page*100,end=Math.min(start+100,groups.length);
+      summary.textContent=`${result.reference_count} encoded references · ${result.groups.length} source-qualified groups · ${result.coverage.script_count} scripts (${result.coverage.partial_script_count} partial, ${result.coverage.unavailable_script_count} unavailable). Showing ${groups.length?start+1:0}–${end} of ${groups.length} matches. Runtime values are unresolved.`;
+      previous.disabled=page===0;next.disabled=page+1>=pages;pageStatus.textContent=`Page ${page+1} of ${pages}`;
       list.replaceChildren();
-      for(const group of groups.slice(0,100)){
+      for(const group of groups.slice(start,end)){
         const row=document.createElement('section');row.className='resource-provenance';
         row.innerHTML=`<h3>${escapeHTML(group.bank)} ${escapeHTML(group.index)} · ${escapeHTML(group.script_name)}</h3><p>${escapeHTML(group.scope)} · ${escapeHTML(resourceLabel(group.script_status))} · ${group.extended_target===null?'Current script context':`Unresolved extended target ${escapeHTML(group.extended_target)}`}</p><p>${group.references.map(ref=>`${escapeHTML(scriptOffset(ref.pc))}: ${escapeHTML(ref.mnemonic)} (${escapeHTML(resourceLabel(ref.status))})`).join(' · ')}</p><button>Inspect source script</button><details><summary>Source provenance and encoded operands</summary><pre></pre></details>`;
         row.querySelector('pre').textContent=JSON.stringify(group,null,2);
@@ -383,7 +387,7 @@ flagsButton.onclick=async()=>{
       }
       for(const note of result.limitations??[]){const p=document.createElement('p');p.className='field-note';p.textContent=note;list.append(p);}
     };
-    search.oninput=render;render();
+    previous.onclick=()=>{page--;render();};next.onclick=()=>{page++;render();};search.oninput=()=>{page=0;render();};render();
   }catch(error){if(error.name!=='AbortError'&&flagsDialog.open)flagsDialog.querySelector('.dialog-error').textContent=error.message;}
   finally{if(flagsAbort===controller){flagsAbort=null;setBusy(false);}}
 };

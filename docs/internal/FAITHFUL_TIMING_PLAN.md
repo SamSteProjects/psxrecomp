@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (flag browser pagination):** Previous flag-index implementation
+  was progress, but its first-100 result cap left broad searches incomplete.
+  Added previous/next navigation with bounded 100-group rendering, exact result
+  ranges, disabled boundary controls and page reset on search. Browser verified
+  town01 page 1 (1-100), page 5 (401-418), empty results and a one-result P2 search
+  from the last page. JavaScript syntax and browser error checks passed. No
+  authored project or runtime change. Full SDK goal remains active.
+
 - **2026-09-10 (scene flag reference browser):** Prior cold dialogue acceptance
   was progress. Added a pure SDK flag-reference index, source-verified active
   scene endpoint and searchable editor view with P1/P2 source navigation.
