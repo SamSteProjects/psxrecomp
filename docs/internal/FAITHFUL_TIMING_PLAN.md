@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Identify a bounded render consumer of actor flag00800000
+
+- Previous turn was progress: collision baseline and west-route recovery. Traced main function8001C394: argument actor+10 flag00800000 selects linked-list insertion at OT base+scaled value-40bytes versus no bias. Compared47 generated instruction comments in8001C508..8001C5C8 against checkpoint08 RAM; all match. Private evidence `arrival-live/actor-flag-ot-branch.json`.
+- Crucially this routine constructs fixed GP0 opcode2E/color808080, CLUT7F86, tpage001F quads. Those differ from identified player-model CLUTs7780..7783. This proves a render-path consumer, not that the main player mesh takes this bias or that changing it would fix visibility. Exact primitive role remains unproven; no shadow/model naming assumption promoted to fact.
+- No runtime input, restore, restart or code patch. Continue tracing the actual player-mesh path or retail behavior; do not apply a generic OT adjustment from this helper. Full objective active.
+
 ### 2026-09-10 — Match retail collision and recover visibility west of steps
 
 - Previous turn was progress: constrained movement checkpoint. Offline slot08 comparison finds zero differing bytes across the16384-byte retail/live collision grid. In tiles23..28 on each axis, only object cell25/26 differs:0800→0C00. Evidence `arrival-live/collision-baseline-comparison.json`. Direct south/east restrictions align with retail wall cells; no collision-paint corruption demonstrated.
