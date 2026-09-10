@@ -128,3 +128,18 @@ contained zero decoded facing setup/reset operations. The catalogs remained
 This verifies unchanged supported scene coverage, not retail execution or
 occurrence of the new facing operations. Private facing-script-coverage.json
 retains the observation.
+
+## Flag-word conditional branches (2026-09-10)
+
+Retail stop inventory identified five MENU_CTRL A0 boundaries across town01
+and town0c. Pinned d6e64c68 engine-vm/field/step/menu_ctrl/nibble_9_a.rs defines
+header+4 operands, a signed i16 absolute target and fall-through continuation;
+field/host.rs identifies actor/local/global flag-word banks for A0/A1/A2.
+Inspection retains encoded bit and both branches without evaluating runtime
+state. Negative targets are not wrapped into valid record offsets.
+
+A prior-decoder comparison on town01 isolated five newly decoded P2[4]
+dialogue IDs at012f,014b,0165,01a3,01c0. Catalog totals are now91 scripts,
+426 dialogue segments,517 script/dialogue assets,60 partial scripts and1134
+flag references. All34 targeted retail-enabled checks pass. This is bounded
+source decoding, not proof of branch execution or runtime flag identity.

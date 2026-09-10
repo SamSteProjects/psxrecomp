@@ -123,9 +123,10 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             # actors 25-30 and 36; their unknown tails still remain partial.
             # Acquire coverage reveals actor 40's conflicting target boundary;
             # its entire ambiguous graph must be withdrawn.
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 421))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (512, 60))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1123, 1))
+            # Flag-word branches expose five bounded P2[4] dialogue segments.
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 426))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (517, 60))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1134, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(result["partition_two_script_count"], 39)
             p2 = assets["script://town01/scripts/man-p2/0037"]

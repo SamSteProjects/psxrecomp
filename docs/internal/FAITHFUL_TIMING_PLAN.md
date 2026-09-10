@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (flag-word branch decoding):** Previous retail check was progress.
+  Inventoried actual scene stops, then used pinned executing nibble_9_a/host
+  evidence to decode A0/A1/A2 fixed-width signed-target branches. Both outcomes
+  remain unevaluated; negative targets stay invalid. Prior-decoder comparison
+  isolates five new P2[4] dialogue IDs. Town01 now426 dialogue/517 assets/1134
+  flag refs,91 scripts/60 partial unchanged. Updated expected counts only after
+  comparison;34 targeted retail-enabled tests pass. Private stop/coverage JSON
+  retained. Browser/execution acceptance pending; full SDK goal active.
+
+
 - **2026-09-10 (facing decoder retail non-regression):** Previous facing decoder
   was implementation progress. All32 script inspection/catalog/trigger tests
   passed with the private disc enabled. Bounded catalog instrumentation found

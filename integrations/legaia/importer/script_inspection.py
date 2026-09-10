@@ -279,6 +279,17 @@ def _instruction(data: bytes, pc: int) -> dict:
                 args["can_wait_for_external_state"] = True
                 branches = [{"pc": operand + size, "condition": "acquire_succeeded"},
                             {"pc": pc, "condition": "acquire_wait"}]
+        elif sub in (0xA0, 0xA1, 0xA2):
+            # Pinned executing menu_ctrl/nibble_9_a.rs sign-extends the
+            # absolute target; negative targets remain out-of-bounds, not wrapped.
+            size, mnemonic = 4, "FLAG_WORD_BRANCH"
+            need(size)
+            target = struct.unpack_from("<h", data, operand + 2)[0]
+            bank = {0xA0: "actor_flags", 0xA1: "actor_local_flags", 0xA2: "global_story_word"}[sub]
+            args = {"sub_op": sub, "flag_word": bank, "bit_encoded": data[operand + 1],
+                    "target": target, "runtime_value": "not_observed"}
+            branches = [{"pc": target, "condition": "flag_bit_set"},
+                        {"pc": operand + size, "condition": "flag_bit_clear"}]
         elif 0x70 <= sub <= 0x73:
             size = 5 if sub < 0x72 else 6
             need(size)
