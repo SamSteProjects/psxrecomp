@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (placement submission browser verification):** Previous warning
+  check was progress with an explicit submission gap. Reproduced automation
+  fill/blur changing only the displayed number (Undo remained disabled).
+  Native ArrowUp/ArrowDown number-input controls submitted changes; effective
+  X128, dirty state and Undo became visible with no warning. Browser Save and
+  independent ProjectService.open proved persisted X128 and clean state.
+  No production handler defect established; no source workaround added.
+  Browser errors empty; private placement-submit-browser server stopped normally.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (placement warning browser acceptance):** Previous serializer
   feedback was implementation progress. Synthetic editor displayed the exact
   X125 grid/range warning and authored Y0 project-only warning. Browser Undo
