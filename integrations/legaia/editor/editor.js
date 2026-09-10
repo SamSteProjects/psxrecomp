@@ -5,6 +5,10 @@ const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 100
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
+const transformTools=document.createElement('div');transformTools.className='transform-tools';
+transformTools.innerHTML='<label><input id="transform-snap" type="checkbox"> Snap moves</label><label>Step <select id="transform-snap-step" aria-label="Transform snap step"><option value="16">16 units</option><option value="64" selected>64 units</option><option value="256">256 units</option><option value="1024">1024 units</option></select></label><span id="transform-drag-status" role="status">X/Z moves · snap aligns to scene origin</span>';
+$('viewport-wrap').before(transformTools);
+function snappedTransformCoordinate(value,step){return Math.round(value/(step||1))*(step||1);}
 const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
@@ -1050,7 +1054,7 @@ canvas.addEventListener('contextmenu',event=>event.preventDefault());
 canvas.addEventListener('pointerdown',event=>{
   if(busy)return;const p=pointer(event),entity=selected();canvas.focus();canvas.setPointerCapture(event.pointerId);
   const handle=event.button===0 && entity && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
-  drag={start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null};
+  drag={start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null,snapStep:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
   canvas.classList.add('dragging');
 });
@@ -1058,20 +1062,21 @@ canvas.addEventListener('pointermove',event=>{
   if(!drag)return;const p=pointer(event),dx=p.x-drag.last.x,dy=p.y-drag.last.y;
   if(Math.hypot(p.x-drag.start.x,p.y-drag.start.y)>3)drag.moved=true;
   if(drag.moved){
-    if(drag.type==='transform'){const point=groundAt(p.x,p.y,drag.original.y);if(point&&drag.ground){const axis=drag.handle.axis;draft={id:drag.entity,position:{...drag.original,[axis]:Math.round(drag.original[axis]+point[axis]-drag.ground[axis])}};}}
+    if(drag.type==='transform'){const point=groundAt(p.x,p.y,drag.original.y);if(point&&drag.ground){const axis=drag.handle.axis;draft={id:drag.entity,position:{...drag.original,[axis]:snappedTransformCoordinate(drag.original[axis]+point[axis]-drag.ground[axis],drag.snapStep)}};}}
     else if(drag.type==='orbit'){camera.yaw-=dx*.006;camera.pitch=Math.max(.12,Math.min(1.42,camera.pitch+dy*.005));cameraRevision++;}
     else {const b=basis(),scale=camera.distance/Math.max(1,Math.min(width,height)*.9);camera.target.x-=dx*scale*b.right.x;camera.target.z-=dx*scale*b.right.z;camera.target.x-=dy*scale*Math.sin(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));camera.target.z-=dy*scale*Math.cos(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));cameraRevision++;}
+    if(draft&&drag.type==='transform')$('transform-drag-status').textContent=`${drag.handle.axis.toUpperCase()} ${format(draft.position[drag.handle.axis])} · ${drag.snapStep>1?`Snap ${drag.snapStep} units`:'Free move'} · Release to apply`;
     draw();
   }
   drag.last=p;
 });
 canvas.addEventListener('pointerup',async event=>{
-  if(!drag)return;const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');
+  if(!drag)return;const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis])await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}
   else if(!finished.moved && event.button===0){let hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;if(!hit&&sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}if(hit)await api('/api/selection',{entity_id:hit});}
   draw();
 });
-canvas.addEventListener('pointercancel',()=>{drag=null;draft=null;canvas.classList.remove('dragging');draw();});
+canvas.addEventListener('pointercancel',()=>{drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='Move cancelled';draw();});
 canvas.addEventListener('wheel',event=>{event.preventDefault();camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(event.deltaY*.001)));cameraRevision++;draw();},{passive:false});
 
 // Unposed assets stay object-local. Only decoder-provided frames assemble objects.

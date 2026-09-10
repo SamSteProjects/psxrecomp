@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (optional transform snapping):** Prior turn was implementation
+  progress. Added off-by-default X/Z gizmo snapping with16/64/256/1024 scene-unit
+  steps aligned to the origin, plus proposed coordinate feedback while dragging.
+  Gesture start captures the chosen step; release uses the existing undoable
+  set_transform command and pointer cancellation discards the draft. Executed
+  actual pointer handlers in a focused Node harness: positive/negative snapping,
+  changed controls during drag, release-only command, cancellation and unsnapped
+  movement passed. Existing project workflow tests5/5 passed. Fresh town01 browser
+  verified checkbox and256-unit selection with no errors; physical pointer drag
+  and cold gameplay were not repeated. QA: local-output/sdk-20260909/transform-
+  snap-qa.cjs and transform-snap-browser. Heading/native actor creation remain
+  incomplete; full goal remains active.
+
 - **2026-09-10 (transition instruction navigation):** Previous turn was verified
   implementation progress. Transition source links now select their exact decoded
   SCENE_CHANGE operation. Fresh town01 browser project accepted partition-two

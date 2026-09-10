@@ -126,3 +126,9 @@ a marker. Two party instances use explicitly labelled reference idle poses.
 and select their exact decoded PC in the shared script workspace. Browser checks
 cover actor0049 flags and partition-two script0 SCENE_CHANGE0x16/CFLAG_SET0xC.
 This is source navigation, not branch execution or runtime flag identity proof.
+
+2026-09-10 transform tooling: X/Z gizmos support optional origin-aligned snapping
+at16/64/256/1024 scene units and coordinate feedback. Each completed drag emits
+one existing undoable transform command; cancellation discards the preview.
+Snap settings are session controls, not authored retail properties. Heading
+and native actor creation remain unsupported.
