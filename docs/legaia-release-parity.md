@@ -707,3 +707,10 @@ Both diagnostic fixes now pass a full MSVC Release generated-game link from
 The preserved live field run still uses96eaf949..., whose older capture semantics
 remain applicable to all existing visibility evidence. New-binary live capture
 and restore verification remain pending; linking does not supply that acceptance.
+
+Cold startup/capture follow-up on97f0f026...: separate port4399 process reached
+the visually verified title menu, returned51 GP0 entries with PC8005A160 and
+exited0. This accepts title startup and diagnostic capture for that executable.
+Host audio was nonzero, but71617 overflow drops prevent an audio-continuity
+claim. No savestate load or field progression occurred. Private evidence is in
+`local-output/stability-20260909/dma-live/result.json` and `startup.png`.

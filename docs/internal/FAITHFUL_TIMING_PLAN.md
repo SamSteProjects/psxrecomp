@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Cold title and GPU capture on diagnostic rebuild
+
+- Previous turn was progress: full MSVC link. Launched97f0f026... in isolated `local-output/stability-20260909/dma-live`, port4399, separate saves, shipping HLE/software configuration. PID48756 reached the visually inspected title menu; captured51 GP0 commands and exited0 after quit. Private result.json retains identity, packet and audio responses; startup.png retains visual evidence.
+- All51 captured command PCs are8005A160. Generated code at that site stores01000401 through the pointer at80078E34, consistent with the linked-list DMA kick; completion func/RA differ and are not builder evidence. This establishes live capture on97, not field visibility or restore acceptance.
+- Audio host tap has47742 nonzero frames/peak15822, but overflow_drops71617; no audio-continuity claim. Original field PID50140 was rechecked alive and untouched. New-binary restore/field acceptance and visibility root cause remain outstanding. Full objective active.
+
 ### 2026-09-10 — Rebuild complete game with DMA diagnostic fixes
 
 - Previous turn was progress: reset/restore provenance fix. Rebuilt private stability target psx-runtime with MSVC Release, parallel2, using the existing generated main/static-overlay sources; command exited0 and staged mod catalog verification passed. Existing compiler deprecation/synthetic-recursion warnings remain. Log: `local-output/stability-20260909/build-dma-provenance.log`.
