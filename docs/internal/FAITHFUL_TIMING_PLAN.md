@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Cold town01 field reached with authored arrival package
+
+- Previous turn was progress: owned runtime launched and New Game begun. Continued same runtimePID50140/editorPID48160 (session45118), identity-checked screenshots showed story progression. Completed naming via Start/Up/Cross, elder dialogue and Yes choice, then reached field control (elder-9.png). No savestate or RAM writes used.
+- Guarded v2 attach and actor observation succeeded at frame25992; evidence `arrival-live/field-observation.json`. Runtime consumed one enabled MAN overlay (13sector applications/24894cumulative bytes), disc guard false. This establishes cold field loading on binary96eaf949..., not exit arrival acceptance.
+- Added identity-guarded read-only arrival-global capture to private controller. Runtime remains live at town01 field control for exit traversal; no restart needed. Full objective active.
+
+
 ### 2026-09-10 — Start cold arrival runtime acceptance
 
 - Previous turn was progress: composed package exactness. Prepared private arrival-live Project with town01 P2[0] X12416 and package SHA c58bd9410562a079bd89dcd2d1e87ba0e6835556abd0edffccc9429e3c07262c. Launched latest rebuilt executable96eaf949050d28009958cbc4f5d305c06976ac7e1eefbd7d62eaa6cb97993203 through EditorServer4396/runtime4397.
