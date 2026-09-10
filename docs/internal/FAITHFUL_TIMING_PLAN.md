@@ -213,6 +213,26 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (appearance cold gameplay):** Prior authored animation preview was
+  progress. Fresh project under `local-output/sdk-20260909/appearance-live-20260910`
+  authored only actor0049 -> donor0015: model103/animation15 -> model94/animation18.
+  Build audit proved exactly2changed fields, unchanged opaque bytes and LZS
+  roundtrip. Package SHA25687e19d16304b00b91cdf0c1f41482b9dd992a8343d8e980168763d6e2bfb740e;
+  existing runtime SHA2562be69467c02937d6ccfc86a6030f9380bc5654ea6404694ea3e801a25b716fab.
+  Cold runtime PID34860 consumed24894bytes/13sectors, guard_failed=false. First
+  title confirm entered attract playback; second entered normal opening story,
+  naming and field without restore or skips. `appearance-dialogue.png` visibly
+  shows the axe-carrying replacement speaking the original actor0049 Genesis Tree
+  dialogue at the child's location; `following-dialogue.png` shows it closed.
+  Guarded v2 capture accepted90nodes, epoch a9107ab50bc591adf2319fde32f91acdcbf982efaa438eb83f700a668e926e71.
+  Node80080c8c header has model94/animation18/local_count8 and placement4544/12096.
+  Candidate identity remains unconfirmed: current correlation reports actor0049
+  unmatched because it compares imported appearance only. This is a concrete
+  authored-correlation integration gap to fix next. Clearing the override in a
+  separate in-memory project generated zero overlays/zero changed fields; cold
+  revert acceptance remains open. Runtime and editor PID47184 exited0; editor
+  session1918 terminal. Broader compatibility/full SDK goal remain unaccepted.
+
 - **2026-09-10 (authored animation resource preview):** Previous usage-link
   acceptance was progress. Animation asset preview choices now include authored
   effective assignments through the existing guarded appearance preview service,

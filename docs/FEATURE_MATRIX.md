@@ -1,5 +1,15 @@
 # Legaia SDK feature matrix
 
+2026-09-10 appearance gameplay acceptance: a cold appearance-only run replaced
+town01 actor0049's child model103/animation15 with donor0015 model94/animation18.
+The axe-carrying character appeared at the Genesis Tree, retained the original
+dialogue and returned to field control after it closed. The guarded capture
+accepted90nodes and observed the replacement header at placement4544/12096.
+The existing correlation layer still reports the actor unmatched because it
+uses imported appearance only; authored appearance correlation needs correction.
+This is bounded acceptance for this donor pair, not general script compatibility.
+Clearing the override builds zero overlays; a new cold revert run remains pending.
+
 2026-09-10 animation preview assignments: the animation asset picker now offers
 separate Imported and Authored effective previews, plus combined labels when
 unchanged. Browser verification opened actor0040's authored clip0012 (15 frames,
