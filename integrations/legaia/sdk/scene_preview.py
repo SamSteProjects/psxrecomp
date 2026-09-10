@@ -18,7 +18,7 @@ MAX_TRIANGLES = 200_000
 MAX_TEXTURE_BYTES = 16 * 1024 * 1024
 
 
-def source_key(project) -> str | None:
+def source_key(project, *, geometry_only=False) -> str | None:
     document = project.imports.get(project.active_scene)
     if not project.disc_path or not document:
         return None
@@ -29,7 +29,7 @@ def source_key(project) -> str | None:
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
-                   "environment": deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
+                   "environment": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
 
 
@@ -102,6 +102,7 @@ class ScenePreviewService:
         self._bindings = {}
         self._metrics = {}
         self._environment = []
+        self._environment_metadata = None
 
     def clear(self):
         self._key = None
@@ -109,6 +110,7 @@ class ScenePreviewService:
         self._bindings = {}
         self._metrics = {}
         self._environment = []
+        self._environment_metadata = None
 
     def preview(self, project, model_loader, pose_loader_factory=None, environment_loader_factory=None, terrain_loader=None) -> dict:
         # Cached geometry must not hide missing or modified authored files.
@@ -118,10 +120,11 @@ class ScenePreviewService:
         key = source_key(project)
         if key is None:
             raise ProjectError("Scene preview requires an imported scene and its user-owned disc")
-        if key != self._key:
+        geometry_key = source_key(project, geometry_only=True)
+        if geometry_key != self._key:
             # Failed regeneration must not expose the previous scene's geometry.
             self.clear()
-            self._build(project, key, model_loader, pose_loader_factory, environment_loader_factory, terrain_loader)
+            self._build(project, geometry_key, model_loader, pose_loader_factory, environment_loader_factory, terrain_loader)
         projected = project.state()["scene"]
         instances = []
         for entity in projected["entities"]:
@@ -140,7 +143,19 @@ class ScenePreviewService:
                                            "height": "ground-plane preview only" if position.get("y") is None else "authored value",
                                            "heading": "unknown; identity orientation is a display convention",
                                            "scale": "source units retained; physical scale is unknown"}})
-        instances.extend(deepcopy(self._environment))
+        environment = deepcopy(self._environment)
+        effective = (environment_effective_transforms(project, self._environment_metadata)
+                     if self._environment_metadata is not None else {})
+        for instance in environment:
+            transform = effective.get(instance['entity_id'])
+            if transform is not None:
+                instance.update(position=deepcopy(transform['position']),
+                                display_position=_display_position(transform['position']),
+                                model_to_scene=environment_matrix(transform),
+                                effective_transform=deepcopy(transform), authored_transform=True)
+        instances.extend(environment)
+        if source_key(project) != key:
+            raise ProjectError("Scene preview source changed during transform projection")
         return {"schema": "legaia.scene-preview.v1", "source_key": key,
                 "scene_id": projected["id"], "coordinate_system": "editor_field_y_up_source_units",
                 "position_to_display": list(POSITION_TO_DISPLAY),
@@ -227,16 +242,17 @@ class ScenePreviewService:
                 decoded[geometry_key] = result
                 binding.update(result)
             environment = []
+            environment_metadata = None
             environment_error = None
             if environment_loader_factory:
                 try:
                     env = environment_loader_factory(project.disc_path, document["scene"]["name"])
                     placements = env.metadata["placements"]
-                    effective = environment_effective_transforms(project, env.metadata)
+                    environment_metadata = deepcopy(env.metadata)
                     if len(placements) + len(actors) > MAX_ENTITIES:
                         raise RetailImportError("Scene environment entity budget exceeded")
                     for placement in placements:
-                        transform = effective.get(placement["semantic_id"], placement["imported_transform"])
+                        transform = placement["imported_transform"]
                         asset_id = placement.get("model_asset_id")
                         instance = {"entity_id": placement["semantic_id"], "kind": "environment",
                                     "name": placement["name"], "asset_id": asset_id,
@@ -245,7 +261,7 @@ class ScenePreviewService:
                                     "display_position": _display_position(transform["position"]),
                                     "model_to_scene": environment_matrix(transform),
                                     "effective_transform": deepcopy(transform),
-                                    "authored_transform": placement["semantic_id"] in effective,
+                                    "authored_transform": False,
                                     "source_record": deepcopy(placement),
                                     "evidence": {"placement": "imported_MAP_and_MAN_floor_LUT",
                                                  "mesh_pool": deepcopy(env.metadata["mesh_pool"]),
@@ -302,10 +318,11 @@ class ScenePreviewService:
                         terrain_cells = len(ground["cells"])
                 except RetailImportError as exc:
                     terrain_error = str(exc)
-        if source_key(project) != key:
+        if source_key(project, geometry_only=True) != key:
             raise ProjectError("Scene preview source changed during decoding")
         self._assets, self._bindings, self._key = assets, bindings, key
         self._environment = environment
+        self._environment_metadata = environment_metadata
         self._metrics = {"entity_count": len(bindings), "renderable_count": sum(b["renderable"] for b in bindings.values()),
                          "geometry_count": len(assets), "triangle_count": triangle_count,
                          "texture_bytes": texture_bytes, "decode_seconds": round(time.monotonic() - started, 3)}

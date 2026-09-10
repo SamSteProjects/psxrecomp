@@ -1,5 +1,10 @@
 # Legaia SDK feature matrix
 
+2026-09-10 scenery preview performance: transform edits now reuse decoded scene
+geometry. Retail service measurement: initial18.423s, clear0.386s, restore1.122s,
+with identical asset payloads and correct individual positions. This measures
+the SDK service, not browser rendering/network latency.
+
 2026-09-10 individual-decoration browser acceptance: selecting cell1833,
 editing X128, viewing X5440 while cell2089 remains X5312, saving and undoing
 back to X5312 passed in the textured scene editor. All20 retail-enabled build

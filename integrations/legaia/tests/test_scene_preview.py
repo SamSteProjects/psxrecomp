@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -20,6 +21,47 @@ def geometry():
 
 
 class ScenePreviewWorkflow(unittest.TestCase):
+    def test_environment_transforms_reuse_geometry_and_undo_restores_baseline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            imported = synthetic_scene()
+            imported['actors'][0]['placement_fields']['animation_id'] = 0
+            project.import_metadata(imported)
+            disc = Path(directory) / 'fixture.bin'
+            disc.write_bytes(b'synthetic source')
+            project.disc_path = str(disc)
+            asset = imported['actors'][0]['model_reference']['asset_semantic_id']
+            transform = {'position':dict(x=100,y=0,z=200), 'rotation_psx':dict(x=0,y=0,z=0)}
+            placement = {'semantic_id':'decoration', 'name':'Decoration', 'model_asset_id':asset,
+                         'imported_transform':transform, 'animation_id':0}
+            catalog = SimpleNamespace(metadata={'placements':[placement], 'mesh_pool':{}},
+                                      pose_preview=lambda _: {'pose':{'kind':'static'}})
+            calls = []
+            def loader(asset, **kwargs):
+                calls.append(asset['id'])
+                return {**geometry(), 'bounds':{'min':[0,-20,0],'max':[10,0,5]}}
+            def effective(*_):
+                return {'decoration':{'position':dict(x=228,y=0,z=200),
+                                      'rotation_psx':dict(x=0,y=1024,z=0)}} if project.overrides else {}
+            service = ScenePreviewService()
+            with patch('sdk.scene_preview._disc_context', side_effect=lambda _:nullcontext()), \
+                 patch('sdk.scene_preview.import_scene', return_value=deepcopy(imported)), \
+                 patch('sdk.scene_preview.environment_effective_transforms', side_effect=effective):
+                first = service.preview(project,loader,environment_loader_factory=lambda *_:catalog)
+                count = len(calls)
+                project.overrides[project.active_scene] = {'Environment':{'instances':[{'cell_index':1}]}}
+                moved = service.preview(project,loader,environment_loader_factory=lambda *_:self.fail('geometry rebuilt'))
+                self.assertEqual(len(calls),count)
+                self.assertNotEqual(first['source_key'],moved['source_key'])
+                self.assertEqual(moved['entities'][-1]['position']['x'],228)
+                self.assertTrue(moved['entities'][-1]['authored_transform'])
+                project.overrides.clear()
+                restored = service.preview(project,loader)
+                self.assertEqual(restored['entities'][-1]['position']['x'],100)
+                self.assertFalse(restored['entities'][-1]['authored_transform'])
+                self.assertEqual(first['assets'],restored['assets'])
+                self.assertEqual(len(calls),count)
+
     def test_environment_matrix_rotates_before_single_y_reflection(self):
         matrix = environment_matrix({"position": {"x": 10, "y": -20, "z": 30},
                                      "rotation_psx": {"x": 0, "y": 1024, "z": 0}})

@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Reuse scene geometry for scenery transform edits
+
+- Previous turn was progress: browser-accepted and committed individual decoration editing. Split preview request identity from geometry identity so Environment overrides update transforms without invalidating imported meshes, poses or textures. Source-disc, appearance and texture dependencies still invalidate geometry; final source identity is rechecked before returning projected transforms.
+- Five scene-preview tests and two environment-project tests pass. New cache test verifies moved/reverted transforms, unchanged geometry, distinct request identity and no loader calls after editing. Diff checks pass.
+- Fresh retail service measurement against the saved individual-browser project: cold18.423s, clearing override0.386s, undo/restoring1.122s. All asset payloads were equal; cell1833 projected X5440 ->5312 ->5440 with matching authored flags. The measurement opened an ephemeral server without running it and closed its observer; no game input or saved-project mutation. Browser latency after this change remains unmeasured. Full objective remains active.
+
 ### 2026-09-10 — Browser acceptance for individual decoration editing
 
 - Previous turn was progress: integrated instance editing across SDK layers. In an isolated town01 editor on4395, selected decoration194 at41,14, applied individual X128, then verified effective X5440 with a textured viewport and selection outline. The shared counterpart at41,16 retained X5312 and no individual override.
