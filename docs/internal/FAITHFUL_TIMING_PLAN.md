@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (preset eligibility browser acceptance):** Retail town0c actor1
+  correctly disables Apply for a town01 donor preset and shows the scene reason.
+  Browser verification exposed empty authored appearance objects enabling Capture
+  with a blank donor label; the editor now requires an actual donor_entity_id.
+  Reload verified disabled name/capture controls and useful guidance for actor1;
+  town01 actor49 with donor15 retains enabled Capture/Apply and the explicit
+  verification-on-Apply message. Browser error log empty; JS syntax and diff checks
+  pass. Private QA preset-eligibility-browser under local-output/sdk-20260909.
+  This is editor acceptance only; no game runtime was launched. Full goal remains
+  active, including unresolved release parity and broader authoring features.
+
+
 - **2026-09-10 (preset application eligibility):** Previous appearance preset
   buildout was verified progress. Project state now supplies selected-actor
   eligibility and reasons for preset cards; incompatible scene/donor structure,
