@@ -238,8 +238,16 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "tween_frames": struct.unpack_from("<H", data, operand + 6)[0]}
         elif sub == 0xCD:
             size, mnemonic, branches = 1, "SCRIPT_CONTEXT_ALLOC", []
-            args = {"sub_op": sub, "unresolved_control_flow":
-                    "allocated-context entry and external resumption are unresolved; pinned VM halts at the current PC"}
+            args = {"sub_op": sub, "can_wait_for_external_state": True}
+            if header == 1:
+                # Retail PROT 897: 801E29E0 increments s8 by two; null
+                # allocation or allocated flags bit 3 returns it. Otherwise
+                # 801E2A18 restores the original PC and returns via 801DEE50.
+                # This corrects the pinned VM's unconditional same-PC halt.
+                branches = [{"pc": pc + 2, "condition": "allocation_absent_or_flag_3_set"},
+                            {"pc": pc, "condition": "allocated_context_wait"}]
+            else:
+                args["unresolved_control_flow"] = "extended allocated-context entry and external resumption are unresolved"
         elif 0xC0 <= sub <= 0xCF and sub != 0xC9:
             # Pinned executing menu_ctrl/nibble_c.rs. C9 depends on host
             # comparison; CD allocates a context and halts, with no fallthrough.

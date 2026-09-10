@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (retail CD continuation):** Verified the retained 202728-byte
+  field capture equals the prefix of private-disc PROT entry 897 at offset 0.
+  C-family dispatch masks the selector low nibble at 0x801E25E0 and indexes
+  table 0x801CEF88; entry 13 targets 0x801E29E0. s8 receives the input PC at
+  0x801DE848 and s4 preserves it at 0x801DE890. CD increments s8 by two:
+  null allocation or returned-context flags bit 3 returns the advanced PC;
+  otherwise 0x801E2A18 restores s4 and returns the original PC via 0x801DEE50.
+  Ordinary CD now exposes advance and wait edges, correcting the pinned VM's
+  incomplete halt model. Extended-context CD remains explicitly unresolved.
+  Private `retail-cd-verification.json` records disc/capture hashes and matching
+  generated instruction words. All 40 focused tests pass; opening P2[3] reaches
+  61 instructions and stops at PC 327 MENU_CTRL 60, with zero dialogues yet.
+  No runtime execution or saved-project mutation was needed for this evidence.
+
 - **2026-09-10 (retail allocation discrepancy found):** Read-only inspection of
   the sibling generated field overlay capture finds SHA-256
   `3026cd12a22c12f94ed05ef5af551df786267d2d29c330b5c57e82c5ec5aae19`.

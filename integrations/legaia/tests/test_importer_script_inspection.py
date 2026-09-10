@@ -22,7 +22,7 @@ def covered_bytes(report, start, length):
 
 class ScriptInspectionTests(unittest.TestCase):
     def test_context_allocation_has_no_invented_fallthrough(self):
-        for data in (b"\x4c\xcd\x1fOpaque\0", b"\xcc\x17\xcd\x1fOpaque\0"):
+        for data in (b"\xcc\x17\xcd\x1fOpaque\0",):
             report = inspect_record(data, 0)
             self.assertEqual(report["status"], "partial")
             self.assertEqual(len(report["instructions"]), 1)
@@ -34,6 +34,15 @@ class ScriptInspectionTests(unittest.TestCase):
             self.assertEqual(report["stops"][0]["kind"], "known_instruction_unresolved_control_flow")
             self.assertEqual(report["dialogues"], [])
             self.assertIn("allocated-context entry", report["stops"][0]["reason"])
+
+    def test_retail_allocation_can_advance_or_wait_at_original_pc(self):
+        report = inspect_record(b"\x4c\xcd\x1fHi\0", 0)
+        self.assertFalse(report["stops"])
+        self.assertEqual(report["instructions"][0]["successors"],
+                         [{"pc": 2, "condition": "allocation_absent_or_flag_3_set"},
+                          {"pc": 0, "condition": "allocated_context_wait"}])
+        self.assertEqual([d["text"] for d in report["dialogues"]], ["Hi"])
+        self.assertEqual(covered_bytes(report, 0, 6), [1] * 6)
 
     def test_actor_scene_menu_widths_and_slot_sentinel(self):
         widths = {0xC0: 1, 0xC1: 1, 0xC2: 2, 0xC3: 1, 0xC4: 3,
