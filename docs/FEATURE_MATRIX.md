@@ -1,5 +1,12 @@
 # Legaia SDK feature matrix
 
+2026-09-10 textured ground: town01's1946 source cells now render alongside actors
+and46 placed environment objects. All11 ground materials resolve through the
+scene texture catalog, with authored replacements supported by the adapter.
+Browser inspection verified paths/grass/beach near house137 and ground selection/
+framing. This remains a source reference surface with holes; decorations,
+cell-level inspection and complete retail scene parity are unfinished.
+
 2026-09-10 environment editor selection: searchable hierarchy rows, viewport-pick
 routing, a read-only transform/source inspector and object framing are connected
 to the combined scene preview. Node syntax passes; browser interaction and visual

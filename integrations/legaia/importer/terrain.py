@@ -50,3 +50,18 @@ def decode_terrain(data: bytes, floor_lut: list[int]) -> dict:
                                 "vertex_start": base, "atlas_tile": tile,
                                 "source_selector_supported": supported})
     return result
+
+
+def load_terrain(disc, scene: str) -> dict:
+    from .environment import load_environment_placements
+    from .pipeline import _disc_context
+    from hashlib import sha256
+    with _disc_context(disc) as (_, digest, _, archive):
+        environment = load_environment_placements(disc, scene)
+        source = environment["source_record"]
+        data = archive.read_entry(archive.entry(source["map_entry_index"]), extended=True)
+        if digest != source["disc_sha256"] or sha256(data).hexdigest() != source["map_sha256"]:
+            raise ImportError("terrain source changed during resolution")
+        result = decode_terrain(data, environment["floor_height_lut"])
+        result["source_record"] = source
+        return result

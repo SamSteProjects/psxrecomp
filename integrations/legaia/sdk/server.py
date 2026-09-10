@@ -424,9 +424,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Scene preview uses the active imported scene; client geometry and paths are not accepted")
                     from importer.scene_animation import load_scene_actor_animation_catalog
                     from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
                     self._json(200, self.server.scene_previews.preview(
                         self.server.project, self.server.model_preview, load_scene_actor_animation_catalog,
-                        load_environment_preview_catalog))
+                        load_environment_preview_catalog, terrain_preview))
                     return
                 if route in ("/api/preview", "/api/animation-preview", "/api/export/model"):
                     project = self.server.project

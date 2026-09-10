@@ -75,7 +75,7 @@ class ScenePreviewService:
         self._metrics = {}
         self._environment = []
 
-    def preview(self, project, model_loader, pose_loader_factory=None, environment_loader_factory=None) -> dict:
+    def preview(self, project, model_loader, pose_loader_factory=None, environment_loader_factory=None, terrain_loader=None) -> dict:
         # Cached geometry must not hide missing or modified authored files.
         for binding in project.texture_overrides.values():
             if binding["source_scene_id"] == project.active_scene:
@@ -86,7 +86,7 @@ class ScenePreviewService:
         if key != self._key:
             # Failed regeneration must not expose the previous scene's geometry.
             self.clear()
-            self._build(project, key, model_loader, pose_loader_factory, environment_loader_factory)
+            self._build(project, key, model_loader, pose_loader_factory, environment_loader_factory, terrain_loader)
         projected = project.state()["scene"]
         instances = []
         for entity in projected["entities"]:
@@ -115,7 +115,7 @@ class ScenePreviewService:
                            "Unsupported multipart poses remain markers; no fabricated object assembly",
                            "Static reference poses; no live equipment, animated palettes or exact PSX blending"]}
 
-    def _build(self, project, key, model_loader, pose_loader_factory, environment_loader_factory=None):
+    def _build(self, project, key, model_loader, pose_loader_factory, environment_loader_factory=None, terrain_loader=None):
         started = time.monotonic()
         document = project.imports[project.active_scene]
         actors = document["actors"]
@@ -234,6 +234,34 @@ class ScenePreviewService:
                             instance["reason"] = str(exc)
                 except RetailImportError as exc:
                     environment_error = str(exc)
+            terrain_error = None
+            terrain_cells = 0
+            if terrain_loader:
+                try:
+                    ground = terrain_loader(project)
+                    count = len(ground["triangles"])
+                    bytes_used = sum(len(t.get("rgba_base64", "")) * 3 // 4 for t in ground["textures"])
+                    if len(assets) >= MAX_GEOMETRIES or triangle_count + count > MAX_TRIANGLES or texture_bytes + bytes_used > MAX_TEXTURE_BYTES:
+                        raise RetailImportError("Combined terrain geometry or texture budget exceeded")
+                    if count:
+                        ground_key = digest({"terrain": ground["source_record"], "source_key": key})
+                        ground_id = f"environment://{document['scene']['name']}/field-map/ground"
+                        bounds = {"min": [min(p[a] for p in ground["vertices"]) for a in range(3)],
+                                  "max": [max(p[a] for p in ground["vertices"]) for a in range(3)]}
+                        assets.append({"asset_id": ground_id, "geometry_key": ground_key,
+                                       "preview": ground, "bounds": bounds, "pose_kind": "source_heightfield"})
+                        transform = {"position": {"x": 0, "y": 0, "z": 0}, "rotation_psx": {"x": 0, "y": 0, "z": 0}}
+                        environment.append({"entity_id": ground_id, "kind": "environment", "name": "Ground surface",
+                                            "asset_id": ground_id, "renderable": True, "geometry_key": ground_key,
+                                            "pose_kind": "source_heightfield", "position": transform["position"],
+                                            "display_position": transform["position"], "model_to_scene": list(POSITION_TO_DISPLAY),
+                                            "source_record": {"imported_transform": transform, "source": ground["source_record"]},
+                                            "evidence": {"limits": ground["limitations"], "cell_count": len(ground["cells"])}})
+                        triangle_count += count
+                        texture_bytes += bytes_used
+                        terrain_cells = len(ground["cells"])
+                except RetailImportError as exc:
+                    terrain_error = str(exc)
         if source_key(project) != key:
             raise ProjectError("Scene preview source changed during decoding")
         self._assets, self._bindings, self._key = assets, bindings, key
@@ -244,3 +272,4 @@ class ScenePreviewService:
         self._metrics.update(environment_count=len(environment),
                              environment_renderable_count=sum(e["renderable"] for e in environment),
                              environment_error=environment_error)
+        self._metrics.update(terrain_cell_count=terrain_cells, terrain_error=terrain_error)

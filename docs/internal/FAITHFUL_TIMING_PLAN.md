@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Render textured ground alongside scene objects
+
+- Previous turn was progress: source terrain decoder. Added verified terrain loading, scene texture association with authored texture overrides, and combined-service geometry/texture budgets. The ground surface is a separate read-only selectable environment instance with source/limitation evidence; no asset provenance is replaced.
+- All11 town01 ground materials resolve address_match. Four scene-preview checks pass. Isolated4395/tab53 browser shows98/99 models and selects/frames Ground surface. Framing house137 visibly shows paths, grass and beach beneath the house and coastal structures; screenshots inspected. This is source surface acceptance, not retail camera/visibility parity; holes and missing decorations remain explicit next work.
+- Prior tab52 was no longer available, so opened a new isolated tab without touching original4388. Stopped the owned terrain editor through its stop file. Full objective active; decorations, cell-level ground inspection, broader scene coverage and remaining SDK/stability work remain unfinished.
+
 ### 2026-09-10 — Decode the source ground surface
 
 - Previous turn was progress: browser-verified environment hierarchy/framing. Added importer/terrain.py from pinned field_objects.rs build_walk_heightfield conventions: walk-visible1000 cell gate, four floor-LUT corner heights, clamped grid-edge heights, PSX quad diagonal and decreasing V along increasing row.
