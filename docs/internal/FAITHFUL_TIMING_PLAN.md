@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (preset application eligibility):** Previous appearance preset
+  buildout was verified progress. Project state now supplies selected-actor
+  eligibility and reasons for preset cards; incompatible scene/donor structure,
+  missing selection and Live mode disable Apply before a failed request. This
+  derived metadata is not persisted and performs no fresh disc parsing. Eligible
+  appearance presets explicitly retain verification-on-Apply. Three focused
+  preset tests pass, including actual cross-scene command rejection without
+  state mutation and an assertion that state rendering never calls disc-backed
+  appearance_options. Existing workflow/HTTP-template checks and JS syntax pass.
+  UI change not separately browser-accepted this turn. Full goal remains active.
+
 - **2026-09-10 (reusable appearance presets):** Previous title PCM evidence was
   progress. Extended actor templates with explicit authored-appearance-v1 scope;
   capture stores a donor pair separately from position presets. Applying delegates

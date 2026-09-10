@@ -41,4 +41,30 @@ class AppearanceTemplateTests(unittest.TestCase):
         template=deepcopy(p.actor_templates[key]);template['components']['ActorAppearance']['donor_entity_id']='scene://other/actors/0001'
         with self.assertRaises(ProjectError):p._validate_template(key,template)
 
+    def test_selected_actor_eligibility_is_derived_and_cross_scene_rejected(self):
+        import json
+        p=self.project
+        self.assign();p.command({'type':'create_actor_template','capture':'appearance','entity_id':self.target,'name':'Pair'})
+        key=next(iter(p.actor_templates));template=p.actor_templates[key]
+        p.select(self.target)
+        with patch.object(p,'appearance_options',side_effect=AssertionError('Eligibility must not reread disc')):
+            shown=p.state()['actor_templates'][0]
+            self.assertTrue(shown['application']['available'])
+            self.assertEqual(shown['application']['verification'],'project_structure_only')
+        self.assertNotIn('application',p.actor_templates[key])
+        p.select(None)
+        self.assertFalse(p.state()['actor_templates'][0]['application']['available'])
+        other=json.loads(json.dumps(self.document).replace('fixture','second'))
+        other['source']['disc_identity']=self.document['source']['disc_identity']
+        p.import_metadata(other)
+        foreign=other['actors'][0]['semantic_id'];p.select(foreign)
+        eligibility=p.state()['actor_templates'][0]['application']
+        self.assertFalse(eligibility['available'])
+        self.assertIn('imported scene',eligibility['reason'])
+        before=deepcopy(p.state())
+        with self.assertRaises(ProjectError):p.command({'type':'apply_actor_template','template_id':key,'entity_id':foreign})
+        self.assertEqual(p.state(),before)
+        p.mode='live'
+        self.assertIn('Edit mode',p.template_application(template,self.target)['reason'])
+
 if __name__=='__main__':unittest.main()

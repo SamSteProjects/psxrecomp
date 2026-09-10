@@ -547,6 +547,23 @@ class ProjectService:
             raise ProjectError("Templates support authored position only")
         self._validate_position(components["Transform"]["position"])
 
+    def template_application(self, template: dict, entity_id: str | None) -> dict:
+        """Cheap selected-actor eligibility; Apply still verifies the retail source."""
+        result = {"available": False, "verification": "project_structure_only"}
+        if self.mode != "edit":
+            return {**result, "reason": "Switch to Edit mode to apply a preset"}
+        if not entity_id:
+            return {**result, "reason": "Select an imported actor to apply this preset"}
+        try:
+            self._actor(entity_id)
+            if template["scope"] == "authored-appearance-v1":
+                self._appearance_binding(entity_id, template["components"]["ActorAppearance"])
+        except ProjectError as exc:
+            return {**result, "reason": str(exc)}
+        return {**result, "available": True, "reason":
+                "Appearance source and compatibility will be verified on Apply" if template["scope"] == "authored-appearance-v1"
+                else "Applies the saved absolute position axes; other axes stay unchanged"}
+
     def _template_command(self, command: dict) -> None:
         kind = command["type"]
         if kind == "create_actor_template":
@@ -820,7 +837,8 @@ class ProjectService:
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,
-                "actor_templates": deepcopy(list(self.actor_templates.values())),
+                "actor_templates": [{**deepcopy(template), "application": self.template_application(template, self.selected)}
+                                    for template in self.actor_templates.values()],
                 "assets": deepcopy(list(self.assets.records.values())),
                 "model_references": self.model_references(), "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),

@@ -820,8 +820,9 @@ function renderTemplates(){
   $('capture-appearance-template').onclick=()=>command({type:'create_actor_template',capture:'appearance',entity_id:entity.id,name:$('template-name').value});
   for(const template of templates){
     const card=document.createElement('section');card.className='template-card';
+    const application=template.application??{available:false,reason:'Preset eligibility is unavailable.'};
     const values=template.components.ActorAppearance?`Appearance donor: ${template.components.ActorAppearance.donor_entity_id}`:Object.entries(template.components.Transform.position).map(([axis,value])=>`${axis.toUpperCase()} ${format(value)}`).join(' · ');
-    card.innerHTML=`<strong>${escapeHTML(template.name)}</strong><p>${escapeHTML(values)}</p><details><summary>Source provenance</summary><p>${escapeHTML(template.source.scene_id)}<br>${escapeHTML(template.source.entity_id)}</p><code>${escapeHTML(template.source.disc_identity)}</code></details><div class="template-actions"><button data-apply ${canEdit() && entity?'':'disabled'}>Apply to ${escapeHTML(entity?.name ?? 'selected actor')}</button><button data-delete ${canEdit()?'':'disabled'}>Delete</button></div>`;
+    card.innerHTML=`<strong>${escapeHTML(template.name)}</strong><p>${escapeHTML(values)}</p><p class="field-note">${escapeHTML(application.reason)}</p><details><summary>Source provenance</summary><p>${escapeHTML(template.source.scene_id)}<br>${escapeHTML(template.source.entity_id)}</p><code>${escapeHTML(template.source.disc_identity)}</code></details><div class="template-actions"><button data-apply ${canEdit() && entity && application.available?'':'disabled'}>Apply to ${escapeHTML(entity?.name ?? 'selected actor')}</button><button data-delete ${canEdit()?'':'disabled'}>Delete</button></div>`;
     card.querySelector('[data-apply]').onclick=()=>command({type:'apply_actor_template',template_id:template.id,entity_id:entity.id});
     card.querySelector('[data-delete]').onclick=()=>command({type:'delete_actor_template',template_id:template.id});
     $('template-list').append(card);
