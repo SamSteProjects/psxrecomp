@@ -43,7 +43,9 @@ class ScriptAssetCatalogTests(unittest.TestCase):
         self.assertEqual(result["flag_reference_count"], 3)
 
     def test_menu_metadata_has_no_labels_and_preserves_bounded_source(self):
-        result = catalog(b"\x27\x10\0\x20\0\x1fPrivateOne\0\x1fPrivateTwo\0")
+        labels = b"\x1fPrivateOne\0\x1fPrivateTwo\0"
+        end = 5 + 5 + len(labels)
+        result = catalog(b"\x27" + (end - 6).to_bytes(2, "little") + (end - 8).to_bytes(2, "little") + labels)
         script = next(a for a in result["assets"] if a["asset_kind"] == "script" and a["menu_count"])
         self.assertEqual(script["menu_count"], 1)
         menu = script["menus"][0]
@@ -146,9 +148,9 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             # Acquire coverage reveals actor 40's conflicting target boundary;
             # its entire ambiguous graph must be withdrawn.
             # Flag-word branches expose five bounded P2[4] dialogue segments.
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 426))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (517, 60))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1145, 1))
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 522))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (613, 60))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1183, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(result["partition_two_script_count"], 39)
             p2 = assets["script://town01/scripts/man-p2/0037"]

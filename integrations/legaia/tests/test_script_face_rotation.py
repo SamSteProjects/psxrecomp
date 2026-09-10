@@ -5,7 +5,7 @@ import sys
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.core import ImportError
-from importer.script_inspection import _instruction
+from importer.script_inspection import _instruction, inspect_record
 
 class FaceRotationInspection(unittest.TestCase):
     def test_picker_table_labels_and_signed_entry_relative_targets(self):
@@ -15,7 +15,7 @@ class FaceRotationInspection(unittest.TestCase):
                 encoded += continuation + b"\x1fChoice\0" * count
                 row = _instruction(encoded, 0)
                 self.assertEqual(row["length"], len(encoded))
-                self.assertEqual(row["successors"], [])
+                self.assertEqual([edge["pc"] for edge in row["successors"]], [-1 + 3*i for i in range(count)])
                 options = row["operands"]["options"]
                 self.assertEqual([o["encoded_target"] for o in options], [-1 + 3*i for i in range(count)])
                 self.assertEqual([o["label"] for o in options], ["Choice"] * count)
@@ -23,6 +23,20 @@ class FaceRotationInspection(unittest.TestCase):
                 for end in range(1, len(encoded)):
                     with self.assertRaises(ImportError):
                         _instruction(encoded[:end], 0)
+
+    def test_menu_choices_follow_only_encoded_targets_and_reject_overlap(self):
+        script = b"\x27\x0b\0\x09\0\x1fA\0\x1fB\0\xfe\x1fC\0"
+        report = inspect_record(script, 0)
+        self.assertEqual([d["pc"] for d in report["dialogues"]], [12])
+        self.assertEqual(report["opaque_regions"][0]["pc"], 11)
+        self.assertEqual(len(report["stops"]), 1)
+        self.assertIn("pager continuation", report["stops"][0]["reason"])
+        # A choice landing inside the menu's label region is ambiguous.
+        conflicting = script[:1] + b"\x04\0" + script[3:]
+        rejected = inspect_record(conflicting, 0)
+        self.assertEqual(rejected["dialogues"], [])
+        self.assertEqual(rejected["instructions"], [])
+        self.assertTrue(any("inside" in stop["reason"] for stop in rejected["stops"]))
 
     def test_picker_high_bit_is_control_not_extended_target(self):
         for count in (2, 3, 4):

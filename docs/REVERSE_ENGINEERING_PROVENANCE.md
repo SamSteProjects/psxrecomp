@@ -218,3 +218,16 @@ while preserving unresolved local indices16..31. This adds exactly11 town01
 references, taking1134 to1145; private flag-word-catalog.json lists their source
 owners/PCs. The first retail count assertion correctly failed at the old total;
 it was updated after isolating the new reference family. Seven tests then pass.
+
+
+Menu inspection now follows only the per-choice encoded targets proved by the
+pinned picker reference. It does not add a linear successor after the labels.
+Pager continuation remains a known unresolved stop, preserving read-only status.
+Compared in the same run against a decoder with menu successors suppressed,
+town01 gains113 dialogue IDs and loses17 from P2[20] through existing graph
+conflict rejection. Counts become522 dialogues,613 assets and1183 flag references;
+60 partial scripts and one transition remain. Private menu-branch-coverage.json
+records exact added/removed IDs. Synthetic coverage proves skipped opaque bytes
+stay unvisited and an edge into a label invalidates the graph. Six focused,
+23 inspection,7 catalog and8 authoring tests pass, with retail enabled where
+applicable. No runtime reachability or new authoring support is claimed.

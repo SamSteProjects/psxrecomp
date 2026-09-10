@@ -117,7 +117,9 @@ def _instruction(data: bytes, pc: int) -> dict:
                             "entry_pc": entry, "relative_jump": delta,
                             "encoded_target": entry + delta})
             cursor += label["length"]
-        size, mnemonic, branches = cursor - operand, "DIALOGUE_PICKER", []
+        size, mnemonic = cursor - operand, "DIALOGUE_PICKER"
+        branches = [{"pc": option["encoded_target"], "condition": f"menu_choice_{option['index']}"}
+                    for option in options]
         args = {"option_count": count, "options": options,
                 "continuation_byte": continuation, "runtime_choice": "not_observed",
                 "unresolved_control_flow": f"dialogue picker 0x{op:02x} labels and choice targets decoded; pager continuation and runtime branch execution unresolved"}

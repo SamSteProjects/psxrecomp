@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (menu choice graph traversal):** Previous flag indexing was
+  progress. Followed proved per-choice targets without a guessed fallthrough;
+  pager remains unresolved. Same-run prior-decoder comparison isolates113 added
+  and17 withdrawn dialogue IDs (P2[20] conflict), net522 dialogues/613 assets/
+  1183 flags. Synthetic opaque-skip/conflict checks and44 targeted tests pass.
+  Authoring guards remain unchanged; choice-link browser acceptance pending.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (flag-word catalog integration):** Previous menu-link browser
   acceptance was progress. Found decoded FLAG_WORD_BRANCH absent from flag
   catalog; pinned host confirms bank mapping. Added metadata references with
