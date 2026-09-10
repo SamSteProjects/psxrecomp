@@ -1,5 +1,12 @@
 # Legaia SDK feature matrix
 
+2026-09-10 combined scene-preview service: the HTTP preview now includes textured
+environment instances with full world transforms alongside MAN actors. A fresh
+town01 service run produced46/46 environment meshes and51/52 actor meshes, sharing
+57 geometries. Four focused checks passed. Browser visual verification and
+environment hierarchy/inspector integration remain pending; ground/decorations
+are still absent, so this is not yet the full scene workflow.
+
 2026-09-10 environment geometry resolution: all46 town01 placed objects now
 resolve to stable scene model IDs using the explicitly inferred reference pool
 selection. Partition-0 headers resolve37 binds; the SDK preview decodes32 static

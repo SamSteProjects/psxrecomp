@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Connect textured environment to scene preview service
+
+- Previous turn was progress: resolved environment meshes/poses. ScenePreviewService now accepts the verified environment catalog, shares repeated geometry, runs prepared prop meshes through the existing server texture adapter, and appends separately identified environment instances with source metadata and full world matrices. The HTTP scene-preview route enables this path.
+- World matrices apply source rotation before the single editor Y reflection. Existing actor placement overrides remain independent. Existing geometry/texture/entity budgets apply to the combined scene; environment failures remain explicit in metrics/instance reasons.
+- Fresh retail service execution completed in8.608s:52 actors/51 renderable,46 environment/46 renderable,57 shared geometries,9858 unique-geometry triangles and2282409 estimated texture bytes; no environment failures. Private combined preview retained at local-output/sdk-20260909/environment-service/preview.json. Four focused scene-preview tests passed, including a quarter-turn world-transform check.
+- Browser rendering and environment hierarchy/inspector selection still unverified/unimplemented respectively. Next complete that UI workflow, then ground/decorations. This service check did not use or restart the original browser/runtime. Full objective active.
+
 ### 2026-09-10 — Resolve environment meshes and initial prop poses
 
 - Previous turn was progress: imported46 MAP placements. Added verified environment catalog resolution using the pinned field_env.rs largest scene-entry mesh-pool heuristic, explicitly labeled inferred. Town01 has one scene model carrier: PROT4/section0 with114 meshes; all46 placement indices resolve to existing stable asset IDs.

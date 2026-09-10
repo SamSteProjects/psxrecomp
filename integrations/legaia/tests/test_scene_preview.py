@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sdk.project import ProjectError, ProjectService
-from sdk.scene_preview import ScenePreviewService, source_key
+from sdk.scene_preview import ScenePreviewService, source_key, environment_matrix
 from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
@@ -20,6 +20,15 @@ def geometry():
 
 
 class ScenePreviewWorkflow(unittest.TestCase):
+    def test_environment_matrix_rotates_before_single_y_reflection(self):
+        matrix = environment_matrix({"position": {"x": 10, "y": -20, "z": 30},
+                                     "rotation_psx": {"x": 0, "y": 1024, "z": 0}})
+        # Source +Z becomes world +X for a quarter yaw; translation is last.
+        self.assertAlmostEqual(matrix[2] + matrix[3], 11)
+        self.assertAlmostEqual(matrix[6] + matrix[7], 20)
+        self.assertAlmostEqual(matrix[10] + matrix[11], 30)
+        self.assertEqual(matrix[5], -1)
+
     def test_donor_pose_keeps_target_placement_and_invalidates_only_appearance(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

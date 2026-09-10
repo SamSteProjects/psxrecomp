@@ -44,6 +44,20 @@ def _display_position(position: dict) -> dict:
     return values
 
 
+def environment_matrix(transform: dict) -> list:
+    """Row-major source-local rotation, followed by the editor Y reflection."""
+    from importer.animation import pose_vertices
+    angles = transform["rotation_psx"]
+    basis = pose_vertices([[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                          [{"object_index": 0, "vertex_start": 0, "vertex_count": 3}],
+                          [{"object_index": 0, "translation": [0, 0, 0],
+                            "rotation_psx": [angles[axis] & 4095 for axis in "xyz"]}])
+    position = _display_position(transform["position"])
+    return [basis[0][0], basis[1][0], basis[2][0], position["x"],
+            -basis[0][1], -basis[1][1], -basis[2][1], position["y"],
+            basis[0][2], basis[1][2], basis[2][2], position["z"], 0, 0, 0, 1]
+
+
 class ScenePreviewService:
     """One bounded geometry cache. Transform edits never invalidate asset bytes."""
 
@@ -52,14 +66,16 @@ class ScenePreviewService:
         self._assets = []
         self._bindings = {}
         self._metrics = {}
+        self._environment = []
 
     def clear(self):
         self._key = None
         self._assets = []
         self._bindings = {}
         self._metrics = {}
+        self._environment = []
 
-    def preview(self, project, model_loader, pose_loader_factory=None) -> dict:
+    def preview(self, project, model_loader, pose_loader_factory=None, environment_loader_factory=None) -> dict:
         # Cached geometry must not hide missing or modified authored files.
         for binding in project.texture_overrides.values():
             if binding["source_scene_id"] == project.active_scene:
@@ -70,7 +86,7 @@ class ScenePreviewService:
         if key != self._key:
             # Failed regeneration must not expose the previous scene's geometry.
             self.clear()
-            self._build(project, key, model_loader, pose_loader_factory)
+            self._build(project, key, model_loader, pose_loader_factory, environment_loader_factory)
         projected = project.state()["scene"]
         instances = []
         for entity in projected["entities"]:
@@ -89,6 +105,7 @@ class ScenePreviewService:
                                            "height": "ground-plane preview only" if position.get("y") is None else "authored value",
                                            "heading": "unknown; identity orientation is a display convention",
                                            "scale": "source units retained; physical scale is unknown"}})
+        instances.extend(deepcopy(self._environment))
         return {"schema": "legaia.scene-preview.v1", "source_key": key,
                 "scene_id": projected["id"], "coordinate_system": "editor_field_y_up_source_units",
                 "position_to_display": list(POSITION_TO_DISPLAY),
@@ -98,7 +115,7 @@ class ScenePreviewService:
                            "Unsupported multipart poses remain markers; no fabricated object assembly",
                            "Static reference poses; no live equipment, animated palettes or exact PSX blending"]}
 
-    def _build(self, project, key, model_loader, pose_loader_factory):
+    def _build(self, project, key, model_loader, pose_loader_factory, environment_loader_factory=None):
         started = time.monotonic()
         document = project.imports[project.active_scene]
         actors = document["actors"]
@@ -173,9 +190,57 @@ class ScenePreviewService:
                     result["reason"] = str(exc)
                 decoded[geometry_key] = result
                 binding.update(result)
+            environment = []
+            environment_error = None
+            if environment_loader_factory:
+                try:
+                    env = environment_loader_factory(project.disc_path, document["scene"]["name"])
+                    placements = env.metadata["placements"]
+                    if len(placements) + len(actors) > MAX_ENTITIES:
+                        raise RetailImportError("Scene environment entity budget exceeded")
+                    for placement in placements:
+                        asset_id = placement.get("model_asset_id")
+                        instance = {"entity_id": placement["semantic_id"], "kind": "environment",
+                                    "name": placement["name"], "asset_id": asset_id,
+                                    "renderable": False, "geometry_key": None,
+                                    "position": deepcopy(placement["imported_transform"]["position"]),
+                                    "display_position": _display_position(placement["imported_transform"]["position"]),
+                                    "model_to_scene": environment_matrix(placement["imported_transform"]),
+                                    "source_record": deepcopy(placement),
+                                    "evidence": {"placement": "imported_MAP_and_MAN_floor_LUT",
+                                                 "mesh_pool": deepcopy(env.metadata["mesh_pool"]),
+                                                 "pose": "source_reference_frame_zero_not_script_execution"}}
+                        environment.append(instance)
+                        geometry_key = digest({"environment_asset": asset_id, "animation_id": placement.get("animation_id")})
+                        try:
+                            if geometry_key not in decoded:
+                                asset = project.assets.records.get(asset_id)
+                                if asset is None:
+                                    raise RetailImportError("Environment mesh is not in the imported asset database")
+                                geometry = env.pose_preview(placement["semantic_id"])
+                                preview = model_loader(asset, prepared=geometry)
+                                count = len(preview.get("triangles", []))
+                                bytes_used = sum(len(t.get("rgba_base64", "")) * 3 // 4 for t in preview.get("textures", []))
+                                if len(assets) >= MAX_GEOMETRIES or triangle_count + count > MAX_TRIANGLES or texture_bytes + bytes_used > MAX_TEXTURE_BYTES:
+                                    raise RetailImportError("Scene geometry or texture preview budget exceeded")
+                                assets.append({"asset_id": asset_id, "geometry_key": geometry_key, "preview": preview,
+                                               "pose_kind": geometry["pose"]["kind"], "bounds": preview["bounds"]})
+                                triangle_count += count
+                                texture_bytes += bytes_used
+                                decoded[geometry_key] = {"geometry_key": geometry_key, "renderable": True,
+                                                         "pose_kind": geometry["pose"]["kind"], "reason": None}
+                            instance.update(decoded[geometry_key])
+                        except RetailImportError as exc:
+                            instance["reason"] = str(exc)
+                except RetailImportError as exc:
+                    environment_error = str(exc)
         if source_key(project) != key:
             raise ProjectError("Scene preview source changed during decoding")
         self._assets, self._bindings, self._key = assets, bindings, key
+        self._environment = environment
         self._metrics = {"entity_count": len(bindings), "renderable_count": sum(b["renderable"] for b in bindings.values()),
                          "geometry_count": len(assets), "triangle_count": triangle_count,
                          "texture_bytes": texture_bytes, "decode_seconds": round(time.monotonic() - started, 3)}
+        self._metrics.update(environment_count=len(environment),
+                             environment_renderable_count=sum(e["renderable"] for e in environment),
+                             environment_error=environment_error)
