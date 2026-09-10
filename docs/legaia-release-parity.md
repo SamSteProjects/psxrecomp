@@ -558,3 +558,17 @@ Evidence remains private in restore-title-input and restore-title-input-long.
 MDEC decode count stayed0: this is opening story/title flow, not FMV acceptance.
 Physical controllers, field/cross-scene restoration, and subjective sound
 quality remain separate requirements. No production patch was needed.
+
+## Story-to-title restore and restart (2026-09-10)
+
+A fresh owned61d99eac... process repeated three title loads, started New Game,
+and reached illustrated opening story content. Loading the same title save
+from that later state completed as generation5/last_ok1. The next screenshot
+showed the full title menu. Another12-frame Cross press restarted the opening
+story; the final frame counter was5869 and pad input was neutral with expired
+override. Host audio remained active with underruns0 and cumulative overflow
+72054. Process exit0. Private evidence: story-title-restore/acceptance.json,
+returned-title.png and restarted-story.png.
+
+This accepts the bounded story-to-title lifecycle and restart, not arbitrary
+field/cross-scene overlay ownership, hardware input, or audible continuity.

@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (story/title lifecycle restore):** Previous input-after-restore
+  run was verified progress. Fresh owned61d99eac... reached opening story after
+  three title loads, loaded saved title from story (generation5,last_ok1),
+  displayed full menu and restarted story on another12-frame Cross press.
+  Final frame5869, neutral pad, active audio, underruns0; exit0. Private
+  story-title-restore evidence retained. This bounded lifecycle is accepted;
+  field/cross-scene ownership and physical/audio quality gates remain open.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (input after repeated restores):** Previous NMake check was
   verified progress. Fresh owned61d99eac... completed three title loads and a
   12-frame port1 Cross press; override expired to neutral. Five-second capture
