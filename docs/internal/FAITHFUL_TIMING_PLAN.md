@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (build review):** Added an editor-facing report of the audited
+  changes included in a package, with authored-snapshot freshness and explicit
+  build-time validation scope. Browser checks found and corrected old command
+  invalidation that discarded reports; edits now retain a stale report and undo
+  restores its authored-state match. Two report and fourteen build checks pass.
+  Runtime behavior is unchanged; no game was launched for this slice.
+
 - **2026-09-10 (trigger script navigation):** Connected verified MAP gate-1
   trigger identities to bounded MAN P2 records and read-only script inspection.
   Source record boundaries and decoded paths remain distinct from runtime

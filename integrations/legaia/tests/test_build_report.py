@@ -1,0 +1,56 @@
+"""Build reports describe emitted changes and track authored snapshot identity."""
+from copy import deepcopy
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from sdk.build import authored_state_key, build_report
+from sdk.project import ProjectService
+from integrations.legaia.tests.test_project_workflow import synthetic_scene
+
+
+class BuildReportTests(unittest.TestCase):
+    def test_snapshot_tracks_build_inputs_but_not_selection_or_templates(self):
+        with tempfile.TemporaryDirectory() as raw:
+            project = ProjectService(Path(raw))
+            project.import_metadata(synthetic_scene())
+            baseline = authored_state_key(project)
+            project.selection = {"entity_id": "scene://fixture/actors/man-p1/0001"}
+            project.actor_templates = {"template": {"name": "Unused template"}}
+            self.assertEqual(authored_state_key(project), baseline)
+            for attribute, replacement in (("name", "different"), ("disc_path", "different"),
+                    ("overrides", {"actor": {"Transform": {"position": {"x": 64}}}}),
+                    ("texture_overrides", {"texture": {"asset_sha256": "a" * 64}}),
+                    ("imports", {})):
+                before = deepcopy(getattr(project, attribute))
+                setattr(project, attribute, replacement)
+                self.assertNotEqual(authored_state_key(project), baseline, attribute)
+                setattr(project, attribute, before)
+                self.assertEqual(authored_state_key(project), baseline, attribute)
+
+    def test_report_uses_audited_values_and_excludes_binary_spans(self):
+        audit = {"edits": [
+            {"scene": "fixture", "semantic_id": "actor", "field": "position.x",
+             "before_value": 128, "after_value": 192, "before_byte": 1, "after_byte": 2},
+            {"scene": "fixture", "semantic_id": "actor", "run_id": "run", "field": "dialogue.text",
+             "before_hex": b"Before".hex(), "after_hex": b"After ".hex()},
+            {"scene": "other", "semantic_id": "texture", "field": "texture.tim",
+             "before_sha256": "a" * 64, "after_sha256": "b" * 64}],
+            "overlays": [{"size": 20}, {"size": 30}], "validation": {"live_runtime": "not_run"}}
+        report = build_report(audit)
+        self.assertEqual((report["change_count"], report["scene_count"], report["overlay_bytes"]), (3, 2, 50))
+        self.assertEqual(report["changes"][0]["before"], 128)
+        self.assertEqual(report["changes"][1]["asset_id"], "run")
+        self.assertEqual(report["changes"][1]["after"], "After ")
+        self.assertEqual(report["changes"][2]["after"], "b" * 64)
+        self.assertNotIn("before_hex", str(report))
+        report["validation"]["live_runtime"] = "changed"
+        self.assertEqual(audit["validation"]["live_runtime"], "not_run")
+        audit["edits"] = []; audit["overlays"] = []
+        self.assertEqual(build_report(audit)["change_count"], 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

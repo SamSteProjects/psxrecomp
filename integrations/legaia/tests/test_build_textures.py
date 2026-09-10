@@ -14,7 +14,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / "integrations/legaia"), str(ROOT)]
-from sdk.build import BuildError, build_project
+from sdk.build import BuildError, authored_state_key, build_project
 
 
 def digest(data):
@@ -103,6 +103,10 @@ class RetailTextureBuild(unittest.TestCase):
             project.import_metadata(document, disc)
             project.save()
             baseline = build_project(project)
+            baseline_archive = Path(baseline["path"]).read_bytes()
+            self.assertEqual(baseline["report"]["change_count"], 0)
+            self.assertEqual(baseline["report"]["scene_count"], 0)
+            self.assertEqual(baseline["authored_state_key"], authored_state_key(project))
             imported = deepcopy(project.imports)
             def bind(payloads):
                 project.texture_overrides = {}
@@ -112,7 +116,13 @@ class RetailTextureBuild(unittest.TestCase):
                     path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(data)
                     project.texture_overrides[identifier] = value
             bind(originals)
-            self.assertEqual(build_project(project)["sha256"], baseline["sha256"])
+            noop = build_project(project)
+            self.assertEqual(noop["sha256"], baseline["sha256"])
+            self.assertEqual(Path(noop["path"]).read_bytes(), baseline_archive)
+            self.assertEqual(noop["report"]["changes"], [])
+            # Metadata records the authored bindings even if their payloads are
+            # byte-identical to retail and therefore emit no package changes.
+            self.assertNotEqual(noop["authored_state_key"], baseline["authored_state_key"])
             bind(replacements)
             texture_only = build_project(project)
             self.assertEqual((texture_only["changed_fields"], texture_only["overlay_count"]), (2, 2))
@@ -128,6 +138,54 @@ class RetailTextureBuild(unittest.TestCase):
             self.assertEqual((combined["changed_fields"], combined["overlay_count"]), (6, 3))
             self.assertEqual(combined["changed_fields_unit"], "authored fields/runs/textures")
             audit = json.loads(Path(combined["audit"]).read_text())
+            report = combined["report"]
+            self.assertEqual((report["change_count"], report["scene_count"]), (6, 1))
+            self.assertEqual(report["validation"], audit["validation"])
+            self.assertEqual(report["validation"]["live_runtime"], "not_run")
+            self.assertEqual(report["overlay_bytes"], sum(o["size"] for o in audit["overlays"]))
+            self.assertEqual(len(report["changes"]), len(audit["edits"]))
+            for displayed, recorded in zip(report["changes"], audit["edits"]):
+                self.assertEqual(displayed["scene"], recorded["scene"])
+                self.assertEqual(displayed["field"], recorded["field"])
+                self.assertEqual(displayed["asset_id"], recorded.get("run_id", recorded["semantic_id"]))
+                if recorded["field"] == "dialogue.text":
+                    self.assertEqual(displayed["before"].encode("ascii"), bytes.fromhex(recorded["before_hex"]))
+                    self.assertEqual(displayed["after"].encode("ascii"), bytes.fromhex(recorded["after_hex"]))
+                    self.assertEqual(displayed["asset_id"], run["semantic_id"])
+                    self.assertEqual(displayed["after"], project.overrides[speaker]["Dialogue"]["runs"][run["semantic_id"]])
+                elif recorded["field"] == "texture.tim":
+                    self.assertEqual(displayed["before"], digest(originals[displayed["asset_id"]]))
+                    self.assertEqual(displayed["after"], digest(replacements[displayed["asset_id"]]))
+                elif recorded["field"] == "position.x":
+                    self.assertEqual(displayed["asset_id"], target)
+                    self.assertEqual(displayed["before"], actor["imported_transform"]["position"]["x"])
+                    self.assertEqual(displayed["after"], project.overrides[target]["Transform"]["position"]["x"])
+                    self.assertEqual(displayed["before"], recorded["before_value"])
+                    self.assertEqual(displayed["after"], recorded["after_value"])
+                else:
+                    self.assertIn(recorded["field"], ("model_index", "animation_id"))
+                    self.assertEqual(displayed["asset_id"], target)
+                    self.assertEqual((displayed["before"], displayed["after"]),
+                                     (recorded["before_byte"], recorded["after_byte"]))
+            self.assertEqual({row["field"] for row in report["changes"]},
+                             {"position.x", "model_index", "animation_id", "dialogue.text", "texture.tim"})
+            # The server's current/stale status compares this metadata key;
+            # undo/redo history itself must not prevent returning to current.
+            snapshot = combined["authored_state_key"]
+            self.assertEqual(snapshot, authored_state_key(project))
+            before_overrides = deepcopy(project.overrides)
+            project.command({"type": "set_transform", "entity_id": target,
+                             "position": {"x": actor["imported_transform"]["position"]["x"] + 128}})
+            edited_key = authored_state_key(project)
+            self.assertNotEqual(edited_key, snapshot)
+            project.undo()
+            self.assertEqual(project.overrides, before_overrides)
+            self.assertEqual(authored_state_key(project), snapshot)
+            project.redo()
+            self.assertEqual(authored_state_key(project), edited_key)
+            project.undo()
+            project.save()
+            self.assertEqual(authored_state_key(project), snapshot)
             with zipfile.ZipFile(combined["path"]) as archive:
                 for expected in expected_overlays:
                     observed = next(o for o in audit["overlays"] if o["offset"] == expected["offset"])
@@ -142,7 +200,11 @@ class RetailTextureBuild(unittest.TestCase):
                 build_project(project, rejected)
             self.assertFalse(rejected.exists())
             project.overrides = {}; project.texture_overrides = {}
-            self.assertEqual(build_project(project)["sha256"], baseline["sha256"])
+            cleared = build_project(project)
+            self.assertEqual(cleared["sha256"], baseline["sha256"])
+            self.assertEqual(Path(cleared["path"]).read_bytes(), baseline_archive)
+            self.assertEqual(cleared["authored_state_key"], baseline["authored_state_key"])
+            self.assertEqual(cleared["report"]["change_count"], 0)
 
 
 if __name__ == "__main__":

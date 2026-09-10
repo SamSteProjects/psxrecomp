@@ -14,7 +14,8 @@ const sceneSelect=document.createElement('select');sceneSelect.className='scene-
 sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
 const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build the project with supported edits or as a verified retail baseline';$('save-button').after(buildButton);
-const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';document.body.append(buildDialog);
+const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';buildDialog.id='build-report-dialog';document.body.append(buildDialog);
+const buildReportButton=document.createElement('button');buildReportButton.id='build-report-button';buildReportButton.textContent='Build report';buildReportButton.title='Review the latest build';buildReportButton.hidden=true;buildButton.after(buildReportButton);buildReportButton.onclick=()=>showBuildReport();
 const templateDialog=document.createElement('dialog');templateDialog.id='template-dialog';document.body.append(templateDialog);
 const templateButton=document.createElement('button');templateButton.className='template-library-button';templateButton.textContent='Authored transform templates…';$('assets').before(templateButton);
 templateButton.onclick=()=>showTemplates();
@@ -51,13 +52,38 @@ function scheduleRunPoll(){
   if(!state.run || (!state.run.running && ['failed','exited','stopped'].includes(state.run.state)))return;
   runPoll=setTimeout(async()=>{try{const response=await fetch('/api/run/status');const data=await response.json();if(response.ok){state.run=data.run;renderRunStatus();}}catch(error){notify('Runtime status is unavailable: '+error.message,true);}scheduleRunPoll();},2000);
 }
-buildButton.onclick=async()=>{
-  if(await api('/api/build',{})){
-    const result=state.build;
-    buildDialog.innerHTML=`<div class="dialog-heading"><h2>${result.build_kind==='retail'?'Retail baseline built':'Private mod package built'}</h2><button id="close-build" aria-label="Close">×</button></div><p>${result.build_kind==='retail'?'Retail baseline · no modified bytes':`${escapeHTML(result.changed_fields)} authored fields · ${escapeHTML(result.overlay_count)} scene overlays`}</p><p>Runtime launch has not been validated for this package.</p><label>Package path<input readonly value="${escapeHTML(result.path)}"></label><p>${escapeHTML(result.install_instruction)}</p>`;
-    $('close-build').onclick=()=>buildDialog.close();buildDialog.showModal();
+buildButton.onclick=async()=>{if(await api('/api/build',{}))showBuildReport();};
+function renderBuildStatus(){
+  buildReportButton.hidden=!state.build;buildReportButton.disabled=busy||!state.build;
+  buildReportButton.textContent=state.build?.current===false?'Build report · stale':'Build report';
+  buildReportButton.classList.toggle('stale',state.build?.current===false);
+  if(buildDialog.open)renderBuildReport();
+}
+function validBuildReport(report){
+  return report?.schema_version==='legaia.build-report.v1'&&Array.isArray(report.changes)&&report.changes.length<=65536&&report.changes.every(change=>change&&typeof change==='object'&&['scene','asset_id','field','scope'].every(key=>typeof change[key]==='string')&&'before' in change&&'after' in change)&&['overlay_bytes','scene_count','change_count'].every(key=>Number.isSafeInteger(report[key])&&report[key]>=0)&&report.validation&&typeof report.validation==='object'&&!Array.isArray(report.validation)&&Object.keys(report.validation).length<=64;
+}
+function buildValue(value){return typeof value==='string'?value:JSON.stringify(value) ?? 'Unknown';}
+function renderBuildReport(){
+  const result=state.build;
+  if(!result){buildDialog.innerHTML='<div class="dialog-heading"><h2>Build report unavailable</h2><button id="close-build" aria-label="Close build report">×</button></div><p>No build report is retained for this project.</p>';$('close-build').onclick=()=>buildDialog.close();return;}
+  const report=result.report,valid=validBuildReport(report),current=result.current;
+  const freshness=current===true?'Matches current authored state':current===false?'Authored state changed · rebuild to include current edits':'Freshness unavailable · rebuild to compare with the current project';
+  buildDialog.innerHTML=`<div class="dialog-heading"><h2>${result.build_kind==='retail'?'Retail baseline build report':'Authored build report'}</h2><button id="close-build" aria-label="Close build report">×</button></div><p class="build-freshness ${current===true?'current':'stale'}">${freshness}</p><p>${result.build_kind==='retail'?'Retail baseline · no modified bytes':'Private authored mod package'}</p>${valid?`<div class="build-report-counts">${property('Changed fields',report.change_count)}${property('Scenes',report.scene_count)}${property('Overlay bytes',report.overlay_bytes.toLocaleString())}</div><section><h3>Package changes</h3><div id="build-changes"></div></section><section><h3>Build validation</h3><div id="build-validation"></div></section>`:'<p class="script-warning">A supported detailed report is unavailable. Build again with this service to review the changes and validation.</p>'}<p class="build-runtime-note">This report covers build validation. The authored-state match does not recheck package or disc integrity. Runtime execution and gameplay behavior are not verified here.</p><details class="resource-provenance"><summary>Package paths, hashes and build identity</summary><pre class="diagnostic-detail"></pre></details>`;
+  $('close-build').onclick=()=>buildDialog.close();
+  if(valid){
+    const changes=$('build-changes');
+    if(!report.changes.length){const empty=document.createElement('p');empty.className='field-note';empty.textContent=result.build_kind==='retail'?'No modified bytes: this package is the verified retail baseline.':'No field changes were listed in the build report.';changes.append(empty);}
+    else{
+      const wrap=document.createElement('div');wrap.className='script-table-wrap build-changes-table';const table=document.createElement('table');table.innerHTML='<thead><tr><th>Scene / asset</th><th>Field</th><th>Before</th><th>After</th><th>Scope</th></tr></thead><tbody></tbody>';
+      for(const change of report.changes){const row=document.createElement('tr');for(const [index,value] of [`${change.scene}\n${change.asset_id}`,change.field,buildValue(change.before),buildValue(change.after),change.scope].entries()){const cell=document.createElement('td');if(index===2||index===3){const text=document.createElement('pre');text.textContent=value;cell.append(text);}else cell.textContent=value;row.append(cell);}table.querySelector('tbody').append(row);}wrap.append(table);changes.append(wrap);
+    }
+    const labels={retail_provenance:'Retail provenance',unchanged_opaque_bytes:'Unchanged opaque bytes',lz_decode_round_trip:'LZS round trip',live_runtime:'Runtime test'},values={fresh_import_match:'Fresh import matched',not_required_unmodified_disc:'Not required · unmodified disc',not_run:'Not run'};
+    for(const [key,value] of Object.entries(report.validation)){const item=document.createElement('div');item.className='build-validation-row';const label=document.createElement('span');label.textContent=labels[key] ?? key.replaceAll('_',' ');const outcome=document.createElement('strong');outcome.textContent=value===true?'Passed':value===false?'Failed':values[value] ?? buildValue(value);outcome.classList.toggle('failed',value===false);item.append(label,outcome);$('build-validation').append(item);}
   }
-};
+  const {report:details,...metadata}=result;buildDialog.querySelector('pre.diagnostic-detail').textContent=JSON.stringify(metadata,null,2);
+}
+function showBuildReport(){renderBuildReport();if(!buildDialog.open)buildDialog.showModal();}
+
 document.querySelectorAll('[data-panel]').forEach(button=>{if(button.tagName==='BUTTON')button.onclick=()=>{document.querySelector('.workspace').dataset.panel=button.dataset.panel;document.querySelectorAll('.workspace-tabs button').forEach(tab=>tab.classList.toggle('active',tab===button));resize();};});
 
 function notify(message, error=false) {
@@ -70,7 +96,7 @@ function setBusy(value) {
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
   buildButton.disabled=value || !state.capabilities?.build || !canEdit();
-  renderRunStatus();
+  renderRunStatus();renderBuildStatus();
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
@@ -166,7 +192,7 @@ function render(){
   renderHierarchy();renderAssets();renderInspector();
   templateButton.disabled=!state.capabilities?.authored_transform_templates;
   if(templateDialog.open)renderTemplates();
-  renderRunStatus();scheduleRunPoll();
+  renderRunStatus();renderBuildStatus();scheduleRunPoll();
   if(lastSceneId!==state.scene?.id){lastSceneId=state.scene?.id;frame();}else draw();
   refreshScenePreview();
 }

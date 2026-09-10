@@ -25,6 +25,40 @@ def _hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def authored_state_key(project) -> str:
+    """Build-input metadata identity, excluding selection, history and templates.
+
+    This identifies the authored snapshot, not continued integrity of disc or
+    output files. Build always verifies those independently.
+    """
+    return _hash(canonical_json({"name": project.name, "root": str(project.root),
+                                "disc_path": str(project.disc_path), "imports": project.imports,
+                                "overrides": project.overrides,
+                                "textures": getattr(project, "texture_overrides", {})}).encode("utf-8"))
+
+
+def build_report(audit) -> dict:
+    """Present only audited changes that actually entered the emitted package."""
+    changes = []
+    for change in audit["edits"]:
+        field = change["field"]
+        if field == "dialogue.text":
+            before = bytes.fromhex(change["before_hex"]).decode("ascii")
+            after = bytes.fromhex(change["after_hex"]).decode("ascii")
+        elif field == "texture.tim":
+            before, after = change["before_sha256"], change["after_sha256"]
+        else:
+            before = change.get("before_value", change.get("before_byte"))
+            after = change.get("after_value", change.get("after_byte"))
+        changes.append({"scene": change["scene"], "asset_id": change.get("run_id", change["semantic_id"]),
+                        "field": field, "before": before, "after": after,
+                        "scope": change.get("scope", "initial-man-placement-only")})
+    return {"schema_version": "legaia.build-report.v1", "changes": changes,
+            "validation": dict(audit["validation"]), "change_count": len(changes),
+            "scene_count": len({change["scene"] for change in changes}),
+            "overlay_bytes": sum(overlay["size"] for overlay in audit["overlays"])}
+
+
 def _merge_dialogue_patch(baseline, working, dialogue, changes, expected_runs, previous_changes):
     """Merge only fresh, independently audited equal-size glyph spans."""
     if not isinstance(dialogue, bytes) or len(dialogue) != len(baseline) or len(working) != len(baseline):
@@ -399,6 +433,7 @@ def _build_project(project, output_dir) -> dict:
                 raise BuildError("Packaged overlay payload hash mismatch")
     return {
         "path": str(archive_path), "audit": str(destination / "build-audit.json"), "build_kind": build_kind,
+        "authored_state_key": authored_state_key(project), "report": build_report(audit),
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
         "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
         **({"changed_fields_unit": "authored fields/runs/textures"} if has_texture else

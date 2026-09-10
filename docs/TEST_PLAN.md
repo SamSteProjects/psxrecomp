@@ -200,3 +200,11 @@ decoding and after inspection, plus private response separation. Retail checks
 resolve town01 fallback trigger 0 to P2 record 38; a sweep covers all 51 eligible
 references. No runtime trigger execution is claimed. Future acceptance needs
 live dispatch-gate evidence before treating these references as reachable edges.
+
+Build review (2026-09-10): focused report checks cover input metadata identity,
+selection/template exclusions, audited world values, padded text and texture
+hashes. Fourteen existing build tests pass with private retail input; the
+combined report matches six changes in one scene, and no-op/cleared packages
+are byte-identical to baseline. Browser acceptance covers the generated report,
+reopening it, stale status after an edit and restored freshness after undo.
+These checks establish build reporting, not gameplay execution.

@@ -380,3 +380,8 @@ service to a bounded MAN P2 inspection response. The importer resolves source
 identity and record bounds; the editor only renders instructions, dialogue and
 explicit unresolved paths. Reports never enter authored or imported state.
 See `legaia-sdk/trigger-script-inspection.md` for the source contract and limits.
+
+Build results include a UI report projected from the validated audit. An input
+metadata digest lets the editor retain and mark older reports stale across
+commands and undo, while project replacement clears them. The digest is not
+an ongoing file-integrity check. See `legaia-sdk/build-review.md`.

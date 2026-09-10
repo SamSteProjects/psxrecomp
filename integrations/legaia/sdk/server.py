@@ -74,7 +74,13 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["trigger_script_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
-        state["build"] = self.last_build
+        if self.last_build is None:
+            state["build"] = None
+        else:
+            from .build import authored_state_key
+            from copy import deepcopy
+            state["build"] = deepcopy(self.last_build)
+            state["build"]["current"] = self.last_build.get("authored_state_key") == authored_state_key(self.project)
         state["run"] = self.runs.status()
         try:
             state["launch_config"] = self.runs.config(self.project)
@@ -529,7 +535,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             project.mode = mode
         else:
             raise ProjectError("Unsupported editor command route")
-        if route in ("/api/project/new", "/api/project/open", "/api/import", "/api/command", "/api/undo", "/api/redo"):
+        if route in ("/api/project/new", "/api/project/open"):
             self.server.last_build = None
         if route in ("/api/project/new", "/api/project/open", "/api/import"):
             self.server.texture_catalogs.clear()
