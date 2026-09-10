@@ -217,3 +217,11 @@ conflict invalidates that graph: net522 dialogue segments/613 script-dialogue
 assets,1183 flag references,60 partial scripts. Choice successors use existing
 instruction navigation; pager uncertainty continues to prevent menu authoring.
 The new successor links await browser acceptance.
+
+
+Menu successor browser acceptance: actor0001 choice1 followed0x6B ->0xC4
+SYSFLAG_SET and Back returned to the picker. This exposed misleading 'Not decoded'
+labels for already decoded dialogue targets. The shared path table now includes
+dialogue nodes with encoded continuations and escaped text. Reload verification
+followed choice0 to0xD6 DIALOGUE_SEGMENT and Back to0x6B, with no browser errors.
+Read-only script guards remain intact; these links do not execute game choices.

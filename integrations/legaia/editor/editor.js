@@ -644,6 +644,7 @@ async function openTriggerScript(record){
 }
 function appendScriptOperands(cell,instruction){
   const operands=instruction.operands;
+  if(instruction.mnemonic==='DIALOGUE_SEGMENT'){const text=document.createElement('p');text.textContent=operands?.text??'';cell.append(text);return;}
   if(instruction.target_context!==null&&instruction.target_context!==undefined){
     const context=document.createElement('p');context.className='script-warning';
     context.textContent=`Extended target ${instruction.target_context}: actor identity is unresolved.`;cell.append(context);
@@ -667,7 +668,9 @@ function appendScriptOperands(cell,instruction){
 }
 function appendScriptInstructions(host,report){
   host.replaceChildren();host.classList.remove('script-table-wrap');
-  const instructions=report.instructions??[],byPC=new Map(instructions.map(item=>[item.pc,item])),rows=new Map(),incoming=new Map(),history=[];
+  const messages=(report.dialogues??[]).map(message=>({pc:message.pc,mnemonic:'DIALOGUE_SEGMENT',operands:{text:message.text},
+    successors:[{pc:message.pc+message.length,condition:'encoded_continuation'}]}));
+  const instructions=[...(report.instructions??[]),...messages].sort((a,b)=>a.pc-b.pc),byPC=new Map(instructions.map(item=>[item.pc,item])),rows=new Map(),incoming=new Map(),history=[];
   let selectedPC=null;
   const navigation=document.createElement('div');navigation.className='script-path-navigation';
   const back=document.createElement('button');back.textContent='Back to previous instruction';back.disabled=true;

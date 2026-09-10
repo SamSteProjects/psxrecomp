@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (menu successor browser and dialogue navigation):** Previous
+  conflict diagnostics were progress. Owned editor4395/tab46 verified choice1
+  0x6B ->0xC4 and Back. Found decoded dialogue targets falsely labeled not decoded;
+  merged dialogue nodes into shared path navigation using verified lengths/text.
+  Reload verified choice0 ->0xD6 dialogue and Back; errors empty, Node syntax
+  passes. Server stopped via owned sentinel. No runtime execution or authoring
+  guard change; full SDK goal remains active.
+
+
 - **2026-09-10 (P2 menu conflict provenance):** Previous menu traversal was
   progress. Traced P2[20] conflict to camera0x551 targeting0x44 inside emitter
   0x3D/14bytes. Pinned camera executor agrees with absolute target; retail
