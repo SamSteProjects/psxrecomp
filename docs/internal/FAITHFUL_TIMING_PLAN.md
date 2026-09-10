@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (flag instruction navigation):** Connected individual flag-reference
+  operations to the exact decoded instruction in the shared script workspace.
+  The instruction section expands, selects and focuses the source PC, with
+  incoming links available immediately. Missing PCs produce an explicit notice.
+  Fresh town01 browser acceptance selected actor0049 SYSFLAG_TEST at0x45 from
+  its flag group, with incoming0x44/0xF8 and empty Back history; no browser errors.
+  JavaScript syntax and diff checks passed. Private QA: local-output/sdk-20260909/
+  flag-path-browser; no runtime launched. P2 uses the same owner route but was
+  not separately exercised this turn. Full SDK goal remains incomplete.
+
 - **2026-09-10 (script control-flow navigation):** Prior candidate inspector
   integration was progress. Added shared instruction rendering for actor/dialogue
   and trigger reports with decoded successor buttons, incoming source links,

@@ -385,7 +385,11 @@ flagsButton.onclick=async()=>{
         const row=document.createElement('section');row.className='resource-provenance';
         row.innerHTML=`<h3>${escapeHTML(group.bank)} ${escapeHTML(group.index)} · ${escapeHTML(group.script_name)}</h3><p>${escapeHTML(group.scope)} · ${escapeHTML(resourceLabel(group.script_status))} · ${group.extended_target===null?'Current script context':`Unresolved extended target ${escapeHTML(group.extended_target)}`}</p><p>${group.references.map(ref=>`${escapeHTML(scriptOffset(ref.pc))}: ${escapeHTML(ref.mnemonic)} (${escapeHTML(resourceLabel(ref.status))})`).join(' · ')}</p><button>Inspect source script</button><details><summary>Source provenance and encoded operands</summary><pre></pre></details>`;
         row.querySelector('pre').textContent=JSON.stringify(group,null,2);
-        row.querySelector('button').onclick=()=>{if(busy||key!==resourceStateKey())return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner);};
+        const inspect=(pc=null)=>{if(busy||key!==resourceStateKey())return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner,false,null,null,pc);};
+        row.querySelector('button').onclick=()=>inspect();
+        const references=document.createElement('div');references.className='dialog-actions';
+        for(const ref of group.references){const button=document.createElement('button');button.textContent=`Inspect ${scriptOffset(ref.pc)} · ${ref.mnemonic}`;button.onclick=()=>inspect(ref.pc);references.append(button);}
+        row.querySelector('details').before(references);
         list.append(row);
       }
       for(const note of result.limitations??[]){const p=document.createElement('p');p.className='field-note';p.textContent=note;list.append(p);}
@@ -602,7 +606,7 @@ function appendScriptInstructions(host,report){
     if(!incoming.has(next.pc))incoming.set(next.pc,new Set());incoming.get(next.pc).add(instruction.pc);
   }
   function select(pc,remember=true){
-    if(!rows.has(pc))return;
+    if(!rows.has(pc))return false;
     if(remember&&selectedPC!==null&&selectedPC!==pc)history.push(selectedPC);
     if(rows.has(selectedPC))rows.get(selectedPC).classList.remove('script-path-selected');
     selectedPC=pc;const row=rows.get(pc);row.classList.add('script-path-selected');row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});
@@ -610,6 +614,7 @@ function appendScriptInstructions(host,report){
     predecessors.replaceChildren();
     for(const source of incoming.get(pc)??[]){const button=document.createElement('button');button.textContent=`From ${scriptOffset(source)}`;button.onclick=()=>select(source);predecessors.append(button);}
     if(!predecessors.childNodes.length)predecessors.textContent='No decoded incoming edges in this report.';
+    return true;
   }
   back.onclick=()=>{if(history.length)select(history.pop(),false);};
   const wrap=document.createElement('div');wrap.className='script-table-wrap';wrap.innerHTML='<table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table>';host.append(wrap);
@@ -628,6 +633,7 @@ function appendScriptInstructions(host,report){
     row.append(successors);body.append(row);
   }
   if(!instructions.length){status.textContent='No instructions were decoded.';wrap.hidden=true;}
+  return {select};
 }
 function renderTriggerScript(result,report){
   const host=$('trigger-script-report');
@@ -882,7 +888,7 @@ async function openAppearanceOptions(entity){
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
 let scriptEntity=null,scriptReport=null,scriptDrafts=new Map();
 const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUpperCase():'Unknown';
-async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null){
+async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null){
   if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;setBusy(true);
   if(!refresh){scriptEntity=entity;scriptDrafts.clear();
   scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Instruction graph remains read only</p><div id="script-authoring-toolbar" class="script-authoring-toolbar" hidden><button id="script-undo">Undo</button><button id="script-redo">Redo</button><button id="script-save">Save project</button><span id="script-authoring-status"></span></div><div id="script-report"><p>Verifying the imported script record…</p></div><p class="dialog-error" role="alert"></p>`;
@@ -900,11 +906,15 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     if(opaque.length||stops.length){const warning=document.createElement('div');warning.className='script-warning';warning.textContent=`${opaque.length} opaque regions · ${stops.length} decoder stops. Unvisited bytes and unsupported behavior remain unresolved.`;$('script-warnings').append(warning);for(const region of opaque){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(region.pc)} · ${region.length} opaque bytes: ${region.reason}`;$('script-warnings').append(line);}for(const stop of stops){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(stop.pc)}: ${stop.reason}`;$('script-warnings').append(line);}}
     if(!dialogues.length)$('script-dialogue').textContent='No dialogue was decoded in the inspected paths.';
     for(const dialogue of dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.dataset.dialogueId=dialogue.semantic_id;card.dataset.dialoguePc=dialogue.pc;card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length)} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text ?? '';card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);$('script-dialogue').append(card);}
-    appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report);
+    const instructionNavigation=appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report);
 
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
     scriptReport=report;renderDialogueAuthoring();
     scriptDialog.scrollTop=scroll;
+    if(Number.isInteger(focusInstruction)){
+      $('script-report').querySelector('.script-instructions').open=true;
+      if(!instructionNavigation.select(focusInstruction))notify('The selected instruction was not found in the verified report.',true);
+    }
   }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);input?.focus({preventScroll:true});}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
 }
 
