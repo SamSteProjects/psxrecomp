@@ -243,3 +243,19 @@ p2-menu-conflict.json preserves source and decoded attempts. Conflict diagnostic
 now include owner_pc and name that offset in the user-visible reason, making
 this ownership conflict inspectable without relaxing the guard. Six focused
 and23 retail inspection tests pass.
+
+
+### Transition entry serializer foundation (2026-09-10)
+
+Pinned field/step.rs opcode3F reads entry_x,entry_z,dir as three unsigned bytes
+after the clean scene name. The new record-level transition_authoring adapter
+edits only these encoded fields, rejects unresolved/conflicting source paths,
+requires a decoded SCENE_CHANGE and clean unchanged destination, and returns
+per-byte source-hash audit records. It does not assign world coordinates, rename
+destinations or relocate instructions. Two synthetic tests cover ordinary and
+extended headers, exact unchanged spans/no-op and invalid inputs. A private
+retail P2[0] probe changes exactly one byte and retains record length; evidence
+is transition-entry-probe.json. An initial metadata-only report lookup correctly
+had no raw_hex; the probe then used the verified private MAN context instead.
+Project commands, persistence, Build composition and editor integration remain
+pending; no playable transition edit is claimed.

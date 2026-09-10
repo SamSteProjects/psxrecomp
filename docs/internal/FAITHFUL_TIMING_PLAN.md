@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (transition serializer foundation):** Previous cold appearance
+  revert was progress. Verified pinned3F entry layout and added bounded
+  record-level entry X/Z/direction byte serializer with source audit. Two tests
+  pass; private town01 P2[0] probe changes exactly one byte at unchanged length.
+  No world-coordinate interpretation, destination relocation, project command
+  or build integration yet. Next work is verified MAN-context/project integration.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (cold appearance revert accepted):** Previous baseline preparation
   was progress. Matched2be69467... cold launch traversed attract FMV, returned
   title, then story/name/elder to field control. Original child visible; prior
