@@ -1,5 +1,12 @@
 # Legaia SDK feature matrix
 
+2026-09-10 animation usage: animation asset details now expose imported and
+effective actor links using verified catalog bindings and authored appearance
+donors. Fresh retail metadata checks cover all 39 town01 bindings and an actual
+supported actor0040 -> actor0046 donor assignment (clip0008 -> clip0012).
+Same-model/different-animation handling also passes. Browser interaction for
+these new animation links remains pending; runtime clip state is not inferred.
+
 2026-09-10 model usage: model details list project-wide imported and effective
 initial actor assignments. Browser navigation from shared model 00f1 switched
 town01 -> town0c actor0002 -> town01 actor0003 in a fresh two-scene project.

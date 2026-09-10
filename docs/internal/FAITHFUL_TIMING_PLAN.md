@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (animation asset usage):** Previous cross-scene model navigation
+  acceptance was progress. Extended asset detail usage links to animations,
+  joining verified MAN/ANM actor-model bindings with imported/effective donor
+  assignments. Exact donor identity preserves different clips on the same model;
+  no animation identity is guessed from numeric IDs or channel count. A fresh
+  private town01 catalog supplied 14 animations / 39 bindings, all matching the
+  editor's usage calculation. Verified appearance command actor0040 -> actor0046
+  changed effective clip0008 to clip0012 while retaining original usage, and undo
+  restored the reference baseline. Node checks exercised the actual UI helper,
+  the same-model/different-clip case, absent bindings and JavaScript syntax.
+  Initial QA import-path setup failed and was fixed before rerunning successfully.
+  Private evidence: `local-output/sdk-20260909/animation-usage-qa/fixture.json`
+  plus the adjacent Python/CJS runners. New animation-link browser acceptance,
+  live animation semantics and the full SDK goal remain open. No runtime or
+  retail data was modified.
+
 - **2026-09-10 (cross-scene model usage acceptance):** Prior model relationship
   implementation was progress. Fresh private project imported town01 and town0c,
   yielding 96 initial assignment records. Browser details for shared model 00f1
