@@ -692,6 +692,22 @@ function appendScriptInstructions(host,report){
     return true;
   }
   back.onclick=()=>{if(history.length)select(history.pop(),false);};
+  const search=document.createElement('input');search.type='search';search.setAttribute('aria-label','Search decoded script paths');search.placeholder='Text, instruction, operand or offset';search.maxLength=256;
+  const previous=document.createElement('button');previous.textContent='Previous match';
+  const next=document.createElement('button');next.textContent='Next match';
+  const matchesStatus=document.createElement('p');matchesStatus.className='field-note';matchesStatus.setAttribute('role','status');
+  const searchBar=document.createElement('div');searchBar.className='script-path-search';searchBar.append(search,previous,next);navigation.prepend(searchBar,matchesStatus);
+  const searchable=instructions.map(node=>({pc:node.pc,text:`${scriptOffset(node.pc)} ${node.mnemonic} ${JSON.stringify(node.operands??{})}`.toLowerCase()}));
+  let matches=[],matchIndex=-1;
+  function updateMatches(){
+    const query=search.value.trim().toLowerCase();matches=query?searchable.filter(node=>node.text.includes(query)).map(node=>node.pc):[];matchIndex=-1;
+    previous.disabled=next.disabled=!matches.length;
+    matchesStatus.textContent=query?`${matches.length} matching decoded paths`:'Search covers decoded paths only; opaque bytes are excluded.';
+  }
+  function stepMatch(direction){if(!matches.length)return;matchIndex=matchIndex<0?(direction>0?0:matches.length-1):(matchIndex+direction+matches.length)%matches.length;select(matches[matchIndex]);matchesStatus.textContent=`Match ${matchIndex+1} of ${matches.length}`;}
+  search.oninput=updateMatches;search.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();stepMatch(event.shiftKey?-1:1);}};
+  previous.onclick=()=>stepMatch(-1);next.onclick=()=>stepMatch(1);updateMatches();
+
   const wrap=document.createElement('div');wrap.className='script-table-wrap';wrap.innerHTML='<table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table>';host.append(wrap);
   const body=wrap.querySelector('tbody');
   for(const instruction of instructions){

@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (decoded-path search):** Previous precompile consumer audit was
+  progress. Added local bounded-query search to shared script paths, retaining
+  all graph rows and Back history. Browser4395/tab47 found seven actor0001
+  pickers, advanced/reversed exact PCs and disabled controls for no matches
+  without clearing selection. Errors empty; Node syntax passes. Owned QA server
+  stopped via sentinel. No source edits or runtime behavior implied; full goal active.
+
+
 - **2026-09-10 (static-output consumer audit):** Previous dialogue navigation
   was progress. Checked remaining filename consumers; production paths use the
   corrected helpers. Existing static split/CRC dispatch suite passes all10 tests

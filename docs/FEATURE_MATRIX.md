@@ -225,3 +225,11 @@ labels for already decoded dialogue targets. The shared path table now includes
 dialogue nodes with encoded continuations and escaped text. Reload verification
 followed choice0 to0xD6 DIALOGUE_SEGMENT and Back to0x6B, with no browser errors.
 Read-only script guards remain intact; these links do not execute game choices.
+
+
+Decoded script paths now support case-insensitive local search across text,
+instruction names, operands and hexadecimal offsets, with Previous/Next and
+Enter/Shift-Enter navigation. Search excludes opaque bytes and does not write
+catalog text or project state. Browser acceptance found all seven actor0001
+pickers, navigated0x6B ->0x10C ->0x6B, and verified no-results disables both
+buttons without changing selection. Browser errors empty; JS syntax passes.
