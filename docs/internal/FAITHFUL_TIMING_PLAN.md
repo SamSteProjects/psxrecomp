@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Reconcile renewed patch inclusion request
+
+- Re-read both renewed attachment prompts and verified clean tracked checkout at ce4a2fe6 on codex/legaia-upstream-20260909. The existing full SDK goal remains active; this request does not narrow it to diagnostics.
+- Added a current patch inclusion table to docs/legaia-release-parity.md covering precompile discovery/invalidation, restore ownership, retained release compatibility, host audio, input and DMA diagnostics. Corrected obsolete pending-build/capture language using the later recorded97 build and title-restore evidence, preserving exact binary boundaries and unresolved gameplay cases.
+- No runtime source change, new test, runtime input, savestate load or restart in this reconciliation. Muscle Dome, field/cross-scene restoration, current visibility behavior and broader SDK authoring remain unfinished; none is marked fixed merely from a historical prompt.
+
 ### 2026-09-10 — Resolve callback trace from saved overlay bytes
 
 - Previous turn was progress: fixed-quad flag consumer distinguished. Attempted to follow node+0C address801D1344 through generated overlays, but same-address candidates contain different instructions (nop or lhu) from checkpoint08's actual lui8008/lwBAF4/prologue. Rejected those candidates as identity evidence rather than attributing the live callback to their named owner.

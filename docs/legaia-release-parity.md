@@ -1,5 +1,32 @@
 # Legaia stability and release parity
 
+## Current patch inclusion summary (2026-09-10)
+
+Both supplied SDK prompts remain in scope. The following fixes are implemented
+in this checkout; the detailed evidence and historical build identities below
+must be used when deciding which behavior has actually been accepted.
+
+| Patch group | Included implementation | Acceptance boundary |
+| --- | --- | --- |
+| Precompile output and incremental builds | Discover split sources after generation; propagate body-only changes; handle empty/regrown inventories; recognize exact numeric part suffixes including indices above9999 without deleting neighboring files. | Nine executable inventory variants and sparse filename checks passed with Ninja/GCC, Visual Studio/MSVC and NMake/GCC. Full Legaia MSVC build passed. |
+| Savestate ownership | Invalidate restored native validation and ownership memos, refresh lifecycle evidence, reject incompatible/corrupt snapshots before committing state. | Focused entry/CPS and transactional restore tests passed. Repeated title restores passed; field and cross-scene performance acceptance remains open. |
+| Release runtime compatibility | Preserve scheduled device progress during exception handling, CD response visibility gating, seek/header and XA handling, Windows initialization and accepted pacing behavior. | See per-fix ledger for source provenance and executable checks. Battle items/Hyper Arts and subjective audio synchronization still require gameplay acceptance. |
+| Host audio reporting | Require a resumed device and initialized pull bridge before reporting output ready. | Isolated healthy/unavailable-device checks passed. Nonzero title PCM and bounded settled-title counters were measured; startup overflow remains unresolved. |
+| Input | Select either debug controller port with bounded override lifetime and release, preserving normal input on other ports. | Protocol/routing and title input checks passed. Physical controller acceptance remains open. |
+| GPU/DMA diagnostics | Attribute DMA GP0 commands to the captured kick PC; clear nonserialized DMA provenance after initialization or successful restore. | Focused executable checks, full MSVC build, cold title capture and three title restores passed on97f0f026... . Immediate in-flight DMA restore attribution is not yet live-verified. |
+
+The latest tested runtime artifact is SHA-256
+`97f0f0260f7d4c977a385e0dcd3b5f625c7112f9eefd04bcfeab1684998fd4aa`,
+built from source688c58cb. Later documentation commits do not change that build
+identity. The preserved field session uses the older96eaf949... artifact, so
+its observations cannot validate the newer diagnostic implementation.
+
+Dynamic overlay caching remains disabled. Capture0899 remains excluded;
+MAPDSIP is not claimed to have complete static-native coverage. The Muscle Dome
+repair remains an unverified historical claim, not an implemented fix. The
+region-dependent player visibility investigation likewise has no justified
+rendering patch yet. This summary does not mark the full SDK goal complete.
+
 ## Host audio output health (2026-09-10)
 
 Source review found `psx_audio_out_stats` reported output available when a host
@@ -690,8 +717,8 @@ change in gpu.c/gpu.h; no game-specific dispatch or rendering change. This is a
 new diagnostic fix, not a claimed release patch. Completion-time func/RA remain
 CPU context and are explicitly documented as potentially unrelated to DMA.
 Focused executable ring tests passed for delayed, unknown, direct-CPU and
-other-channel cases. Full-binary rebuild/live capture verification is pending;
-existing captures retain their old last-store semantics.
+other-channel cases. Subsequent full-binary and title-capture acceptance is
+recorded below; existing96 captures retain their old last-store semantics.
 
 DMA diagnostic provenance is also cleared at initialization and successful
 snapshot restoration: kick PCs are not part of the snapshot format and cannot
@@ -705,8 +732,9 @@ Both diagnostic fixes now pass a full MSVC Release generated-game link from
 688c58cb: executable SHA256
 97f0f0260f7d4c977a385e0dcd3b5f625c7112f9eefd04bcfeab1684998fd4aa.
 The preserved live field run still uses96eaf949..., whose older capture semantics
-remain applicable to all existing visibility evidence. New-binary live capture
-and restore verification remain pending; linking does not supply that acceptance.
+remain applicable to all existing visibility evidence. The subsequent runs below
+supply new-binary title capture and bounded title restore acceptance; the link
+alone does not establish either behavior.
 
 Cold startup/capture follow-up on97f0f026...: separate port4399 process reached
 the visually verified title menu, returned51 GP0 entries with PC8005A160 and
