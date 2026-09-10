@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Match retail collision and recover visibility west of steps
+
+- Previous turn was progress: constrained movement checkpoint. Offline slot08 comparison finds zero differing bytes across the16384-byte retail/live collision grid. In tiles23..28 on each axis, only object cell25/26 differs:0800→0C00. Evidence `arrival-live/collision-baseline-comparison.json`. Direct south/east restrictions align with retail wall cells; no collision-paint corruption demonstrated.
+- Guarded West90frames moved player3282/96/3246→2562/-64/3246 and restored visibility in inspected west-route.png. Flags changed09820880→09020880, clearing00800000. Subsequent South90 reached2562/-64/3182, still visible (west-south-route.png). Current run remains there; no load/restart/RAM write.
+- Visibility is region-dependent and clears on the open west route. This supports terrain/actor-layer handling as the next trace, not a persistent lost-player or general GPU failure. It does not establish retail-emulator parity or prove the occlusion correct. Named transition still unvisited; full objective active.
+
 ### 2026-09-10 — Reproduce constrained movement below the steps
 
 - Previous turn was progress:97 title restores. Revalidated preserved96 arrival-live process identity through controller guard, captured visible field-resume.png at player3264/128/3440. Down90frames reached3152/32/3182 with no visible player; Right180frames reached3282/96/3246 and remained invisible in east-clearance.png. Images inspected; surrounding NPC/camera rendering remains present. These displacements are constrained, not unrestricted travel farther across the village.
