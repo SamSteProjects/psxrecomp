@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Field traversal reveals player visibility issue
+
+- Previous turn was progress: guarded cold field reached. Continued same runtime50140/editor48160/session45118, moved south from Genesis Tree through step/camera view. Vahn was visible on steps, then absent in subsequent ground view while NPCs and camera continued responding. East input changed player record; repeated south movement made unclear progress. No exit transition claimed.
+- Read-only pointer8007C364 resolves player80083794. Captured record samples changed XYZ3154/32/3182 ->3282/96/3246 after east input; flags09820880 retained. These observations do not yet identify the cause (terrain/visibility/camera/movement). Controller overrides released normally; guarded town01 actor observation remained available.
+- Evidence screenshots south-1..6/east-1..2 and samples in arrival-live/acceptance.json. Runtime intentionally remains running for bounded reproduction/diagnosis; no RAM writes or restart. Authored exit script has not executed; do not attribute this issue to the entry patch without baseline comparison. Full objective active.
+
+
 ### 2026-09-10 — Cold town01 field reached with authored arrival package
 
 - Previous turn was progress: owned runtime launched and New Game begun. Continued same runtimePID50140/editorPID48160 (session45118), identity-checked screenshots showed story progression. Completed naming via Start/Up/Cross, elder dialogue and Yes choice, then reached field control (elder-9.png). No savestate or RAM writes used.
