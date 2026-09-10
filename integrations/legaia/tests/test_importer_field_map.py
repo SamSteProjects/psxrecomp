@@ -83,6 +83,22 @@ class FieldMapTests(unittest.TestCase):
         grid[0] = 0xF0
         self.assertEqual(_rectangles(bytes(grid)), [])
 
+    def test_ramp_adjustments_preserve_signed_values_quadrants_and_lookup_order(self):
+        struct.pack_into('<hh', self.data, 0x1000A, 44, 2)
+        self.data[0x1002C:0x10034] = bytes([25, 26, 252, 0xE4, 25, 26, 128, 0])
+        struct.pack_into('<hh', self.fallback, 10, 44, 1)
+        self.fallback[44:48] = bytes([25, 26, 127, 0x1B])
+        collision = self.decode()[0]['assets'][0]
+        rows = collision['elevation_overrides']
+        self.assertEqual(collision['elevation_override_count'], 3)
+        self.assertEqual([r['table_source'] for r in rows], ['primary', 'primary', 'fallback'])
+        self.assertEqual([r['coarse_signed'] for r in rows], [-4, -128, 127])
+        self.assertEqual([r['subcell_delta_y'] for r in rows],
+                         [[128, 112, 96, 80], [4096] * 4, [-4112, -4096, -4080, -4064]])
+        self.assertEqual(rows[0]['source_record']['byte_offset'], 0x1002C)
+        self.assertEqual(rows[2]['source_record']['byte_offset'], 44)
+        self.assertEqual(rows[2]['source_record']['prot_entry_index'], 2)
+
     def test_malformed_tables_and_wrong_footprint_fail_closed(self):
         for header, value in ((2, -1), (4, -1), (2, 0), (4, 32767), (6, 20)):
             bad = bytearray(self.data)
@@ -144,6 +160,11 @@ class RetailFieldMapTests(unittest.TestCase):
                              'a216ec1aff2e26fda5235fd63d9f6c75ae13fb623719a02f8fdba0d03f7718d6')
             self.assertEqual((collision['wall_cell_count'], collision['blocked_subcell_count']), (1297, 4228))
             self.assertEqual(len(report['assets']), 1 + 11 + 37 + 14 + 51)
+            # Same unmodified town01 tiles as private cold-run checkpoint09/10.
+            ramps = collision['elevation_overrides']
+            for tile, expected in (((25, 26), 128), ((25, 25), 96)):
+                first = next(r for r in ramps if (r['tile_x'], r['tile_z']) == tile)
+                self.assertEqual(first['subcell_delta_y'], [expected] * 4)
             preview = preview_field_map(disc, 'town01', collision['semantic_id'])
             self.assertEqual(len(preview['triggers']), 99)
             self.assertEqual(len(preview['regions']), 14)

@@ -3,7 +3,8 @@
 Evidence at d6e64c68: engine-core scene/scene_ty.rs (073f3c19...),
 world/field_movement.rs (12ce75c6...), field_regions.rs (8f54e888...).
 docs/subsystems/field-locomotion.md, Trigger block, establishes all four
-table strides (4,4,4,8); kind-2 content is validated but not interpreted.
+table strides (4,4,4,8). world/field_elevation.rs describes kind-2 ramp
+adjustments, consistent with generated retail routine 80019278.
 This is the source baseline, not a reconstructed live navigation system.
 """
 from __future__ import annotations
@@ -18,7 +19,7 @@ from .pipeline import REFERENCE_COMMIT, _bounded_scene_range, _disc_context
 
 LIMITATIONS = [
     "Source MAP baseline only; script collision paints, actor blockers and movement probes are not simulated.",
-    "Low grid nibbles are retained as floor-tier metadata; no floor heights or walkable mesh are inferred.",
+    "Ramp adjustments are relative to the four-corner floor-tier mean, and apply only when the object-cell 0x0800 flag is set; no complete floor heights or walkable mesh are inferred.",
     "Trigger rows are source references, not executed scripts or proven reachable scene transitions.",
     "Primary tables precede fallback tables; duplicate coordinates and source ordering are preserved.",
     "Wall rectangles cover only canonical integer X=1..16384 and Z=0..16255; X=0 aliasing, wrapping X and negative coordinates are excluded.",
@@ -92,6 +93,7 @@ def _decode(scene: str, digest: str, entry: Any, data: bytes,
                                          containing_span_byte_length=len(data)),
                  "reference_commit": REFERENCE_COMMIT, "limitations": list(limitations)}
     assets = [collision]
+    collision["elevation_overrides"] = []
     tables = [("primary", entry, data[0x10000:], 0x10000, (0, 1, 3))]
     if fallback is not None:
         tables.append(("fallback", fallback[0], fallback[1], 0, (1,)))
@@ -112,6 +114,21 @@ def _decode(scene: str, digest: str, entry: Any, data: bytes,
             if rows:
                 spans.append((offset, end))
             decoded_tables[kind] = offset, rows
+        offset, rows = decoded_tables[2]
+        for index, row in enumerate(rows):
+            x, z, coarse, quads = struct.unpack("<BBbB", row)
+            # Each quadrant is a 64-unit subcell; PSX field Y increases down.
+            # Preserve duplicate rows in primary/fallback order: first hit wins.
+            deltas = [-32 * coarse - 16 * ((quads >> shift) & 3)
+                      for shift in (0, 2, 4, 6)]
+            collision["elevation_overrides"].append({
+                "table_source": table_name, "record_index": index,
+                "tile_x": x, "tile_z": z, "coarse_signed": coarse,
+                "packed_subcell_steps": quads, "subcell_delta_y": deltas,
+                "source_record": source(table_entry, base + offset + index * 4, row, table_hash,
+                                        table_source=table_name, table_kind=2, record_index=index,
+                                        containing_span_byte_offset=base, containing_span_byte_length=len(block)),
+            })
         for kind in kinds:
             stride = 8 if kind == 3 else 4
             offset, rows = decoded_tables[kind]
@@ -155,6 +172,7 @@ def _decode(scene: str, digest: str, entry: Any, data: bytes,
                             asset["status"] = "unknown_gate"
                     asset["encoded"] = encoded
                 assets.append(asset)
+    collision["elevation_override_count"] = len(collision["elevation_overrides"])
     return {"schema_version": "legaia.field-map-assets.v1", "scene": scene, "disc_sha256": digest,
             "reference_commit": REFERENCE_COMMIT, "assets": assets, "limitations": limitations}, grid
 

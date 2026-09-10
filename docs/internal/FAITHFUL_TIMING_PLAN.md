@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Expose source ramp adjustments in the collision inspector
+
+- Previous turn was progress: saved floor heights matched kind-2 ramp records. Converted that evidence into an SDK feature: field-map catalog now retains primary/fallback kind-2 records on the collision resource, signed coarse steps, four ordered subcell Y adjustments and per-record provenance. Duplicate coordinates and lookup order are preserved. Existing asset identities and trigger counts are unchanged.
+- Collision inspector adds a read-only ramp table and explains the object-cell0800 condition, corner-mean dependency, subcell ordering and positive-down Y. This is relative adjustment metadata, not a complete terrain mesh or live floor sampler.
+- Six focused field-map tests passed with LEGAIA_DISC_BIN supplied, including retail town01 matching the two visibility tiles and synthetic signed extremes/subcell order/duplicate precedence; Node syntax check passed. New table has not yet been browser-verified. No runtime input, mutation or restart. Terrain geometry/ordering root cause remains unresolved; full objective active.
+
 ### 2026-09-10 — Verify player floor height against saved ramp records
 
 - Traced generated main routine `80019278`: scratchpad `1F8003EC` supplies the field map base, `1F80035C` the signed height LUT, map+4000 the corner tiers, and map+8000 the object-cell flags. The `0800` branch calls `801D5630(2,tile_x,tile_z)` and uses the corner mean minus signed coarse*32 minus packed subcell*16. This agrees with pinned Andrew `world/field_movement.rs` and `world/field_elevation.rs`; generated instructions inspected, not yet a new full retail-byte comparison.

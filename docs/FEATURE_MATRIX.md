@@ -258,3 +258,11 @@ combined transition/dialogue package survived save/reopen, decoded to exactly
 three intended changed bytes, and returned to the exact baseline package hash
 when both overrides were cleared. This does not complete reachable world-map
 routes, destination-name editing, MAPDSIP coverage or live scene acceptance.
+
+2026-09-10 ramp inspection: the collision resource now exposes source kind-2
+elevation records in primary/fallback order, with signed coarse steps, four
+subcell Y adjustments and per-record provenance. The editor provides a read-only
+table. These are adjustments to the corner-height mean, conditional on the
+object-cell0800 flag; no complete floor surface is inferred. Six focused tests
+passed including private retail records for two cold-run visibility tiles.
+Inspector JavaScript syntax passed; browser layout acceptance remains pending.
