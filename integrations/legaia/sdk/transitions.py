@@ -2,7 +2,7 @@
 from copy import deepcopy
 
 
-def build_transition_graph(catalog: dict, imported_scenes) -> dict:
+def build_transition_graph(catalog: dict, imported_scenes, overrides=None) -> dict:
     scene = catalog["scene"]
     source_id = "scene://" + scene
     imported = set(imported_scenes)
@@ -27,6 +27,15 @@ def build_transition_graph(catalog: dict, imported_scenes) -> dict:
                           "partition": script["source_record"]["partition"], "script_status": script["status"],
                           "source_record": deepcopy(script["source_record"]),
                           "reference": deepcopy(reference), "reachability": "not_evaluated"})
+    for edge in edges:
+        identifier = edge["script_id"] + f"/transition/{edge['reference']['pc']:04x}"
+        authored = (overrides or {}).get(edge["owner_id"], {}).get("Transitions", {}).get("entries", {}).get(identifier, {})
+        fields = ("entry_x_encoded", "entry_z_encoded", "direction_encoded")
+        imported_entry = {field: edge["reference"].get(field) for field in fields}
+        edge["entry_layers"] = {"imported": imported_entry, "authored": deepcopy(authored),
+                                "effective": dict(imported_entry, **authored),
+                                "validation": "reverified_on_build" if authored else "imported_reference",
+                                "transition_id": identifier}
     return {"schema_version": "legaia.scene-transitions.v1", "read_only": True,
             "scene_id": source_id, "nodes": list(nodes.values()), "edges": edges,
             "coverage": {key: catalog[key] for key in ("script_count", "partial_script_count", "unavailable_script_count")},

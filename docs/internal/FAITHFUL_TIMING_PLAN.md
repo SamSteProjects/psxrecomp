@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Show authored entry layers in scene graph
+
+- Previous turn was progress: shared descriptor guards. Scene-transition graph now carries separate imported/authored/effective entry layers and stable transition IDs; the editor displays authored effective bytes alongside imported provenance. Build revalidation remains explicit; graph reachability stays not evaluated.
+- Three focused graph tests passed, including partial override inheritance and protection of original catalog/project data. JavaScript syntax check passed. Browser layer display and live gameplay remain unverified; full objective active.
+
+
 ### 2026-09-10 — Guard shared script authoring descriptor ownership
 
 - Previous turn was progress: transition report navigation. Shared dialogue/transition MAN loader now rejects active descriptor aliases at the selected stream offset and enforces its 4 MiB bound before decompression, matching source ownership expectations of authored byte edits.

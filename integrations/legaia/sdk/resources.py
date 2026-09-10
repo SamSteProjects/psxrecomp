@@ -69,7 +69,7 @@ def scene_transition_graph(project) -> dict:
         catalog = load_script_asset_catalog(project.disc_path, document["scene"]["name"])
     if key != source_key(project):
         raise ProjectError("Scene source changed during transition discovery; refresh again")
-    return {**build_transition_graph(catalog, project.imports), "source_key": key}
+    return {**build_transition_graph(catalog, project.imports, project.overrides), "source_key": key}
 
 
 def trigger_script_preview(project, asset_id: str) -> dict:

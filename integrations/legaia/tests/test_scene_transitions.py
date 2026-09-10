@@ -22,6 +22,19 @@ class SceneTransitions(unittest.TestCase):
         edge["reference"].clear(); edge["source_record"].clear()
         self.assertEqual(source, before)
 
+    def test_authored_entry_layers_do_not_replace_imported_reference(self):
+        source = catalog(b"\x3f\0\0\x06town02\x01\x82\x03")
+        edge = build_transition_graph(source, [])["edges"][0]
+        key = edge["entry_layers"]["transition_id"]
+        overrides = {edge["owner_id"]: {"Transitions": {"entries": {key: {"entry_x_encoded": 99}}}}}
+        changed = build_transition_graph(source, [], overrides)["edges"][0]
+        self.assertEqual(changed["reference"]["entry_x_encoded"], 1)
+        self.assertEqual(changed["entry_layers"]["effective"]["entry_x_encoded"], 99)
+        self.assertEqual(changed["entry_layers"]["effective"]["entry_z_encoded"], 130)
+        self.assertEqual(changed["reachability"], "not_evaluated")
+        changed["entry_layers"]["authored"].clear()
+        self.assertEqual(overrides[edge["owner_id"]]["Transitions"]["entries"][key]["entry_x_encoded"], 99)
+
     def test_unknown_names_and_self_references_do_not_invent_scenes(self):
         source = catalog(b"\x3f\0\0\x06Town02\1\2\3")
         graph = build_transition_graph(source, [])
