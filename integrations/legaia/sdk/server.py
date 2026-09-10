@@ -330,7 +330,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:
                         raise ProjectError("Trigger script inspection accepts a catalog identity only; partition and source spans are source-controlled")
                     from .resources import trigger_script_preview
-                    self._json(200, trigger_script_preview(self.server.project, body["asset_id"]))
+                    report = trigger_script_preview(self.server.project, body["asset_id"])
+                    identifier = "scene://" + report["script_id"].removeprefix("script://")
+                    report["dialogue_authoring"] = self.server.project.dialogue_options(identifier)
+                    self._json(200, report)
                     return
                 if route == "/api/field-map-preview":
                     if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:

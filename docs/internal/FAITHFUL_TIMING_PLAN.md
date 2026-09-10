@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 dialogue workspace wiring):** Trigger-script inspection now
+  returns freshly verified dialogue options and offers Open dialogue workspace.
+  The shared text editor routes refreshes through the trigger identity, verifies
+  the returned script identity, and uses existing Apply/Clear/history/save
+  commands for P2 owners. Unsupported records retain their authoring reason.
+  JavaScript syntax and focused resource/project/trigger tests pass. Browser
+  interaction acceptance is still pending; the running editor was not restarted
+  and no runtime or authored project was changed in this turn.
+
 - **2026-09-10 (retail P2 package verification):** A fresh scan of town01's
   39 P2 records finds records 36 and 37 authorable, each with one ten-byte run.
   Added a private-disc P2[36] package regression: one punctuation byte changes,
