@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (NMake precompile acceptance):** Previous project-issue browser
+  workflow was verified progress. MinGW Makefiles configuration failed because
+  GNU make was absent. Located installed Visual Studio18 x64 NMake and ran the
+  same generated-overlay fixture with NMake Makefiles/UCRT GCC: seven variants
+  passed executable checks in21.347s. No production fix was required. GNU Make
+  remains unaccepted; updated parity ledger without broadening gameplay claims.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (project issue navigation acceptance):** Previous whole-project
   issue list was implementation progress. Synthetic browser started in second
   scene, showed one invalid actor from fixture, and navigated via issue link to

@@ -502,7 +502,7 @@ unaccepted; buffer counters do not prove audible quality.
 | P1 | CD/XA battle sequence | Authorized retail input; Windows; manual audio | Healing Leaf, Spirit, two Hyper Arts and summon finish with synchronized audible audio. |
 | P1 | FMV and field transitions | Authorized retail input; Windows | Cold-process FMV, town0c -> map01 -> town0c; current build identity, ownership and timing captured. |
 | P1 | Controller release and isolation | Keyboard plus two physical pads | Inject each port, expire/clear/switch it; unaffected port remains responsive and physical input resumes. |
-| P2 | Other build generators | Synthetic generated source; MSVC/Make/Ninja | MSVC and Ninja first-build/inventory/body regeneration pass executable checks; Make remains unaccepted. |
+| P2 | Other build generators | Synthetic generated source; MSVC/Make/Ninja | MSVC, Ninja and NMake first-build/inventory/body regeneration pass executable checks; GNU Make remains unaccepted. |
 
 ## Repeated title restore probe (2026-09-10)
 
@@ -534,3 +534,12 @@ of the intermittent capture appearance has not been established.
 Private title-restore-visual-ab/acceptance.json and staged screenshots retain
 both runs. This adds bounded repeated title visual recovery, not field or
 cross-scene restore acceptance, input responsiveness or audible-quality proof.
+
+## NMake precompile fixture (2026-09-10)
+
+The existing seven-variant executable fixture passed with CMake's NMake
+Makefiles generator, Visual Studio18's x64 NMake and UCRT GCC in21.347s.
+This covers generated inventory growth/shrinkage, body changes, split/monolithic
+switching and35 images across32 compilation groups under a Makefile generator.
+The preceding MinGW Makefiles configure failed because mingw32-make was not
+installed; no GNU Make acceptance is claimed. No production change was needed.
