@@ -543,3 +543,18 @@ This covers generated inventory growth/shrinkage, body changes, split/monolithic
 switching and35 images across32 compilation groups under a Makefile generator.
 The preceding MinGW Makefiles configure failed because mingw32-make was not
 installed; no GNU Make acceptance is claimed. No production change was needed.
+
+## Input and story flow after repeated title restore (2026-09-10)
+
+Two fresh owned61d99eac... runs completed three title loads, then a12-frame
+port1 Cross press. The initial five-second screenshot was black; its neutral
+pad status proved override expiration but not visible flow. Both processes
+exited0. A second run retained captures15,25,35 seconds after confirmation:
+opening story text and later illustrated story content were visible, with
+frames3463,4064,4664. Thus normal debug-controller input advanced New Game
+after three restores. Explicit clear_input also succeeded.
+
+Evidence remains private in restore-title-input and restore-title-input-long.
+MDEC decode count stayed0: this is opening story/title flow, not FMV acceptance.
+Physical controllers, field/cross-scene restoration, and subjective sound
+quality remain separate requirements. No production patch was needed.

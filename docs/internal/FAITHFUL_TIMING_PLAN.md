@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (input after repeated restores):** Previous NMake check was
+  verified progress. Fresh owned61d99eac... completed three title loads and a
+  12-frame port1 Cross press; override expired to neutral. Five-second capture
+  was black, so a second bounded run retained15/25/35-second captures showing
+  opening story text and illustrated story progression at frames3463/4064/4664.
+  Both runs exit0; explicit input clear succeeded. MDEC0 means no FMV claim.
+  Private restore-title-input(-long) evidence retained. No runtime patch needed;
+  physical input and field/cross-scene restore remain open. Full goal active.
+
+
 - **2026-09-10 (NMake precompile acceptance):** Previous project-issue browser
   workflow was verified progress. MinGW Makefiles configuration failed because
   GNU make was absent. Located installed Visual Studio18 x64 NMake and ran the
