@@ -46,6 +46,11 @@ path: all three PCs were reported primed, `scene_verified` remained false, and
 the process exited zero. The cold field comparison used manual early requests;
 it is not represented as an end-to-end test of the new automatic launch path.
 
+A subsequent independent zero-overlay cold run did pass the full automatic
+launch-to-field path, with all three witnesses current and 90 nodes accepted.
+See [automatic witness field acceptance](automatic-witness-field-acceptance.md).
+That later run used no manual witness requests and exited zero.
+
 No runtime or profile definitions changed. `overlay_capture.c` retains only
 requested PCs and has no idle expiry; restore resets retained ownership and
 still requires genuine re-execution. Late attachment cannot recover an earlier

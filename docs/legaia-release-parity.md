@@ -26,6 +26,14 @@ probe verified automatic preparation without claiming scene acceptance.
 Runtime/profile sources are unchanged. See
 `legaia-sdk/texture-runtime-acceptance.md` for evidence and remaining limits.
 
+A subsequent cold zero-overlay run validated the automatic preparation through
+the opening movie, New Game and town01. The unchanged v2 observer accepted a
+complete 90-node chain with all three required witnesses current; no manual
+witness requests or savestate restore were used. Runtime and isolated editor
+both exited zero. See `legaia-sdk/automatic-witness-field-acceptance.md`.
+This closes cold launch preparation acceptance, not restored or cross-scene Live
+recovery or audible continuity.
+
 ## Reproduced FMV stall fixed
 
 Commit `58794999` repairs a generic CD controller error in

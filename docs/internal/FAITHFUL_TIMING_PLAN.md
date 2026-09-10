@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (automatic cold field observation):** The new production launch
+  preparation passed a full cold New Game without manual witness requests or
+  restore. Opening movie completed 1,337 frames, town01 rendered, and the
+  unchanged v2 guard accepted 90 nodes with all three witnesses current.
+  Zero-overlay baseline retained zero writes/consumption; runtime and isolated
+  editor exited zero. Protected project hashes were unchanged. Restored and
+  cross-scene Live acceptance remain separate.
+
 - **2026-09-10 (opening dialogue scope):** Verified the opening town01
   conversation is referenced by MAN P2 record 3, outside current P1 text
   authoring. Added two pinned-VM instruction forms for bounded inspection;
