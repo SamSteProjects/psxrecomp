@@ -126,7 +126,23 @@ function scheduleRunPoll(){
   runPoll=setTimeout(async()=>{try{const response=await fetch('/api/run/status');const data=await response.json();if(response.ok){state.run=data.run;renderRunStatus();}}catch(error){notify('Runtime status is unavailable: '+error.message,true);}scheduleRunPoll();},2000);
 }
 buildButton.onclick=async()=>{if(await api('/api/build',{}))showBuildReport();};
+const placementIssuesButton=document.createElement('button');placementIssuesButton.hidden=true;buildButton.after(placementIssuesButton);
+const placementIssuesDialog=document.createElement('dialog');document.body.append(placementIssuesDialog);
+placementIssuesButton.onclick=()=>{
+  placementIssuesDialog.innerHTML='<div class="dialog-heading"><h2>Placement build issues</h2><button aria-label="Close placement issues">Close</button></div><p>These checks cover authored coordinates across imported scenes. Build still verifies all source data and other authored changes.</p>';
+  placementIssuesDialog.querySelector('button').onclick=()=>placementIssuesDialog.close();
+  for(const item of state.placement_build_issues ?? []){
+    const section=document.createElement('section'),button=document.createElement('button');
+    button.textContent=`${item.scene_name}: ${item.entity_id}`;
+    button.onclick=async()=>{if(busy)return;placementIssuesDialog.close();if(item.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:item.scene_id}))return;if(await api('/api/selection',{entity_id:item.entity_id}))frame(selected());};
+    section.append(button);for(const issue of item.issues){const p=document.createElement('p');p.textContent=issue;section.append(p);}placementIssuesDialog.append(section);
+  }
+  placementIssuesDialog.showModal();
+};
 function renderBuildStatus(){
+  const issueCount=(state.placement_build_issues ?? []).length;
+  placementIssuesButton.hidden=!issueCount;placementIssuesButton.disabled=busy;
+  placementIssuesButton.textContent=`Placement issues (${issueCount} actors)`;
   buildReportButton.hidden=!state.build;buildReportButton.disabled=busy||!state.build;
   buildReportButton.textContent=state.build?.current===false?'Build report · stale':'Build report';
   buildReportButton.classList.toggle('stale',state.build?.current===false);

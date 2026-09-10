@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (project-wide placement issues):** Previous coordinate submission
+  acceptance was progress. Extracted one serializer-backed placement issue helper
+  shared by Inspector and a whole-project issue list. State reports affected
+  actor/scene identities even with no active scene or selection. Toolbar opens
+  the issue list and links each actor through normal scene/selection APIs.
+  Scope explicitly excludes other build/source validation. Six workflow tests
+  pass including inactive-scene issue discovery; JS syntax/diff checks pass.
+  Browser acceptance pending. Full SDK goal remains active.
+
+
 - **2026-09-10 (placement submission browser verification):** Previous warning
   check was progress with an explicit submission gap. Reproduced automation
   fill/blur changing only the displayed number (Undo remained disabled).

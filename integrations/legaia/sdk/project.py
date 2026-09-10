@@ -162,6 +162,32 @@ class ProjectService:
     def dirty(self) -> bool:
         return digest(self._document()) != self.saved_digest
 
+    @staticmethod
+    def _placement_issues(authored: dict) -> list[str]:
+        from importer.serialization import encode_placement_coordinate
+        from importer.core import ImportError as PlacementError
+        issues = []
+        for axis, value in authored.get("position", {}).items():
+            if axis == "y":
+                issues.append("Y is project-only; clear authored height before Build")
+            else:
+                try:
+                    encode_placement_coordinate(value, axis.upper())
+                except PlacementError as exc:
+                    issues.append(str(exc))
+        return issues
+
+    def placement_build_issues(self) -> list[dict]:
+        result = []
+        for scene_id, document in sorted(self.imports.items()):
+            for actor in document["actors"]:
+                identifier = actor["semantic_id"]
+                issues = self._placement_issues(self.overrides.get(identifier, {}).get("Transform", {}))
+                if issues:
+                    result.append({"scene_id": scene_id, "scene_name": document["scene"]["name"],
+                                   "entity_id": identifier, "issues": issues})
+        return result
+
     @property
     def unsaved_sections(self) -> list[str]:
         document = self._document()
@@ -831,17 +857,7 @@ class ProjectService:
             identifier = actor["semantic_id"]
             imported = deepcopy(actor["imported_transform"])
             authored = deepcopy(self.overrides.get(identifier, {}).get("Transform", {}))
-            from importer.serialization import encode_placement_coordinate
-            from importer.core import ImportError as PlacementError
-            placement_issues = []
-            for axis, value in authored.get("position", {}).items():
-                if axis == "y":
-                    placement_issues.append("Y is project-only; clear authored height before Build")
-                else:
-                    try:
-                        encode_placement_coordinate(value, axis.upper())
-                    except PlacementError as exc:
-                        placement_issues.append(str(exc))
+            placement_issues = self._placement_issues(authored)
             effective = deepcopy(imported)
             effective["position"].update(authored.get("position", {}))
             model = actor["model_reference"]
@@ -864,6 +880,7 @@ class ProjectService:
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
         return {"project": {"name": self.name, "path": str(self.root), "dirty": self.dirty, "unsaved_sections": self.unsaved_sections, "mode": self.mode},
+                "placement_build_issues": self.placement_build_issues(),
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,

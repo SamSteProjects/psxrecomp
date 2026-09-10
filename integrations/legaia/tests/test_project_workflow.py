@@ -54,6 +54,14 @@ class ProjectWorkflow(unittest.TestCase):
             project.command({"type": "set_transform", "entity_id": actor,
                              "position": {"x": 125, "y": 0}})
             self.assertEqual(len(issues()), 2)
+            project.active_scene = None
+            project.select(None)
+            report = project.state()["placement_build_issues"]
+            self.assertEqual(len(report), 1)
+            self.assertEqual(report[0]["scene_id"], "scene://fixture")
+            self.assertEqual(report[0]["entity_id"], actor)
+            self.assertEqual(len(report[0]["issues"]), 2)
+            project.set_scene("scene://fixture")
             self.assertTrue(any("exact multiple of 64" in issue for issue in issues()))
             self.assertTrue(any("project-only" in issue for issue in issues()))
             project.undo()
