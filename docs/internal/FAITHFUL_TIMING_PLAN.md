@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (save-status browser acceptance):** Previous section metadata
+  was implementation progress. Retail P2 navigation showed Unsaved: Active scene;
+  applying a text edit added Actor and dialogue edits and made Build report
+  stale. Undo restored freshness and scene-only status; Save displayed Project
+  saved. Browser exposed a non-UTF8 separator introduced by the edit script;
+  replaced it with ASCII comma, verified strict UTF8 decode and JS syntax, then
+  reloaded after Save and verified a new authored edit label. Initial dirty-page
+  reload did not replace the UI; no verification relied on that attempt.
+  Browser errors empty. Private save-status-browser service stopped normally;
+  full goal remains active.
+
+
 - **2026-09-10 (unsaved project sections):** Previous title visual comparison
   was evidence-producing progress. ProjectService now retains per-section saved
   digests alongside the existing dirty digest and exposes unsaved section labels.

@@ -138,7 +138,7 @@ function validBuildReport(report){
 function projectSaveStatus(){
   if(!state.project?.dirty)return 'Project saved';
   const sections=state.project.unsaved_sections;
-  return Array.isArray(sections)&&sections.length?`Unsaved: ${sections.join(' · ')}`:'Project changes are not saved';
+  return Array.isArray(sections)&&sections.length?`Unsaved: ${sections.join(', ')}`:'Project changes are not saved';
 }
 function buildValue(value){return typeof value==='string'?value:JSON.stringify(value) ?? 'Unknown';}
 function buildChangeResource(change){
