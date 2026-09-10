@@ -368,6 +368,37 @@ class ProjectService:
                 raise ProjectError("Dialogue source differs from freshly verified imported evidence")
             return load_dialogue_authoring_context(self.disc_path, document["scene"]["name"])
 
+    def _validate_transitions(self, identifier: str, value: dict) -> None:
+        import re
+        from importer.transition_authoring import ENTRY_FIELDS
+        self._dialogue_document(identifier)
+        if (not isinstance(value, dict) or set(value) != {"entries"} or
+                not isinstance(value["entries"], dict) or not 1 <= len(value["entries"]) <= 1024):
+            raise ProjectError("Transitions require a bounded nonempty entry collection")
+        prefix = "script://" + identifier.removeprefix("scene://") + "/transition/"
+        for key, fields in value["entries"].items():
+            if not isinstance(key, str) or re.fullmatch(re.escape(prefix) + r"[0-9a-f]{4}", key) is None:
+                raise ProjectError("Transition must belong to its source owner")
+            if (not isinstance(fields, dict) or not fields or set(fields) - set(ENTRY_FIELDS) or
+                    any(type(v) is not int or not 0 <= v <= 255 for v in fields.values())):
+                raise ProjectError("Transition entry fields require encoded integer bytes")
+
+    def _transition_context(self, identifier: str):
+        from importer.transition_authoring import TransitionAuthoringContext
+        return TransitionAuthoringContext(self._dialogue_context(identifier))
+
+    def transition_options(self, identifier: str) -> dict:
+        result = self._transition_context(identifier).options(identifier)
+        authored = self.overrides.get(identifier, {}).get("Transitions", {}).get("entries", {})
+        known = set()
+        for entry in result["transitions"]:
+            key = entry["semantic_id"]
+            known.add(key)
+            entry["authored_values"] = deepcopy(authored.get(key, {}))
+            entry["effective_values"] = dict(entry["values"], **authored.get(key, {}))
+        result["unresolved_overrides"] = sorted(set(authored) - known)
+        return result
+
     def dialogue_options(self, identifier: str) -> dict:
         result = deepcopy(self._dialogue_context(identifier).options(identifier))
         authored = self.overrides.get(identifier, {}).get("Dialogue", {}).get("runs", {})
@@ -457,6 +488,32 @@ class ProjectService:
             if before is not None:
                 self.undo_stack.append({"target": "texture_overrides", "asset_id": identifier,
                                         "before": before, "after": None})
+                self.redo_stack.clear()
+            return
+        if command.get("type") in ("set_transition_entry", "clear_transition_entry"):
+            identifier, key = command.get("entity_id"), command.get("transition_id")
+            # Clear also checks owner syntax, but remains possible offline.
+            self._validate_transitions(identifier, {"entries": {key: {"entry_x_encoded": 0}}})
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            entries = deepcopy(after.get("Transitions", {}).get("entries", {}))
+            if command["type"] == "set_transition_entry":
+                entries[key] = deepcopy(command.get("values"))
+                self._validate_transitions(identifier, {"entries": entries})
+                self._transition_context(identifier).patch(entries)
+            else:
+                entries.pop(key, None)
+            if entries:
+                after["Transitions"] = {"entries": entries}
+            else:
+                after.pop("Transitions", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
                 self.redo_stack.clear()
             return
         if command.get("type") in ("set_dialogue_text", "clear_dialogue_text"):
@@ -761,7 +818,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions"}:
                 raise ProjectError("Unsupported authored component")
             if "Transform" in components:
                 if not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
@@ -776,6 +833,9 @@ class ProjectService:
                 # Offline opening checks syntax; actual source capacities are verified on edit/build.
                 result._validate_dialogue(identifier, components["Dialogue"])
                 result.overrides.setdefault(identifier, {})["Dialogue"] = deepcopy(components["Dialogue"])
+            if "Transitions" in components:
+                result._validate_transitions(identifier, components["Transitions"])
+                result.overrides.setdefault(identifier, {})["Transitions"] = deepcopy(components["Transitions"])
         templates = raw.get("actor_templates", {})
         if not isinstance(templates, dict) or len(templates) > 128:
             raise ProjectError("Invalid authored template collection")
@@ -821,6 +881,9 @@ class ProjectService:
                 runs = edits.get("Dialogue", {}).get("runs", {})
                 if runs:
                     changes.append(f"Dialogue: {len(runs)} text runs")
+                entries = edits.get("Transitions", {}).get("entries", {})
+                if entries:
+                    changes.append(f"Transitions: {len(entries)} entries")
                 records.append({"id": identifier, "kind": "actor", "name": "Actor " + identifier.rsplit("/", 1)[-1],
                                 "scene_id": scene_id, "source_scene": document["scene"]["name"],
                                 "changes": changes, "authored": deepcopy(edits),
@@ -830,11 +893,13 @@ class ProjectService:
                 continue
             scene_id = identifier.split("/scripts/man-p2/", 1)[0]
             runs = edits.get("Dialogue", {}).get("runs", {})
-            if runs:
+            entries = edits.get("Transitions", {}).get("entries", {})
+            changes = ([f"Dialogue: {len(runs)} text runs"] if runs else []) + ([f"Transitions: {len(entries)} entries"] if entries else [])
+            if changes:
                 records.append({"id": identifier, "kind": "script",
                                 "name": "Partition 2 script " + str(int(identifier.rsplit("/", 1)[-1])),
                                 "scene_id": scene_id, "source_scene": self.imports[scene_id]["scene"]["name"],
-                                "changes": [f"Dialogue: {len(runs)} text runs"], "authored": deepcopy(edits),
+                                "changes": changes, "authored": deepcopy(edits),
                                 "script_id": "script://" + identifier.removeprefix("scene://")})
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]

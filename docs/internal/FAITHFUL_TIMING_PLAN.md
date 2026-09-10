@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Persist authored transition entries
+
+- Previous goal turn classified as progress: committed verified transition context and a retail source-span probe.
+- Added Transitions component commands for set/clear, fresh source validation before mutation, bounded encoded-byte syntax, undo/redo, offline persistence and authored asset summaries for P1/P2 owners. Source failure leaves project state unchanged.
+- Validation: transition project lifecycle test passed; existing dialogue project tests 3/3 passed. No retail runtime or build executed this turn.
+- Next: connect transition audits to Build MAN composition and expose editor controls. Build still rejects Transitions explicitly through its component whitelist; no authored entry is silently packaged or ignored. Full objective remains active.
+
+
 ### 2026-09-10 — Verified transition MAN context
 
 - Added a request-scoped transition authoring context around the bounded entry-byte serializer, with stable owner/PC IDs, exact optional baseline guards, unique source-record checks, deterministic audited byte composition and overlap rejection. Shared MAN record access reuses the existing P1/P2 ownership validation without requiring editable dialogue.
