@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Decode the source ground surface
+
+- Previous turn was progress: browser-verified environment hierarchy/framing. Added importer/terrain.py from pinned field_objects.rs build_walk_heightfield conventions: walk-visible1000 cell gate, four floor-LUT corner heights, clamped grid-edge heights, PSX quad diagonal and decreasing V along increasing row.
+- Unknown page/atlas selectors remain explicitly untextured; no reference fallback grass is invented. This is a source heightfield preview, not collision-ramp geometry or a complete reproduction of the retail ground emitter.
+- Fresh town01 data yields1946 cells/3892 triangles, all1946 with supported source selectors. Two focused synthetic checks passed for corner/UV ordering and border/missing-page behavior. Texture resolution, scene-service integration and visual comparison remain next; no browser/runtime mutation this turn. Full objective active.
+
 ### 2026-09-10 — Browser-verify environment inspection and framing
 
 - Previous turn was progress: environment selection UI. Isolated editor4395/tab52 displayed97/98 meshes. Searched MAP object137, selected its hierarchy row, opened the read-only source/transform inspector and framed the textured house. Screenshot visually inspected: house, walls/coastal backdrop and other scene objects render, while missing ground is clearly visible. No claim of complete scene or retail camera parity.
