@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (retail allocation discrepancy found):** Read-only inspection of
+  the sibling generated field overlay capture finds SHA-256
+  `3026cd12a22c12f94ed05ef5af551df786267d2d29c330b5c57e82c5ec5aae19`.
+  Its contiguous C-family-looking table has entry 13 at 0x801CEFBC pointing
+  to 0x801E29E0. Generated code there increments s8 by two, calls 0x8003CF04
+  with callback 0x801DC0BC, and branches on its result at 0x801E29FC; the
+  delay slot copies the incremented s8 to v0. Null returns branch to
+  0x801E3628, non-null continues at 0x801E2A04. This contradicts the pinned
+  VM's unconditional same-PC halt model and changes the next investigation:
+  prove table selection, non-null return path, s8 meaning and capture-to-disc
+  provenance before authorizing encoded continuation. No decoder semantics
+  changed from this preliminary finding; no runtime was launched. Evidence
+  source: sibling generated/overlay_captures_static.json record 0 and
+  generated/overlays_static_0000.c, both read-only.
+
 - **2026-09-10 (recognized external control-flow boundaries):** Inspection now
   displays CD as SCRIPT_CONTEXT_ALLOC with its verified encoded width and no
   successor, retaining an explicit unresolved-control-flow stop. This separates
