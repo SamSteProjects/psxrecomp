@@ -1,5 +1,25 @@
 # Legaia SDK feature matrix
 
+2026-09-10 individual-decoration browser acceptance: selecting cell1833,
+editing X128, viewing X5440 while cell2089 remains X5312, saving and undoing
+back to X5312 passed in the textured scene editor. All20 retail-enabled build
+tests pass. Scene regeneration is still slow and briefly hides scenery controls;
+in-game allocation behavior remains unverified.
+
+2026-09-10 individual static decorations: project commands, undo/redo,
+save/reopen, effective preview and guarded build output now support cell-local
+transform overrides after shared record edits. The serializer clones into an
+unreferenced zero-filled descriptor and preserves grid flags. Retail town01
+acceptance proves distinct X values for cells1833 and2089, allocation into slot5,
+and unchanged unrelated bytes. Inspector controls are implemented and syntax
+checked; browser and in-game acceptance remain pending. Spawnable scenery is
+shared-only. Earlier dated entries below describe historical milestones.
+
+The assembled town01 preview includes52 actors,46 placed objects,162 decorations
+and one ground entity, with selection outlines, hierarchy/inspector navigation
+and visibility layers. Shared scenery authoring is browser-accepted through
+edit/save/undo and package-verified; in-game behavior remains unverified.
+
 2026-09-10 textured ground: town01's1946 source cells now render alongside actors
 and46 placed environment objects. All11 ground materials resolve through the
 scene texture catalog, with authored replacements supported by the adapter.

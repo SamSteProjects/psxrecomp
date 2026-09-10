@@ -56,3 +56,67 @@ def patch_environment_transforms(original: bytes, expected_sha256: str,
                       'before_value': before, 'after_value': value,
                       'affected_grid_cells': references[record].copy()})
     return bytes(result), audit
+
+
+def patch_environment_instances(original: bytes, expected_sha256: str,
+                                edits: list[dict]) -> tuple[bytes, list[dict]]:
+    """Split static decoration descriptors for cell-local transform edits.
+
+    Allocation uses only zero-filled descriptors with no grid references.
+    Spawnable objects and reserved descriptor identities are not supported:
+    their script/runtime identity consumers need separate validation.
+    """
+    # Reuse source and transform validation before interpreting any locators.
+    patch_environment_transforms(original, expected_sha256, [])
+    if not isinstance(edits, list) or len(edits) > 512:
+        raise ImportError("Instance edits must be a bounded cell list")
+    normalized, seen = [], set()
+    for edit in edits:
+        if not isinstance(edit, dict) or set(edit) - {'cell_index', 'offset', 'rotation_psx'}:
+            raise ImportError("Unknown environment instance field")
+        cell = edit.get('cell_index')
+        if type(cell) is not int or not 0 <= cell < 16384 or cell in seen:
+            raise ImportError("Environment cell index is invalid or duplicated")
+        seen.add(cell)
+        word = struct.unpack_from('<H', original, 0x8000 + cell * 2)[0]
+        record = word & 511
+        flags = struct.unpack_from('<H', original, record * 32 + 0x12)[0]
+        if record < 4 or not word & 0x2000 or flags & 4:
+            raise ImportError("Instance authoring currently supports static decorations only")
+        transform = {k: v for k, v in edit.items() if k != 'cell_index'}
+        patched, changes = patch_environment_transforms(original, expected_sha256,
+            [{'record_index': record, **transform}])
+        if changes:
+            normalized.append((cell, record, word, patched[record*32:(record+1)*32], changes))
+    referenced = {word[0] & 511 for word in struct.iter_unpack('<H', original[0x8000:0x10000])}
+    free = [record for record in range(4, 512)
+            if record not in referenced and original[record*32:(record+1)*32] == bytes(32)]
+    if len(normalized) > len(free):
+        raise ImportError("No unused zero-filled MAP descriptors remain for instance edits")
+    result, audit = bytearray(original), []
+    for target, (cell, record, word, descriptor, changes) in zip(free, sorted(normalized)):
+        result[target*32:(target+1)*32] = descriptor
+        grid_offset = 0x8000 + cell * 2
+        replacement = (word & ~511) | target
+        struct.pack_into('<H', result, grid_offset, replacement)
+        audit.append({'cell_index': cell, 'source_record_index': record,
+                      'allocated_record_index': target,
+                      'descriptor_byte_offset': target*32, 'descriptor_byte_length': 32,
+                      'grid_byte_offset': grid_offset, 'grid_byte_length': 2,
+                      'before_grid_word': word, 'after_grid_word': replacement,
+                      'transform_changes': [{k:v for k,v in change.items()
+                                             if k not in ('affected_grid_cells', 'byte_offset')}
+                                            for change in changes]})
+    return bytes(result), audit
+
+
+def patch_environment_overrides(original: bytes, binding: dict) -> tuple[bytes, list[dict]]:
+    """Apply shared edits first, then cell-local overrides against that baseline."""
+    shared, audit = patch_environment_transforms(original, binding['source_sha256'], binding.get('edits', []))
+    changed, instances = patch_environment_instances(shared, sha256(shared).hexdigest(), binding.get('instances', []))
+    for instance in instances:
+        for change in instance['transform_changes']:
+            audit.append({**change, 'scope':'instance-MAP-transform-only',
+                          'affected_grid_cells':[instance['cell_index']],
+                          'allocation':{k:v for k,v in instance.items() if k != 'transform_changes'}})
+    return changed, audit

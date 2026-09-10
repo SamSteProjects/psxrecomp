@@ -274,7 +274,7 @@ def _build_project(project, output_dir) -> dict:
     audit_edits = []
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
         for scene_id, binding in sorted(environment_edits.items()):
-            from importer.environment_authoring import patch_environment_transforms
+            from importer.environment_authoring import patch_environment_overrides
             from importer.environment import load_environment_placements
             document = project.imports[scene_id]
             scene = document["scene"]["name"]
@@ -283,8 +283,16 @@ def _build_project(project, output_dir) -> dict:
             source = load_environment_placements(project.disc_path, scene)["source_record"]
             entry = archive.entry(source["map_entry_index"])
             original = archive.read_entry(entry, extended=True)
-            changed, changes = patch_environment_transforms(original, binding["source_sha256"], binding["edits"])
-            allowed = {i for row in changes for i in range(row["byte_offset"], row["byte_offset"]+2)}
+            changed, changes = patch_environment_overrides(original, binding)
+            allowed = set()
+            for row in changes:
+                if 'allocation' in row:
+                    allocation = row['allocation']
+                    for prefix in ('descriptor', 'grid'):
+                        start = allocation[prefix+'_byte_offset']
+                        allowed.update(range(start, start+allocation[prefix+'_byte_length']))
+                else:
+                    allowed.update(range(row['byte_offset'], row['byte_offset']+2))
             if len(changed) != len(original) or any(a != b and i not in allowed for i,(a,b) in enumerate(zip(original,changed))):
                 raise BuildError("Environment patch changed bytes outside audited transform axes")
             location = (archive.node.extent_lba + entry.start_lba) * 2048
@@ -297,8 +305,9 @@ def _build_project(project, output_dir) -> dict:
                                  "sha256":_hash(changed), "expected_sha256":_hash(original)})
                 for row in changes:
                     audit_edits.append({**row, "scene":scene,
-                        "semantic_id":f"environment://{scene}/field-map/records/{row['record_index']:03d}",
-                        "scope":"shared-MAP-transform-only"})
+                        "semantic_id":(f"environment://{scene}/field-map/decorations/{row['allocation']['cell_index']:05d}"
+                                       if 'allocation' in row else f"environment://{scene}/field-map/records/{row['record_index']:03d}"),
+                        "scope":row.get('scope', 'shared-MAP-transform-only')})
         for scene_id, edits in sorted(scene_edits.items()):
             document = project.imports[scene_id]
             scene = document["scene"]["name"]
@@ -480,11 +489,11 @@ def _build_project(project, output_dir) -> dict:
                    if has_appearance else "Private authored field placements for the verified retail disc.")
     feature_description = ("Apply initial MAN donor assignments and X/Z placements; scripts may override appearance."
                            if has_appearance else "Apply this project's representable field X/Z placement edits.")
-    if any(c.get("scope") == "shared-MAP-transform-only" for c in audit_edits):
+    if any(c.get("scope") in ("shared-MAP-transform-only", "instance-MAP-transform-only") for c in audit_edits):
         package_suffix = " authored scene data"
         feature_name = "Authored scene data"
-        description = "Private source-bound scene edits including shared MAP placement transforms."
-        feature_description = "Apply shared environment offsets and rotations; every reference to each edited MAP record is affected."
+        description = "Private source-bound scene edits including MAP placement transforms."
+        feature_description = "Apply shared scenery transforms and individual static decoration overrides."
     if has_dialogue:
         package_suffix = " authored actor data"
         feature_name = "Authored actor data"

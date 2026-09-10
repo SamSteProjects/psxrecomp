@@ -34,22 +34,26 @@ def source_key(project) -> str | None:
 
 
 def environment_effective_transforms(project, metadata: dict) -> dict:
-    """Project shared descriptor edits onto every verified source instance."""
+    """Project shared and cell-local edits without changing imported identities."""
     value = project.overrides.get(project.active_scene, {}).get("Environment")
     if not value:
         return {}
-    from importer.environment_authoring import patch_environment_transforms
+    from importer.environment_authoring import patch_environment_overrides
     project._validate_environment(project.active_scene, value)
     if metadata["source_record"]["map_sha256"] != value["source_sha256"]:
         raise ProjectError("Environment preview source differs from authored binding")
-    _, changes = patch_environment_transforms(project._environment_source(project.active_scene),
-                                               value["source_sha256"], value["edits"])
-    by_record = {}
+    _, changes = patch_environment_overrides(project._environment_source(project.active_scene), value)
+    by_record, by_cell = {}, {}
     for change in changes:
-        by_record.setdefault(change["record_index"], []).append(change)
+        if 'allocation' in change:
+            by_cell.setdefault(change['allocation']['cell_index'], []).append(change)
+        else:
+            by_record.setdefault(change["record_index"], []).append(change)
     result = {}
     for placement in metadata["placements"]:
-        rows = by_record.get(placement["object_record_index"], [])
+        grid_offset = placement.get('source_record', {}).get('grid_byte_offset', -1)
+        cell = (grid_offset - 0x8000) // 2
+        rows = by_record.get(placement["object_record_index"], []) + by_cell.get(cell, [])
         if not rows:
             continue
         transform = deepcopy(placement["imported_transform"])

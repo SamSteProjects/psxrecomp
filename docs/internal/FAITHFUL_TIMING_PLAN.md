@@ -213,6 +213,25 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Browser acceptance for individual decoration editing
+
+- Previous turn was progress: integrated instance editing across SDK layers. In an isolated town01 editor on4395, selected decoration194 at41,14, applied individual X128, then verified effective X5440 with a textured viewport and selection outline. The shared counterpart at41,16 retained X5312 and no individual override.
+- Browser Save and Undo succeeded. After preview completed, the original instance returned to X5312/offset0 with Redo available. Private project is under `local-output/sdk-20260909/individual-browser`; the owned test server was stopped without touching original runtime/editor ports.
+- All20 retail-enabled build tests passed in46.188s. JavaScript syntax and diff checks passed. Browser exposed a remaining usability issue: transform edits regenerate scene geometry and temporarily replace scenery hierarchy/inspector during loading; a selector timeout during Undo resolved after that same request completed. No runtime allocation acceptance is claimed; full objective active.
+
+### 2026-09-10 — Connect individual decoration authoring across SDK layers
+
+- Previous turn was progress: introduced bounded instance serialization. Fresh retail town01 allocation for cell1833 copies descriptor194 into zero-filled unreferenced slot5, redirects only that cell, and changes9 bytes for X128. This is retail data evidence, not runtime acceptance.
+- Project Environment bindings now support individual cell edits alongside shared record edits, validated before command mutation and on reopen/build. Shared edits apply first; individual axes take precedence. Preview retains original cell identities and projects both layers. Build audits record allocation, exact allowed descriptor/grid spans and affected cell identity.
+- Added individual inspector controls for static decorations; shared edits preserve individual bindings and vice versa. The UI is syntax-checked but not yet browser-accepted. Two retail tests pass in8.679s, covering shared packaging plus combined command/undo/redo/save/reopen/preview/build and unchanged unrelated bytes. Existing environment tests passed (10 plus1 skipped) before the UI addition.
+- Spawnable scenery remains shared-only. Browser workflow, in-game allocation behavior and broader runtime consumers remain unverified. Full SDK/release-parity objective remains active.
+
+### 2026-09-10 — Begin independent decoration serialization
+
+- Previous turn was progress: committed the shared-scenery workflow after 19 retail-enabled build tests passed. Inspected pinned Andrew `field_regions.rs` descriptor/grid consumers before extending allocation.
+- Added a source-hash-bound instance serializer for static decorations. It copies a descriptor into an unreferenced, zero-filled, non-reserved slot, changes selected transform axes, and redirects only the selected cell while preserving its upper flag bits. Allocation is deterministic; full tables, duplicate cells, reserved descriptors and spawnable objects are rejected. This is a serializer foundation, not an accepted editor feature; grid-reference absence does not establish every possible runtime consumer.
+- Four focused authoring tests pass, including exact output bytes, unchanged shared source, deterministic allocation and exhaustion rejection. The first test run exposed a fixture's accidental no-op value; corrected the fixture to request an actual change. Project persistence, preview/build integration and retail/runtime instance validation remain next; the full objective remains active.
+
 ### 2026-09-10 — Verify and checkpoint shared scenery authoring
 
 - Previous turn was a status response, with no implementation progress. Revalidated the working tree and resumed the pending authoring checkpoint. The earlier test process is no longer present among current Python processes; its missing output was not treated as a passing result.

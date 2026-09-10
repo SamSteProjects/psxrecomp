@@ -977,35 +977,42 @@ function renderInspector(){
     $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Source and overrides</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
     $('frame-environment').onclick=frameEnvironment;
     if(source.record_offset&&source.source_record?.map_sha256){
+      const scopes=environment.entity_id.includes('/decorations/')?['shared','instance']:['shared'];
+      for(const scope of scopes){
+      const individual=scope==='instance',cell=(source.source_record.grid_byte_offset-0x8000)/2;
       const section=document.createElement('section');section.className='component';
-      const title=document.createElement('h3');title.textContent='Shared transform override';section.append(title);
-      const note=document.createElement('p');note.className='field-note';note.textContent='Changes affect every instance using this placement record. Saved in the project and included in builds. In-game behavior has not been verified.';section.append(note);
+      const title=document.createElement('h3');title.textContent=individual?'Individual decoration override':'Shared transform override';section.append(title);
+      const note=document.createElement('p');note.className='field-note';note.textContent=individual?'Changes affect this decoration only and take precedence over shared values. Builds allocate an unused MAP record. In-game behavior has not been verified.':'Changes affect every instance using this placement record unless individually overridden. Saved in the project and included in builds. In-game behavior has not been verified.';section.append(note);
       const binding=activeScenePreview()?.environment_authoring;
-      const current=binding?.edits?.find(e=>e.record_index===source.object_record_index);
+      const shared=binding?.edits?.find(e=>e.record_index===source.object_record_index);
+      const current=individual?binding?.instances?.find(e=>e.cell_index===cell):shared;
       const inputs=[];
-      for(const [field,label,base] of [['offset','Placement offset',source.record_offset],['rotation_psx','Rotation (4096 units per turn)',transform.rotation_psx]]){
+      for(const [field,label,retail] of [['offset','Placement offset',source.record_offset],['rotation_psx','Rotation (4096 units per turn)',transform.rotation_psx]]){
+        const base=individual?{...retail,...shared?.[field]}:retail;
         const heading=document.createElement('h4');heading.textContent=label;section.append(heading);
         for(const axis of ['x','y','z']){
-          const row=document.createElement('label');row.textContent=`${axis.toUpperCase()} · imported ${base[axis]} `;
-          const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live';row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
+          const row=document.createElement('label');row.textContent=`${axis.toUpperCase()} · ${individual?'inherited':'imported'} ${base[axis]} `;
+          const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${individual?'Individual ':''}${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live';row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
         }
       }
       const effective=document.createElement('p');effective.textContent=`Effective position: ${JSON.stringify(environment.effective_transform?.position??transform.position)}`;section.append(effective);
-      const apply=document.createElement('button');apply.textContent='Apply shared transform';apply.disabled=state.project?.mode==='live';
+      const apply=document.createElement('button');apply.textContent=individual?'Apply individual transform':'Apply shared transform';apply.disabled=state.project?.mode==='live';
       apply.onclick=async()=>{
-        const edit={record_index:source.object_record_index};
+        const edit=individual?{cell_index:cell}:{record_index:source.object_record_index};
         for(const {field,axis,input,base} of inputs){if(!input.value.trim()||!input.checkValidity()){input.reportValidity();return;}const value=Number(input.value);if(value!==base)(edit[field]??={})[axis]=value;}
-        const edits=(binding?.edits??[]).filter(e=>e.record_index!==source.object_record_index);
-        if(edit.offset||edit.rotation_psx)edits.push(edit);
-        await api('/api/command',edits.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
+        const edits=(binding?.edits??[]).filter(e=>individual||e.record_index!==source.object_record_index);
+        const instances=(binding?.instances??[]).filter(e=>!individual||e.cell_index!==cell);
+        if(edit.offset||edit.rotation_psx)(individual?instances:edits).push(edit);
+        await api('/api/command',edits.length||instances.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits,instances}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
       };
       section.append(apply);$('inspector').insertBefore(section,$('inspector').lastElementChild);
+      }
     }
     if(Number.isInteger(source.object_record_index)){
       const related=environmentEntities().filter(item=>item.source_record?.object_record_index===source.object_record_index);
       const section=document.createElement('section');section.className='component';
       const heading=document.createElement('h3');heading.textContent='Shared placement record';section.append(heading);
-      const note=document.createElement('p');note.className='field-note';note.textContent=`${related.length} imported scene instance${related.length===1?'':'s'} use MAP record ${source.object_record_index}. Its offsets and rotations are shared. Editing this source record affects every grid use; independent instance overrides are not implemented.`;section.append(note);
+      const note=document.createElement('p');note.className='field-note';note.textContent=`${related.length} imported scene instance${related.length===1?'':'s'} use MAP record ${source.object_record_index}. Shared edits affect every grid use. Static decorations support individual overrides through a separately allocated record.`;section.append(note);
       if(Number.isInteger(source.source_record?.map_reference_count)){
         const count=document.createElement('p');count.className='field-note';count.textContent=`Total source grid references: ${source.source_record.map_reference_count}, including cells outside the preview visibility gates.`;section.append(count);
       }

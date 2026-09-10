@@ -371,12 +371,12 @@ class ProjectService:
     def _validate_environment(self, identifier: str, value: dict) -> None:
         import re
         import struct
-        from importer.environment_authoring import patch_environment_transforms
-        if identifier not in self.imports or not isinstance(value, dict) or set(value) != {"source_sha256", "edits"}:
+        from importer.environment_authoring import patch_environment_transforms, patch_environment_instances
+        if identifier not in self.imports or not isinstance(value, dict) or 'source_sha256' not in value or set(value) - {"source_sha256", "edits", "instances"}:
             raise ProjectError("Environment edits require an imported scene and source binding")
         if not isinstance(value["source_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", value["source_sha256"]):
             raise ProjectError("Environment source binding requires a SHA256 digest")
-        if not isinstance(value["edits"], list) or not value["edits"]:
+        if not isinstance(value.get("edits", []), list) or not isinstance(value.get("instances", []), list) or not (value.get("edits") or value.get("instances")):
             raise ProjectError("Environment edits must be nonempty")
         # Offline schema validation uses a complete synthetic grid containing
         # every descriptor. Real source ownership is checked on edit/build.
@@ -384,7 +384,20 @@ class ProjectService:
         for record in range(512):
             struct.pack_into('<H', fixture, 0x8000 + record * 2, record)
         fixture = bytes(fixture)
-        patch_environment_transforms(fixture, hashlib.sha256(fixture).hexdigest(), value["edits"])
+        patch_environment_transforms(fixture, hashlib.sha256(fixture).hexdigest(), value.get("edits", []))
+        instances = value.get("instances", [])
+        if len(instances) > 512:
+            raise ProjectError("Too many environment instance edits")
+        seen = set()
+        for edit in instances:
+            cell = edit.get('cell_index') if isinstance(edit, dict) else None
+            if type(cell) is not int or not 0 <= cell < 16384 or cell in seen:
+                raise ProjectError("Invalid or duplicate environment instance cell")
+            seen.add(cell)
+            fixture = bytearray(0x12000)
+            struct.pack_into('<H', fixture, 0x8000 + cell*2, 0x2004)
+            fixture = bytes(fixture)
+            patch_environment_instances(fixture, hashlib.sha256(fixture).hexdigest(), [edit])
 
     def _environment_source(self, identifier: str) -> bytes:
         from importer.pipeline import _disc_context, import_scene
@@ -522,10 +535,10 @@ class ProjectService:
             before = deepcopy(self.overrides.get(identifier))
             after = deepcopy(before or {})
             if command["type"] == "set_environment_transforms":
-                from importer.environment_authoring import patch_environment_transforms
+                from importer.environment_authoring import patch_environment_overrides
                 value = deepcopy(command.get("value"))
                 self._validate_environment(identifier, value)
-                patch_environment_transforms(self._environment_source(identifier), value["source_sha256"], value["edits"])
+                patch_environment_overrides(self._environment_source(identifier), value)
                 after["Environment"] = value
             else:
                 after.pop("Environment", None)
@@ -944,7 +957,7 @@ class ProjectService:
             if environment:
                 records.append({"id":scene_id, "kind":"scene", "name":document["scene"]["name"],
                                 "scene_id":scene_id, "source_scene":document["scene"]["name"],
-                                "changes":[f"Shared scenery transforms: {len(environment['edits'])} records"],
+                                "changes":[f"Scenery transforms: {len(environment.get('edits', []))} shared records, {len(environment.get('instances', []))} individual cells"],
                                 "authored":{"Environment":deepcopy(environment)}})
             for actor in document["actors"]:
                 identifier = actor["semantic_id"]
