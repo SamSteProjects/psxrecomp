@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Prevent competing transition drafts
+
+- Previous turn was progress: browser arrival authoring. Fixed two forms for the same entry allowing conflicting drafts to survive a refresh and later overwrite each other. An arrival draft now disables byte inputs/Apply/Clear; a byte draft disables arrival inputs/Apply. Explanatory tooltips and Discard remain available.
+- Private tab50/editor4395 verified both directions: arrival12352->12416 locked byte form; Discard restored access; byte96->97 locked arrival form; final Discard restored baseline. Browser errors empty; JavaScript syntax passed. No authored command or runtime launched. QA root `local-output/sdk-20260909/arrival-draft-browser`.
+- Full objective active; live transition arrival acceptance still pending.
+
+
 ### 2026-09-10 — Arrival coordinate controls verified in browser
 
 - Previous turn was progress: verified arrival command. Added Arrival X/Z and facing-sector inspector form, exact-grid HTML validation, draft/discard handling and shared project action guards. Existing encoded-byte controls remain available.
