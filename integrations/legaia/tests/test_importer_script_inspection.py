@@ -21,6 +21,29 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_emitters_and_collision_paint_preserve_payload_boundaries(self):
+        words = [-32768, 32767, -1, 0, 31, 3276]
+        forms = [b"\x4c\x60" + struct.pack("<6h", *words),
+                 b"\x4c\x61" + b"\x1f\0" * 7]
+        forms += [bytes([0x4c, sub, 31, 255, 0, 254]) + (b"\x1f" if sub >= 0x72 else b"")
+                  for sub in range(0x70, 0x74)]
+        for ordinary in forms:
+            for data in (ordinary, b"\xcc\x17" + ordinary[1:]):
+                report = inspect_record(data + b"\x1fHi\0", 0)
+                self.assertFalse(report["stops"])
+                self.assertEqual(report["instructions"][0]["length"], len(data))
+                self.assertEqual([(d["pc"], d["text"]) for d in report["dialogues"]], [(len(data), "Hi")])
+                for length in range(1, len(data)):
+                    truncated = inspect_record(data[:length], 0)
+                    self.assertEqual(truncated["status"], "partial")
+                    self.assertEqual(truncated["instructions"], [])
+                    self.assertEqual(truncated["dialogues"], [])
+        self.assertEqual(inspect_record(forms[0], 0)["instructions"][0]["operands"]["words"], words)
+        edges = inspect_record(forms[1], 0)["instructions"][0]["successors"]
+        self.assertEqual(edges, [{"pc": 16, "condition": "acquire_succeeded"}, {"pc": 0, "condition": "acquire_wait"}])
+        for sub in (0x62, 0x6F, 0x74, 0x7F):
+            self.assertEqual(inspect_record(bytes([0x4c, sub]) + b"\x1fOpaque\0", 0)["dialogues"], [])
+
     def test_context_allocation_has_no_invented_fallthrough(self):
         for data in (b"\xcc\x17\xcd\x1fOpaque\0",):
             report = inspect_record(data, 0)

@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (emitter and wall-paint script coverage):** Added MENU_CTRL
+  60 six signed words, 61 bounded acquire payload with advance/wait edges,
+  and 70-73 collision wall paint with distinct masked/unmasked widths.
+  Evidence: exact pin d6e64c68 executing `menu_ctrl/nibble_5_6_7.rs`, blob
+  `0146f87c0c381d06ffaa14d27f4f8197b04ec587`. All 41 focused script,
+  trigger, catalog, dialogue project and build tests pass, including truncated
+  payloads and extended headers. Actual opening P2[3] reaches 222 instructions
+  and stops at PC 1284 MENU_CTRL 85, still with zero accepted dialogue.
+  These are encoded script effects, not runtime collision-state reconstruction.
+  Runtime and saved projects unchanged; next coverage target is acquire form 85.
+
 - **2026-09-10 (retail CD continuation):** Verified the retained 202728-byte
   field capture equals the prefix of private-disc PROT entry 897 at offset 0.
   C-family dispatch masks the selector low nibble at 0x801E25E0 and indexes

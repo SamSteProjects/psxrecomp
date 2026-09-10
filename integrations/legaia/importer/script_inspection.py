@@ -236,6 +236,25 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "model_id": int.from_bytes(data[operand + 1:operand + 4], "little"),
                     "animation_frame": struct.unpack_from("<H", data, operand + 4)[0],
                     "tween_frames": struct.unpack_from("<H", data, operand + 6)[0]}
+        elif sub in (0x60, 0x61):
+            size = 13 if sub == 0x60 else 15
+            need(size)
+            mnemonic = "EMITTER_SIX_WORDS" if sub == 0x60 else "EMITTER_ACQUIRE"
+            args = {"sub_op": sub}
+            if sub == 0x60:
+                args["words"] = list(struct.unpack_from("<6h", data, operand + 1))
+            else:
+                args["can_wait_for_external_state"] = True
+                branches = [{"pc": operand + size, "condition": "acquire_succeeded"},
+                            {"pc": pc, "condition": "acquire_wait"}]
+        elif 0x70 <= sub <= 0x73:
+            size = 5 if sub < 0x72 else 6
+            need(size)
+            mnemonic = "COLLISION_WALL_PAINT"
+            args = {"sub_op": sub, "rectangle_operands": list(data[operand + 1:operand + 5]),
+                    "can_yield": sub < 0x72}
+            if sub >= 0x72:
+                args["mask"] = data[operand + 5]
         elif sub == 0xCD:
             size, mnemonic, branches = 1, "SCRIPT_CONTEXT_ALLOC", []
             args = {"sub_op": sub, "can_wait_for_external_state": True}
