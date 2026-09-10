@@ -72,8 +72,9 @@ Private build audits retain exact byte changes and source hashes.
 
 ## Acceptance and remaining scope
 
-The town01 source sweep exposes 154 runs across 16 actors. Unknown instruction
-paths reject 23 actors; 13 contain no supported runs. Targeted checks cover
+The initial town01 source sweep exposed 154 runs across 16 actors. Later decoder
+coverage expanded this set; these initial counts are not current capability
+limits. Unknown instruction paths still reject authoring. Targeted checks cover
 padding, no-ops, malformed strings, alias/conflict rejection, source preservation,
 history/persistence and composition with existing edits.
 
@@ -83,7 +84,26 @@ placement and custom text build also passed exact decoded-span validation.
 The refreshed editor passed Apply, Undo/Redo, Save/Open, Clear/Undo, overlong
 draft rejection and Build with the saved replacement. Browser errors were empty.
 
-These checks do not establish dialogue reachability, font widths, line wrapping,
-box layout, full script behavior or gameplay acceptance of a modified message.
+On 2026-09-10 a separate cold run visibly accepted actor 49's 12-byte run
+`script://town01/actors/man-p1/0049/dialogue/0050/run/0053`. Replacing
+`, I love the` with `SDK VERIFIED` rendered `VahnSDK VERIFIED` and the unchanged
+next line `Genesis Tree, too!` when talking to the child beside the tree after
+the opening Village Elder conversation. The character-name control token was
+preserved; the concatenation reflects the exact authored replacement. Normal
+Confirm closed the message and returned to field control.
+
+The package SHA-256 was
+`f44a8fc57ee981abd4ce90d7d1a1298fad3c477d6457ca11e0cdcf9971f01bd9`;
+the runtime consumed 24,894 overlay bytes across 13 sectors with no disc guard
+failure. Runtime and editor exited zero. Private evidence is retained under
+`local-output/sdk-20260909/dialogue-navigation-20260910`, especially
+`edited-dialogue.png`, `following-dialogue.png`, `acceptance.json`, and the
+project build audit. No savestate or guest-memory edit was used. An earlier
+failed title/movie-loop attempt remains separately retained; confirming promptly
+from a fresh title screenshot resolved navigation without a runtime change.
+
+This establishes one modified message's reachability and visible rendering,
+not general font widths, line wrapping, box layout, full script behavior or P2
+dialogue gameplay acceptance.
 Text growth requiring relocation, control-token editing, rich character encoding
 and script authoring remain separate unfinished features.

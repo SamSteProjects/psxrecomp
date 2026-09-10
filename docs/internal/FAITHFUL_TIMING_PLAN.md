@@ -213,6 +213,25 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (dialogue gameplay acceptance):** The preceding failed run was
+  progress because it isolated an acceptance-navigation gap. Compared the
+  recorded screenshots/inputs: the successful prior title confirmation followed
+  its screenshot within about 8 seconds, versus about 24 seconds in the failed
+  attempt. A fresh isolated cold run at HEAD 51a42dbb confirmed promptly from
+  the visible title, entered the narrated story, completed name confirmation
+  and the Village Elder conversation, and reached normal town control. Walked
+  to the nearby child and visibly rendered `VahnSDK VERIFIED` followed by
+  unchanged `Genesis Tree, too!`; the preserved name token accounts for the
+  concatenation. A further normal Confirm closed the dialogue and restored
+  field control. This accepts the actor-49 fixed-run dialogue edit in gameplay;
+  it does not establish arbitrary script editing or P2 gameplay acceptance.
+  The same package SHA f44a8fc57ee981abd4ce90d7d1a1298fad3c477d6457ca11e0cdcf9971f01bd9
+  consumed 24894 overlay bytes across 13 sectors, with no disc guard failure.
+  No restore, guest-memory write, or runtime patch was used. Runtime and editor
+  both exited 0. Evidence: private `dialogue-navigation-20260910` QA directory
+  under `local-output/sdk-20260909`, including screenshots, commands, observed
+  scene, build provenance and process identities. Full SDK goal remains active.
+
 - **2026-09-10 (dialogue cold-run acceptance attempt):** Prior scene-transition
   explorer work was progress. Created a separate private town01 project at
   `local-output/sdk-20260909/dialogue-live-20260910` from HEAD d9bc87f6. Actor
