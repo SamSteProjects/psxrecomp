@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 HTTP acceptance):** Added and passed a private-disc test
+  against the real EditorServer on an ephemeral loopback port. Trigger 0008
+  resolves an authorable P2 owner; command Apply is reflected by a fresh
+  trigger request with correct space padding, and Clear removes the override.
+  Opening trigger 0045 still returns unsupported authoring and zero runs.
+  All six HTTP requests returned 200; server shutdown and thread termination
+  were verified. Temporary project only, no saved user project or runtime
+  changes. Browser interaction acceptance remains outstanding.
+
 - **2026-09-10 (P2 dialogue workspace wiring):** Trigger-script inspection now
   returns freshly verified dialogue options and offers Open dialogue workspace.
   The shared text editor routes refreshes through the trigger identity, verifies
