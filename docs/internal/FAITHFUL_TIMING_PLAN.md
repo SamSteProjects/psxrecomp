@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (captured runtime node flags):** Prior pagination work was
+  progress. Pinned Andrew script-VM documentation distinguishes local +0x62,
+  scratchpad global and context +0x10 banks; the current guarded v2 profile
+  already captures the confirmed generic node flag word at +0x10. Added an SDK
+  adapter and flag-browser snapshot section for those existing captured words,
+  showing epoch-scoped nodes, hexadecimal values and set-bit indices without
+  claiming a script-owner binding or present-time values. Rejects wrong scene,
+  mixed epoch, unstable capture and unsupported field evidence. Four tests,
+  including the retail HTTP workflow, passed in 9.327 seconds; the retained
+  cold-gameplay observation yielded 90 captured words. JavaScript syntax passed.
+  Browser rendering of the new snapshot section is still unverified. No new
+  memory reads, profile relaxation or flag writes. Local/global/system bank
+  observation and confirmed script binding remain pending; full goal is active.
+
 - **2026-09-10 (flag browser pagination):** Previous flag-index implementation
   was progress, but its first-100 result cap left broad searches incomplete.
   Added previous/next navigation with bounded 100-group rendering, exact result

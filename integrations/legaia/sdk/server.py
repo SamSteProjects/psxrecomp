@@ -326,7 +326,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:
                         raise ProjectError("Flag discovery uses the active scene; no client source bindings are accepted")
                     from .resources import scene_flag_index
-                    self._json(200, scene_flag_index(self.server.project))
+                    from .flags import observed_node_flags
+                    result = scene_flag_index(self.server.project)
+                    result["runtime_snapshot"] = observed_node_flags(self.server.live_status, result["scene_id"])
+                    self._json(200, result)
                     return
                 if route == "/api/scene-transitions":
                     if body:
