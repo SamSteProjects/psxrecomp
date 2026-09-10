@@ -66,6 +66,7 @@ class EditorServer(ThreadingHTTPServer):
                 entity["components"]["Animation"]["preview_support"] = actor_animation_capabilities(actor, asset)
         state["capabilities"]["actor_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
@@ -113,6 +114,7 @@ class EditorServer(ThreadingHTTPServer):
 
     def actor_script_preview(self, entity_id: str) -> dict:
         from importer.script_inspection import inspect_actor_script
+        from importer.pipeline import _disc_context
         project = self.project
         if not project.disc_path:
             raise ProjectError("Script inspection requires the project's user-owned disc")
@@ -121,7 +123,15 @@ class EditorServer(ThreadingHTTPServer):
                       if item["semantic_id"] == entity_id), None)
         if actor is None:
             raise ProjectError("Script inspection requires an imported actor in the active scene")
-        return inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
+        with _disc_context(project.disc_path):
+            report = inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
+            try:
+                report["dialogue_authoring"] = project.dialogue_options(entity_id)
+            except (RetailImportError, ProjectError) as exc:
+                report["dialogue_authoring"] = {"supported": False, "reason": str(exc), "runs": [],
+                                                "unresolved_overrides": sorted(project.overrides.get(entity_id, {}).get("Dialogue", {}).get("runs", {})),
+                                                "limitations": ["Read-only script inspection does not establish text-write safety."]}
+            return report
 
     def actor_appearance_preview(self, entity_id: str) -> dict:
         from importer.pipeline import _disc_context
@@ -366,12 +376,16 @@ class EditorHandler(BaseHTTPRequestHandler):
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
         if route == "/api/command" and body.get("type") in (
-                "set_transform", "clear_transform", "create_actor_template", "apply_actor_template", "set_actor_appearance", "clear_actor_appearance"):
+                "set_transform", "clear_transform", "create_actor_template", "apply_actor_template", "set_actor_appearance", "clear_actor_appearance", "set_dialogue_text", "clear_dialogue_text"):
             required_strings[route] = ("entity_id",)
         if route == "/api/command" and body.get("type") in ("set_actor_appearance", "clear_actor_appearance"):
             allowed = {"type", "entity_id", "donor_entity_id"} if body["type"] == "set_actor_appearance" else {"type", "entity_id"}
             if set(body) != allowed:
                 raise ProjectError("Appearance commands accept an entity and donor identity only")
+        if route == "/api/command" and body.get("type") in ("set_dialogue_text", "clear_dialogue_text"):
+            allowed = {"type", "entity_id", "run_id", "text"} if body["type"] == "set_dialogue_text" else {"type", "entity_id", "run_id"}
+            if set(body) != allowed:
+                raise ProjectError("Dialogue commands accept only entity/run identities and authored text")
         for key in required_strings.get(route, ()):
             if not isinstance(body.get(key), str) or not body[key].strip():
                 raise ProjectError(f"{key} must be a nonempty string")

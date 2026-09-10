@@ -126,7 +126,7 @@ def compress_lzs(data: bytes) -> bytes:
 def serialize_man_stream(
     original_stream: bytes, decoded_size: int, scene: str,
     edits: dict[int, dict[str, int | float]],
-) -> tuple[bytes, list[dict[str, Any]], dict[str, int]]:
+) -> tuple[bytes, list[dict[str, Any]], dict[str, int | str]]:
     """Return an equal-length patch for exactly the original consumed stream.
 
     No subsequent descriptor, padding or opaque container bytes are touched.
@@ -140,8 +140,8 @@ def serialize_man_stream(
 
 
 def serialize_man_decoded(original_stream: bytes, decoded_size: int, changed: bytes,
-                          scene: str) -> tuple[bytes, dict[str, int]]:
-    """Encode a final composed decoded MAN once within its original stream span.
+                          scene: str) -> tuple[bytes, dict[str, int | str]]:
+    """Serialize a final composed decoded MAN within its original stream span.
 
     Callers own field-level provenance/audit validation. No file or input buffer
     is modified; this guard verifies exact decoded length and final LZS bytes.
@@ -159,6 +159,12 @@ def _serialize_man_decoded(original_stream, original, consumed, changed, scene):
         return original_span, {"original_encoded_size": consumed, "new_encoded_size": consumed,
                                "decoded_size": decoded_size}
     encoded = compress_lzs(changed)
+    compression_info = {}
+    if len(encoded) > consumed:
+        from .lzs_optimal import MAX_OPTIMAL_BYTES, compress_lzs_optimal
+        if decoded_size <= MAX_OPTIMAL_BYTES:
+            compression_info = {"compression_strategy": "bounded_optimal_lzs", "greedy_encoded_size": len(encoded)}
+            encoded = compress_lzs_optimal(changed)
     decoded, encoded_consumed = decompress_lzs(encoded, decoded_size)
     if decoded != changed or encoded_consumed != len(encoded):
         raise ImportError("independent LZS decode did not verify encoded MAN bytes")
@@ -168,4 +174,4 @@ def _serialize_man_decoded(original_stream, original, consumed, changed, scene):
     if decompress_lzs(replacement, decoded_size)[0] != changed:
         raise ImportError("padded MAN replacement failed decode validation")
     return replacement, {"original_encoded_size": consumed,
-                         "new_encoded_size": len(encoded), "decoded_size": decoded_size}
+                         "new_encoded_size": len(encoded), "decoded_size": decoded_size, **compression_info}

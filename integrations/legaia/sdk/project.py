@@ -281,9 +281,78 @@ class ProjectService:
         self.selected = None
         self._live_correlation = None
 
+    def _validate_dialogue(self, identifier: str, value: dict) -> None:
+        from importer.dialogue_authoring import MAX_EDIT_RUNS, validate_dialogue_text, validate_run_id
+        self._actor(identifier)
+        if (not isinstance(value, dict) or set(value) != {"runs"} or
+                not isinstance(value["runs"], dict) or not 1 <= len(value["runs"]) <= MAX_EDIT_RUNS):
+            raise ProjectError("Dialogue requires a bounded nonempty text-run collection")
+        for run_id, text in value["runs"].items():
+            validate_run_id(identifier, run_id)
+            validate_dialogue_text(text)
+
+    def _dialogue_context(self, identifier: str):
+        from importer.dialogue_authoring import load_dialogue_authoring_context
+        from importer.pipeline import _disc_context, import_scene
+        self._actor(identifier)
+        if not self.disc_path:
+            raise ProjectError("Dialogue authoring requires the project's user-owned disc")
+        document = next(doc for doc in self.imports.values() if any(a["semantic_id"] == identifier for a in doc["actors"]))
+        with _disc_context(self.disc_path):
+            if import_scene(self.disc_path, document["scene"]["name"]) != document:
+                raise ProjectError("Dialogue source differs from freshly verified imported evidence")
+            return load_dialogue_authoring_context(self.disc_path, document["scene"]["name"])
+
+    def dialogue_options(self, identifier: str) -> dict:
+        result = deepcopy(self._dialogue_context(identifier).options(identifier))
+        authored = self.overrides.get(identifier, {}).get("Dialogue", {}).get("runs", {})
+        known = set()
+        for run in result["runs"]:
+            run_id = run["semantic_id"]
+            known.add(run_id)
+            replacement = authored.get(run_id)
+            run["authored_text"] = replacement
+            run["effective_text"] = run["text"] if replacement is None else replacement.ljust(run["max_length"])
+            if replacement is not None and len(replacement) > run["max_length"]:
+                run["effective_text"] = None
+                run["validation_error"] = "Saved replacement exceeds the verified source run capacity"
+        result["unresolved_overrides"] = sorted(set(authored) - known)
+        return result
+
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get("type") in ("set_dialogue_text", "clear_dialogue_text"):
+            from importer.dialogue_authoring import validate_run_id
+            identifier, run_id = command.get("entity_id"), command.get("run_id")
+            self._actor(identifier)
+            validate_run_id(identifier, run_id)
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            runs = after.get("Dialogue", {}).get("runs", {}).copy()
+            if command["type"] == "set_dialogue_text":
+                runs[run_id] = command.get("text")
+                self._validate_dialogue(identifier, {"runs": runs})
+                context = self._dialogue_context(identifier)
+                allowed = {run["semantic_id"] for run in context.options(identifier)["runs"]}
+                if not set(runs) <= allowed:
+                    raise ProjectError("Dialogue run is not supported by the verified actor source")
+                context.patch(runs)
+            else:
+                runs.pop(run_id, None)
+            if runs:
+                after["Dialogue"] = {"runs": runs}
+            else:
+                after.pop("Dialogue", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_actor_appearance", "clear_actor_appearance"):
             identifier = command.get("entity_id")
             self._actor(identifier)
@@ -498,7 +567,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue"}:
                 raise ProjectError("Unsupported authored component")
             if "Transform" in components:
                 if not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
@@ -509,6 +578,10 @@ class ProjectService:
                 # Opening metadata remains possible offline; preview/build reverify wire resources.
                 result._appearance_binding(identifier, components["ActorAppearance"])
                 result.overrides.setdefault(identifier, {})["ActorAppearance"] = deepcopy(components["ActorAppearance"])
+            if "Dialogue" in components:
+                # Offline opening checks syntax; actual source capacities are verified on edit/build.
+                result._validate_dialogue(identifier, components["Dialogue"])
+                result.overrides.setdefault(identifier, {})["Dialogue"] = deepcopy(components["Dialogue"])
         templates = raw.get("actor_templates", {})
         if not isinstance(templates, dict) or len(templates) > 128:
             raise ProjectError("Invalid authored template collection")
@@ -550,6 +623,8 @@ class ProjectService:
                                                                 "limitations": ["Initial model/animation pair only; scripts may replace it. Script and gameplay compatibility remain unverified."]},
                                             "ModelRenderer": {"asset_id": model.get("asset_semantic_id"), "resolution_status": model.get("resolution_status")},
                                             "Animation": {"imported_id": actor["placement_fields"].get("animation_id"), "resolution_status": "unresolved"},
+                                            "Dialogue": {"authored": deepcopy(self.overrides.get(identifier, {}).get("Dialogue", {})),
+                                                         "limitations": ["Only verified plain-text runs are writable; controls and record boundaries remain fixed. Source capacity is rechecked on edit/build."]},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
         return {"project": {"name": self.name, "path": str(self.root), "dirty": self.dirty, "mode": self.mode},

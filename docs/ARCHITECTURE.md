@@ -124,6 +124,14 @@ The browser requires an explicit actor association before previewing its clip.
 Unreferenced ANM records and shared-party texture uploads remain outside this
 scene-resource catalog's advertised scope.
 
+Supported dialogue text uses authored `Dialogue.runs` keyed by actor and
+record-relative message/run PCs. Set/Clear commands share project history and
+save/open; source verification precedes editing and building. The serializer
+merges exact audited glyph spans with placement and appearance changes, leaving
+controls and opaque data unchanged. Greedy compressed overflow can invoke a
+bounded optimal LZS parse for inputs up to 256 KiB; references expand exactly
+within output bounds. See [dialogue authoring](legaia-sdk/dialogue-authoring.md).
+
 The data layers are imported (retail facts), derived (decoded previews and
 indexes), authored (project edits), live (epoch-scoped observations) and
 generated (private build output). Live observation never changes imported or

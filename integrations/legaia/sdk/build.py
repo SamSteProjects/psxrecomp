@@ -1,4 +1,4 @@
-"""Build private, runtime-consumable disc overlays from authored MAN placements."""
+"""Build private disc overlays from bounded authored MAN fields and text runs."""
 from __future__ import annotations
 
 import hashlib
@@ -23,6 +23,40 @@ class BuildError(ProjectError):
 
 def _hash(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def _merge_dialogue_patch(baseline, working, dialogue, changes, expected_runs, previous_changes):
+    """Merge only fresh, independently audited equal-size glyph spans."""
+    if not isinstance(dialogue, bytes) or len(dialogue) != len(baseline) or len(working) != len(baseline):
+        raise BuildError("Dialogue patch must preserve the decoded MAN length")
+    occupied = {change["decoded_byte_offset"] for change in previous_changes}
+    dialogue_offsets = set()
+    merged = bytearray(working)
+    source_hash = _hash(baseline)
+    for change in changes:
+        run = expected_runs.get(change.get("run_id"))
+        offset, length = change.get("decoded_byte_offset"), change.get("byte_length")
+        if (run is None or type(offset) is not int or type(length) is not int or
+                not 0 < length <= len(baseline) or offset < 0 or offset + length > len(baseline) or
+                change.get("record_index") != run["record_index"] or
+                offset != run["decoded_byte_offset"] or length != run["byte_length"] or
+                change.get("source_decoded_man_sha256") != source_hash):
+            raise BuildError("Dialogue audit does not match the verified actor/run source")
+        try:
+            before, after = bytes.fromhex(change["before_hex"]), bytes.fromhex(change["after_hex"])
+        except (ValueError, KeyError, TypeError) as exc:
+            raise BuildError("Dialogue audit has invalid encoded byte spans") from exc
+        if (len(before) != length or len(after) != length or before != baseline[offset:offset+length] or
+                after != dialogue[offset:offset+length]):
+            raise BuildError("Dialogue audit bytes disagree with the verified source or patch")
+        span = set(range(offset, offset + length))
+        if span & (occupied | dialogue_offsets):
+            raise BuildError("Dialogue patch overlaps another authored MAN span")
+        dialogue_offsets.update(span)
+        merged[offset:offset+length] = after
+    if any(a != b and i not in dialogue_offsets for i, (a, b) in enumerate(zip(baseline, dialogue))):
+        raise BuildError("Dialogue patch altered an unaudited MAN byte")
+    return bytes(merged)
 
 
 def _guard_output(path: Path, boundary: Path) -> None:
@@ -58,9 +92,9 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
     """Emit a deterministic .psxmod archive, package sources and bounded audit.
 
     Supports representable authored field X/Z placement, evidenced initial
-    MAN donor model/animation assignments, and unchanged retail
-    builds after clearing overrides. The input disc
-    and imported metadata remain unchanged. Installation/enabling and a live
+    MAN donor model/animation assignments, equal-span dialogue glyph runs,
+    and unchanged retail builds after clearing overrides. The input disc and
+    imported metadata remain unchanged. Installation/enabling and a live
     launch are separate actions; this function does not claim runtime testing.
     """
     try:
@@ -83,9 +117,9 @@ def _build_project(project, output_dir) -> dict:
             raise BuildError(f"Authored entity has no imported provenance: {identifier}")
         scene_id, actor = entity_lookup[identifier]
         if (not isinstance(components, dict) or not components or
-                set(components) - {"Transform", "ActorAppearance"}):
-            raise BuildError(f"{identifier}: only authored Transform.position and ActorAppearance donor assignments can be built")
-        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}})
+                set(components) - {"Transform", "ActorAppearance", "Dialogue"}):
+            raise BuildError(f"{identifier}: only authored Transform.position, ActorAppearance and bounded Dialogue runs can be built")
+        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}})
         record = actor["source_record"]["record_index"]
         if "Transform" in components:
             transform = components["Transform"]
@@ -104,6 +138,13 @@ def _build_project(project, output_dir) -> dict:
             if donor_id not in entity_lookup or entity_lookup[donor_id][0] != scene_id:
                 raise BuildError(f"{identifier}: appearance donor must be an imported actor in the same scene")
             edits["assignments"][record] = donor_id
+        if "Dialogue" in components:
+            dialogue = components["Dialogue"]
+            if (not isinstance(dialogue, dict) or set(dialogue) != {"runs"} or
+                    not isinstance(dialogue["runs"], dict) or not dialogue["runs"] or
+                    any(not isinstance(run, str) or not isinstance(text, str) for run, text in dialogue["runs"].items())):
+                raise BuildError(f"{identifier}: Dialogue requires only nonempty runs mapping run identities to text")
+            edits["dialogues"][identifier] = dialogue["runs"]
 
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
@@ -127,6 +168,9 @@ def _build_project(project, output_dir) -> dict:
             body = archive.read_entry(entry)
             stream_offset = bundle.table_offset + descriptor.data_offset
             original_span = body[stream_offset:stream_offset + consumed]
+            if edits["assignments"] or edits["dialogues"]:
+                baseline = decompress_lzs(original_span, descriptor.size)[0]
+                changed, changes = baseline, []
             if edits["assignments"]:
                 context = load_man_assignment_context(project.disc_path, scene)
                 assignments = {}
@@ -143,12 +187,33 @@ def _build_project(project, output_dir) -> dict:
                         raise BuildError(f"{scene} actor {record}: unsupported initial donor assignment; "
                                          + (options["reason"] or "pair lacks compatible same-scene donor evidence"))
                     assignments[record] = pair
-                baseline = decompress_lzs(original_span, descriptor.size)[0]
                 changed, changes = context.patch(assignments, original=baseline)
                 for change in changes:
                     change["donor_entity_id"] = edits["assignments"][change["record_index"]]
+            if edits["assignments"] or edits["dialogues"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
+                if edits["dialogues"]:
+                    from importer.dialogue_authoring import load_dialogue_authoring_context
+                    context = load_dialogue_authoring_context(project.disc_path, scene)
+                    requested, expected_runs = {}, {}
+                    for identifier, runs in edits["dialogues"].items():
+                        record = entity_lookup[identifier][1]["source_record"]["record_index"]
+                        options = context.options(identifier)
+                        allowed = {run["semantic_id"]: run for run in options["runs"]}
+                        for run_id, text in runs.items():
+                            run = allowed.get(run_id)
+                            if (run is None or run.get("actor_id") != identifier or
+                                    run.get("record_index") != record or run_id in requested):
+                                raise BuildError(f"{identifier}: dialogue run is not an evidenced unique run owned by this actor")
+                            requested[run_id] = text
+                            expected_runs[run_id] = run
+                    dialogue_changed, dialogue_changes = context.patch(requested, original=baseline)
+                    changed = _merge_dialogue_patch(baseline, changed, dialogue_changed, dialogue_changes,
+                                                   expected_runs, changes)
+                    for change in dialogue_changes:
+                        change.update(field="dialogue.text", scope="inline-mes-glyph-run-only")
+                    changes.extend(dialogue_changes)
                 replacement, sizes = serialize_man_decoded(original_span, descriptor.size, changed, scene)
             else:
                 replacement, changes, sizes = serialize_man_stream(original_span, descriptor.size, scene, edits["positions"])
@@ -163,7 +228,8 @@ def _build_project(project, output_dir) -> dict:
                 raise BuildError("MAN patch altered bytes outside its original compressed span")
             after_man = decompress_lzs(patched[stream_offset:], descriptor.size)[0]
             before_man = decompress_lzs(original_span, descriptor.size)[0]
-            changed_offsets = {change["decoded_byte_offset"] for change in changes}
+            changed_offsets = {offset for change in changes for offset in range(
+                change["decoded_byte_offset"], change["decoded_byte_offset"] + change.get("byte_length", 1))}
             if any(a != b and n not in changed_offsets for n, (a, b) in enumerate(zip(before_man, after_man))):
                 raise BuildError("MAN round trip altered an opaque decoded byte")
             location = (archive.node.extent_lba + entry.start_lba) * 2048 + stream_offset
@@ -201,12 +267,18 @@ def _build_project(project, output_dir) -> dict:
     destination = destination.resolve()
     package_dir = destination / "package"
     has_appearance = any(change.get("scope") == "initial-man-header-only" for change in audit_edits)
+    has_dialogue = any(change.get("scope") == "inline-mes-glyph-run-only" for change in audit_edits)
     package_suffix = " authored actor headers" if has_appearance else (" authored placements" if overlays else " retail baseline")
     feature_name = "Authored actor headers" if has_appearance else "Authored actor placements"
     description = ("Private initial model/animation and placement headers; script compatibility is unverified."
                    if has_appearance else "Private authored field placements for the verified retail disc.")
     feature_description = ("Apply initial MAN donor assignments and X/Z placements; scripts may override appearance."
                            if has_appearance else "Apply this project's representable field X/Z placement edits.")
+    if has_dialogue:
+        package_suffix = " authored actor data"
+        feature_name = "Authored actor data"
+        description = "Private bounded MAN glyph-run text and optional initial actor headers; script controls and boundaries remain unchanged."
+        feature_description = "Apply equal-span dialogue glyphs and optional actor headers; no script control edits or relocation."
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix)}",
@@ -263,6 +335,7 @@ def _build_project(project, output_dir) -> dict:
         "path": str(archive_path), "audit": str(destination / "build-audit.json"), "build_kind": build_kind,
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
         "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
+        **({"changed_fields_unit": "authored fields/runs"} if has_dialogue else {}),
         "runtime_status": "package_built_not_launched", "feature_id": "placements",
         "install_instruction": (f"Import the .psxmod in the runtime mod manager, enable {feature_name}, then launch against the matching stock disc."
                                 if overlays else "This verified retail baseline has no modified bytes. Build & Run starts a fresh private run without previous placement overlays."),

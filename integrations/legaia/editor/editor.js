@@ -74,6 +74,7 @@ function setBusy(value) {
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
+  if($('script-undo'))updateScriptActions();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -107,7 +108,7 @@ function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase(
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
 function position(entity){return displayPosition(entity.components?.Transform?.effective?.position ?? entity.components?.Transform?.imported?.position);}
-function authored(entity){return Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0 || !!entity.components?.ActorAppearance?.authored?.donor_entity_id;}
+function authored(entity){return Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0 || !!entity.components?.ActorAppearance?.authored?.donor_entity_id || Object.keys(entity.components?.Dialogue?.authored?.runs ?? {}).length>0;}
 function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceChildren();d.showModal();}
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.name ?? 'Legaia project'; $('project-path-input').value=state.project?.path ?? '';showDialog('project-dialog'); };
@@ -256,7 +257,7 @@ function showAssetDetails(record){
 function renderAssets(){
   synchronizeResources();
   const list=$('assets'),query=$('asset-search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('asset-category').value;
-  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Refresh adds scene texture candidates and referenced scene-header animations; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Read-only script and dialogue inspection is available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Refresh adds scene texture candidates and referenced scene-header animations; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
   const records=assetRecords(),filtered=records.filter(record=>(category==='all'||record.type===category)&&query.every(term=>JSON.stringify(record).toLowerCase().includes(term)));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=`${filtered.length} / ${records.length} records`;
   for(const record of filtered){
@@ -344,7 +345,7 @@ function renderInspector(){
   if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">${components.Animation.preview_support?.supported?'Imported association is eligible for decoding. Preview verifies the source; retail playback timing and live animation remain unknown.':escapeHTML(components.Animation.preview_support?.reason ?? 'No supported imported animation association is available for this actor.')}</p></section>`;
   if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>Runtime observation <small>Read only · sampled</small></h3>${property('Correlation',correlation.status ?? correlation.state ?? 'Unresolved')}<p class="field-note">Candidate associations preserve ambiguity. They do not replace imported or authored values.</p><details><summary>Epoch, candidates and evidence</summary><pre>${escapeHTML(JSON.stringify(correlation,null,2))}</pre></details></section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
-  if(state.capabilities?.actor_script_preview)html+='<section class="component"><h3>Script and dialogue <small>Read only</small></h3><p class="field-note">Inspect supported instruction paths and decoded dialogue from this imported record. Unknown instructions stop decoding.</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>';
+  if(state.capabilities?.actor_script_preview)html+=`<section class="component"><h3>Script and dialogue <small>${state.capabilities?.actor_dialogue_authoring?'Supported text edits':'Read only'}</small></h3><p class="field-note">Inspect decoded dialogue and supported instruction paths. ${state.capabilities?.actor_dialogue_authoring?'Eligible plain-text runs can be authored within their original byte capacity.':'Unknown instructions stop decoding.'}</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>`;
   $('inspector').innerHTML=html;
   if($('choose-appearance'))$('choose-appearance').onclick=()=>openAppearanceOptions(entity);
   if($('clear-appearance'))$('clear-appearance').onclick=()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id});
@@ -386,11 +387,15 @@ async function openAppearanceOptions(entity){
 }
 
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
+let scriptEntity=null,scriptReport=null,scriptDrafts=new Map();
 const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUpperCase():'Unknown';
-async function openActorScript(entity){
-  if(busy)return;setBusy(true);
-  scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Read only</p><div id="script-report"><p>Verifying the imported actor record…</p></div><p class="dialog-error" role="alert"></p>`;
+async function openActorScript(entity,refresh=false,focusRun=null){
+  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;setBusy(true);
+  if(!refresh){scriptEntity=entity;scriptDrafts.clear();
+  scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Instruction graph remains read only</p><div id="script-authoring-toolbar" class="script-authoring-toolbar" hidden><button id="script-undo">Undo</button><button id="script-redo">Redo</button><button id="script-save">Save project</button><span id="script-authoring-status"></span></div><div id="script-report"><p>Verifying the imported actor record…</p></div><p class="dialog-error" role="alert"></p>`;
   $('close-script').onclick=()=>scriptDialog.close();scriptDialog.showModal();
+  $('script-undo').onclick=()=>scriptProjectAction('/api/undo');$('script-redo').onclick=()=>scriptProjectAction('/api/redo');$('script-save').onclick=()=>scriptProjectAction('/api/project/save');
+  }
   try{
     const response=await fetch('/api/actor-script',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
     const report=await response.json();if(!response.ok||report.error)throw new Error(typeof report.error==='string'?report.error:'Script inspection failed');
@@ -400,11 +405,76 @@ async function openActorScript(entity){
     $('script-report').innerHTML=`<p class="script-summary">${instructions.length} decoded instructions · ${dialogues.length} dialogue segments · ${report.status==='partial'?'Partial inspection':'Supported paths decoded'}</p><p class="field-note">Record offsets are relative to the actor record. Decoded paths do not establish which branch runs in the game. Name substitutions remain explicit placeholders.</p><div id="script-warnings"></div><section><h3>Decoded dialogue</h3><div id="script-dialogue"></div></section><details class="script-instructions" ${dialogues.length?'':'open'}><summary>Instruction paths (${instructions.length})</summary><div class="script-table-wrap"><table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table></div></details><details class="script-raw"><summary>Source, raw bytes and decoder limits</summary><pre class="diagnostic-detail"></pre></details>`;
     if(opaque.length||stops.length){const warning=document.createElement('div');warning.className='script-warning';warning.textContent=`${opaque.length} opaque regions · ${stops.length} decoder stops. Unvisited bytes and unsupported behavior remain unresolved.`;$('script-warnings').append(warning);for(const region of opaque){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(region.pc)} · ${region.length} opaque bytes: ${region.reason}`;$('script-warnings').append(line);}for(const stop of stops){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(stop.pc)}: ${stop.reason}`;$('script-warnings').append(line);}}
     if(!dialogues.length)$('script-dialogue').textContent='No dialogue was decoded in the inspected paths.';
-    for(const dialogue of dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.innerHTML=`<small>${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length)} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text ?? '';card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);$('script-dialogue').append(card);}
+    for(const dialogue of dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.dataset.dialogueId=dialogue.semantic_id;card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length)} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text ?? '';card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);$('script-dialogue').append(card);}
     const body=$('script-report').querySelector('tbody');
     for(const instruction of instructions){const row=document.createElement('tr');for(const value of [scriptOffset(instruction.pc),instruction.mnemonic,typeof instruction.operands==='string'?instruction.operands:JSON.stringify(instruction.operands ?? {}),(instruction.successors ?? []).map(next=>`${scriptOffset(next.pc)}${next.condition?' · '+(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):''}`).join('\n')]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}body.append(row);}
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
-  }catch(error){if(scriptDialog.open)scriptDialog.querySelector('.dialog-error').textContent=error.message;}finally{setBusy(false);}
+    scriptReport=report;renderDialogueAuthoring();
+    scriptDialog.scrollTop=scroll;
+  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);input?.focus({preventScroll:true});}}
+}
+
+function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
+function updateScriptActions(){
+  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring;
+  const pending=scriptDrafts.size>0;
+  $('script-undo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_undo;
+  $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;
+  $('script-save').disabled=busy||pending||!state.project?.dirty;
+  $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':state.project?.dirty?'Applied changes are not saved':'Project saved';
+  for(const form of scriptDialog.querySelectorAll('.dialogue-run'))updateDialogueRun(form);
+  for(const button of scriptDialog.querySelectorAll('[data-clear-unresolved]'))button.disabled=busy||!canEditDialogue();
+}
+function updateDialogueRun(form){
+  const run=form.run,input=form.querySelector('textarea'),text=input.value,capacity=run.max_length;
+  const validCapacity=Number.isInteger(capacity)&&capacity>=0&&capacity<=4096;
+  const characters=/^[\x20-\x7e]*$/.test(text)&&!text.includes('^');
+  const valid=validCapacity&&characters&&text.length<=capacity;
+  const error=!validCapacity?'The source capacity is unavailable.':!characters?'Use printable ASCII only. Caret (^), line breaks and control characters are unsupported.':text.length>capacity?`Too long: ${text.length} bytes exceeds ${capacity} source bytes.`:'';
+  input.disabled=busy||!canEditDialogue();input.setAttribute('aria-invalid',String(!valid));
+  form.querySelector('.run-counter').textContent=error||`${text.length} / ${capacity} bytes · ${capacity-text.length} space padding bytes after Apply`;
+  form.querySelector('.run-counter').classList.toggle('invalid',!valid);
+  form.querySelector('.run-apply').disabled=busy||!canEditDialogue()||!valid||text===run.authored_text;
+  form.querySelector('.run-clear').disabled=busy||!canEditDialogue()||run.authored_text===null||run.authored_text===undefined;
+  form.querySelector('.run-discard').hidden=!scriptDrafts.has(run.semantic_id);form.querySelector('.run-discard').disabled=busy;
+}
+async function scriptProjectAction(route){
+  if(busy||scriptDrafts.size)return;
+  scriptDialog.querySelector('.dialog-error').textContent='';
+  if(await api(route,{}))await openActorScript(scriptEntity,true);
+  else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;
+}
+async function dialogueCommand(run,type,text){
+  if(busy||!canEditDialogue())return;
+  const command={type,entity_id:scriptEntity.id,run_id:run.semantic_id,...(type==='set_dialogue_text'?{text}:{})};
+  scriptDialog.querySelector('.dialog-error').textContent='';
+  if(await api('/api/command',command)){scriptDrafts.delete(run.semantic_id);await openActorScript(scriptEntity,true,run.semantic_id);}
+  else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;
+}
+function renderDialogueAuthoring(){
+  const authoring=scriptReport?.dialogue_authoring;
+  if(!state.capabilities?.actor_dialogue_authoring||!authoring){updateScriptActions();return;}
+  const note=document.createElement('div');note.className='dialogue-authoring-note';
+  note.textContent=authoring.supported?'Supported plain-text runs can be replaced within their source byte capacity. Shorter text is padded with spaces; empty text becomes all spaces. Controls and substitutions stay unchanged. Apply each draft before Save; unapplied drafts are discarded when this dialog is reopened.':authoring.reason ?? 'This actor has no supported text runs for authoring.';
+  $('script-dialogue').before(note);
+  const evidence=document.createElement('details');evidence.className='dialogue-authoring-evidence';evidence.innerHTML='<summary>Text authoring source and limits</summary><pre class="diagnostic-detail"></pre>';evidence.querySelector('pre').textContent=JSON.stringify({source:authoring.source,limitations:authoring.limitations,unresolved_overrides:authoring.unresolved_overrides},null,2);note.after(evidence);
+  if(authoring.unresolved_overrides?.length){const warning=document.createElement('div');warning.className='unresolved-dialogue';const text=document.createElement('p');text.className='dialog-error';text.textContent=`${authoring.unresolved_overrides.length} stored text overrides could not be resolved. They can be cleared without changing the imported record.`;warning.append(text);for(const identifier of authoring.unresolved_overrides){const row=document.createElement('div'),label=document.createElement('code'),button=document.createElement('button');label.textContent=identifier;button.textContent='Clear unresolved override';button.dataset.clearUnresolved=identifier;button.onclick=()=>dialogueCommand({semantic_id:identifier},'clear_dialogue_text');row.append(label,button);warning.append(row);}evidence.after(warning);}
+  if(!authoring.supported){updateScriptActions();return;}
+  for(const run of authoring.runs ?? []){
+    const parent=[...$('script-dialogue').querySelectorAll('.script-dialogue-card')].find(card=>card.dataset.dialogueId===run.dialogue_id) ?? $('script-dialogue');
+    const form=document.createElement('form');form.className='dialogue-run';form.run=run;
+    form.innerHTML=`<h4>Text run ${escapeHTML(scriptOffset(run.pc))} <small>${escapeHTML(run.max_length)} source bytes</small></h4><div class="run-layer"><span>Imported</span><pre class="run-imported"></pre></div><label class="run-layer"><span>Authored replacement</span><textarea rows="2" spellcheck="false" aria-label="Authored text at ${escapeHTML(scriptOffset(run.pc))}" placeholder="No override. Empty text applied here becomes spaces."></textarea></label><div class="run-counter" role="status"></div><div class="run-actions"><button type="submit" class="run-apply accent">Apply text</button><button type="button" class="run-clear">Clear override</button><button type="button" class="run-discard" hidden>Discard draft</button></div><div class="run-layer"><span>Effective after Apply</span><pre class="run-effective"></pre></div><p class="run-effective-note field-note"></p>`;
+    form.querySelector('.run-imported').textContent=run.text ?? '';
+    const input=form.querySelector('textarea');input.dataset.runInput=run.semantic_id;input.value=scriptDrafts.has(run.semantic_id)?scriptDrafts.get(run.semantic_id):run.authored_text ?? '';
+    form.querySelector('.run-effective').textContent=run.effective_text ?? 'Unavailable';
+    form.querySelector('.run-effective-note').textContent=run.validation_error ?? (run.authored_text===null?'No authored override; effective text inherits the imported run.':`${Math.max(0,run.max_length-(run.authored_text?.length ?? 0))} trailing spaces are retained in the effective source bytes.`);
+    input.oninput=()=>{if(input.value===(run.authored_text ?? ''))scriptDrafts.delete(run.semantic_id);else scriptDrafts.set(run.semantic_id,input.value);updateScriptActions();};
+    form.onsubmit=event=>{event.preventDefault();if(!form.querySelector('.run-apply').disabled)dialogueCommand(run,'set_dialogue_text',input.value);};
+    form.querySelector('.run-clear').onclick=()=>dialogueCommand(run,'clear_dialogue_text');
+    form.querySelector('.run-discard').onclick=()=>{scriptDrafts.delete(run.semantic_id);input.value=run.authored_text ?? '';updateScriptActions();};
+    parent.append(form);
+  }
+  updateScriptActions();
 }
 
 function frame(entity){

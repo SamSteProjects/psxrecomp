@@ -79,6 +79,9 @@ disassembler supply supported instruction widths and successors. Message bytes
 are consumed atomically, and unknown or conflicting boundaries remain opaque.
 The editor does not evaluate story flags or infer a live conversation branch.
 Retail dialogue remains private; tracked tests use hashes and synthetic text.
+Supported equal-span text writing and its pinned source blobs are documented in
+[dialogue authoring](legaia-sdk/dialogue-authoring.md). Unknown instruction paths
+remain rejected for authoring; no script execution or relocation is inferred.
 
 The writable donor-pair foundation is documented in
 `docs/legaia-sdk/man-assignment-authoring.md`. It uses the existing MAN header,

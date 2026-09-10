@@ -5,12 +5,11 @@ import random
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from importer.core import ImportError, decompress_lzs, parse_man
-from importer.serialization import compress_lzs, encode_placement_coordinate, patch_man_positions, serialize_man_stream
+from importer.serialization import compress_lzs, encode_placement_coordinate, patch_man_positions, serialize_man_decoded, serialize_man_stream
 from integrations.legaia.tests.test_importer import synthetic_man
 
 
@@ -67,12 +66,12 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(parse_man(decompress_lzs(changed, len(original))[0]).actors[0].world_x, actor.world_x + 64)
 
     def test_expanded_stream_and_escaping_output_fail_closed(self):
-        original = synthetic_man()
+        # Unique bytes have no three-byte copy and cannot be rescued by the
+        # optimal fallback: 64 literal bytes plus eight control bytes are needed.
+        original = bytes(64)
         stream = compress_lzs(original)
-        actor = parse_man(original).actors[0]
-        with patch("importer.serialization.compress_lzs", side_effect=literals):
-            with self.assertRaisesRegex(ImportError, "relocation is unsupported"):
-                serialize_man_stream(stream, len(original), "town01", {1: {"x": actor.world_x + 64}})
+        with self.assertRaisesRegex(ImportError, "requires 72 compressed bytes.*relocation is unsupported"):
+            serialize_man_decoded(stream, len(original), bytes(range(64)), "fixture")
         from sdk.build import _write_exact, BuildError
         with tempfile.TemporaryDirectory() as raw:
             boundary = Path(raw)

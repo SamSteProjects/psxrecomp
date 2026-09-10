@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (bounded dialogue authoring and compression):** Added supported
+  plain-text run commands, history/persistence, editor controls and guarded
+  composition with appearance/placement builds. Source controls and opaque
+  bytes remain unchanged. A bounded exact-expansion optimal LZS fallback now
+  rescues greedy overflow without relocating data; no-op and already-fitting
+  encodings retain their bytes. Actual custom text fits the original town01
+  stream and decoded output is verified. Gameplay dialogue display and broader
+  script authoring remain unaccepted. Runtime source and stability fixes are
+  unchanged by this SDK milestone.
+
 - **2026-09-09 (central texture and animation resources):** Added explicit
   source-verified resource discovery to the central asset database and browser.
   Town01 exposes 96 TIM textures and 14 animations covering 39 evidenced actor
