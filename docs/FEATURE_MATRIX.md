@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+2026-09-10 model usage: model details list project-wide imported and effective
+initial actor assignments. Browser navigation from shared model 00f1 switched
+town01 -> town0c actor0002 -> town01 actor0003 in a fresh two-scene project.
+Authored donor relationships also pass save/open and undo tests. These links
+do not claim scripted runtime residency or complete asset dependency coverage.
+
 2026-09-10 flag reference browser: a source-verified scene index groups 1,123
 town01 encoded references into 418 script/context-qualified groups. Search,
 source provenance and P1/P2 script navigation are integrated in the editor.

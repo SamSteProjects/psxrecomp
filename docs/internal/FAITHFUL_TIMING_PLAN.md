@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (cross-scene model usage acceptance):** Prior model relationship
+  implementation was progress. Fresh private project imported town01 and town0c,
+  yielding 96 initial assignment records. Browser details for shared model 00f1
+  listed town01 actor0003 and town0c actor0002 as Imported + Effective. Following
+  the latter switched to town0c and selected actor0002 with matching model;
+  following the return usage selected town01 actor0003. Final service state
+  confirmed the destination and zero authored assets. Browser errors were empty,
+  and the isolated service shut down gracefully. Evidence project and reference
+  records remain under `local-output/sdk-20260909/model-usage-browser`. No game
+  process or retail mutation. Broader asset relationships and full goal remain open.
+
 - **2026-09-10 (model usage relationships):** Prior captured-flag UI acceptance
   was progress. Added project-wide model reference records derived from imported
   actors and effective appearance donors, independent of active scene. Imported
