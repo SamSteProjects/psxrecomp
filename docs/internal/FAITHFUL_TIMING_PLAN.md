@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (menu catalog browser path):** Previous catalog integration was
+  progress. Fresh isolated editor4395/tab45 refreshed town01 resources, searched
+  Scripts0001, opened actor metadata and followed its four-option menu link.
+  Verified source report selected DIALOGUE_PICKER0x6B with options and read-only
+  warning intact. Browser errors empty; owned server stopped via sentinel. P2
+  link/browser path and runtime execution remain separate. Full SDK goal active.
+
+
 - **2026-09-10 (menu catalog integration):** Previous masked-control work was
   progress. Added metadata-only menu counts/spans/hashes to script assets and
   exact-PC source-inspection links in resource details, with old-catalog refresh

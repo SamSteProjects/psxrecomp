@@ -193,3 +193,11 @@ details expose links to the exact menu instruction through fresh private source
 inspection, for actor and P2 owners. Older catalogs request refresh rather than
 claiming zero menus. Six catalog tests (retail enabled) and JS syntax pass;
 browser acceptance of these new resource links remains pending.
+
+
+The menu resource link now has browser acceptance: fresh town01 catalog refresh,
+Scripts category/search0001, actor0001 resource details showed one four-option
+menu; its link opened source verification and selected DIALOGUE_PICKER0x6B with
+all choices and the read-only guard intact. Browser errors were empty. This
+accepts the actor resource path; the P2 resource link has not yet had a separate
+browser run.
