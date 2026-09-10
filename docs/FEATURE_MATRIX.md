@@ -121,3 +121,8 @@ connected to the actor inspector. Runtime clip selection/timing and battle
 animation remain pending. Ten zero-ID actors do not acquire invented poses; supported
 single-object models can render statically, while the multipart savepoint stays
 a marker. Two party instances use explicitly labelled reference idle poses.
+
+2026-09-10 reference navigation acceptance: transition and flag operations open
+and select their exact decoded PC in the shared script workspace. Browser checks
+cover actor0049 flags and partition-two script0 SCENE_CHANGE0x16/CFLAG_SET0xC.
+This is source navigation, not branch execution or runtime flag identity proof.

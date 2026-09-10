@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (transition instruction navigation):** Previous turn was verified
+  implementation progress. Transition source links now select their exact decoded
+  SCENE_CHANGE operation. Fresh town01 browser project accepted partition-two
+  script0 at0x16 with incoming0xF. Also closed the previous flag-navigation P2
+  coverage gap: context19 reference selected CFLAG_SET at0xC in that same script.
+  Browser errors empty; JavaScript syntax and diff checks passed. QA project and
+  final state retained in local-output/sdk-20260909/transition-path-browser.
+  No game runtime launched; actual transition execution remains unaccepted.
+
 - **2026-09-10 (flag instruction navigation):** Connected individual flag-reference
   operations to the exact decoded instruction in the shared script workspace.
   The instruction section expands, selects and focuses the source PC, with
