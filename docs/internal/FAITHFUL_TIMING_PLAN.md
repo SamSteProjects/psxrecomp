@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (project issue navigation acceptance):** Previous whole-project
+  issue list was implementation progress. Synthetic browser started in second
+  scene, showed one invalid actor from fixture, and navigated via issue link to
+  the correct scene/selected actor and X125 warning. Undo removed warning and
+  toolbar issue button. Browser errors empty; fixed singular actor count label.
+  Private project-issues-browser server stopped normally. No retail gameplay
+  claim; full SDK goal remains active.
+
+
 - **2026-09-10 (project-wide placement issues):** Previous coordinate submission
   acceptance was progress. Extracted one serializer-backed placement issue helper
   shared by Inspector and a whole-project issue list. State reports affected

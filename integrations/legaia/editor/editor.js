@@ -142,7 +142,7 @@ placementIssuesButton.onclick=()=>{
 function renderBuildStatus(){
   const issueCount=(state.placement_build_issues ?? []).length;
   placementIssuesButton.hidden=!issueCount;placementIssuesButton.disabled=busy;
-  placementIssuesButton.textContent=`Placement issues (${issueCount} actors)`;
+  placementIssuesButton.textContent=`Placement issues (${issueCount} ${issueCount===1?'actor':'actors'})`;
   buildReportButton.hidden=!state.build;buildReportButton.disabled=busy||!state.build;
   buildReportButton.textContent=state.build?.current===false?'Build report · stale':'Build report';
   buildReportButton.classList.toggle('stale',state.build?.current===false);
