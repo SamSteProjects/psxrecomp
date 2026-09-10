@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Browser acceptance for scenery move handles
+
+- Previous turn was progress: implemented decoration X/Z handles and checked command conversion. In isolated town01 editor4395, dragging the X handle moved cell1833 from X5312 to5619; viewport outline and inspector matched, Undo restored5312. Enabling64-unit snapping and dragging Z moved1856 to2112, encoded as individual offsetZ=-256.
+- Selecting the other record194 instance at41,16 showed its original position and offsetZ0. Save succeeded. The test server was stopped cleanly; private project retained under `local-output/sdk-20260909/decoration-gizmo-browser`. Post-command preview responses completed within the next logged second, consistent with geometry reuse.
+- JavaScript syntax and diff checks pass. Pointer release, snapping, command/preview agreement and Undo are browser-accepted; continuous mid-drag rendering and gesture cancellation were not separately captured. In-game scenery behavior and full SDK/release-parity scope remain open.
+
+### 2026-09-10 — Add direct decoration movement handles
+
+- Previous turn was progress: committed cached scenery transform projection with retail timings. Extended the existing X/Z gesture path to selected static decorations, with individual overrides, inherited shared axes, existing snapping, draft geometry position and selection/context cancellation. Hidden scenery and spawnable objects do not acquire these individual handles.
+- A Node check executing the actual `moveDecoration` function verified X delta, reversed Z delta, preserved rotation/other-instance bindings, rejected out-of-range offsets and unchanged source binding. JavaScript syntax and diff checks pass. This proves command conversion, not pointer interaction: browser drag/render/undo acceptance remains pending.
+- Full scene editor, in-game scenery behavior and the wider SDK/release-parity objective remain active; no completion claim.
+
 ### 2026-09-10 — Reuse scene geometry for scenery transform edits
 
 - Previous turn was progress: browser-accepted and committed individual decoration editing. Split preview request identity from geometry identity so Environment overrides update transforms without invalidating imported meshes, poses or textures. Source-disc, appearance and texture dependencies still invalidate geometry; final source identity is rechecked before returning projected transforms.

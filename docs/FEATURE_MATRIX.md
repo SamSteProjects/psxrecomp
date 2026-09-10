@@ -1,5 +1,10 @@
 # Legaia SDK feature matrix
 
+2026-09-10 decoration move handles: X/Z viewport dragging now authors individual
+static-decoration offsets. Browser acceptance covers free X movement, Undo,
+64-unit Z snapping, unchanged shared counterpart and Save. Spawnable scenery
+remains shared-only in the numeric inspector; in-game behavior is unverified.
+
 2026-09-10 scenery preview performance: transform edits now reuse decoded scene
 geometry. Retail service measurement: initial18.423s, clear0.386s, restore1.122s,
 with identical asset payloads and correct individual positions. This measures

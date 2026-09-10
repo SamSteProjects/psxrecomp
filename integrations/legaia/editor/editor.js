@@ -266,6 +266,29 @@ function entities(){return state.scene?.entities ?? [];}
 let environmentSelection=null;
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
+function movableSelection(){
+  const environment=selectedEnvironment();
+  if(!environment)return selected();
+  if(!environment.entity_id.includes('/decorations/')||hiddenSceneEntities().has(environment.entity_id))return null;
+  return {id:environment.entity_id,components:{Transform:{effective:{position:environment.position}}}};
+}
+async function moveDecoration(identifier,axis,worldValue){
+  const item=selectedEnvironment();if(!item||item.entity_id!==identifier)return;
+  const source=item.source_record,cell=(source.source_record.grid_byte_offset-0x8000)/2;
+  const binding=activeScenePreview()?.environment_authoring;
+  const shared=binding?.edits?.find(e=>e.record_index===source.object_record_index);
+  const instances=structuredClone(binding?.instances??[]);
+  let edit=instances.find(e=>e.cell_index===cell);
+  if(!edit){edit={cell_index:cell};instances.push(edit);}
+  const inherited=shared?.offset?.[axis]??source.record_offset[axis];
+  const current=edit.offset?.[axis]??inherited;
+  const value=current+(worldValue-item.position[axis])*(axis==='z'?-1:1);
+  if(!Number.isInteger(value)||value < -32768||value > 32767){notify('Move exceeds the supported scenery offset range.',true);return;}
+  (edit.offset??={})[axis]=value;
+  if(value===inherited){delete edit.offset[axis];if(!Object.keys(edit.offset).length)delete edit.offset;}
+  const remaining=instances.filter(e=>e.offset||e.rotation_psx),edits=binding?.edits??[];
+  await api('/api/command',remaining.length||edits.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits,instances:remaining}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
+}
 function selected(){return selectedEnvironment()?null:entities().find(e=>e.id===state.selection?.entity_id);}
 function selectEnvironment(identifier){environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
 function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
@@ -335,7 +358,7 @@ function render(){
 }
 function activeScenePreview(){return scenePreview&&sceneKey===state.scene_preview_source_key&&scenePreview.scene_id===state.scene?.id?scenePreview:null;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
-function sceneView(){return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions:new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]))};}
+function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(draft)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
   $('entity-count').textContent=entities().length+environmentEntities().length;
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
@@ -1306,6 +1329,15 @@ function draw(){
     }
   }
   drawEnvironmentSelection();
+  const scenery=selectedEnvironment(),movable=movableSelection();
+  if(scenery&&movable&&canEdit()){
+    const world=draft?.id===movable.id?draft.position:position(movable),p=project(world),length=camera.distance*.085;
+    if(p)for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){
+      const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;
+      line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();
+      ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});
+    }
+  }
   drawObservedCandidates();
 }
 function resize(){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;width=rect.width;height=rect.height;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
@@ -1319,14 +1351,14 @@ function cancelViewportGesture(){
   $('transform-drag-status').textContent='Move cancelled';draw();
 }
 function transformGestureCurrent(gesture){
-  const entity=selected();
+  const entity=movableSelection();
   return canEdit()&&entity?.id===gesture.entity&&gesture.context===resourceStateKey()&&
     ['x','y','z'].every(axis=>position(entity)[axis]===gesture.original[axis]);
 }
 window.addEventListener('blur',cancelViewportGesture);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewportGesture();});
 canvas.addEventListener('pointerdown',event=>{
-  if(busy||drag)return;const p=pointer(event),entity=selected();canvas.focus();canvas.setPointerCapture(event.pointerId);
+  if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus();canvas.setPointerCapture(event.pointerId);
   const handle=event.button===0 && entity && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
   drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null,snapStep:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
@@ -1348,7 +1380,7 @@ canvas.addEventListener('pointerup',async event=>{
   if(!drag||event.pointerId!==drag.pointerId)return;
   if(drag.type==='transform'&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
-  if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis])await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}
+  if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
   else if(!finished.moved && event.button===0){
     // Resolve the frontmost visible mesh before overlay markers. Otherwise a
     // projected actor behind scenery steals a click on the scenery surface.
