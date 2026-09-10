@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (repeated title restore probe):** Previous texture workflow was
+  verified progress. Fresh owned61d99eac... run completed one save and three
+  loads with successful status generations. Five-second windows advanced302,
+  300,302 frames; active host audio/nonzero samples continued, underruns0 and
+  overflow71912 unchanged. Process exit0. Before screenshot shows title menu;
+  final screenshot lacks menu text while retaining logo. Cause/persistence not
+  established, so visual restoration remains unresolved. Private evidence in
+  repeated-title-restore; full goal active, field/cross-scene gates still open.
+
+
 - **2026-09-10 (texture build-report browser acceptance):** Previous P2 browser
   acceptance was progress. Fresh private project changed one TIM payload byte
   in texture://town01/5/raw/0 through the verified replacement service. Build

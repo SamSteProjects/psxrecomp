@@ -503,3 +503,18 @@ unaccepted; buffer counters do not prove audible quality.
 | P1 | FMV and field transitions | Authorized retail input; Windows | Cold-process FMV, town0c -> map01 -> town0c; current build identity, ownership and timing captured. |
 | P1 | Controller release and isolation | Keyboard plus two physical pads | Inject each port, expire/clear/switch it; unaffected port remains responsive and physical input resumes. |
 | P2 | Other build generators | Synthetic generated source; MSVC/Make/Ninja | MSVC and Ninja first-build/inventory/body regeneration pass executable checks; Make remains unaccepted. |
+
+## Repeated title restore probe (2026-09-10)
+
+A fresh owned zero-overlay run of61d99eac... saved slot11 and completed three
+loads (status generations2,3,4; last_ok1). Subsequent five-second windows
+advanced302,300,302 frames. Host output stayed active with growing nonzero
+samples; underruns remained0 and overflow drops stayed at startup's71912.
+The process exited0. Private protocol evidence and before/after screenshots
+are under local-output/sdk-20260909/repeated-title-restore.
+
+The before screenshot contains the title menu; the final screenshot contains
+the logo but lacks menu text. This probe does not establish the cause or
+persistence of that visual difference. Visual restoration remains unresolved;
+these observations establish completed loads and continued frame/audio
+progress only, not full title/field/cross-scene restoration acceptance.
