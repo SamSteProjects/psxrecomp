@@ -682,3 +682,13 @@ title, and a subsequent confirmation reached story/name/town01 normally. No
 savestate was loaded. This is visual flow evidence for that prior binary, not
 new96eaf949... field/FMV acceptance or subjective audio quality. Runtime/editor
 exit0 and zero-overlay consumption are retained in appearance-revert-live.
+
+2026-09-10 diagnostic correction discovered during field visibility investigation:
+GPU GP0 ring PC attribution now uses the captured channel2 DMA kick while DMA is
+submitting commands, rather than an unrelated last CPU store. Generic runtime
+change in gpu.c/gpu.h; no game-specific dispatch or rendering change. This is a
+new diagnostic fix, not a claimed release patch. Completion-time func/RA remain
+CPU context and are explicitly documented as potentially unrelated to DMA.
+Focused executable ring tests passed for delayed, unknown, direct-CPU and
+other-channel cases. Full-binary rebuild/live capture verification is pending;
+existing captures retain their old last-store semantics.

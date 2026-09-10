@@ -13,6 +13,8 @@ uint64_t s_frame_count;
 int g_exec_phase;
 uint32_t g_debug_current_func_addr;
 uint32_t g_debug_last_store_pc;
+int g_dma_exec_depth, g_dma_cur_ch = -1;
+uint32_t g_dma_initiator_pc;
 CPUState *debug_cpu_ptr;
 int g_psx_vram_dirty_tracking;
 
@@ -99,6 +101,26 @@ static void configure_native_wide_16_9(void) {
 }
 
 int main(void) {
+    /* Exercise the actual ring writer across deferred DMA and CPU submission.
+     * The intervening CPU PC deliberately differs from the transfer kick. */
+    const uint32_t nop_packet = 0;
+    g_debug_last_store_pc = 0x80036C18u;
+    g_dma_initiator_pc = 0x80012340u;
+    g_dma_exec_depth = 1; g_dma_cur_ch = 2;
+    gp0_ring_record(&nop_packet, 1);
+    assert(gp0_ring[0].pc == 0x80012340u);
+    g_dma_initiator_pc = 0;
+    gp0_ring_record(&nop_packet, 1);
+    assert(gp0_ring[1].pc == 0); /* Unknown kick must not inherit unrelated PC. */
+    g_dma_initiator_pc = 0x80056780u;
+    g_dma_exec_depth = 0; /* A stale channel identifier outside DMA is ignored. */
+    gp0_ring_record(&nop_packet, 1);
+    assert(gp0_ring[2].pc == 0x80036C18u);
+    g_dma_exec_depth = 1; g_dma_cur_ch = 3;
+    gp0_ring_record(&nop_packet, 1);
+    assert(gp0_ring[3].pc == 0x80036C18u);
+    g_dma_exec_depth = 0; g_dma_cur_ch = -1;
+
     reset_gpu_state_for_test();
     set_dot_packet(0x10004u, 137, 42);
     draw_offset_x = 11;

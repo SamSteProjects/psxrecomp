@@ -112,9 +112,9 @@ typedef struct {
     uint32_t frame;
     uint32_t seq;
     uint32_t src_addr;      /* RAM/MMIO source address of command header, if known */
-    uint32_t pc;            /* g_debug_last_store_pc when command completes */
-    uint32_t func;          /* g_debug_current_func_addr at issue (executing guest fn) */
-    uint32_t ra;            /* guest $ra at issue: direct caller of the leaf GP0 helper */
+    uint32_t pc;            /* DMA kick PC for ch2, otherwise CPU store at completion; not packet builder */
+    uint32_t func;          /* CPU function at completion; may be unrelated during async DMA */
+    uint32_t ra;            /* CPU $ra at completion; may be unrelated during async DMA */
     uint8_t  opcode;
     uint8_t  n_words;       /* total command length; >MAX means truncated */
     uint16_t ot_rank;       /* linked-list OT rank, 0xFFFF outside/unknown */

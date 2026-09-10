@@ -5107,6 +5107,8 @@ uint32_t gpu_get_opcode_count(uint8_t op) { return gp0_opcode_count[op]; }
 extern uint64_t s_frame_count;  /* defined in debug_server.c */
 extern uint32_t g_debug_last_store_pc;  /* defined in debug_server.c */
 extern uint32_t g_debug_current_func_addr;  /* defined in debug_server.c */
+extern int g_dma_exec_depth, g_dma_cur_ch;
+extern uint32_t g_dma_initiator_pc; /* transfer kick, republished during async DMA */
 uint32_t debug_guest_ra(void);  /* accessor in debug_server.c (guest $ra) */
 uint32_t debug_guest_sp(void);  /* accessor in debug_server.c (guest $sp) */
 extern uint8_t *memory_get_ram_ptr(void); /* raw 2MB main-RAM base (no lockstep) */
@@ -5161,7 +5163,11 @@ static void gp0_ring_record(const uint32_t *words, int n) {
     e->frame   = (uint32_t)s_frame_count;
     e->seq     = (uint32_t)gp0_ring_seq;
     e->src_addr = gp0_cmd_source_addr;
-    e->pc      = g_debug_last_store_pc;
+    /* Deferred GPU DMA can complete while unrelated guest stores execute.
+     * Attribute the transfer to its captured kick, never that stale CPU store.
+     * A zero kick remains unknown rather than fabricating a builder address. */
+    e->pc      = (g_dma_exec_depth > 0 && g_dma_cur_ch == 2)
+                   ? g_dma_initiator_pc : g_debug_last_store_pc;
     e->func    = g_debug_current_func_addr;
     e->ra      = debug_guest_ra();
     e->opcode  = (uint8_t)((words[0] >> 24) & 0xFF);

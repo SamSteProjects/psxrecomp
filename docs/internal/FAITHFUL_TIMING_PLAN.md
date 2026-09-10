@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Correct asynchronous GPU diagnostic PC attribution
+
+- Previous turn was progress: ramp-filter browser acceptance. Followed captured RA801D1064 to the generated field call of80036888; checkpoint10 instruction words at801D1048/105C/1060 and80036C18 match the inspected generated sites. The recorded PC80036C18 writes zero to RAM800740E8, not the GPU. Thus this captured CPU context cannot identify the terrain packet builder.
+- GPU ring previously always copied g_debug_last_store_pc, including asynchronous DMA completion. It now uses the channel2 kick PC already preserved and republished by dma.c while the DMA execution scope is active. Unknown kick remains zero. Direct CPU submission retains its CPU-store PC; header comments explicitly distinguish completion-time func/RA from a packet builder.
+- Compiled and executed the existing GPU C harness extended with actual-ring checks for deferred kick attribution, unknown kick, stale channel outside DMA and other-channel scope. PASS, including existing textured-dot checks. GCC needed its UCRT bin directory on PATH; initial compiler invocations exited1 without diagnostics, corrected invocation succeeded. No full game rebuild, runtime mutation or new live acceptance this turn. Visibility root cause remains unresolved; full objective active.
+
 ### 2026-09-10 — Verify and filter the ramp inspector
 
 - Previous turn was progress: ramp metadata and inspector implemented. Fresh private editor4395/tab51 displayed235 retail town01 ramp rows. Added a token filter matching table, record index or tile coordinates, with matching/total count and an explicit empty state; preserved source order.
