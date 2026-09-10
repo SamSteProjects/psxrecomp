@@ -192,6 +192,23 @@ def _instruction(data: bytes, pc: int) -> dict:
                         apply_trigger=struct.unpack_from("<H", data, operand + 2)[0],
                         parameters=[{"slot": slot, "value": struct.unpack_from("<H", data, operand + 4 + 2 * index)[0]}
                                     for index, slot in enumerate(slots)])
+    elif op == 0x43:
+        # Pinned d6e64c68 decode_subops.rs and executing step/actor_ctrl.rs.
+        # Face setup is a configuration/ramp, not a scalar heading.
+        need(1)
+        sub = data[operand]
+        if sub == 7:
+            size, mnemonic = 16, "FACE_ROTATION_SETUP"
+            need(size)
+            args = {"sub_op": sub, "face_id": data[operand + 1],
+                    "payload_u32": struct.unpack_from("<I", data, operand + 2)[0],
+                    "parameters_u16": list(struct.unpack_from("<4H", data, operand + 6)),
+                    "target_i16": struct.unpack_from("<h", data, operand + 14)[0],
+                    "heading": "not_a_scalar_heading", "runtime_effect": "not_evaluated"}
+        elif sub == 8:
+            size, mnemonic, args = 1, "FACE_ROTATION_RESET", {"sub_op": sub, "runtime_effect": "not_evaluated"}
+        else:
+            raise ImportError(f"unsupported ACTOR_CTRL sub-op 0x{sub:02x}")
     elif op == 0x46:
         # Pinned executing field/step.rs and asset field_disasm/decode.rs
         # agree: selector 0x24 alone selects the five-byte operand form.

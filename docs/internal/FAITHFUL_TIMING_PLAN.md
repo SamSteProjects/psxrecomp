@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (facing script inspection):** Previous preset error check was
+  verified progress. Inspected reference facing explanation and pinned d6e64c68
+  decoder plus executing actor_ctrl VM: sub7 width16 operands/sub8 width1 agree.
+  Added read-only FACE_ROTATION_SETUP/RESET decoding, explicit numeric operands
+  and no scalar-heading inference. Unsupported subops still stop. Focused
+  normal/extended/truncation tests pass;29 existing script tests pass with3
+  retail skips. New retail/browser acceptance pending. Full goal remains active.
+
+
 - **2026-09-10 (preset rename failure browser check):** Previous rename workflow
   was verified progress. Synthetic browser attempted Original->OTHER while
   Other existed. Case-insensitive duplicate rejection stayed visible in the

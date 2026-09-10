@@ -108,3 +108,15 @@ Authored TIM replacement follows pinned Andrew revision
 and verified member boundaries. Actual town01 raw-pack overlays were checked
 against disc user bytes; compressed-carrier composition is synthetic coverage.
 See `legaia-sdk/texture-authoring.md`; no retail payloads are tracked.
+
+## Facing script inspection (2026-09-10)
+
+At pinned Andrew revision d6e64c68ede25813d35db20980da82a1a025549b,
+asset/src/field_disasm/decode_subops.rs and
+engine-vm/src/field/step/actor_ctrl.rs agree on op43/sub7's header+16 width
+and sub8's header+1 reset. Setup exposes face ID, u32 payload, four u16
+parameters and signed target. The SDK now decodes these read-only and retains
+extended target-context handling. This is pinned reference evidence, not new
+retail execution validation. Current reference field_channels.rs additionally
+explains why face ID is not a scalar heading: the operation configures a
+rotation matrix/ramp. No heading editor, lookup table or VM execution is added.
