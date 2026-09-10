@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (captured flag browser acceptance):** Previous snapshot adapter
+  was progress. A private QA service replayed the retained cold-gameplay
+  observation, marked historical, into the normal endpoint. Browser expansion
+  showed epoch boundary frame 18487, the correct epoch-scoped node IDs, words
+  and bit lists (including 0x08820882 -> 1,7,11,17,23,27), and the explicit
+  captured-only/no-owner-binding statement. After graceful service shutdown,
+  reopened the panel against a fresh service with no observation: the previous
+  table disappeared and the no-matching-capture message appeared. Browser
+  errors were empty. This is UI acceptance using retained data, not fresh live
+  flag acceptance; no game process was launched. Full SDK goal remains active.
+
 - **2026-09-10 (captured runtime node flags):** Prior pagination work was
   progress. Pinned Andrew script-VM documentation distinguishes local +0x62,
   scratchpad global and context +0x10 banks; the current guarded v2 profile

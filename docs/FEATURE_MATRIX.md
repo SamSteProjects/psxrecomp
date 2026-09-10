@@ -6,6 +6,12 @@ source provenance and P1/P2 script navigation are integrated in the editor.
 Matching operands across scripts are not asserted to be the same runtime flag;
 live values, symbolic story names and flag editing remain unresolved.
 
+Captured generic runtime-node flag words are separately visible after a guarded
+scene observation, with epoch identity and explicit snapshot semantics. Browser
+acceptance using the retained 90-node gameplay capture verified words/bit lists
+and replacement by the unavailable state when no capture exists. This does not
+bind nodes to source flag groups or observe local/global/system banks.
+
 2026-09-10 dialogue gameplay acceptance: one actor-49 fixed text run visibly
 rendered its authored replacement in a cold town01 run, then closed normally.
 See `legaia-sdk/dialogue-authoring.md`. P2 gameplay remains unaccepted.
