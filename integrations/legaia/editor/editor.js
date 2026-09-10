@@ -975,7 +975,20 @@ function renderInspector(){
     $('selection-summary').textContent=environment.name;
     const source=environment.source_record,transform=source.imported_transform;
     $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Imported · read only</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
-    $('frame-environment').onclick=frameEnvironment;return;
+    $('frame-environment').onclick=frameEnvironment;
+    if(Number.isInteger(source.object_record_index)){
+      const related=environmentEntities().filter(item=>item.source_record?.object_record_index===source.object_record_index);
+      const section=document.createElement('section');section.className='component';
+      const heading=document.createElement('h3');heading.textContent='Shared placement record';section.append(heading);
+      const note=document.createElement('p');note.className='field-note';note.textContent=`${related.length} imported scene instance${related.length===1?'':'s'} use MAP record ${source.object_record_index}. Its offsets and rotations are shared. An independent instance edit requires separating that record first.`;section.append(note);
+      if(related.length>1){
+        const select=document.createElement('select');select.setAttribute('aria-label','Instances sharing this placement record');
+        for(const item of related){const option=document.createElement('option');option.value=item.entity_id;option.textContent=item.name;option.selected=item.entity_id===environment.entity_id;select.append(option);}
+        select.onchange=()=>{selectEnvironment(select.value);frameEnvironment();};section.append(select);
+      }
+      $('inspector').insertBefore(section,$('inspector').lastElementChild);
+    }
+    return;
   }
   const entity=selected();
   $('selection-summary').textContent=entity?entity.name ?? entity.id:'No entity selected';
@@ -1217,6 +1230,24 @@ function drawObservedCandidates(){
   }
   ctx.restore();
 }
+function drawEnvironmentSelection(){
+  const item=selectedEnvironment();
+  if(!item||!sceneModelsReady()||hiddenSceneEntities().has(item.entity_id))return;
+  const corners=sceneRenderer.bounds(sceneView().positions,item.entity_id);
+  if(corners.length!==8)return;
+  ctx.save();
+  // A dashed bounds overlay identifies the selection without implying that
+  // occluded edges are visible surfaces or that this is editable collision.
+  ctx.setLineDash([5,3]);
+  for(let corner=0;corner<8;corner++)for(const bit of [1,2,4]){
+    if(!(corner&bit))line(corners[corner],corners[corner|bit],'#f4ce83',1.5);
+  }
+  ctx.setLineDash([]);
+  const center=corners.reduce((p,c)=>({x:p.x+c.x/8,y:p.y+c.y/8,z:p.z+c.z/8}),{x:0,y:0,z:0});
+  const label=project(center);
+  if(label){ctx.font='11px "Segoe UI",sans-serif';ctx.fillStyle='#f4ce83';ctx.fillText(item.name,label.x+10,label.y-12);}
+  ctx.restore();
+}
 function draw(){
   if(!ctx)return;ctx.clearRect(0,0,width,height);projected=[];handles=[];
   if(sceneModelsReady()){try{sceneRenderer.draw(sceneView());}catch(error){sceneError=error.message;}}
@@ -1239,6 +1270,7 @@ function draw(){
       if(canEdit()){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
+  drawEnvironmentSelection();
   drawObservedCandidates();
 }
 function resize(){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;width=rect.width;height=rect.height;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
@@ -1282,7 +1314,14 @@ canvas.addEventListener('pointerup',async event=>{
   if(drag.type==='transform'&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis])await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}
-  else if(!finished.moved && event.button===0){let hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;if(!hit&&sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}if(hit){if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}} }
+  else if(!finished.moved && event.button===0){
+    // Resolve the frontmost visible mesh before overlay markers. Otherwise a
+    // projected actor behind scenery steals a click on the scenery surface.
+    let hit=null;
+    if(sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}
+    if(!hit)hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;
+    if(hit){if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}}
+  }
   draw();
 });
 canvas.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});

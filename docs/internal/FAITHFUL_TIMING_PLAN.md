@@ -213,6 +213,46 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Record the assembled scene inspection workflow
+
+- Previous turn was progress: disconnect response fix with focused tests. Added docs/legaia-sdk/scene-inspection.md documenting the end-to-end hierarchy, direct picking, framing, visibility and shared-record navigation workflows, with explicit current counts and fidelity/authoring limits.
+- Rechecked disconnect tests, JavaScript syntax and diff formatting before consolidating the selection/inspection and response handling changes. Full objective remains active; documentation does not promote unverified parity or environment authoring to complete.
+
+### 2026-09-10 — Handle disconnected editor responses cleanly
+
+- Previous turn was progress: shared-record browser navigation acceptance and observed closed-tab response failure. Response transport now closes on ConnectionError/TimeoutError instead of allowing the POST exception handler to send a second400 response over the failed socket. Scope is response writes only; unrelated OSError remains visible.
+- Two focused tests pass, including eight header/body disconnect variants and unrelated-error propagation. Diff check passes. Full SDK/editor/stability objective remains active.
+
+### 2026-09-10 — Accept shared-record navigation workflow
+
+- Previous interrupted turn was a verified wait on editor session58671. Its browser tab58 was removed while the scene response was in flight; server remained live, so reused it in tab59 without restarting. The disconnected response produced ConnectionAbortedError and an attempted400 response; request-disconnect handling warrants cleanup.
+- Selected decoration194 at41,14: inspector lists two instances. Chose41,16 through the shared-record combobox: identity changed01833 to02089, Z1856 to2112, hierarchy selection and framed gold bounds moved to the second wall segment. Screenshot inspected. Stopped isolated server through its owned stop file. Full goal remains active.
+
+### 2026-09-10 — Expose shared scenery placement records
+
+- Previous turn was progress: selection highlight browser acceptance. Before environment authoring, expose record sharing in the inspector: matching imported instances share descriptor offsets/rotations. Added a count and selector that selects/frames another instance using the same MAP record. Counts explicitly refer to imported instances, not all grid or runtime references.
+- This addresses authoring scope visibility without offering a misleading independent-instance write to a shared descriptor. Syntax/diff checks pass; browser workflow acceptance and actual environment authoring remain next. Full objective active.
+
+### 2026-09-10 — Accept scenery selection feedback in the browser
+
+- Previous turn was progress: environment selection bounds overlay. Isolated4395/tab57 selected/framed house137. Screenshot confirms the dashed gold box encloses its transformed mesh and shows its name. Hiding Scenery removes both house and selection overlay; inspector selection remains available. Badge changes260 visible to52 visible, confirming the visibility count path.
+- Stopped isolated editor through its owned stop file. This verifies selection feedback and hidden-layer behavior; complete scene parity, environment authoring and the remaining full SDK/stability scope remain open.
+
+### 2026-09-10 — Show selected scenery bounds in the viewport
+
+- Previous turn was progress: direct mesh and hidden-layer picking acceptance. Added a dashed gold selection box and name for the selected environment instance using the renderer's transformed geometry bounds. The overlay respects hidden layers and unavailable geometry; it does not add transform handles or imply collision editing.
+- JavaScript syntax and diff checks pass. Visual acceptance of this new overlay remains next. Full scene/editor/stability objective remains active.
+
+### 2026-09-10 — Verify direct mesh picking and hidden-layer exclusion
+
+- Previous turn was progress: mesh-first selection ordering. Isolated4395/tab56 framed house137, switched selection to Actor0002 without moving the camera, then clicked canvas center: inspector changed to house environment identity03238. Disabled Scenery and clicked the same point: inspector changed to ground. This directly verifies mesh selection and hidden-scenery exclusion.
+- Browser role selectors did not resolve the canvas; its exact accessible label via getByLabel worked. Loaded/visible badge was also visible in the screenshot. Stopped isolated server through its own stop file. Actor-marker occlusion overlap is not separately reproduced; full scene parity and remaining SDK requirements remain open.
+
+### 2026-09-10 — Respect visible geometry when selecting scene objects
+
+- Previous turn was progress: consolidated decoration/layer commit. Source review found pointer-up selection tested projected actor markers before the depth-tested mesh pick, allowing a marker behind scenery to intercept the scenery click. Changed click ordering to visible mesh first, then marker fallback when no mesh is hit. Existing alpha discard and layer filtering are shared by render and GPU pick passes.
+- JavaScript syntax and diff checks pass. Direct browser occlusion/picking acceptance remains required; this is an implemented ordering correction, not a claim that all interaction cases are verified. Full objective remains active.
+
 ### 2026-09-10 — Clarify loaded versus visible scene meshes
 
 - Previous turn was progress: browser-verified layer isolation. Preview badge now separates loaded mesh count from visible mesh count, accounting for the layer filters. Seven focused Python checks and both JavaScript syntax checks pass. Diff review caught an extra EOF blank line from the earlier shell edit; removed it and diff check passes.

@@ -263,6 +263,14 @@ class EditorHandler(BaseHTTPRequestHandler):
         return True
 
     def _send(self, status: int, content: bytes, content_type: str) -> None:
+        try:
+            self._write_response(status, content, content_type)
+        except (ConnectionError, TimeoutError):
+            # The client may close a tab while a scene preview is computing.
+            # A failed socket write cannot be repaired with another response.
+            self.close_connection = True
+
+    def _write_response(self, status: int, content: bytes, content_type: str) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(content)))
