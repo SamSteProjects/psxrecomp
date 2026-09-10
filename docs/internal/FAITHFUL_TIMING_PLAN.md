@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (preset rename failure browser check):** Previous rename workflow
+  was verified progress. Synthetic browser attempted Original->OTHER while
+  Other existed. Case-insensitive duplicate rejection stayed visible in the
+  dialog, draft OTHER remained editable and original card names stayed intact.
+  Exact before/after server-side preset dictionaries matched. Private
+  preset-error-browser service exited0. No production defect or patch needed;
+  full SDK goal remains active.
+
+
 - **2026-09-10 (preset rename browser acceptance):** Previous rename command
   was implementation progress. Synthetic browser expanded Rename preset,
   changed Original to Courtyard, submitted Save name and showed the updated
