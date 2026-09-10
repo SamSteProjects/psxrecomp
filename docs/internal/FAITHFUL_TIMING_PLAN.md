@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (appearance revert preparation):** Previous rebuilt title restore
+  was progress. Recovered prior appearance input sequence and exact2be69467...
+  executable. Prepared private appearance-revert-live project through actual
+  set/clear donor commands, save and fresh retail build: zero changes/overlays,
+  package969e649b.... Launch configuration uses the prior appearance-tested
+  binary for a matched comparison. Runtime not launched; cold revert remains
+  pending. Prior appearance evidence/project retained unchanged. Full goal active.
+
+
 - **2026-09-10 (rebuilt-binary restore check):** Previous path search was
   progress. Exact96eaf949... private baseline completed three title restores;
   five-second windows advanced300/303/302 frames. Host active, underruns0,
