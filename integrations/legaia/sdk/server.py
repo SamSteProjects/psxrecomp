@@ -56,6 +56,16 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["scene_preview"] = bool(state["scene_preview_source_key"])
         for asset in state["assets"]:
             asset["animation_support"] = animation_capabilities(asset)
+        from importer.scene_animation import actor_animation_capabilities
+        actors = {actor["semantic_id"]: actor for actor in
+                  self.project.imports.get(self.project.active_scene, {}).get("actors", [])}
+        for entity in state["scene"]["entities"]:
+            actor = actors.get(entity["id"])
+            if actor is not None and "Animation" in entity["components"]:
+                asset = self.project.assets.records.get(actor["model_reference"].get("asset_semantic_id"), {})
+                entity["components"]["Animation"]["preview_support"] = actor_animation_capabilities(actor, asset)
+        state["capabilities"]["actor_animation_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
         state["build"] = self.last_build
         state["run"] = self.runs.status()
@@ -70,6 +80,56 @@ class EditorServer(ThreadingHTTPServer):
     def server_close(self) -> None:
         self.observer.close()
         super().server_close()
+
+    def actor_animation_preview(self, entity_id: str) -> dict:
+        """Resolve an imported actor; clients cannot supply a model or clip binding."""
+        from importer.pipeline import _disc_context
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        project = self.project
+        if not project.disc_path:
+            raise ProjectError("Actor animation preview requires the project's user-owned disc")
+        document = project.imports.get(project.active_scene)
+        actor = next((item for item in (document or {}).get("actors", [])
+                      if item["semantic_id"] == entity_id), None)
+        if actor is None:
+            raise ProjectError("Actor animation requires an imported actor in the active scene")
+        asset = project.assets.records.get(actor["model_reference"].get("asset_semantic_id"))
+        if asset is None:
+            raise ProjectError("Actor's imported model is unresolved")
+        with _disc_context(project.disc_path):
+            catalog = load_scene_actor_animation_catalog(project.disc_path, document["scene"]["name"])
+            animation = catalog.animation_preview(actor, asset)
+            preview = self.model_preview(asset, prepared=animation.pop("geometry"))
+            preview["frames"] = animation.pop("frames")
+            animation.update(source_clip_id=animation["clip_id"], clip_id="scene-header", entity_id=entity_id)
+            preview["animation"] = animation
+            preview["animation_support"] = {
+                "supported": True, "clips": [{"id": "scene-header", "label": animation["label"]}],
+                "evidence": "verified_man_header_initial_animation_not_runtime_script_state"}
+        return preview
+
+    def actor_script_preview(self, entity_id: str) -> dict:
+        from importer.script_inspection import inspect_actor_script
+        project = self.project
+        if not project.disc_path:
+            raise ProjectError("Script inspection requires the project's user-owned disc")
+        document = project.imports.get(project.active_scene)
+        actor = next((item for item in (document or {}).get("actors", [])
+                      if item["semantic_id"] == entity_id), None)
+        if actor is None:
+            raise ProjectError("Script inspection requires an imported actor in the active scene")
+        return inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
+
+    def export_preview(self, preview: dict, frame_index: int | None) -> dict:
+        from .build import _guard_output
+        from .project import atomic_write
+        from importer.export import write_model_export
+        output = self.project.root / "Exports"
+        _guard_output(output / ".gitignore", self.project.root)
+        result = write_model_export(preview, output, frame_index)
+        if not (output / ".gitignore").exists():
+            atomic_write(output / ".gitignore", b"*\n")
+        return result
 
     def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None) -> dict:
         from importer.assets import load_model_preview
@@ -201,6 +261,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route == "/api/actor-script":
+                    if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
+                        raise ProjectError("Script inspection accepts only an imported entity_id; bytes, addresses and paths are not accepted")
+                    self._json(200, self.server.actor_script_preview(body["entity_id"]))
+                    return
+                if route in ("/api/actor-animation-preview", "/api/export/actor-animation"):
+                    exporting = route == "/api/export/actor-animation"
+                    allowed = {"entity_id", "frame_index"} if exporting else {"entity_id"}
+                    if set(body) - allowed or not isinstance(body.get("entity_id"), str) or not body["entity_id"]:
+                        raise ProjectError("Actor animation accepts an imported entity_id and export frame only; source bindings and output paths are project-controlled")
+                    frame_index = body.get("frame_index")
+                    if exporting and (type(frame_index) is not int or frame_index < 0):
+                        raise ProjectError("Choose a nonnegative animation frame index to export")
+                    preview = self.server.actor_animation_preview(body["entity_id"])
+                    self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
+                    return
                 if route == "/api/scene-preview":
                     if body:
                         raise ProjectError("Scene preview uses the active imported scene; client geometry and paths are not accepted")
@@ -221,9 +297,6 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if (route == "/api/animation-preview" or clip_id is not None) and clip_id not in ("idle", "walk"):
                         raise ProjectError("Choose a supported animation clip: idle or walk")
                     if route == "/api/export/model":
-                        from .build import _guard_output
-                        from .project import atomic_write
-                        from importer.export import write_model_export
                         if set(body) - {"asset_id", "clip_id", "frame_index"}:
                             raise ProjectError("Export accepts asset, clip and frame only; geometry and output paths are project-controlled")
                         frame_index = body.get("frame_index")
@@ -231,13 +304,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                             raise ProjectError("A frame export requires a supported animation clip")
                         if clip_id is not None and (type(frame_index) is not int or frame_index < 0):
                             raise ProjectError("Choose a nonnegative animation frame index to export")
-                        output = project.root / "Exports"
-                        _guard_output(output / ".gitignore", project.root)
                         preview = self.server.model_preview(asset, clip_id)
-                        result = write_model_export(preview, output, frame_index)
-                        if not (output / ".gitignore").exists():
-                            atomic_write(output / ".gitignore", b"*\n")
-                        self._json(200, result)
+                        self._json(200, self.server.export_preview(preview, frame_index))
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
                     return

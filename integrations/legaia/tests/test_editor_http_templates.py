@@ -78,6 +78,18 @@ class TemplateHTTPWorkflow(unittest.TestCase):
                     command({"scene_id": "scene://not-active"}, 400, "/api/scene-preview")
                     # Missing private input is JSON failure, never a stale scene payload.
                     command({}, 400, "/api/scene-preview")
+                    for body in ({}, {"entity_id": 7}, {"entity_id": first_id, "asset_id": "asset://fixture/model/0"},
+                                 {"entity_id": first_id, "clip_id": "idle"},
+                                 {"entity_id": "scene://other/actors/man-p1/0001"}):
+                        command(body, 400, "/api/actor-animation-preview")
+                    for body in ({"entity_id": first_id, "frame_index": True},
+                                 {"entity_id": first_id, "frame_index": -1},
+                                 {"entity_id": first_id, "frame_index": 0, "output_path": "../outside.glb"}):
+                        command(body, 400, "/api/export/actor-animation")
+                    for body in ({}, {"entity_id": False}, {"entity_id": first_id, "raw_hex": "1f4100"},
+                                 {"entity_id": first_id, "address": 0x80100000},
+                                 {"entity_id": "scene://other/actors/man-p1/0001"}):
+                        command(body, 400, "/api/actor-script")
                     self.assertEqual(project.state(), before)
                 finally:
                     server.shutdown()
