@@ -9,6 +9,19 @@ from importer.core import ImportError
 from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 class ProjectTransitions(unittest.TestCase):
+    def test_unavailable_transition_report_preserves_clearable_identity(self):
+        from sdk.server import _transition_authoring_report
+        from types import SimpleNamespace
+        key = "script://fixture/scripts/man-p2/0000/transition/0016"
+        owner = "scene://fixture/scripts/man-p2/0000"
+        project = SimpleNamespace(transition_options=Mock(side_effect=ImportError("aliased record")),
+                                  overrides={owner: {"Transitions": {"entries": {key: {"entry_x_encoded": 1}}}}})
+        report = _transition_authoring_report(project, owner)
+        self.assertFalse(report["supported"])
+        self.assertEqual(report["transitions"], [])
+        self.assertEqual(report["unresolved_overrides"], [key])
+        self.assertEqual(report["reason"], "aliased record")
+
     def test_history_persistence_and_source_rejection(self):
         with tempfile.TemporaryDirectory() as directory:
             p = ProjectService(Path(directory)); p.import_metadata(synthetic_scene())

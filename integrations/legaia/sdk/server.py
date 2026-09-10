@@ -14,6 +14,16 @@ from importer.core import ImportError as RetailImportError
 from .project import ProjectError, ProjectService
 
 
+def _transition_authoring_report(project, identifier):
+    """Unsupported authoring must not suppress the read-only script report."""
+    try:
+        return project.transition_options(identifier)
+    except (RetailImportError, ProjectError) as exc:
+        return {"supported": False, "reason": str(exc), "transitions": [],
+                "unresolved_overrides": sorted(project.overrides.get(identifier, {}).get("Transitions", {}).get("entries", {})),
+                "limitations": ["Read-only inspection does not establish transition-write safety."]}
+
+
 class EditorServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
@@ -138,7 +148,7 @@ class EditorServer(ThreadingHTTPServer):
             report = inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
             try:
                 report["dialogue_authoring"] = project.dialogue_options(entity_id)
-                report["transition_authoring"] = project.transition_options(entity_id)
+                report["transition_authoring"] = _transition_authoring_report(project, entity_id)
             except (RetailImportError, ProjectError) as exc:
                 report["dialogue_authoring"] = {"supported": False, "reason": str(exc), "runs": [],
                                                 "unresolved_overrides": sorted(project.overrides.get(entity_id, {}).get("Dialogue", {}).get("runs", {})),
@@ -350,7 +360,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import partition_two_script_preview
                     report = partition_two_script_preview(self.server.project, body["entity_id"])
                     report["dialogue_authoring"] = self.server.project.dialogue_options(body["entity_id"])
-                    report["transition_authoring"] = self.server.project.transition_options(body["entity_id"])
+                    report["transition_authoring"] = _transition_authoring_report(self.server.project, body["entity_id"])
                     self._json(200, report)
                     return
                 if route == "/api/trigger-script":
@@ -360,7 +370,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report = trigger_script_preview(self.server.project, body["asset_id"])
                     identifier = "scene://" + report["script_id"].removeprefix("script://")
                     report["dialogue_authoring"] = self.server.project.dialogue_options(identifier)
-                    report["transition_authoring"] = self.server.project.transition_options(identifier)
+                    report["transition_authoring"] = _transition_authoring_report(self.server.project, identifier)
                     self._json(200, report)
                     return
                 if route == "/api/field-map-preview":

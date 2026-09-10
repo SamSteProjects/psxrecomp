@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Isolate unavailable transition authoring
+
+- Previous turn was progress: inspector controls and HTTP lifecycle. Added a bounded unavailable transition response so alias/source authoring errors no longer replace valid dialogue data or suppress read-only script inspection. Stored transition IDs remain in the response for recovery.
+- Updated the legacy P2 HTTP flag-count assertion from 1123 to the current 1183, reflecting already-evidenced decoder expansion. The full retail P2 dialogue HTTP test then passed (11.190 s), including trigger edits, refresh, clear and rejected requests. Two transition project tests passed, including unavailable-report source failure handling.
+- Browser transition controls, unresolved-override recovery controls and live gameplay transition acceptance remain pending. No runtime launched; full objective remains active.
+
+
 ### 2026-09-10 — Transition inspector controls and HTTP lifecycle
 
 - Previous turn was progress: exact retail package and clear-baseline verification. Added transition authoring data to script responses, strict command HTTP keys, and inspector byte inputs with Apply/Clear/Discard, imported values and shared draft/history guards.
