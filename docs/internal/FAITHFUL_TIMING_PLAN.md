@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Resolve callback trace from saved overlay bytes
+
+- Previous turn was progress: fixed-quad flag consumer distinguished. Attempted to follow node+0C address801D1344 through generated overlays, but same-address candidates contain different instructions (nop or lhu) from checkpoint08's actual lui8008/lwBAF4/prologue. Rejected those candidates as identity evidence rather than attributing the live callback to their named owner.
+- Decoded saved RAM directly with tools/disasm_helper.py over801D1344..801D188C; private `arrival-live/player-callback-disassembly.txt` preserves the bounded trace. It saves argument a0 as s2, accesses actor+10, and calls multiple field routines; its final call at801D1854 targets main800172C0. Follow that actual-byte path next. This does not prove a native ownership failure: same-address alternatives are expected and generated-symbol lookup alone cannot establish the selected owner.
+- No runtime input, restore, restart or implementation change. Full objective active; existing player remains visible west of the steps.
+
 ### 2026-09-10 — Identify a bounded render consumer of actor flag00800000
 
 - Previous turn was progress: collision baseline and west-route recovery. Traced main function8001C394: argument actor+10 flag00800000 selects linked-list insertion at OT base+scaled value-40bytes versus no bias. Compared47 generated instruction comments in8001C508..8001C5C8 against checkpoint08 RAM; all match. Private evidence `arrival-live/actor-flag-ot-branch.json`.
