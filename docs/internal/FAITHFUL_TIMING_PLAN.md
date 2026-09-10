@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Prioritize full scene assembly and import environment placements
+
+- Previous conversational status/agenda turns made no implementation progress. Applied the user's Unity-style full-scene priority: inspected current actor-only ScenePreviewService and pinned field_objects.rs, field_env.rs, scene_ty.rs and field_render.rs. Ground, decoration and placed prop layers require distinct consumers; do not call actor meshes a complete scene.
+- Added importer/environment.py with verified MAP/MAN loading and deterministic per-cell environment identities, signed XYZ offsets, PSX rotations, placement-cell floor tier and negated MAN height LUT, anchor ownership metadata and exact source hashes. Preserves unresolved pack/animation bindings. The reference's floor_nibble comment says anchor, but executable parser uses the placement cell; implementation and fixture follow the latter explicitly.
+- Three focused checks pass including retail town01's46 placements,37 bind-owned anchors and9 remaining placements, house137 at4864/-192/3208 and cave168 tile32/93. Initial synthetic MAN fixtures omitted six section headers; corrected fixtures now pass the existing parser without relaxing validation.
+- Not yet a rendered environment: next resolve scene-pack meshes and partition-0 prop poses, add viewport/hierarchy/inspector selection, then tiled ground/decorations. Original browser4388 and runtime sessions untouched. No proprietary payload tracked. Full SDK/stability objective remains active.
+
 ### 2026-09-10 — Begin exact animation channel authoring
 
 - Previous turn was progress: reconciled the authoritative patch ledger. Checked current importer/build paths before selecting new feature work: MAN placement has only model/animation/X/Z, and heading remains script-owned/unresolved. Did not invent a heading byte.

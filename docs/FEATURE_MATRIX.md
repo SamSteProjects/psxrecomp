@@ -1,5 +1,13 @@
 # Legaia SDK feature matrix
 
+2026-09-10 full-scene priority: the environment importer now enumerates placed
+MAP objects separately from MAN actors, retaining per-cell identities, source
+hashes, rotations and floor-derived positions. Retail town01 yields46 placements,
+including37 bind-owned and9 other placements; three focused checks pass. This is
+**import foundation only**. Environment mesh/prop-pose resolution, viewport and
+hierarchy integration, ground tiles and decorations remain unfinished. The
+current actor viewport is not a complete scene inspector.
+
 2026-09-10 animation authoring foundation: a source-hash-bound serializer now
 writes sparse translation/rotation axes in existing rigid frame/object channels,
 with exact integer encoding and preserved record layout/opaque bits. The scene
