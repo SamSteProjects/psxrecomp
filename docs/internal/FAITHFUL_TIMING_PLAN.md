@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (field menu instruction coverage):** Added pinned MENU_CTRL 0x81
+  model/animation operands, 0x30-3F field-state continuations and the 0x40-4D
+  ramp family except host-dependent 0x49. Explicitly decode the wider 0x45
+  layout and encoded absolute jumps in 0x43/44. Evidence is executing
+  LegaiaRE d6e64c68 `menu_ctrl/nibble_8.rs` blob
+  `d64782c800d120ce30606979a475d916166ce493` and `nibble_3_4.rs` blob
+  `8e6bf5c521460228664efaaefce629b2e897db36`. Opening P2[3] reaches 30
+  instructions and stops at PC 139 on opcode 0x46, with no accepted dialogue.
+  Comparison against the committed decoder finds ten additional P1 dialogue
+  segments in actors 25-30 and 36, 354 total, and 416 encoded flag references;
+  49 scripts remain partial. Focused tests cover truncation, unsigned model
+  fields, extended headers and both jump polarities. Runtime is unchanged.
+
 - **2026-09-10 (opening effect instructions):** Extended bounded script decoding
   for opcode 0x34 color/intensity (sub 0) and animation trigger (sub 3), including
   extended context headers. Evidence: LegaiaRE pin

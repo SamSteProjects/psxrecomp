@@ -97,9 +97,11 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
         from importer.pipeline import _disc_context
         with _disc_context(os.environ["LEGAIA_DISC_BIN"]):
             result = load_script_asset_catalog(os.environ["LEGAIA_DISC_BIN"], "town01")
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 52, 344))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (396, 49))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (380, 0))
+            # Verified field-state continuations expose ten more segments in
+            # actors 25-30 and 36; their unknown tails still remain partial.
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 52, 354))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (406, 49))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (416, 0))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(len(assets), result["asset_count"])
             script_id = "script://town01/actors/man-p1/0049"

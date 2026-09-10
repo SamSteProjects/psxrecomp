@@ -172,7 +172,35 @@ def _instruction(data: bytes, pc: int) -> dict:
     elif op == 0x4C:
         need(1)
         sub = data[operand]
-        if sub in (0xED, 0xE8):
+        if 0x30 <= sub <= 0x3F:
+            size, mnemonic = 1, "FIELD_STATE_CONTROL"
+            args = {"sub_op": sub, "can_yield": sub in (0x30, 0x31, 0x37)}
+        elif 0x40 <= sub <= 0x4D and sub != 0x49:
+            # Executing nibble_3_4.rs has encoded jumps for 43/44 and
+            # a wider 45 form. Never treat this cluster as uniform width.
+            size, mnemonic = (10 if sub == 0x45 else 5), "FIELD_RAMP"
+            need(size)
+            args = {"sub_op": sub}
+            if sub == 0x45:
+                args.update(selector=data[operand + 1],
+                            values=list(struct.unpack_from("<hhh", data, operand + 2)),
+                            ticks=struct.unpack_from("<H", data, operand + 8)[0], can_yield=True)
+            else:
+                value, ticks = struct.unpack_from("<hH", data, operand + 1)
+                args.update(value=value, ticks=ticks)
+                if (sub == 0x43 and ticks == 0) or (sub == 0x44 and ticks != 0):
+                    mnemonic = "FIELD_ABSOLUTE_JUMP"
+                    branches = [{"pc": value, "condition": "unconditional"}]
+        elif sub == 0x81:
+            # Executing pinned menu_ctrl/nibble_8.rs: u24 model and two
+            # unsigned u16 frame operands; continuation is unconditional.
+            size, mnemonic = 8, "SET_MODEL_ANIMATION"
+            need(size)
+            args = {"sub_op": sub,
+                    "model_id": int.from_bytes(data[operand + 1:operand + 4], "little"),
+                    "animation_frame": struct.unpack_from("<H", data, operand + 4)[0],
+                    "tween_frames": struct.unpack_from("<H", data, operand + 6)[0]}
+        elif sub in (0xED, 0xE8):
             # Pinned d6e64c68 engine-vm/field/step/menu_ctrl/nibble_e.rs
             # op_4c_ne, blob 61ad972bd5455bdb84b1ab376f6ad959cb23190b:
             # sub-D advances header+2; sub-8 advances header+9. Both

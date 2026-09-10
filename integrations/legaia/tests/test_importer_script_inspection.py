@@ -21,6 +21,45 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_model_animation_unsigned_fields_and_all_new_menu_boundaries(self):
+        model = b"\x4c\x81\x1f\xff\x80" + struct.pack("<HH", 65535, 32768)
+        row = inspect_record(model, 0)["instructions"][0]
+        self.assertEqual(row["operands"]["model_id"], 0x80FF1F)
+        self.assertEqual(row["operands"]["animation_frame"], 65535)
+        self.assertEqual(row["operands"]["tween_frames"], 32768)
+        forms = [model] + [bytes([0x4c, s]) for s in range(0x30, 0x40)]
+        forms += [bytes([0x4c, s]) + struct.pack("<hH", -32768, 65535)
+                  for s in (0x40, 0x41, 0x42, 0x46, 0x47, 0x48, 0x4a, 0x4b, 0x4c, 0x4d)]
+        forms += [b"\x4c\x45\x1f" + struct.pack("<hhhH", -32768, 32767, -1, 65535)]
+        for ordinary in forms:
+            for data in (ordinary, b"\xcc\x17" + ordinary[1:]):
+                report = inspect_record(data + b"\x1fHi\0", 0)
+                self.assertFalse(report["stops"])
+                self.assertEqual(report["instructions"][0]["length"], len(data))
+                self.assertEqual(report["dialogues"][0]["pc"], len(data))
+                for length in range(1, len(data)):
+                    truncated = inspect_record(data[:length], 0)
+                    self.assertEqual(truncated["status"], "partial")
+                    self.assertEqual(truncated["instructions"], [])
+                    self.assertEqual(truncated["dialogues"], [])
+
+    def test_field_ramp_jumps_select_encoded_path_and_reject_invalid_targets(self):
+        for sub, jump_ticks, fall_ticks in ((0x43, 0, 1), (0x44, 1, 0)):
+            for ticks, target in ((jump_ticks, 10), (fall_ticks, 10)):
+                data = bytes([0x4c, sub]) + struct.pack("<hH", target, ticks) + b"\x1fNo\0\x1fYes\0"
+                report = inspect_record(data, 0)
+                self.assertFalse(report["stops"])
+                self.assertEqual(report["instructions"][0]["successors"][0]["pc"],
+                                 10 if ticks == jump_ticks else 6)
+                self.assertEqual([d["text"] for d in report["dialogues"]],
+                                 ["Yes"] if ticks == jump_ticks else ["No", "Yes"])
+            report = inspect_record(bytes([0x4c, sub]) + struct.pack("<hH", -1, jump_ticks), 0)
+            self.assertEqual(report["status"], "partial")
+        for sub in (0x49, 0x4e, 0x4f):
+            report = inspect_record(bytes([0x4c, sub]) + b"\0\0\0\0\x1fOpaque\0", 0)
+            self.assertEqual(report["dialogues"], [])
+            self.assertEqual(report["status"], "partial")
+
     def test_effect_fixed_forms_preserve_operands_and_context_boundaries(self):
         forms = ((b"\x34\x0f\x1f\xff\x00" + struct.pack("<h", -32768),
                   "EFFECT_COLOR_INTENSITY", {"rgb": [31, 255, 0], "intensity": -32768}),
