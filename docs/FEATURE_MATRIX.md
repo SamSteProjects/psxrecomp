@@ -1,5 +1,12 @@
 # Legaia SDK feature matrix
 
+2026-09-10 script path navigation: actor/dialogue and trigger script instruction
+views share clickable decoded successors, incoming-edge navigation, highlighted
+selection and local Back history. Undecoded targets stay non-clickable and retain
+conditions/stop reasons. Browser acceptance followed actor0049 flag-set branch
+0x18 -> 0x39, Back, and incoming edge0x16; actor0001 retained undecoded targets
+and its unsupported0x29 stop. This navigates source evidence, not execution.
+
 2026-09-10 correlation inspector: unconfirmed candidate cards show the matching
 imported/effective appearance layer, donor when applicable, capture frame and
 captured world position. Retained-capture browser verification displayed the

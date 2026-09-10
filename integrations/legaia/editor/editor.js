@@ -589,6 +589,46 @@ async function openTriggerScript(record){
   }catch(error){if(error.name!=='AbortError'&&request===triggerScriptRequest&&triggerScriptDialog.open){$('trigger-script-report').replaceChildren();triggerScriptDialog.querySelector('.dialog-error').textContent=error.message;}}
   finally{if(triggerScriptAbort===controller){triggerScriptAbort=null;setBusy(false);}}
 }
+function appendScriptInstructions(host,report){
+  host.replaceChildren();host.classList.remove('script-table-wrap');
+  const instructions=report.instructions??[],byPC=new Map(instructions.map(item=>[item.pc,item])),rows=new Map(),incoming=new Map(),history=[];
+  let selectedPC=null;
+  const navigation=document.createElement('div');navigation.className='script-path-navigation';
+  const back=document.createElement('button');back.textContent='Back to previous instruction';back.disabled=true;
+  const status=document.createElement('p');status.className='field-note';status.setAttribute('role','status');status.textContent='Follow decoded successors or select an offset. These links do not simulate execution.';
+  const predecessors=document.createElement('div');predecessors.className='script-predecessors';
+  navigation.append(back,status,predecessors);host.append(navigation);
+  for(const instruction of instructions)for(const next of instruction.successors??[]){
+    if(!incoming.has(next.pc))incoming.set(next.pc,new Set());incoming.get(next.pc).add(instruction.pc);
+  }
+  function select(pc,remember=true){
+    if(!rows.has(pc))return;
+    if(remember&&selectedPC!==null&&selectedPC!==pc)history.push(selectedPC);
+    if(rows.has(selectedPC))rows.get(selectedPC).classList.remove('script-path-selected');
+    selectedPC=pc;const row=rows.get(pc);row.classList.add('script-path-selected');row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});
+    back.disabled=!history.length;status.textContent=`Selected ${scriptOffset(pc)} · ${byPC.get(pc).mnemonic} · Decoded incoming edges (execution unknown)`;
+    predecessors.replaceChildren();
+    for(const source of incoming.get(pc)??[]){const button=document.createElement('button');button.textContent=`From ${scriptOffset(source)}`;button.onclick=()=>select(source);predecessors.append(button);}
+    if(!predecessors.childNodes.length)predecessors.textContent='No decoded incoming edges in this report.';
+  }
+  back.onclick=()=>{if(history.length)select(history.pop(),false);};
+  const wrap=document.createElement('div');wrap.className='script-table-wrap';wrap.innerHTML='<table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table>';host.append(wrap);
+  const body=wrap.querySelector('tbody');
+  for(const instruction of instructions){
+    const row=document.createElement('tr');row.tabIndex=-1;rows.set(instruction.pc,row);
+    const offset=document.createElement('td'),jump=document.createElement('button');jump.textContent=scriptOffset(instruction.pc);jump.setAttribute('aria-label',`Select instruction ${scriptOffset(instruction.pc)}`);jump.onclick=()=>select(instruction.pc);offset.append(jump);row.append(offset);
+    for(const value of [instruction.mnemonic,typeof instruction.operands==='string'?instruction.operands:JSON.stringify(instruction.operands??{})]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}
+    const successors=document.createElement('td');
+    for(const next of instruction.successors??[]){
+      const condition=next.condition?(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):'';
+      if(byPC.has(next.pc)){const button=document.createElement('button');button.textContent=`To ${scriptOffset(next.pc)}${condition?' · '+condition:''}`;button.onclick=()=>{if(selectedPC!==instruction.pc)select(instruction.pc);select(next.pc);};successors.append(button);}
+      else{const note=document.createElement('p');note.className='field-note';const stop=(report.stops??[]).find(item=>item.pc===next.pc);note.textContent=`${scriptOffset(next.pc)} · Not decoded${condition?' · '+condition:''}${stop?.reason?' · '+stop.reason:''}`;successors.append(note);}
+    }
+    if(!(instruction.successors??[]).length)successors.textContent='No decoded successor';
+    row.append(successors);body.append(row);
+  }
+  if(!instructions.length){status.textContent='No instructions were decoded.';wrap.hidden=true;}
+}
 function renderTriggerScript(result,report){
   const host=$('trigger-script-report');
   host.innerHTML=`<p class="script-summary">${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments · ${escapeHTML(report.status==='decoded_supported_paths'?'Supported paths decoded':resourceLabel(report.status))}</p>${property('Script ID',result.script_id)}${property('Partition / record',`2 / ${result.record_index}`)}${property('Decoded MAN byte offset',result.record.byte_offset)}${property('Record byte length',result.record.byte_length)}${property('Script offset in record',scriptOffset(result.record.script_offset))}<p class="field-note">Offsets are relative to this bounded script record. Decoding does not establish trigger activation, branch execution or story state. Substitution tokens remain placeholders. Open the dialogue workspace to check which text runs support editing.</p><div id="trigger-script-warnings"></div><section><h3>Decoded dialogue</h3><div id="trigger-script-dialogues"></div></section><details class="script-instructions" ${report.dialogues.length?'':'open'}><summary>Instruction paths (${report.instructions.length})</summary><div id="trigger-script-instructions"></div></details><details class="script-raw"><summary>Source bounds, raw bytes and complete provenance</summary><pre class="diagnostic-detail"></pre></details>`;
@@ -599,7 +639,7 @@ function renderTriggerScript(result,report){
   for(const limit of result.limitations ?? []){const line=document.createElement('p');line.className='field-note';line.textContent=typeof limit==='string'?limit:JSON.stringify(limit);warnings.append(line);}
   const dialogues=$('trigger-script-dialogues');if(!report.dialogues.length)dialogues.textContent='No dialogue was decoded in these paths.';
   for(const dialogue of report.dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length ?? 'Unknown')} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text;card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);dialogues.append(card);}
-  appendResourceTable($('trigger-script-instructions'),['Record offset','Instruction','Operands','Successors'],report.instructions.map(instruction=>[scriptOffset(instruction.pc),instruction.mnemonic,typeof instruction.operands==='string'?instruction.operands:JSON.stringify(instruction.operands ?? {}),instruction.successors.map(next=>`${scriptOffset(next.pc)}${next.condition?' · '+(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):''}`).join('\n')]),'No instructions were decoded.');
+  appendScriptInstructions($('trigger-script-instructions'),report);
   host.querySelector('.script-raw pre').textContent=JSON.stringify(result,null,2);
 }
 function drawFieldMap(){
@@ -860,8 +900,8 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     if(opaque.length||stops.length){const warning=document.createElement('div');warning.className='script-warning';warning.textContent=`${opaque.length} opaque regions · ${stops.length} decoder stops. Unvisited bytes and unsupported behavior remain unresolved.`;$('script-warnings').append(warning);for(const region of opaque){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(region.pc)} · ${region.length} opaque bytes: ${region.reason}`;$('script-warnings').append(line);}for(const stop of stops){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(stop.pc)}: ${stop.reason}`;$('script-warnings').append(line);}}
     if(!dialogues.length)$('script-dialogue').textContent='No dialogue was decoded in the inspected paths.';
     for(const dialogue of dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.dataset.dialogueId=dialogue.semantic_id;card.dataset.dialoguePc=dialogue.pc;card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length)} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text ?? '';card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);$('script-dialogue').append(card);}
-    const body=$('script-report').querySelector('tbody');
-    for(const instruction of instructions){const row=document.createElement('tr');for(const value of [scriptOffset(instruction.pc),instruction.mnemonic,typeof instruction.operands==='string'?instruction.operands:JSON.stringify(instruction.operands ?? {}),(instruction.successors ?? []).map(next=>`${scriptOffset(next.pc)}${next.condition?' · '+(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):''}`).join('\n')]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}body.append(row);}
+    appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report);
+
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
     scriptReport=report;renderDialogueAuthoring();
     scriptDialog.scrollTop=scroll;

@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (script control-flow navigation):** Prior candidate inspector
+  integration was progress. Added shared instruction rendering for actor/dialogue
+  and trigger reports with decoded successor buttons, incoming source links,
+  selection highlight/focus and Back history. Unknown targets remain text with
+  branch condition and available decoder stop reason; no invented instructions
+  or execution simulation. Fresh retail browser project tested actor0049's23
+  instructions: flag_set0x18 ->0x39(CFLAG_CLEAR), Back ->0x18(SYSFLAG_TEST), incoming
+  From0x16 ->CFLAG_SET. Actor0001's9instruction partial report retained nonclickable
+  0x1E/0x33 successors and unsupported0x29 stop0x6B. Browser errors empty, JS syntax
+  and diff checks pass. Isolated service session62789 exited0; private project
+  and final state under `local-output/sdk-20260909/script-path-browser`. Trigger
+  view integration shares the helper but separate trigger browser acceptance
+  remains pending. Script control editing, execution analysis and full goal open.
+
 - **2026-09-10 (correlation inspector integration):** Prior authored correlation
   fix was progress. Added readable unconfirmed candidate summaries with matched
   appearance layers, optional donor, capture frame and world position; raw
