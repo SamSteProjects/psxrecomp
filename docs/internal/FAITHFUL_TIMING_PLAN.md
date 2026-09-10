@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (build report browser acceptance):** Previous source navigation
+  implementation was progress. Fresh private town01/town0c project built three
+  actor49 changes: model103->94, animation15->18 and Z12096->12288. Report showed
+  24894 overlay bytes, current authored state and passing provenance/opaque/LZS
+  checks. From town0c, clicking the Z report row switched to town01 and selected
+  actor49 with authored Z12288 in Inspector. Browser errors empty. Private
+  build-navigation-browser evidence retained under local-output/sdk-20260909;
+  no game runtime launched. Dialogue focus remains handler-only acceptance.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (build report source navigation):** Previous freshness regression
   repair was progress. Build reports now retain audited owner_id alongside the
   changed resource ID. Actor rows open the source scene and actor; dialogue

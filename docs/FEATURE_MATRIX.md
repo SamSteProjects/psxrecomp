@@ -144,3 +144,11 @@ appearance command. Position presets remain `authored-position-v1`; one preset
 never silently captures the other component. Browser capture/clear/apply/save/
 build and independent reopen passed for town01 actor49 donor15. Presets reuse
 existing actors; they do not instantiate NPCs or supply missing script state.
+
+2026-09-10 build-report navigation: audited actor owners link directly from
+package changes to their source scene and selected actor. A private retail
+build containing model103->94, animation15->18 and Z12096->12288 passed fresh
+import, unchanged opaque-byte and LZS validation. Browser navigation from
+town0c to town01 actor0049 displayed authored Z12288 without browser errors.
+Dialogue-run focusing is handler-checked but not separately browser-accepted.
+This report workflow does not constitute a new gameplay run.
