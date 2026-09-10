@@ -164,3 +164,9 @@ TIM payload edit built with33312 overlay bytes. Its report link switched from
 town0c to town01 and opened the effective256x256,4bpp,16-palette texture with
 the matching replacement hash. Browser errors were empty; no new gameplay
 validation is implied.
+
+2026-09-10 placement feedback: Transform Inspector shows build issues derived
+from the actual X/Z serializer and identifies authored Y as project-only.
+Synthetic browser checks cover invalid X125/Y0, Undo clearing warnings and
+supported X128 without warnings. These warnings do not replace build-time
+source verification or establish unsupported heading/height serialization.

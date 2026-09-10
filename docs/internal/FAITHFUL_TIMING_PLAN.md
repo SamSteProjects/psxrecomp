@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (placement warning browser acceptance):** Previous serializer
+  feedback was implementation progress. Synthetic editor displayed the exact
+  X125 grid/range warning and authored Y0 project-only warning. Browser Undo
+  removed both; entering X128 and leaving the field applied it without warnings.
+  Browser errors empty; private placement-feedback-browser server stopped
+  normally. This is synthetic editor acceptance, not a retail build or gameplay
+  result. Full SDK and release-parity goal remains active.
+
+
 - **2026-09-10 (placement build feedback):** Prior save-status browser work was
   verified progress. Inspected MAN placement serialization and referenced heading
   evidence; no supported heading field established. Transform state now exposes
