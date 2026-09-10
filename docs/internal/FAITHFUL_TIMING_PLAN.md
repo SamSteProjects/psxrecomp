@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (build freshness regression repair):** Previous MSVC generator
+  acceptance was verified progress. Source review found the selection-exclusion
+  test wrote an unused selection attribute instead of exercising ProjectService.
+  Corrected it to select(None)/select(actor) and assert actual selected state.
+  Added a focused real-command sequence proving edit changes the build key,
+  Undo restores it, Redo recovers the edited key, template capture leaves it
+  unchanged and Save/Open preserves it. Three build-report tests pass. No
+  production freshness defect was found; no runtime/build acceptance is inferred.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (MSVC precompile inventory acceptance):** Previous preset-control
   fix was verified progress. Extended the existing executable overlay fixture
   with generator selection and Release output handling for multi-config builds.

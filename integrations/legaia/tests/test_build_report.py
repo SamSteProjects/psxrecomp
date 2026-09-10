@@ -17,7 +17,11 @@ class BuildReportTests(unittest.TestCase):
             project = ProjectService(Path(raw))
             project.import_metadata(synthetic_scene())
             baseline = authored_state_key(project)
-            project.selection = {"entity_id": "scene://fixture/actors/man-p1/0001"}
+            project.select(None)
+            self.assertIsNone(project.selected)
+            self.assertEqual(authored_state_key(project), baseline)
+            project.select("scene://fixture/actors/man-p1/0001")
+            self.assertEqual(project.selected, "scene://fixture/actors/man-p1/0001")
             project.actor_templates = {"template": {"name": "Unused template"}}
             self.assertEqual(authored_state_key(project), baseline)
             for attribute, replacement in (("name", "different"), ("disc_path", "different"),
@@ -29,6 +33,27 @@ class BuildReportTests(unittest.TestCase):
                 self.assertNotEqual(authored_state_key(project), baseline, attribute)
                 setattr(project, attribute, before)
                 self.assertEqual(authored_state_key(project), baseline, attribute)
+
+    def test_real_edit_history_and_reopen_restore_snapshot_identity(self):
+        with tempfile.TemporaryDirectory() as raw:
+            project = ProjectService(Path(raw))
+            project.import_metadata(synthetic_scene())
+            actor = "scene://fixture/actors/man-p1/0001"
+            baseline = authored_state_key(project)
+            project.command({"type": "set_transform", "entity_id": actor,
+                             "position": {"x": 192}})
+            edited = authored_state_key(project)
+            self.assertNotEqual(edited, baseline)
+            project.undo()
+            self.assertEqual(authored_state_key(project), baseline)
+            project.redo()
+            self.assertEqual(authored_state_key(project), edited)
+            project.command({"type": "create_actor_template", "entity_id": actor,
+                             "name": "Saved position"})
+            self.assertEqual(authored_state_key(project), edited)
+            reopened = ProjectService.open(project.save())
+            self.assertEqual(authored_state_key(reopened), edited)
+            self.assertEqual(reopened.actor_templates, project.actor_templates)
 
     def test_report_uses_audited_values_and_excludes_binary_spans(self):
         audit = {"edits": [
