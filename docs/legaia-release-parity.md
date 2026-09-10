@@ -673,3 +673,12 @@ the owned process stopped with exit0. Private rebuilt-title-restore contains
 protocol evidence and screenshots. This supplies bounded repeated-title restore
 acceptance for the rebuilt binary; field/cross-scene ownership, restored input
 and audible quality remain unaccepted on this executable.
+
+
+The cold appearance-revert comparison used the preserved2be69467... executable,
+matching the prior donor run exactly. Its attract FMV advanced through multiple
+visually inspected scenes with MDEC320 and XA active at one sample, returned to
+title, and a subsequent confirmation reached story/name/town01 normally. No
+savestate was loaded. This is visual flow evidence for that prior binary, not
+new96eaf949... field/FMV acceptance or subjective audio quality. Runtime/editor
+exit0 and zero-overlay consumption are retained in appearance-revert-live.

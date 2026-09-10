@@ -23,7 +23,7 @@ retaining the target's local-count prefix and placement evidence. Replay of the
 guarded capture yields an effective-only candidate for actor0049; it remains
 unconfirmed. Changing authored appearance invalidates previous correlation.
 This is bounded acceptance for this donor pair, not general script compatibility.
-Clearing the override builds zero overlays; a new cold revert run remains pending.
+Clearing the override builds zero overlays; the subsequent matched-binary cold revert restored the child appearance and reached field control (see acceptance below).
 
 2026-09-10 animation preview assignments: the animation asset picker now offers
 separate Imported and Authored effective previews, plus combined labels when
@@ -98,7 +98,7 @@ is complete. Runtime fixes from the preceding milestone are committed as
 | Textures | PARTIAL / AUTHORING | Bounded 4/8/16/24-bit TIM decoding; town01 has 96 searchable TIM assets with direct image inspection and local palette selection. Material association resolves 38 unique crops, 26 untextured and 8 unresolved among 72 materials. The separate shared-party bank resolves all eight used F0/F1/F2 materials. Matching-layout TIM replacements support image/palette edits, imported/effective previews, history, persistence and guarded builds. One cold authored/baseline pair proves visible palette replacement and removal for town01 TIM 5/raw/0. Broader residency, blend and animated palettes remain unverified. |
 | Animations | PARTIAL / READ-ONLY | Six field-party clips plus scene-header NPC clips with stepping, playback and posed export. The resource browser lists 14 unique town01 animations through 39 verified actor bindings; 13 unavailable associations stay explicit. Independent party comparison covers 20,845 vertices. Runtime timing, equipment and battle animation remain pending. |
 | Scene model | FUNCTIONAL | Imported actor entities and evidenced Transform/ModelRenderer/Animation/RetailMetadata components. Authored Dialogue runs bind to verified record-relative source spans. Source-base collision, trigger and region resources are available separately; live collision and general script bindings remain unresolved. |
-| Model/animation assignment | FUNCTIONAL / WRITABLE | Verified same-scene donor pairs connect to project commands, undo/redo, save/open, scene preview, posed export and bounded mod builds. Combined appearance/position edits serialize one composed buffer; clearing edits restores baseline package bytes. One cold town01 actor0049/donor0015 pair visibly changed appearance while retaining dialogue and field control. Broader script compatibility and a cold appearance-revert run remain unverified. |
+| Model/animation assignment | FUNCTIONAL / WRITABLE | Verified same-scene donor pairs connect to project commands, undo/redo, save/open, scene preview, posed export and bounded mod builds. Combined appearance/position edits serialize one composed buffer; clearing edits restores baseline package bytes. One cold town01 actor0049/donor0015 pair visibly changed appearance while retaining dialogue and field control. A matched-binary cold revert restored the child appearance and field control; broader script compatibility remains unverified. |
 | Project authoring | FUNCTIONAL | XYZ, supported donor-appearance and bounded dialogue overrides, selection, undo/redo, dirty state, content-addressed imported evidence and digest-checked save/reopen. Transform templates capture/apply supported axes. Native actor creation, heading and arbitrary model/animation replacement remain pending. |
 | Editor | PARTIAL | Verified selection/edit/clear/undo/redo/save/reopen, textured object preview, private Build & Run, attach and graceful Stop. Central WebGL scene preview renders 51/52 town01 entities with mesh picking, focus, transform updates and marker fallback. Opt-in Live follow chains guarded captures, stops on failure, and displays separate selected-actor candidate markers; browser restart/Stop/Edit/runtime-stop checks pass. Scripted placement/visibility, retail height/facing and broader editing tools remain pending. |
 | Live bridge | PARTIAL / LIVE-VALIDATED | Cold town01 v2 capture accepted 90 nodes under executable/witness/scene/epoch guards. Early exact-PC preparation now runs during compatible discovery and owned launch readiness; a fresh cold New Game with automatic preparation passed the unchanged v2 guard with 90 nodes and all three witnesses current. One same-scene restore recovered all three witnesses and 90 nodes after normal dialogue input, without sustained slowdown in the measured window. Late attachment cannot recover unrecorded entry execution. Archived v1 remains strict; repeated/cross-scene restore and town0c/transition acceptance remain pending. |
@@ -233,3 +233,15 @@ Enter/Shift-Enter navigation. Search excludes opaque bytes and does not write
 catalog text or project state. Browser acceptance found all seven actor0001
 pickers, navigated0x6B ->0x10C ->0x6B, and verified no-results disables both
 buttons without changing selection. Browser errors empty; JS syntax passes.
+
+
+2026-09-10 cold appearance-revert acceptance: set/clear donor commands produced a
+zero-overlay baseline, launched with exactly the earlier appearance-tested
+2be69467... binary. Normal cold title/FMV/story/name/elder flow reached town01
+field control. Screenshots show the original child where the prior donor run
+showed the axe-worker. Guarded v2 observation accepted90nodes; actor0049 has an
+imported+effective structural candidate with original placement4544/12096.
+That binding remains unconfirmed. Mod status reports zero writes, overlays and
+copied bytes, guard false; runtime and editor exited0. Evidence stays private in
+appearance-revert-live. This accepts removal for one pair on the matched binary,
+not arbitrary donor compatibility or newer-binary field acceptance.

@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (cold appearance revert accepted):** Previous baseline preparation
+  was progress. Matched2be69467... cold launch traversed attract FMV, returned
+  title, then story/name/elder to field control. Original child visible; prior
+  donor screenshot compared. Guarded v2 capture90nodes and actor0049 imported+
+  effective candidate retained (binding unconfirmed). Zero writes/overlays/bytes,
+  guard false. Owned runtime29164/editor35424 both exited0. Private acceptance
+  updated; no save load or new-binary acceptance. One donor-pair revert accepted;
+  full SDK goal remains active.
+
+
 - **2026-09-10 (appearance revert preparation):** Previous rebuilt title restore
   was progress. Recovered prior appearance input sequence and exact2be69467...
   executable. Prepared private appearance-revert-live project through actual
