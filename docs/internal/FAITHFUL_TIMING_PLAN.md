@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Guard shared script authoring descriptor ownership
+
+- Previous turn was progress: transition report navigation. Shared dialogue/transition MAN loader now rejects active descriptor aliases at the selected stream offset and enforces its 4 MiB bound before decompression, matching source ownership expectations of authored byte edits.
+- Nine importer dialogue-authoring tests passed with retail enabled. New malformed-descriptor test proves alias/oversize rejection occurs before decoder invocation. Retail scene authoring remains accepted.
+- No runtime launched. Browser report navigation and live transition behavior remain pending; full objective remains active.
+
+
 ### 2026-09-10 — Navigate build changes to transition entry fields
 
 - Previous turn was progress: browser Apply/Clear and recovery controls. Fixed build-report navigation so P1 transition changes open script inspection and P2 links focus the exact transition entry field. Transition fields now expose a stable focus target; source navigation scrolls it into view. Renamed authored script action to Open script workspace.

@@ -36,6 +36,24 @@ def fixture(script=b"\x1fHello\0", alias=False):
 
 
 class DialogueAuthoringTests(unittest.TestCase):
+    def test_loader_rejects_descriptor_alias_and_oversize_before_decode(self):
+        from contextlib import nullcontext
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from importer.dialogue_authoring import MAX_MAN_BYTES
+        for size, alias in ((16, True), (MAX_MAN_BYTES + 1, False)):
+            descriptors = [SimpleNamespace(type_byte=3, size=size, data_offset=8, index=0)]
+            if alias:
+                descriptors.append(SimpleNamespace(type_byte=2, size=16, data_offset=8, index=1))
+            bundle = SimpleNamespace(descriptors=descriptors, table_offset=0, entry_index=0)
+            with patch("importer.dialogue_authoring._disc_context", return_value=nullcontext((None,"hash",None,None))), \
+                 patch("importer.dialogue_authoring._bounded_scene_range", return_value=(0,1)), \
+                 patch("importer.dialogue_authoring.find_scene_bundle", return_value=(bundle,bytes(32))), \
+                 patch("importer.dialogue_authoring.decompress_lzs") as decoder:
+                with self.assertRaises(ImportError):
+                    load_dialogue_authoring_context("unused", "fixture")
+                decoder.assert_not_called()
+
     def test_partition_two_equal_span_edits_and_unresolved_tail_rejection(self):
         identifier = "scene://fixture/scripts/man-p2/0000"
         for script, supported in ((b"\x1fHello\0", True), (b"\x1fHello\0\x2a", False)):

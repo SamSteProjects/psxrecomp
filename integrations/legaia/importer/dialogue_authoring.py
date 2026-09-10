@@ -252,6 +252,10 @@ def load_dialogue_authoring_context(disc: Any, scene: str) -> DialogueAuthoringC
         if len(descriptors) != 1:
             raise ImportError("dialogue authoring requires exactly one scene MAN descriptor")
         descriptor = descriptors[0]
+        if not 0 < descriptor.size <= MAX_MAN_BYTES:
+            raise ImportError("script authoring MAN exceeds the decoded size bound")
+        if sum(d.size > 0 and d.data_offset == descriptor.data_offset for d in bundle.descriptors) != 1:
+            raise ImportError("script authoring requires a non-aliased MAN descriptor")
         offset = bundle.table_offset + descriptor.data_offset
         ceiling = min([bundle.table_offset + d.data_offset for d in bundle.descriptors
                        if d.data_offset > descriptor.data_offset] + [len(raw)])
