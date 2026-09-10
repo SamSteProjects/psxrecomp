@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (retail opening halt identified):** Retail field dispatch at
+  0x801DE95C indexes `(opcode & 0x7F) - 0x21` into 0x801CECC0. Entry for
+  2A points to 0x801E3568; its mask 0x20 misses the 0x50/60/70 flag routes,
+  returning the unchanged PC via 0x801E35C8 and 0x801E3628. Ordinary 2A is
+  now displayed as DISPATCH_HALT with no successor, retaining an explicit
+  trailing-entry-ownership stop for authoring. The eight reached opening
+  segments remain inspectable; trailing bytes are not scanned. Extended 2A
+  remains unsupported. Evidence uses the previously disc-matched PROT 897
+  capture and corresponding generated code. All 43 focused tests pass.
+  Next work is bounded P2 entry/terminal ownership and authoring integration,
+  rather than guessing an operand length after this verified halt.
+
 - **2026-09-10 (opening dialogue reached):** Added MENU_CTRL 85/8E/8F acquire
   forms with full payload bounds and explicit advance/wait edges, using pinned
   `nibble_8.rs` blob `d64782c800d120ce30606979a475d916166ce493`.

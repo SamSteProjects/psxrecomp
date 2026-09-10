@@ -159,6 +159,12 @@ def _instruction(data: bytes, pc: int) -> dict:
         args = {"mode": data[operand], "test": data[operand + 1], "delta": delta}
         branches = [{"pc": (operand + 2 + delta) & 0xFFFF, "condition": "test_passed"},
                     {"pc": operand + 4, "condition": "test_failed"}]
+    elif op == 0x2A and header == 1:
+        # Retail PROT 897 table 801CECC0 routes 2A to 801E3568.
+        # The 0x20 mask misses all flag routes and returns the same PC.
+        size, mnemonic, branches = 0, "DISPATCH_HALT", []
+        args = {"unresolved_control_flow":
+                "retail dispatcher returns the same PC for opcode 0x2a; external entry ownership of trailing bytes remains unresolved"}
     elif op == 0x45:
         # Pinned executing step/camera.rs: selector high bits distinguish
         # a payload, save, absolute jump, and a ten-slot sparse parameter list.

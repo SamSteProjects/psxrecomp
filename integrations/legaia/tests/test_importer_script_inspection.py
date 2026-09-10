@@ -21,6 +21,17 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_retail_dispatch_halt_does_not_scan_trailing_text(self):
+        report = inspect_record(b"\x2a\x1fOpaque\0", 0)
+        self.assertEqual(report["status"], "partial")
+        self.assertEqual(report["instructions"][0]["mnemonic"], "DISPATCH_HALT")
+        self.assertEqual(report["instructions"][0]["length"], 1)
+        self.assertEqual(report["instructions"][0]["successors"], [])
+        self.assertEqual(report["dialogues"], [])
+        self.assertEqual(report["opaque_regions"][0]["pc"], 1)
+        self.assertIn("same PC", report["stops"][0]["reason"])
+        self.assertEqual(inspect_record(b"\xaa\x17\x1fOpaque\0", 0)["instructions"], [])
+
     def test_context_acquire_payload_and_wait_edges(self):
         for sub in (0x85, 0x8E, 0x8F):
             ordinary = bytes([0x4c, sub, 0x1f, 0, 0xff])
