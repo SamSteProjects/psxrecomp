@@ -177,7 +177,7 @@ async function openBuildChange(change){
   if(!await api('/api/selection',{entity_id:owner}))return;
   frame(selected());
   document.querySelector('.workspace-tabs [data-panel="viewport"]').click();
-  if(change.field==='dialogue.text')await openActorScript(selected(),false,change.asset_id);
+  if(change.field==='dialogue.text'||change.scope==='encoded-transition-entry-only')await openActorScript(selected(),false,change.asset_id);
 }
 function renderBuildReport(){
   const result=state.build;
@@ -506,7 +506,7 @@ function initialAssetUsage(record,modelReferences){
 }
 function showAssetDetails(record){
   const isAuthored=!!record.authoredRecord;
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='script'?'Open dialogue workspace':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='script'?'Open script workspace':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(['model','animation'].includes(record.type)){
@@ -1021,7 +1021,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
       $('script-report').querySelector('.script-instructions').open=true;
       if(!instructionNavigation.select(focusInstruction))notify('The selected instruction was not found in the verified report.',true);
     }
-  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);input?.focus({preventScroll:true});}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
+  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);if(input){if(focusRun.includes('/transition/'))input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
 }
 
 function renderTransitionAuthoring(){
@@ -1046,6 +1046,7 @@ function renderTransitionAuthoring(){
       const row=document.createElement('label'),input=document.createElement('input');
       row.textContent=`${label} (imported ${entry.values[field]}) `;input.type='number';input.min='0';input.max='255';input.step='1';input.required=true;
       input.setAttribute('aria-label',`${label} at ${scriptOffset(entry.pc)}`);
+      if(field==='entry_x_encoded')input.dataset.runInput=entry.semantic_id;
       input.value=scriptDrafts.get(entry.semantic_id)?.[field] ?? entry.effective_values[field];inputs[field]=input;row.append(input);form.append(row);
       input.oninput=()=>{scriptDrafts.set(entry.semantic_id,Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));updateScriptActions();};
     }

@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Navigate build changes to transition entry fields
+
+- Previous turn was progress: browser Apply/Clear and recovery controls. Fixed build-report navigation so P1 transition changes open script inspection and P2 links focus the exact transition entry field. Transition fields now expose a stable focus target; source navigation scrolls it into view. Renamed authored script action to Open script workspace.
+- JavaScript syntax and transition merge test passed. Added report identity check for transition resource ID, owner, encoded before/after and scope. Browser report-link click remains unverified; no runtime launched. Full objective active.
+
+
 ### 2026-09-10 — Browser transition editing and recovery controls
 
 - Previous turn was progress: isolated source-error handling. Added clear controls for unresolved transition IDs and responsive entry form styling; corrected the scene graph's obsolete no-edit-support note.

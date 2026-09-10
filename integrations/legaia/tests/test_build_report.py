@@ -55,6 +55,18 @@ class BuildReportTests(unittest.TestCase):
             self.assertEqual(authored_state_key(reopened), edited)
             self.assertEqual(reopened.actor_templates, project.actor_templates)
 
+    def test_transition_report_retains_navigable_resource_and_owner(self):
+        owner = "scene://fixture/scripts/man-p2/0000"
+        resource = "script://fixture/scripts/man-p2/0000/transition/0016"
+        report = build_report({"edits": [{"scene": "fixture", "semantic_id": owner,
+            "transition_id": resource, "field": "entry_x_encoded", "before_byte": 96,
+            "after_byte": 97, "scope": "encoded-transition-entry-only"}],
+            "overlays": [{"size": 10}], "validation": {"live_runtime": "not_run"}})
+        change = report["changes"][0]
+        self.assertEqual((change["asset_id"], change["owner_id"]), (resource, owner))
+        self.assertEqual((change["before"], change["after"]), (96, 97))
+        self.assertEqual(change["scope"], "encoded-transition-entry-only")
+
     def test_report_uses_audited_values_and_excludes_binary_spans(self):
         audit = {"edits": [
             {"scene": "fixture", "semantic_id": "actor", "field": "position.x",
