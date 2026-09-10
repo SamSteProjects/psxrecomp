@@ -21,6 +21,23 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_context_acquire_payload_and_wait_edges(self):
+        for sub in (0x85, 0x8E, 0x8F):
+            ordinary = bytes([0x4c, sub, 0x1f, 0, 0xff])
+            for data in (ordinary, b"\xcc\x17" + ordinary[1:]):
+                report = inspect_record(data + b"\x1fHi\0", 0)
+                self.assertFalse(report["stops"])
+                row = report["instructions"][0]
+                self.assertEqual(row["length"], len(data))
+                self.assertEqual(row["successors"], [{"pc": len(data), "condition": "acquire_succeeded"},
+                                                      {"pc": 0, "condition": "acquire_wait"}])
+                self.assertEqual([(d["pc"], d["text"]) for d in report["dialogues"]], [(len(data), "Hi")])
+                for length in range(1, len(data)):
+                    truncated = inspect_record(data[:length], 0)
+                    self.assertEqual(truncated["status"], "partial")
+                    self.assertEqual(truncated["instructions"], [])
+                    self.assertEqual(truncated["dialogues"], [])
+
     def test_emitters_and_collision_paint_preserve_payload_boundaries(self):
         words = [-32768, 32767, -1, 0, 31, 3276]
         forms = [b"\x4c\x60" + struct.pack("<6h", *words),

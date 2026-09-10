@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (opening dialogue reached):** Added MENU_CTRL 85/8E/8F acquire
+  forms with full payload bounds and explicit advance/wait edges, using pinned
+  `nibble_8.rs` blob `d64782c800d120ce30606979a475d916166ce493`.
+  Actual opening P2[3] reaches 261 instructions and eight dialogue segments at
+  PCs 1343, 1363, 1491, 1522, 1556, 1593, 1628 and 1661. It remains partial
+  at PC 1697 opcode 2A, absent from pinned field VM/disassembler cases.
+  P1 actor 40 now reveals a target-inside-instruction conflict at PC 30;
+  its graph is withdrawn, not accepted as editable. Catalog has 342 dialogue
+  segments, 402 flag references and 49 partial scripts. Opening authoring is
+  still gated; no text edit or runtime acceptance is claimed.
+
 - **2026-09-10 (emitter and wall-paint script coverage):** Added MENU_CTRL
   60 six signed words, 61 bounded acquire payload with advance/wait edges,
   and 70-73 collision wall paint with distinct masked/unmasked widths.

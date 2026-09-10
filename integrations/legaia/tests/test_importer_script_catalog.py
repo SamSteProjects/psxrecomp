@@ -99,10 +99,13 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             result = load_script_asset_catalog(os.environ["LEGAIA_DISC_BIN"], "town01")
             # Verified field-state continuations expose ten more segments in
             # actors 25-30 and 36; their unknown tails still remain partial.
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 52, 354))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (406, 49))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (416, 0))
+            # Acquire coverage reveals actor 40's conflicting target boundary;
+            # its entire ambiguous graph must be withdrawn.
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 52, 342))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (394, 49))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (402, 0))
             assets = {a["semantic_id"]: a for a in result["assets"]}
+            self.assertEqual(assets["script://town01/actors/man-p1/0040"]["instruction_count"], 0)
             self.assertEqual(len(assets), result["asset_count"])
             script_id = "script://town01/actors/man-p1/0049"
             script = assets[script_id]

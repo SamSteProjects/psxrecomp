@@ -236,6 +236,15 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "model_id": int.from_bytes(data[operand + 1:operand + 4], "little"),
                     "animation_frame": struct.unpack_from("<H", data, operand + 4)[0],
                     "tween_frames": struct.unpack_from("<H", data, operand + 6)[0]}
+        elif sub in (0x85, 0x8E, 0x8F):
+            # Pinned nibble_8.rs uses header+4 for all three acquire forms.
+            # Require the entire encoded payload even though its host hook
+            # receives the opcode PC instead of reading these bytes itself.
+            size, mnemonic = 4, "CONTEXT_HALT_ACQUIRE"
+            need(size)
+            args = {"sub_op": sub, "can_wait_for_external_state": True}
+            branches = [{"pc": operand + size, "condition": "acquire_succeeded"},
+                        {"pc": pc, "condition": "acquire_wait"}]
         elif sub in (0x60, 0x61):
             size = 13 if sub == 0x60 else 15
             need(size)
