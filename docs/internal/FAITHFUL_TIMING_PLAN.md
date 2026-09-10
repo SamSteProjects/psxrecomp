@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Start cold arrival runtime acceptance
+
+- Previous turn was progress: composed package exactness. Prepared private arrival-live Project with town01 P2[0] X12416 and package SHA c58bd9410562a079bd89dcd2d1e87ba0e6835556abd0edffccc9429e3c07262c. Launched latest rebuilt executable96eaf949050d28009958cbc4f5d305c06976ac7e1eefbd7d62eaa6cb97993203 through EditorServer4396/runtime4397.
+- Owned editor PID48160/tool session45118, runtime PID50140; run directory20260910T213334Z-15f81d42. Identity, BIOS, disc and one-overlay plan verified. First screenshot returned display disabled during startup; recheck of same live process reached title. Cross8 entered cold New Game story; startup-2.png/new-game.png inspected. No savestate loaded.
+- Runtime/editor intentionally remain running for continuation of live arrival acceptance. Use arrival-live/control.py ready/capture/press and verify process identity as built into helper; do not restart merely on timeout. Current stage cold_new_game_story. Acceptance not complete; full objective active.
+
+
 ### 2026-09-10 — Verify composed transition and dialogue package
 
 - Previous turn was progress: browser draft conflict fix. Fresh private town01 Project authored P2[0] arrival X12416/facing2 plus one P2[36] dialogue glyph, saved/reopened, then built. Decoded MAN exactly matched independently composed patches: three audited fields and exactly three changed bytes. Clear of both components reproduced the baseline package SHA.
