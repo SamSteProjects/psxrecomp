@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (Windows discovery-fix acceptance):** Previous filename fix was
+  progress. Verified clean tracked state and ran both static-overlay tests on
+  Visual Studio18/MSVC (14.670s) and NMake/GCC (27.045s), each exit0. Both cover
+  all nine executable inventory transitions and sparse high-index/neighbor
+  discovery checks. GNU Make and retail runtime acceptance remain separate.
+  No production changes this turn; full SDK goal remains active.
+
+
 - **2026-09-10 (precompile filename agreement fix):** Previous empty-inventory
   acceptance was progress. Found producer indices beyond9999 were omitted by
   discovery and cleanup could include backup-name neighbors. Updated Python and

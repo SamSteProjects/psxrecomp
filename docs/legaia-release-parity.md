@@ -603,3 +603,14 @@ extra-suffix and short-number neighbors, and verifies monolithic cleanup removes
 only actual generated parts. It and the nine-variant Ninja/GCC executable
 fixture passed in6.909s. This tests high-index discovery with sparse files, not
 a10001-overlay compilation or retail transition. No proprietary data is used.
+
+
+## Windows generator recheck after discovery fix (2026-09-10)
+
+At source710175f0, both static-overlay tests passed under Visual Studio18
+2026/MSVC (14.670s) and NMake Makefiles/UCRT GCC (27.045s). Each run exercised
+all nine executable inventory variants, including empty inventory and regrowth,
+plus sparse five-digit part staging and neighbor-preserving cleanup. Together
+with the preceding Ninja/GCC run, all three previously accepted generators now
+cover the filename fix and added empty-inventory cases. GNU Make remains
+unaccepted. No retail runtime was rebuilt or launched for these synthetic checks.
