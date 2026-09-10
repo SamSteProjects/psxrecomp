@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (trigger script navigation):** Connected verified MAP gate-1
+  trigger identities to bounded MAN P2 records and read-only script inspection.
+  Source record boundaries and decoded paths remain distinct from runtime
+  reachability or named transition claims. All 51 town01 eligible references
+  resolve; 35 reports retain explicit partial decoding. Focused service/importer
+  checks and browser navigation passed. Runtime implementation unchanged.
+
 - **2026-09-10 (field map workspace):** Implemented source-base wall grid,
   trigger and region discovery from verified field MAP carriers. Source wall
   geometry is shown on a display ground plane, with runtime paints,

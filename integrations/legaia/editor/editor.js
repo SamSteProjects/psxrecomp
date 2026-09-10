@@ -224,7 +224,7 @@ $('resource-refresh').onclick=refreshResources;
 function synchronizeResources(){
   const current=resourceStateKey();
   if(resourceContextKey!==current){
-    resourceContextKey=current;clearFieldMap();if(fieldDialog.open)fieldDialog.close();
+    resourceContextKey=current;clearFieldMap();clearTriggerScript();if(fieldDialog.open)fieldDialog.close();
     resourceAbort?.abort();resourceRecords=[];resourceLimitations=[];resourceKey=null;resourcePendingKey=null;resourceError=null;
     if(textureDialog.open&&!(textureCommandPending&&textureSession?.projectKey===textureProjectKey()))textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();if(scriptResourceDialog.open)scriptResourceDialog.close();
   }
@@ -234,7 +234,7 @@ function synchronizeResources(){
 }
 async function refreshResources(){
   if(busy||!state.capabilities?.resource_catalog)return;
-  clearFieldMap();draw();
+  clearFieldMap();clearTriggerScript();draw();
   const key=resourceStateKey(),sceneId=state.scene?.id,sourceKey=state.scene_preview_source_key,controller=new AbortController();
   resourceAbort?.abort();resourceAbort=controller;resourcePendingKey=key;resourceError=null;resourceRecords=[];resourceLimitations=[];resourceKey=null;setBusy(true);renderAssets();
   try{
@@ -348,7 +348,56 @@ function openFieldResource(record){
   const limits=document.createElement('p');limits.className='field-note';limits.textContent=(data.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');summary.append(limits);
   fieldDialog.querySelector('pre').textContent=JSON.stringify(data,null,2);$('close-field-map').onclick=()=>fieldDialog.close();
   if(collision){$('show-base-collision').disabled=!state.capabilities?.field_map_preview;$('show-base-collision').onclick=async()=>{if(await loadFieldMap(record)){fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}};}
+  if(record.type==='trigger'&&state.capabilities?.trigger_script_preview&&(data.script_reference?.partition===2||data.trigger_type==='partition_2_trigger')){
+    const button=document.createElement('button');button.className='accent';button.id='inspect-trigger-script';button.textContent='Inspect referenced script';button.onclick=()=>openTriggerScript(record);summary.append(button);
+  }
   fieldDialog.showModal();
+}
+const triggerScriptDialog=document.createElement('dialog');triggerScriptDialog.id='trigger-script-dialog';document.body.append(triggerScriptDialog);
+let triggerScriptAbort=null,triggerScriptRequest=0;
+function clearTriggerScript(close=true){
+  triggerScriptRequest++;const pending=triggerScriptAbort;triggerScriptAbort=null;pending?.abort();if(pending)setBusy(false);
+  if(close&&triggerScriptDialog.open)triggerScriptDialog.close();triggerScriptDialog.replaceChildren();
+}
+triggerScriptDialog.addEventListener('close',()=>clearTriggerScript(false));
+function validateTriggerScript(result,record,key){
+  const expected=record.data.script_reference?.record_index ?? record.data.encoded?.record_index;
+  if(result.read_only!==true||key!==resourceStateKey()||result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.trigger_id!==record.id||result.partition!==2||!Number.isInteger(result.record_index)||result.record_index<0||(Number.isInteger(expected)&&result.record_index!==expected)||typeof result.script_id!=='string')throw new Error('Referenced script source changed or did not match the trigger. Refresh resources and retry.');
+  if(!result.record||![result.record.byte_offset,result.record.byte_length,result.record.script_offset].every(value=>Number.isSafeInteger(value)&&value>=0))throw new Error('Referenced script record bounds are invalid.');
+  const report=result.inspection;
+  if(!report||typeof report.status!=='string')throw new Error('Referenced script inspection is missing.');
+  for(const [key,max] of [['instructions',65536],['dialogues',4096],['opaque_regions',65536],['stops',4096]])if(!Array.isArray(report[key])||report[key].length>max||report[key].some(row=>!row||typeof row!=='object'||Array.isArray(row)))throw new Error('Referenced script report contains invalid or oversized arrays.');
+  if(report.instructions.some(row=>!Number.isInteger(row.pc)||row.pc<0||typeof row.mnemonic!=='string'||!Array.isArray(row.successors)||row.successors.length>64||row.successors.some(next=>!next||!Number.isInteger(next.pc))))throw new Error('Referenced script instructions are invalid.');
+  let tokens=0;
+  for(const dialogue of report.dialogues){if(!Number.isInteger(dialogue.pc)||typeof dialogue.text!=='string'||dialogue.text.length>131072||!Array.isArray(dialogue.tokens)||dialogue.tokens.some(token=>!token||typeof token!=='object'))throw new Error('Referenced dialogue data is invalid.');tokens+=dialogue.tokens.length;}
+  if(tokens>65536)throw new Error('Referenced dialogue token count exceeds the preview limit.');
+  return report;
+}
+async function openTriggerScript(record){
+  if(busy||!state.capabilities?.trigger_script_preview||resourceKey!==resourceStateKey())return;
+  clearTriggerScript();fieldDialog.close();const key=resourceStateKey(),request=++triggerScriptRequest,controller=new AbortController();triggerScriptAbort=controller;
+  triggerScriptDialog.innerHTML=`<div class="dialog-heading"><h2>Referenced partition-2 script</h2><button id="close-trigger-script" aria-label="Close referenced script">×</button></div><div class="trigger-script-navigation"><button id="back-trigger">Back to trigger</button><span>Read only · source inspection</span></div><div id="trigger-script-report"><p>Verifying the trigger reference and bounded script record…</p></div><p class="dialog-error" role="alert"></p>`;
+  $('close-trigger-script').onclick=()=>clearTriggerScript();$('back-trigger').onclick=()=>{clearTriggerScript();if(key===resourceStateKey())openFieldResource(record);};triggerScriptDialog.showModal();setBusy(true);
+  try{
+    const response=await fetch('/api/trigger-script',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id}),signal:controller.signal});
+    const text=await response.text();if(text.length>8388608)throw new Error('Referenced script exceeds the bounded preview size.');const result=JSON.parse(text);if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Referenced script inspection failed');
+    if(controller.signal.aborted||request!==triggerScriptRequest||!triggerScriptDialog.open)return;
+    const report=validateTriggerScript(result,record,key);renderTriggerScript(result,report);
+  }catch(error){if(error.name!=='AbortError'&&request===triggerScriptRequest&&triggerScriptDialog.open){$('trigger-script-report').replaceChildren();triggerScriptDialog.querySelector('.dialog-error').textContent=error.message;}}
+  finally{if(triggerScriptAbort===controller){triggerScriptAbort=null;setBusy(false);}}
+}
+function renderTriggerScript(result,report){
+  const host=$('trigger-script-report');
+  host.innerHTML=`<p class="script-summary">${report.instructions.length} decoded instructions · ${report.dialogues.length} dialogue segments · ${escapeHTML(report.status==='decoded_supported_paths'?'Supported paths decoded':resourceLabel(report.status))}</p>${property('Script ID',result.script_id)}${property('Partition / record',`2 / ${result.record_index}`)}${property('Decoded MAN byte offset',result.record.byte_offset)}${property('Record byte length',result.record.byte_length)}${property('Script offset in record',scriptOffset(result.record.script_offset))}<p class="field-note">Offsets are relative to this bounded script record. Decoding does not establish trigger activation, branch execution or story state. Substitution tokens remain placeholders. No edits are available here.</p><div id="trigger-script-warnings"></div><section><h3>Decoded dialogue</h3><div id="trigger-script-dialogues"></div></section><details class="script-instructions" ${report.dialogues.length?'':'open'}><summary>Instruction paths (${report.instructions.length})</summary><div id="trigger-script-instructions"></div></details><details class="script-raw"><summary>Source bounds, raw bytes and complete provenance</summary><pre class="diagnostic-detail"></pre></details>`;
+  const warnings=$('trigger-script-warnings');
+  if(report.opaque_regions.length||report.stops.length){const notice=document.createElement('p');notice.className='script-warning';notice.textContent=`${report.opaque_regions.length} opaque regions · ${report.stops.length} decoder stops. Unsupported and unvisited bytes remain unresolved.`;warnings.append(notice);}
+  for(const item of report.opaque_regions){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(item.pc)} · ${item.length ?? 'Unknown'} opaque bytes: ${item.reason ?? 'Unresolved region'}`;warnings.append(line);}
+  for(const item of report.stops){const line=document.createElement('p');line.className='field-note';line.textContent=`Stopped at ${scriptOffset(item.pc)}: ${item.reason ?? 'Unsupported path'}`;warnings.append(line);}
+  for(const limit of result.limitations ?? []){const line=document.createElement('p');line.className='field-note';line.textContent=typeof limit==='string'?limit:JSON.stringify(limit);warnings.append(line);}
+  const dialogues=$('trigger-script-dialogues');if(!report.dialogues.length)dialogues.textContent='No dialogue was decoded in these paths.';
+  for(const dialogue of report.dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length ?? 'Unknown')} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text;card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);dialogues.append(card);}
+  appendResourceTable($('trigger-script-instructions'),['Record offset','Instruction','Operands','Successors'],report.instructions.map(instruction=>[scriptOffset(instruction.pc),instruction.mnemonic,typeof instruction.operands==='string'?instruction.operands:JSON.stringify(instruction.operands ?? {}),instruction.successors.map(next=>`${scriptOffset(next.pc)}${next.condition?' · '+(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):''}`).join('\n')]),'No instructions were decoded.');
+  host.querySelector('.script-raw pre').textContent=JSON.stringify(result,null,2);
 }
 function drawFieldMap(){
   if(!fieldMap||fieldKey!==resourceStateKey())return;

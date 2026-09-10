@@ -72,6 +72,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_replacement"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
+        state["capabilities"]["trigger_script_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
         state["build"] = self.last_build
         state["run"] = self.runs.status()
@@ -318,6 +319,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Resource discovery takes no client source bindings")
                     from .resources import refresh_resource_catalog
                     self._json(200, refresh_resource_catalog(self.server.project))
+                    return
+                if route == "/api/trigger-script":
+                    if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:
+                        raise ProjectError("Trigger script inspection accepts a catalog identity only; partition and source spans are source-controlled")
+                    from .resources import trigger_script_preview
+                    self._json(200, trigger_script_preview(self.server.project, body["asset_id"]))
                     return
                 if route == "/api/field-map-preview":
                     if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:

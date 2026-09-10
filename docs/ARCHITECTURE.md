@@ -374,3 +374,9 @@ preview endpoint returns source-wall rectangles in guest X/Z coordinates. The
 editor projects those at a labeled display Y=0 and never derives collision
 semantics itself. Invalid responses and source changes discard the overlay.
 See `legaia-sdk/field-map-workspace.md` for reference sources and scope.
+
+The trigger inspector follows verified gate-1 references through the resource
+service to a bounded MAN P2 inspection response. The importer resolves source
+identity and record bounds; the editor only renders instructions, dialogue and
+explicit unresolved paths. Reports never enter authored or imported state.
+See `legaia-sdk/trigger-script-inspection.md` for the source contract and limits.

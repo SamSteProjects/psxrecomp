@@ -8,12 +8,44 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sdk.project import ProjectService, ProjectError
-from sdk.resources import refresh_resource_catalog, texture_preview, field_map_preview
+from sdk.resources import refresh_resource_catalog, texture_preview, field_map_preview, trigger_script_preview
 from importer.core import ImportError as RetailImportError
 from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class ResourceWorkflow(unittest.TestCase):
+    def test_trigger_preview_rejects_changed_source_and_stays_private(self):
+        with tempfile.TemporaryDirectory() as raw:
+            project = ProjectService(Path(raw))
+            document = synthetic_scene()
+            project.import_metadata(document)
+            project.disc_path = "synthetic"
+            project.save()
+            before = deepcopy(project._document())
+            identifier = "trigger://fixture/field-map/fallback/kind-1/0000"
+            report = {"trigger_id": identifier, "read_only": True, "partition": 2}
+            with patch("sdk.resources._disc_context"), patch("sdk.resources.import_scene", return_value=document), \
+                    patch("importer.trigger_scripts.inspect_trigger_script", return_value=report) as inspect, \
+                    patch("sdk.resources.source_key", return_value="verified"):
+                result = trigger_script_preview(project, identifier)
+                inspect.assert_called_once_with("synthetic", "fixture", identifier)
+            self.assertEqual(result["scene_id"], project.active_scene)
+            self.assertEqual(result["source_key"], "verified")
+            self.assertEqual(project._document(), before)
+            self.assertFalse(project.dirty)
+            self.assertFalse(project.assets.resource_catalogs)
+            with patch("sdk.resources._disc_context"), patch("sdk.resources.import_scene", return_value=document), \
+                    patch("importer.trigger_scripts.inspect_trigger_script", return_value=report), \
+                    patch("sdk.resources.source_key", side_effect=["before", "after"]):
+                with self.assertRaisesRegex(ProjectError, "source changed"):
+                    trigger_script_preview(project, identifier)
+            with patch("sdk.resources._disc_context"), patch("sdk.resources.import_scene", return_value={}), \
+                    patch("sdk.resources.source_key", return_value="verified"), \
+                    patch("importer.trigger_scripts.inspect_trigger_script") as inspect:
+                with self.assertRaisesRegex(ProjectError, "freshly verified"):
+                    trigger_script_preview(project, identifier)
+                inspect.assert_not_called()
+
     def test_field_preview_rejects_changed_source_and_stays_private(self):
         with tempfile.TemporaryDirectory() as raw:
             project = ProjectService(Path(raw))

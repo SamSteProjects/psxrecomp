@@ -34,3 +34,5 @@
 .viewport-toolbar{height:auto;min-height:41px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px}.viewport-toolbar>div{flex-wrap:wrap}
 
 #field-record-summary h3{font-size:12px;margin:17px 0 8px}
+
+#trigger-script-dialog{width:min(920px,calc(100vw - 35px));max-height:92vh;overflow:auto}.trigger-script-navigation{display:flex;align-items:center;gap:12px;margin:8px 0 18px}.trigger-script-navigation span{font-size:11px;color:var(--muted)}#trigger-script-dialog .property{font-size:11px}#trigger-script-dialog h3{font-size:13px}#trigger-script-dialog .script-table-wrap th:nth-child(-n+2),#trigger-script-dialog .script-table-wrap td:nth-child(-n+2){white-space:nowrap;overflow-wrap:normal}#inspect-trigger-script{margin-top:12px}

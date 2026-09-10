@@ -192,3 +192,11 @@ Browser checks cover base-wall loading, collision/trigger/region inspectors,
 toggling and refresh invalidation. Four invalid HTTP requests were rejected
 without changing project state. This does not validate live collision or P2
 transition execution.
+
+Trigger-to-P2 inspection (2026-09-10): targeted importer checks cover variable
+headers, all-partition bounds, section overlap, aliases, gate rejection and
+fresh trigger resolution. Service checks cover changed-source rejection before
+decoding and after inspection, plus private response separation. Retail checks
+resolve town01 fallback trigger 0 to P2 record 38; a sweep covers all 51 eligible
+references. No runtime trigger execution is claimed. Future acceptance needs
+live dispatch-gate evidence before treating these references as reachable edges.

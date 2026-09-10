@@ -48,6 +48,17 @@ def refresh_resource_catalog(project) -> dict:
     return project.assets.register_resources(project.active_scene, key, records, limitations)
 
 
+def trigger_script_preview(project, asset_id: str) -> dict:
+    from importer.trigger_scripts import inspect_trigger_script
+    document, key = _scene(project)
+    with _disc_context(project.disc_path):
+        _verify(project, document)
+        report = inspect_trigger_script(project.disc_path, document["scene"]["name"], asset_id)
+    if key != source_key(project):
+        raise ProjectError("Trigger script source changed during inspection; refresh again")
+    return {**report, "scene_id": project.active_scene, "source_key": key}
+
+
 def field_map_preview(project, asset_id: str) -> dict:
     from importer.field_map import preview_field_map
     document, key = _scene(project)
