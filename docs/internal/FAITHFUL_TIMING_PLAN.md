@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (MSVC precompile inventory acceptance):** Previous preset-control
+  fix was verified progress. Extended the existing executable overlay fixture
+  with generator selection and Release output handling for multi-config builds.
+  Visual Studio18/MSVC passed seven growth/shrink/body/split variants including
+  35 images in12.083s. Default Ninja/GCC passed in6.401s after an initial sandbox
+  denial of Ninja; no runtime source changes were needed. Updated release parity
+  with exact scope; Make and retail transition acceptance remain open. Full SDK
+  goal remains active.
+
+
 - **2026-09-10 (preset eligibility browser acceptance):** Retail town0c actor1
   correctly disables Apply for a town01 donor preset and shows the scene reason.
   Browser verification exposed empty authored appearance objects enabling Capture

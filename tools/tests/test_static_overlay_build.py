@@ -1,6 +1,8 @@
 """Build generated split overlays from an empty tree and after inventory changes.
 
 Requires CMake and a C compiler. Run with Python unittest or directly.
+Set PSX_TEST_CMAKE_GENERATOR to exercise another installed generator.
+Ninja is the default; Visual Studio selects its own compiler.
 """
 import os
 from pathlib import Path
@@ -18,9 +20,12 @@ class StaticOverlayBuildTests(unittest.TestCase):
     def test_clean_and_incremental_generated_inventory(self):
         cmake = shutil.which('cmake')
         cc = os.environ.get('CC') or shutil.which('gcc') or shutil.which('clang')
-        ninja = shutil.which('ninja')
-        if not (cmake and cc and ninja):
-            self.skipTest('CMake, Ninja and a C compiler are required')
+        generator = os.environ.get('PSX_TEST_CMAKE_GENERATOR', 'Ninja')
+        visual_studio = generator.startswith('Visual Studio ')
+        if not cmake or (not visual_studio and not cc):
+            self.skipTest('CMake and a C compiler are required')
+        if generator.startswith('Ninja') and not shutil.which('ninja'):
+            self.skipTest('Ninja is required for the selected generator')
         with tempfile.TemporaryDirectory(prefix='overlay build ') as tmp:
             root = Path(tmp)
             source = root / 'source'
@@ -87,18 +92,22 @@ class StaticOverlayBuildTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout.strip()
 
-            run(cmake, '-S', str(source), '-B', str(build), '-G', 'Ninja',
-                f'-DCMAKE_C_COMPILER={Path(cc).as_posix()}')
-            exe = build / ('fixture.exe' if os.name == 'nt' else 'fixture')
+            configure = [cmake, '-S', str(source), '-B', str(build), '-G', generator]
+            if not visual_studio:
+                configure.append(f'-DCMAKE_C_COMPILER={Path(cc).as_posix()}')
+            run(*configure)
+            multi_config = visual_studio or generator in ('Ninja Multi-Config', 'Xcode')
+            executable_dir = build / 'Release' if multi_config else build
+            exe = executable_dir / ('fixture.exe' if os.name == 'nt' else 'fixture')
             for count, value, single in [(2, 10, 0), (5, 20, 0), (1, 30, 0),
                                           (1, 40, 0), (3, 50, 1), (35, 60, 0),
                                           (4, 70, 0)]:
                 with self.subTest(count=count, value=value, single=single):
                     recipe.write_text(f'{count} {value} {single}', encoding='utf-8')
-                    run(cmake, '--build', str(build), '--parallel', '2')
+                    run(cmake, '--build', str(build), '--config', 'Release', '--parallel', '2')
                     self.assertEqual(run(str(exe)),
                                      str(count * value + count * (count - 1) // 2))
-            run(cmake, '--build', str(build), '--parallel', '2')
+            run(cmake, '--build', str(build), '--config', 'Release', '--parallel', '2')
 
 
 if __name__ == '__main__':

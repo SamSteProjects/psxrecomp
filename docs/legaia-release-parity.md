@@ -51,6 +51,21 @@ responses and exit0. This proves bounded nonzero title PCM delivery to the host
 tap, not subjective listening quality, hardware audibility, other music or
 battle/XA synchronization. Retail WAVs/screenshots remain private and untracked.
 
+## Precompile generator acceptance (2026-09-10)
+
+The existing executable static-overlay fixture now accepts
+`PSX_TEST_CMAKE_GENERATOR`, retaining Ninja by default and using the selected
+Visual Studio toolchain without forcing GCC. Multi-configuration generators
+build and execute Release output. Visual Studio 18 2026/MSVC passed in12.083s;
+the default Ninja/GCC run passed in6.401s. Both exercised seven consecutive
+inventory/body variants, including growth, shrinkage, unchanged inventory with
+changed bodies, split/monolithic switching and35 images across32 groups. Each
+built executable returned the expected sum. No runtime implementation change
+was necessary. The initial restricted Ninja attempt was denied before compiler
+configuration; the approved retry supplied the passing evidence. Make and
+other generators remain unaccepted; this fixture does not extend retail
+transition or gameplay coverage.
+
 ## Current stability recheck (2026-09-10)
 
 The user's renewed stability requirement covers the runtime and precompilation
@@ -487,4 +502,4 @@ unaccepted; buffer counters do not prove audible quality.
 | P1 | CD/XA battle sequence | Authorized retail input; Windows; manual audio | Healing Leaf, Spirit, two Hyper Arts and summon finish with synchronized audible audio. |
 | P1 | FMV and field transitions | Authorized retail input; Windows | Cold-process FMV, town0c -> map01 -> town0c; current build identity, ownership and timing captured. |
 | P1 | Controller release and isolation | Keyboard plus two physical pads | Inject each port, expire/clear/switch it; unaffected port remains responsive and physical input resumes. |
-| P2 | Other build generators | Synthetic generated source; MSVC/Make/Ninja | First-build and inventory/body regeneration produce the same executable behavior. |
+| P2 | Other build generators | Synthetic generated source; MSVC/Make/Ninja | MSVC and Ninja first-build/inventory/body regeneration pass executable checks; Make remains unaccepted. |
