@@ -84,6 +84,26 @@ class DialogueAuthoringTests(unittest.TestCase):
         self.assertEqual(context.options(ACTOR)["runs"][1], second)
         self.assertEqual(context.patch({})[0], original)
 
+    def test_extended_position_context_and_operands_survive_text_edits(self):
+        for ticks in (0, 12):
+            # The extended actor target is unresolved, but these source spans
+            # and the position instruction's encoded continuation are bounded.
+            position = bytes([0xC3, 9, 9]) + struct.pack("<4H", 0xFFFF, 0x8000, 64, ticks)
+            context, original = fixture(position + b"\x1fHello\0")
+            options = context.options(ACTOR)
+            self.assertTrue(options["supported"], options["reason"])
+            run = options["runs"][0]
+            changed, audit = context.patch({run["semantic_id"]: "Ready"})
+            offset = run["decoded_byte_offset"]
+            self.assertEqual(changed[:offset], original[:offset])
+            self.assertEqual(changed[offset + 5:], original[offset + 5:])
+            self.assertEqual(changed[offset:offset + 5], b"Ready")
+            before_report = context._inspect(ACTOR, original)
+            after_report = context._inspect(ACTOR, changed)
+            self.assertEqual(before_report["instructions"], after_report["instructions"])
+            self.assertEqual(after_report["instructions"][0]["target_context"], 9)
+            self.assertEqual(len(audit), 1)
+
     def test_exact_noop_and_combined_header_edits_compress_once(self):
         context, original = fixture()
         run = context.options(ACTOR)["runs"][0]

@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (extended-context dialogue safety):** Previous editor operand
+  presentation was progress. Audited source-span authoring against unresolved
+  extended targets: runtime identity is not required to replace an independently
+  bounded glyph span. Added immediate/timed extended-position regression proving
+  all non-glyph bytes and decoded instructions remain identical after an actual
+  patch. Eight authoring tests pass with retail input enabled. No new restriction
+  or runtime fix was justified; gameplay and broad SDK completion remain open.
+
+
 - **2026-09-10 (script position presentation):** Previous decoder implementation
   was progress. Connected position operands to the shared actor/trigger script
   table: immediate unchanged axes, timed encoded ticks, unresolved runtime

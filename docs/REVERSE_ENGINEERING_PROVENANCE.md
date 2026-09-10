@@ -169,3 +169,13 @@ Halt-acquire sub0/1/A/B remains unsupported: the pinned executor reads the signe
 target through operand+4/+8 but its failed-predicate continuation advances to
 operand+4/+8. This overlap requires stronger retail evidence before assigning
 instruction ownership. No guessed continuation was added to increase coverage.
+
+
+The subsequent extended-context authoring check verifies that immediate and
+timed ACTOR_POSITION instructions, including their unresolved target byte,
+remain exactly unchanged when an adjacent five-byte glyph run is replaced.
+Every non-glyph byte and the decoded instruction list compare equal before and
+after the real patch operation. This supports source-span authoring integrity,
+not target identity or runtime behavior. Eight dialogue-authoring tests passed
+with retail input enabled; no new runtime patch or authoring restriction was
+needed.
