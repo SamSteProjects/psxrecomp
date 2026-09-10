@@ -692,3 +692,11 @@ CPU context and are explicitly documented as potentially unrelated to DMA.
 Focused executable ring tests passed for delayed, unknown, direct-CPU and
 other-channel cases. Full-binary rebuild/live capture verification is pending;
 existing captures retain their old last-store semantics.
+
+DMA diagnostic provenance is also cleared at initialization and successful
+snapshot restoration: kick PCs are not part of the snapshot format and cannot
+be carried across that lifecycle boundary. Rejected snapshots preserve current
+metadata. A focused GCC executable tested idle and active-list restoration,
+channel-state preservation and rendering-context callbacks. The GNU-only CTest
+harness is registered; this is diagnostic lifecycle correctness, not proof of
+the broader savestate native-ownership/performance requirements.

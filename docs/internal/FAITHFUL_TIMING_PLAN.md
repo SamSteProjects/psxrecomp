@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Invalidate DMA diagnostic provenance across restore
+
+- Previous turn was progress: GPU DMA ring PC correction. Lifecycle review found per-channel kick PCs and execution-scope metadata were neither serialized nor cleared by dma_init/dma_snapshot_read. They could therefore falsely attribute a restored transfer to the pre-restore run.
+- Added shared provenance reset on DMA initialization and successful snapshot read, after validation/deserialization and before GPU linked-list context reconstruction. Snapshot wire format and emulated channel state are unchanged. Invalid input does not clear current provenance.
+- New focused C harness invokes actual dma.c initialization and snapshot routines: reset, truncated-input rejection, idle restore and active linked-list restore all pass. Active restore preserves transfer/rank and invokes existing end/begin/prepass/rank callbacks. Registered the harness for GNU CTest builds using whole-program elimination to avoid unrelated device stubs; compiled/executed directly with GCC. Initial link without elimination failed on unrelated device dependencies; corrected build passed. MSVC harness/full runtime rebuild not claimed. Private live game unchanged; full objective active.
+
 ### 2026-09-10 — Correct asynchronous GPU diagnostic PC attribution
 
 - Previous turn was progress: ramp-filter browser acceptance. Followed captured RA801D1064 to the generated field call of80036888; checkpoint10 instruction words at801D1048/105C/1060 and80036C18 match the inspected generated sites. The recorded PC80036C18 writes zero to RAM800740E8, not the GPU. Thus this captured CPU context cannot identify the terrain packet builder.

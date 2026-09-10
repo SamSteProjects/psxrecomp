@@ -134,6 +134,17 @@ uint32_t g_dma_cur_bcr    = 0;
 uint32_t g_dma_initiator_pc = 0;
 static uint32_t s_dma_ch_initiator_pc[7] = {0};
 
+/* Diagnostic provenance is not part of the snapshot wire format. A restored
+ * transfer has an unknown kick until guest code starts a new transfer. */
+static void dma_clear_execution_provenance(void) {
+    memset(s_dma_ch_initiator_pc, 0, sizeof(s_dma_ch_initiator_pc));
+    g_dma_initiator_pc = 0;
+    g_dma_exec_depth = 0;
+    g_dma_cur_ch = -1;
+    g_dma_cur_madr = 0;
+    g_dma_cur_bcr = 0;
+}
+
 typedef struct {
     uint8_t active;
     uint32_t total_words;
@@ -1188,6 +1199,7 @@ void dma_advance(uint32_t cycles) {
 }
 
 void dma_init(void) {
+    dma_clear_execution_provenance();
     memset(channels, 0, sizeof(channels));
     memset(mdec_async, 0, sizeof(mdec_async));
     memset(&cdrom_async, 0, sizeof(cdrom_async));
@@ -1474,6 +1486,7 @@ int dma_snapshot_read(const uint8_t *p, uint32_t len) {
         return 0;
     for (int i = 0; i < 7; i++)
         if (!dma_r_delay(&r, &delayed_complete[i])) return 0;
+    dma_clear_execution_provenance();
     if (gpu_ll_was_active) gpu_ws_end_linked_list();
     if (gpu_linked_list.active) {
         gpu_ws_begin_linked_list();

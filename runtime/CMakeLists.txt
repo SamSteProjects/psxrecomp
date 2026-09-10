@@ -23,6 +23,14 @@ psxrecomp_add_runtime_target(psx-runtime
 # (docs/ENHANCEMENTS.md G1.10). Titles get their <exe>_pgxp the same way.
 
 if(BUILD_TESTING)
+    # This focused harness includes dma.c; whole-program elimination removes
+    # unrelated device entry points rather than supplying behaviorless stubs.
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        add_executable(dma_provenance_restore_test tests/test_dma_provenance_restore.c)
+        target_include_directories(dma_provenance_restore_test PRIVATE include src)
+        target_compile_options(dma_provenance_restore_test PRIVATE -O1 -fwhole-program)
+        add_test(NAME dma_provenance_restore_test COMMAND dma_provenance_restore_test)
+    endif()
     # Optional real-hardware regression. Configure its dependencies explicitly;
     # absence must remain visible, never counted as a passing GPU test.
     set(PSX_GL_READBACK_SDL_ROOT "" CACHE PATH "SDL3 static build root for GL readback test")
