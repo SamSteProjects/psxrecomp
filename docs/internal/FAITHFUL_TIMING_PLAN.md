@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Resolve environment meshes and initial prop poses
+
+- Previous turn was progress: imported46 MAP placements. Added verified environment catalog resolution using the pinned field_env.rs largest scene-entry mesh-pool heuristic, explicitly labeled inferred. Town01 has one scene model carrier: PROT4/section0 with114 meshes; all46 placement indices resolve to existing stable asset IDs.
+- Added bounded MAN partition-0 bind-header resolution with alias/section checks. Primary kind-1 trigger order wins and initialization ignores the dispatch gate, matching the reference consumer. Town01 resolves37 header binds and9 unbound static placements;14 placements reference nonzero animation IDs.
+- Added EnvironmentPreviewCatalog, verifying animation descriptor boundaries and channel/object counts before applying the existing rigid pose decoder. Executed all46 retail previews:32 unposed static and14 posed,5371 total instance triangles, no decode failures. Five focused tests pass including header truncation and imported-pose/static separation. No browser or live-render parity claim.
+- Next connect these geometries, texture adapter and world transforms to ScenePreviewService and synchronized hierarchy/inspector selection; ground/decorations remain separate unfinished layers. Full objective active, original browser/runtime untouched, no proprietary payload staged.
+
 ### 2026-09-10 — Prioritize full scene assembly and import environment placements
 
 - Previous conversational status/agenda turns made no implementation progress. Applied the user's Unity-style full-scene priority: inspected current actor-only ScenePreviewService and pinned field_objects.rs, field_env.rs, scene_ty.rs and field_render.rs. Ground, decoration and placed prop layers require distinct consumers; do not call actor meshes a complete scene.

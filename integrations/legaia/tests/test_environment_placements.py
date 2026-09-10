@@ -4,13 +4,46 @@ from pathlib import Path
 import struct
 import sys
 import unittest
+from copy import deepcopy
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.core import ImportError
-from importer.environment import decode_environment_placements, load_environment_placements
+from importer.environment import (decode_environment_placements, load_environment_placements,
+                                  _prop_record, EnvironmentPreviewCatalog)
 
 
 class EnvironmentPlacementTests(unittest.TestCase):
+    def test_partition0_animation_header_and_truncation(self):
+        man = bytearray(0x2B + 3)
+        struct.pack_into("<h", man, 0x22, 1)
+        man[0x28:0x2B] = (3).to_bytes(3, "little")
+        man += bytes([0, 2, 0xFF]) + bytes(18)
+        record = _prop_record(bytes(man), 0)
+        self.assertEqual(record["animation_id"], 2)
+        self.assertEqual(record["script_offset"], 2)
+        self.assertEqual(record["byte_length"], 3)
+        with self.assertRaises(ImportError):
+            _prop_record(bytes(man), 1)
+        man[0x2E] = 2  # local-name prefix would cross the next section
+        with self.assertRaises(ImportError):
+            _prop_record(bytes(man), 0)
+
+    def test_prop_pose_and_unbound_raw_mesh_remain_separate(self):
+        from test_importer_scene_animation import fixture
+        catalog, _, asset, model = fixture()
+        metadata = {"placements": [
+            {"semantic_id": "environment://synthetic/animated", "model_asset_id": asset["semantic_id"], "animation_id": 1},
+            {"semantic_id": "environment://synthetic/static", "model_asset_id": asset["semantic_id"], "animation_id": 0}]}
+        env = EnvironmentPreviewCatalog("unused", metadata, [asset], catalog._body)
+        with patch("importer.assets.load_model_preview", side_effect=lambda *args: deepcopy(model)):
+            self.assertEqual(env.pose_preview("environment://synthetic/animated", 1)["vertices"], [[11, 2, 3]])
+            self.assertEqual(env.pose_preview("environment://synthetic/static")["vertices"], model["vertices"])
+            for identity, frame in (("missing", 0), ("environment://synthetic/animated", 2),
+                                    ("environment://synthetic/static", 1), ("environment://synthetic/static", True)):
+                with self.assertRaises(ImportError):
+                    env.pose_preview(identity, frame)
+
     def test_signed_offsets_floor_cell_rotation_and_distinct_instances(self):
         data, man = bytearray(0x12000), bytearray(0x2B + 6 * 3)
         struct.pack_into("<16h", man, 2, 0, 64, *([0] * 14))

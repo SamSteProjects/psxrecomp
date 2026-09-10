@@ -1,5 +1,13 @@
 # Legaia SDK feature matrix
 
+2026-09-10 environment geometry resolution: all46 town01 placed objects now
+resolve to stable scene model IDs using the explicitly inferred reference pool
+selection. Partition-0 headers resolve37 binds; the SDK preview decodes32 static
+placements and14 animated prop poses,5371 triangles across instances. Five
+focused tests pass. **SDK geometry only**: texture/world-transform assembly and
+viewport/hierarchy/inspector integration still need implementation and browser
+verification. This does not yet cover tiled ground or decorations.
+
 2026-09-10 full-scene priority: the environment importer now enumerates placed
 MAP objects separately from MAN actors, retaining per-cell identities, source
 hashes, rotations and floor-derived positions. Retail town01 yields46 placements,
