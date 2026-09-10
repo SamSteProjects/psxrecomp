@@ -209,3 +209,12 @@ forms, raw identity and every truncation; generic extended field instructions
 retain their previous handling. Twenty-eight focused/retail inspection tests
 and five retail catalog tests pass. This supersedes the initial high-bit-form
 limitation above, without resolving menu execution or authoring.
+
+
+Pinned field/host.rs::op4c_n_a_flag_set maps0/1/2 to ctx.flags,
+ctx.local_flags and host.global_flags(), masking the encoded bit to five bits.
+The catalog now indexes FLAG_WORD_BRANCH using those same existing bank scopes,
+while preserving unresolved local indices16..31. This adds exactly11 town01
+references, taking1134 to1145; private flag-word-catalog.json lists their source
+owners/PCs. The first retail count assertion correctly failed at the old total;
+it was updated after isolating the new reference family. Seven tests then pass.

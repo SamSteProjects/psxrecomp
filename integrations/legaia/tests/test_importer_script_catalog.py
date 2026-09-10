@@ -33,6 +33,15 @@ def catalog(script):
 
 
 class ScriptAssetCatalogTests(unittest.TestCase):
+    def test_flag_word_branches_join_evidenced_banks_without_live_values(self):
+        result = catalog(b"\x4c\xa0\x03\x0a\0\x4c\xa1\xf3\x0f\0\x4c\xa2\x05\x14\0")
+        refs = result["assets"][0]["flag_references"]
+        self.assertEqual([r["bank"] for r in refs], ["context", "local", "global"])
+        self.assertEqual([r["index"] for r in refs], [3, 19, 5])
+        self.assertEqual(refs[1]["status"], "bank_width_unresolved")
+        self.assertTrue(all(r["operation"] == "test" and r["runtime_value"] is None for r in refs))
+        self.assertEqual(result["flag_reference_count"], 3)
+
     def test_menu_metadata_has_no_labels_and_preserves_bounded_source(self):
         result = catalog(b"\x27\x10\0\x20\0\x1fPrivateOne\0\x1fPrivateTwo\0")
         script = next(a for a in result["assets"] if a["asset_kind"] == "script" and a["menu_count"])
@@ -139,7 +148,7 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             # Flag-word branches expose five bounded P2[4] dialogue segments.
             self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 426))
             self.assertEqual((result["asset_count"], result["partial_script_count"]), (517, 60))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1134, 1))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1145, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(result["partition_two_script_count"], 39)
             p2 = assets["script://town01/scripts/man-p2/0037"]

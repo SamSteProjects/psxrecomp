@@ -44,6 +44,12 @@ def _flag_reference(row: dict) -> dict | None:
         index = args["index"] if bank == "system" else args["bit"]
         scope = {"local": "dispatch_context_local_flags", "context": "dispatch_context_flags",
                  "global": "host_global_flags", "system": "system_bank_encoded_selector"}[bank]
+    elif mnemonic == "FLAG_WORD_BRANCH":
+        # Pinned host.rs::op4c_n_a_flag_set reads the same three banks.
+        bank, scope = {"actor_flags": ("context", "dispatch_context_flags"),
+                       "actor_local_flags": ("local", "dispatch_context_local_flags"),
+                       "global_story_word": ("global", "host_global_flags")}[args["flag_word"]]
+        operation, index = "TEST", args["bit_encoded"] & 31
     elif mnemonic == "COND_JMP" and args["mode"] == 0:
         bank, operation, index, scope = "extra", "TEST", args["test"] & 31, "host_extra_flags"
     else:

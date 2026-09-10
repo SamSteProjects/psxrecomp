@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (flag-word catalog integration):** Previous menu-link browser
+  acceptance was progress. Found decoded FLAG_WORD_BRANCH absent from flag
+  catalog; pinned host confirms bank mapping. Added metadata references with
+  masked index, retained width uncertainty and unknown live value. Isolated11
+  new town01 references (1145 total) before updating expected count. Seven
+  retail-enabled tests pass; source-PC browser checks remain pending. Full goal active.
+
+
 - **2026-09-10 (menu catalog browser path):** Previous catalog integration was
   progress. Fresh isolated editor4395/tab45 refreshed town01 resources, searched
   Scripts0001, opened actor metadata and followed its four-option menu link.
