@@ -68,6 +68,7 @@ class BuildReportTests(unittest.TestCase):
         self.assertEqual((report["change_count"], report["scene_count"], report["overlay_bytes"]), (3, 2, 50))
         self.assertEqual(report["changes"][0]["before"], 128)
         self.assertEqual(report["changes"][1]["asset_id"], "run")
+        self.assertEqual(report["changes"][1]["owner_id"], "actor")
         self.assertEqual(report["changes"][1]["after"], "After ")
         self.assertEqual(report["changes"][2]["after"], "b" * 64)
         self.assertNotIn("before_hex", str(report))

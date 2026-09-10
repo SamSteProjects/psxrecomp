@@ -136,6 +136,18 @@ function validBuildReport(report){
   return report?.schema_version==='legaia.build-report.v1'&&Array.isArray(report.changes)&&report.changes.length<=65536&&report.changes.every(change=>change&&typeof change==='object'&&['scene','asset_id','field','scope'].every(key=>typeof change[key]==='string')&&'before' in change&&'after' in change)&&['overlay_bytes','scene_count','change_count'].every(key=>Number.isSafeInteger(report[key])&&report[key]>=0)&&report.validation&&typeof report.validation==='object'&&!Array.isArray(report.validation)&&Object.keys(report.validation).length<=64;
 }
 function buildValue(value){return typeof value==='string'?value:JSON.stringify(value) ?? 'Unknown';}
+async function openBuildChange(change){
+  if(busy)return;
+  const scene=(state.scenes ?? []).find(item=>item.name===change.scene);
+  if(!scene){notify('The source scene is no longer imported.',true);return;}
+  const owner=change.owner_id;
+  buildDialog.close();
+  if(scene.id!==state.scene?.id&&!await api('/api/scene',{scene_id:scene.id}))return;
+  if(!await api('/api/selection',{entity_id:owner}))return;
+  frame(selected());
+  document.querySelector('.workspace-tabs [data-panel="viewport"]').click();
+  if(change.field==='dialogue.text')await openActorScript(selected(),false,change.asset_id);
+}
 function renderBuildReport(){
   const result=state.build;
   if(!result){buildDialog.innerHTML='<div class="dialog-heading"><h2>Build report unavailable</h2><button id="close-build" aria-label="Close build report">×</button></div><p>No build report is retained for this project.</p>';$('close-build').onclick=()=>buildDialog.close();return;}
@@ -148,7 +160,7 @@ function renderBuildReport(){
     if(!report.changes.length){const empty=document.createElement('p');empty.className='field-note';empty.textContent=result.build_kind==='retail'?'No modified bytes: this package is the verified retail baseline.':'No field changes were listed in the build report.';changes.append(empty);}
     else{
       const wrap=document.createElement('div');wrap.className='script-table-wrap build-changes-table';const table=document.createElement('table');table.innerHTML='<thead><tr><th>Scene / asset</th><th>Field</th><th>Before</th><th>After</th><th>Scope</th></tr></thead><tbody></tbody>';
-      for(const change of report.changes){const row=document.createElement('tr');for(const [index,value] of [`${change.scene}\n${change.asset_id}`,change.field,buildValue(change.before),buildValue(change.after),change.scope].entries()){const cell=document.createElement('td');if(index===2||index===3){const text=document.createElement('pre');text.textContent=value;cell.append(text);}else cell.textContent=value;row.append(cell);}table.querySelector('tbody').append(row);}wrap.append(table);changes.append(wrap);
+      for(const change of report.changes){const row=document.createElement('tr');for(const [index,value] of [`${change.scene}\n${change.asset_id}`,change.field,buildValue(change.before),buildValue(change.after),change.scope].entries()){const cell=document.createElement('td');if(index===2||index===3){const text=document.createElement('pre');text.textContent=value;cell.append(text);}else if(index===0&&typeof change.owner_id==='string'&&change.owner_id.includes('/actors/man-p1/')){const link=document.createElement('button');link.type='button';link.textContent=value;link.title='Open source actor';link.onclick=()=>openBuildChange(change);cell.append(link);}else cell.textContent=value;row.append(cell);}table.querySelector('tbody').append(row);}wrap.append(table);changes.append(wrap);
     }
     const labels={retail_provenance:'Retail provenance',unchanged_opaque_bytes:'Unchanged opaque bytes',lz_decode_round_trip:'LZS round trip',live_runtime:'Runtime test'},values={fresh_import_match:'Fresh import matched',not_required_unmodified_disc:'Not required · unmodified disc',not_run:'Not run'};
     for(const [key,value] of Object.entries(report.validation)){const item=document.createElement('div');item.className='build-validation-row';const label=document.createElement('span');label.textContent=labels[key] ?? key.replaceAll('_',' ');const outcome=document.createElement('strong');outcome.textContent=value===true?'Passed':value===false?'Failed':values[value] ?? buildValue(value);outcome.classList.toggle('failed',value===false);item.append(label,outcome);$('build-validation').append(item);}

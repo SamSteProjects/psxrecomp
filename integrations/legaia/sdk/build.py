@@ -51,6 +51,7 @@ def build_report(audit) -> dict:
             before = change.get("before_value", change.get("before_byte"))
             after = change.get("after_value", change.get("after_byte"))
         changes.append({"scene": change["scene"], "asset_id": change.get("run_id", change["semantic_id"]),
+                        "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         "scope": change.get("scope", "initial-man-placement-only")})
     return {"schema_version": "legaia.build-report.v1", "changes": changes,

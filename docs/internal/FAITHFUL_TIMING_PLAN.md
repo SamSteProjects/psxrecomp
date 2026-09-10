@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (build report source navigation):** Previous freshness regression
+  repair was progress. Build reports now retain audited owner_id alongside the
+  changed resource ID. Actor rows open the source scene and actor; dialogue
+  rows additionally focus the supported text run. Older reports and non-actor
+  rows remain readable without invented navigation. Three report tests and JS
+  syntax pass; an extracted production-handler harness verifies seven same/
+  cross-scene, dialogue, busy, missing-scene and failed-request scenarios.
+  Browser acceptance remains pending; this adds no runtime gameplay claim.
+  Full SDK and release-parity goal remains active.
+
+
 - **2026-09-10 (build freshness regression repair):** Previous MSVC generator
   acceptance was verified progress. Source review found the selection-exclusion
   test wrote an unused selection attribute instead of exercising ProjectService.
