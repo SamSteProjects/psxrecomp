@@ -642,6 +642,23 @@ async function openTriggerScript(record){
   }catch(error){if(error.name!=='AbortError'&&request===triggerScriptRequest&&triggerScriptDialog.open){$('trigger-script-report').replaceChildren();triggerScriptDialog.querySelector('.dialog-error').textContent=error.message;}}
   finally{if(triggerScriptAbort===controller){triggerScriptAbort=null;setBusy(false);}}
 }
+function appendScriptOperands(cell,instruction){
+  const operands=instruction.operands;
+  if(instruction.target_context!==null&&instruction.target_context!==undefined){
+    const context=document.createElement('p');context.className='script-warning';
+    context.textContent=`Extended target ${instruction.target_context}: actor identity is unresolved.`;cell.append(context);
+  }
+  if(instruction.mnemonic==='ACTOR_POSITION'&&Array.isArray(operands?.encoded_xyz)&&operands.encoded_xyz.length===3){
+    const summary=document.createElement('p');
+    const immediate=operands.mode==='immediate';
+    const axes=operands.encoded_xyz.map((value,index)=>`${'XYZ'[index]}: ${immediate&&value===65535?'leave unchanged':value}`).join(', ');
+    summary.textContent=`${axes}. ${immediate?'Immediate assignment':`Timed movement (${operands.ticks} encoded ticks; interpolation unresolved)`}. Runtime position is not observed.`;
+    cell.append(summary);
+  }
+  const details=document.createElement('details'),label=document.createElement('summary'),raw=document.createElement('pre');
+  label.textContent='Encoded operands';raw.textContent=typeof operands==='string'?operands:JSON.stringify(operands??{},null,2);
+  details.open=instruction.mnemonic!=='ACTOR_POSITION';details.append(label,raw);cell.append(details);
+}
 function appendScriptInstructions(host,report){
   host.replaceChildren();host.classList.remove('script-table-wrap');
   const instructions=report.instructions??[],byPC=new Map(instructions.map(item=>[item.pc,item])),rows=new Map(),incoming=new Map(),history=[];
@@ -671,7 +688,8 @@ function appendScriptInstructions(host,report){
   for(const instruction of instructions){
     const row=document.createElement('tr');row.tabIndex=-1;rows.set(instruction.pc,row);
     const offset=document.createElement('td'),jump=document.createElement('button');jump.textContent=scriptOffset(instruction.pc);jump.setAttribute('aria-label',`Select instruction ${scriptOffset(instruction.pc)}`);jump.onclick=()=>select(instruction.pc);offset.append(jump);row.append(offset);
-    for(const value of [instruction.mnemonic,typeof instruction.operands==='string'?instruction.operands:JSON.stringify(instruction.operands??{})]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}
+    const mnemonic=document.createElement('td');mnemonic.textContent=instruction.mnemonic;row.append(mnemonic);
+    const operands=document.createElement('td');appendScriptOperands(operands,instruction);row.append(operands);
     const successors=document.createElement('td');
     for(const next of instruction.successors??[]){
       const condition=next.condition?(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):'';

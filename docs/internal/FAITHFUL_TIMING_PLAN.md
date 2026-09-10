@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (script position presentation):** Previous decoder implementation
+  was progress. Connected position operands to the shared actor/trigger script
+  table: immediate unchanged axes, timed encoded ticks, unresolved runtime
+  position and extended target context are explicit. Original encoded operands
+  remain available; other instructions retain expanded values. Node syntax and
+  focused DOM behavior checks passed for sentinel scope, target warning and raw
+  preservation. Both production call sites use the shared renderer. Browser
+  layout and gameplay were not tested in this turn. Full SDK goal remains active.
+
+
 - **2026-09-10 (scripted position inspection):** Previous acceptance-summary
   correction was progress. Investigated actual halt-acquire blocker; pinned
   target-read/fallthrough overlap remains unresolved and unsupported. Added

@@ -170,3 +170,10 @@ from the actual X/Z serializer and identifies authored Y as project-only.
 Synthetic browser checks cover invalid X125/Y0, Undo clearing warnings and
 supported X128 without warnings. These warnings do not replace build-time
 source verification or establish unsupported heading/height serialization.
+
+
+2026-09-10 script position presentation: actor and trigger instruction tables
+show immediate unchanged-axis semantics separately from timed movement operands.
+Extended target contexts remain explicitly unresolved. Encoded operands stay
+inspectable, and no live movement or runtime actor identity is inferred. Syntax
+and focused DOM behavior checks pass; browser layout acceptance is pending.
