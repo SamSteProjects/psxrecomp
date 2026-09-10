@@ -33,6 +33,25 @@ def catalog(script):
 
 
 class ScriptAssetCatalogTests(unittest.TestCase):
+    def test_partition_two_source_bounds_and_unknown_tail_are_preserved(self):
+        _, original = fixture()
+        region = 0x2B + 12
+        section = int.from_bytes(original[0x28:0x2B], "little")
+        # Separate P2 record, with a real prefix and a known MES before a halt.
+        record = bytes(4) + b"\x1fHi\0\x2a\x2b\x01"
+        man = bytearray(original[:region + section] + record + original[region + section:])
+        man[0x34:0x37] = section.to_bytes(3, "little")
+        man[0x28:0x2B] = (section + len(record)).to_bytes(3, "little")
+        result = _catalog(bytes(man), "fixture", {"synthetic": True}, set())
+        p2 = next(a for a in result["assets"] if a["asset_kind"] == "script" and a["partition"] == 2)
+        self.assertEqual(p2["source_record"]["byte_offset"], region + section)
+        self.assertEqual(p2["source_record"]["byte_length"], len(record))
+        self.assertEqual(p2["entry_pc"], 4)
+        self.assertEqual((p2["status"], p2["dialogue_count"]), ("partial", 1))
+        self.assertEqual(p2["flag_references"], [])
+        self.assertEqual(p2["stops"][0]["kind"], "known_instruction_unresolved_control_flow")
+        self.assertEqual(forbidden_fields(result), set())
+
     def test_extended_context_width_system_selector_and_extra_flags_remain_scoped(self):
         # LFLAG ordinary / extended; GFLAG; extended CFLAG; ordinary/extended
         # system selectors; extra-flags conditional with both successors equal.
@@ -72,9 +91,12 @@ class ScriptAssetCatalogTests(unittest.TestCase):
         # Apparent flag/opcode bytes inside MES are glyphs. Unsupported menu
         # width prevents further decoding, including the apparent named warp.
         result = catalog(b"\x1f+Q#\0\x4c\x80\x3f\0\0\x06town02\1\2\3")
-        self.assertEqual((result["script_count"], result["dialogue_count"]), (1, 1))
+        self.assertEqual((result["script_count"], result["dialogue_count"]), (2, 1))
         self.assertEqual((result["flag_reference_count"], result["transition_count"]), (0, 0))
-        script, message = result["assets"]
+        script, message, aliased = result["assets"]
+        self.assertEqual(aliased["status"], "unavailable")
+        self.assertIsNone(aliased["source_record"]["byte_offset"])
+        self.assertIn("aliased", aliased["stops"][0]["reason"])
         self.assertEqual(script["status"], "partial")
         self.assertGreater(script["opaque_byte_count"], 0)
         self.assertEqual(script["stop_count"], 1)
@@ -101,10 +123,17 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             # actors 25-30 and 36; their unknown tails still remain partial.
             # Acquire coverage reveals actor 40's conflicting target boundary;
             # its entire ambiguous graph must be withdrawn.
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 52, 342))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (394, 49))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (402, 0))
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 421))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (512, 60))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1123, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
+            self.assertEqual(result["partition_two_script_count"], 39)
+            p2 = assets["script://town01/scripts/man-p2/0037"]
+            self.assertEqual((p2["partition"], p2["dialogue_count"]), (2, 1))
+            self.assertIsNone(p2["actor_semantic_id"])
+            self.assertEqual(p2["owner_semantic_id"], "scene://town01/scripts/man-p2/0037")
+            opening = assets["script://town01/scripts/man-p2/0003"]
+            self.assertEqual((opening["status"], opening["dialogue_count"]), ("partial", 8))
             self.assertEqual(assets["script://town01/actors/man-p1/0040"]["instruction_count"], 0)
             self.assertEqual(len(assets), result["asset_count"])
             script_id = "script://town01/actors/man-p1/0049"

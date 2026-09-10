@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 resource catalog):** Previous saved-asset workflow was
+  progress. Extended the metadata-only script catalog to all bounded P2 records,
+  reusing the verified prefix/record decoder without scanning unknown tails.
+  Town01 now exposes 91 scripts (52 P1 actors plus 39 P2), 421 dialogue segments,
+  1,123 scoped flag references and one encoded transition; 60 graphs remain
+  partial. The full browser catalog contains 908 records. Script and dialogue
+  resources open the P2 workspace directly, and authored badges merge on the
+  canonical script asset ID rather than duplicating a scene-owner ID. Synthetic
+  alias/unknown-tail coverage and retail determinism/payload-free checks pass;
+  ten catalog/resource tests passed, with the existing real P2 HTTP workflow
+  also passing earlier in this turn. Node syntax check passed. IAB tab 19,
+  private editor 4394: opened P2[37] dialogue from discovery, applied SDK, observed
+  one authored script entry, reopened/cleared it and returned to Project saved
+  with no browser errors. Owned server session 27510 interrupted (exit 1).
+  No runtime launched; no reachability or gameplay text-display claim.
+
 - **2026-09-10 (saved P2 dialogue discovery):** Prior stability recheck was
   progress: five executable regressions supplied fresh evidence. Continued the
   authoring workflow by listing P2 Dialogue overrides as project-wide script

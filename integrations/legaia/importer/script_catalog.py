@@ -17,17 +17,18 @@ from .core import (ImportError, decompress_lzs, find_scene_bundle, parse_man,
                    stable_actor_id, validate_metadata_only)
 from .pipeline import REFERENCE_COMMIT, _bounded_scene_range, _disc_context
 from .script_inspection import inspect_record
+from .trigger_scripts import _p2_record, _p2_entry
 
 MAX_MAN_BYTES = 4 * 1024 * 1024
 MAX_ACTORS = 512
 MAX_ASSETS = 8192
 MAX_RELATIONSHIPS = 16384
 LIMITATIONS = [
-    "Partition-1 actor scripts only; scene-entry/controller and other MAN partitions are outside this catalog.",
+    "Partition-1 actor and partition-2 scripts; partition-0/controller records remain outside this catalog.",
     "Partial graphs remain partial; unknown or unvisited bytes are never scanned for dialogue, flags or transitions.",
     "Flag references retain encoded bank/selector and dispatch context; no current values, story names or universal flag IDs are inferred.",
     "Named transitions are encoded references, not proof of a reachable path or successful scene change.",
-    "Dialogue assets contain counts and source hashes only; text and control tokens are available through private actor inspection.",
+    "Dialogue assets contain counts and source hashes only; text and control tokens are available through private script inspection.",
 ]
 
 
@@ -80,29 +81,39 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
     if not isinstance(man, bytes) or not 0 < len(man) <= MAX_MAN_BYTES:
         raise ImportError("script catalog MAN exceeds the bounded source size")
     parsed = parse_man(man, scene)
-    if len(parsed.actors) > MAX_ACTORS:
-        raise ImportError("script catalog actor count exceeds bound")
+    if len(parsed.actors) > MAX_ACTORS or parsed.partition_counts[2] > MAX_ACTORS:
+        raise ImportError("script catalog partition count exceeds bound")
     total = sum(parsed.partition_counts)
     region = 0x2B + total * 3
     aliases = Counter(region + int.from_bytes(man[0x2B + 3*i:0x2E + 3*i], "little") for i in range(total))
     assets, references, transitions = [], 0, 0
     dialogue_count = partial_count = unavailable_count = 0
-    for actor in parsed.actors:
-        actor_id = stable_actor_id(scene, 1, actor.record_index)
-        script_id = "script://" + actor_id.removeprefix("scene://")
-        record = man[actor.byte_offset:actor.byte_offset + actor.byte_length]
-        entry = 1 + actor.local_count * 2 + 4
+    records = [(1, actor.record_index, actor) for actor in parsed.actors]
+    records += [(2, index, None) for index in range(parsed.partition_counts[2])]
+    for partition, index, actor in records:
+        actor_id = stable_actor_id(scene, 1, index) if actor is not None else None
+        owner = actor_id or f"scene://{scene}/scripts/man-p2/{index:04d}"
+        script_id = "script://" + owner.removeprefix("scene://")
+        label = f"Actor {index:04d}" if actor is not None else f"Partition 2 script {index}"
+        record, offset, entry = b"", None, None
         try:
-            report = inspect_record(record, entry, semantic_id=script_id, base_offset=actor.byte_offset)
+            if actor is not None:
+                offset = actor.byte_offset
+                record = man[offset:offset + actor.byte_length]
+                entry = 1 + actor.local_count * 2 + 4
+            else:
+                offset, record = _p2_record(man, index)
+                entry = _p2_entry(record)[0]
+            report = inspect_record(record, entry, semantic_id=script_id, base_offset=offset)
         except ImportError as exc:
             report = {"status": "unavailable", "instructions": [], "dialogues": [],
-                      "opaque_regions": [{"pc": entry, "byte_offset": actor.byte_offset + entry,
-                                           "length": max(0, actor.byte_length - entry)}],
+                      "opaque_regions": ([{"pc": 0, "byte_offset": offset, "length": len(record)}]
+                                         if offset is not None else []),
                       "stops": [{"pc": entry, "reason": str(exc)}]}
-        locator = dict(deepcopy(source), record_index=actor.record_index, partition=1,
-                       byte_offset=actor.byte_offset, byte_length=actor.byte_length,
-                       byte_coordinate_space="decoded_lzs_descriptor", sha256=_sha(record),
-                       record_alias_count=aliases[actor.byte_offset])
+        locator = dict(deepcopy(source), record_index=index, partition=partition,
+                       byte_offset=offset, byte_length=len(record) if offset is not None else None,
+                       byte_coordinate_space="decoded_lzs_descriptor", sha256=_sha(record) if offset is not None else None,
+                       record_alias_count=aliases[offset] if offset is not None else None)
         flags = [ref for row in report["instructions"] if (ref := _flag_reference(row)) is not None]
         destinations = [ref for row in report["instructions"] if (ref := _transition(row, record, known_scenes)) is not None]
         references += len(flags)
@@ -112,7 +123,8 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
         partial_count += report["status"] == "partial"
         unavailable_count += report["status"] == "unavailable"
         assets.append({"semantic_id": script_id, "asset_kind": "script", "kind": "script", "scope": "scene",
-                       "name": f"Actor {actor.record_index:04d} script", "actor_semantic_id": actor_id,
+                       "name": label + (" script" if actor is not None else ""), "actor_semantic_id": actor_id,
+                       "owner_semantic_id": owner, "partition": partition,
                        "script_id": script_id, "source_record": locator, "status": report["status"],
                        "entry_pc": entry, "instruction_count": len(report["instructions"]),
                        "dialogue_count": len(report["dialogues"]), "stop_count": len(report["stops"]),
@@ -123,9 +135,12 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
         for message in report["dialogues"]:
             offset, length = message["byte_offset"], message["length"]
             message_locator = dict(deepcopy(locator), byte_offset=offset, byte_length=length,
-                                   actor_record_byte_offset=actor.byte_offset, sha256=_sha(man[offset:offset + length]))
+                                   script_record_byte_offset=locator["byte_offset"], sha256=_sha(man[offset:offset + length]))
+            if actor is not None:
+                message_locator["actor_record_byte_offset"] = actor.byte_offset
             assets.append({"semantic_id": message["semantic_id"], "asset_kind": "dialogue", "kind": "dialogue",
-                           "scope": "scene", "name": f"Actor {actor.record_index:04d} dialogue {message['pc']:04x}",
+                           "scope": "scene", "name": f"{label} dialogue {message['pc']:04x}",
+                           "owner_semantic_id": owner, "partition": partition,
                            "actor_semantic_id": actor_id, "script_id": script_id, "pc": message["pc"],
                            "byte_length": length, "token_count": len(message["tokens"]),
                            "text_length": len(message["text"]), "text_sha256": _sha(message["text"].encode("utf-8")),
@@ -138,7 +153,8 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
     result = {"schema_version": "legaia.script-asset-catalog.v1", "scene": scene,
               "reference_commit": REFERENCE_COMMIT, "metadata_only": True, "runtime_state": "not_observed",
               "source_record": dict(deepcopy(source), decoded_man_sha256=_sha(man), decoded_man_size=len(man)),
-              "actor_count": len(parsed.actors), "script_count": len(parsed.actors), "dialogue_count": dialogue_count,
+              "actor_count": len(parsed.actors), "script_count": len(records), "dialogue_count": dialogue_count,
+              "partition_two_script_count": parsed.partition_counts[2],
               "partial_script_count": partial_count, "unavailable_script_count": unavailable_count,
               "flag_reference_count": references, "transition_count": transitions,
               "asset_count": len(assets), "assets": assets, "limitations": list(LIMITATIONS)}
@@ -147,7 +163,7 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
 
 
 def load_script_asset_catalog(disc: Any, scene: str) -> dict:
-    """Read one verified scene MAN, then inspect each bounded actor exactly once."""
+    """Read one verified scene MAN, then inspect bounded P1/P2 records once."""
     with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
         bundle, raw = find_scene_bundle(archive, start, end)
@@ -155,6 +171,10 @@ def load_script_asset_catalog(disc: Any, scene: str) -> dict:
         if len(descriptors) != 1:
             raise ImportError("script catalog requires exactly one scene MAN descriptor")
         descriptor = descriptors[0]
+        if descriptor.size > MAX_MAN_BYTES:
+            raise ImportError("script catalog MAN descriptor exceeds source size bound")
+        if sum(d.size > 0 and d.data_offset == descriptor.data_offset for d in bundle.descriptors) != 1:
+            raise ImportError("script catalog MAN compressed descriptor is aliased")
         offset = bundle.table_offset + descriptor.data_offset
         ceiling = min([bundle.table_offset + d.data_offset for d in bundle.descriptors
                        if d.data_offset > descriptor.data_offset] + [len(raw)])
