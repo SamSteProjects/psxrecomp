@@ -43,6 +43,25 @@ class ProjectWorkflow(unittest.TestCase):
             self.assertEqual(restored.imports["scene://fixture"], original)
             self.assertFalse(restored.dirty)
 
+    def test_transform_build_issues_use_serializer_constraints(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.import_metadata(synthetic_scene())
+            actor = "scene://fixture/actors/man-p1/0001"
+            def issues():
+                return project.state()["scene"]["entities"][0]["components"]["Transform"]["build_issues"]
+            self.assertEqual(issues(), [])
+            project.command({"type": "set_transform", "entity_id": actor,
+                             "position": {"x": 125, "y": 0}})
+            self.assertEqual(len(issues()), 2)
+            self.assertTrue(any("exact multiple of 64" in issue for issue in issues()))
+            self.assertTrue(any("project-only" in issue for issue in issues()))
+            project.undo()
+            self.assertEqual(issues(), [])
+            project.command({"type": "set_transform", "entity_id": actor,
+                             "position": {"x": 64, "z": 16384}})
+            self.assertEqual(issues(), [])
+
     def test_corrupt_evidence_and_escaping_import_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

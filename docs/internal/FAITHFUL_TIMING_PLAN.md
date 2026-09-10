@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (placement build feedback):** Prior save-status browser work was
+  verified progress. Inspected MAN placement serialization and referenced heading
+  evidence; no supported heading field established. Transform state now exposes
+  build_issues using the actual coordinate encoder, and Inspector displays them
+  before Build. Invalid X/Z grid/range and project-only authored Y are explicit;
+  edits remain usable in project space. Six workflow tests pass including
+  invalid125/Y0, valid64/16384 boundaries and Undo clearing warnings. Syntax/diff
+  checks pass; browser acceptance pending. Full SDK goal remains active.
+
+
 - **2026-09-10 (save-status browser acceptance):** Previous section metadata
   was implementation progress. Retail P2 navigation showed Unsaved: Active scene;
   applying a text edit added Actor and dialogue edits and made Build report

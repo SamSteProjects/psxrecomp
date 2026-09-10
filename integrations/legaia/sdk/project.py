@@ -831,6 +831,17 @@ class ProjectService:
             identifier = actor["semantic_id"]
             imported = deepcopy(actor["imported_transform"])
             authored = deepcopy(self.overrides.get(identifier, {}).get("Transform", {}))
+            from importer.serialization import encode_placement_coordinate
+            from importer.core import ImportError as PlacementError
+            placement_issues = []
+            for axis, value in authored.get("position", {}).items():
+                if axis == "y":
+                    placement_issues.append("Y is project-only; clear authored height before Build")
+                else:
+                    try:
+                        encode_placement_coordinate(value, axis.upper())
+                    except PlacementError as exc:
+                        placement_issues.append(str(exc))
             effective = deepcopy(imported)
             effective["position"].update(authored.get("position", {}))
             model = actor["model_reference"]
@@ -842,7 +853,8 @@ class ProjectService:
             if appearance:
                 effective_pair["donor_entity_id"] = donor["semantic_id"]
             entities.append({"id": identifier, "name": "Actor " + identifier.rsplit("/", 1)[-1],
-                             "components": {"Transform": {"imported": imported, "authored": authored, "effective": effective},
+                             "components": {"Transform": {"imported": imported, "authored": authored, "effective": effective,
+                                                           "build_issues": placement_issues},
                                             "ActorAppearance": {"imported": original_pair, "authored": appearance, "effective": effective_pair,
                                                                 "limitations": ["Initial model/animation pair only; scripts may replace it. Script and gameplay compatibility remain unverified."]},
                                             "ModelRenderer": {"asset_id": model.get("asset_semantic_id"), "resolution_status": model.get("resolution_status")},
