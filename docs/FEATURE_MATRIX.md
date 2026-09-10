@@ -152,3 +152,9 @@ import, unchanged opaque-byte and LZS validation. Browser navigation from
 town0c to town01 actor0049 displayed authored Z12288 without browser errors.
 Dialogue-run focusing is handler-checked but not separately browser-accepted.
 This report workflow does not constitute a new gameplay run.
+
+2026-09-10 partition-two report navigation accepted in browser: a one-run
+Greetings. -> Greetings! build for town01 P2[36] passed package validation.
+From town0c, the report link opened script36 and focused authored run0x11.
+This supersedes the handler-only navigation limit for that P2 path, while
+in-game display of the P2 edit remains unaccepted.

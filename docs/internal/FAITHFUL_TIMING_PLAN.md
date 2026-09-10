@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 build-report browser acceptance):** Previous resource links
+  were implementation progress. Fresh private build changed town01 P2 script36
+  run0x11 from Greetings. to Greetings!, retaining ten-byte capacity. Report
+  showed one change,24894 overlay bytes and passed provenance/opaque/LZS checks.
+  Clicking its run link from town0c switched to town01, opened script36 and
+  focused the authored textbox at0x11 with Greetings!. Browser errors empty.
+  Private p2-report-browser evidence retained under local-output/sdk-20260909.
+  No game runtime launched; P2 gameplay display and texture-report browser
+  navigation remain unaccepted. Full SDK goal remains active.
+
+
 - **2026-09-10 (resource build-report navigation):** Previous actor browser
   acceptance was progress. Extended build-change links to current authored TIM
   and partition-two script records resolved through assetRecords. Texture links
