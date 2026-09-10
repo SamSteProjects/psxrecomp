@@ -714,3 +714,11 @@ exited0. This accepts title startup and diagnostic capture for that executable.
 Host audio was nonzero, but71617 overflow drops prevent an audio-continuity
 claim. No savestate load or field progression occurred. Private evidence is in
 `local-output/stability-20260909/dma-live/result.json` and `startup.png`.
+
+A separate97 cold run narrowed the audio result: after18seconds, three samples
+over10.04seconds retained71622 cumulative drops and zero underruns while host
+nonzero frames increased49978→492742. Fill settled189.2→178.8ms near180ms target.
+Thus the sampled settled-title interval added no drops or underruns; the earlier
+startup drops remain unexplained. This is counter evidence, not subjective
+listening or broader gameplay audio acceptance. Process exited0; private report
+is `local-output/stability-20260909/dma-audio-live/result.json`.

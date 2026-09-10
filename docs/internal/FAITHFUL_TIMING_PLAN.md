@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Separate startup audio drops from settled-title behavior
+
+- Previous turn was progress:97 cold title/capture acceptance. Traced overflow_drops to rab_push dropping oldest source frames when its ring fills; the counter is cumulative, not an instantaneous continuity indicator.
+- Fresh isolated97 run on4399 sampled audio three times after18seconds, spaced5.02seconds. Over10.04seconds drops remained71622 and underruns remained0; fill moved189.2→182.4→178.8ms around180ms target. Host nonzero frames49978→271360→492742. Process41652 exited0. Private evidence `local-output/stability-20260909/dma-audio-live/result.json`.
+- This accepts no additional drops/underruns in that bounded settled-title interval, not startup continuity, subjective sound quality, field/XA/FMV audio or a universal audio fix. Startup losses remain unexplained; do not tune the ring from cumulative counters alone. No implementation or existing-field-run changes this turn. Full objective active.
+
 ### 2026-09-10 — Cold title and GPU capture on diagnostic rebuild
 
 - Previous turn was progress: full MSVC link. Launched97f0f026... in isolated `local-output/stability-20260909/dma-live`, port4399, separate saves, shipping HLE/software configuration. PID48756 reached the visually inspected title menu; captured51 GP0 commands and exited0 after quit. Private result.json retains identity, packet and audio responses; startup.png retains visual evidence.
