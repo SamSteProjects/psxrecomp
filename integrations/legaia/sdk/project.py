@@ -744,6 +744,25 @@ class ProjectService:
                             "changes": ["Position template"], "authored": deepcopy(template)})
         return records
 
+    def model_references(self) -> list[dict]:
+        """Project-wide initial assignments, not scripted runtime residency."""
+        references = []
+        for scene_id, document in self.imports.items():
+            for actor in document["actors"]:
+                identifier = actor["semantic_id"]
+                donor = self.appearance_source_actor(identifier)
+                imported = actor["model_reference"].get("asset_semantic_id")
+                effective = donor["model_reference"].get("asset_semantic_id")
+                for model_id in dict.fromkeys((imported, effective)):
+                    if model_id is None:
+                        continue
+                    references.append({"source_id": identifier, "target_id": model_id,
+                                       "scene_id": scene_id, "kind": "initial_model_assignment",
+                                       "imported": model_id == imported, "effective": model_id == effective,
+                                       "effective_donor_id": donor["semantic_id"] if model_id == effective else None,
+                                       "runtime_binding": "not_asserted"})
+        return references
+
     def state(self) -> dict:
         document = self.imports.get(self.active_scene)
         correlation = self._current_correlation()
@@ -777,7 +796,8 @@ class ProjectService:
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,
                 "actor_templates": deepcopy(list(self.actor_templates.values())),
-                "assets": deepcopy(list(self.assets.records.values())), "selection": {"entity_id": self.selected},
+                "assets": deepcopy(list(self.assets.records.values())),
+                "model_references": self.model_references(), "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),
                 "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},

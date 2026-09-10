@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (model usage relationships):** Prior captured-flag UI acceptance
+  was progress. Added project-wide model reference records derived from imported
+  actors and effective appearance donors, independent of active scene. Imported
+  and effective assignments remain distinct after an override; relationships
+  carry scene and actor IDs without claiming runtime residency. Model details
+  now offer Used by links that switch to the owning scene and select the actor.
+  Project/appearance suite ran 11 tests (10 passed, one private-disc skip),
+  including save/open, undo, output isolation and inactive-scene references;
+  JavaScript syntax passed. Browser navigation remains to be verified. Broader
+  texture/animation/script dependency relationships are still incomplete, and
+  the full SDK goal remains active.
+
 - **2026-09-10 (captured flag browser acceptance):** Previous snapshot adapter
   was progress. A private QA service replayed the retained cold-gameplay
   observation, marked historical, into the normal endpoint. Browser expansion

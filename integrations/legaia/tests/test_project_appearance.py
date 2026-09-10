@@ -45,6 +45,24 @@ class ProjectAppearanceTests(unittest.TestCase):
         self.project.command({"type": "set_actor_appearance", "entity_id": self.target,
                               "donor_entity_id": self.donor})
 
+    def test_model_references_follow_effective_assignment_and_history(self):
+        project = self.project
+        baseline = project.model_references()
+        self.assertEqual(len(baseline), 2)
+        self.assertTrue(all(ref["imported"] and ref["effective"] for ref in baseline))
+        self.assign()
+        references = [ref for ref in project.state()["model_references"] if ref["source_id"] == self.target]
+        self.assertEqual(len(references), 2)
+        self.assertEqual([(ref["imported"], ref["effective"]) for ref in references], [(True, False), (False, True)])
+        self.assertEqual(references[1]["effective_donor_id"], self.donor)
+        self.assertEqual(ProjectService.open(project.save()).model_references(), project.model_references())
+        project.undo()
+        self.assertEqual(project.model_references(), baseline)
+        project.active_scene = None
+        self.assertEqual(project.model_references(), baseline)
+        baseline[0]["source_id"] = "mutated-output"
+        self.assertNotEqual(project.model_references(), baseline)
+
     def test_set_clear_history_and_offline_reopen_preserve_transform_and_import(self):
         project = self.project
         project.command({"type": "set_transform", "entity_id": self.target, "position": {"x": 128}})
