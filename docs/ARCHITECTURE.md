@@ -51,6 +51,24 @@ zero IDs, global banks and mismatched channel counts explicit. Its request
 catalog supplies either one baked pose or a bounded full clip; NPC cadence
 and runtime script clip changes remain unknown.
 
+The actor-animation HTTP adapter resolves the active imported actor itself;
+clients cannot provide a different asset or animation binding. Its verified
+full clip feeds the shared frame-step/playback viewer. An actor-specific
+export route redecodes the binding and bakes the requested frame through the
+same GLB exporter, preserving actor and ANM provenance. Unknown NPC cadence is
+labelled as a manual preview rate. Asset search consumes SDK model/entity/scene
+records and indexes their names, stable IDs, references and provenance; it does
+not parse retail formats in the browser.
+
+`importer/script_inspection.py` verifies the actor against a fresh scene import,
+then follows supported encoded MAN instruction boundaries. Inline MES tokens
+are consumed atomically so dialogue punctuation cannot become phantom script
+opcodes. Unknown instructions stop a path; overlapping boundaries invalidate
+the graph. The actor inspector presents dialogue, instruction successors,
+opaque ranges and source details without executing scripts or evaluating story
+flags. Raw source bytes are transient private inspection output, never part of
+the portable project metadata or tracked source.
+
 `sdk/scene_preview.py` combines verified poses and texture associations into
 one bounded geometry cache keyed by project, import digest, scene and source
 file identity. Nested decoders share one verified disc handle only within the

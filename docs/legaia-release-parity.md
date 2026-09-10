@@ -11,6 +11,11 @@ importer tests pass with the retail disc, and browser appearance/picking/edit/
 undo checks pass. This extends authoring coverage; it does not broaden the
 runtime FMV, restore or transition acceptance recorded below.
 
+Actor animation export, asset search and bounded read-only script/dialogue
+inspection were subsequently connected and browser-verified. The initial
+model/animation donor helper has serializer evidence only. These SDK additions
+also leave runtime sources and generated game inputs unchanged.
+
 ## Reproduced FMV stall fixed
 
 Commit `58794999` repairs a generic CD controller error in

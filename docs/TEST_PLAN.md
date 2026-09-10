@@ -137,3 +137,24 @@ and Models on/off. No browser warning/error was reported during that check.
 Unknown height/facing, parked overlapping instances, script visibility and
 exact PSX blending remain explicit limitations. NPC assembly additionally
 passed an independent 5,028-vertex reference comparison and Blender render.
+
+The searchable asset browser was checked with a model-reference query returning
+one model and its three referring actors; category filtering isolates the model,
+and an actor result selects the corresponding inspector. NPC frame stepping,
+manual-rate playback/pause and selected-frame export pass in the browser. The
+actual exported GLB embeds frame index4 and the selected actor/ANM provenance.
+Unknown NPC timing remains null. HTTP checks reject client source bindings,
+geometry, paths, invalid frame types and actors outside the active scene.
+
+Script/dialogue UI acceptance includes actor0049's seven readable segments and
+23 supported instructions, with an explicit four-byte opaque tail. Actor0001
+shows a stop at0x6B for unsupported opcode0x29. Instruction rows expose encoded
+successors and record offsets without claiming active runtime branches. Text
+substitutions remain tokens. Broader opcode coverage, dialogue encoding/writes
+and story-state evaluation require their own evidence and serializer campaign.
+
+The content-inspection milestone passed all 83 importer tests with private
+retail input enabled and six focused HTTP/project tests. The donor-assignment
+helper's seven tests establish bounded encoding, donor/channel checks,
+unchanged opaque bytes and compressed-growth rejection. They do not establish
+editable project integration or game behavior; those remain separate gates.

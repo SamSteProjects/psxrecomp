@@ -52,6 +52,10 @@ material. No proprietary payload was added to these commits.
 | `29310f0d` | Verify scene-header ANM associations and assemble 39 town01 actor poses. |
 | `c0aabe0d` | Render supported textured scene geometry with mesh picking, focus and authored transforms. |
 | `4f865bb3` | Build source-verified scene payloads with bounded caching and request-scoped disc verification. |
+| `082e164b` | Search SDK assets and inspect NPC clips, frame exports, scripts and inline dialogue in the editor. |
+| `957acb85` | Expose actor-scoped animation/export and read-only script inspection APIs with strict request validation. |
+| `27014048` | Add a bounded donor model/animation assignment serializer foundation. |
+| `103eb9be` | Inspect verified MAN script paths and inline dialogue with explicit opaque boundaries. |
 
 The earlier reapplied release fixes include CD/XA response visibility,
 seek-position refresh, VBlank handling and Windows startup. Current frame
@@ -84,8 +88,28 @@ Mesh-body picking, focused textured NPC appearance, authored movement, imported
 position tether, undo and model visibility toggle passed browser inspection.
 The source-verified request hashes the image once and took 2.145 seconds in the
 recorded run. Unknown height/facing and scripted placement/visibility remain
-explicit; parked and overlapping instances are retained. NPC playback UI and
-full asset-category authoring remain outstanding.
+explicit; parked and overlapping instances are retained. Full asset-category
+authoring remains outstanding.
+
+NPC playback controls and selected-frame export are now connected: actor0049's
+15-frame clip steps/plays/pauses at an explicitly chosen preview rate, and its
+Frame5 browser export retains actor/ANM provenance. Search spans 119 models,
+52 active-scene actors and one imported scene, including cross-reference and
+provenance queries. The read-only script inspector presents seven dialogue
+segments and 23 supported instructions for actor0049, preserving its opaque
+tail; actor0001 explicitly stops on unsupported opcode0x29. This does not
+implement dialogue writes, story-state evaluation or general script execution.
+
+The next writable foundation can borrow an existing same-scene model/animation
+pair for a compatible initial MAN header. Seven focused tests pass, including
+actor5 borrowing actor40's pair with only two decoded bytes changed and an exact
+compressed round trip. This helper is not yet connected to authored commands,
+the editor or package builder, and its gameplay behavior remains unverified.
+
+The final importer suite passes all 83 tests with private retail input enabled;
+six focused HTTP/project tests also pass. Script fixtures retain retail text
+hashes and structural expectations rather than dialogue payloads. The updated
+main editor remains on port4388; the private acceptance editor was closed.
 
 Authored templates transfer saved position axes to another imported actor,
 preserving unspecified axes. The browser capture/apply/undo/redo/save workflow

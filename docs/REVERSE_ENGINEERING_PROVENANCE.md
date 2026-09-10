@@ -64,3 +64,18 @@ within 0.000039 units. The ANM carrier uses descriptor type 0x05 and retains
 the importer's container-relative locator. The central viewport applies one
 Y reflection after pose assembly; heading identity and unknown-height ground
 placement are explicit display conventions, not recovered retail fields.
+
+Bounded field-script and inline-dialogue interpretation is recorded in
+`integrations/legaia/provenance/script-inspection-20260909.md`. Pinned
+`crates/mes/src/lib.rs` supplies token widths/substitutions; the field VM and
+disassembler supply supported instruction widths and successors. Message bytes
+are consumed atomically, and unknown or conflicting boundaries remain opaque.
+The editor does not evaluate story flags or infer a live conversation branch.
+Retail dialogue remains private; tracked tests use hashes and synthetic text.
+
+The writable donor-pair foundation is documented in
+`docs/legaia-sdk/man-assignment-authoring.md`. It uses the existing MAN header,
+scene TMD and ANM associations, restricts changes to evidenced same-scene pairs
+with matching channel counts, and rejects compressed growth. Its retail
+two-byte round trip establishes encoding only, not script or gameplay
+compatibility. Editor/project/build integration is still required.

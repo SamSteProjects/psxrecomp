@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (asset search and actor content inspection):** Connected NPC
+  animation playback/frame export, searchable SDK model/actor/scene records,
+  and bounded script/inline-dialogue inspection to the editor. Browser checks
+  verify model-reference search, actor selection, frame playback/export and
+  explicit unknown-opcode boundaries. No runtime or generated game code was
+  changed; existing stability acceptance remains scoped as recorded below.
+  A separate donor model/animation header serializer passes a private two-byte
+  round trip and compression-capacity rejection; interactive authoring and
+  gameplay validation for that helper remain the next integration frontier.
+
 - **2026-09-09 (central scene geometry and NPC poses):** Added verified
   scene-header ANM poses and a textured WebGL authoring viewport. Town01
   renders 51/52 entities; 39 NPC poses match 5,028 independent reference
