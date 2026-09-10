@@ -137,3 +137,10 @@ and native actor creation remain unsupported.
 Undo/Redo, Save/Open existing and Build. Package reports one placement change,
 24894 overlay bytes and passed provenance/opaque/LZS validation. Browser errors
 were empty. This snapped edit has not been run in the game.
+
+2026-09-10 actor template extension: separate `authored-appearance-v1` presets
+capture authored donor pairs and apply through the existing same-scene verified
+appearance command. Position presets remain `authored-position-v1`; one preset
+never silently captures the other component. Browser capture/clear/apply/save/
+build and independent reopen passed for town01 actor49 donor15. Presets reuse
+existing actors; they do not instantiate NPCs or supply missing script state.

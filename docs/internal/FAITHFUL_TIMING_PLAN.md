@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (reusable appearance presets):** Previous title PCM evidence was
+  progress. Extended actor templates with explicit authored-appearance-v1 scope;
+  capture stores a donor pair separately from position presets. Applying delegates
+  to the existing freshly verified appearance command, preserving position and
+  using normal history/persistence/build paths. Validation rejects wrong source
+  scenes/donors and mixed components. Two targeted preset tests passed; existing
+  workflow/appearance/HTTP-template/catalog suite12 passed1 private-disc skip.
+  Retail browser captured Axe worker from actor49 donor15, cleared override,
+  applied preset, saved and built model103->94/animation15->18 only. Fresh import,
+  opaque bytes and LZS checks passed; no browser errors. Independent open verified
+  persisted template/assignment. Private QA appearance-template-browser under
+  local-output/sdk-20260909, server exit0. No new gameplay run; native actor
+  creation and unrestricted model/animation authoring remain incomplete.
+
 - **2026-09-10 (title audio PCM acceptance):** Prior startup checks were verified
   progress. Two cold baseline runs of61d99eac... reached title and exited0;
   MDEC0/CD-in0 means no FMV/XA acceptance. Nonzero SPU/host counters advanced.
