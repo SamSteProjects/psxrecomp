@@ -198,9 +198,9 @@ function renderBuildReport(){
     if(!report.changes.length){const empty=document.createElement('p');empty.className='field-note';empty.textContent=result.build_kind==='retail'?'No modified bytes: this package is the verified retail baseline.':'No field changes were listed in the build report.';changes.append(empty);}
     else{
       const wrap=document.createElement('div');wrap.className='script-table-wrap build-changes-table';const table=document.createElement('table');table.innerHTML='<thead><tr><th>Scene / asset</th><th>Field</th><th>Before</th><th>After</th><th>Scope</th></tr></thead><tbody></tbody>';
-      for(const change of report.changes){const row=document.createElement('tr');for(const [index,value] of [`${change.scene}\n${change.asset_id}`,change.field,buildValue(change.before),buildValue(change.after),change.scope].entries()){const cell=document.createElement('td');if(index===2||index===3){const text=document.createElement('pre');text.textContent=value;cell.append(text);}else if(index===0&&typeof change.owner_id==='string'&&(change.owner_id.includes('/actors/man-p1/')||buildChangeResource(change))){const link=document.createElement('button');link.type='button';link.textContent=value;link.title='Open authored source';link.onclick=()=>openBuildChange(change);cell.append(link);}else cell.textContent=value;row.append(cell);}table.querySelector('tbody').append(row);}wrap.append(table);changes.append(wrap);
+      for(const change of report.changes){const row=document.createElement('tr');for(const [index,value] of [`${change.scene}\n${change.asset_id}`,change.field,buildValue(change.before),buildValue(change.after),change.scope+(Number.isInteger(change.affected_grid_cell_count)?` · ${change.affected_grid_cell_count} grid cells`:'')].entries()){const cell=document.createElement('td');if(index===2||index===3){const text=document.createElement('pre');text.textContent=value;cell.append(text);}else if(index===0&&typeof change.owner_id==='string'&&(change.owner_id.includes('/actors/man-p1/')||buildChangeResource(change))){const link=document.createElement('button');link.type='button';link.textContent=value;link.title='Open authored source';link.onclick=()=>openBuildChange(change);cell.append(link);}else cell.textContent=value;row.append(cell);}table.querySelector('tbody').append(row);}wrap.append(table);changes.append(wrap);
     }
-    const labels={retail_provenance:'Retail provenance',unchanged_opaque_bytes:'Unchanged opaque bytes',lz_decode_round_trip:'LZS round trip',live_runtime:'Runtime test'},values={fresh_import_match:'Fresh import matched',not_required_unmodified_disc:'Not required · unmodified disc',not_run:'Not run'};
+    const labels={retail_provenance:'Retail provenance',unchanged_opaque_bytes:'Unchanged opaque bytes',lz_decode_round_trip:'LZS round trip',live_runtime:'Runtime test'},values={fresh_import_match:'Fresh import matched',not_required_no_MAN_overlay:'Not required · no compressed MAN changes',not_required_unmodified_disc:'Not required · unmodified disc',not_run:'Not run'};
     for(const [key,value] of Object.entries(report.validation)){const item=document.createElement('div');item.className='build-validation-row';const label=document.createElement('span');label.textContent=labels[key] ?? key.replaceAll('_',' ');const outcome=document.createElement('strong');outcome.textContent=value===true?'Passed':value===false?'Failed':values[value] ?? buildValue(value);outcome.classList.toggle('failed',value===false);item.append(label,outcome);$('build-validation').append(item);}
   }
   const {report:details,...metadata}=result;buildDialog.querySelector('pre.diagnostic-detail').textContent=JSON.stringify(metadata,null,2);
@@ -360,7 +360,7 @@ async function refreshScenePreview(){
     if(controller.signal.aborted||state.scene_preview_source_key!==key||state.scene?.id!==expectedScene)return;
     if(data.source_key!==key||data.scene_id!==expectedScene)throw new Error('Scene preview source changed while loading; retry models.');
     if(!Array.isArray(data.position_to_display)||data.position_to_display.length!==16||!data.position_to_display.every(numeric))throw new Error('SDK did not provide a valid scene display conversion.');
-    const failures=sceneRenderer.load(data);environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
+    const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
     renderHierarchy();renderInspector();if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
   }catch(error){if(error.name!=='AbortError'&&state.scene_preview_source_key===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;sceneRenderer?.clear();notify(error.message,true);}}
@@ -375,7 +375,7 @@ function renderHierarchy(){
     row.onclick=()=>{environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
   }
   const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
-  if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length}) · read only`;list.append(heading);}
+  if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
   for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',item.entity_id===environmentSelection);row.classList.toggle('selected',item.entity_id===environmentSelection);row.textContent=item.name;row.title=item.entity_id;row.onclick=()=>selectEnvironment(item.entity_id);row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
 }
@@ -503,7 +503,7 @@ function assetRecords(){
     ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.source_record?.prot_entry_name ?? state.scene?.name,sceneId:state.scene?.id,data:record}))
   ].map(record=>[record.id,record]));
   for(const authored of state.authored_assets ?? []){
-    if(typeof authored.id!=='string'||!['actor','texture','template','script'].includes(authored.kind))continue;
+    if(typeof authored.id!=='string'||!['actor','texture','template','script','scene'].includes(authored.kind))continue;
     const assetId=authored.kind==='script'?(authored.script_id ?? authored.id):authored.id,existing=records.get(assetId);
     records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
   }
@@ -525,7 +525,7 @@ function initialAssetUsage(record,modelReferences){
 }
 function showAssetDetails(record){
   const isAuthored=!!record.authoredRecord;
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='script'?'Open script workspace':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(['model','animation'].includes(record.type)){
@@ -974,13 +974,41 @@ function renderInspector(){
   if(environment){
     $('selection-summary').textContent=environment.name;
     const source=environment.source_record,transform=source.imported_transform;
-    $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Imported · read only</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
+    $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Source and overrides</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
     $('frame-environment').onclick=frameEnvironment;
+    if(source.record_offset&&source.source_record?.map_sha256){
+      const section=document.createElement('section');section.className='component';
+      const title=document.createElement('h3');title.textContent='Shared transform override';section.append(title);
+      const note=document.createElement('p');note.className='field-note';note.textContent='Changes affect every instance using this placement record. Saved in the project and included in builds. In-game behavior has not been verified.';section.append(note);
+      const binding=activeScenePreview()?.environment_authoring;
+      const current=binding?.edits?.find(e=>e.record_index===source.object_record_index);
+      const inputs=[];
+      for(const [field,label,base] of [['offset','Placement offset',source.record_offset],['rotation_psx','Rotation (4096 units per turn)',transform.rotation_psx]]){
+        const heading=document.createElement('h4');heading.textContent=label;section.append(heading);
+        for(const axis of ['x','y','z']){
+          const row=document.createElement('label');row.textContent=`${axis.toUpperCase()} · imported ${base[axis]} `;
+          const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live';row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
+        }
+      }
+      const effective=document.createElement('p');effective.textContent=`Effective position: ${JSON.stringify(environment.effective_transform?.position??transform.position)}`;section.append(effective);
+      const apply=document.createElement('button');apply.textContent='Apply shared transform';apply.disabled=state.project?.mode==='live';
+      apply.onclick=async()=>{
+        const edit={record_index:source.object_record_index};
+        for(const {field,axis,input,base} of inputs){if(!input.value.trim()||!input.checkValidity()){input.reportValidity();return;}const value=Number(input.value);if(value!==base)(edit[field]??={})[axis]=value;}
+        const edits=(binding?.edits??[]).filter(e=>e.record_index!==source.object_record_index);
+        if(edit.offset||edit.rotation_psx)edits.push(edit);
+        await api('/api/command',edits.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
+      };
+      section.append(apply);$('inspector').insertBefore(section,$('inspector').lastElementChild);
+    }
     if(Number.isInteger(source.object_record_index)){
       const related=environmentEntities().filter(item=>item.source_record?.object_record_index===source.object_record_index);
       const section=document.createElement('section');section.className='component';
       const heading=document.createElement('h3');heading.textContent='Shared placement record';section.append(heading);
-      const note=document.createElement('p');note.className='field-note';note.textContent=`${related.length} imported scene instance${related.length===1?'':'s'} use MAP record ${source.object_record_index}. Its offsets and rotations are shared. An independent instance edit requires separating that record first.`;section.append(note);
+      const note=document.createElement('p');note.className='field-note';note.textContent=`${related.length} imported scene instance${related.length===1?'':'s'} use MAP record ${source.object_record_index}. Its offsets and rotations are shared. Editing this source record affects every grid use; independent instance overrides are not implemented.`;section.append(note);
+      if(Number.isInteger(source.source_record?.map_reference_count)){
+        const count=document.createElement('p');count.className='field-note';count.textContent=`Total source grid references: ${source.source_record.map_reference_count}, including cells outside the preview visibility gates.`;section.append(count);
+      }
       if(related.length>1){
         const select=document.createElement('select');select.setAttribute('aria-label','Instances sharing this placement record');
         for(const item of related){const option=document.createElement('option');option.value=item.entity_id;option.textContent=item.name;option.selected=item.entity_id===environment.entity_id;select.append(option);}

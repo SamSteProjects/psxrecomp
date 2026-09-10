@@ -29,7 +29,38 @@ def source_key(project) -> str | None:
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
+                   "environment": deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
+
+
+def environment_effective_transforms(project, metadata: dict) -> dict:
+    """Project shared descriptor edits onto every verified source instance."""
+    value = project.overrides.get(project.active_scene, {}).get("Environment")
+    if not value:
+        return {}
+    from importer.environment_authoring import patch_environment_transforms
+    project._validate_environment(project.active_scene, value)
+    if metadata["source_record"]["map_sha256"] != value["source_sha256"]:
+        raise ProjectError("Environment preview source differs from authored binding")
+    _, changes = patch_environment_transforms(project._environment_source(project.active_scene),
+                                               value["source_sha256"], value["edits"])
+    by_record = {}
+    for change in changes:
+        by_record.setdefault(change["record_index"], []).append(change)
+    result = {}
+    for placement in metadata["placements"]:
+        rows = by_record.get(placement["object_record_index"], [])
+        if not rows:
+            continue
+        transform = deepcopy(placement["imported_transform"])
+        for row in rows:
+            field, axis = row["field"].split('.')
+            if field == 'offset':
+                transform["position"][axis] += (row["after_value"] - row["before_value"]) * (-1 if axis == 'z' else 1)
+            else:
+                transform["rotation_psx"][axis] = row["after_value"]
+        result[placement["semantic_id"]] = transform
+    return result
 
 
 def _display_position(position: dict) -> dict:
@@ -109,6 +140,7 @@ class ScenePreviewService:
         return {"schema": "legaia.scene-preview.v1", "source_key": key,
                 "scene_id": projected["id"], "coordinate_system": "editor_field_y_up_source_units",
                 "position_to_display": list(POSITION_TO_DISPLAY),
+                "environment_authoring": deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
                 "assets": deepcopy(self._assets), "entities": instances, "metrics": dict(self._metrics),
                 "limits": ["Authored placement reference, not scripted runtime placement or visibility",
                            "Unknown heights use a display ground plane and unknown heading uses identity",
@@ -196,16 +228,20 @@ class ScenePreviewService:
                 try:
                     env = environment_loader_factory(project.disc_path, document["scene"]["name"])
                     placements = env.metadata["placements"]
+                    effective = environment_effective_transforms(project, env.metadata)
                     if len(placements) + len(actors) > MAX_ENTITIES:
                         raise RetailImportError("Scene environment entity budget exceeded")
                     for placement in placements:
+                        transform = effective.get(placement["semantic_id"], placement["imported_transform"])
                         asset_id = placement.get("model_asset_id")
                         instance = {"entity_id": placement["semantic_id"], "kind": "environment",
                                     "name": placement["name"], "asset_id": asset_id,
                                     "renderable": False, "geometry_key": None,
-                                    "position": deepcopy(placement["imported_transform"]["position"]),
-                                    "display_position": _display_position(placement["imported_transform"]["position"]),
-                                    "model_to_scene": environment_matrix(placement["imported_transform"]),
+                                    "position": deepcopy(transform["position"]),
+                                    "display_position": _display_position(transform["position"]),
+                                    "model_to_scene": environment_matrix(transform),
+                                    "effective_transform": deepcopy(transform),
+                                    "authored_transform": placement["semantic_id"] in effective,
                                     "source_record": deepcopy(placement),
                                     "evidence": {"placement": "imported_MAP_and_MAN_floor_LUT",
                                                  "mesh_pool": deepcopy(env.metadata["mesh_pool"]),

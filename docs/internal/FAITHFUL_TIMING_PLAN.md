@@ -213,6 +213,62 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Verify and checkpoint shared scenery authoring
+
+- Previous turn was a status response, with no implementation progress. Revalidated the working tree and resumed the pending authoring checkpoint. The earlier test process is no longer present among current Python processes; its missing output was not treated as a passing result.
+- Ran all 19 `test_build*.py` tests with `LEGAIA_DISC_BIN` supplied: all passed in 29.469 seconds, including source-bound environment packaging. Environment tests: 8 passed, 1 retail-dependent skip in the separate invocation. JavaScript syntax and diff whitespace checks passed.
+- Shared scenery transforms now connect inspector editing, effective scene preview, undo/save/reopen, authored asset review and guarded MAP build output. Changes remain shared-record edits; independent instance allocation and in-game scenery behavior are not accepted. The full SDK and release-parity objective remains active.
+
+### 2026-09-10 — Regress environment packaging against retail source
+
+- Previous turn was progress: authored scene catalog and shared-cell build report. Verified town01 MAPentry1 and town0c MAPentry19 have identical content hashes but distinct disc spans; this town01 overlay does not target town0c's separate entry.
+- Existing build suite:18 tests,14 passed and4 retail-dependent skips. Added and ran retail environment build acceptance: save/reopen, exact single-byte payload delta, before/after hashes, two affected grid cells, report count and uncompressed audit status all pass. No runtime launch. Full objective active.
+
+### 2026-09-10 — Surface saved scenery edits in project review
+
+- Previous turn was progress: updated packaging UI/audit evidence. Scene-owned environment overrides now appear in the project-wide authored asset catalog with record counts and Open scene navigation. Build reports carry affected-grid-cell counts, displayed beside shared edit scope. Uncompressed-only build validation gets a readable label.
+- Save/reopen regression now asserts the authored scene catalog retains the Environment binding. Two project tests, JavaScript syntax and diff checks pass. Browser authored-catalog/build-report acceptance remains open; full objective active.
+
+### 2026-09-10 — Align scenery authoring UI and build evidence
+
+- Previous turn was progress: guarded MAP packaging and independent byte comparison. Updated stale read-only/packaging UI wording and scene workflow documentation. Regenerated private build3c52729fcb515a4c, packageSHA cf245f3d6eb7819c354de104764dd76801ab84159b2421d689ae34720efd8e81; audit reports shared offset.x0 to128, fresh provenance, preserved opaque bytes and no required MAN LZ decode. Runtime remains not_run.
+- Four environment authoring/project tests, JavaScript syntax and diff checks pass. Full objective active; in-game scenery acceptance, independent instance edits and remaining SDK/stability scope remain unfinished.
+
+### 2026-09-10 — Package shared scenery transform edits
+
+- Previous turn was progress: browser edit/save/undo acceptance. Build now reimports environment source, patches audited descriptor axes and emits a guarded private MAP overlay. It checks direct disc-span identity and unchanged non-audited bytes, retains overlap rejection, and reports shared-record scope.
+- Built saved record194 X offset0 to128 into private build6929f680c304c0f0 (packageSHA91a3951e83cbf230d8022b18aeb934a13268df513e94202526679e152c0e4410). Independent comparison confirms only MAP byte6208 changes, with73727 other bytes identical. Runtime not launched. Corrected audit LZ label for uncompressed-only outputs afterward; fresh build ID will differ. UI packaging note still needs updating. Full objective active.
+
+### 2026-09-10 — Accept shared scenery edit/save/undo workflow
+
+- Previous turn was progress: inspector transform controls. Isolated4395/tab60 edited record194 X offset0 to128. Both instances show effective X5312 to5440 with their distinct Z1856/2112 intact. Saved through editor; separately reopened saved project with ProjectService and confirmed offset128 and clean state. Browser Undo restored offset0 and effective X5312, with Redo available.
+- Initial verification helper passed a string to ProjectService.open, which requires Path; corrected the helper and reran successfully. Existing read-only section labels need refinement now that a shared-transform authoring section exists. Stopped isolated editor through owned stop file. MAP packaging/runtime acceptance remains open; full objective active.
+
+### 2026-09-10 — Expose shared scenery transform authoring in the inspector
+
+- Previous turn was progress: effective environment preview projection. Added source offsets/hash to preview metadata and scene-wide authored binding to response. Inspector now provides imported-labeled offset/rotation controls, effective position and Apply shared transform, preserving edits on other records. Returning axes to imported values removes that record's override. Live mode disables inputs.
+- Environment selection survives successful same-identity preview refresh. UI explicitly states packaging is not yet supported. JavaScript syntax and two environment project tests pass; browser save/undo/reopen acceptance remains next. Full objective active.
+
+### 2026-09-10 — Project authored scenery transforms into scene preview
+
+- Previous turn was progress: persistent source-bound Environment overrides. Preview cache now includes these overrides. Verified descriptor changes project onto all matching instances with subtractive source Z offsets and authored rotations; source transforms remain intact and effective transforms are separate response fields.
+- Six project/scene-preview tests pass, including shared-instance deltas, Z sign, rotation and imported metadata preservation. Editor controls and MAP packaging remain next. Full objective active.
+
+### 2026-09-10 — Persist source-bound scenery edits with undo
+
+- Previous turn was progress: exact shared-record patcher. Connected scene-owned Environment overrides to project commands, source revalidation, undo/redo, clear and offline save/reopen validation. A stale MAP hash is rejected before project mutation. Build explicitly rejects these overrides until MAP packaging is integrated, preventing silent baseline output.
+- Focused project workflow test passes for dirty state, undo/redo, save/reopen, offline clear/undo and stale-source nonmutation. Python compile checks pass. Editor controls, effective preview and build packaging remain next; full objective active.
+
+### 2026-09-10 — Implement audited shared environment transform writes
+
+- Previous turn was progress: full source-grid impact counts. Added source-hash-guarded MAP descriptor transform patcher for signed offsets and exact PSX rotations. Only requested two-byte axes change; audit records all affected grid cells. Duplicate/out-of-range/unknown/unreferenced edits are rejected; anchor, collision and other descriptor bytes remain untouched.
+- Two tests pass for exact output bytes, shared-cell audit, no-op identity and invalid/stale rejection. This is infrastructure for the next persistent editor/build workflow, not completed scenery authoring. Full objective active.
+
+### 2026-09-10 — Count complete source-grid sharing before scenery writes
+
+- Previous turn was progress: committed selection/disconnect workflow. Traced existing project command persistence and build validation paths for next authoring work. Added complete MAP-grid reference counts to environment preview source evidence and the shared-record inspector, including references outside visible placement gates. This distinguishes source write impact from preview-instance counts.
+- Fresh town01 check: house137 has1 source reference; decoration194 has2. No currently previewed record has extra hidden-grid references in this scene, and every source count is at least its preview count. JavaScript syntax/diff checks pass. Persistent scenery overrides and packaging remain unimplemented; full objective active.
+
 ### 2026-09-10 — Record the assembled scene inspection workflow
 
 - Previous turn was progress: disconnect response fix with focused tests. Added docs/legaia-sdk/scene-inspection.md documenting the end-to-end hierarchy, direct picking, framing, visibility and shared-record navigation workflows, with explicit current counts and fidelity/authoring limits.

@@ -19,8 +19,22 @@ Repeated scenery can share one MAP descriptor. The Shared placement record
 section lists the imported instances using that descriptor; choosing another
 instance selects and frames it. The count covers imported scene instances,
 not every possible runtime or grid reference. Source offsets and rotations
-belong to the shared descriptor. Environment transform authoring and
-independent instance overrides are not yet implemented.
+belong to the shared descriptor. The inspector can author shared offsets and
+rotations, save them as project overrides, undo/redo them, and include them in
+builds. Independent instance overrides are not yet implemented.
+
+The shared-transform inputs show imported values and an effective position.
+Apply shared transform updates every instance using the record. Returning
+all axes to imported values clears that record's override while preserving
+edits to other records. Source hashes are checked before editing and building.
+The inspector also reports complete source-grid reference counts.
+
+The browser workflow for record194 was verified with X offset0 to128: both
+instances moved from X5312 to5440, Save preserved the edit, reopening restored
+it cleanly, and Undo restored the imported positions. The private package's
+MAP payload changed only byte6208; all73727 other bytes remained identical.
+The regenerated audit correctly marks LZ decoding as unnecessary for this
+uncompressed MAP-only overlay. This package has not been accepted in-game.
 
 ## Verified workflows
 
@@ -45,7 +59,7 @@ initial source frame; scripts and runtime visibility are not evaluated.
 Actor heights and headings retain their existing unresolved conventions.
 Ground uses the source floor-LUT heightfield; it is not a complete recreation
 of the retail ground emitter. Complete scene parity, animated palettes,
-exact PSX blending, world-map assembly and scenery editing remain unfinished.
+exact PSX blending, world-map assembly and scenery runtime acceptance remain unfinished.
 
 Scene responses can finish after their browser tab closes. Connection and
 timeout failures during response writes close that connection without a

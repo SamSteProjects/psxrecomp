@@ -270,6 +270,14 @@ def load_environment_preview_catalog(disc, scene: str) -> EnvironmentPreviewCata
                 placement["model_resolution"] = "unsupported_pool_index"
         metadata["decoration_count"] = len(decorations["placements"])
         metadata["placements"].extend(decorations["placements"])
+        # Visibility gates omit some grid uses. Authoring impact must count
+        # the entire source grid, not just instantiated preview objects.
+        from collections import Counter
+        references = Counter(word[0] & 0x1FF for word in struct.iter_unpack("<H", data[0x8000:0x10000]))
+        for placement in metadata["placements"]:
+            placement["source_record"]["map_reference_count"] = references[placement["object_record_index"]]
+            placement["source_record"]["map_sha256"] = sha256(data).hexdigest()
+            placement["record_offset"] = dict(zip("xyz", struct.unpack_from("<3h", data, placement["object_record_index"] * 32)))
         metadata["limitations"][0] = "Placed objects and field decorations are included; ground is a separate layer."
         candidates = [d for d in bundle.descriptors if d.type_byte == 5 and d.size > 0]
         if len(candidates) != 1:

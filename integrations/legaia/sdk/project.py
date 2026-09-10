@@ -368,6 +368,39 @@ class ProjectService:
                 raise ProjectError("Dialogue source differs from freshly verified imported evidence")
             return load_dialogue_authoring_context(self.disc_path, document["scene"]["name"])
 
+    def _validate_environment(self, identifier: str, value: dict) -> None:
+        import re
+        import struct
+        from importer.environment_authoring import patch_environment_transforms
+        if identifier not in self.imports or not isinstance(value, dict) or set(value) != {"source_sha256", "edits"}:
+            raise ProjectError("Environment edits require an imported scene and source binding")
+        if not isinstance(value["source_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", value["source_sha256"]):
+            raise ProjectError("Environment source binding requires a SHA256 digest")
+        if not isinstance(value["edits"], list) or not value["edits"]:
+            raise ProjectError("Environment edits must be nonempty")
+        # Offline schema validation uses a complete synthetic grid containing
+        # every descriptor. Real source ownership is checked on edit/build.
+        fixture = bytearray(0x12000)
+        for record in range(512):
+            struct.pack_into('<H', fixture, 0x8000 + record * 2, record)
+        fixture = bytes(fixture)
+        patch_environment_transforms(fixture, hashlib.sha256(fixture).hexdigest(), value["edits"])
+
+    def _environment_source(self, identifier: str) -> bytes:
+        from importer.pipeline import _disc_context, import_scene
+        from importer.environment import load_environment_placements
+        if not self.disc_path or identifier not in self.imports:
+            raise ProjectError("Environment authoring requires an imported scene and retail source")
+        document = self.imports[identifier]
+        with _disc_context(self.disc_path) as (_, _, _, archive):
+            if import_scene(self.disc_path, document["scene"]["name"]) != document:
+                raise ProjectError("Environment source differs from imported evidence")
+            source = load_environment_placements(self.disc_path, document["scene"]["name"])["source_record"]
+            data = archive.read_entry(archive.entry(source["map_entry_index"]), extended=True)
+            if hashlib.sha256(data).hexdigest() != source["map_sha256"]:
+                raise ProjectError("Environment MAP changed during source verification")
+            return data
+
     def _validate_transitions(self, identifier: str, value: dict) -> None:
         import re
         from importer.transition_authoring import ENTRY_FIELDS
@@ -482,6 +515,29 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get("type") in ("set_environment_transforms", "clear_environment_transforms"):
+            identifier = command.get("entity_id")
+            if identifier not in self.imports:
+                raise ProjectError("Environment owner must be an imported scene")
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            if command["type"] == "set_environment_transforms":
+                from importer.environment_authoring import patch_environment_transforms
+                value = deepcopy(command.get("value"))
+                self._validate_environment(identifier, value)
+                patch_environment_transforms(self._environment_source(identifier), value["source_sha256"], value["edits"])
+                after["Environment"] = value
+            else:
+                after.pop("Environment", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") == "clear_texture_replacement":
             identifier = command.get("asset_id")
             if not isinstance(identifier, str) or not identifier.startswith("texture://"):
@@ -832,8 +888,11 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "Environment"}:
                 raise ProjectError("Unsupported authored component")
+            if "Environment" in components:
+                result._validate_environment(identifier, components["Environment"])
+                result.overrides.setdefault(identifier, {})["Environment"] = deepcopy(components["Environment"])
             if "Transform" in components:
                 if not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
                     raise ProjectError("Unsupported authored transform")
@@ -881,6 +940,12 @@ class ProjectService:
         """Project-wide authored references, independent of derived resource caches."""
         records = []
         for scene_id, document in sorted(self.imports.items()):
+            environment = self.overrides.get(scene_id, {}).get("Environment")
+            if environment:
+                records.append({"id":scene_id, "kind":"scene", "name":document["scene"]["name"],
+                                "scene_id":scene_id, "source_scene":document["scene"]["name"],
+                                "changes":[f"Shared scenery transforms: {len(environment['edits'])} records"],
+                                "authored":{"Environment":deepcopy(environment)}})
             for actor in document["actors"]:
                 identifier = actor["semantic_id"]
                 edits = self.overrides.get(identifier, {})

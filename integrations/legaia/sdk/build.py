@@ -53,6 +53,8 @@ def build_report(audit) -> dict:
         changes.append({"scene": change["scene"], "asset_id": change.get("transition_id", change.get("run_id", change["semantic_id"])),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
+                        **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
+                           if "affected_grid_cells" in change else {}),
                         "scope": change.get("scope", "initial-man-placement-only")})
     return {"schema_version": "legaia.build-report.v1", "changes": changes,
             "validation": dict(audit["validation"]), "change_count": len(changes),
@@ -173,10 +175,17 @@ def _build_project(project, output_dir) -> dict:
     if not project.imports:
         raise BuildError("Build requires at least one verified imported scene")
     scene_edits: dict[str, dict] = {}
+    environment_edits = {}
     entity_lookup = {actor["semantic_id"]: (scene_id, actor)
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(components, dict) and "Environment" in components:
+            project._validate_environment(identifier, components["Environment"])
+            environment_edits[identifier] = components["Environment"]
+            components = {k:v for k,v in components.items() if k != "Environment"}
+            if not components:
+                continue
         if isinstance(components, dict) and "Transitions" in components:
             project._validate_transitions(identifier, components["Transitions"])
             document = project._dialogue_document(identifier)
@@ -255,7 +264,7 @@ def _build_project(project, output_dir) -> dict:
 
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
-    for scene_id in sorted(set(scene_edits) | set(texture_edits)) or project.imports:
+    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits)) or project.imports:
         document = project.imports[scene_id]
         fresh = import_scene(project.disc_path, document["scene"]["name"])
         if canonical_json(document) != canonical_json(fresh):
@@ -264,6 +273,32 @@ def _build_project(project, output_dir) -> dict:
     overlays = []
     audit_edits = []
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
+        for scene_id, binding in sorted(environment_edits.items()):
+            from importer.environment_authoring import patch_environment_transforms
+            from importer.environment import load_environment_placements
+            document = project.imports[scene_id]
+            scene = document["scene"]["name"]
+            if document["source"]["disc_identity"] != "sha256:" + disc_hash:
+                raise BuildError(f"Source disc identity does not match {scene_id}")
+            source = load_environment_placements(project.disc_path, scene)["source_record"]
+            entry = archive.entry(source["map_entry_index"])
+            original = archive.read_entry(entry, extended=True)
+            changed, changes = patch_environment_transforms(original, binding["source_sha256"], binding["edits"])
+            allowed = {i for row in changes for i in range(row["byte_offset"], row["byte_offset"]+2)}
+            if len(changed) != len(original) or any(a != b and i not in allowed for i,(a,b) in enumerate(zip(original,changed))):
+                raise BuildError("Environment patch changed bytes outside audited transform axes")
+            location = (archive.node.extent_lba + entry.start_lba) * 2048
+            disc_user_size = (_image.size // 2352) * 2048
+            if _image.read_user(0, location, len(original), disc_user_size) != original:
+                raise BuildError("Environment MAP overlay differs from its original disc span")
+            if changes:
+                overlays.append({"scene":scene, "offset":location, "size":len(changed),
+                                 "file":f"assets/{scene}-environment.map", "payload":changed,
+                                 "sha256":_hash(changed), "expected_sha256":_hash(original)})
+                for row in changes:
+                    audit_edits.append({**row, "scene":scene,
+                        "semantic_id":f"environment://{scene}/field-map/records/{row['record_index']:03d}",
+                        "scope":"shared-MAP-transform-only"})
         for scene_id, edits in sorted(scene_edits.items()):
             document = project.imports[scene_id]
             scene = document["scene"]["name"]
@@ -421,7 +456,8 @@ def _build_project(project, output_dir) -> dict:
         "edits": audit_edits,
         "overlays": [{key: value for key, value in overlay.items() if key != "payload"} for overlay in overlays],
         "validation": {"retail_provenance": "fresh_import_match", "unchanged_opaque_bytes": True,
-                       "lz_decode_round_trip": True if overlays else "not_required_unmodified_disc",
+                       "lz_decode_round_trip": (True if any(o["file"].endswith('-man.lzs') for o in overlays)
+                                                else "not_required_no_MAN_overlay" if overlays else "not_required_unmodified_disc"),
                        "live_runtime": "not_run"},
     }
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
@@ -444,6 +480,11 @@ def _build_project(project, output_dir) -> dict:
                    if has_appearance else "Private authored field placements for the verified retail disc.")
     feature_description = ("Apply initial MAN donor assignments and X/Z placements; scripts may override appearance."
                            if has_appearance else "Apply this project's representable field X/Z placement edits.")
+    if any(c.get("scope") == "shared-MAP-transform-only" for c in audit_edits):
+        package_suffix = " authored scene data"
+        feature_name = "Authored scene data"
+        description = "Private source-bound scene edits including shared MAP placement transforms."
+        feature_description = "Apply shared environment offsets and rotations; every reference to each edited MAP record is affected."
     if has_dialogue:
         package_suffix = " authored actor data"
         feature_name = "Authored actor data"
