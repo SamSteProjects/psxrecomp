@@ -158,3 +158,9 @@ Greetings. -> Greetings! build for town01 P2[36] passed package validation.
 From town0c, the report link opened script36 and focused authored run0x11.
 This supersedes the handler-only navigation limit for that P2 path, while
 in-game display of the P2 edit remains unaccepted.
+
+2026-09-10 texture report navigation accepted in browser: a source-verified
+TIM payload edit built with33312 overlay bytes. Its report link switched from
+town0c to town01 and opened the effective256x256,4bpp,16-palette texture with
+the matching replacement hash. Browser errors were empty; no new gameplay
+validation is implied.

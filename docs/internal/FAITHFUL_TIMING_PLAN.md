@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (texture build-report browser acceptance):** Previous P2 browser
+  acceptance was progress. Fresh private project changed one TIM payload byte
+  in texture://town01/5/raw/0 through the verified replacement service. Build
+  reported one texture change,33312 overlay bytes and passing provenance/opaque/
+  LZS checks. From town0c, the report link opened the effective authored texture
+  in town01:256x256,4bpp,16 palettes; replacement SHA101eb864cf57 matched the
+  report. Browser errors empty. Private texture-report-browser evidence retained
+  under local-output/sdk-20260909. No runtime launched or visual gameplay claim.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (P2 build-report browser acceptance):** Previous resource links
   were implementation progress. Fresh private build changed town01 P2 script36
   run0x11 from Greetings. to Greetings!, retaining ten-byte capacity. Report
