@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Narrow and checkpoint field visibility reproduction
+
+- Previous turn was progress: live visibility issue captured. North90 restored visible Vahn through local camera transition (north-check-2.png). Diagonal90 returned to village steps visibly; subsequent Down30 made Vahn disappear (short-south.png), with player XYZ3264/128/3520 ->3264/96/3280. NPC/camera behavior and identity checks remain responsive. This narrows a location-dependent reproduction without identifying root cause.
+- Created private save checkpoint11 at visible approach (generation1 last_ok1) and checkpoint10 after disappearance (generation2 last_ok1). No loads performed; cold run provenance intact. An initial slot12 request was rejected because valid slots are0..11; no state saved by that rejected request.
+- Same runtime50140/editor48160/session45118 remains live; controller supports checkpoint slot and checkpoint-status. Checkpoints are confined to private run20260910T213334Z-15f81d42. Next: diagnose/compare paired states before further exit traversal. Full objective active; no runtime fix or arrival acceptance claimed.
+
+
 ### 2026-09-10 — Field traversal reveals player visibility issue
 
 - Previous turn was progress: guarded cold field reached. Continued same runtime50140/editor48160/session45118, moved south from Genesis Tree through step/camera view. Vahn was visible on steps, then absent in subsequent ground view while NPCs and camera continued responding. East input changed player record; repeated south movement made unclear progress. No exit transition claimed.
