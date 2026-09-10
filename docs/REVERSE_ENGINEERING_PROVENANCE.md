@@ -6,6 +6,13 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-09-10 opening-trigger investigation uses the same pin's
+`crates/engine-vm/src/field/step/menu_ctrl/nibble_e.rs::op_4c_ne`
+(blob `61ad972bd5455bdb84b1ab376f6ad959cb23190b`) for MENU_CTRL ED/E8
+operand widths and encoded continuations. P2 record 3 remains partially
+decoded, and locating text inside its bytes does not authorize editing it.
+See `legaia-sdk/trigger-script-inspection.md` for the bounded source check.
+
 Our previous independently implemented SDK source was recovered from
 `legaia-sdk-integration`, commit `28ce54367127e858c8ef2bfbd27ffe64f60e0e93`.
 Current implementation remains in this Recomp checkout. SDK-Clone,

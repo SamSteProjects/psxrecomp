@@ -153,12 +153,28 @@ def _instruction(data: bytes, pc: int) -> dict:
     elif op == 0x4C:
         need(1)
         sub = data[operand]
-        if sub not in (0x50, 0x51, 0x52, 0x53, 0x54):
+        if sub in (0xED, 0xE8):
+            # Pinned d6e64c68 engine-vm/field/step/menu_ctrl/nibble_e.rs
+            # op_4c_ne, blob 61ad972bd5455bdb84b1ab376f6ad959cb23190b:
+            # sub-D advances header+2; sub-8 advances header+9. Both
+            # advance after their host call, including extended-context form.
+            size = 2 if sub == 0xED else 9
+            need(size)
+            args = {"sub_op": sub}
+            if sub == 0xED:
+                mnemonic = "SET_FIELD_STATE_BA66"
+                args.update(address="0x8007BA66", value=data[operand + 1])
+            else:
+                mnemonic = "CAMERA_ZOOM"
+                args.update(zip(("zoom_x", "zoom_y", "zoom_z", "mode"),
+                                struct.unpack_from("<hhhh", data, operand + 1)))
+        elif sub in (0x50, 0x51, 0x52, 0x53, 0x54):
+            size, mnemonic = {0x50: (3, "SET_ACTOR_MODEL"), 0x51: (5, "NPC_RUN"),
+                              0x52: (2, "MENU_ACTIVATION_WAIT"), 0x53: (1, "DIALOG_WAIT"),
+                              0x54: (1, "DIALOG_ADVANCE_WAIT")}[sub]
+            args = {"sub_op": sub}
+        else:
             raise ImportError(f"unsupported MENU_CTRL sub-op 0x{sub:02x}")
-        size, mnemonic = {0x50: (3, "SET_ACTOR_MODEL"), 0x51: (5, "NPC_RUN"),
-                          0x52: (2, "MENU_ACTIVATION_WAIT"), 0x53: (1, "DIALOG_WAIT"),
-                          0x54: (1, "DIALOG_ADVANCE_WAIT")}[sub]
-        args = {"sub_op": sub}
     elif 0x50 <= op <= 0x77:
         # The pinned executing VM covers through 0x77, while its disassembler
         # claims through 0x7F. Higher indices remain unsupported here.

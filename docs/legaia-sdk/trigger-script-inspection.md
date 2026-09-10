@@ -33,7 +33,38 @@ partial reports. These are counts per trigger, including shared references.
 The first fallback trigger resolves P2 record 38 at decoded MAN offset 44621,
 24 bytes long, with entry offset 20 and NOP/JMP_REL instructions.
 
-No opcode support was added. Unknown instructions terminate paths, and opaque
+The initial navigation implementation added no opcode support. Unknown instructions terminate paths, and opaque
 bytes are never searched for plausible opcodes or strings. Inspection does not
 prove activation, reachability, a named scene edge or gameplay execution.
 Script editing and dispatch-gate evaluation remain unsupported.
+
+## Opening conversation and bounded decoder extension
+
+The 2026-09-10 investigation resolved fallback kind-1 trigger 0045 to P2
+record 3, decoded MAN offset 28616, length 2407, entry PC 12. The pinned
+`docs/formats/scene-v12-table.md` identifies this opening trigger; its blob is
+`1d76050aa7cce1b4a6b849e62e3e91491d5726f2`. A private text locator places
+the opening Elder line inside this record, but that locator is not decoded
+dialogue evidence and is not offered as an authorable span. Existing dialogue
+authoring remains restricted to validated P1 runs.
+
+The inspector now recognizes two additional MENU_CTRL forms: ED has one
+unsigned state byte and E8 has four signed little-endian 16-bit camera
+operands. Their ordinary lengths are 3 and 10 bytes; the extended-context
+header adds one byte. Both continuations come from the pinned executing
+`crates/engine-vm/src/field/step/menu_ctrl/nibble_e.rs::op_4c_ne`, blob
+`61ad972bd5455bdb84b1ab376f6ad959cb23190b`. Other sub-ops remain unsupported.
+
+A fresh sweep of all 51 town01 references changed only trigger 0045: its
+inspection now exposes five instructions and stops at PC 31 on unsupported
+opcode 0x34, instead of stopping at PC 12 on ED. It still exposes no dialogue.
+The aggregate remains 16 supported-path reports and 35 partial reports.
+Private before/after metadata is retained in
+`local-output/sdk-20260909/dialogue-trigger-{baseline,extension}.json`.
+
+All 31 focused inspection, catalog, dialogue authoring, persistence and build
+tests passed with the private retail input. New synthetic cases check every
+truncated instruction prefix, extended-context lengths, signed extremes,
+operand bytes resembling dialogue leads, and continued unknown-op stops.
+No runtime execution or dialogue-display acceptance is inferred from these
+source checks.

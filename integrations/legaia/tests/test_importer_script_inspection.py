@@ -2,6 +2,7 @@
 from copy import deepcopy
 import hashlib
 import os
+import struct
 from pathlib import Path
 import sys
 import unittest
@@ -20,6 +21,51 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_evidenced_menu_ed_e8_fields_and_continuation_ignore_operand_lookalikes(self):
+        # The state byte and camera operands include apparent message/opcode
+        # bytes. They must never become graph entry points or dialogue tokens.
+        data = b"\x4c\xed\x1f\x4c\xe8" + struct.pack("<hhhh", -32768, 32767, -225, -1) + b"\x1fHi\0"
+        report = inspect_record(data, 0, base_offset=100)
+        state, camera = report["instructions"]
+        self.assertEqual((state["pc"], state["length"], state["mnemonic"]), (0, 3, "SET_FIELD_STATE_BA66"))
+        self.assertEqual(state["operands"], {"sub_op": 0xED, "address": "0x8007BA66", "value": 31,
+                                            "encoded_hex": "ed1f"})
+        self.assertEqual((camera["pc"], camera["length"], camera["mnemonic"]), (3, 10, "CAMERA_ZOOM"))
+        self.assertEqual({key: camera["operands"][key] for key in ("zoom_x", "zoom_y", "zoom_z", "mode")},
+                         {"zoom_x": -32768, "zoom_y": 32767, "zoom_z": -225, "mode": -1})
+        self.assertEqual(camera["successors"], [{"pc": 13, "condition": "encoded_continuation"}])
+        self.assertEqual([(d["pc"], d["text"]) for d in report["dialogues"]], [(13, "Hi")])
+        self.assertEqual(report["status"], "decoded_supported_paths")
+        self.assertEqual(covered_bytes(report, 0, len(data)), [1] * len(data))
+
+    def test_menu_ed_e8_extended_context_lengths_and_every_truncated_prefix(self):
+        for ordinary in (b"\x4c\xed\xff", b"\x4c\xe8" + struct.pack("<hhhh", 1, -2, 3, -4)):
+            extended = b"\xcc\x17" + ordinary[1:]
+            for data in (ordinary, extended):
+                with self.subTest(data=data):
+                    report = inspect_record(data, 0)
+                    self.assertEqual(report["status"], "decoded_supported_paths")
+                    row = report["instructions"][0]
+                    self.assertEqual(row["length"], len(data))
+                    self.assertEqual(row["target_context"], 23 if data is extended else None)
+                    self.assertEqual(row["successors"][0]["pc"], len(data))
+                    for length in range(1, len(data)):
+                        truncated = inspect_record(data[:length], 0)
+                        self.assertEqual(truncated["status"], "partial")
+                        self.assertEqual(truncated["instructions"], [])
+                        self.assertEqual(truncated["dialogues"], [])
+                        self.assertEqual(truncated["opaque_regions"][0]["length"], length)
+
+    def test_other_menu_e_subops_still_stop_without_scanning(self):
+        for sub in (0xE0, 0xE1, 0xE7, 0xE9, 0xEB, 0xEE, 0xEF):
+            data = bytes([0x4C, sub]) + b"\x1fOpaque\0\x4c\xed\1"
+            report = inspect_record(data, 0)
+            self.assertEqual(report["status"], "partial")
+            self.assertEqual(report["instructions"], [])
+            self.assertEqual(report["dialogues"], [])
+            self.assertIn(f"0x{sub:02x}", report["stops"][0]["reason"])
+            self.assertEqual(report["opaque_regions"][0]["length"], len(data))
+
     def test_substitution_zero_operand_does_not_terminate_message(self):
         data = b"\x1f\xc1\x00, hello!\0"
         message = decode_inline_message(data, 0, 100)
