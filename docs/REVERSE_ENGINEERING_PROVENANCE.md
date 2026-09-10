@@ -120,3 +120,11 @@ extended target-context handling. This is pinned reference evidence, not new
 retail execution validation. Current reference field_channels.rs additionally
 explains why face ID is not a scalar heading: the operation configures a
 rotation matrix/ramp. No heading editor, lookup table or VM execution is added.
+
+Facing decoder retail non-regression: all32 script inspection/catalog/trigger
+checks passed with the private disc. Instrumented town01/town0c catalog paths
+contained zero decoded facing setup/reset operations. The catalogs remained
+91/421/60 and74/287/48 (scripts/dialogues/partial scripts), respectively.
+This verifies unchanged supported scene coverage, not retail execution or
+occurrence of the new facing operations. Private facing-script-coverage.json
+retains the observation.

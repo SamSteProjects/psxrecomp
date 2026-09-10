@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (facing decoder retail non-regression):** Previous facing decoder
+  was implementation progress. All32 script inspection/catalog/trigger tests
+  passed with the private disc enabled. Bounded catalog instrumentation found
+  town01:91 scripts/421 dialogue/60 partial; town0c:74/287/48. No decoded path
+  reached FACE_ROTATION_SETUP/RESET, so new opcode semantics remain pinned-
+  reference and synthetic-only, not retail-observed. Initial probe used a wrong
+  scene_id result key; corrected probe completed and retained private
+  facing-script-coverage.json. Full SDK goal remains active.
+
+
 - **2026-09-10 (facing script inspection):** Previous preset error check was
   verified progress. Inspected reference facing explanation and pinned d6e64c68
   decoder plus executing actor_ctrl VM: sub7 width16 operands/sub8 width1 agree.
