@@ -164,7 +164,7 @@ function notify(message, error=false) {
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{$('toast').hidden=true;},error?8500:3200);
 }
 function setBusy(value) {
-  busy=value;if(value)cancelFollowTimer();
+  busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
@@ -244,6 +244,7 @@ $('diagnostics-button').onclick=()=>{
   $('diagnostics-dialog').showModal();
 };
 document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&drag){event.preventDefault();cancelViewportGesture();return;}
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!busy)api('/api/project/save',{}, {success:'Project saved.'});}
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='z'){event.preventDefault();const redo=event.shiftKey;if(redo?state.history?.can_redo:state.history?.can_undo)api(redo?'/api/redo':'/api/undo',{});}
@@ -252,6 +253,7 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
+  if(drag?.type==='transform'&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';
   $('dirty').hidden=!state.project?.dirty;
   $('scene-name').textContent=state.scene?.name ?? 'No scene imported';
@@ -1051,15 +1053,28 @@ function resize(){const rect=canvas.getBoundingClientRect(),dpr=window.devicePix
 new ResizeObserver(resize).observe(canvas);
 function pointer(event){const r=canvas.getBoundingClientRect();return {x:event.clientX-r.left,y:event.clientY-r.top};}
 canvas.addEventListener('contextmenu',event=>event.preventDefault());
+function cancelViewportGesture(){
+  if(!drag)return;
+  const pointerId=drag.pointerId;drag=null;draft=null;canvas.classList.remove('dragging');
+  if(canvas.hasPointerCapture(pointerId))canvas.releasePointerCapture(pointerId);
+  $('transform-drag-status').textContent='Move cancelled';draw();
+}
+function transformGestureCurrent(gesture){
+  const entity=selected();
+  return canEdit()&&entity?.id===gesture.entity&&gesture.context===resourceStateKey()&&
+    ['x','y','z'].every(axis=>position(entity)[axis]===gesture.original[axis]);
+}
+window.addEventListener('blur',cancelViewportGesture);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewportGesture();});
 canvas.addEventListener('pointerdown',event=>{
-  if(busy)return;const p=pointer(event),entity=selected();canvas.focus();canvas.setPointerCapture(event.pointerId);
+  if(busy||drag)return;const p=pointer(event),entity=selected();canvas.focus();canvas.setPointerCapture(event.pointerId);
   const handle=event.button===0 && entity && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
-  drag={start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null,snapStep:$('transform-snap').checked?Number($('transform-snap-step').value):1};
+  drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null,snapStep:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
   canvas.classList.add('dragging');
 });
 canvas.addEventListener('pointermove',event=>{
-  if(!drag)return;const p=pointer(event),dx=p.x-drag.last.x,dy=p.y-drag.last.y;
+  if(!drag||event.pointerId!==drag.pointerId)return;const p=pointer(event),dx=p.x-drag.last.x,dy=p.y-drag.last.y;
   if(Math.hypot(p.x-drag.start.x,p.y-drag.start.y)>3)drag.moved=true;
   if(drag.moved){
     if(drag.type==='transform'){const point=groundAt(p.x,p.y,drag.original.y);if(point&&drag.ground){const axis=drag.handle.axis;draft={id:drag.entity,position:{...drag.original,[axis]:snappedTransformCoordinate(drag.original[axis]+point[axis]-drag.ground[axis],drag.snapStep)}};}}
@@ -1071,12 +1086,15 @@ canvas.addEventListener('pointermove',event=>{
   drag.last=p;
 });
 canvas.addEventListener('pointerup',async event=>{
-  if(!drag)return;const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
+  if(!drag||event.pointerId!==drag.pointerId)return;
+  if(drag.type==='transform'&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
+  const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis])await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}
   else if(!finished.moved && event.button===0){let hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;if(!hit&&sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}if(hit)await api('/api/selection',{entity_id:hit});}
   draw();
 });
-canvas.addEventListener('pointercancel',()=>{drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='Move cancelled';draw();});
+canvas.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
+canvas.addEventListener('lostpointercapture',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
 canvas.addEventListener('wheel',event=>{event.preventDefault();camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(event.deltaY*.001)));cameraRevision++;draw();},{passive:false});
 
 // Unposed assets stay object-local. Only decoder-provided frames assemble objects.

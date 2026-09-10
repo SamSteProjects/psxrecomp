@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (viewport gesture lifecycle):** Previous turn made verified
+  snapping progress. Found drag lifetime only handled pointercancel: Escape,
+  window blur and lost capture could leave a draft active. Added shared gesture
+  cancellation, pointer ownership, hidden-tab cancellation and cancellation when
+  other API work starts. Transform release rechecks Edit capability, selected
+  entity, project/scene/source context and original position; changed state
+  cannot commit a stale drag. Normal state rendering also cancels stale gestures.
+  Actual handlers in local-output/sdk-20260909/transform-lifecycle-qa.cjs passed
+  snapping plus Escape/blur/hidden/lost capture, changed context/position, busy
+  release, unrelated pointer events and normal single-command release. Syntax
+  and diff checks passed. No browser drag or game runtime acceptance this turn.
+  Full SDK/recomp goal remains incomplete.
+
 - **2026-09-10 (optional transform snapping):** Prior turn was implementation
   progress. Added off-by-default X/Z gizmo snapping with16/64/256/1024 scene-unit
   steps aligned to the origin, plus proposed coordinate feedback while dragging.
