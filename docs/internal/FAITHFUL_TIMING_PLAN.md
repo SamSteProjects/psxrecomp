@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (new dialogue authoring boundary):** Previous flag-word decoding
+  was progress. Checked new P2[4] dialogue against the real authoring service;
+  it exposes no writable runs because PC5 targets outside the record and PC483
+  stops at unsupported0x27. Initial expected-run assertion failed; corrected
+  investigation identified the guard. Actual set_dialogue_text rejected with
+  exact project-state digest unchanged. No build attempted or guard relaxed.
+  Private flag-branch-dialogue-build/rejection.json retained. Newly exposed
+  dialogue remains read-only; full SDK goal active.
+
+
 - **2026-09-10 (flag-word branch decoding):** Previous retail check was progress.
   Inventoried actual scene stops, then used pinned executing nibble_9_a/host
   evidence to decode A0/A1/A2 fixed-width signed-target branches. Both outcomes

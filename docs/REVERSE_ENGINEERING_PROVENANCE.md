@@ -143,3 +143,8 @@ dialogue IDs at012f,014b,0165,01a3,01c0. Catalog totals are now91 scripts,
 426 dialogue segments,517 script/dialogue assets,60 partial scripts and1134
 flag references. All34 targeted retail-enabled checks pass. This is bounded
 source decoding, not proof of branch execution or runtime flag identity.
+
+The five newly visible P2[4] segments remain read-only: its graph has an
+out-of-record target atPC5 and unsupported opcode27 atPC483. Retail authoring
+options returned no writable runs; a direct edit was rejected with project
+state unchanged. No playable build is claimed for these newly decoded segments.
