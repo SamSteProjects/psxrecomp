@@ -48,3 +48,10 @@
 .transform-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line);font-size:10px;color:var(--muted)}.transform-tools label{display:flex;align-items:center;gap:5px}.transform-tools select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:3px;font-size:10px}.transform-tools input{margin:0}.transform-tools span{flex:1;min-width:150px}
 
 .script-path-search{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.script-path-search input{flex:1;min-width:180px}.script-path-search button{font-size:11px}
+
+.transition-entry { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid var(--border, #48505d); margin: 10px 0; }
+.transition-entry h4 { flex-basis: 100%; margin: 0; }
+.transition-entry label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; }
+.transition-entry input { width: 100%; box-sizing: border-box; }
+.transition-unresolved { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.transition-unresolved code { overflow-wrap: anywhere; }

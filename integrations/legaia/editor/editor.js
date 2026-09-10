@@ -1021,16 +1021,24 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
       $('script-report').querySelector('.script-instructions').open=true;
       if(!instructionNavigation.select(focusInstruction))notify('The selected instruction was not found in the verified report.',true);
     }
-  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);input?.focus({preventScroll:true});}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
+  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);input?.focus({preventScroll:true});}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
 }
 
 function renderTransitionAuthoring(){
-  const authoring=scriptReport?.transition_authoring;if(!authoring?.transitions?.length)return;
+  const authoring=scriptReport?.transition_authoring;if(!authoring||(!authoring.transitions?.length&&!authoring.unresolved_overrides?.length))return;
   const section=document.createElement('section'),heading=document.createElement('h3'),note=document.createElement('p');
   heading.textContent='Transition entries';note.className='field-note';
   note.textContent='Edit encoded entry bytes (0–255). World coordinates and direction meanings are not established. Destination names remain fixed.';
   section.append(heading,note);$('script-report').append(section);
-  for(const entry of authoring.transitions){
+  for(const identifier of authoring.unresolved_overrides ?? []){
+    const row=document.createElement('div'),label=document.createElement('code'),button=document.createElement('button');
+    row.className='transition-unresolved';label.textContent=identifier;button.type='button';button.textContent='Clear unresolved transition';button.dataset.clearTransition=identifier;
+    button.disabled=busy||!canEditDialogue();button.onclick=async()=>{if(busy||!canEditDialogue())return;
+      if(await api('/api/command',{type:'clear_transition_entry',entity_id:scriptEntity.id,transition_id:identifier})){scriptDrafts.delete(identifier);await openActorScript(scriptEntity,true);}else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;};
+    row.append(label,button);section.append(row);
+  }
+  if(authoring.reason){const reason=document.createElement('p');reason.className='field-note';reason.textContent=authoring.reason;section.append(reason);}
+  for(const entry of authoring.transitions ?? []){
     const form=document.createElement('form');form.className='transition-entry';
     const title=document.createElement('h4');title.textContent=`${entry.destination} at ${scriptOffset(entry.pc)}`;form.append(title);
     const inputs={};
@@ -1061,7 +1069,7 @@ function updateScriptActions(){
   $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':projectSaveStatus();
   for(const form of scriptDialog.querySelectorAll('.dialogue-run'))updateDialogueRun(form);
   for(const form of scriptDialog.querySelectorAll('.transition-entry'))form.updateState();
-  for(const button of scriptDialog.querySelectorAll('[data-clear-unresolved]'))button.disabled=busy||!canEditDialogue();
+  for(const button of scriptDialog.querySelectorAll('[data-clear-unresolved],[data-clear-transition]'))button.disabled=busy||!canEditDialogue();
 }
 function updateDialogueRun(form){
   const run=form.run,input=form.querySelector('textarea'),text=input.value,capacity=run.max_length;

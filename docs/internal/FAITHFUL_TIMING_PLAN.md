@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Browser transition editing and recovery controls
+
+- Previous turn was progress: isolated source-error handling. Added clear controls for unresolved transition IDs and responsive entry form styling; corrected the scene graph's obsolete no-edit-support note.
+- Private browser tab 48 / editor 4395: Scene transitions -> Inspect source script -> town01 P2[0] at 0x16. ArrowUp changed X96 to97; Apply retained97 after refresh; Clear restored96 and disabled Clear. Z25/direction4 retained. Browser errors empty; screenshot inspected with all entry controls legible and within dialog width.
+- QA root: `local-output/sdk-20260909/transition-browser`. No runtime launched; user's editor untouched. Unresolved recovery button itself and live gameplay remain unverified. Full goal remains active.
+
+
 ### 2026-09-10 — Isolate unavailable transition authoring
 
 - Previous turn was progress: inspector controls and HTTP lifecycle. Added a bounded unavailable transition response so alias/source authoring errors no longer replace valid dialogue data or suppress read-only script inspection. Stored transition IDs remain in the response for recovery.

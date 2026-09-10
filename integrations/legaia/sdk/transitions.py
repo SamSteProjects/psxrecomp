@@ -32,4 +32,4 @@ def build_transition_graph(catalog: dict, imported_scenes) -> dict:
             "coverage": {key: catalog[key] for key in ("script_count", "partial_script_count", "unavailable_script_count")},
             "limitations": ["Edges represent decoded scene-change instructions, not verified gameplay routes.",
                             "Unknown script paths, partition-zero controllers and runtime transitions are not covered.",
-                            "Encoded entry coordinates and direction are retained without conversion or edit support."]}
+                            "Encoded entry bytes can be edited for verified source records in the script inspector; world-coordinate conversion remains unresolved."]}
