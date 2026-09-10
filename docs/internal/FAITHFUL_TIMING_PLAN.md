@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Compare terrain submission placement across visibility views
+
+- Previous turn was progress: opaque terrain sample. GPU comparison shows identified player packets581..707/traversal ranks1708..1716 in invisible frame;565..681/ranks1701..1709 in visible near-step frame. Matching terrain texture quad occurs later in both, but moves from rawY108..138 to143..178; therefore changing screen overlap, not disappearance of player submission, distinguishes these captures. Evidence `arrival-live/ordering-comparison.json`.
+- Verified gpu_set_gp0_linked_list_node increments diagnostic OT rank only for zero-word linked-list nodes. These rank numbers are traversal order, not direct geometric depth and must not be used as Z evidence.
+- Existing gpu_frame_layers rasterizes geometry but intentionally does not sample textures, so it cannot prove exact opaque coverage by itself. Next work should trace terrain geometry/height or retail OT construction; no unsupported sorting patch made. Full objective active; private runtime unchanged this turn.
+
+
 ### 2026-09-10 — Sample opaque terrain overdraw candidate
 
 - Previous turn was progress: player packet identification. Parsed private checkpoint10 VRAM and sampled candidate GP0 quad772 (page0C/CLUT7D00) at raw polygon pixels155/117,154/116,156/118. Barycentric UVs and all four floor/ceil neighboring texels produce nonzero15-bit colors, supporting opaque coverage rather than transparent holes. Evidence `arrival-live/overdraw-texture-samples.json`.
