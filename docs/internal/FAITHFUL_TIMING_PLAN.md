@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (recognized external control-flow boundaries):** Inspection now
+  displays CD as SCRIPT_CONTEXT_ALLOC with its verified encoded width and no
+  successor, retaining an explicit unresolved-control-flow stop. This separates
+  recognized bytes from unsupported bytes without authorizing the opaque tail.
+  Exact-pin search finds the allocation hook only in the host default, VM
+  dispatcher and test implementation; no production allocation behavior proves
+  a resume address. Referenced original dispatcher dumps are absent locally.
+  Actual opening P2[3] shows 35 instructions, zero dialogues, and the boundary
+  at PC 194. All 39 focused tests pass, including ordinary/extended boundary
+  ownership and existing dialogue authoring rejection checks. Opening progress
+  requires independent retail dispatch/resumption evidence, not advancing past
+  the hook by assumption. Runtime and saved editor projects remain unchanged.
+
 - **2026-09-10 (script allocation boundary):** Pinned MENU_CTRL CD allocates a
   script context and returns Halt at the current PC, not an encoded fallthrough.
   Inspection now reports the unresolved allocated-context entry explicitly;

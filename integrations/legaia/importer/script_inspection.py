@@ -237,7 +237,9 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "animation_frame": struct.unpack_from("<H", data, operand + 4)[0],
                     "tween_frames": struct.unpack_from("<H", data, operand + 6)[0]}
         elif sub == 0xCD:
-            raise ImportError("SCRIPT_CONTEXT_ALLOC halts at the current PC; allocated-context entry and external resumption are unresolved")
+            size, mnemonic, branches = 1, "SCRIPT_CONTEXT_ALLOC", []
+            args = {"sub_op": sub, "unresolved_control_flow":
+                    "allocated-context entry and external resumption are unresolved; pinned VM halts at the current PC"}
         elif 0xC0 <= sub <= 0xCF and sub != 0xC9:
             # Pinned executing menu_ctrl/nibble_c.rs. C9 depends on host
             # comparison; CD allocates a context and halts, with no fallthrough.
@@ -358,6 +360,9 @@ def inspect_record(data: bytes, script_offset: int, *, semantic_id: str = "scrip
             for byte in range(pc, pc + row["length"]):
                 ownership[byte] = pc
             (dialogues if is_message else instructions).append(row)
+            if not is_message and row["operands"].get("unresolved_control_flow"):
+                stops.append({"pc": pc, "reason": row["operands"]["unresolved_control_flow"],
+                              "kind": "known_instruction_unresolved_control_flow"})
             entries.update(edge["pc"] for edge in successors)
             queue.extend(edge["pc"] for edge in successors)
         except ImportError as exc:

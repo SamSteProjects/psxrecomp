@@ -25,7 +25,13 @@ class ScriptInspectionTests(unittest.TestCase):
         for data in (b"\x4c\xcd\x1fOpaque\0", b"\xcc\x17\xcd\x1fOpaque\0"):
             report = inspect_record(data, 0)
             self.assertEqual(report["status"], "partial")
-            self.assertEqual(report["instructions"], [])
+            self.assertEqual(len(report["instructions"]), 1)
+            row = report["instructions"][0]
+            self.assertEqual(row["mnemonic"], "SCRIPT_CONTEXT_ALLOC")
+            self.assertEqual(row["successors"], [])
+            self.assertEqual(row["length"], 3 if data[0] == 0xCC else 2)
+            self.assertEqual(report["opaque_regions"][0]["pc"], row["length"])
+            self.assertEqual(report["stops"][0]["kind"], "known_instruction_unresolved_control_flow")
             self.assertEqual(report["dialogues"], [])
             self.assertIn("allocated-context entry", report["stops"][0]["reason"])
 
