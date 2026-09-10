@@ -33,6 +33,19 @@ def catalog(script):
 
 
 class ScriptAssetCatalogTests(unittest.TestCase):
+    def test_menu_metadata_has_no_labels_and_preserves_bounded_source(self):
+        result = catalog(b"\x27\x10\0\x20\0\x1fPrivateOne\0\x1fPrivateTwo\0")
+        script = next(a for a in result["assets"] if a["asset_kind"] == "script" and a["menu_count"])
+        self.assertEqual(script["menu_count"], 1)
+        menu = script["menus"][0]
+        self.assertEqual(menu["option_count"], 2)
+        self.assertEqual(menu["pc"], 5)
+        self.assertEqual(len(menu["sha256"]), 64)
+        self.assertNotIn('PrivateOne', json.dumps(result))
+        self.assertNotIn('PrivateTwo', json.dumps(result))
+        self.assertEqual(forbidden_fields(result), set())
+        self.assertEqual(script["status"], "partial")
+
     def test_partition_two_source_bounds_and_unknown_tail_are_preserved(self):
         _, original = fixture()
         region = 0x2B + 12

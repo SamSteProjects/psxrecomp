@@ -185,3 +185,11 @@ table displays all labels/encoded targets and unresolved continuation, with no
 writable runs. Visual inspection found expanded raw data obscured the choices;
 menu raw operands now default collapsed and all four choices fit in the selected
 row. Reload verification passed with no browser errors. No runtime menu claim.
+
+
+Script catalog menu discovery now records menu count, source PC/span, option
+count and source hash without retaining labels or raw bytes. Script resource
+details expose links to the exact menu instruction through fresh private source
+inspection, for actor and P2 owners. Older catalogs request refresh rather than
+claiming zero menus. Six catalog tests (retail enabled) and JS syntax pass;
+browser acceptance of these new resource links remains pending.

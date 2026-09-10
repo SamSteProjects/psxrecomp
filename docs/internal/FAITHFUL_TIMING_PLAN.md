@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (menu catalog integration):** Previous masked-control work was
+  progress. Added metadata-only menu counts/spans/hashes to script assets and
+  exact-PC source-inspection links in resource details, with old-catalog refresh
+  handling. Labels remain private. Six retail-enabled catalog tests and JS
+  syntax pass; navigation browser acceptance remains pending. No menu authoring
+  or execution claim; full SDK goal remains active.
+
+
 - **2026-09-10 (masked menu controls):** Previous browser correction was
   progress. Implemented pinned high-bit MES picker semantics: A7/A8/A9 do not
   consume an actor-target byte; masked continuation controls retain one-byte

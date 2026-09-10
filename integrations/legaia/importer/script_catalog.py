@@ -128,6 +128,12 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
                        "script_id": script_id, "source_record": locator, "status": report["status"],
                        "entry_pc": entry, "instruction_count": len(report["instructions"]),
                        "dialogue_count": len(report["dialogues"]), "stop_count": len(report["stops"]),
+                       "menu_count": sum(row["mnemonic"] == "DIALOGUE_PICKER" for row in report["instructions"]),
+                       "menus": [{"pc": row["pc"], "byte_offset": row["byte_offset"],
+                                  "byte_length": row["length"], "option_count": row["operands"]["option_count"],
+                                  "sha256": _sha(record[row["pc"]:row["pc"] + row["length"]]),
+                                  "status": "decoded_menu_unresolved_continuation"}
+                                 for row in report["instructions"] if row["mnemonic"] == "DIALOGUE_PICKER"],
                        "opaque_byte_count": sum(row["length"] for row in report["opaque_regions"]),
                        "opaque_ranges": [{key: row[key] for key in ("pc", "byte_offset", "length")} for row in report["opaque_regions"]],
                        "stops": deepcopy(report["stops"]), "flag_references": flags, "transitions": destinations,
