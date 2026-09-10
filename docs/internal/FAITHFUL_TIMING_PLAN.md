@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Package encoded transition entry overrides
+
+- Previous turn was progress: persistent transition commands committed. Build now accepts validated P1/P2 Transitions, rechecks source membership, merges exact byte audits with header/dialogue edits, and preserves the existing compressed-capacity and round-trip guards. Reports retain transition resource IDs and package descriptions identify the new scope.
+- Private town01 P2[0] package decoded exactly to the expected one-byte MAN patch; clearing restored the exact baseline package hash. Evidence: `local-output/sdk-20260909/transition-build/verification.json`. Initial probe used Path instead of the project's string disc_path contract; corrected probe passed.
+- Focused merge test covers full-span dialogue overlap, single-byte overlap, owner mismatch and unaudited changes; existing dialogue build tests passed (3 passed, 2 retail opt-ins skipped). No runtime launched. Editor controls and live transition acceptance remain pending; full goal active.
+
+
 ### 2026-09-10 — Persist authored transition entries
 
 - Previous goal turn classified as progress: committed verified transition context and a retail source-span probe.

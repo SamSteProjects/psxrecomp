@@ -50,7 +50,7 @@ def build_report(audit) -> dict:
         else:
             before = change.get("before_value", change.get("before_byte"))
             after = change.get("after_value", change.get("after_byte"))
-        changes.append({"scene": change["scene"], "asset_id": change.get("run_id", change["semantic_id"]),
+        changes.append({"scene": change["scene"], "asset_id": change.get("transition_id", change.get("run_id", change["semantic_id"])),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         "scope": change.get("scope", "initial-man-placement-only")})
@@ -92,6 +92,34 @@ def _merge_dialogue_patch(baseline, working, dialogue, changes, expected_runs, p
     if any(a != b and i not in dialogue_offsets for i, (a, b) in enumerate(zip(baseline, dialogue))):
         raise BuildError("Dialogue patch altered an unaudited MAN byte")
     return bytes(merged)
+
+
+def _merge_transition_patch(baseline, working, patched, changes, expected, previous):
+    from importer.transition_authoring import ENTRY_FIELDS
+    if not isinstance(patched, bytes) or len(patched) != len(baseline) or len(working) != len(baseline):
+        raise BuildError("Transition patch changed MAN length")
+    occupied = {i for c in previous for i in range(c["decoded_byte_offset"], c["decoded_byte_offset"] + c.get("byte_length", 1))}
+    audited = set()
+    result = bytearray(working)
+    digest = _hash(baseline)
+    for c in changes:
+        entry = expected.get(c.get("transition_id"))
+        offset, field = c.get("decoded_byte_offset"), c.get("field")
+        if (entry is None or field not in ENTRY_FIELDS or type(offset) is not int or
+                not 0 <= offset < len(baseline) or
+                offset != entry["decoded_byte_offset"] + ENTRY_FIELDS.index(field) or
+                c.get("owner_id") != entry["owner_id"] or
+                c.get("source_record_sha256") != entry["source_record_sha256"] or
+                c.get("source_decoded_man_sha256") != digest or
+                c.get("before_byte") != baseline[offset] or c.get("after_byte") != patched[offset]):
+            raise BuildError("Transition audit disagrees with verified source bytes")
+        if offset in occupied or offset in audited:
+            raise BuildError("Transition patch overlaps another authored MAN span")
+        audited.add(offset)
+        result[offset] = patched[offset]
+    if any(a != b and i not in audited for i, (a, b) in enumerate(zip(baseline, patched))):
+        raise BuildError("Transition patch changed an unaudited MAN byte")
+    return bytes(result)
 
 
 def _guard_output(path: Path, boundary: Path) -> None:
@@ -149,6 +177,15 @@ def _build_project(project, output_dir) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(components, dict) and "Transitions" in components:
+            project._validate_transitions(identifier, components["Transitions"])
+            document = project._dialogue_document(identifier)
+            scene_id = "scene://" + document["scene"]["name"]
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}})
+            edits["transitions"][identifier] = components["Transitions"]["entries"]
+            components = {k: v for k, v in components.items() if k != "Transitions"}
+            if not components:
+                continue
         if isinstance(identifier, str) and "/scripts/man-p2/" in identifier:
             from importer.dialogue_authoring import validate_run_id
             validate_run_id(identifier, "script://" + identifier.removeprefix("scene://") + "/dialogue/0000/run/0000")
@@ -163,7 +200,7 @@ def _build_project(project, output_dir) -> dict:
                 validate_run_id(identifier, run)
                 if not isinstance(text, str):
                     raise BuildError("Dialogue replacement must be text")
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}})
             edits["dialogues"][identifier] = dialogue["runs"]
             continue
         if identifier not in entity_lookup:
@@ -172,7 +209,7 @@ def _build_project(project, output_dir) -> dict:
         if (not isinstance(components, dict) or not components or
                 set(components) - {"Transform", "ActorAppearance", "Dialogue"}):
             raise BuildError(f"{identifier}: only authored Transform.position, ActorAppearance and bounded Dialogue runs can be built")
-        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}})
+        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}})
         record = actor["source_record"]["record_index"]
         if "Transform" in components:
             transform = components["Transform"]
@@ -238,7 +275,7 @@ def _build_project(project, output_dir) -> dict:
             body = archive.read_entry(entry)
             stream_offset = bundle.table_offset + descriptor.data_offset
             original_span = body[stream_offset:stream_offset + consumed]
-            if edits["assignments"] or edits["dialogues"]:
+            if edits["assignments"] or edits["dialogues"] or edits["transitions"]:
                 baseline = decompress_lzs(original_span, descriptor.size)[0]
                 changed, changes = baseline, []
             if edits["assignments"]:
@@ -260,7 +297,7 @@ def _build_project(project, output_dir) -> dict:
                 changed, changes = context.patch(assignments, original=baseline)
                 for change in changes:
                     change["donor_entity_id"] = edits["assignments"][change["record_index"]]
-            if edits["assignments"] or edits["dialogues"]:
+            if edits["assignments"] or edits["dialogues"] or edits["transitions"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
@@ -286,6 +323,24 @@ def _build_project(project, output_dir) -> dict:
                         change.update(field="dialogue.text", scope="inline-mes-glyph-run-only",
                                       semantic_id=expected_runs[change["run_id"]]["actor_id"])
                     changes.extend(dialogue_changes)
+                if edits["transitions"]:
+                    from importer.transition_authoring import load_transition_authoring_context
+                    context = load_transition_authoring_context(project.disc_path, scene)
+                    requested, expected = {}, {}
+                    for owner, entries in edits["transitions"].items():
+                        allowed = {e["semantic_id"]: e for e in context.options(owner)["transitions"]}
+                        for key, values in entries.items():
+                            if key not in allowed or key in requested:
+                                raise BuildError("Transition is not uniquely owned by the verified source")
+                            requested[key], expected[key] = values, allowed[key]
+                    transition_man, transition_changes = context.patch(requested, original=baseline)
+                    changed = _merge_transition_patch(baseline, changed, transition_man,
+                                                      transition_changes, expected, changes)
+                    for change in transition_changes:
+                        change.update(semantic_id=change["owner_id"],
+                                      record_index=int(change["owner_id"].rsplit("/", 1)[1]),
+                                      scope="encoded-transition-entry-only")
+                    changes.extend(transition_changes)
                 replacement, sizes = serialize_man_decoded(original_span, descriptor.size, changed, scene)
             else:
                 replacement, changes, sizes = serialize_man_stream(original_span, descriptor.size, scene, edits["positions"])
@@ -399,6 +454,11 @@ def _build_project(project, output_dir) -> dict:
         feature_name = "Authored scene data"
         description = "Private layout-compatible TIM payloads and optional bounded MAN edits; retail disc spans and resource layouts remain fixed."
         feature_description = "Apply verified scene textures and optional actor/text data; no resource relocation or script control edits."
+    if any(c.get("scope") == "encoded-transition-entry-only" for c in audit_edits):
+        package_suffix = " authored scene data"
+        feature_name = "Authored scene data"
+        description = "Private bounded MAN entry-byte edits and optional actor, text and texture data."
+        feature_description = "Apply verified encoded transition entries without destination or resource relocation."
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix)}",
