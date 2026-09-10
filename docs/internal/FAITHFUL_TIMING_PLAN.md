@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (actual Legaia precompile build):** Previous generator acceptance
+  was progress. Inspected private CMake configuration, preserved61d99eac...,
+  rebuilt actual psx-runtime Release with existing sibling generated inputs and
+  current staging helper: exit0. New executable96eaf949... has build-only
+  acceptance; prior live results remain bound to the preserved binary. Private
+  build log and hash manifest retained. No gameplay run or sibling regeneration
+  was performed. Full SDK goal remains active.
+
+
 - **2026-09-10 (Windows discovery-fix acceptance):** Previous filename fix was
   progress. Verified clean tracked state and ran both static-overlay tests on
   Visual Studio18/MSVC (14.670s) and NMake/GCC (27.045s), each exit0. Both cover

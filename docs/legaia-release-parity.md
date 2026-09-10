@@ -614,3 +614,21 @@ plus sparse five-digit part staging and neighbor-preserving cleanup. Together
 with the preceding Ninja/GCC run, all three previously accepted generators now
 cover the filename fix and added empty-inventory cases. GNU Make remains
 unaccepted. No retail runtime was rebuilt or launched for these synthetic checks.
+
+
+## Actual Legaia build after discovery fix (2026-09-10)
+
+The private stability project's MSVC Release target rebuilt successfully at
+source0135cb39 and ran the changed static-overlay staging step. It consumes
+existing sibling LegaiaRecomp/generated inputs read-only; no sibling generation
+or source edits were requested. Framework mod staging verification also passed.
+Compiler diagnostics include existing CRT deprecation and synthetic-recursion
+warnings; no warning-free claim is made.
+
+The resulting executable SHA-256 is
+`96eaf949050d28009958cbc4f5d305c06976ac7e1eefbd7d62eaa6cb97993203`.
+The previously tested61d99eac... binary is preserved in
+`local-output/sdk-20260909/precompile-discovery-build/LegaiaStability-before.exe`.
+That private folder holds build.log and verification.json with hashes. This
+is build acceptance only: no run of the new executable occurred here. Prior
+live title/audio/restore evidence remains attached to its exact prior binary.
