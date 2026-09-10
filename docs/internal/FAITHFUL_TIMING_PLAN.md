@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Verified transition MAN context
+
+- Added a request-scoped transition authoring context around the bounded entry-byte serializer, with stable owner/PC IDs, exact optional baseline guards, unique source-record checks, deterministic audited byte composition and overlap rejection. Shared MAN record access reuses the existing P1/P2 ownership validation without requiring editable dialogue.
+- Focused validation: transition tests 4/4 passed; dialogue tests 7 passed with 1 opt-in retail test skipped. A separate private retail loader probe resolved town01 P2[0] transition PC 0x16 and changed exactly one audited byte; evidence: `local-output/sdk-20260909/transition-context-probe.json`.
+- No runtime launched or package built for this change. Transition project commands, editor controls and playable packaging remain unconnected. The full SDK/recomp goal remains active, including broader gameplay acceptance and unresolved source semantics.
+
+
 - **2026-09-10 (transition serializer foundation):** Previous cold appearance
   revert was progress. Verified pinned3F entry layout and added bounded
   record-level entry X/Z/direction byte serializer with source audit. Two tests

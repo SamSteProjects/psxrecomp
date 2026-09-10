@@ -6,10 +6,94 @@ This serializer is a foundation API, not yet connected to project commands/build
 from __future__ import annotations
 
 import hashlib
+import re
+from copy import deepcopy
 from .core import ImportError
+from .dialogue_authoring import DialogueAuthoringContext, load_dialogue_authoring_context
 from .script_inspection import inspect_record
 
 ENTRY_FIELDS = ("entry_x_encoded", "entry_z_encoded", "direction_encoded")
+LIMITATIONS = [
+    "Only encoded entry X, Z and direction bytes are editable; world coordinates and direction semantics are not inferred.",
+    "Destination names, instruction sizes and opaque bytes remain unchanged.",
+    "Unknown or conflicting source paths and aliased records are unsupported.",
+    "Project commands, editor controls and playable packaging are not yet connected.",
+]
+
+
+class TransitionAuthoringContext:
+    """Immutable MAN snapshot with stable transition IDs and audited byte edits."""
+
+    def __init__(self, source: DialogueAuthoringContext):
+        self._source = source
+        self._man = source._man  # Immutable source shared with the verified MAN reader.
+
+    def provenance(self) -> dict:
+        result = self._source.provenance()
+        result["limitations"] = list(LIMITATIONS)
+        return result
+
+    def options(self, owner: str) -> dict:
+        offset, record, entry = self._source.verified_record(owner)
+        report = inspect_record(record, entry)
+        transitions, reason = [], None
+        if report["stops"]:
+            reason = "Transition edits require no unknown or conflicting source-path stops"
+        else:
+            for node in report["instructions"]:
+                if node["mnemonic"] != "SCENE_CHANGE":
+                    continue
+                pc = node["pc"]
+                operand = pc + (2 if node["target_context"] is not None else 1)
+                start = operand + 3 + record[operand + 2]
+                values = dict(zip(ENTRY_FIELDS, record[start:start + 3]))
+                try:
+                    patch_transition_entry(record, entry, pc, values)
+                except ImportError:
+                    continue
+                transitions.append(dict(
+                    semantic_id=f"script://{owner.removeprefix('scene://')}/transition/{pc:04x}",
+                    owner_id=owner, pc=pc, decoded_byte_offset=offset + start,
+                    destination=node["operands"]["scene_name_ascii"], values=values,
+                    source_record_sha256=hashlib.sha256(record).hexdigest()))
+            if not transitions:
+                reason = "No supported named transitions occur on the inspected paths"
+        return dict(supported=bool(transitions), reason=reason, transitions=transitions,
+                    source=self.provenance(), limitations=list(LIMITATIONS))
+
+    def patch(self, edits: dict, *, original: bytes | None = None) -> tuple[bytes, list[dict]]:
+        if original is not None and original != self._man:
+            raise ImportError("transition MAN source differs from the verified baseline")
+        if not isinstance(edits, dict) or len(edits) > 1024:
+            raise ImportError("transition edit set exceeds the bounded transition count")
+        staged, occupied = [], set()
+        digest = hashlib.sha256(self._man).hexdigest()
+        for identifier, values in edits.items():
+            match = re.fullmatch(r"script://([A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4})/transition/([0-9a-f]{4})", identifier) if isinstance(identifier, str) else None
+            if match is None:
+                raise ImportError("transition identifier must contain its source owner and fixed hexadecimal PC")
+            owner = "scene://" + match[1]
+            options = self.options(owner)
+            if not any(item["semantic_id"] == identifier for item in options["transitions"]):
+                raise ImportError("transition is not a supported span in the verified source record")
+            offset, record, entry = self._source.verified_record(owner)
+            _, audit = patch_transition_entry(record, entry, int(match[2], 16), values, base_offset=offset)
+            for change in audit:
+                absolute = change["decoded_byte_offset"]
+                if absolute in occupied:
+                    raise ImportError("transition edits overlap another authored span")
+                occupied.add(absolute)
+                staged.append(dict(change, transition_id=identifier, owner_id=owner,
+                                   source_decoded_man_sha256=digest))
+        result = bytearray(self._man)
+        staged.sort(key=lambda item: item["decoded_byte_offset"])
+        for change in staged:
+            result[change["decoded_byte_offset"]] = change["after_byte"]
+        return bytes(result), deepcopy(staged)
+
+
+def load_transition_authoring_context(disc, scene: str) -> TransitionAuthoringContext:
+    return TransitionAuthoringContext(load_dialogue_authoring_context(disc, scene))
 
 
 def patch_transition_entry(record: bytes, script_offset: int, pc: int,

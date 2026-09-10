@@ -4,9 +4,41 @@ import sys
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.core import ImportError
-from importer.transition_authoring import patch_transition_entry
+from importer.transition_authoring import patch_transition_entry, TransitionAuthoringContext
+from test_importer_dialogue_authoring import fixture, ACTOR
 
 class TransitionEntryTests(unittest.TestCase):
+    def test_verified_man_owner_baseline_and_exact_audit(self):
+        source, man = fixture(b"\x3f\x01\x02\x06town01\x03\x04\x05opaque")
+        context = TransitionAuthoringContext(source)
+        option = context.options(ACTOR)["transitions"][0]
+        identifier = option["semantic_id"]
+        self.assertTrue(identifier.endswith("/transition/0005"))
+        self.assertEqual(option["destination"], "town01")
+        changed, audit = context.patch({identifier: {"entry_x_encoded": 99}}, original=man)
+        self.assertEqual([i for i, (a, b) in enumerate(zip(man, changed)) if a != b],
+                         [option["decoded_byte_offset"]])
+        self.assertEqual(audit[0]["transition_id"], identifier)
+        option["values"]["entry_x_encoded"] = 77
+        self.assertEqual(context.options(ACTOR)["transitions"][0]["values"]["entry_x_encoded"], 3)
+        self.assertEqual(context.patch({}), (man, []))
+        with self.assertRaisesRegex(ImportError, "baseline"):
+            context.patch({identifier: {"entry_x_encoded": 99}}, original=changed)
+        for bad in (identifier.replace("fixture", "foreign"), identifier[:-4] + "0006", 3):
+            with self.assertRaises(ImportError):
+                context.patch({bad: {"entry_x_encoded": 99}})
+        # A later invalid edit does not mutate the immutable source snapshot.
+        with self.assertRaises(ImportError):
+            context.patch({identifier: {"entry_x_encoded": 99}, "invalid": {}})
+        self.assertEqual(context.patch({}), (man, []))
+
+    def test_aliased_owner_and_unknown_paths_are_not_editable(self):
+        source, _ = fixture(b"\x3f\x01\x02\x06town01\x03\x04\x05", alias=True)
+        with self.assertRaisesRegex(ImportError, "aliased"):
+            TransitionAuthoringContext(source).options(ACTOR)
+        source, _ = fixture(b"\xff\x3f\x01\x02\x06town01\x03\x04\x05")
+        self.assertFalse(TransitionAuthoringContext(source).options(ACTOR)["supported"])
+
     def test_three_fields_change_only_the_entry_span(self):
         for header in (bytes([0x3f]), bytes([0xbf, 7])):
             source = header + bytes([1, 2, 6]) + b"town01" + bytes([3, 4, 5]) + b"opaque"

@@ -127,7 +127,7 @@ class DialogueAuthoringContext:
                               semantic_id="script://" + actor_id.removeprefix("scene://"),
                               base_offset=actor.byte_offset)
 
-    def options(self, actor_id: str) -> dict:
+    def _register_owner(self, actor_id: str) -> None:
         if isinstance(actor_id, str) and actor_id not in self._actors:
             match = re.fullmatch(re.escape(f"scene://{self.scene}/scripts/man-p2/") + r"([0-9]{4})", actor_id)
             if match:
@@ -139,6 +139,23 @@ class DialogueAuthoringContext:
                 self._unique.add(actor_id)
         if not isinstance(actor_id, str) or actor_id not in self._actors:
             raise ImportError("dialogue actor is not present in the verified MAN")
+
+    def verified_record(self, actor_id: str) -> tuple[int, bytes, int]:
+        """Return an immutable, uniquely owned script span and its entry PC.
+
+        Other equal-span serializers share the MAN ownership checks without
+        depending on dialogue availability or populating glyph-run caches.
+        """
+        self._register_owner(actor_id)
+        if actor_id not in self._unique:
+            raise ImportError("script edits require a non-aliased record outside MAN sections")
+        actor = self._actors[actor_id]
+        record = self._man[actor.byte_offset:actor.byte_offset + actor.byte_length]
+        entry = _p2_entry(record)[0] if "/scripts/man-p2/" in actor_id else 1 + actor.local_count * 2 + 4
+        return actor.byte_offset, record, entry
+
+    def options(self, actor_id: str) -> dict:
+        self._register_owner(actor_id)
         if actor_id not in self._options:
             runs, reason, status = [], None, "unavailable"
             actor = self._actors[actor_id]
