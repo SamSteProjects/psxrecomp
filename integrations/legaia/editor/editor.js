@@ -330,11 +330,12 @@ function activeScenePreview(){return scenePreview&&sceneKey===state.scene_previe
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
 function sceneView(){return {camera,basis:basis(),width,height,grid,positions:new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]))};}
 function updateSceneBadge(){
+  $('entity-count').textContent=entities().length+environmentEntities().length;
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
   document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?'Loading supported scene models…':ready?`${count} / ${entities().length+environmentEntities().length} models · unresolved objects remain markers`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
-  $('coordinate-note').textContent=activeScenePreview()?'Unknown height: ground plane · unknown facing: preview convention':'Unknown heights are shown on the ground plane.';
+  $('coordinate-note').textContent=environmentEntities().length?'Environment: imported transforms · Actors: unknown height/facing use preview conventions':'Unknown actor heights are shown on the ground plane.';
   $('coordinate-note').title=JSON.stringify(activeScenePreview()?.limits ?? []);
 }
 async function refreshScenePreview(){

@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Browser-verify environment inspection and framing
+
+- Previous turn was progress: environment selection UI. Isolated editor4395/tab52 displayed97/98 meshes. Searched MAP object137, selected its hierarchy row, opened the read-only source/transform inspector and framed the textured house. Screenshot visually inspected: house, walls/coastal backdrop and other scene objects render, while missing ground is clearly visible. No claim of complete scene or retail camera parity.
+- Returned through hierarchy search to Actor0002 and verified its actor inspector, preserving authoring separation. Corrected combined hierarchy count and the obsolete actor-only coordinate note; Node syntax passed and browser reload verified98 count,97/98 models and the new environment/actor distinction. An initial shell text insertion was malformed and caught by Node; corrected before reload.
+- Direct canvas picking still needs explicit interaction verification. Ground/decorations remain unfinished. Stopped the isolated editor through its owned stop file; original4388 browser/runtime untouched. Full objective active.
+
 ### 2026-09-10 — Connect environment hierarchy and inspector selection
 
 - Previous turn was progress: combined textured scene service. Added searchable environment hierarchy rows from the current verified scene preview, read-only transform/model/pose/source inspector, geometry framing, and viewport-pick routing. Environment selection is derived preview UI state; actor authoring tools receive no selected actor while it is active.
