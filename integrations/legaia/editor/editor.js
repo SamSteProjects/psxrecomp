@@ -204,10 +204,36 @@ function renderHierarchy(){
   }
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
 }
+// Search SDK records already present in project state, including their provenance.
+const assetTools=document.createElement('div');assetTools.className='asset-tools';
+assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option></select><span id="asset-results" role="status"></span>';
+$('assets').before(assetTools);
+const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Models and actors come from the active imported scene; Scenes lists imported scenes. Textures are inspected with models. Scripts, dialogue, audio and standalone texture catalogs are not available here.</p>';$('assets').after(assetScope);
+const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);
+$('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
+function assetRecords(){
+  return [
+    ...(state.assets ?? []).map(asset=>({id:asset.id,type:asset.kind ?? 'model',label:asset.name ?? asset.label ?? `Model ${asset.id.split('/').at(-1)}`,source:asset.source_record?.prot_entry_name ?? asset.scope ?? 'Imported',data:asset})),
+    ...entities().map(actor=>({id:actor.id,type:'actor',label:actor.name ?? actor.id,source:state.scene?.name ?? state.scene?.id,data:actor})),
+    ...(state.scenes ?? []).map(scene=>({id:scene.id,type:'scene',label:scene.name ?? scene.id,source:scene.name ?? scene.id,data:scene}))
+  ];
+}
+function showAssetDetails(record){
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.source)}<details open><summary>SDK source and provenance</summary><pre class="diagnostic-detail"></pre></details>`;
+  assetDetails.querySelector('pre').textContent=JSON.stringify(record.data,null,2);$('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();
+}
 function renderAssets(){
-  const list=$('assets');list.replaceChildren();
-  for(const asset of state.assets ?? []){const card=document.createElement('button');card.className='asset-card';card.title=asset.id;card.innerHTML=`<span class="asset-symbol">⬡</span><strong>${escapeHTML(asset.name ?? asset.label ?? asset.id)}</strong><small>${escapeHTML(asset.kind ?? asset.type ?? 'Imported asset')}</small>`;card.onclick=()=>openModel(asset.id);list.append(card);}
-  if(!list.children.length){const p=document.createElement('div');p.className='field-note';p.style.gridColumn='1 / -1';p.textContent='Stable asset references from your imported scene.';list.append(p);}
+  const list=$('assets'),query=$('asset-search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('asset-category').value;
+  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Textures are inspected with models. ${state.capabilities?.actor_script_preview?'Read-only script and dialogue inspection is available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio and standalone texture catalogs are not available here.`;
+  const records=assetRecords(),filtered=records.filter(record=>(category==='all'||record.type===category)&&query.every(term=>JSON.stringify(record).toLowerCase().includes(term)));
+  list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=`${filtered.length} / ${records.length} records`;
+  for(const record of filtered){
+    const row=document.createElement('div');row.className='asset-result';
+    const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.source)}</small><code>${escapeHTML(record.id)}</code>`;
+    card.onclick=async()=>{if(record.type==='actor'){if(await api('/api/selection',{entity_id:record.id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}}else if(record.type==='scene'){if(await api('/api/scene',{scene_id:record.id}))document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}else if(record.type==='model')openModel(record.id);else showAssetDetails(record);};
+    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
+  }
+  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
 }
 function property(label,value){return `<dl class="property"><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value ?? 'Unknown')}</dd></dl>`;}
 function showTemplates(){renderTemplates();templateDialog.showModal();}
@@ -239,12 +265,16 @@ function renderInspector(){
   html+='</div><p class="field-note">Edits are project overrides. Empty authored fields inherit the imported value. Unknown heights use the ground plane. Scene display axes follow the SDK conversion.</p></section>';
   if(state.capabilities?.authored_transform_templates)html+='<section class="component"><h3>Authored templates <small>Position only</small></h3><p class="field-note">Capture authored axes or apply saved positions to this existing actor.</p><button id="inspect-templates">Open transform templates…</button></section>';
   if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${property('Asset',model.asset_id)}${property('Resolution',model.resolution_status)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${model.asset_id?'<button id="inspect-model" class="model-preview-button">Inspect model objects</button>':''}</section>`;}
-  if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">An association is not a verified playable animation.</p></section>`;
+  if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">${components.Animation.preview_support?.supported?'Imported association is eligible for decoding. Preview verifies the source; retail playback timing and live animation remain unknown.':escapeHTML(components.Animation.preview_support?.reason ?? 'No supported imported animation association is available for this actor.')}</p></section>`;
   if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>Runtime observation <small>Read only · sampled</small></h3>${property('Correlation',correlation.status ?? correlation.state ?? 'Unresolved')}<p class="field-note">Candidate associations preserve ambiguity. They do not replace imported or authored values.</p><details><summary>Epoch, candidates and evidence</summary><pre>${escapeHTML(JSON.stringify(correlation,null,2))}</pre></details></section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
+  if(state.capabilities?.actor_script_preview)html+='<section class="component"><h3>Script and dialogue <small>Read only</small></h3><p class="field-note">Inspect supported instruction paths and decoded dialogue from this imported record. Unknown instructions stop decoding.</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>';
   $('inspector').innerHTML=html;
+  if($('inspect-script'))$('inspect-script').onclick=()=>openActorScript(entity);
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
   const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
+  const actorAnimation=components.Animation?.preview_support;
+  if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview imported scene animation';button.title='Verify and decode this actor’s imported animation association';button.onclick=()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id);$('inspect-model').after(button);}
   if(animatedAsset && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview reference locomotion';button.title='Decoded idle/walk clips for this model; separate from the placement animation ID';button.onclick=()=>openModel(animatedAsset.id,'idle');$('inspect-model').after(button);}
   if($('inspect-templates'))$('inspect-templates').onclick=showTemplates;
   $('inspector').querySelectorAll('[data-axis]').forEach(input=>input.addEventListener('change',async()=>{
@@ -253,6 +283,28 @@ function renderInspector(){
     const value=Number(input.value);if(!Number.isFinite(value)){notify('Transform values must be finite numbers.',true);renderInspector();return;}
     await api('/api/command',{type:'set_transform',entity_id:entity.id,position:{[axis]:value}});
   }));
+}
+
+const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
+const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUpperCase():'Unknown';
+async function openActorScript(entity){
+  if(busy)return;setBusy(true);
+  scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Read only</p><div id="script-report"><p>Verifying the imported actor record…</p></div><p class="dialog-error" role="alert"></p>`;
+  $('close-script').onclick=()=>scriptDialog.close();scriptDialog.showModal();
+  try{
+    const response=await fetch('/api/actor-script',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
+    const report=await response.json();if(!response.ok||report.error)throw new Error(typeof report.error==='string'?report.error:'Script inspection failed');
+    if(!scriptDialog.open)return;
+    if(report.read_only!==true||!Array.isArray(report.instructions)||!Array.isArray(report.dialogues))throw new Error('Script service returned an invalid inspection report.');
+    const instructions=report.instructions,dialogues=report.dialogues,opaque=report.opaque_regions ?? [],stops=report.stops ?? [];
+    $('script-report').innerHTML=`<p class="script-summary">${instructions.length} decoded instructions · ${dialogues.length} dialogue segments · ${report.status==='partial'?'Partial inspection':'Supported paths decoded'}</p><p class="field-note">Record offsets are relative to the actor record. Decoded paths do not establish which branch runs in the game. Name substitutions remain explicit placeholders.</p><div id="script-warnings"></div><section><h3>Decoded dialogue</h3><div id="script-dialogue"></div></section><details class="script-instructions" ${dialogues.length?'':'open'}><summary>Instruction paths (${instructions.length})</summary><div class="script-table-wrap"><table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table></div></details><details class="script-raw"><summary>Source, raw bytes and decoder limits</summary><pre class="diagnostic-detail"></pre></details>`;
+    if(opaque.length||stops.length){const warning=document.createElement('div');warning.className='script-warning';warning.textContent=`${opaque.length} opaque regions · ${stops.length} decoder stops. Unvisited bytes and unsupported behavior remain unresolved.`;$('script-warnings').append(warning);for(const region of opaque){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(region.pc)} · ${region.length} opaque bytes: ${region.reason}`;$('script-warnings').append(line);}for(const stop of stops){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(stop.pc)}: ${stop.reason}`;$('script-warnings').append(line);}}
+    if(!dialogues.length)$('script-dialogue').textContent='No dialogue was decoded in the inspected paths.';
+    for(const dialogue of dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.innerHTML=`<small>${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length)} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text ?? '';card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);$('script-dialogue').append(card);}
+    const body=$('script-report').querySelector('tbody');
+    for(const instruction of instructions){const row=document.createElement('tr');for(const value of [scriptOffset(instruction.pc),instruction.mnemonic,typeof instruction.operands==='string'?instruction.operands:JSON.stringify(instruction.operands ?? {}),(instruction.successors ?? []).map(next=>`${scriptOffset(next.pc)}${next.condition?' · '+(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):''}`).join('\n')]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}body.append(row);}
+    $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
+  }catch(error){if(scriptDialog.open)scriptDialog.querySelector('.dialog-error').textContent=error.message;}finally{setBusy(false);}
 }
 
 function frame(entity){
@@ -334,17 +386,17 @@ const modelCanvas=$('model-canvas'), modelContext=modelCanvas.getContext('2d');
 const exportDialog=document.createElement('dialog');document.body.append(exportDialog);
 let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
-let modelAssetId=null, animationFrame=0, animationTick=null, animationClock=null;
+let modelAssetId=null, modelEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
-async function openModel(assetId,clipId=null){
+async function openModel(assetId,clipId=null,entityId=null){
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest;
   try{
-    const response=await fetch(clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
+    const response=await fetch(entityId?'/api/actor-animation-preview':clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
     const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
     if(clipId && (!Array.isArray(data.frames) || !data.frames.length || data.frames.length*data.vertices.length>1000000 || data.frames.some(frame=>frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(frame.vertices)||frame.vertices.length!==data.vertices.length||frame.vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(numeric)))))throw new Error('Animation service returned an invalid or oversized posed vertex stream.');
-    model=data;modelAssetId=assetId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=assetId.split('/').slice(-2).join(' / ');
+    model=data;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · Imported animation`:assetId.split('/').slice(-2).join(' / ');
     modelTextures=new Map();$('model-textures').replaceChildren();
     for(const texture of model.textures ?? []){
       const card=document.createElement('div');card.className='texture-card';
@@ -384,7 +436,7 @@ function configureAnimation(clipId){
 }
 function stopAnimation(){if(animationTick!==null)cancelAnimationFrame(animationTick);animationTick=null;animationClock=null;$('animation-play').textContent='Play';}
 function setAnimationFrame(index){const count=model?.frames?.length ?? 0;if(!count)return;animationFrame=((index%count)+count)%count;$('animation-frame').value=animationFrame;$('animation-frame-label').textContent=`${animationFrame+1} / ${count}`;drawModel();}
-$('animation-clip').onchange=()=>openModel(modelAssetId,$('animation-clip').value || null);
+$('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,clip==='scene-header'?modelEntityId:null);};
 $('animation-frame').oninput=()=>{stopAnimation();setAnimationFrame(Number($('animation-frame').value));};
 $('animation-previous').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame-1);};
 $('animation-next').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame+1);};
@@ -399,9 +451,9 @@ $('model-dialog').addEventListener('close',()=>{stopAnimation();modelRequest++;}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAnimation();});
 $('model-export').onclick=async()=>{
   if(busy||!modelAssetId)return;stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
-  const clip=model.animation?.clip_id,payload={asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
+  const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
   try{
-    const response=await fetch('/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const response=await fetch(modelEntityId?'/api/export/actor-animation':'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Model export failed');
     exportDialog.innerHTML=`<div class="dialog-heading"><h2>${result.audit.posed?'Static posed model exported':'Object-local model exported'}</h2><button id="close-export" aria-label="Close">×</button></div><p>${result.audit.object_count} objects · ${result.audit.triangle_count} triangles · ${result.audit.texture_count} embedded textures${result.audit.posed?' · Frame '+(result.audit.frame_index+1):''}</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><p>Full model export${result.audit.posed?' with the displayed animation frame baked into geometry':''}. Source units are retained; physical meter scale is unknown. Animation channels and skin hierarchy are not exported.</p><details><summary>Export provenance and limitations</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
     $('close-export').onclick=()=>exportDialog.close();exportDialog.showModal();
