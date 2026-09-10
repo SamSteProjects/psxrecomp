@@ -1,0 +1,190 @@
+"""Scene actor poses from the MAN header's actual scene ANM association.
+
+Reference pin: pipeline.REFERENCE_COMMIT, asset/{man_section,player_anm}.rs,
+web-viewer/field_npc.rs. A nonzero placement animation byte names scene ANM
+record byte-1 for scene models. Zero IDs and global model banks are not guessed.
+This is imported spawn-pose evidence, not current runtime script state.
+"""
+from __future__ import annotations
+
+from copy import deepcopy
+from typing import Any
+
+from .animation import (MAX_POSED_VERTICES, _bounds, animation_record_ranges,
+                        decode_animation_record, pose_vertices)
+from .assets import load_model_preview
+from .core import ImportError, decompress_lzs, find_scene_bundle
+from .pipeline import REFERENCE_COMMIT, _bounded_scene_range, _disc_context, import_scene
+
+
+def actor_animation_capabilities(actor: dict, asset: dict) -> dict:
+    """Cheap header association advertisement; catalog loading verifies sources."""
+    reason = None
+    reference = actor.get("model_reference", {})
+    animation_id = actor.get("placement_fields", {}).get("animation_id")
+    model_index = reference.get("model_index")
+    if reference.get("asset_semantic_id") != asset.get("semantic_id") or asset.get("asset_kind") != "tmd_model":
+        reason = "Actor does not resolve to the supplied imported model."
+    elif type(model_index) is not int or not 0 <= model_index < 0xF0:
+        reason = "Global model banks require their separate evidenced animation association."
+    elif type(animation_id) is not int or not 1 <= animation_id <= 255:
+        reason = "The MAN placement header has no supported nonzero scene animation ID."
+    return {"supported": reason is None,
+            "clips": [{"id": "placement", "label": f"Imported animation {animation_id}",
+                       "record_index": animation_id - 1}] if reason is None else [],
+            "reason": reason, "evidence": "man_header_initial_animation_not_runtime_script_state"}
+
+
+class SceneActorAnimationCatalog:
+    """Private request-scoped verified source snapshot with bounded model caches.
+
+    Create with load_scene_actor_animation_catalog. Reuse across one scene
+    viewport request; do not treat this object as a live-disc monitor.
+    """
+    def __init__(self, disc, scene, document, body, source):
+        self._disc, self.scene, self._body, self._source = disc, scene, body, source
+        self._actors = {a["semantic_id"]: a for a in document["actors"]}
+        self._assets = {a["semantic_id"]: a for a in document["assets"]["models"]}
+        self._ranges = animation_record_ranges(body)
+        self._decoded = {}
+        self._models = {}
+        self._cached_vertices = 0
+        self._cached_triangles = 0
+
+    def _binding(self, actor, asset):
+        support = actor_animation_capabilities(actor, asset)
+        if not support["supported"]:
+            raise ImportError(support["reason"])
+        expected_actor = self._actors.get(actor.get("semantic_id"))
+        expected_asset = self._assets.get(asset.get("semantic_id"))
+        if (expected_actor is None or expected_asset is None or
+                any(actor.get(key) != expected_actor[key] for key in
+                    ("source_record", "model_reference", "placement_fields")) or
+                asset.get("source_record") != expected_asset["source_record"]):
+            raise ImportError("actor/model animation provenance does not match the freshly imported scene")
+        index = actor["placement_fields"]["animation_id"] - 1
+        if not 0 <= index < len(self._ranges):
+            raise ImportError("MAN animation ID is outside the scene ANM record bank")
+        if index not in self._decoded:
+            start, end = self._ranges[index]
+            self._decoded[index] = decode_animation_record(self._body[start:end])
+        decoded = self._decoded[index]
+        if decoded["bone_count"] != expected_asset["source_record"]["object_count"]:
+            raise ImportError("scene animation channel count does not match the actor model's object count")
+        return index, decoded
+
+    def capabilities(self, actor: dict, asset: dict) -> dict:
+        """Validate the binding and wire record without loading triangle geometry."""
+        try:
+            index, decoded = self._binding(actor, asset)
+        except ImportError as exc:
+            return dict(supported=False, clips=[], reason=str(exc))
+        return dict(supported=True, clips=[dict(id="placement", label=f"Imported animation {index + 1}",
+                    record_index=index, frame_count=decoded["frame_count"], bone_count=decoded["bone_count"])],
+                    reason=None, evidence="verified_man_header_initial_animation_not_runtime_script_state")
+
+    def _geometry(self, asset, decoded):
+        identity = asset["semantic_id"]
+        if identity not in self._models:
+            geometry = load_model_preview(self._disc, asset)
+            if len(geometry["objects"]) != decoded["bone_count"]:
+                raise ImportError("decoded scene model object count does not match animation channels")
+            if (self._cached_vertices + len(geometry["vertices"]) > MAX_POSED_VERTICES or
+                    self._cached_triangles + len(geometry["triangles"]) > MAX_POSED_VERTICES):
+                raise ImportError("scene model cache exceeds the bounded geometry budget")
+            self._cached_vertices += len(geometry["vertices"])
+            self._cached_triangles += len(geometry["triangles"])
+            self._models[identity] = geometry
+        return deepcopy(self._models[identity])
+
+    def _metadata(self, actor, asset, index, decoded):
+        start, end = self._ranges[index]
+        source = dict(deepcopy(self._source), record_index=index, byte_offset=start, byte_length=end - start,
+                      containing_size=len(self._body), byte_coordinate_space="decoded_scene_anm_descriptor")
+        skeleton_id = "skeleton://" + asset["semantic_id"].removeprefix("asset://")
+        return {
+            "schema_version": "legaia.animation-preview.v1",
+            "semantic_id": f"animation://{self.scene}/scene-anm/{index:04d}",
+            "asset_semantic_id": asset["semantic_id"], "actor_semantic_id": actor["semantic_id"],
+            "clip_id": "placement", "label": f"Imported animation {index + 1}",
+            "reference_commit": REFERENCE_COMMIT, "source_record": source,
+            "frame_count": decoded["frame_count"], "bone_count": decoded["bone_count"],
+            "header_a": decoded["header_a"], "header_flags": decoded["header_flags"],
+            "coordinate_system": "retail_psx_actor_local_y_down", "looping": None,
+            "timing": {"fps": None, "wire_rate": None, "evidence": "unresolved_scene_actor_playback_rate",
+                       "note": "This record has no rate byte; a viewer may choose an explicit preview rate."},
+            "association": {"kind": "verified_man_header_scene_anm_record_plus_one",
+                            "animation_id": index + 1, "actor_source_record": deepcopy(actor["source_record"]),
+                            "active_object_indices": list(range(decoded["bone_count"]))},
+            "skeleton": {"semantic_id": skeleton_id, "topology": "independent_rigid_objects", "hierarchy": None,
+                         "channels": [{"semantic_id": f"{skeleton_id}/channels/{i:02d}",
+                                       "object_index": i, "parent_index": None} for i in range(decoded["bone_count"])]},
+            "limitations": ["Imported header association; scripts can later change model, clip, location and facing.",
+                            "Actor world height and facing are unresolved and are not baked into this local pose.",
+                            "Analytic rigid transforms approximate GTE fixed-point rounding.",
+                            "No anatomical joint hierarchy or scene actor playback cadence is inferred."],
+        }
+
+    def animation_preview(self, actor: dict, asset: dict) -> dict:
+        index, decoded = self._binding(actor, asset)
+        geometry = self._geometry(asset, decoded)
+        if len(geometry["vertices"]) * decoded["frame_count"] > MAX_POSED_VERTICES:
+            raise ImportError("scene animation exceeds the bounded posed-vertex budget")
+        frames = []
+        for frame in decoded["frames"]:
+            vertices = pose_vertices(geometry["vertices"], geometry["objects"], frame["object_transforms"])
+            frames.append(dict(deepcopy(frame), vertices=vertices, bounds=_bounds(vertices), posed=True,
+                               coordinate_system="retail_psx_actor_local_y_down"))
+        return dict(self._metadata(actor, asset, index, decoded), geometry=geometry, frames=frames)
+
+    def pose_preview(self, actor: dict, asset: dict, frame_index: int = 0) -> dict:
+        """Bake one actor-local pose without materializing every posed frame."""
+        index, decoded = self._binding(actor, asset)
+        if type(frame_index) is not int or not 0 <= frame_index < decoded["frame_count"]:
+            raise ImportError("scene animation frame index is outside the decoded clip")
+        geometry = self._geometry(asset, decoded)
+        frame = decoded["frames"][frame_index]
+        vertices = pose_vertices(geometry["vertices"], geometry["objects"], frame["object_transforms"])
+        metadata = self._metadata(actor, asset, index, decoded)
+        geometry.update(vertices=vertices, bounds=_bounds(vertices), posed=True,
+                        coordinate_system="retail_psx_actor_local_y_down",
+                        pose=dict(metadata, frame_index=frame_index,
+                                  object_transforms=deepcopy(frame["object_transforms"])))
+        return geometry
+
+
+def load_scene_actor_animation_catalog(disc: Any, scene: str) -> SceneActorAnimationCatalog:
+    """Verify the scene once and locate its unique MAN-bearing type-0x05 bank."""
+    with _disc_context(disc) as (_, digest, mapping, archive):
+        document = import_scene(disc, scene)
+        if document["source"]["disc_identity"] != "sha256:" + digest:
+            raise ImportError("scene animation source identity changed during verification")
+        start, end = _bounded_scene_range(archive, mapping, scene)
+        bundle, raw = find_scene_bundle(archive, start, end)
+        candidates = [d for d in bundle.descriptors if d.type_byte == 5 and d.size > 0]
+        if len(candidates) != 1:
+            raise ImportError("scene requires exactly one evidenced type-0x05 animation descriptor")
+        descriptor = candidates[0]
+        stream_offset = bundle.table_offset + descriptor.data_offset
+        later = [bundle.table_offset + d.data_offset for d in bundle.descriptors
+                 if d.data_offset > descriptor.data_offset]
+        stream_end = min(later + [len(raw)])
+        if not 0 <= stream_offset < stream_end <= len(raw):
+            raise ImportError("scene animation compressed stream is outside its container bounds")
+        body, consumed = decompress_lzs(raw[stream_offset:stream_end], descriptor.size)
+        source = {"disc": {"sha256": digest, "serial": "SCUS-94254"}, "iso_file": "PROT.DAT",
+                  "prot_entry_index": bundle.entry_index, "prot_entry_name": scene,
+                  "scene_table_offset": bundle.table_offset, "descriptor_index": descriptor.index,
+                  "descriptor_type": descriptor.type_byte, "compressed_stream_offset": stream_offset,
+                  "compressed_bytes_consumed": consumed}
+        return SceneActorAnimationCatalog(disc, scene, document, body, source)
+
+
+def load_actor_animation_preview(disc: Any, scene: str, actor: dict, asset: dict) -> dict:
+    with _disc_context(disc):
+        return load_scene_actor_animation_catalog(disc, scene).animation_preview(actor, asset)
+
+
+def load_actor_pose_preview(disc: Any, scene: str, actor: dict, asset: dict, frame_index: int = 0) -> dict:
+    with _disc_context(disc):
+        return load_scene_actor_animation_catalog(disc, scene).pose_preview(actor, asset, frame_index)
