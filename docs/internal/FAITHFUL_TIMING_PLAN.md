@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (empty precompile inventory):** Previous dialogue integrity
+  regression was progress. Inspected stale split-output cleanup and extended
+  the executable build fixture through four-to-zero-to-two overlays, asserting
+  exact source inventory alongside execution. Nine Ninja/GCC variants pass in
+  6.627s after approved retry of a sandbox-denied Ninja startup. Existing cleanup
+  handles the transition; no runtime patch was justified. Other generators have
+  not run the two added cases. Full SDK goal remains active.
+
+
 - **2026-09-10 (extended-context dialogue safety):** Previous editor operand
   presentation was progress. Audited source-span authoring against unresolved
   extended targets: runtime identity is not required to replace an independently

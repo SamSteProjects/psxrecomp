@@ -574,3 +574,16 @@ returned-title.png and restarted-story.png.
 
 This accepts the bounded story-to-title lifecycle and restart, not arbitrary
 field/cross-scene overlay ownership, hardware input, or audible continuity.
+
+
+## Empty precompile inventory recovery (2026-09-10)
+
+The executable fixture now also shrinks four split overlays to zero and then
+regrows to two. It asserts the exact split-file count at each stage, in addition
+to running the linked executable and checking its result. All nine variants
+passed under Ninja/UCRT GCC in6.627s. The empty stage returned0 and retained no
+split sources; the subsequent two-overlay stage returned161. This validates
+removal and regeneration in the existing producer/build integration, not retail
+scene replacement. No production change was needed. The initial sandboxed run
+was denied at Ninja startup; the approved run supplied the passing evidence.
+The additional empty/regrowth cases have not yet been run under other generators.

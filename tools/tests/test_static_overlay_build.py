@@ -61,7 +61,7 @@ class StaticOverlayBuildTests(unittest.TestCase):
                     parts.append({{'namespace': f'ov_{{i}}', 'src': renamed}})
                 dispatch = ''.join(f'int ov_{{i}}_func_80100000(void);\\n' for i in range(count))
                 dispatch += 'int result(void) {{ return ' + '+'.join(
-                    f'ov_{{i}}_func_80100000()' for i in range(count)) + '; }}\\n'
+                    f'ov_{{i}}_func_80100000()' for i in range(count)) + '+0; }}\\n'
                 compile_overlays.write_static_outputs(str(output), parts, [], dispatch,
                                                       single_file=bool(single))
             '''), encoding='utf-8')
@@ -101,12 +101,14 @@ class StaticOverlayBuildTests(unittest.TestCase):
             exe = executable_dir / ('fixture.exe' if os.name == 'nt' else 'fixture')
             for count, value, single in [(2, 10, 0), (5, 20, 0), (1, 30, 0),
                                           (1, 40, 0), (3, 50, 1), (35, 60, 0),
-                                          (4, 70, 0)]:
+                                          (4, 70, 0), (0, 0, 0), (2, 80, 0)]:
                 with self.subTest(count=count, value=value, single=single):
                     recipe.write_text(f'{count} {value} {single}', encoding='utf-8')
                     run(cmake, '--build', str(build), '--config', 'Release', '--parallel', '2')
                     self.assertEqual(run(str(exe)),
                                      str(count * value + count * (count - 1) // 2))
+                    parts = list((build / 'generated').glob('overlays_static_[0-9][0-9][0-9][0-9].c'))
+                    self.assertEqual(len(parts), 0 if single else count)
             run(cmake, '--build', str(build), '--config', 'Release', '--parallel', '2')
 
 
