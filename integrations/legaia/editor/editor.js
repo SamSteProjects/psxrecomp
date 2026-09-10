@@ -354,7 +354,7 @@ function assetRecords(){
     ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.source_record?.prot_entry_name ?? state.scene?.name,sceneId:state.scene?.id,data:record}))
   ].map(record=>[record.id,record]));
   for(const authored of state.authored_assets ?? []){
-    if(typeof authored.id!=='string'||!['actor','texture','template'].includes(authored.kind))continue;
+    if(typeof authored.id!=='string'||!['actor','texture','template','script'].includes(authored.kind))continue;
     const existing=records.get(authored.id);
     records.set(authored.id,{...(existing ?? {id:authored.id,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
   }
@@ -362,7 +362,7 @@ function assetRecords(){
 }
 function showAssetDetails(record){
   const isAuthored=!!record.authoredRecord;
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='script'?'Open dialogue workspace':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
@@ -371,11 +371,13 @@ function showAssetDetails(record){
 async function activateAsset(record){
   if(busy)return;
   if(record.type==='template'){showTemplates();return;}
-  if(record.authoredRecord&&['actor','texture'].includes(record.type)&&record.sceneId!==state.scene?.id){
+  if(record.authoredRecord&&['actor','texture','script'].includes(record.type)&&record.sceneId!==state.scene?.id){
     if(!record.sceneId){notify('This authored item does not identify an imported source scene.',true);return;}
     if(!await api('/api/scene',{scene_id:record.sceneId}))return;
   }
-  if(record.type==='actor'){
+  if(record.type==='script'&&record.authoredRecord){
+    await openActorScript({id:record.id,name:record.label,partitionTwo:true});
+  }else if(record.type==='actor'){
     if(await api('/api/selection',{entity_id:record.id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}
   }else if(record.type==='scene'){
     if(await api('/api/scene',{scene_id:record.id}))document.querySelector('.workspace-tabs [data-panel="viewport"]').click();
@@ -389,7 +391,7 @@ async function activateAsset(record){
 function renderAssets(){
   synchronizeResources();
   const list=$('assets'),query=$('asset-search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('asset-category').value;
-  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide actor edits, texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor scripts, dialogue and supported field-map metadata; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide actor edits, script dialogue edits, texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor scripts, dialogue and supported field-map metadata; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
   const records=assetRecords(),filtered=records.filter(record=>(category==='all'||(category==='authored'?!!record.authoredRecord:record.type===category&&(category!=='actor'||record.sceneId===state.scene?.id)))&&query.every(term=>JSON.stringify(record).toLowerCase().includes(term)));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=`${filtered.length} / ${records.length} records`;
   for(const record of filtered){
@@ -617,6 +619,7 @@ const scriptResourceDialog=document.createElement('dialog');scriptResourceDialog
 function resourceValue(value){return value===null||value===undefined?'Unknown':typeof value==='object'?JSON.stringify(value):String(value);}
 function resourceLabel(value){return resourceValue(value).replaceAll('_',' ');}
 function openScriptResource(record){
+  if(record.authoredRecord&&record.type==='script'){activateAsset(record);return;}
   if(busy||resourceKey!==resourceStateKey())return;
   const data=record.data,actor=entities().find(entity=>entity.id===data.actor_semantic_id),dialogue=record.type==='dialogue';
   const status={decoded_supported_paths:'Supported paths decoded',partial:'Partial inspection',decoded_segment:'Decoded segment',unavailable:'Unavailable'}[data.status] ?? resourceLabel(data.status);
@@ -726,9 +729,9 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
   $('script-undo').onclick=()=>scriptProjectAction('/api/undo');$('script-redo').onclick=()=>scriptProjectAction('/api/redo');$('script-save').onclick=()=>scriptProjectAction('/api/project/save');
   }
   try{
-    const response=await fetch(entity.triggerId?'/api/trigger-script':'/api/actor-script',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entity.triggerId?{asset_id:entity.triggerId}:{entity_id:entity.id})});
+    const response=await fetch(entity.triggerId?'/api/trigger-script':entity.partitionTwo?'/api/partition-two-script':'/api/actor-script',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entity.triggerId?{asset_id:entity.triggerId}:{entity_id:entity.id})});
     let report=await response.json();if(!response.ok||report.error)throw new Error(typeof report.error==='string'?report.error:'Script inspection failed');
-    if(entity.triggerId){if(report.script_id!==entity.id.replace(/^scene:\/\//,'script://'))throw new Error('Trigger script identity changed.');report={...report,...report.inspection};}
+    if(entity.triggerId||entity.partitionTwo){if(report.script_id!==entity.id.replace(/^scene:\/\//,'script://')||report.scene_id!==state.scene?.id||report.source_key!==state.scene_preview_source_key)throw new Error('Script identity or source changed.');report={...report,...report.inspection};}
     if(!scriptDialog.open)return;
     if(report.read_only!==true||!Array.isArray(report.instructions)||!Array.isArray(report.dialogues))throw new Error('Script service returned an invalid inspection report.');
     const instructions=report.instructions,dialogues=report.dialogues,opaque=report.opaque_regions ?? [],stops=report.stops ?? [];

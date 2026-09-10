@@ -7,6 +7,7 @@ import tempfile
 import threading
 import unittest
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.pipeline import import_scene
@@ -44,10 +45,29 @@ class P2DialogueHTTP(unittest.TestCase):
                 edited = post("/api/trigger-script", trigger)["dialogue_authoring"]["runs"][0]
                 self.assertEqual(edited["authored_text"], "SDK")
                 self.assertEqual(edited["effective_text"], "SDK".ljust(run["max_length"]))
+                restored = ProjectService.open(project.save())
+                self.assertFalse(restored.assets.resource_catalogs)
+                saved = restored.authored_assets()
+                self.assertEqual(len(saved), 1)
+                self.assertEqual(saved[0]["kind"], "script")
+                self.assertEqual(saved[0]["id"], owner)
+                self.assertEqual(saved[0]["script_id"], report["script_id"])
+                reopened = post("/api/partition-two-script", {"entity_id": saved[0]["id"]})
+                self.assertEqual(reopened["inspection"], report["inspection"])
+                self.assertEqual(reopened["source_record"], report["source_record"])
+                self.assertEqual(reopened["dialogue_authoring"]["runs"][0]["authored_text"], "SDK")
+                for invalid in (owner.replace("town01", "town0c"), owner.rsplit("/", 1)[0] + "/9999",
+                                owner.replace("scripts/man-p2", "actors/man-p1")):
+                    with self.assertRaises(HTTPError) as error:
+                        post("/api/partition-two-script", {"entity_id": invalid})
+                    self.assertEqual(error.exception.code, 400)
+                    error.exception.close()
+                self.assertEqual(project.overrides, restored.overrides)
                 post("/api/command", dict(command, type="clear_dialogue_text"))
                 cleared = post("/api/trigger-script", trigger)["dialogue_authoring"]["runs"][0]
                 self.assertIsNone(cleared["authored_text"])
                 self.assertEqual(project.overrides, {})
+                self.assertEqual(project.authored_assets(), [])
                 opening = post("/api/trigger-script", {"asset_id": "trigger://town01/field-map/fallback/kind-1/0045"})
                 self.assertFalse(opening["dialogue_authoring"]["supported"])
                 self.assertEqual(opening["dialogue_authoring"]["runs"], [])

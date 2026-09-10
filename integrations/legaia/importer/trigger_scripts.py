@@ -105,6 +105,14 @@ def inspect_trigger_script(disc: Any, scene: str, trigger_id: str) -> dict:
         if trigger.get("table_kind") != 1 or encoded.get("gate") != 1:
             raise ImportError("trigger inspection supports only gate-1 MAN partition-2 references")
         index = encoded["record_index"]
+        report = inspect_partition_two_script(disc, scene, index)
+        return {**report, "schema_version": "legaia.trigger-script-inspection.v1",
+                "trigger_id": trigger_id, "trigger_source_record": deepcopy(trigger["source_record"])}
+
+
+def inspect_partition_two_script(disc: Any, scene: str, index: int) -> dict:
+    """Inspect a source-bounded P2 record without requiring a trigger alias."""
+    with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
         bundle, raw = find_scene_bundle(archive, start, end)
         descriptors = [d for d in bundle.descriptors if d.type_byte == 3 and d.size > 0]
@@ -129,8 +137,8 @@ def inspect_trigger_script(disc: Any, scene: str, trigger_id: str) -> dict:
                   "decoded_man_sha256": sha256(man).hexdigest(), "containing_decoded_size": len(man),
                   "compressed_stream_offset": offset, "compressed_stream_coordinate_space": "prot_entry",
                   "compressed_bytes_consumed": consumed, "compressed_stream_sha256": sha256(raw[offset:offset + consumed]).hexdigest()}
-        return {"schema_version": "legaia.trigger-script-inspection.v1", "read_only": True,
-                "trigger_id": trigger_id, "script_id": identity, "partition": 2, "record_index": index,
+        return {"schema_version": "legaia.partition-two-script-inspection.v1", "read_only": True,
+                "script_id": identity, "partition": 2, "record_index": index,
                 "reference_commit": REFERENCE_COMMIT, "source_record": source,
-                "trigger_source_record": deepcopy(trigger["source_record"]), "record": record,
+                "record": record,
                 "inspection": inspection, "limitations": list(LIMITATIONS)}

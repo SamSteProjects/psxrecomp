@@ -1,5 +1,6 @@
 """Dialogue commands preserve source evidence and unrelated authored components."""
 from copy import deepcopy
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -26,8 +27,16 @@ class ProjectDialogue(unittest.TestCase):
             authored = deepcopy(p.overrides)
             p.undo(); self.assertEqual(p.overrides, {})
             p.redo(); self.assertEqual(p.overrides, authored)
+            p.import_metadata(json.loads(json.dumps(synthetic_scene()).replace("fixture", "second")))
+            catalog = p.authored_assets()
+            self.assertEqual(catalog[0]["scene_id"], "scene://fixture")
+            self.assertEqual(catalog[0]["kind"], "script")
+            self.assertEqual(catalog[0]["id"], script)
+            catalog[0]["authored"].clear()
+            self.assertEqual(p.overrides, authored)
             restored = ProjectService.open(p.save())
             self.assertEqual(restored.overrides, authored)
+            self.assertEqual(restored.authored_assets(), p.authored_assets())
             restored.command({"type": "clear_dialogue_text", "entity_id": script, "run_id": run})
             self.assertEqual(restored.overrides, {})
             restored.undo(); self.assertEqual(restored.overrides, authored)

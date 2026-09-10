@@ -721,6 +721,17 @@ class ProjectService:
                                 "scene_id": scene_id, "source_scene": document["scene"]["name"],
                                 "changes": changes, "authored": deepcopy(edits),
                                 "source_record": deepcopy(actor.get("source_record"))})
+        for identifier, edits in sorted(self.overrides.items()):
+            if "/scripts/man-p2/" not in identifier:
+                continue
+            scene_id = identifier.split("/scripts/man-p2/", 1)[0]
+            runs = edits.get("Dialogue", {}).get("runs", {})
+            if runs:
+                records.append({"id": identifier, "kind": "script",
+                                "name": "Partition 2 script " + str(int(identifier.rsplit("/", 1)[-1])),
+                                "scene_id": scene_id, "source_scene": self.imports[scene_id]["scene"]["name"],
+                                "changes": [f"Dialogue: {len(runs)} text runs"], "authored": deepcopy(edits),
+                                "script_id": "script://" + identifier.removeprefix("scene://")})
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]
             records.append({"id": identifier, "kind": "texture", "name": "TIM " + identifier.split("/", 3)[-1].replace("/", " / "),

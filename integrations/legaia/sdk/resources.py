@@ -59,6 +59,22 @@ def trigger_script_preview(project, asset_id: str) -> dict:
     return {**report, "scene_id": project.active_scene, "source_key": key}
 
 
+def partition_two_script_preview(project, identifier: str) -> dict:
+    from importer.dialogue_authoring import validate_run_id
+    from importer.trigger_scripts import inspect_partition_two_script
+    document, key = _scene(project)
+    validate_run_id(identifier, "script://" + identifier.removeprefix("scene://") + "/dialogue/0000/run/0000")
+    prefix = project.active_scene + "/scripts/man-p2/"
+    if not identifier.startswith(prefix):
+        raise ProjectError("Partition-two script must belong to the active imported scene")
+    with _disc_context(project.disc_path):
+        _verify(project, document)
+        report = inspect_partition_two_script(project.disc_path, document["scene"]["name"], int(identifier[len(prefix):]))
+    if key != source_key(project):
+        raise ProjectError("Script source changed during inspection; refresh again")
+    return {**report, "scene_id": project.active_scene, "source_key": key}
+
+
 def field_map_preview(project, asset_id: str) -> dict:
     from importer.field_map import preview_field_map
     document, key = _scene(project)

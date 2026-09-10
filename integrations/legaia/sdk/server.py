@@ -326,6 +326,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import refresh_resource_catalog
                     self._json(200, refresh_resource_catalog(self.server.project))
                     return
+                if route == "/api/partition-two-script":
+                    if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
+                        raise ProjectError("Partition-two inspection accepts a structural entity_id only")
+                    from .resources import partition_two_script_preview
+                    report = partition_two_script_preview(self.server.project, body["entity_id"])
+                    report["dialogue_authoring"] = self.server.project.dialogue_options(body["entity_id"])
+                    self._json(200, report)
+                    return
                 if route == "/api/trigger-script":
                     if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:
                         raise ProjectError("Trigger script inspection accepts a catalog identity only; partition and source spans are source-controlled")

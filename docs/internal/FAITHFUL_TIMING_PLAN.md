@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (saved P2 dialogue discovery):** Prior stability recheck was
+  progress: five executable regressions supplied fresh evidence. Continued the
+  authoring workflow by listing P2 Dialogue overrides as project-wide script
+  assets, independent of actors and derived catalogs. Shared bounded P2 source
+  inspection now supports direct structural identity as well as verified trigger
+  references; the HTTP endpoint rejects wrong scene/partition/record identities.
+  Browser IAB tab 18 on private editor 4394 applied/saved SDK, reopened the
+  project, opened P2[37] from its authored asset and retained the text. Clear/save
+  removed the authored asset; browser error log was empty. Owned editor session
+  1949 was interrupted after acceptance (exit 1); no game was launched. Main
+  project and runtime remained untouched. Gameplay text display remains open.
+  Nine focused HTTP/importer/catalog/project tests passed, including offline
+  cross-scene discovery and returned-record isolation; Node syntax and diff
+  whitespace checks passed.
+
 - **2026-09-10 (renewed stability requirement):** Read the supplied SDK prompts
   and rechecked the existing runtime/precompile fixes at `b46f770b`. The static
   overlay clean/incremental build fixture, restore entry/CPS fixture, production

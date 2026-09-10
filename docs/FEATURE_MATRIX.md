@@ -1,5 +1,14 @@
 # Legaia SDK feature matrix
 
+2026-09-10 dialogue workflow update: supported MAN partition-two text runs now
+appear in project-wide Authored assets, including after save/open and without a
+derived resource catalog. Selecting a saved script switches to its source scene
+and reopens the shared dialogue workspace through fresh source verification.
+Browser save/open/edit-clear acceptance passed for town01 P2[37]; the real HTTP
+regression verifies matching trigger/direct provenance and rejects wrong-scene,
+wrong-partition and absent-record requests. This extends the script and asset
+browser rows below. In-game text display remains unverified.
+
 Status recorded during the 2026-09-09 buildout. FUNCTIONAL means the named
 workflow runs within its stated bounds; it does not mean the entire subsystem
 is complete. Runtime fixes from the preceding milestone are committed as
