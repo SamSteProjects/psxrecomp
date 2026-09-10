@@ -1,5 +1,25 @@
 # Legaia stability and release parity
 
+## Host audio output health (2026-09-10)
+
+Source review found `psx_audio_out_stats` reported output available when a host
+handle existed but the pull bridge was uninitialized; the actual callback emits
+silence in that condition. Startup also discarded SDL3 device-resume failure.
+The reporter now requires an opened, successfully resumed device and a ready
+bridge in pull mode. Unavailable paths return initialized zero counters rather
+than fallback queue statistics. Guest SPU progression is unchanged.
+
+`runtime/tests/test_audio_output_health.py` executes the production reporter
+with synthetic host/bridge state. The previous source fails the uninitialized
+bridge case; the fixed reporter passes missing-device, failed-resume and
+uninitialized-bridge cases, plus healthy legacy and pull outputs. A fresh MSVC
+Release build completed with exit0. Its SHA-256 is
+`61d99eacdb1fcdda59bc5f570fbcac12e02abfca30169800842e800bb9954f22`.
+The prior gameplay-tested executable (`2be69467...`) is preserved at
+`local-output/sdk-20260909/audio-output-health/LegaiaStability-before.exe`.
+Source/binary hashes are in that folder's `verification.json`. This is a
+reporting fix; the new binary has not yet been launched or listened to.
+
 ## Current stability recheck (2026-09-10)
 
 The user's renewed stability requirement covers the runtime and precompilation

@@ -2069,6 +2069,7 @@ static int g_turbo_audio_sink_config_enabled = 0;
 static int g_turbo_load_wall_multiplier = 0;
 static int g_turbo_load_release_frames = TURBO_LOADS_RELEASE_FRAMES;
 static SDL_AudioDeviceID sdl_audio_device;
+static bool sdl_audio_resumed = false;
 static int16_t       sdl_audio_buf[2048 * 2];
 
 /* DRC bridge. Producer (sdl_audio_pump) runs on the main loop thread under
@@ -3071,6 +3072,7 @@ static void shutdown_runtime(void) {
         psx_sdl_audio_clear(sdl_audio_device);
         psx_sdl_audio_close(sdl_audio_device);   /* stops the pull callback */
         sdl_audio_device = 0;
+        sdl_audio_resumed = false;
     }
     if (s_drc_ready) { rab_free(&s_drc); s_drc_ready = false; }
     close_controller();
@@ -3088,6 +3090,7 @@ static void teardown_game_session_keep_lobby(void) {
         psx_sdl_audio_clear(sdl_audio_device);
         psx_sdl_audio_close(sdl_audio_device);
         sdl_audio_device = 0;
+        sdl_audio_resumed = false;
     }
     if (s_drc_ready) { rab_free(&s_drc); s_drc_ready = false; }
     close_controller();
@@ -3303,7 +3306,13 @@ extern "C" int psx_audio_out_stats(double *fill_ms, double *target_ms,
 {
     *legacy = audio_legacy_mode() ? 1 : 0;
     *host_rate = g_audio_host_rate;
-    if (*legacy || !s_drc_ready) {
+    *fill_ms = *target_ms = *correction = 0.0;
+    *underruns = *overflow_drops = 0;
+    /* An open handle does not prove a working output path: pull mode emits
+     * silence until its bridge is ready, and SDL3 can fail device resume. */
+    if (!sdl_audio_device || !sdl_audio_resumed || (!*legacy && !s_drc_ready))
+        return 0;
+    if (*legacy) {
         *fill_ms = sdl_audio_device
                    ? (double)psx_sdl_audio_queued_size(sdl_audio_device)
                      / (44100.0 * 4.0) * 1000.0
@@ -14917,7 +14926,7 @@ session_reboot:
             }
             g_audio_host_rate = have.freq;
             audio_trace_set_tap_rate(AUDIO_TAP_HOST, (uint32_t)have.freq);
-            (void)psx_sdl_audio_resume(sdl_audio_device);
+            sdl_audio_resumed = psx_sdl_audio_resume(sdl_audio_device) == 0;
         }
     }
     /* Always register: SPU advance is guest-cycle budgeted and must not

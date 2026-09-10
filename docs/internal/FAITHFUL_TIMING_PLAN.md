@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (host audio readiness reporting):** Previous turn completed
+  browser/build workflow acceptance. Returning to prompt stability targets found
+  audio_stats falsely accepted an open device with an uninitialized pull bridge;
+  callback emits silence there. Track successful SDL resume, clear on close and
+  require ready bridge/device before reporting output available. No guest timing
+  change. Production reporter regression fails old source and passes fixed
+  missing-device/resume-failure/bridge-failure plus healthy legacy/pull cases.
+  MSVC Release build exit0; new binary61d99eac... has not run. Previous gameplay
+  binary2be69467... preserved in local-output/sdk-20260909/audio-output-health;
+  verification.json records full source/binary hashes. Updated release-parity
+  evidence; audible continuity and full SDK goal remain unaccepted.
+
 - **2026-09-10 (snapped transform browser/build acceptance):** Prior lifecycle
   fix was progress. Fresh town01 browser physically dragged actor0049 Z handle
   with256-unit snapping: imported12096 -> authored12288. Undo removed the override,
