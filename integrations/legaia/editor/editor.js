@@ -75,6 +75,7 @@ function setBusy(value) {
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
   if($('script-undo'))updateScriptActions();
+  if($('texture-undo'))updateTextureActions();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -224,7 +225,7 @@ function synchronizeResources(){
   if(resourceContextKey!==current){
     resourceContextKey=current;
     resourceAbort?.abort();resourceRecords=[];resourceLimitations=[];resourceKey=null;resourcePendingKey=null;resourceError=null;
-    if(textureDialog.open)textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();if(scriptResourceDialog.open)scriptResourceDialog.close();
+    if(textureDialog.open&&!(textureCommandPending&&textureSession?.projectKey===textureProjectKey()))textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();if(scriptResourceDialog.open)scriptResourceDialog.close();
   }
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
   $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load texture, animation, script and dialogue metadata.');
@@ -269,31 +270,88 @@ function renderAssets(){
   if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=['texture','animation','script','dialogue'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
 }
 const textureDialog=document.createElement('dialog');textureDialog.id='texture-dialog';document.body.append(textureDialog);
-let textureRequest=0,textureAbort=null;
+let textureRequest=0,textureAbort=null,textureSession=null,texturePreview=null,textureCommandPending=false;
+const textureProjectKey=()=>JSON.stringify([state.project?.path,state.scene?.id]);
+const canEditTexture=()=>state.capabilities?.texture_replacement===true&&(state.project?.mode ?? 'edit').toLowerCase()==='edit';
 textureDialog.addEventListener('close',()=>{textureRequest++;textureAbort?.abort();});
-async function openTexture(record,paletteIndex=0){
+function textureAuthored(){return state.texture_overrides?state.texture_overrides[textureSession?.record.id] ?? null:texturePreview?.authored ?? null;}
+function updateTextureActions(){
+  if(!$('texture-undo'))return;
+  const pending=!!$('texture-file').files?.length,authored=textureAuthored(),supported=!!state.capabilities?.texture_replacement;
+  $('texture-authoring').hidden=!supported;$('texture-history').hidden=!supported;$('texture-layer-label').hidden=!supported;
+  $('texture-layer').disabled=busy;$('texture-palette').disabled=busy;
+  $('texture-file').disabled=busy||!canEditTexture();$('texture-apply').disabled=busy||!canEditTexture()||!pending;
+  $('texture-discard').hidden=!pending;$('texture-discard').disabled=busy;
+  $('texture-clear').disabled=busy||pending||!canEditTexture()||!authored;
+  $('texture-undo').disabled=busy||pending||!canEditTexture()||!state.history?.can_undo;
+  $('texture-redo').disabled=busy||pending||!canEditTexture()||!state.history?.can_redo;
+  $('texture-save').disabled=busy||pending||!state.project?.dirty;$('texture-source').disabled=busy;
+  $('texture-project-status').textContent=pending?'Selected file is not applied. Apply or discard before project actions.':busy?'Verifying…':state.project?.dirty?'Applied changes are not saved':'Project saved';
+  $('texture-authored').textContent=authored?`Authored TIM replacement · ${authored.byte_length} bytes · SHA-256 ${authored.asset_sha256?.slice(0,12) ?? 'unavailable'}`:'No authored replacement · effective pixels inherit the imported TIM.';
+}
+async function openTexture(record,paletteIndex=0,layer='effective'){
   if(busy)return;if(!state.capabilities?.texture_preview){notify('Texture decoding is unavailable in this service.',true);return;}
-  const key=resourceStateKey();if(resourceKey!==key)return;
-  setBusy(true);const request=++textureRequest,controller=new AbortController();textureAbort?.abort();textureAbort=controller;
-  if(!textureDialog.open){
-    textureDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-texture" aria-label="Close texture preview">×</button></div><p id="texture-summary">Verifying texture source…</p><div class="texture-bitmap-wrap"><canvas id="texture-bitmap" aria-label="Decoded texture pixels"></canvas></div><label id="texture-palette-label" hidden>Palette<select id="texture-palette" aria-label="Texture palette"></select></label><p class="field-note">Decoded source pixels. Palette selection is an inspection setting, not an authored edit. Static texture candidates do not establish runtime VRAM residency. PSX semi-transparent blending is not reconstructed.</p><details class="resource-provenance"><summary>Texture source and limitations</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;
-    $('close-texture').onclick=()=>textureDialog.close();textureDialog.showModal();
+  const key=resourceStateKey(),continuing=textureDialog.open&&textureSession?.record.id===record.id&&textureSession.projectKey===textureProjectKey();
+  if(!continuing&&resourceKey!==key)return;
+  if(!continuing){
+    textureSession={record,projectKey:textureProjectKey(),paletteIndex,layer};texturePreview=null;
+    textureDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-texture" aria-label="Close texture preview">×</button></div><div id="texture-history" class="texture-history" hidden><button id="texture-undo">Undo</button><button id="texture-redo">Redo</button><button id="texture-save">Save project</button><span id="texture-project-status"></span></div><div class="texture-view-controls"><label id="texture-layer-label" hidden>Preview layer<select id="texture-layer" aria-label="Texture preview layer"><option value="effective">Effective</option><option value="imported">Imported</option></select></label><label id="texture-palette-label" hidden>Palette<select id="texture-palette" aria-label="Texture palette"></select></label></div><p id="texture-summary">Verifying texture source…</p><div class="texture-bitmap-wrap"><canvas id="texture-bitmap" aria-label="Decoded texture pixels"></canvas></div><section id="texture-authoring" hidden><h3>Authored replacement</h3><p id="texture-authored"></p><button id="texture-source">Download original TIM</button><label>Replacement TIM file<input id="texture-file" type="file" accept=".tim" aria-label="Replacement TIM file"></label><p id="texture-file-status" class="field-note">Choose a TIM file up to 1 MiB. The service requires matching headers, dimensions, bit depth and palette layout.</p><div class="run-actions"><button id="texture-apply" class="accent" disabled>Apply replacement</button><button id="texture-discard" hidden>Discard selected file</button><button id="texture-clear" disabled>Clear override</button></div></section><p class="field-note">Palette and layer selection only affect inspection. Static texture candidates do not establish runtime VRAM residency. PSX semi-transparent blending is not reconstructed.</p><details class="resource-provenance"><summary>Texture source and limitations</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;
+    $('close-texture').onclick=()=>textureDialog.close();
+    $('texture-undo').onclick=()=>textureProjectAction('/api/undo',{});$('texture-redo').onclick=()=>textureProjectAction('/api/redo',{});$('texture-save').onclick=()=>textureProjectAction('/api/project/save',{});
+    $('texture-clear').onclick=()=>textureProjectAction('/api/command',{type:'clear_texture_replacement',asset_id:record.id});
+    $('texture-source').onclick=downloadOriginalTexture;$('texture-apply').onclick=applyTextureReplacement;
+    $('texture-discard').onclick=()=>{$('texture-file').value='';$('texture-file-status').textContent='No replacement file selected.';updateTextureActions();};
+    $('texture-file').onchange=()=>{const file=$('texture-file').files?.[0];if(file&&(!/\.tim$/i.test(file.name)||file.size<1||file.size>1048576)){$('texture-file').value='';$('texture-file-status').textContent='Choose a nonempty .tim file no larger than 1 MiB.';}else $('texture-file-status').textContent=file?`${file.name} · ${file.size} bytes · not applied`:'No replacement file selected.';updateTextureActions();};
+    $('texture-layer').onchange=()=>openTexture(record,textureSession.paletteIndex,$('texture-layer').value);
+    if(!textureDialog.open)textureDialog.showModal();
   }
-  textureDialog.querySelector('.dialog-error').textContent='';$('texture-palette').disabled=true;$('texture-bitmap').width=1;$('texture-bitmap').height=1;$('texture-summary').textContent=`Verifying texture palette ${paletteIndex}…`;textureDialog.querySelector('pre').textContent='';
+  textureSession.paletteIndex=paletteIndex;textureSession.layer=layer;$('texture-layer').value=layer;
+  setBusy(true);const request=++textureRequest,controller=new AbortController();textureAbort?.abort();textureAbort=controller;
+  textureDialog.querySelector('.dialog-error').textContent='';$('texture-bitmap').width=1;$('texture-bitmap').height=1;$('texture-summary').textContent=`Verifying ${layer} texture palette ${paletteIndex}…`;textureDialog.querySelector('pre').textContent='';
   try{
-    const response=await fetch('/api/texture-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id,palette_index:paletteIndex}),signal:controller.signal});
+    const response=await fetch('/api/texture-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id,palette_index:paletteIndex,...(state.capabilities?.texture_replacement?{layer}:{})}),signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Texture decoding failed');
     if(request!==textureRequest||!textureDialog.open||key!==resourceStateKey())return;
-    if(result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.palette_index!==paletteIndex||!Number.isInteger(result.width)||!Number.isInteger(result.height)||result.width<1||result.height<1||result.width*result.height>4194304||!Number.isInteger(result.palette_count)||result.palette_count<0||result.palette_count>4096||typeof result.rgba_base64!=='string'||result.rgba_base64.length>22369624)throw new Error('Texture service returned invalid or oversized pixels.');
+    if(result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.palette_index!==paletteIndex||(state.capabilities?.texture_replacement&&result.layer!==layer)||!Number.isInteger(result.width)||!Number.isInteger(result.height)||result.width<1||result.height<1||result.width*result.height>4194304||!Number.isInteger(result.palette_count)||result.palette_count<0||result.palette_count>4096||typeof result.rgba_base64!=='string'||result.rgba_base64.length>22369624)throw new Error('Texture service returned invalid or oversized pixels.');
     const bytes=Uint8ClampedArray.from(atob(result.rgba_base64),value=>value.charCodeAt(0));if(bytes.length!==result.width*result.height*4)throw new Error('Decoded texture dimensions do not match the pixel data.');
-    const bitmap=$('texture-bitmap');bitmap.width=result.width;bitmap.height=result.height;bitmap.getContext('2d').putImageData(new ImageData(bytes,result.width,result.height),0,0);
-    $('texture-summary').textContent=`${result.width} × ${result.height} pixels · ${result.bpp} bpp${result.palette_count>0?' · '+result.palette_count+' palettes':''}`;
+    texturePreview=result;const bitmap=$('texture-bitmap');bitmap.width=result.width;bitmap.height=result.height;bitmap.getContext('2d').putImageData(new ImageData(bytes,result.width,result.height),0,0);
+    $('texture-summary').textContent=`${layer==='imported'?'Imported TIM':result.authored?'Effective authored TIM':'Effective imported TIM'} · ${result.width} × ${result.height} pixels · ${result.bpp} bpp${result.palette_count>0?' · '+result.palette_count+' palettes':''}`;
     $('texture-palette-label').hidden=result.palette_count<=1;$('texture-palette').replaceChildren();
     for(let index=0;index<result.palette_count;index++){const option=document.createElement('option');option.value=index;option.textContent=`Palette ${index}`;$('texture-palette').append(option);}
-    $('texture-palette').value=paletteIndex;$('texture-palette').onchange=()=>openTexture(record,Number($('texture-palette').value));
+    $('texture-palette').value=paletteIndex;$('texture-palette').onchange=()=>openTexture(record,Number($('texture-palette').value),textureSession.layer);
     const {rgba_base64,stp_base64,...provenance}=result;textureDialog.querySelector('pre').textContent=JSON.stringify({...provenance,stp_flags_present:typeof stp_base64==='string',catalog_record:record.data},null,2);
-  }catch(error){if(error.name!=='AbortError'&&textureDialog.open){textureDialog.querySelector('.dialog-error').textContent=error.message;}}
-  finally{if(textureAbort===controller)textureAbort=null;if(textureDialog.open)$('texture-palette').disabled=false;setBusy(false);}
+  }catch(error){if(error.name!=='AbortError'&&textureDialog.open)textureDialog.querySelector('.dialog-error').textContent=error.message;}
+  finally{if(textureAbort===controller)textureAbort=null;setBusy(false);}
+}
+async function textureProjectAction(route,body){
+  if(busy||!textureSession)return;
+  const session=textureSession;textureCommandPending=true;textureDialog.querySelector('.dialog-error').textContent='';
+  try{if(await api(route,body)){if(textureDialog.open&&session.projectKey===textureProjectKey()){await openTexture(session.record,session.paletteIndex,session.layer);$('texture-file-status').textContent=state.project?.dirty?'No replacement file selected. Project changes are not saved.':'No replacement file selected. Project saved.';}}else textureDialog.querySelector('.dialog-error').textContent=$('status').textContent;}
+  finally{textureCommandPending=false;updateTextureActions();}
+}
+async function applyTextureReplacement(){
+  if(busy||!canEditTexture())return;
+  const file=$('texture-file').files?.[0];if(!file||file.size<1||file.size>1048576||!/\.tim$/i.test(file.name))return;
+  setBusy(true);textureDialog.querySelector('.dialog-error').textContent='';
+  let encoded;
+  try{encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('The selected TIM could not be read.'));reader.readAsDataURL(file);});}
+  catch(error){textureDialog.querySelector('.dialog-error').textContent=error.message;return;}
+  finally{setBusy(false);}
+  const session=textureSession;textureCommandPending=true;
+  try{if(await api('/api/texture-replacement',{asset_id:session.record.id,tim_base64:encoded})){$('texture-file').value='';$('texture-file-status').textContent=state.project?.dirty?'Replacement applied. Save the project to keep it.':'Replacement accepted. Project unchanged.';if(textureDialog.open&&session.projectKey===textureProjectKey())await openTexture(session.record,session.paletteIndex,'effective');}else textureDialog.querySelector('.dialog-error').textContent=$('status').textContent;}
+  finally{textureCommandPending=false;updateTextureActions();}
+}
+async function downloadOriginalTexture(){
+  if(busy||!textureSession)return;setBusy(true);textureDialog.querySelector('.dialog-error').textContent='';
+  try{
+    const response=await fetch('/api/texture-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:textureSession.record.id})}),result=await response.json();
+    if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Original TIM download failed');
+    if(typeof result.tim_base64!=='string'||result.tim_base64.length>1398104)throw new Error('Original TIM exceeds the supported download size.');
+    const bytes=Uint8Array.from(atob(result.tim_base64),value=>value.charCodeAt(0));if(!bytes.length||bytes.length>1048576)throw new Error('Invalid original TIM size.');
+    const filename=String(result.filename ?? 'original-texture.tim').split(/[\\/]/).at(-1),url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'})),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    $('texture-file-status').textContent='Original TIM downloaded. Edit its pixels or palettes in a TIM-aware tool, keeping the source layout.';
+  }catch(error){textureDialog.querySelector('.dialog-error').textContent=error.message;}
+  finally{setBusy(false);}
 }
 const animationResourceDialog=document.createElement('dialog');animationResourceDialog.id='animation-resource-dialog';document.body.append(animationResourceDialog);
 function openAnimationResource(record){

@@ -28,7 +28,7 @@ def source_key(project) -> str | None:
                    if "ActorAppearance" in project.overrides.get(actor["semantic_id"], {})}
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
-                   "appearances": appearances,
+                   "appearances": appearances, "textures": deepcopy(project.texture_overrides),
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
 
 
@@ -60,6 +60,10 @@ class ScenePreviewService:
         self._metrics = {}
 
     def preview(self, project, model_loader, pose_loader_factory=None) -> dict:
+        # Cached geometry must not hide missing or modified authored files.
+        for binding in project.texture_overrides.values():
+            if binding["source_scene_id"] == project.active_scene:
+                project.read_texture_replacement(binding)
         key = source_key(project)
         if key is None:
             raise ProjectError("Scene preview requires an imported scene and its user-owned disc")

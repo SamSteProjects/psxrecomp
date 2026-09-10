@@ -46,17 +46,55 @@ def refresh_resource_catalog(project) -> dict:
     return project.assets.register_resources(project.active_scene, key, records, limitations)
 
 
-def texture_preview(project, asset_id: str, palette_index: int) -> dict:
+def texture_preview(project, asset_id: str, palette_index: int, layer: str = "effective") -> dict:
     from importer.texture_catalog import preview_texture_asset
+    from importer.textures import decode_tim
+    if layer not in ("imported", "effective"):
+        raise ProjectError("Choose imported or effective texture preview")
     document, key = _scene(project)
     with _disc_context(project.disc_path):
         _verify(project, document)
         preview = preview_texture_asset(project.disc_path, document["scene"]["name"], asset_id, palette_index)
+        authored = project.texture_overrides.get(asset_id)
+        if authored is not None and layer == "effective":
+            content = project.read_texture_replacement(authored)
+            project._texture_context(asset_id).validate_replacement(asset_id, content)
+            preview.update(decode_tim(content, palette_index))
     if key != source_key(project):
         raise ProjectError("Texture source changed during preview; refresh again")
     asset = preview["asset"]
-    return {**asset, "source_key": key, "scene_id": project.active_scene,
+    return {**asset, "source_key": key, "scene_id": project.active_scene, "layer": layer,
+            "authored": authored,
             "width": preview["width"], "height": preview["height"], "palette_index": palette_index,
             "rgba_base64": base64.b64encode(preview["rgba"]).decode("ascii"),
             "stp_base64": base64.b64encode(preview["stp"]).decode("ascii"),
             "limitations": preview.get("limitations", asset.get("limitations", []))}
+
+
+def texture_source(project, asset_id: str) -> dict:
+    context = project._texture_context(asset_id)
+    content = context.original_tim(asset_id)
+    return {"tim_base64": base64.b64encode(content).decode("ascii"),
+            "filename": "retail-" + asset_id.removeprefix("texture://").replace("/", "-") + ".tim"}
+
+
+def apply_texture_overrides(project, catalog):
+    """Return an effective private catalog; imported texture facts stay intact."""
+    from copy import deepcopy
+    from importer.texture_authoring import load_texture_authoring_context
+    from importer.textures import parse_tim
+    bindings = {identifier: binding for identifier, binding in project.texture_overrides.items()
+                if binding["source_scene_id"] == "scene://" + catalog.scene}
+    if not bindings:
+        return catalog
+    context = load_texture_authoring_context(project.disc_path, catalog.scene)
+    replacements = {}
+    for identifier, binding in bindings.items():
+        content = project.read_texture_replacement(binding)
+        context.validate_replacement(identifier, content)
+        replacements[identifier] = parse_tim(content)
+    result = deepcopy(catalog)
+    result.textures = [(replacements.get(source["semantic_id"], tim), source)
+                       for tim, source in result.textures]
+    result.diagnostics.append(f"Effective preview applies {len(replacements)} project-authored TIM replacements; source locators remain retail provenance.")
+    return result

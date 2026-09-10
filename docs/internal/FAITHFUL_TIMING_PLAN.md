@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (authored TIM replacements):** Implemented content-addressed
+  authored TIM references, project history/persistence, separate imported and
+  effective preview layers, and carrier-preserving build integration. Headers,
+  pixel mode, VRAM rectangles and palette layout remain source-validated;
+  replacement image/palette content is user-authored. Project integrity tests
+  reject modified authored files before save/open. Five writer and twelve build
+  tests passed; browser layer/Clear/Undo/Redo/Save and HTTP boundary/model-pixel
+  checks passed. File-picker and gameplay acceptance remain outstanding.
+  Runtime source is unchanged.
+
 - **2026-09-09 (central script resources):** Connecting bounded actor scripts
   and inline dialogue to the asset database and existing authoring inspector.
   Town01 supplies 52 scripts, 344 segments and 380 flag references. Category

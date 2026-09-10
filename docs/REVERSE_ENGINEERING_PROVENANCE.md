@@ -93,3 +93,11 @@ with matching channel counts, and rejects compressed growth. Its retail
 two-byte round trip establishes encoding only, not script or gameplay
 compatibility. Subsequent editor/project/build integration passes bounded
 appearance/position/text composition; gameplay appearance remains unverified.
+
+Authored TIM replacement follows pinned Andrew revision
+`d6e64c68ede25813d35db20980da82a1a025549b`, TIM parser blob
+`99607f6265e223153cc47678bff1d65d59b0ea54` and TIM pack reader blob
+`f90c89f1aba8adf012395a6d752cef49a41d4960`. The writer retains original headers
+and verified member boundaries. Actual town01 raw-pack overlays were checked
+against disc user bytes; compressed-carrier composition is synthetic coverage.
+See `legaia-sdk/texture-authoring.md`; no retail payloads are tracked.

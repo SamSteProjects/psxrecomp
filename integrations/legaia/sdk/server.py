@@ -70,6 +70,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
+        state["capabilities"]["texture_replacement"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
         state["build"] = self.last_build
         state["run"] = self.runs.status()
@@ -180,11 +181,16 @@ class EditorServer(ThreadingHTTPServer):
         if not scene:
             preview["textures"] = []
             return preview
-        key = (project.disc_path, scene)
+        from .scene_preview import source_key
+        from .resources import apply_texture_overrides
+        for binding in project.texture_overrides.values():
+            if binding["source_scene_id"] == "scene://" + scene:
+                project.read_texture_replacement(binding)
+        key = (project.disc_path, scene, source_key(project))
         if key not in self.texture_catalogs:
             if len(self.texture_catalogs) >= 2:
                 self.texture_catalogs.clear()
-            self.texture_catalogs[key] = load_scene_texture_catalog(project.disc_path, scene)
+            self.texture_catalogs[key] = apply_texture_overrides(project, load_scene_texture_catalog(project.disc_path, scene))
         # The selected shared bank never replaces or merges into the scene cache.
         catalog = load_asset_texture_catalog(project.disc_path, asset, self.texture_catalogs[key])
         preview["texture_scope"] = "field_party" if uses_field_party_textures(asset) else "scene"
@@ -277,8 +283,9 @@ class EditorHandler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            if not 0 < length <= 32768 or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
-                raise ProjectError("Commands require a JSON object of at most 32768 bytes")
+            request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
+            if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
+                raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
             content = self.rfile.read(length)
             if len(content) != length:
                 raise ProjectError("Incomplete command request body")
@@ -287,6 +294,24 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route in ("/api/texture-source", "/api/texture-replacement"):
+                    expected = {"asset_id", "tim_base64"} if route.endswith("replacement") else {"asset_id"}
+                    if set(body) != expected or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
+                        raise ProjectError("Texture requests accept a resource identity and optional authored TIM only")
+                    if route.endswith("source"):
+                        from .resources import texture_source
+                        self._json(200, texture_source(self.server.project, body["asset_id"]))
+                    else:
+                        encoded = body["tim_base64"]
+                        if not isinstance(encoded, str) or len(encoded) > 1398104:
+                            raise ProjectError("Authored TIM exceeds the 1 MiB limit")
+                        try:
+                            content = base64.b64decode(encoded, validate=True)
+                        except ValueError as exc:
+                            raise ProjectError("Authored TIM requires valid base64") from exc
+                        self.server.project.set_texture_replacement(body["asset_id"], content)
+                        self._json(200, self.server.state())
+                    return
                 if route == "/api/resource-catalog":
                     if body:
                         raise ProjectError("Resource discovery takes no client source bindings")
@@ -294,12 +319,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, refresh_resource_catalog(self.server.project))
                     return
                 if route == "/api/texture-preview":
-                    if (set(body) != {"asset_id", "palette_index"} or
+                    if (not {"asset_id", "palette_index"} <= set(body) or set(body) - {"asset_id", "palette_index", "layer"} or
                             not isinstance(body.get("asset_id"), str) or not body["asset_id"] or
                             type(body.get("palette_index")) is not int or body["palette_index"] < 0):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
-                    self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"]))
+                    self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
                     return
                 if route in ("/api/actor-appearance-options", "/api/actor-appearance-preview", "/api/export/actor-appearance"):
                     exporting = route == "/api/export/actor-appearance"
@@ -375,6 +400,10 @@ class EditorHandler(BaseHTTPRequestHandler):
         # Reject malformed field types before they reach filesystem/importer services.
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
+        if route == "/api/command" and body.get("type") == "clear_texture_replacement":
+            if set(body) != {"type", "asset_id"}:
+                raise ProjectError("Texture clear accepts only an asset identity")
+            required_strings[route] = ("asset_id",)
         if route == "/api/command" and body.get("type") in (
                 "set_transform", "clear_transform", "create_actor_template", "apply_actor_template", "set_actor_appearance", "clear_actor_appearance", "set_dialogue_text", "clear_dialogue_text"):
             required_strings[route] = ("entity_id",)

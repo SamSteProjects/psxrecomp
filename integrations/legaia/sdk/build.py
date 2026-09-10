@@ -1,4 +1,4 @@
-"""Build private disc overlays from bounded authored MAN fields and text runs."""
+"""Build private disc overlays from bounded authored MAN data and scene TIMs."""
 from __future__ import annotations
 
 import hashlib
@@ -93,6 +93,7 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
     Supports representable authored field X/Z placement, evidenced initial
     MAN donor model/animation assignments, equal-span dialogue glyph runs,
+    layout-compatible scene TIM replacements,
     and unchanged retail builds after clearing overrides. The input disc and
     imported metadata remain unchanged. Installation/enabling and a live
     launch are separate actions; this function does not claim runtime testing.
@@ -146,9 +147,26 @@ def _build_project(project, output_dir) -> dict:
                 raise BuildError(f"{identifier}: Dialogue requires only nonempty runs mapping run identities to text")
             edits["dialogues"][identifier] = dialogue["runs"]
 
+    texture_edits = {}
+    texture_overrides = getattr(project, "texture_overrides", {})
+    if not isinstance(texture_overrides, dict) or len(texture_overrides) > 128:
+        raise BuildError("Texture overrides must be a bounded mapping of resource identities")
+    for identifier, binding in texture_overrides.items():
+        if (not isinstance(identifier, str) or not identifier.startswith("texture://") or
+                len(identifier) > 512 or not isinstance(binding, dict) or
+                set(binding) != {"asset_sha256", "byte_length", "format", "source_scene_id"} or
+                binding.get("format") != "tim" or type(binding.get("byte_length")) is not int or
+                not 1 <= binding["byte_length"] <= 1024 * 1024 or not isinstance(binding.get("asset_sha256"), str) or
+                len(binding["asset_sha256"]) != 64 or
+                any(c not in "0123456789abcdef" for c in binding["asset_sha256"]) or
+                not isinstance(binding.get("source_scene_id"), str) or
+                binding["source_scene_id"] not in project.imports):
+            raise BuildError("Texture override requires a verified private TIM binding and imported source scene")
+        texture_edits.setdefault(binding["source_scene_id"], {})[identifier] = binding
+
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
-    for scene_id in scene_edits or project.imports:
+    for scene_id in sorted(set(scene_edits) | set(texture_edits)) or project.imports:
         document = project.imports[scene_id]
         fresh = import_scene(project.disc_path, document["scene"]["name"])
         if canonical_json(document) != canonical_json(fresh):
@@ -242,6 +260,48 @@ def _build_project(project, output_dir) -> dict:
             })
             for change in changes:
                 audit_edits.append({"scene": scene, "semantic_id": f"scene://{scene}/actors/man-p1/{change['record_index']:04d}", **change})
+        for scene_id, bindings in sorted(texture_edits.items()):
+            from importer.texture_authoring import load_texture_authoring_context
+            document = project.imports[scene_id]
+            scene = document["scene"]["name"]
+            if document["source"]["disc_identity"] != "sha256:" + disc_hash:
+                raise BuildError(f"Source disc identity does not match {scene_id}")
+            context = load_texture_authoring_context(project.disc_path, scene)
+            replacements = {}
+            for identifier, binding in sorted(bindings.items()):
+                payload = project.read_texture_replacement(binding)
+                if (not isinstance(payload, bytes) or len(payload) != binding["byte_length"] or
+                        _hash(payload) != binding["asset_sha256"]):
+                    raise BuildError("Private texture replacement no longer matches its authored binding")
+                replacements[identifier] = payload
+            texture_overlays, texture_changes = context.patch(replacements)
+            changed_ids = set()
+            for change in texture_changes:
+                identifier = change.get("semantic_id")
+                if (identifier not in replacements or identifier in changed_ids or
+                        change.get("scope") != "TIM-image-and-palette-payload-only" or
+                        change.get("after_sha256") != _hash(replacements[identifier]) or
+                        change.get("before_sha256") != _hash(context.original_tim(identifier)) or
+                        change.get("byte_length") != len(replacements[identifier])):
+                    raise BuildError("Texture audit does not match the freshly verified replacement")
+                changed_ids.add(identifier)
+                audit_edits.append({**change, "scene": scene, "field": "texture.tim"})
+            expected_changes = {identifier for identifier, payload in replacements.items()
+                                if payload != context.original_tim(identifier)}
+            if changed_ids != expected_changes or bool(texture_overlays) != bool(texture_changes):
+                raise BuildError("Texture audit omits or invents an authored replacement")
+            disc_user_size = (_image.size // 2352) * 2048
+            for overlay in texture_overlays:
+                offset, size, payload = overlay.get("offset"), overlay.get("size"), overlay.get("payload")
+                if (overlay.get("scene") != scene or type(offset) is not int or type(size) is not int or
+                        offset < 0 or size <= 0 or offset + size > disc_user_size or
+                        not isinstance(payload, bytes) or len(payload) != size or
+                        _hash(payload) != overlay.get("sha256")):
+                    raise BuildError("Texture overlay has invalid guarded disc coordinates or payload")
+                original = _image.read_user(0, offset, size, disc_user_size)
+                if _hash(original) != overlay.get("expected_sha256") or original == payload:
+                    raise BuildError("Texture overlay disagrees with the original disc span")
+                overlays.append({**overlay, "file": f"assets/{scene}-texture-{offset:08x}.bin"})
     build_kind = "authored" if overlays else "retail"
     ordered = sorted(overlays, key=lambda item: item["offset"])
     if any(a["offset"] + a["size"] > b["offset"] for a, b in zip(ordered, ordered[1:])):
@@ -268,6 +328,7 @@ def _build_project(project, output_dir) -> dict:
     package_dir = destination / "package"
     has_appearance = any(change.get("scope") == "initial-man-header-only" for change in audit_edits)
     has_dialogue = any(change.get("scope") == "inline-mes-glyph-run-only" for change in audit_edits)
+    has_texture = any(change.get("scope") == "TIM-image-and-palette-payload-only" for change in audit_edits)
     package_suffix = " authored actor headers" if has_appearance else (" authored placements" if overlays else " retail baseline")
     feature_name = "Authored actor headers" if has_appearance else "Authored actor placements"
     description = ("Private initial model/animation and placement headers; script compatibility is unverified."
@@ -279,6 +340,11 @@ def _build_project(project, output_dir) -> dict:
         feature_name = "Authored actor data"
         description = "Private bounded MAN glyph-run text and optional initial actor headers; script controls and boundaries remain unchanged."
         feature_description = "Apply equal-span dialogue glyphs and optional actor headers; no script control edits or relocation."
+    if has_texture:
+        package_suffix = " authored scene data"
+        feature_name = "Authored scene data"
+        description = "Private layout-compatible TIM payloads and optional bounded MAN edits; retail disc spans and resource layouts remain fixed."
+        feature_description = "Apply verified scene textures and optional actor/text data; no resource relocation or script control edits."
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix)}",
@@ -335,7 +401,8 @@ def _build_project(project, output_dir) -> dict:
         "path": str(archive_path), "audit": str(destination / "build-audit.json"), "build_kind": build_kind,
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
         "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
-        **({"changed_fields_unit": "authored fields/runs"} if has_dialogue else {}),
+        **({"changed_fields_unit": "authored fields/runs/textures"} if has_texture else
+           {"changed_fields_unit": "authored fields/runs"} if has_dialogue else {}),
         "runtime_status": "package_built_not_launched", "feature_id": "placements",
         "install_instruction": (f"Import the .psxmod in the runtime mod manager, enable {feature_name}, then launch against the matching stock disc."
                                 if overlays else "This verified retail baseline has no modified bytes. Build & Run starts a fresh private run without previous placement overlays."),

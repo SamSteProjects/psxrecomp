@@ -349,3 +349,12 @@ the shipping runtime never loads it — `runtime/src/main.cpp` contains no call 
 - [`BUILDING.md`](BUILDING.md) — dependencies + build steps.
 - [`../CONTRIBUTING.md`](../CONTRIBUTING.md) — dev workflow and rules.
 - [`../CLAUDE.md`](../CLAUDE.md) — the exhaustive engineering constitution.
+
+Authored TIM files are content-addressed under private project Authored/Textures.
+Project references carry a hash, length, format and source scene; imported
+metadata stays immutable. Apply/Clear use normal history. Preview caches include
+texture references and verify authored file integrity before serving cached
+geometry. Model and scene previews use effective scene TIMs, with separate party
+banks. Builds batch member replacements by source carrier, preserve headers and
+opaque bytes, and reject compressed growth beyond the original allocation.
+See `legaia-sdk/texture-authoring.md` for the exact writable boundary.

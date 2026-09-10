@@ -166,3 +166,13 @@ retail input enabled and six focused HTTP/project tests. The donor-assignment
 helper's seven tests establish bounded encoding, donor/channel checks,
 unchanged opaque bytes and compressed-growth rejection. They do not establish
 editable project integration or game behavior; those remain separate gates.
+
+Authored TIM acceptance (2026-09-10): five writer tests cover raw retail and
+synthetic compressed carriers, noops, capacity, aliases, truncation and immutable
+headers; project tests cover history, persistence and tampered files. Twelve
+build tests passed across textures, dialogue and assignment, including combined
+guarded overlays and exact baseline restoration. Browser inspection verified
+imported/effective pixels, Clear, Undo, Redo and Save. HTTP checks verified six
+invalid requests leave state unchanged, original download byte identity, model
+pixel propagation with unchanged geometry, and offline reopen. The native file
+picker and in-game texture display/revert were not exercised.

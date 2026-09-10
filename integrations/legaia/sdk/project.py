@@ -100,6 +100,7 @@ class ProjectService:
         self.assets = AssetDatabase()
         self.overrides: dict[str, dict] = {}
         self.actor_templates: dict[str, dict] = {}
+        self.texture_overrides: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
         self.undo_stack: list[dict] = []
@@ -145,7 +146,8 @@ class ProjectService:
                 "imports": [{"scene": key, "file": f"Imported/{digest(value)}.json", "sha256": digest(value)}
                             for key, value in sorted(self.imports.items())],
                 "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
-                "actor_templates": deepcopy(self.actor_templates)}
+                "actor_templates": deepcopy(self.actor_templates),
+                **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {})}
 
     @property
     def dirty(self) -> bool:
@@ -319,9 +321,81 @@ class ProjectService:
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
 
+    def _validate_texture_binding(self, binding: dict) -> None:
+        if (not isinstance(binding, dict) or set(binding) != {"asset_sha256", "byte_length", "format", "source_scene_id"}
+                or binding["format"] != "tim" or type(binding["byte_length"]) is not int
+                or not 1 <= binding["byte_length"] <= 1024 * 1024
+                or not isinstance(binding["asset_sha256"], str) or len(binding["asset_sha256"]) != 64
+                or any(c not in "0123456789abcdef" for c in binding["asset_sha256"])
+                or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports):
+            raise ProjectError("Invalid authored TIM content reference")
+
+    def read_texture_replacement(self, binding: dict) -> bytes:
+        self._validate_texture_binding(binding)
+        path = self.root / "Authored" / "Textures" / (binding["asset_sha256"] + ".tim")
+        if not path.resolve().is_relative_to(self.root):
+            raise ProjectError("Authored texture path escapes project root")
+        if path.stat().st_size != binding["byte_length"]:
+            raise ProjectError("Authored texture size disagrees with project reference")
+        content = path.read_bytes()
+        if hashlib.sha256(content).hexdigest() != binding["asset_sha256"]:
+            raise ProjectError("Authored texture digest disagrees with project reference")
+        return content
+
+    def _texture_context(self, asset_id: str):
+        from importer.texture_authoring import load_texture_authoring_context
+        from importer.pipeline import _disc_context, import_scene
+        document = self.imports.get(self.active_scene)
+        if not self.disc_path or document is None or not isinstance(asset_id, str) or len(asset_id) > 512:
+            raise ProjectError("Texture replacement requires an imported scene and verified texture identity")
+        with _disc_context(self.disc_path):
+            if import_scene(self.disc_path, document["scene"]["name"]) != document:
+                raise ProjectError("Texture source differs from freshly verified imported evidence")
+            context = load_texture_authoring_context(self.disc_path, document["scene"]["name"])
+            context.options(asset_id)
+            return context
+
+    def set_texture_replacement(self, asset_id: str, content: bytes) -> None:
+        if self.mode != "edit":
+            raise ProjectError("Texture authoring requires Edit mode")
+        if not isinstance(asset_id, str) or not asset_id.startswith("texture://") or len(asset_id) > 512:
+            raise ProjectError("Texture replacement requires a structural texture identity")
+        if not isinstance(content, bytes) or not 1 <= len(content) <= 1024 * 1024:
+            raise ProjectError("Authored TIM must contain at most 1 MiB")
+        if asset_id not in self.texture_overrides and len(self.texture_overrides) >= 128:
+            raise ProjectError("Project supports at most 128 texture replacements")
+        self._texture_context(asset_id).validate_replacement(asset_id, content)
+        binding = {"asset_sha256": hashlib.sha256(content).hexdigest(), "byte_length": len(content),
+                   "format": "tim", "source_scene_id": self.active_scene}
+        self._validate_texture_binding(binding)
+        before = deepcopy(self.texture_overrides.get(asset_id))
+        if before == binding:
+            return
+        path = self.root / "Authored" / "Textures" / (binding["asset_sha256"] + ".tim")
+        if not path.resolve().is_relative_to(self.root):
+            raise ProjectError("Authored texture path escapes project root")
+        if path.exists():
+            self.read_texture_replacement(binding)
+        else:
+            atomic_write(path, content)
+        self.texture_overrides[asset_id] = binding
+        self.undo_stack.append({"target": "texture_overrides", "asset_id": asset_id,
+                                "before": before, "after": deepcopy(binding)})
+        self.redo_stack.clear()
+
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get("type") == "clear_texture_replacement":
+            identifier = command.get("asset_id")
+            if not isinstance(identifier, str) or not identifier.startswith("texture://"):
+                raise ProjectError("Texture clear requires a structural texture identity")
+            before = deepcopy(self.texture_overrides.pop(identifier, None))
+            if before is not None:
+                self.undo_stack.append({"target": "texture_overrides", "asset_id": identifier,
+                                        "before": before, "after": None})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_dialogue_text", "clear_dialogue_text"):
             from importer.dialogue_authoring import validate_run_id
             identifier, run_id = command.get("entity_id"), command.get("run_id")
@@ -497,8 +571,11 @@ class ProjectService:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
         entry = source.pop()
         value = deepcopy(entry[field])
-        collection = self.actor_templates if entry.get("target") == "actor_templates" else self.overrides
-        identifier = entry["template_id"] if entry.get("target") == "actor_templates" else entry["entity_id"]
+        if entry.get("target") == "texture_overrides":
+            collection, identifier = self.texture_overrides, entry["asset_id"]
+        else:
+            collection = self.actor_templates if entry.get("target") == "actor_templates" else self.overrides
+            identifier = entry["template_id"] if entry.get("target") == "actor_templates" else entry["entity_id"]
         if value is None:
             collection.pop(identifier, None)
         else:
@@ -512,6 +589,8 @@ class ProjectService:
         self._apply_history(self.redo_stack, self.undo_stack, "after")
 
     def save(self) -> Path:
+        for binding in self.texture_overrides.values():
+            self.read_texture_replacement(binding)
         if not (self.root / "Imported").resolve().is_relative_to(self.root):
             raise ProjectError("Imported evidence directory escapes project root")
         for document in self.imports.values():
@@ -592,6 +671,16 @@ class ProjectService:
                 raise ProjectError("Duplicate authored template name")
             names.add(template["name"].casefold())
         result.actor_templates = deepcopy(templates)
+        textures = raw.get("texture_overrides", {})
+        if not isinstance(textures, dict) or len(textures) > 128:
+            raise ProjectError("Invalid texture replacement collection")
+        for identifier, binding in textures.items():
+            result._validate_texture_binding(binding)
+            scene = result.imports[binding["source_scene_id"]]["scene"]["name"]
+            if not isinstance(identifier, str) or len(identifier) > 512 or not identifier.startswith(f"texture://{scene}/"):
+                raise ProjectError("Texture reference does not belong to its imported scene")
+            result.read_texture_replacement(binding)
+        result.texture_overrides = deepcopy(textures)
         if raw.get("active_scene") is not None:
             result.set_scene(raw["active_scene"])
         result.undo_stack.clear()
@@ -633,6 +722,7 @@ class ProjectService:
                 "runtime_correlation": correlation,
                 "actor_templates": deepcopy(list(self.actor_templates.values())),
                 "assets": deepcopy(list(self.assets.records.values())), "selection": {"entity_id": self.selected},
+                "texture_overrides": deepcopy(self.texture_overrides),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
