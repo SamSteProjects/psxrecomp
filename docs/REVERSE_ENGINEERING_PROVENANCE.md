@@ -148,3 +148,24 @@ The five newly visible P2[4] segments remain read-only: its graph has an
 out-of-record target atPC5 and unsupported opcode27 atPC483. Retail authoring
 options returned no writable runs; a direct edit was rejected with project
 state unchanged. No playable build is claimed for these newly decoded segments.
+
+
+### Scripted actor-position inspection (2026-09-10)
+
+Pinned `d6e64c68ede25813d35db20980da82a1a025549b` reference files
+`crates/asset/src/field_disasm/decode_subops.rs` and
+`crates/engine-vm/src/field/step/actor_ctrl.rs` agree that ACTOR_CTRL sub9
+consumes nine operand bytes: selector, three unsigned 16-bit coordinates and
+unsigned 16-bit ticks. Inspection preserves those encoded values and the
+unconditional encoded continuation. For zero ticks the executor leaves axes
+with value0xffff unchanged; nonzero ticks delegate to a host tween, so the
+inspector does not apply the sentinel rule or infer a resulting position there.
+No runtime movement, heading, placement serialization or new writable field is
+claimed. Normal/extended headers, truncations and sentinel scope pass focused
+checks; all five retail-enabled script catalog tests pass with426 dialogue
+segments and1134 flag references unchanged.
+
+Halt-acquire sub0/1/A/B remains unsupported: the pinned executor reads the signed
+target through operand+4/+8 but its failed-predicate continuation advances to
+operand+4/+8. This overlap requires stronger retail evidence before assigning
+instruction ownership. No guessed continuation was added to increase coverage.

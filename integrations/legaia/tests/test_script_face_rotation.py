@@ -21,6 +21,24 @@ class FaceRotationInspection(unittest.TestCase):
                     with self.assertRaises(ImportError):
                         _instruction(encoded[:end], 0)
 
+    def test_position_sentinel_and_timed_host_boundary(self):
+        for header in (bytes([0x43]), bytes([0xC3, 9])):
+            for ticks in (0, 12):
+                encoded = header + bytes([9]) + struct.pack("<4H", 0xFFFF, 0x8000, 64, ticks)
+                node = _instruction(encoded, 0)
+                self.assertEqual(node["successors"][0]["pc"], len(encoded))
+                args = node["operands"]
+                self.assertEqual(args["encoded_xyz"], [65535, 32768, 64])
+                self.assertEqual(args["mode"], "host_tween" if ticks else "immediate")
+                self.assertEqual(args.get("unchanged_axes"), None if ticks else ["x"])
+                self.assertEqual(args["runtime_effect"], "not_evaluated")
+                for end in range(1, len(encoded)):
+                    with self.assertRaises(ImportError):
+                        _instruction(encoded[:end], 0)
+        # Halt-acquire continuation remains unresolved; do not infer fallthrough.
+        with self.assertRaises(ImportError):
+            _instruction(bytes([0x43, 1, 0, 0, 0, 0]), 0)
+
     def test_setup_reset_and_extended_context(self):
         operands = bytes([7, 3]) + struct.pack("<I4Hh", 0x12345678, 1, 2, 3, 4, -20)
         for header in (bytes([0x43]), bytes([0xC3, 9])):

@@ -207,6 +207,18 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "heading": "not_a_scalar_heading", "runtime_effect": "not_evaluated"}
         elif sub == 8:
             size, mnemonic, args = 1, "FACE_ROTATION_RESET", {"sub_op": sub, "runtime_effect": "not_evaluated"}
+        elif sub == 9:
+            # Pinned actor_ctrl.rs and decode_subops.rs agree on nine operands.
+            # Only the immediate form proves the 0xffff unchanged sentinel;
+            # timed interpolation is delegated to the reference host.
+            size, mnemonic = 9, "ACTOR_POSITION"
+            need(size)
+            x, y, z, ticks = struct.unpack_from("<4H", data, operand + 1)
+            args = {"sub_op": sub, "encoded_xyz": [x, y, z], "ticks": ticks,
+                    "mode": "immediate" if ticks == 0 else "host_tween",
+                    "runtime_effect": "not_evaluated"}
+            if ticks == 0:
+                args["unchanged_axes"] = [axis for axis, value in zip("xyz", (x, y, z)) if value == 0xFFFF]
         else:
             raise ImportError(f"unsupported ACTOR_CTRL sub-op 0x{sub:02x}")
     elif op == 0x46:

@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (scripted position inspection):** Previous acceptance-summary
+  correction was progress. Investigated actual halt-acquire blocker; pinned
+  target-read/fallthrough overlap remains unresolved and unsupported. Added
+  evidenced ACTOR_CTRL sub9 inspection with unsigned XYZ/ticks, immediate-only
+  unchanged-axis sentinels and explicit unevaluated host tween. Three focused
+  tests and five retail-enabled catalog tests pass; catalog counts unchanged.
+  No authoring guard relaxed or runtime behavior changed. Full SDK goal active.
+
+
 - **2026-09-10 (acceptance summary reconciliation):** Verified previous commit
   4143ed40 and clean tracked state. Reconciled feature matrix and leading release
   parity summary with recorded NMake, bounded title/story restore, donor appearance
