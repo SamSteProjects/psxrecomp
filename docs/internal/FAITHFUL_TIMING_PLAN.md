@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (field map workspace):** Implemented source-base wall grid,
+  trigger and region discovery from verified field MAP carriers. Source wall
+  geometry is shown on a display ground plane, with runtime paints,
+  actor collision, floor heights and unresolved scene destinations excluded
+  from claims. Town01 exposes 4228 rectangles, 99 triggers and 14 regions.
+  Five importer and five resource/project checks passed; browser toggle,
+  inspectors and refresh invalidation passed. Runtime unchanged.
+
 - **2026-09-10 (authored asset browser):** Connected project-wide actor edits,
   TIM replacements and position templates to a dedicated browser category.
   Authored references remain separate from immutable imports and derived

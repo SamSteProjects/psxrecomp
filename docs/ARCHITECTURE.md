@@ -366,3 +366,11 @@ merges by stable identity, labels authored settings separately from source
 provenance, and switches through SceneService before selecting an inactive
 scene actor or opening its texture. Replacement previews still verify source
 identity even when launched without a derived catalog refresh.
+
+Field MAP decoding provides derived collision, trigger and region assets through
+the existing resource service. The scene window and source carrier are verified
+before table decoding; signed bounds and table overlap are checked. A separate
+preview endpoint returns source-wall rectangles in guest X/Z coordinates. The
+editor projects those at a labeled display Y=0 and never derives collision
+semantics itself. Invalid responses and source changes discard the overlay.
+See `legaia-sdk/field-map-workspace.md` for reference sources and scope.

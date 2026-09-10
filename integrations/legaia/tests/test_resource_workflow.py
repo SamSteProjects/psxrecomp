@@ -8,12 +8,38 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sdk.project import ProjectService, ProjectError
-from sdk.resources import refresh_resource_catalog, texture_preview
+from sdk.resources import refresh_resource_catalog, texture_preview, field_map_preview
 from importer.core import ImportError as RetailImportError
 from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class ResourceWorkflow(unittest.TestCase):
+    def test_field_preview_rejects_changed_source_and_stays_private(self):
+        with tempfile.TemporaryDirectory() as raw:
+            project = ProjectService(Path(raw))
+            document = synthetic_scene()
+            project.import_metadata(document)
+            project.disc_path = "synthetic"
+            project.save()
+            before = deepcopy(project._document())
+            identifier = "collision://fixture/field-map"
+            preview = {"asset": {"semantic_id": identifier, "asset_kind": "collision"},
+                       "rectangles": [{"x_min": 0, "x_max": 64, "z_min": 0, "z_max": 64}]}
+            with patch("sdk.resources._disc_context"), patch("sdk.resources.import_scene", return_value=document), \
+                    patch("importer.field_map.preview_field_map", return_value=preview), \
+                    patch("sdk.resources.source_key", return_value="verified"):
+                result = field_map_preview(project, identifier)
+            self.assertEqual(result["scene_id"], project.active_scene)
+            self.assertEqual(result["source_key"], "verified")
+            self.assertEqual(project._document(), before)
+            self.assertFalse(project.dirty)
+            self.assertFalse(project.assets.resource_catalogs)
+            with patch("sdk.resources._disc_context"), patch("sdk.resources.import_scene", return_value=document), \
+                    patch("importer.field_map.preview_field_map", return_value=preview), \
+                    patch("sdk.resources.source_key", side_effect=["before", "after"]):
+                with self.assertRaisesRegex(ProjectError, "source changed"):
+                    field_map_preview(project, identifier)
+
     def test_unsupported_script_catalog_retains_other_verified_resources(self):
         with tempfile.TemporaryDirectory() as raw:
             project = ProjectService(Path(raw))
@@ -26,7 +52,8 @@ class ResourceWorkflow(unittest.TestCase):
                     patch("sdk.resources.import_scene", return_value=document), \
                     patch("importer.texture_catalog.load_texture_asset_catalog", return_value={"assets": [texture]}), \
                     patch("importer.animation_catalog.load_animation_asset_catalog", return_value={"assets": []}), \
-                    patch("importer.script_catalog.load_script_asset_catalog", side_effect=RetailImportError("unsupported MAN layout")):
+                    patch("importer.script_catalog.load_script_asset_catalog", side_effect=RetailImportError("unsupported MAN layout")), \
+                    patch("importer.field_map.load_field_map_catalog", return_value={"assets": []}):
                 result = refresh_resource_catalog(project)
             self.assertEqual([row["id"] for row in result["records"]], [texture["semantic_id"]])
             self.assertIn("Scripts and dialogue unavailable: unsupported MAN layout", result["limitations"])
@@ -48,7 +75,8 @@ class ResourceWorkflow(unittest.TestCase):
                     patch("sdk.resources.import_scene", return_value=document), \
                     patch("importer.texture_catalog.load_texture_asset_catalog", return_value={"assets": [texture]}), \
                     patch("importer.animation_catalog.load_animation_asset_catalog", return_value={"assets": [animation]}), \
-                    patch("importer.script_catalog.load_script_asset_catalog", return_value={"assets": [script, dialogue]}):
+                    patch("importer.script_catalog.load_script_asset_catalog", return_value={"assets": [script, dialogue]}), \
+                    patch("importer.field_map.load_field_map_catalog", return_value={"assets": []}):
                 result = refresh_resource_catalog(project)
             self.assertEqual(len(result["records"]), 4)
             self.assertTrue(all(record["layer"] == "derived" for record in result["records"]))

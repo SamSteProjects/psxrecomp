@@ -24,6 +24,7 @@ def refresh_resource_catalog(project) -> dict:
     from importer.texture_catalog import load_texture_asset_catalog
     from importer.animation_catalog import load_animation_asset_catalog
     from importer.script_catalog import load_script_asset_catalog
+    from importer.field_map import load_field_map_catalog
     document, key = _scene(project)
     # Remove stale metadata before attempting a new source read. A failed refresh
     # must never leave a prior catalog presented as the current verified result.
@@ -32,7 +33,8 @@ def refresh_resource_catalog(project) -> dict:
     with _disc_context(project.disc_path):
         _verify(project, document)
         for kind, loader in (("Textures", load_texture_asset_catalog), ("Animations", load_animation_asset_catalog),
-                             ("Scripts and dialogue", load_script_asset_catalog)):
+                             ("Scripts and dialogue", load_script_asset_catalog),
+                             ("Field collision and triggers", load_field_map_catalog)):
             try:
                 catalog = loader(project.disc_path, document["scene"]["name"])
                 records.extend(catalog["assets"])
@@ -44,6 +46,18 @@ def refresh_resource_catalog(project) -> dict:
     if len(records) > 4096:
         raise ProjectError("Resource catalog exceeds the bounded record budget")
     return project.assets.register_resources(project.active_scene, key, records, limitations)
+
+
+def field_map_preview(project, asset_id: str) -> dict:
+    from importer.field_map import preview_field_map
+    document, key = _scene(project)
+    with _disc_context(project.disc_path):
+        _verify(project, document)
+        preview = preview_field_map(project.disc_path, document["scene"]["name"], asset_id)
+    if key != source_key(project):
+        raise ProjectError("Field map source changed during preview; refresh again")
+    return {**preview, "semantic_id": preview["asset"]["semantic_id"], "asset_kind": "collision",
+            "scene_id": project.active_scene, "source_key": key}
 
 
 def texture_preview(project, asset_id: str, palette_index: int, layer: str = "effective") -> dict:

@@ -76,6 +76,7 @@ function setBusy(value) {
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
+  updateFieldToggle();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -212,9 +213,9 @@ function renderHierarchy(){
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
-assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
+assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option><option value="collision">Collision</option><option value="trigger">Triggers</option><option value="region">Regions</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
 $('assets').before(assetTools);
-const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Models and actors come from the active imported scene; Scenes lists imported scenes. Textures are inspected with models. Scripts, dialogue, audio and standalone texture catalogs are not available here.</p>';$('assets').after(assetScope);
+const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Textures are inspected with models. Scripts, dialogue, audio and standalone texture catalogs are not available here.</p>';$('assets').after(assetScope);
 const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);
 $('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
@@ -223,22 +224,24 @@ $('resource-refresh').onclick=refreshResources;
 function synchronizeResources(){
   const current=resourceStateKey();
   if(resourceContextKey!==current){
-    resourceContextKey=current;
+    resourceContextKey=current;clearFieldMap();if(fieldDialog.open)fieldDialog.close();
     resourceAbort?.abort();resourceRecords=[];resourceLimitations=[];resourceKey=null;resourcePendingKey=null;resourceError=null;
     if(textureDialog.open&&!(textureCommandPending&&textureSession?.projectKey===textureProjectKey()))textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();if(scriptResourceDialog.open)scriptResourceDialog.close();
   }
+  updateFieldToggle();
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
-  $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load texture, animation, script and dialogue metadata.');
+  $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue and field-map metadata.');
 }
 async function refreshResources(){
   if(busy||!state.capabilities?.resource_catalog)return;
+  clearFieldMap();draw();
   const key=resourceStateKey(),sceneId=state.scene?.id,sourceKey=state.scene_preview_source_key,controller=new AbortController();
   resourceAbort?.abort();resourceAbort=controller;resourcePendingKey=key;resourceError=null;resourceRecords=[];resourceLimitations=[];resourceKey=null;setBusy(true);renderAssets();
   try{
     const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
     if(controller.signal.aborted||key!==resourceStateKey())return;
-    if(result.scene_id!==sceneId||result.source_key!==sourceKey||!Array.isArray(result.records)||result.records.length>4096||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
+    if(result.scene_id!==sceneId||result.source_key!==sourceKey||!Array.isArray(result.records)||result.records.length>4096||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','collision','trigger','region'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
     resourceLimitations=result.limitations ?? [];resourceRecords=[...new Map(result.records.map(record=>[record.semantic_id,{...record,catalog_limitations:result.limitations}])).values()];resourceKey=key;resourcePendingKey=null;renderAssets();
   }catch(error){if(error.name!=='AbortError'&&key===resourceStateKey()){resourceError=error.message;notify(error.message,true);}}
   finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
@@ -279,22 +282,83 @@ async function activateAsset(record){
   }else if(record.type==='model')openModel(record.id);
   else if(record.type==='texture')openTexture(record);
   else if(record.type==='animation')openAnimationResource(record);
+  else if(['collision','trigger','region'].includes(record.type))openFieldResource(record);
   else if(['script','dialogue'].includes(record.type))openScriptResource(record);
   else showAssetDetails(record);
 }
 function renderAssets(){
   synchronizeResources();
   const list=$('assets'),query=$('asset-search').value.trim().toLowerCase().split(/\s+/).filter(Boolean),category=$('asset-category').value;
-  assetScope.querySelector('p').textContent=`Models and actors come from the active imported scene; Scenes lists imported scenes. Authored assets gathers project-wide actor edits, texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor scripts and dialogue metadata; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide actor edits, texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor scripts, dialogue and supported field-map metadata; it does not inventory the shared party bank or every runtime resource. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
   const records=assetRecords(),filtered=records.filter(record=>(category==='all'||(category==='authored'?!!record.authoredRecord:record.type===category&&(category!=='actor'||record.sceneId===state.scene?.id)))&&query.every(term=>JSON.stringify(record).toLowerCase().includes(term)));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=`${filtered.length} / ${records.length} records`;
   for(const record of filtered){
     const row=document.createElement('div');row.className='asset-result';
     const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
     card.onclick=()=>activateAsset(record);
-    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.onclick=()=>['script','dialogue'].includes(record.type)?openScriptResource(record):showAssetDetails(record);row.append(card,info);list.append(row);
+    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.onclick=()=>['script','dialogue'].includes(record.type)?openScriptResource(record):['collision','trigger','region'].includes(record.type)?openFieldResource(record):showAssetDetails(record);row.append(card,info);list.append(row);
   }
-  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
+  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue','collision','trigger','region'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
+}
+const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dialog';document.body.append(fieldDialog);
+const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
+const fieldNote=document.createElement('div');fieldNote.className='field-map-note';fieldNote.hidden=true;fieldNote.setAttribute('role','status');document.querySelector('.viewport-toolbar').after(fieldNote);
+let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false;
+const fieldMapScope='Base blocked grid only · Y = 0 is a display placeholder, not decoded height. Runtime/script paints and actors are excluded. Canonical positive-X range only; wrapping and boundary aliases are not shown. Lines are drawn over models.';
+function updateFieldToggle(){
+  fieldToggle.hidden=!state.capabilities?.field_map_preview;fieldToggle.disabled=busy||fieldPending;
+  fieldToggle.classList.toggle('active',!!fieldMap);fieldToggle.setAttribute('aria-pressed',!!fieldMap);fieldToggle.textContent=fieldPending?'Loading collision…':'Base collision';
+}
+function clearFieldMap(){
+  fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;updateFieldToggle();
+}
+function validateFieldMap(result,record,key){
+  if(key!==resourceStateKey()||result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.asset_kind!=='collision'||result.coordinate_system!=='psx_guest_xz')throw new Error('Field map source changed while loading. Refresh scene resources and retry.');
+  if(!Array.isArray(result.rectangles)||result.rectangles.length>65536||result.rectangles.some(r=>!r||![r.x_min,r.x_max,r.z_min,r.z_max].every(numeric)||r.x_min>r.x_max||r.z_min>r.z_max)||!Array.isArray(result.triggers)||result.triggers.length>65536)throw new Error('Field map service returned invalid or oversized geometry.');
+  return result;
+}
+async function loadFieldMap(record){
+  if(busy||!state.capabilities?.field_map_preview||resourceKey!==resourceStateKey())return false;
+  clearFieldMap();draw();const key=resourceStateKey(),controller=new AbortController();fieldAbort=controller;fieldPending=true;setBusy(true);
+  try{
+    const response=await fetch('/api/field-map-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id}),signal:controller.signal});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Field map verification failed');
+    if(controller.signal.aborted)return false;
+    fieldMap=validateFieldMap(result,record,key);fieldKey=key;fieldNote.textContent=`${fieldMap.rectangles.length} blocked rectangles · ${fieldMapScope}`;fieldNote.title=(fieldMap.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');fieldNote.hidden=false;return true;
+  }catch(error){clearFieldMap();if(error.name!=='AbortError'){notify(error.message,true);if(fieldDialog.open)fieldDialog.querySelector('.dialog-error').textContent=error.message;}return false;}
+  finally{if(fieldAbort===controller)fieldAbort=null;fieldPending=false;setBusy(false);draw();}
+}
+fieldToggle.onclick=async()=>{
+  if(busy)return;if(fieldMap){clearFieldMap();draw();return;}
+  if(resourceKey!==resourceStateKey())await refreshResources();
+  const candidates=assetRecords().filter(record=>record.type==='collision');
+  if(candidates.length!==1){notify(candidates.length?'Choose a collision record in the asset browser.':'No verified base collision record is available for this scene.',true);return;}
+  await loadFieldMap(candidates[0]);
+};
+function openFieldResource(record){
+  if(busy||resourceKey!==resourceStateKey())return;
+  const collision=record.type==='collision',data=record.data;
+  fieldDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-field-map" aria-label="Close field map inspector">×</button></div>${property('Stable ID',record.id)}${property('Record type',collision?'Base collision grid':record.type==='region'?'Encoded region record':'Encoded trigger record')}<p class="field-note">${collision?fieldMapScope:'Read-only encoded trigger or region fields. Destination scenes, runtime activation and story conditions are not inferred.'}</p><div id="field-record-summary"></div>${collision?'<button id="show-base-collision" class="accent">Show base collision</button>':''}<details class="resource-provenance"><summary>Source provenance and complete metadata</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;
+  const summary=$('field-record-summary');
+  for(const [key,value] of Object.entries(data))if(!['id','semantic_id','asset_kind','kind','name','layer','scene_id','reference_commit','collision_id','source_record','catalog_limitations','limitations'].includes(key)&&value!==null&&['string','number','boolean'].includes(typeof value))summary.insertAdjacentHTML('beforeend',property(key.replaceAll('_',' '),value));
+  for(const [key,label] of [['encoded','Encoded source fields'],['tile_bounds','Half-open tile bounds'],['destination_world','Decoded intra-scene destination (X/Z only)'],['script_reference','Unresolved script reference']]){
+    if(data[key]&&typeof data[key]==='object'){const heading=document.createElement('h3');heading.textContent=label;summary.append(heading);appendResourceTable(summary,['Field','Source value'],Object.entries(data[key]).map(([field,value])=>[field.replaceAll('_',' '),value]),'No fields supplied.');}
+  }
+  if(!collision){const coordinates=document.createElement('p');coordinates.className='field-note';coordinates.textContent='Trigger and region tile coordinates are not collision-grid cells. No trigger or region geometry is inferred in the viewport.';summary.append(coordinates);}
+  const limits=document.createElement('p');limits.className='field-note';limits.textContent=(data.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');summary.append(limits);
+  fieldDialog.querySelector('pre').textContent=JSON.stringify(data,null,2);$('close-field-map').onclick=()=>fieldDialog.close();
+  if(collision){$('show-base-collision').disabled=!state.capabilities?.field_map_preview;$('show-base-collision').onclick=async()=>{if(await loadFieldMap(record)){fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}};}
+  fieldDialog.showModal();
+}
+function drawFieldMap(){
+  if(!fieldMap||fieldKey!==resourceStateKey())return;
+  ctx.save();ctx.strokeStyle='#e1ac688f';ctx.fillStyle='#d39d4b10';ctx.lineWidth=1;
+  for(const rectangle of fieldMap.rectangles){
+    const points=[[rectangle.x_min,rectangle.z_min],[rectangle.x_max,rectangle.z_min],[rectangle.x_max,rectangle.z_max],[rectangle.x_min,rectangle.z_max]].map(([x,z])=>project({x,y:0,z}));
+    if(points.some(p=>!p||!numeric(p.x)||!numeric(p.y))||points.every(p=>p.x<0)||points.every(p=>p.x>width)||points.every(p=>p.y<0)||points.every(p=>p.y>height))continue;
+    ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const point of points.slice(1))ctx.lineTo(point.x,point.y);ctx.closePath();ctx.fill();ctx.stroke();
+  }
+  ctx.restore();
 }
 const textureDialog=document.createElement('dialog');textureDialog.id='texture-dialog';document.body.append(textureDialog);
 let textureRequest=0,textureAbort=null,textureSession=null,texturePreview=null,textureCommandPending=false;
@@ -617,6 +681,7 @@ function draw(){
   if(sceneModelsReady()){try{sceneRenderer.draw(sceneView());}catch(error){sceneError=error.message;}}
   updateSceneBadge();
   if(grid&&!sceneModelsReady()){const spacing=10**Math.floor(Math.log10(camera.distance/7)),half=spacing*12,cx=Math.round(camera.target.x/spacing)*spacing,cz=Math.round(camera.target.z/spacing)*spacing;for(let i=-12;i<=12;i++){line({x:cx+i*spacing,y:0,z:cz-half},{x:cx+i*spacing,y:0,z:cz+half},i===0?'#39504f88':'#33474c66');line({x:cx-half,y:0,z:cz+i*spacing},{x:cx+half,y:0,z:cz+i*spacing},i===0?'#39504f88':'#33474c66');}}
+  drawFieldMap();
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
     const active=entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;

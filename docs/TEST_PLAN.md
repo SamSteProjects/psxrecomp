@@ -183,3 +183,12 @@ restoration. Browser checks use town0c to open town01 actor and texture edits,
 open a position template, refresh resources without duplicate rows, and inspect
 authored metadata separately from source provenance. Eight focused project
 tests passed; no runtime launch or new serializer behavior is claimed.
+
+Field MAP workspace acceptance (2026-09-10): five focused foundation tests
+include retail town01, biased wall lookup inversion, malformed table bounds
+and overlap, source metadata and unchanged disc content. Five resource/project
+checks passed, including stale source rejection and private preview separation.
+Browser checks cover base-wall loading, collision/trigger/region inspectors,
+toggling and refresh invalidation. Four invalid HTTP requests were rejected
+without changing project state. This does not validate live collision or P2
+transition execution.
