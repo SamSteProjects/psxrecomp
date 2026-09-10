@@ -62,8 +62,9 @@ inventory/body variants, including growth, shrinkage, unchanged inventory with
 changed bodies, split/monolithic switching and35 images across32 groups. Each
 built executable returned the expected sum. No runtime implementation change
 was necessary. The initial restricted Ninja attempt was denied before compiler
-configuration; the approved retry supplied the passing evidence. Make and
-other generators remain unaccepted; this fixture does not extend retail
+configuration; the approved retry supplied the passing evidence. A later NMake
+Makefiles/UCRT GCC run passed the same fixture in21.347s (see below). GNU Make
+and other generators remain unaccepted; these fixtures do not extend retail
 transition or gameplay coverage.
 
 ## Current stability recheck (2026-09-10)
@@ -92,7 +93,8 @@ compiler subprocess execution. No new runtime patch or retail run was needed
 for this recheck, and no proprietary fixtures were tracked.
 
 This confirms the listed implemented fixes, not every historical bug claim.
-Muscle Dome repair provenance, repeated/cross-scene retail restores, battle
+Later bounded title and story-to-title restores passed as recorded below.
+Muscle Dome repair provenance, repeated field/cross-scene retail restores, battle
 audio synchronization, physical controller behavior and broader transition
 acceptance remain open as detailed below. The full SDK goal remains active.
 

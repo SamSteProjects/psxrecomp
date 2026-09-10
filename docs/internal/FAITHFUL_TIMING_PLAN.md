@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (acceptance summary reconciliation):** Verified previous commit
+  4143ed40 and clean tracked state. Reconciled feature matrix and leading release
+  parity summary with recorded NMake, bounded title/story restore, donor appearance
+  gameplay and latest script-catalog evidence. Removed obsolete counts and broad
+  unverified claims without extending acceptance to field/cross-scene restore,
+  appearance revert, GNU Make or partial-graph dialogue writing. Documentation
+  only; no new game run or runtime patch. Full SDK goal remains active.
+
 - **2026-09-10 (new dialogue authoring boundary):** Previous flag-word decoding
   was progress. Checked new P2[4] dialogue against the real authoring service;
   it exposes no writable runs because PC5 targets outside the record and PC483
