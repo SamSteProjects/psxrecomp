@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Verify retail arrival-facing table
+
+- Previous turn was progress: pinned reference interpretation. Independently read supported retail SCUS_942.54 through the hashed disc context, verified PS-X EXE header/load span, and resolved virtual80073F04 to file offset411396. Eight little-endian signed entries are0,512,1024,1536,2048,2560,3072,3584, exactly matching the pinned reference table.
+- Disc SHA e6120a5d70716dd2f026a2da32d0171d52651971b52c4347a68541299f75258c; executable SHA292256e2e66db42727f613406785e444254d3f699569e611f65fcf1c6d2f3482. Private evidence: `local-output/sdk-20260909/transition-facing-table.json`.
+- This is direct static table evidence only. Retail transition-handler indexing, coordinate arithmetic, arrival globals and live scene execution remain unverified. No runtime launched or disc modified. Next source step is the retail FUN801DE840 opcode3F handler; full objective active.
+
+
 ### 2026-09-10 — Trace reference arrival coordinate semantics
 
 - Previous turn was progress: authored graph layers. Read pinned d6e64c68 engine-core world/vm_hosts.rs:815, scene/host/scene_entry.rs:1492 and world/field_loop.rs:275-308. Named transition queues bytes, loads destination, then seats/faces player. Actual seat implementation uses low7*128 plus64/128 selected by bit7; facing is (dir&7)*512. Nearby e2e test prose uses a simpler tile formula, so it is insufficient for high-bit evidence.
