@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (static-output consumer audit):** Previous dialogue navigation
+  was progress. Checked remaining filename consumers; production paths use the
+  corrected helpers. Existing static split/CRC dispatch suite passes all10 tests
+  with GCC (0.204s); initial direct run skipped compiler coverage. Test-only
+  ResourceWarnings remain, no production failure found. No retail acceptance
+  extension or new runtime patch. Full SDK goal remains active.
+
+
 - **2026-09-10 (menu successor browser and dialogue navigation):** Previous
   conflict diagnostics were progress. Owned editor4395/tab46 verified choice1
   0x6B ->0xC4 and Back. Found decoded dialogue targets falsely labeled not decoded;

@@ -646,3 +646,17 @@ Private evidence: local-output/sdk-20260909/precompile-cold-start/acceptance.jso
 and before/after screenshots. MDEC decode count and CD-in frames were0; this
 adds bounded title/startup acceptance for the new binary, not FMV/XA, field,
 restore, physical controller or subjective audio acceptance.
+
+
+## Static-output consumer audit (2026-09-10)
+
+A scoped search of tools/runtime/CMake consumers found production split-part
+discovery in the corrected Python helper and CMake staging helper. The remaining
+four-digit glob in the executable fixture counts its small0..35 inventories;
+it is not a production discovery path. The separate existing
+`tools/test_compile_overlays_static_split.py` suite passed all10 tests with UCRT
+GCC available (0.204s), including real compiled CRC-dispatch probing, monolithic
+cleanup and confined batch source edits. The initial direct Python run skipped
+the compiler case; only the subsequent compiler-enabled run supplies that
+acceptance. Existing test-only unclosed-file ResourceWarnings remain recorded.
+No new production fix or retail run was required.
