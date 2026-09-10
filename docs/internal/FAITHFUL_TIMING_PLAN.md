@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (audio startup runtime acceptance):** Previous reporter fix and
+  MSVC build were progress. Launched exact binary61d99eac... twice with RunService
+  identity/mod guards and isolated zero-overlay projects. Normal SDL driver:
+  output active1, bridge-pull,519057 host frames. Child-only unavailable driver:
+  active0, zero host frames,532140 guest SPU frames. Both exited0; no OS audio
+  settings changed. All early samples were zero; normal cumulative overflow
+  drops71624 retained, so no audible/queue-quality acceptance claimed. Actual
+  runtime evidence in local-output/sdk-20260909/audio-output-health/live/
+  acceptance.json. Full SDK/stability goal remains incomplete.
+
 - **2026-09-10 (host audio readiness reporting):** Previous turn completed
   browser/build workflow acceptance. Returning to prompt stability targets found
   audio_stats falsely accepted an open device with an uninitialized pull bridge;

@@ -18,7 +18,17 @@ Release build completed with exit0. Its SHA-256 is
 The prior gameplay-tested executable (`2be69467...`) is preserved at
 `local-output/sdk-20260909/audio-output-health/LegaiaStability-before.exe`.
 Source/binary hashes are in that folder's `verification.json`. This is a
-reporting fix; the new binary has not yet been launched or listened to.
+reporting fix. Subsequent isolated cold startup checks launched this exact
+binary twice through RunService with verified identity and zero-overlay plans.
+Normal host startup reported active1/bridge-pull and519057 host frames; forcing
+an unavailable SDL driver in only the second child reported active0 and zero
+host frames while532140 guest SPU frames advanced. Both processes exited0.
+Early sampled taps were all zero; the normal startup also recorded71624
+cumulative overflow drops. These samples prove readiness reporting and guest
+progress independent of a host device, not audible continuity or queue quality.
+Evidence: `local-output/sdk-20260909/audio-output-health/live/acceptance.json`.
+The unavailable driver was confined to the child environment; host settings
+were not changed.
 
 ## Current stability recheck (2026-09-10)
 
