@@ -632,3 +632,17 @@ The previously tested61d99eac... binary is preserved in
 That private folder holds build.log and verification.json with hashes. This
 is build acceptance only: no run of the new executable occurred here. Prior
 live title/audio/restore evidence remains attached to its exact prior binary.
+
+
+## New binary cold-title acceptance (2026-09-10)
+
+A fresh private zero-overlay RunService launch verified executable96eaf949...,
+disc/BIOS/package identity and matching process-instance identity on port4397.
+The final screenshot was inspected and shows the complete title menu. Frames
+advanced1630 to1931 over the five-second window; host output stayed active in
+bridge-pull mode and nonzero samples grew368438 to591143. Underruns remained0
+and startup overflow drops remained71153. The owned process stopped with exit0.
+Private evidence: local-output/sdk-20260909/precompile-cold-start/acceptance.json
+and before/after screenshots. MDEC decode count and CD-in frames were0; this
+adds bounded title/startup acceptance for the new binary, not FMV/XA, field,
+restore, physical controller or subjective audio acceptance.

@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (new executable cold start):** Previous actual build was progress.
+  Fresh private baseline launch of96eaf949... verified readiness/process identity,
+  rendered full title menu and advanced301 frames over five seconds. Active
+  host nonzero PCM increased with zero added underrun/overflow; startup71153
+  drops retained. MDEC/CD-in stayed0. Owned runtime exited0; private acceptance
+  and inspected screenshot retained. No FMV/field/restore claim for this binary.
+  Full SDK goal remains active.
+
+
 - **2026-09-10 (actual Legaia precompile build):** Previous generator acceptance
   was progress. Inspected private CMake configuration, preserved61d99eac...,
   rebuilt actual psx-runtime Release with existing sibling generated inputs and
