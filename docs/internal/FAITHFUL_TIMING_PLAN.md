@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Begin exact animation channel authoring
+
+- Previous turn was progress: reconciled the authoritative patch ledger. Checked current importer/build paths before selecting new feature work: MAN placement has only model/animation/X/Z, and heading remains script-owned/unresolved. Did not invent a heading byte.
+- Re-read pinned d6e64c68 player_anm.rs packing/layout evidence. Added importer/animation_authoring.py: source-hash-bound sparse frame/object channel edits, signed12 translation and exact16-step PSX rotations, deterministic audit, duplicate/unknown/range rejection, unchanged header/counts/trailer and opaque nibble. A requested optional Ghidra text path was absent; no new retail disassembly proof is claimed.
+- Connected authored_animation_preview to the verified scene animation catalog. It poses effective frames and labels authored hashes/changes separately while preserving imported provenance and caches. This is a serializer and SDK preview foundation; project commands/persistence, editor controls, compressed carrier build integration and gameplay acceptance remain to implement.
+- Five new focused checks passed with the retail disc, including exhaustive signed12 wire no-op coverage and unchanged referenced town01 records. Five existing scene-animation checks passed, including all39 imported bindings. No proprietary fixture was tracked, runtime input/restore/restart occurred, or comprehensive test campaign started. Full goal active.
+
 ### 2026-09-10 — Reconcile renewed patch inclusion request
 
 - Re-read both renewed attachment prompts and verified clean tracked checkout at ce4a2fe6 on codex/legaia-upstream-20260909. The existing full SDK goal remains active; this request does not narrow it to diagnostics.

@@ -1,5 +1,15 @@
 # Legaia SDK feature matrix
 
+2026-09-10 animation authoring foundation: a source-hash-bound serializer now
+writes sparse translation/rotation axes in existing rigid frame/object channels,
+with exact integer encoding and preserved record layout/opaque bits. The scene
+animation catalog can preview authored frames separately from imported caches.
+Five focused checks and five existing scene-animation checks passed with private
+retail input. This is **partial / SDK preview only**: project persistence, editor
+controls, playable carrier packaging and gameplay acceptance remain unfinished.
+It does not yet support arbitrary animation import, extra frames/channels,
+playback timing or skeletal retargeting.
+
 2026-09-10 script path navigation: actor/dialogue and trigger script instruction
 views share clickable decoded successors, incoming-edge navigation, highlighted
 selection and local Back history. Undecoded targets stay non-clickable and retain

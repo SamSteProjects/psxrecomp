@@ -152,6 +152,28 @@ class SceneActorAnimationCatalog:
 
     def animation_preview(self, actor: dict, asset: dict) -> dict:
         index, decoded = self._binding(actor, asset)
+        return self._animation_preview(actor, asset, index, decoded)
+
+    def authored_animation_preview(self, actor: dict, asset: dict, edits: list[dict],
+                                   expected_record_sha256: str) -> dict:
+        """Preview exact authored channels separately from the imported cache.
+
+        The source binding and record hash are checked before applying edits.
+        Record identity remains imported; authored metadata identifies the
+        effective frames. This is an offline preview, not runtime acceptance.
+        """
+        from .animation_authoring import patch_animation_channels
+        index, _ = self._binding(actor, asset)
+        start, end = self._ranges[index]
+        changed, audit = patch_animation_channels(self._body[start:end], expected_record_sha256, edits)
+        preview = self._animation_preview(actor, asset, index, decode_animation_record(changed))
+        preview["representation"] = "authored"
+        preview["authored"] = {"source_record_sha256": expected_record_sha256,
+                               "effective_record_sha256": hashlib.sha256(changed).hexdigest(),
+                               "changes": audit, "scope": "existing_rigid_channels"}
+        return preview
+
+    def _animation_preview(self, actor, asset, index, decoded):
         geometry = self._geometry(asset, decoded)
         if len(geometry["vertices"]) * decoded["frame_count"] > MAX_POSED_VERTICES:
             raise ImportError("scene animation exceeds the bounded posed-vertex budget")
@@ -160,7 +182,8 @@ class SceneActorAnimationCatalog:
             vertices = pose_vertices(geometry["vertices"], geometry["objects"], frame["object_transforms"])
             frames.append(dict(deepcopy(frame), vertices=vertices, bounds=_bounds(vertices), posed=True,
                                coordinate_system="retail_psx_actor_local_y_down"))
-        return dict(self._metadata(actor, asset, index, decoded), geometry=geometry, frames=frames)
+        return dict(self._metadata(actor, asset, index, decoded), geometry=geometry, frames=frames,
+                    representation="imported")
 
     def pose_preview(self, actor: dict, asset: dict, frame_index: int = 0) -> dict:
         """Bake one actor-local pose without materializing every posed frame."""
