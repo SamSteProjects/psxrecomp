@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Verify and filter the ramp inspector
+
+- Previous turn was progress: ramp metadata and inspector implemented. Fresh private editor4395/tab51 displayed235 retail town01 ramp rows. Added a token filter matching table, record index or tile coordinates, with matching/total count and an explicit empty state; preserved source order.
+- Browser verified query `25 26` returns primary227/tile25,26/coarse-4/delta128, query201 returns tile25,25/coarse-3/delta96, and unmatched input returns zero records. Inspected screenshots before and after correcting search-field spacing; final table and notes fit the dialog. Node syntax check passed. Private verification project is under `local-output/sdk-20260909/ramp-browser`.
+- No game runtime input, RAM writes, restore or restart. Original editor tab8 untouched. Visibility root cause and full SDK objective remain active.
+
 ### 2026-09-10 — Expose source ramp adjustments in the collision inspector
 
 - Previous turn was progress: saved floor heights matched kind-2 ramp records. Converted that evidence into an SDK feature: field-map catalog now retains primary/fallback kind-2 records on the collision resource, signed coarse steps, four ordered subcell Y adjustments and per-record provenance. Duplicate coordinates and lookup order are preserved. Existing asset identities and trigger counts are unchanged.

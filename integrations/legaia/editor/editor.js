@@ -602,7 +602,16 @@ function openFieldResource(record){
   if(collision&&Array.isArray(data.elevation_overrides)){
     const heading=document.createElement('h3');heading.textContent='Ramp height adjustments';summary.append(heading);
     const note=document.createElement('p');note.className='field-note';note.textContent='Read-only kind-2 records, primary then fallback; first matching tile wins. Values are Y adjustments to the four-corner height mean when object-cell flag 0x0800 is set, not complete floor heights. Subcells are ordered (0,0), (1,0), (0,1), (1,1); positive Y points down.';summary.append(note);
-    appendResourceTable(summary,['Table / row','Tile X','Tile Z','Signed coarse','Subcell ΔY'],data.elevation_overrides.map(row=>[`${row.table_source} / ${row.record_index}`,row.tile_x,row.tile_z,row.coarse_signed,(row.subcell_delta_y ?? []).join(', ')]),'No ramp records in the available source tables.');
+    const filter=document.createElement('input');filter.type='search';filter.className='ramp-filter';filter.placeholder='Filter ramps, e.g. 25 26';filter.setAttribute('aria-label','Filter ramp records');summary.append(filter);
+    const count=document.createElement('p');count.className='field-note';count.setAttribute('role','status');summary.append(count);
+    const table=document.createElement('div');summary.append(table);
+    const renderRamps=()=>{
+      const terms=filter.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const rows=data.elevation_overrides.filter(row=>{const words=[row.table_source,String(row.record_index),String(row.tile_x),String(row.tile_z)].map(String);return terms.every(term=>words.includes(term));});
+      count.textContent=`${rows.length} / ${data.elevation_overrides.length} ramp records · filter matches table, row or tile coordinates`;
+      table.replaceChildren();appendResourceTable(table,['Table / row','Tile X','Tile Z','Signed coarse','Subcell ΔY'],rows.map(row=>[`${row.table_source} / ${row.record_index}`,row.tile_x,row.tile_z,row.coarse_signed,(row.subcell_delta_y ?? []).join(', ')]),'No matching ramp records.');
+    };
+    filter.oninput=renderRamps;renderRamps();
   }
   if(!collision){const coordinates=document.createElement('p');coordinates.className='field-note';coordinates.textContent='Trigger and region tile coordinates are not collision-grid cells. No trigger or region geometry is inferred in the viewport.';summary.append(coordinates);}
   const limits=document.createElement('p');limits.className='field-note';limits.textContent=(data.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');summary.append(limits);

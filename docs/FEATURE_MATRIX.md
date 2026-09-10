@@ -265,4 +265,6 @@ subcell Y adjustments and per-record provenance. The editor provides a read-only
 table. These are adjustments to the corner-height mean, conditional on the
 object-cell0800 flag; no complete floor surface is inferred. Six focused tests
 passed including private retail records for two cold-run visibility tiles.
-Inspector JavaScript syntax passed; browser layout acceptance remains pending.
+Inspector JavaScript syntax and browser layout checks passed. The235-row retail
+table supports filtering by table, row or tile-coordinate tokens; matching and
+empty results were checked in the browser, including the two investigated tiles.

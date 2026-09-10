@@ -55,3 +55,5 @@
 .transition-entry input { width: 100%; box-sizing: border-box; }
 .transition-unresolved { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .transition-unresolved code { overflow-wrap: anywhere; }
+
+.ramp-filter { display: block; width: 100%; margin-top: 10px; }
