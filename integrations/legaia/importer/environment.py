@@ -245,7 +245,8 @@ class EnvironmentPreviewCatalog:
 
 def load_environment_preview_catalog(disc, scene: str) -> EnvironmentPreviewCatalog:
     from .pipeline import import_scene
-    with _disc_context(disc):
+    from .decorations import decode_field_decorations
+    with _disc_context(disc) as (_, digest, _, archive):
         metadata = load_environment_catalog(disc, scene)
         source, _, bundle, raw = _load_environment_source(disc, scene)
         if source["source_record"] != metadata["source_record"]:
@@ -253,6 +254,23 @@ def load_environment_preview_catalog(disc, scene: str) -> EnvironmentPreviewCata
         document = import_scene(disc, scene)
         if document["source"]["disc_identity"] != "sha256:" + source["source_record"]["disc_sha256"]:
             raise ImportError("environment mesh disc identity changed")
+        data = archive.read_entry(archive.entry(source["source_record"]["map_entry_index"]), extended=True)
+        if digest != source["source_record"]["disc_sha256"] or sha256(data).hexdigest() != source["source_record"]["map_sha256"]:
+            raise ImportError("decoration source changed during resolution")
+        decorations = decode_field_decorations(data, metadata["floor_height_lut"], scene)
+        pool = [a for a in document["assets"]["models"] if a["scope"] == "scene"
+                and a["source_record"]["prot_entry_index"] == metadata["mesh_pool"]["prot_entry_index"]]
+        for placement in decorations["placements"]:
+            index = placement["pack_index"]
+            placement.update(asset_kind="field_decoration", animation_id=0,
+                             animation_binding="unposed_field_decoration")
+            if index is not None and 0 <= index < len(pool):
+                placement.update(model_resolution="reference_pool_resolved", model_asset_id=pool[index]["semantic_id"])
+            else:
+                placement["model_resolution"] = "unsupported_pool_index"
+        metadata["decoration_count"] = len(decorations["placements"])
+        metadata["placements"].extend(decorations["placements"])
+        metadata["limitations"][0] = "Placed objects and field decorations are included; ground is a separate layer."
         candidates = [d for d in bundle.descriptors if d.type_byte == 5 and d.size > 0]
         if len(candidates) != 1:
             raise ImportError("environment preview requires one scene animation descriptor")

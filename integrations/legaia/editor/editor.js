@@ -12,6 +12,13 @@ function snappedTransformCoordinate(value,step){return Math.round(value/(step||1
 const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
+const sceneLayers={actors:true,scenery:true,ground:true};
+function hiddenSceneEntities(){return new Set((activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id));}
+for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',ground:'Ground'})){
+  const button=document.createElement('button');button.textContent=label;button.className='active';button.setAttribute('aria-pressed','true');button.title=`Show ${label.toLowerCase()} in the scene view`;
+  button.onclick=()=>{sceneLayers[layer]=!sceneLayers[layer];button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));cancelViewportGesture();draw();};
+  $('frame-all').before(button);
+}
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
 modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;scenePreview=null;sceneError=null;modelsEnabled=true;}else modelsEnabled=!modelsEnabled;modelToggle.classList.toggle('active',modelsEnabled);modelToggle.setAttribute('aria-pressed',modelsEnabled);refreshScenePreview();draw();};
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
@@ -328,13 +335,14 @@ function render(){
 }
 function activeScenePreview(){return scenePreview&&sceneKey===state.scene_preview_source_key&&scenePreview.scene_id===state.scene?.id?scenePreview:null;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
-function sceneView(){return {camera,basis:basis(),width,height,grid,positions:new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]))};}
+function sceneView(){return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions:new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]))};}
 function updateSceneBadge(){
   $('entity-count').textContent=entities().length+environmentEntities().length;
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
+  const hidden=hiddenSceneEntities(),visible=ready?sceneRenderer.instances.filter(instance=>!hidden.has(instance.entity_id)).length:0;
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
-  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?'Loading supported scene models…':ready?`${count} / ${entities().length+environmentEntities().length} models · unresolved objects remain markers`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
+  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?'Loading supported scene models…':ready?`${count} / ${entities().length+environmentEntities().length} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
   $('coordinate-note').textContent=environmentEntities().length?'Environment: imported transforms · Actors: unknown height/facing use preview conventions':'Unknown actor heights are shown on the ground plane.';
   $('coordinate-note').title=JSON.stringify(activeScenePreview()?.limits ?? []);
 }
@@ -1171,9 +1179,9 @@ function renderDialogueAuthoring(){
 }
 
 function frame(entity){
-  const points=entity?[position(entity)]:entities().map(position);
+  const points=entity?[position(entity)]:(sceneLayers.actors?entities().map(position):[]);
   const hasMesh=sceneModelsReady()&&(!entity||sceneRenderer.hasEntity(entity.id));
-  if(hasMesh)points.push(...sceneRenderer.bounds(sceneView().positions,entity?.id));
+  if(hasMesh)points.push(...sceneRenderer.bounds(sceneView().positions,entity?.id,hiddenSceneEntities()));
   if(!points.length){camera.target={x:0,y:0,z:0};camera.distance=2000;draw();return;}
   const min={x:Infinity,y:Infinity,z:Infinity},max={x:-Infinity,y:-Infinity,z:-Infinity};
   for(const p of points)for(const axis of ['x','y','z']){min[axis]=Math.min(min[axis],p[axis]);max[axis]=Math.max(max[axis],p[axis]);}
@@ -1217,6 +1225,7 @@ function draw(){
   drawFieldMap();
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
+    if(!sceneLayers.actors)continue;
     const active=!selectedEnvironment()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
     if(rendered&&!active)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();

@@ -213,6 +213,41 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Clarify loaded versus visible scene meshes
+
+- Previous turn was progress: browser-verified layer isolation. Preview badge now separates loaded mesh count from visible mesh count, accounting for the layer filters. Seven focused Python checks and both JavaScript syntax checks pass. Diff review caught an extra EOF blank line from the earlier shell edit; removed it and diff check passes.
+- Consolidating decoration decoder/catalog integration, regression tests and layer controls as one scene-inspection change. Full goal remains active; direct viewport picking, broader visual parity and remaining authoring/stability requirements are not complete.
+
+### 2026-09-10 — Browser-verify scene layer visibility
+
+- Previous turn was progress: layer controls implemented. Isolated4395/tab55 loaded the combined scene. Disabled Actors and Scenery, then Frame all: screenshot confirms isolated textured ground and no actor markers. Disabled Ground: screenshot confirms only the editor grid remains. Restored all three controls. Toolbar fits at the tested1740px viewport width; narrower widths remain unverified.
+- Existing preview badge counts loaded meshes rather than visible meshes, so its260/261 count remains unchanged when layers hide; a visibility count would clarify this. Direct canvas picking still needs interaction acceptance. Stopped the isolated editor through its own stop file; full objective active.
+
+### 2026-09-10 — Add scene inspection layer controls
+
+- Previous turn was progress: second-scene decoder evidence and regression coverage. Added Actors, Scenery and Ground viewport visibility controls. Hidden meshes are excluded from drawing, GPU picking and frame-all bounds; hidden actor markers are excluded too. Controls cancel an active transform gesture and preserve project data.
+- Node syntax checks pass for editor and renderer. Corrected an initially wrong gesture helper name during source review. Browser interaction/toolbar fit remain next; full objective active.
+
+### 2026-09-10 — Check second-scene decoration resolution
+
+- Previous turn was progress: combined browser rendering and hierarchy acceptance. Fresh town0c preview resolves162 decoration instances, with zero missing mesh identities; all decode (10019 instance triangles). This is catalog acceptance, not a second-scene visual parity claim.
+- Added three passing decoration regressions covering field-versus-walk gate separation, placed exclusion, zero/special mesh selectors, signed offsets/floor nibble masking/rotations, stable distinct cell identities and malformed source bounds. Full objective remains active.
+
+### 2026-09-10 — Browser-verify assembled decorations
+
+- Previous turn was progress: 162 decorations connected to the preview catalog. Fresh isolated decoration editor on4395/tab54 completed scene loading with261 hierarchy instances and260 renderable models. Search returns162 decoration entries.
+- Selected MAP decoration194 at41,14 and used Frame object. Inspected screenshot shows the textured wall, shoreline, ground and adjacent scenery; inspector exposes the decoration identity and source transform. This verifies hierarchy selection/framing and combined rendering, not direct canvas picking or complete retail visual parity. Original4388 remained untouched; isolated server stopped through its owned stop file.
+
+### 2026-09-10 — Resolve field decorations into the environment preview
+
+- Previous turn was progress: bounded decoration source decoder. Connected its normal-field sweep to the verified environment preview catalog, preserving the existing inferred scene mesh pool and source hash checks. Decorations remain unposed, separate from placed-object animation bindings.
+- Fresh town01 retail read resolves all 162 decoration instances with zero missing mesh identities; all 162 geometry previews decode, totaling 10019 instance triangles. Existing scene preview path exposes these as environment hierarchy/viewport instances. Browser appearance and direct selection remain unverified; full scene and SDK objective remain active.
+
+### 2026-09-10 — Separate the field decoration source sweep
+
+- Previous goal turn was a status restatement (no progress). Revalidated the pinned field renderer: normal field decorations use cell bit 0x2000 and exclude placed records; world-map decoration rules use a different gate and must not be substituted.
+- Added a bounded field decoration decoder with stable cell IDs, source hashes, mesh selectors and source transforms. Synthetic smoke passed for the field gate, placed-record exclusion and origin transform. Mesh resolution, retail counts and editor rendering remain next; no full scene completion claim.
+
 ### 2026-09-10 — Render textured ground alongside scene objects
 
 - Previous turn was progress: source terrain decoder. Added verified terrain loading, scene texture association with authored texture overrides, and combined-service geometry/texture budgets. The ground surface is a separate read-only selectable environment instance with source/limitation evidence; no asset provenance is replaced.

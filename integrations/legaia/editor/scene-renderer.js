@@ -113,9 +113,10 @@ export class SceneRenderer {
     if(position){result[3]=position.x;result[7]=position.y;result[11]=position.z;}return result;
   }
 
-  bounds(positions,identifier=null){
+  bounds(positions,identifier=null,hiddenEntities=new Set()){
     const points=[];
     for(const instance of this.instances){
+      if(hiddenEntities.has(instance.entity_id))continue;
       if(identifier&&instance.entity_id!==identifier)continue;
       const mesh=this.meshes.get(instance.geometry_key),matrix=this.matrix(instance,positions);
       for(let corner=0;corner<8;corner++)points.push(transformPoint(matrix,{x:(corner&1?mesh.max:mesh.min)[0],y:(corner&2?mesh.max:mesh.min)[1],z:(corner&4?mesh.max:mesh.min)[2]}));
@@ -145,6 +146,7 @@ export class SceneRenderer {
     gl.disable(gl.DITHER);gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);
     for(let index=0;index<this.instances.length;index++){
       const instance=this.instances[index],mesh=this.meshes.get(instance.geometry_key),id=index+1;
+      if(view.hiddenEntities?.has(instance.entity_id))continue;
       gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions)));gl.uniform3f(l.pick,(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255);
       for(const batch of mesh.batches){this.bind(batch.buffer);gl.uniform1i(l.textured,!!batch.texture);gl.bindTexture(gl.TEXTURE_2D,batch.texture??this.whiteTexture);gl.drawArrays(gl.TRIANGLES,0,batch.count);}
     }
