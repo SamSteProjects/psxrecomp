@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (texture runtime acceptance):** Cold authored and zero-overlay
+  baseline runs visibly prove magenta ground replacement and removal; both
+  exited zero without savestate restore or RAM writes. Late exact-PC witness
+  collection caused authored Live rejection; manual early preparation let the
+  baseline pass the unchanged v2 guard. Discovery/launch now prepare required
+  PCs after identity checks. A separate startup probe verified automatic
+  preparation and exited zero; twelve focused tests passed. Runtime/profile
+  sources and the main editor project remain unchanged.
+
 - **2026-09-10 (build review):** Added an editor-facing report of the audited
   changes included in a package, with authored-snapshot freshness and explicit
   build-time validation scope. Browser checks found and corrected old command

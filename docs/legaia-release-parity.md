@@ -16,6 +16,16 @@ inspection were subsequently connected and browser-verified. The initial
 model/animation donor helper has serializer evidence only. These SDK additions
 also leave runtime sources and generated game inputs unchanged.
 
+The 2026-09-10 cold texture comparison now verifies one scene TIM replacement
+in the running field and its removal in a fresh zero-overlay run; both exited
+zero. It also exposed late witness collection in the SDK: discovery negotiated
+identity without requesting the profile PCs before their first execution.
+Discovery and owned launch readiness now prepare those requests. The baseline
+with manual early requests passed the unchanged v2 guard; a separate startup
+probe verified automatic preparation without claiming scene acceptance.
+Runtime/profile sources are unchanged. See
+`legaia-sdk/texture-runtime-acceptance.md` for evidence and remaining limits.
+
 ## Reproduced FMV stall fixed
 
 Commit `58794999` repairs a generic CD controller error in

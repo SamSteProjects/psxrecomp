@@ -37,5 +37,8 @@ exact source hashes and boundaries, and emits private guarded disc overlays.
 Compressed carriers must fit their original allocation. Unsupported growth or
 overlapping overlays fails before publication. No relocation is inferred.
 
-Playable texture appearance and restoration require explicit runtime evidence;
-successful image preview and package decoding do not establish that acceptance.
+A cold authored/baseline pair now proves visible magenta palette replacement
+and return to normal ground colors for `texture://town01/5/raw/0`. Both runs
+used the same verified executable and no savestates. See
+`texture-runtime-acceptance.md` for the precise scope. Other texture families,
+conditional residency and palette/blend behavior still need runtime evidence.

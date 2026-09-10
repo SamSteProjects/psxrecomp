@@ -385,3 +385,9 @@ Build results include a UI report projected from the validated audit. An input
 metadata digest lets the editor retain and mark older reports stale across
 commands and undo, while project replacement clears them. The digest is not
 an ongoing file-integrity check. See `legaia-sdk/build-review.md`.
+
+Runtime discovery prepares exact-PC witness collection only after compatible
+identity negotiation. Owned launch readiness invokes that preparation before
+the user enters a field. Initial missing witnesses are collection setup, not
+scene evidence; subsequent observation retains all currentness and hash checks.
+Late attachment and post-restore observation still require actual re-execution.

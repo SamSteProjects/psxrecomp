@@ -323,6 +323,18 @@ class RunService:
                              mods.get("disc_enabled") is True and mods.get("disc_guard_failed") is False)
                     self._status.update(runtime_identity=identity, mod_status=mods)
                     if valid:
+                        # Arm the selected profile's exact PCs before field entry.
+                        # Preparation is observational setup, not Live acceptance.
+                        from integrations.legaia.observer.service import ObserverService
+                        observer = ObserverService(port=port)
+                        try:
+                            preparation = observer.discover()
+                            self._status["observation_preparation"] = {
+                                key: deepcopy(preparation[key]) for key in
+                                ("available", "state", "reason", "scene_verified", "witness_tracking")
+                                if key in preparation}
+                        finally:
+                            observer.close()
                         self._status.update(state="ready", ready=True,
                                             reason="Runtime identity and enabled mod plan verified; gameplay not yet verified")
                         self._persist()

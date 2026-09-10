@@ -23,7 +23,9 @@ ANDREW_REFERENCE = "d6e64c68ede25813d35db20980da82a1a025549b"
 class ObserverService:
     """One bounded snapshot per call, serialized for a Python HTTP service.
 
-    `discover()` checks protocol/executable compatibility without reading RAM.
+    `discover()` checks protocol/executable compatibility and requests the
+    selected profile's exact-PC witnesses to arm future execution tracking.
+    A missing witness is expected at startup; priming never verifies a scene.
     `observe()` defaults to scene-boundary metadata. Actor traversal is an
     explicit option, always behind the same profile, process and epoch guards.
     No result is cached as current live state after an unavailable response.
@@ -99,10 +101,41 @@ class ObserverService:
                 profile = self._select(profile_id)
                 observer = self._session(profile)
                 observer.selector.negotiate()
+                # The runtime records only requested PCs. Negotiation enables
+                # lifecycle tracking but does not arm individual witnesses;
+                # request them before a later scene entry can execute once.
+                # These replies are collection setup, never profile evidence.
+                requested_pcs = []
+                initial_statuses = []
+                for required in profile.document["execution_identity"]["required_witnesses"]:
+                    pc = required["pc"]
+                    response = self._client.execution_witness(pc)
+                    if not isinstance(response, dict) or response.get("requested_pc") != pc:
+                        raise ProtocolError("execution witness priming returned a mismatched PC")
+                    status, witness = response.get("status"), response.get("witness")
+                    if status not in ("missing", "current", "stale", "ambiguous"):
+                        raise ProtocolError("execution witness priming returned an invalid status")
+                    if status == "missing":
+                        if "witness" not in response or witness is not None:
+                            raise ProtocolError("missing execution witness priming response contains evidence")
+                    else:
+                        expected_range = {"kind": "executed-instruction", "guest_base": pc,
+                                          "length": 4, "instruction_count": 1,
+                                          "block_range_available": False}
+                        observed_range = witness.get("range") if isinstance(witness, dict) else None
+                        if (not isinstance(witness, dict) or witness.get("resolved_pc") != pc or
+                                not isinstance(observed_range, dict) or any(
+                                    observed_range.get(key) != value for key, value in expected_range.items()) or
+                                witness.get("observation_current") is not (status == "current")):
+                            raise ProtocolError("execution witness priming returned invalid exact-PC evidence")
+                    requested_pcs.append(pc)
+                    initial_statuses.append({"pc": pc, "status": status})
                 return {"available": True, "state": "compatible_runtime",
                         "read_only": True, "reason": None, "profiles": self.profiles(),
                         "runtime": observer.selector.runtime, "observation": None,
-                        "scene_verified": False, "ram_writes": 0}
+                        "scene_verified": False, "ram_writes": 0,
+                        "witness_tracking": {"status": "primed", "requested_pcs": requested_pcs,
+                                             "initial_statuses": initial_statuses}}
             except (ObserverError, OSError, ValueError) as exc:
                 return self._unavailable(exc)
 

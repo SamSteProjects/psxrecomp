@@ -208,3 +208,12 @@ combined report matches six changes in one scene, and no-op/cleared packages
 are byte-identical to baseline. Browser acceptance covers the generated report,
 reopening it, stale status after an edit and restored freshness after undo.
 These checks establish build reporting, not gameplay execution.
+
+Texture runtime acceptance (2026-09-10): one cold authored TIM run and one cold
+zero-overlay baseline visibly show replacement and removal of the magenta
+ground palette. Both processes exit zero without restore or RAM writes.
+Manual early witness requests allow the baseline to pass the unchanged v2
+observer. A separate bounded startup verifies automatic readiness preparation,
+with all three PCs primed and scene verification still false. Twelve focused
+service/profile/readiness tests cover identity rejection, missing/current reply
+handling, malformed/partial priming and no fabricated scene acceptance.
