@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (script allocation boundary):** Pinned MENU_CTRL CD allocates a
+  script context and returns Halt at the current PC, not an encoded fallthrough.
+  Inspection now reports the unresolved allocated-context entry explicitly;
+  opening P2[3] remains bounded at PC 194. Added the 14 neighboring C-family
+  forms with fixed continuations, preserving signed slot values and the CB/CC
+  frame-delta sentinel. C9 remains host-dependent and opaque. Evidence:
+  d6e64c68 `menu_ctrl/nibble_c.rs` blob
+  `5d7fb2b1cd7e4a687965ec6fa5edc5b0f0455052`. All 39 focused decoder,
+  trigger, catalog, dialogue project and build tests pass with the private disc.
+  Next opening work must resolve context allocation/entry ownership rather than
+  assume sequential execution past CD. Runtime and editor projects unchanged.
+
 - **2026-09-10 (camera and render script coverage):** Implemented both 0x46
   render layouts and all four 0x45 camera forms: load payload, save, unsigned
   absolute apply jump and sparse ten-slot configuration. Exact pin d6e64c68

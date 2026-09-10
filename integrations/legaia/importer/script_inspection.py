@@ -236,6 +236,32 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "model_id": int.from_bytes(data[operand + 1:operand + 4], "little"),
                     "animation_frame": struct.unpack_from("<H", data, operand + 4)[0],
                     "tween_frames": struct.unpack_from("<H", data, operand + 6)[0]}
+        elif sub == 0xCD:
+            raise ImportError("SCRIPT_CONTEXT_ALLOC halts at the current PC; allocated-context entry and external resumption are unresolved")
+        elif 0xC0 <= sub <= 0xCF and sub != 0xC9:
+            # Pinned executing menu_ctrl/nibble_c.rs. C9 depends on host
+            # comparison; CD allocates a context and halts, with no fallthrough.
+            size = {0xC0: 1, 0xC1: 1, 0xC2: 2, 0xC3: 1, 0xC4: 3,
+                    0xC5: 3, 0xC6: 3, 0xC7: 3, 0xC8: 1,
+                    0xCA: 4, 0xCB: 4, 0xCC: 4, 0xCE: 2, 0xCF: 3}[sub]
+            mnemonic = {0xC0: "MOVE_CANCEL", 0xC1: "TRIGGER_FLAG_RESET",
+                        0xC2: "SET_FIELD_42", 0xC3: "SCRIPT_TELEPORT",
+                        0xC4: "SUBTILE_BROADCAST", 0xC5: "PARTY_FLAG_TEST_CLEAR",
+                        0xC6: "PARTY_FLAG_TEST_SET", 0xC7: "SOUND_TRIGGER",
+                        0xC8: "TOGGLE_FIELD_74", 0xCA: "SET_SLOT",
+                        0xCB: "ADJUST_SLOT_B", 0xCC: "ADJUST_SLOT_C",
+                        0xCE: "SET_FIELD_B6AC", 0xCF: "POSITION_BROADCAST"}[sub]
+            need(size)
+            args = {"sub_op": sub}
+            if sub in (0xC5, 0xC6):
+                args["party_flag_index"] = struct.unpack_from("<H", data, operand + 1)[0]
+            elif sub in (0xCA, 0xCB, 0xCC):
+                raw = struct.unpack_from("<H", data, operand + 2)[0]
+                args.update(slot=data[operand + 1], raw_value=raw,
+                            value=struct.unpack_from("<h", data, operand + 2)[0],
+                            uses_frame_delta=sub in (0xCB, 0xCC) and raw == 0xFFFF)
+            else:
+                args["values"] = list(data[operand + 1:operand + size])
         elif sub in (0xED, 0xE8):
             # Pinned d6e64c68 engine-vm/field/step/menu_ctrl/nibble_e.rs
             # op_4c_ne, blob 61ad972bd5455bdb84b1ab376f6ad959cb23190b:

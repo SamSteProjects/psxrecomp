@@ -21,6 +21,34 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_context_allocation_has_no_invented_fallthrough(self):
+        for data in (b"\x4c\xcd\x1fOpaque\0", b"\xcc\x17\xcd\x1fOpaque\0"):
+            report = inspect_record(data, 0)
+            self.assertEqual(report["status"], "partial")
+            self.assertEqual(report["instructions"], [])
+            self.assertEqual(report["dialogues"], [])
+            self.assertIn("allocated-context entry", report["stops"][0]["reason"])
+
+    def test_actor_scene_menu_widths_and_slot_sentinel(self):
+        widths = {0xC0: 1, 0xC1: 1, 0xC2: 2, 0xC3: 1, 0xC4: 3,
+                  0xC5: 3, 0xC6: 3, 0xC7: 3, 0xC8: 1,
+                  0xCA: 4, 0xCB: 4, 0xCC: 4, 0xCE: 2, 0xCF: 3}
+        for sub, width in widths.items():
+            ordinary = bytes([0x4c, sub]) + bytes([0x1f]) * (width - 1)
+            for data in (ordinary, b"\xcc\x17" + ordinary[1:]):
+                report = inspect_record(data + b"\x1fHi\0", 0)
+                self.assertFalse(report["stops"])
+                self.assertEqual(report["dialogues"][0]["pc"], len(data))
+                for length in range(1, len(data)):
+                    truncated = inspect_record(data[:length], 0)
+                    self.assertEqual(truncated["status"], "partial")
+                    self.assertEqual(truncated["instructions"], [])
+        for sub in (0xCA, 0xCB, 0xCC):
+            args = inspect_record(bytes([0x4c, sub, 255, 255, 255]), 0)["instructions"][0]["operands"]
+            self.assertEqual(args["value"], -1)
+            self.assertEqual(args["uses_frame_delta"], sub != 0xCA)
+        self.assertEqual(inspect_record(b"\x4c\xc9\x1fOpaque\0", 0)["dialogues"], [])
+
     def test_camera_and_render_payload_boundaries(self):
         forms = [b"\x46\x24\x1f\0\xff\x45", b"\x46\x25\x1f",
                  b"\x45\x7f" + b"\x1f\0" * 9, b"\x45\xbf",
