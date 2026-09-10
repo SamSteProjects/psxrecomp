@@ -1,5 +1,35 @@
 # Legaia stability and release parity
 
+## Current stability recheck (2026-09-10)
+
+The user's renewed stability requirement covers the runtime and precompilation
+fixes in both SDK prompts. At source revision `b46f770bd6153a0414ecf2ba46e1d3d3650b6460`,
+the following existing executable regressions were rerun successfully:
+
+- `tools/tests/test_static_overlay_build.py`: clean generated inventory,
+  incremental body changes, inventory growth/shrink and split/monolithic builds.
+- `runtime/tests/test_overlay_restore_runtime.py`: restored entry and CPS
+  continuation reject stale ownership and recover native execution.
+- `runtime/tests/test_cdrom_xa_data_ready.py`: production mixed data/XA delivery
+  avoids duplicate CPU data-ready delivery while drive/audio progress continues.
+- `runtime/tests/test_boot_state_transaction.py`: staged corruption rejection,
+  raw/zlib round trips, repeated restore, incoming resume-PC rejection before
+  mutation, and termination on an internal commit-contract violation.
+- `runtime/tests/test_boot_state_header.py`: incompatible identity rejection
+  remains independent of diagnostic-buffer availability.
+
+All five completed with exit code zero using Python 3.14 and the local UCRT GCC
+toolchain; the build fixture also used CMake/Ninja. Initial restricted-shell
+attempts did not validate anything (compiler discovery failed/skipped, followed
+by sandbox denial of Ninja). The successful runs used Git Bash and approved
+compiler subprocess execution. No new runtime patch or retail run was needed
+for this recheck, and no proprietary fixtures were tracked.
+
+This confirms the listed implemented fixes, not every historical bug claim.
+Muscle Dome repair provenance, repeated/cross-scene retail restores, battle
+audio synchronization, physical controller behavior and broader transition
+acceptance remain open as detailed below. The full SDK goal remains active.
+
 Audit date: 2026-09-09. The initial pass implements runtime/precompilation
 stability and input fixes from the supplied SDK prompts. The subsequent SDK
 buildout adds an integrated editor, generic guarded observation protocol and

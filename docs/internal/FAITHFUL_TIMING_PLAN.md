@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (renewed stability requirement):** Read the supplied SDK prompts
+  and rechecked the existing runtime/precompile fixes at `b46f770b`. The static
+  overlay clean/incremental build fixture, restore entry/CPS fixture, production
+  CD/XA data-ready regression, staged snapshot transaction/resume-PC harness and
+  diagnostic-independent header rejection all completed with exit zero.
+  Initial restricted-shell compiler discovery/skips and Ninja denial were not
+  counted; Git Bash with approved compiler execution passed. Updated the parity
+  ledger with current evidence and explicit remaining gameplay gates. No runtime
+  source, generated game input or proprietary payload changed. Prior P2 browser
+  acceptance remains progress; the broader SDK goal is not complete.
+
 - **2026-09-10 (P2 browser acceptance):** Separate private project
   `p2-browser-qa`, editor 4394, IAB tab 17: refreshed resources, searched trigger
   0008, opened referenced P2[37], and entered the shared dialogue workspace.
