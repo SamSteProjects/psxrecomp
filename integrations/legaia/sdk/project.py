@@ -512,7 +512,7 @@ class ProjectService:
                 self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
                 self.redo_stack.clear()
             return
-        if command.get("type") in ("create_actor_template", "apply_actor_template", "delete_actor_template"):
+        if command.get("type") in ("create_actor_template", "apply_actor_template", "delete_actor_template", "rename_actor_template"):
             self._template_command(command)
             return
         if command.get("type") not in ("set_transform", "clear_transform"):
@@ -646,6 +646,24 @@ class ProjectService:
             raise ProjectError("Unknown authored actor template")
         template = self.actor_templates[identifier]
         self._validate_template(identifier, template)
+        if kind == "rename_actor_template":
+            name = command.get("name")
+            if not isinstance(name, str):
+                raise ProjectError("Template name must be a string")
+            name = name.strip()
+            if any(key != identifier and value["name"].casefold() == name.casefold()
+                   for key, value in self.actor_templates.items()):
+                raise ProjectError("An authored template already uses that name")
+            renamed = {**deepcopy(template), "name": name}
+            self._validate_template(identifier, renamed)
+            if renamed == template:
+                return
+            self.actor_templates[identifier] = renamed
+            self.undo_stack.append({"target": "actor_templates", "template_id": identifier,
+                                    "entity_id": template["source"]["entity_id"],
+                                    "before": deepcopy(template), "after": deepcopy(renamed)})
+            self.redo_stack.clear()
+            return
         if kind == "apply_actor_template":
             if template["scope"] == "authored-appearance-v1":
                 self.command({"type": "set_actor_appearance", "entity_id": command.get("entity_id"),

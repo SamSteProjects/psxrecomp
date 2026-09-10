@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (actor preset renaming):** Previous story/title restoration was
+  verified progress. Added rename_actor_template to the existing command/history
+  path and an inline preset-library form. Names validate before mutation; source,
+  components and stable ID remain intact. Same-name submission is a no-op;
+  case-insensitive duplicate names reject. Seven workflow tests pass including
+  rename/Undo/Redo/no-op/invalid names/save-open; appearance tests also passed
+  before the focused addition. JS syntax/diff checks pass. Browser acceptance
+  pending; full SDK goal remains active.
+
+
 - **2026-09-10 (story/title lifecycle restore):** Previous input-after-restore
   run was verified progress. Fresh owned61d99eac... reached opening story after
   three title loads, loaded saved title from story (generation5,last_ok1),

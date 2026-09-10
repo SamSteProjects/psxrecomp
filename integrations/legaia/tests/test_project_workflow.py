@@ -70,6 +70,33 @@ class ProjectWorkflow(unittest.TestCase):
                              "position": {"x": 64, "z": 16384}})
             self.assertEqual(issues(), [])
 
+    def test_rename_preset_preserves_identity_and_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.import_metadata(synthetic_scene())
+            actor = "scene://fixture/actors/man-p1/0001"
+            project.command({"type": "set_transform", "entity_id": actor, "position": {"x": 128}})
+            project.command({"type": "create_actor_template", "entity_id": actor, "name": "Original"})
+            identifier = next(iter(project.actor_templates))
+            before = deepcopy(project.actor_templates[identifier])
+            project.command({"type": "rename_actor_template", "template_id": identifier, "name": " Courtyard "})
+            self.assertEqual(project.actor_templates[identifier], {**before, "name": "Courtyard"})
+            depth = len(project.undo_stack)
+            project.command({"type": "rename_actor_template", "template_id": identifier, "name": "Courtyard"})
+            self.assertEqual(len(project.undo_stack), depth)
+            project.undo()
+            self.assertEqual(project.actor_templates[identifier], before)
+            project.redo()
+            for invalid in ("", "x" * 81, None):
+                with self.assertRaises(ProjectError):
+                    project.command({"type": "rename_actor_template", "template_id": identifier, "name": invalid})
+            project.command({"type": "create_actor_template", "entity_id": actor, "name": "Other"})
+            with self.assertRaisesRegex(ProjectError, "already uses"):
+                project.command({"type": "rename_actor_template", "template_id": identifier, "name": "OTHER"})
+            restored = ProjectService.open(project.save())
+            self.assertEqual(restored.actor_templates[identifier]["name"], "Courtyard")
+            self.assertEqual(restored.actor_templates[identifier]["source"], before["source"])
+
     def test_corrupt_evidence_and_escaping_import_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

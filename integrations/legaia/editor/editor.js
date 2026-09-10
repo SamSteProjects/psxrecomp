@@ -868,6 +868,9 @@ function renderTemplates(){
     card.innerHTML=`<strong>${escapeHTML(template.name)}</strong><p>${escapeHTML(values)}</p><p class="field-note">${escapeHTML(application.reason)}</p><details><summary>Source provenance</summary><p>${escapeHTML(template.source.scene_id)}<br>${escapeHTML(template.source.entity_id)}</p><code>${escapeHTML(template.source.disc_identity)}</code></details><div class="template-actions"><button data-apply ${canEdit() && entity && application.available?'':'disabled'}>Apply to ${escapeHTML(entity?.name ?? 'selected actor')}</button><button data-delete ${canEdit()?'':'disabled'}>Delete</button></div>`;
     card.querySelector('[data-apply]').onclick=()=>command({type:'apply_actor_template',template_id:template.id,entity_id:entity.id});
     card.querySelector('[data-delete]').onclick=()=>command({type:'delete_actor_template',template_id:template.id});
+    const rename=document.createElement('details');rename.innerHTML=`<summary>Rename preset</summary><form><label>New name for ${escapeHTML(template.name)}<input required maxlength="80" value="${escapeHTML(template.name)}" ${canEdit()?'':'disabled'}></label><button type="submit" ${canEdit()?'':'disabled'}>Save name</button></form>`;
+    rename.querySelector('form').onsubmit=async event=>{event.preventDefault();await command({type:'rename_actor_template',template_id:template.id,name:rename.querySelector('input').value});};
+    card.append(rename);
     $('template-list').append(card);
   }
   if(!templates.length)$('template-list').innerHTML='<p class="field-note">No authored actor templates yet.</p>';
