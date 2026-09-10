@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Verify composed transition and dialogue package
+
+- Previous turn was progress: browser draft conflict fix. Fresh private town01 Project authored P2[0] arrival X12416/facing2 plus one P2[36] dialogue glyph, saved/reopened, then built. Decoded MAN exactly matched independently composed patches: three audited fields and exactly three changed bytes. Clear of both components reproduced the baseline package SHA.
+- Package SHA13e4b54628d8fc55567eb0b7176d9273d83325bf228bfba42a470283709fda0b; evidence `local-output/sdk-20260909/transition-dialogue-composition/verification.json`. Updated feature matrix with the implemented transition workflow and its remaining limitations.
+- No runtime launched; live arrival, world-map route coverage and full SDK requirements remain incomplete. Full objective active.
+
+
 ### 2026-09-10 — Prevent competing transition drafts
 
 - Previous turn was progress: browser arrival authoring. Fixed two forms for the same entry allowing conflicting drafts to survive a refresh and later overwrite each other. An arrival draft now disables byte inputs/Apply/Clear; a byte draft disables arrival inputs/Apply. Explanatory tooltips and Discard remain available.

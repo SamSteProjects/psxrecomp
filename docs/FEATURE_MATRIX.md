@@ -245,3 +245,16 @@ That binding remains unconfirmed. Mod status reports zero writes, overlays and
 copied bytes, guard false; runtime and editor exited0. Evidence stays private in
 appearance-revert-live. This accepts removal for one pair on the matched binary,
 not arbitrary donor compatibility or newer-binary field acceptance.
+
+
+2026-09-10 transition entry authoring: verified P1/P2 named-transition spans now
+support encoded entry bytes and exact X/Z arrival coordinates/facing sectors,
+with source ownership checks, project history, offline persistence, script
+inspector controls, authored graph layers and audited MAN packaging. Retail
+PROT897 instruction bytes and the executable facing table support the static
+arrival interpretation; live arrival and destination terrain height remain
+unverified. Browser Apply/Clear and competing-draft protection passed. A private
+combined transition/dialogue package survived save/reopen, decoded to exactly
+three intended changed bytes, and returned to the exact baseline package hash
+when both overrides were cleared. This does not complete reachable world-map
+routes, destination-name editing, MAPDSIP coverage or live scene acceptance.
