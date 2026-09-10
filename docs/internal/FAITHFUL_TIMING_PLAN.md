@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (animation usage browser acceptance):** Prior animation usage
+  implementation was progress. Fresh isolated service/project on port4394
+  imported town01 and assigned supported actor0046 appearance to actor0040.
+  Browser resource refresh and clip0012 details showed actor0040 Effective;
+  following the link selected actor0040 and displayed donor0046. Undo invalidated
+  the resource catalog; the first attempt to open clip0008 therefore found no
+  record. Refreshing through the UI restored it and displayed actor0040 as
+  Imported + Effective. Browser errors were empty. Graceful shutdown saved final
+  state under `local-output/sdk-20260909/animation-usage-browser`; selected actor
+  was0040 with zero authored assets in Edit mode, process exit0. No retail or
+  runtime mutation. This closes animation-link browser acceptance, not runtime
+  animation semantics or the full SDK goal.
+
 - **2026-09-10 (animation asset usage):** Previous cross-scene model navigation
   acceptance was progress. Extended asset detail usage links to animations,
   joining verified MAN/ANM actor-model bindings with imported/effective donor

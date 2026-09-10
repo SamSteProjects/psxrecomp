@@ -4,8 +4,10 @@
 effective actor links using verified catalog bindings and authored appearance
 donors. Fresh retail metadata checks cover all 39 town01 bindings and an actual
 supported actor0040 -> actor0046 donor assignment (clip0008 -> clip0012).
-Same-model/different-animation handling also passes. Browser interaction for
-these new animation links remains pending; runtime clip state is not inferred.
+Same-model/different-animation handling also passes. Browser acceptance verified
+the effective clip0012 link selects actor0040 with donor0046, then undo and
+resource refresh restore Imported + Effective usage of clip0008. Runtime clip
+state is not inferred.
 
 2026-09-10 model usage: model details list project-wide imported and effective
 initial actor assignments. Browser navigation from shared model 00f1 switched
