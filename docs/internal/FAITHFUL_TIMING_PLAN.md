@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Rebuild complete game with DMA diagnostic fixes
+
+- Previous turn was progress: reset/restore provenance fix. Rebuilt private stability target psx-runtime with MSVC Release, parallel2, using the existing generated main/static-overlay sources; command exited0 and staged mod catalog verification passed. Existing compiler deprecation/synthetic-recursion warnings remain. Log: `local-output/stability-20260909/build-dma-provenance.log`.
+- New executable SHA25697f0f0260f7d4c977a385e0dcd3b5f625c7112f9eefd04bcfeab1684998fd4aa, built from688c58cb. Private `dma-provenance-build.json` records source hashes. Verified PID50140 remains live at its separate arrival-live run path and that preserved executable still hashes96eaf949050d28009958cbc4f5d305c06976ac7e1eefbd7d62eaa6cb97993203.
+- Full generated-game link is accepted; new-binary startup/capture/restore behavior is not yet live-validated. No game restart or input this turn. Existing visibility evidence belongs to96, not97. Full objective remains active.
+
 ### 2026-09-10 — Invalidate DMA diagnostic provenance across restore
 
 - Previous turn was progress: GPU DMA ring PC correction. Lifecycle review found per-channel kick PCs and execution-scope metadata were neither serialized nor cleared by dma_init/dma_snapshot_read. They could therefore falsely attribute a restored transfer to the pre-restore run.

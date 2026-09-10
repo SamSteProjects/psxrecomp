@@ -700,3 +700,10 @@ metadata. A focused GCC executable tested idle and active-list restoration,
 channel-state preservation and rendering-context callbacks. The GNU-only CTest
 harness is registered; this is diagnostic lifecycle correctness, not proof of
 the broader savestate native-ownership/performance requirements.
+
+Both diagnostic fixes now pass a full MSVC Release generated-game link from
+688c58cb: executable SHA256
+97f0f0260f7d4c977a385e0dcd3b5f625c7112f9eefd04bcfeab1684998fd4aa.
+The preserved live field run still uses96eaf949..., whose older capture semantics
+remain applicable to all existing visibility evidence. New-binary live capture
+and restore verification remain pending; linking does not supply that acceptance.
