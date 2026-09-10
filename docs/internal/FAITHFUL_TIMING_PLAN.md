@@ -213,6 +213,12 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Match arrival arithmetic to retail overlay
+
+- Previous turn was progress: generated-handler trace. Hashed-disc probe found one matching instruction window among the ten retained static roles: PROT897 offset66312, entry SHA216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b. All36 words at generated801DEB20..801DEBAC match the expected retail window, including BEQ delay slots, low7 coordinate extraction, high-bit adjustment, direction&7 and table lookup. Evidence: `local-output/sdk-20260909/transition-handler-retail.json`.
+- Together with prior direct executable table evidence this supports static coordinate/facing interpretation. Added effective arrival preview data and inspector text; runtime_verified remains false. No runtime launched. Destination height and live arrival behavior remain unverified; full objective active.
+
+
 ### 2026-09-10 — Trace generated arrival handler operations
 
 - Previous turn was progress: direct retail facing table. Located generated overlay function ov_001CE818_7717AFDB_7D82C23B_func_801DE840 in sibling generated/overlays_static_0000.c (read only). Named path copies length-prefixed destination; 801DEB20..7C extracts low7 X/Z, shifts7, adds64 and substitutes128 on high-bit branches, storing globals80073EF4/80073EF8. 801DEB8C..AC loads trailing direction, masks7, indexes signed-half table80073F04 and stores80073EFC.

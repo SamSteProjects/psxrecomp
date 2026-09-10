@@ -396,6 +396,8 @@ class ProjectService:
             known.add(key)
             entry["authored_values"] = deepcopy(authored.get(key, {}))
             entry["effective_values"] = dict(entry["values"], **authored.get(key, {}))
+            from importer.transition_authoring import reference_entry_interpretation
+            entry["effective_interpretation"] = reference_entry_interpretation(entry["effective_values"])
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
 

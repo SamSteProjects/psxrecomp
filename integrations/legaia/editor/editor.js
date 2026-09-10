@@ -1030,7 +1030,7 @@ function renderTransitionAuthoring(){
   const authoring=scriptReport?.transition_authoring;if(!authoring||(!authoring.transitions?.length&&!authoring.unresolved_overrides?.length))return;
   const section=document.createElement('section'),heading=document.createElement('h3'),note=document.createElement('p');
   heading.textContent='Transition entries';note.className='field-note';
-  note.textContent='Edit encoded entry bytes (0–255). World coordinates and direction meanings are not established. Destination names remain fixed.';
+  note.textContent='Edit encoded entry bytes (0–255). The preview decodes the retail entry format. Destination names remain fixed.';
   section.append(heading,note);$('script-report').append(section);
   for(const identifier of authoring.unresolved_overrides ?? []){
     const row=document.createElement('div'),label=document.createElement('code'),button=document.createElement('button');
@@ -1043,6 +1043,7 @@ function renderTransitionAuthoring(){
   for(const entry of authoring.transitions ?? []){
     const form=document.createElement('form');form.className='transition-entry';
     const title=document.createElement('h4');title.textContent=`${entry.destination} at ${scriptOffset(entry.pc)}`;form.append(title);
+    if(entry.effective_interpretation){const value=entry.effective_interpretation,preview=document.createElement('p');preview.className='field-note';preview.textContent=`Effective arrival: X ${value.x} / Z ${value.z} / facing ${value.facing_angle_12bit} (12-bit angle). Static retail interpretation; height and live arrival are not verified.`;form.append(preview);}
     const inputs={};
     for(const [field,label] of [['entry_x_encoded','Entry X'],['entry_z_encoded','Entry Z'],['direction_encoded','Direction']]){
       const row=document.createElement('label'),input=document.createElement('input');

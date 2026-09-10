@@ -22,7 +22,7 @@ LIMITATIONS = [
 
 
 def reference_entry_interpretation(values: dict) -> dict:
-    """Pinned engine interpretation, not an observation of the recomp runtime."""
+    """Static retail-matched interpretation, not an observation of the runtime."""
     if set(values) != set(ENTRY_FIELDS) or any(type(v) is not int or not 0 <= v <= 255 for v in values.values()):
         raise ImportError("entry interpretation requires all three encoded bytes")
     def coordinate(value):
@@ -30,7 +30,8 @@ def reference_entry_interpretation(values: dict) -> dict:
     return {"x": coordinate(values["entry_x_encoded"]),
             "z": coordinate(values["entry_z_encoded"]),
             "facing_angle_12bit": (values["direction_encoded"] & 7) * 512,
-            "evidence": "pinned_reference_implementation", "runtime_verified": False,
+            "evidence": "retail_static_handler_and_table", "runtime_verified": False,
+            "retail_source": "SCUS-94254 PROT[897] offset66312; SCUS_942.54 table80073F04",
             "source": "crates/engine-core/src/world/field_loop.rs:275-308"}
 
 
