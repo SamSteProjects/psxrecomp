@@ -106,6 +106,25 @@ def _instruction(data: bytes, pc: int) -> dict:
         args = {"bit": data[operand] & 31, "raw_operand": data[operand]}
         if operation == 2:
             args["can_wait_for_flag"] = True
+    elif op == 0x34:
+        # Pinned executing VM step/effect.rs::op_34: only these two
+        # forms have unconditional, fixed-width encoded continuations.
+        # Spawn/capture forms depend on host control flow and remain opaque.
+        need(1)
+        selector = data[operand]
+        sub = selector >> 4
+        args = {"sub_op": sub, "raw_selector": selector}
+        if sub == 0:
+            size, mnemonic = 6, "EFFECT_COLOR_INTENSITY"
+            need(size)
+            args.update(rgb=list(data[operand + 1:operand + 4]),
+                        intensity=struct.unpack_from("<h", data, operand + 4)[0])
+        elif sub == 3:
+            size, mnemonic = 2, "EFFECT_ANIMATION_TRIGGER"
+            need(size)
+            args["animation_operand"] = data[operand + 1]
+        else:
+            raise ImportError(f"unsupported EFFECT sub-op 0x{sub:x}; host-dependent or unimplemented continuation")
     elif op in (0x37, 0x41, 0x47):
         size, mnemonic = (3 if op == 0x47 else 2), "MOTION_YIELD"
     elif op in (0x35, 0x36, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x44, 0x4A):

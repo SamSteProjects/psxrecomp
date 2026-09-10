@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (opening effect instructions):** Extended bounded script decoding
+  for opcode 0x34 color/intensity (sub 0) and animation trigger (sub 3), including
+  extended context headers. Evidence: LegaiaRE pin
+  `d6e64c68ede25813d35db20980da82a1a025549b`, executing
+  `crates/engine-vm/src/field/step/effect.rs`, blob
+  `e94f1afc597a036f2b45a486ec4294b70e2f51ad`. Host-dependent sub 1/2 and
+  unimplemented forms remain opaque. All 33 focused script, trigger, catalog,
+  dialogue authoring, project and build checks pass with the private retail disc.
+  Actual town01 opening P2[3] now reaches nine instructions and stops at PC 49
+  on MENU_CTRL 0x81; no dialogue is accepted yet. Next work is evidence for that
+  continuation and P2 authoring integration. Runtime was not changed or launched.
+
 - **2026-09-10 (Live follow and restore recovery):** Added opt-in bounded actor
   following and separate candidate markers, with epoch chaining, cancellation,
   no overlapping polls and no automatic retry after rejection. Browser checks

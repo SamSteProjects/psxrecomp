@@ -21,6 +21,36 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_effect_fixed_forms_preserve_operands_and_context_boundaries(self):
+        forms = ((b"\x34\x0f\x1f\xff\x00" + struct.pack("<h", -32768),
+                  "EFFECT_COLOR_INTENSITY", {"rgb": [31, 255, 0], "intensity": -32768}),
+                 (b"\x34\x3f\x1f", "EFFECT_ANIMATION_TRIGGER", {"animation_operand": 31}))
+        for ordinary, mnemonic, fields in forms:
+            for data in (ordinary, b"\xb4\x17" + ordinary[1:]):
+                with self.subTest(data=data):
+                    report = inspect_record(data + b"\x1fHi\0", 0)
+                    row = report["instructions"][0]
+                    self.assertEqual(row["mnemonic"], mnemonic)
+                    self.assertEqual(row["length"], len(data))
+                    self.assertEqual(row["target_context"], 23 if data[0] == 0xB4 else None)
+                    for key, value in fields.items():
+                        self.assertEqual(row["operands"][key], value)
+                    self.assertEqual([(d["pc"], d["text"]) for d in report["dialogues"]], [(len(data), "Hi")])
+                    self.assertEqual(covered_bytes(report, 0, len(data) + 4), [1] * (len(data) + 4))
+                    for length in range(1, len(data)):
+                        truncated = inspect_record(data[:length], 0)
+                        self.assertEqual(truncated["status"], "partial")
+                        self.assertEqual(truncated["instructions"], [])
+                        self.assertEqual(truncated["dialogues"], [])
+
+    def test_effect_host_dependent_forms_remain_opaque(self):
+        for sub in (1, 2, *range(4, 16)):
+            report = inspect_record(bytes([0x34, sub << 4]) + b"\x1fOpaque\0", 0)
+            self.assertEqual(report["status"], "partial")
+            self.assertEqual(report["instructions"], [])
+            self.assertEqual(report["dialogues"], [])
+            self.assertIn("unsupported EFFECT", report["stops"][0]["reason"])
+
     def test_evidenced_menu_ed_e8_fields_and_continuation_ignore_operand_lookalikes(self):
         # The state byte and camera operands include apparent message/opcode
         # bytes. They must never become graph entry points or dialogue tokens.
