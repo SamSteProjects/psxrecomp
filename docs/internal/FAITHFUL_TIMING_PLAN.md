@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 authoring core):** DialogueAuthoringContext now accepts
+  scene-scoped P2 script identities and uses the existing all-partition alias,
+  section-overlap and prefix bounds before exposing runs. Equal-span patching
+  reuses immutable baseline guards and before/after graph checks. Synthetic
+  P2 edit proves only the selected glyph span changes; aliased records and
+  unresolved terminal ownership remain rejected. Private town01 P2[3] is
+  confirmed unsupported for authoring, with no runs exposed. All 44 focused
+  tests pass. This is importer-core support; editor commands and build project
+  integration for P2 are still outstanding, as is opening tail ownership.
+
 - **2026-09-10 (retail opening halt identified):** Retail field dispatch at
   0x801DE95C indexes `(opcode & 0x7F) - 0x21` into 0x801CECC0. Entry for
   2A points to 0x801E3568; its mask 0x20 misses the 0x50/60/70 flag routes,

@@ -36,6 +36,34 @@ def fixture(script=b"\x1fHello\0", alias=False):
 
 
 class DialogueAuthoringTests(unittest.TestCase):
+    def test_partition_two_equal_span_edits_and_unresolved_tail_rejection(self):
+        identifier = "scene://fixture/scripts/man-p2/0000"
+        for script, supported in ((b"\x1fHello\0", True), (b"\x1fHello\0\x2a", False)):
+            _, original = fixture()
+            region = 0x2B + 12
+            section = int.from_bytes(original[0x28:0x2B], "little")
+            p2 = bytes(4) + script
+            man = bytearray(original[:region + section] + p2 + original[region + section:])
+            man[0x34:0x37] = section.to_bytes(3, "little")
+            man[0x28:0x2B] = (section + len(p2)).to_bytes(3, "little")
+            man = bytes(man)
+            context = DialogueAuthoringContext("fixture", man, literals(man), {})
+            options = context.options(identifier)
+            self.assertEqual(options["supported"], supported)
+            if supported:
+                run = options["runs"][0]
+                changed, audit = context.patch({run["semantic_id"]: "Hi"}, original=man)
+                offset = run["decoded_byte_offset"]
+                self.assertEqual(changed[offset:offset + 5], b"Hi   ")
+                self.assertEqual(changed[:offset], man[:offset])
+                self.assertEqual(changed[offset + 5:], man[offset + 5:])
+                self.assertEqual(len(audit), 1)
+            else:
+                self.assertEqual(options["runs"], [])
+        context, _ = fixture()
+        with self.assertRaisesRegex(ImportError, "aliased"):
+            context.options(identifier)
+
     def test_control_and_substitution_boundaries_split_runs_and_remain_exact(self):
         script = b"\x1f\xc1\0Hello\x5e\x2dWorld\xffA\xc2\0End\x80ok\0"
         context, original = fixture(script)

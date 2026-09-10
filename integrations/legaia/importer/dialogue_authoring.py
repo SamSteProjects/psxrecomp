@@ -12,11 +12,13 @@ from collections import Counter
 from copy import deepcopy
 import hashlib
 import re
+from types import SimpleNamespace
 from typing import Any
 
 from .core import ImportError, decompress_lzs, find_scene_bundle, parse_man, stable_actor_id
 from .pipeline import REFERENCE_COMMIT, _bounded_scene_range, _disc_context
 from .script_inspection import inspect_record
+from .trigger_scripts import _p2_record, _p2_entry
 
 MAX_MAN_BYTES = 4 * 1024 * 1024
 MAX_ACTORS = 512
@@ -48,8 +50,8 @@ def validate_dialogue_text(text: Any) -> str:
 
 def validate_run_id(actor_id: Any, run_id: Any) -> str:
     """Validate structure only; source membership is reverified by context.patch."""
-    if not isinstance(actor_id, str) or re.fullmatch(r"scene://[A-Za-z0-9_-]+/actors/man-p1/[0-9]{4}", actor_id) is None:
-        raise ImportError("dialogue authoring requires a partition-1 actor identifier")
+    if not isinstance(actor_id, str) or re.fullmatch(r"scene://[A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4}", actor_id) is None:
+        raise ImportError("dialogue authoring requires a partition-1 actor or partition-2 script identifier")
     prefix = "script://" + actor_id.removeprefix("scene://")
     if not isinstance(run_id, str) or re.fullmatch(re.escape(prefix) + r"/dialogue/[0-9a-f]{4}/run/[0-9a-f]{4}", run_id) is None:
         raise ImportError("dialogue run identifier must belong to the actor and contain fixed hexadecimal PCs")
@@ -120,11 +122,21 @@ class DialogueAuthoringContext:
     def _inspect(self, actor_id: str, man: bytes) -> dict:
         actor = self._actors[actor_id]
         record = man[actor.byte_offset:actor.byte_offset + actor.byte_length]
-        return inspect_record(record, 1 + actor.local_count * 2 + 4,
+        entry = _p2_entry(record)[0] if "/scripts/man-p2/" in actor_id else 1 + actor.local_count * 2 + 4
+        return inspect_record(record, entry,
                               semantic_id="script://" + actor_id.removeprefix("scene://"),
                               base_offset=actor.byte_offset)
 
     def options(self, actor_id: str) -> dict:
+        if isinstance(actor_id, str) and actor_id not in self._actors:
+            match = re.fullmatch(re.escape(f"scene://{self.scene}/scripts/man-p2/") + r"([0-9]{4})", actor_id)
+            if match:
+                index = int(match[1])
+                offset, record = _p2_record(self._man, index)
+                _p2_entry(record)
+                self._actors[actor_id] = SimpleNamespace(record_index=index, byte_offset=offset,
+                                                        byte_length=len(record))
+                self._unique.add(actor_id)
         if not isinstance(actor_id, str) or actor_id not in self._actors:
             raise ImportError("dialogue actor is not present in the verified MAN")
         if actor_id not in self._options:
