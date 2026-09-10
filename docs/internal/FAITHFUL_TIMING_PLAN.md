@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-09 (donor appearance authoring integration):** Connected verified
+  same-scene model/animation pairs to project commands, Undo/Redo, Save/Open,
+  the scene viewport, authored frame preview/export and bounded mod builds.
+  Browser actor0049/donor0036 workflow passes through Apply, undo/redo, export,
+  reopen, build and clear. Combined donor/X edits produce one overlay with
+  three audited fields; clearing edits reproduces the baseline package hash.
+  Invalid or stale donor evidence fails before output. Runtime code is unchanged;
+  donor gameplay compatibility and broader SDK authoring remain open.
+
 - **2026-09-09 (asset search and actor content inspection):** Connected NPC
   animation playback/frame export, searchable SDK model/actor/scene records,
   and bounded script/inline-dialogue inspection to the editor. Browser checks

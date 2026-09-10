@@ -7,7 +7,7 @@ let busy = false, toastTimer, lastSceneId, grid = true;
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
 const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
-let sceneRenderer=null,scenePreview=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
+let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
 modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;scenePreview=null;sceneError=null;modelsEnabled=true;}else modelsEnabled=!modelsEnabled;modelToggle.classList.toggle('active',modelsEnabled);modelToggle.setAttribute('aria-pressed',modelsEnabled);refreshScenePreview();draw();};
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
@@ -54,7 +54,7 @@ function scheduleRunPoll(){
 buildButton.onclick=async()=>{
   if(await api('/api/build',{})){
     const result=state.build;
-    buildDialog.innerHTML=`<div class="dialog-heading"><h2>${result.build_kind==='retail'?'Retail baseline built':'Private mod package built'}</h2><button id="close-build" aria-label="Close">×</button></div><p>${result.build_kind==='retail'?'Retail baseline · no modified bytes':`${escapeHTML(result.changed_fields)} placement fields · ${escapeHTML(result.overlay_count)} scene overlays`}</p><p>Runtime launch has not been validated for this package.</p><label>Package path<input readonly value="${escapeHTML(result.path)}"></label><p>${escapeHTML(result.install_instruction)}</p>`;
+    buildDialog.innerHTML=`<div class="dialog-heading"><h2>${result.build_kind==='retail'?'Retail baseline built':'Private mod package built'}</h2><button id="close-build" aria-label="Close">×</button></div><p>${result.build_kind==='retail'?'Retail baseline · no modified bytes':`${escapeHTML(result.changed_fields)} authored fields · ${escapeHTML(result.overlay_count)} scene overlays`}</p><p>Runtime launch has not been validated for this package.</p><label>Package path<input readonly value="${escapeHTML(result.path)}"></label><p>${escapeHTML(result.install_instruction)}</p>`;
     $('close-build').onclick=()=>buildDialog.close();buildDialog.showModal();
   }
 };
@@ -72,6 +72,7 @@ function setBusy(value) {
   buildButton.disabled=value || !state.capabilities?.build || !canEdit();
   renderRunStatus();
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
+  document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -101,10 +102,11 @@ async function api(path, payload, {dialog,success}={}) {
 }
 function entities(){return state.scene?.entities ?? [];}
 function selected(){return entities().find(e=>e.id===state.selection?.entity_id);}
+function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
 function position(entity){return displayPosition(entity.components?.Transform?.effective?.position ?? entity.components?.Transform?.imported?.position);}
-function authored(entity){return Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0;}
+function authored(entity){return Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0 || !!entity.components?.ActorAppearance?.authored?.donor_entity_id;}
 function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceChildren();d.showModal();}
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.name ?? 'Legaia project'; $('project-path-input').value=state.project?.path ?? '';showDialog('project-dialog'); };
@@ -179,6 +181,7 @@ async function refreshScenePreview(){
   const key=state.scene_preview_source_key;
   if(!state.capabilities?.scene_preview||!key||!modelsEnabled){sceneAbort?.abort();scenePendingKey=null;updateSceneBadge();return;}
   if(sceneKey===key||scenePendingKey===key||sceneFailedKey===key){updateSceneBadge();return;}
+  const preserveCamera=sceneLoadedId===state.scene?.id && sceneProjectPath===state.project?.path;
   sceneAbort?.abort();const controller=new AbortController();sceneAbort=controller;scenePendingKey=key;sceneError=null;scenePreview=null;sceneRenderer?.clear();
   const expectedScene=state.scene?.id,revision=cameraRevision;updateSceneBadge();draw();
   try{
@@ -188,9 +191,9 @@ async function refreshScenePreview(){
     if(controller.signal.aborted||state.scene_preview_source_key!==key||state.scene?.id!==expectedScene)return;
     if(data.source_key!==key||data.scene_id!==expectedScene)throw new Error('Scene preview source changed while loading; retry models.');
     if(!Array.isArray(data.position_to_display)||data.position_to_display.length!==16||!data.position_to_display.every(numeric))throw new Error('SDK did not provide a valid scene display conversion.');
-    const failures=sceneRenderer.load(data);scenePreview=data;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
+    const failures=sceneRenderer.load(data);scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
-    renderInspector();if(revision===cameraRevision&&!drag)frame();else draw();
+    renderInspector();if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
   }catch(error){if(error.name!=='AbortError'&&state.scene_preview_source_key===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;sceneRenderer?.clear();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();draw();}}
 }
@@ -199,7 +202,7 @@ function renderHierarchy(){
   const filter=$('entity-search').value.toLowerCase();
   for(const entity of entities().filter(e=>`${e.name} ${e.id}`.toLowerCase().includes(filter))){
     const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',entity.id===state.selection?.entity_id);row.classList.toggle('selected',entity.id===state.selection?.entity_id);row.title=entity.id;
-    row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored transform"></span>':''}`;
+    row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
     row.onclick=()=>api('/api/selection',{entity_id:entity.id});row.ondblclick=()=>frame(entity);list.append(row);
   }
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
@@ -263,6 +266,7 @@ function renderInspector(){
   let html=`<div class="entity-heading"><h2>${escapeHTML(entity.name ?? entity.id)}</h2><code>${escapeHTML(entity.id)}</code></div><section class="component"><h3>Transform <small>Scene units</small></h3><div class="transform-table"><span></span><span class="column-title">Imported</span><span class="column-title">Authored</span><span class="column-title">Effective</span>`;
   for(const axis of ['x','y','z'])html+=`<span class="axis-${axis}">${axis.toUpperCase()}</span><output title="${format(original[axis])}">${format(original[axis])}</output><input data-axis="${axis}" aria-label="Authored ${axis.toUpperCase()}" type="number" step="1" placeholder="—" value="${numeric(override[axis])?override[axis]:''}" ${canEdit()?'':'disabled'}><output class="effective">${format(effective[axis])}</output>`;
   html+='</div><p class="field-note">Edits are project overrides. Empty authored fields inherit the imported value. Unknown heights use the ground plane. Scene display axes follow the SDK conversion.</p></section>';
+  if(state.capabilities?.actor_appearance && components.ActorAppearance){const appearance=components.ActorAppearance,imported=appearance.imported ?? {},effective=appearance.effective ?? imported,donor=appearance.authored?.donor_entity_id;html+=`<section class="component appearance-component"><h3>Actor appearance <small>Model + animation pair</small></h3><div class="appearance-layer"><h4>Imported</h4>${property('Model',imported.asset_id)}${property('Animation ID',imported.animation_id)}</div><div class="appearance-layer"><h4>Authored override</h4>${property('Donor actor',donor ?? 'None · inherit imported appearance')}</div><div class="appearance-layer"><h4>Effective</h4>${property('Model',effective.asset_id)}${property('Animation ID',effective.animation_id)}</div><p class="field-note">Assign a verified donor pair to this existing actor. Script behavior and gameplay compatibility are not established by a matching model and animation.</p><button id="choose-appearance" class="model-preview-button" data-appearance-edit ${canEditAppearance()?'':'disabled'}>Choose donor appearance…</button>${donor?`<button id="clear-appearance" class="model-preview-button" data-appearance-edit ${canEditAppearance()?'':'disabled'}>Clear appearance override</button><button id="preview-appearance" class="model-preview-button">Preview authored appearance</button>`:''}<details><summary>Appearance evidence and limits</summary><pre>${escapeHTML(JSON.stringify(appearance,null,2))}</pre></details></section>`;}
   if(state.capabilities?.authored_transform_templates)html+='<section class="component"><h3>Authored templates <small>Position only</small></h3><p class="field-note">Capture authored axes or apply saved positions to this existing actor.</p><button id="inspect-templates">Open transform templates…</button></section>';
   if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${property('Asset',model.asset_id)}${property('Resolution',model.resolution_status)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${model.asset_id?'<button id="inspect-model" class="model-preview-button">Inspect model objects</button>':''}</section>`;}
   if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">${components.Animation.preview_support?.supported?'Imported association is eligible for decoding. Preview verifies the source; retail playback timing and live animation remain unknown.':escapeHTML(components.Animation.preview_support?.reason ?? 'No supported imported animation association is available for this actor.')}</p></section>`;
@@ -270,6 +274,9 @@ function renderInspector(){
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
   if(state.capabilities?.actor_script_preview)html+='<section class="component"><h3>Script and dialogue <small>Read only</small></h3><p class="field-note">Inspect supported instruction paths and decoded dialogue from this imported record. Unknown instructions stop decoding.</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>';
   $('inspector').innerHTML=html;
+  if($('choose-appearance'))$('choose-appearance').onclick=()=>openAppearanceOptions(entity);
+  if($('clear-appearance'))$('clear-appearance').onclick=()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id});
+  if($('preview-appearance'))$('preview-appearance').onclick=()=>openModel(components.ActorAppearance.effective.asset_id,'authored-appearance',entity.id);
   if($('inspect-script'))$('inspect-script').onclick=()=>openActorScript(entity);
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
   const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
@@ -283,6 +290,27 @@ function renderInspector(){
     const value=Number(input.value);if(!Number.isFinite(value)){notify('Transform values must be finite numbers.',true);renderInspector();return;}
     await api('/api/command',{type:'set_transform',entity_id:entity.id,position:{[axis]:value}});
   }));
+}
+
+const appearanceDialog=document.createElement('dialog');appearanceDialog.id='appearance-dialog';document.body.append(appearanceDialog);
+async function openAppearanceOptions(entity){
+  if(busy||!canEditAppearance())return;setBusy(true);
+  appearanceDialog.innerHTML=`<div class="dialog-heading"><h2>Choose donor appearance</h2><button id="close-appearance" aria-label="Close donor appearance">×</button></div><p>Target: ${escapeHTML(entity.name)}. Assign a model and animation together from a verified imported donor.</p><p class="field-note">The existing actor keeps its placement and script. Structural pairing does not prove that the actor’s behavior will work with the new appearance.</p><div id="appearance-options"><p>Verifying available donor pairs…</p></div><p class="dialog-error" role="alert"></p>`;
+  $('close-appearance').onclick=()=>appearanceDialog.close();appearanceDialog.showModal();
+  try{
+    const response=await fetch('/api/actor-appearance-options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Could not verify donor appearances');if(!appearanceDialog.open)return;
+    if(!Array.isArray(result.options)||result.options.some(option=>typeof option.donor_entity_id!=='string'||typeof option.asset_id!=='string'))throw new Error('Appearance service returned an invalid donor list.');
+    const options=result.options,available=result.supported&&options.length;
+    $('appearance-options').innerHTML=available?'<form id="appearance-form"><label>Imported donor actor<select id="appearance-donor" required aria-label="Donor appearance"><option value="">Choose a verified donor…</option></select></label><div id="appearance-donor-details"></div><div class="dialog-actions"><button type="submit" id="apply-appearance" class="accent" data-appearance-edit data-unavailable="true" disabled>Apply donor appearance</button></div></form>':`<p>${escapeHTML(result.reason ?? 'No supported donor appearances are available for this actor.')}</p>`;
+    const details=document.createElement('details');details.className='appearance-evidence';details.innerHTML='<summary>Verified options and limitations</summary><pre class="diagnostic-detail"></pre>';details.querySelector('pre').textContent=JSON.stringify(result,null,2);$('appearance-options').append(details);
+    if(available){
+      for(const option of options){const entry=document.createElement('option');entry.value=option.donor_entity_id;entry.textContent=`${option.label ?? option.donor_entity_id}${option.unchanged?' (same imported pair)':''}`;$('appearance-donor').append(entry);}
+      const refresh=()=>{const option=options.find(item=>item.donor_entity_id===$('appearance-donor').value);$('apply-appearance').dataset.unavailable=String(!option);$('apply-appearance').disabled=busy||!canEditAppearance()||!option;$('appearance-donor-details').innerHTML=option?`${property('Donor ID',option.donor_entity_id)}${property('Model asset',option.asset_id)}${property('Animation ID',option.animation_id)}`:'';};
+      $('appearance-donor').onchange=refresh;$('appearance-donor').value=entity.components.ActorAppearance?.authored?.donor_entity_id ?? '';refresh();
+      $('appearance-form').onsubmit=async event=>{event.preventDefault();const donor=$('appearance-donor').value;if(options.some(option=>option.donor_entity_id===donor))await api('/api/command',{type:'set_actor_appearance',entity_id:entity.id,donor_entity_id:donor},{dialog:appearanceDialog,success:'Authored appearance assigned.'});};
+    }
+  }catch(error){if(appearanceDialog.open)appearanceDialog.querySelector('.dialog-error').textContent=error.message;}finally{setBusy(false);}
 }
 
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
@@ -391,12 +419,12 @@ const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
 async function openModel(assetId,clipId=null,entityId=null){
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest;
   try{
-    const response=await fetch(entityId?'/api/actor-animation-preview':clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
+    const response=await fetch(entityId?(clipId==='authored-appearance'?'/api/actor-appearance-preview':'/api/actor-animation-preview'):clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
     const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
     if(clipId && (!Array.isArray(data.frames) || !data.frames.length || data.frames.length*data.vertices.length>1000000 || data.frames.some(frame=>frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(frame.vertices)||frame.vertices.length!==data.vertices.length||frame.vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(numeric)))))throw new Error('Animation service returned an invalid or oversized posed vertex stream.');
-    model=data;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · Imported animation`:assetId.split('/').slice(-2).join(' / ');
+    model=data;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · ${clipId==='authored-appearance'?'Authored appearance':'Imported animation'}`:assetId.split('/').slice(-2).join(' / ');
     modelTextures=new Map();$('model-textures').replaceChildren();
     for(const texture of model.textures ?? []){
       const card=document.createElement('div');card.className='texture-card';
@@ -436,7 +464,7 @@ function configureAnimation(clipId){
 }
 function stopAnimation(){if(animationTick!==null)cancelAnimationFrame(animationTick);animationTick=null;animationClock=null;$('animation-play').textContent='Play';}
 function setAnimationFrame(index){const count=model?.frames?.length ?? 0;if(!count)return;animationFrame=((index%count)+count)%count;$('animation-frame').value=animationFrame;$('animation-frame-label').textContent=`${animationFrame+1} / ${count}`;drawModel();}
-$('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,clip==='scene-header'?modelEntityId:null);};
+$('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,['scene-header','authored-appearance'].includes(clip)?modelEntityId:null);};
 $('animation-frame').oninput=()=>{stopAnimation();setAnimationFrame(Number($('animation-frame').value));};
 $('animation-previous').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame-1);};
 $('animation-next').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame+1);};
@@ -453,7 +481,7 @@ $('model-export').onclick=async()=>{
   if(busy||!modelAssetId)return;stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
   const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
   try{
-    const response=await fetch(modelEntityId?'/api/export/actor-animation':'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const response=await fetch(modelEntityId?(clip==='authored-appearance'?'/api/export/actor-appearance':'/api/export/actor-animation'):'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Model export failed');
     exportDialog.innerHTML=`<div class="dialog-heading"><h2>${result.audit.posed?'Static posed model exported':'Object-local model exported'}</h2><button id="close-export" aria-label="Close">×</button></div><p>${result.audit.object_count} objects · ${result.audit.triangle_count} triangles · ${result.audit.texture_count} embedded textures${result.audit.posed?' · Frame '+(result.audit.frame_index+1):''}</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><p>Full model export${result.audit.posed?' with the displayed animation frame baked into geometry':''}. Source units are retained; physical meter scale is unknown. Animation channels and skin hierarchy are not exported.</p><details><summary>Export provenance and limitations</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
     $('close-export').onclick=()=>exportDialog.close();exportDialog.showModal();

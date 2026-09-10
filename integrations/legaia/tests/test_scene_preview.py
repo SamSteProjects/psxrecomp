@@ -20,6 +20,80 @@ def geometry():
 
 
 class ScenePreviewWorkflow(unittest.TestCase):
+    def test_donor_pose_keeps_target_placement_and_invalidates_only_appearance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            imported = synthetic_scene()
+            target = imported["actors"][0]
+            target["placement_fields"]["animation_id"] = 0
+            donor = deepcopy(target)
+            donor["semantic_id"] = target["semantic_id"].rsplit("/", 1)[0] + "/0002"
+            donor["source_record"] = {"fixture": "donor"}
+            donor["placement_fields"]["animation_id"] = 7
+            donor["model_reference"]["asset_semantic_id"] = "asset://fixture/model/1"
+            donor["imported_transform"]["position"]["x"] = 900
+            imported["actors"].append(donor)
+            imported["assets"]["models"].append({"semantic_id": "asset://fixture/model/1",
+                                                    "source_record": {"fixture": "donor"}})
+            project.import_metadata(imported)
+            disc = Path(directory) / "fixture.bin"
+            disc.write_bytes(b"synthetic")
+            project.disc_path = str(disc)
+            verified, posed = [], []
+            def resolve(identifier, *, verify_disc=False):
+                verified.append((identifier, verify_disc))
+                source = project.overrides.get(identifier, {}).get("ActorAppearance", {}).get("donor_entity_id", identifier)
+                return deepcopy(next(a for a in imported["actors"] if a["semantic_id"] == source))
+            project.appearance_source_actor = resolve
+            class Catalog:
+                def pose_preview(self, actor, asset, frame):
+                    posed.append((deepcopy(actor), asset["id"], frame))
+                    result = geometry()
+                    result["vertices"][0][0] = 7
+                    return result
+            service = ScenePreviewService()
+            def loader(asset, *, prepared=None):
+                return prepared if prepared is not None else geometry()
+            with patch("sdk.scene_preview._disc_context", side_effect=lambda _: nullcontext()), \
+                 patch("sdk.scene_preview.import_scene", return_value=deepcopy(imported)):
+                first = service.preview(project, loader, lambda *_: Catalog())
+                initial_key = first["source_key"]
+                project.overrides[target["semantic_id"]] = {"ActorAppearance": {"donor_entity_id": donor["semantic_id"]}}
+                replaced = service.preview(project, loader, lambda *_: Catalog())
+                binding = replaced["entities"][0]
+                self.assertNotEqual(initial_key, replaced["source_key"])
+                self.assertEqual(binding["entity_id"], target["semantic_id"])
+                self.assertEqual(binding["source_actor_id"], donor["semantic_id"])
+                self.assertEqual(binding["source_record"], donor["source_record"])
+                self.assertEqual(binding["model_reference"], donor["model_reference"])
+                self.assertTrue(binding["appearance_authored"])
+                self.assertEqual(binding["position"]["x"], 100)
+                self.assertEqual(binding["geometry_key"], replaced["entities"][1]["geometry_key"])
+                self.assertEqual(posed[-1][0], donor)
+                # State projection resolves metadata without disc I/O; each geometry
+                # rebuild must separately request verified sources for both actors.
+                self.assertEqual([identifier for identifier, flag in verified if flag],
+                                 [target["semantic_id"], donor["semantic_id"]] * 2)
+                # Neither transform edits nor another scene's appearance invalidates geometry.
+                project.overrides[target["semantic_id"]]["Transform"] = {"position": {"x": 333}}
+                project.overrides["scene://other/actors/0001"] = {"ActorAppearance": {"donor_entity_id": "elsewhere"}}
+                self.assertEqual(source_key(project), replaced["source_key"])
+                cached = service.preview(project, loader, lambda *_: Catalog())
+                self.assertEqual(cached["entities"][0]["position"]["x"], 333)
+                self.assertEqual(len(posed), 2)
+                del project.overrides[target["semantic_id"]]["ActorAppearance"]
+                self.assertEqual(source_key(project), initial_key)
+                reverted = service.preview(project, loader, lambda *_: Catalog())
+                self.assertEqual(reverted["entities"][0]["source_actor_id"], target["semantic_id"])
+                self.assertFalse(reverted["entities"][0]["appearance_authored"])
+                self.assertEqual(project.imports[project.active_scene], imported)
+                # A fabricated resolver result cannot attach foreign provenance to geometry.
+                project.overrides[target["semantic_id"]]["ActorAppearance"] = {"donor_entity_id": donor["semantic_id"]}
+                project.appearance_source_actor = lambda *args, **kwargs: {**donor, "source_record": {"forged": True}}
+                with self.assertRaisesRegex(ProjectError, "verified scene evidence"):
+                    service.preview(project, loader, lambda *_: Catalog())
+                self.assertIsNone(service._key)
+
     def test_cached_geometry_tracks_edits_undo_and_does_not_mutate_imports(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

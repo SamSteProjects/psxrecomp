@@ -66,6 +66,7 @@ class EditorServer(ThreadingHTTPServer):
                 entity["components"]["Animation"]["preview_support"] = actor_animation_capabilities(actor, asset)
         state["capabilities"]["actor_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
         state["build"] = self.last_build
         state["run"] = self.runs.status()
@@ -119,6 +120,19 @@ class EditorServer(ThreadingHTTPServer):
         if actor is None:
             raise ProjectError("Script inspection requires an imported actor in the active scene")
         return inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
+
+    def actor_appearance_preview(self, entity_id: str) -> dict:
+        from importer.pipeline import _disc_context
+        if not self.project.overrides.get(entity_id, {}).get("ActorAppearance"):
+            raise ProjectError("Actor has no authored appearance override")
+        with _disc_context(self.project.disc_path):
+            donor = self.project.appearance_source_actor(entity_id, verify_disc=True)
+            preview = self.actor_animation_preview(donor["semantic_id"])
+            preview["animation"].update(entity_id=entity_id, donor_entity_id=donor["semantic_id"],
+                                        clip_id="authored-appearance", layer="authored",
+                                        label="Authored initial appearance")
+            preview["animation_support"]["clips"] = [{"id": "authored-appearance", "label": "Authored initial appearance"}]
+            return preview
 
     def export_preview(self, preview: dict, frame_index: int | None) -> dict:
         from .build import _guard_output
@@ -261,6 +275,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route in ("/api/actor-appearance-options", "/api/actor-appearance-preview", "/api/export/actor-appearance"):
+                    exporting = route == "/api/export/actor-appearance"
+                    expected = {"entity_id", "frame_index"} if exporting else {"entity_id"}
+                    if set(body) != expected or not isinstance(body.get("entity_id"), str) or not body["entity_id"]:
+                        raise ProjectError("Appearance requests accept only an imported entity_id and export frame; source bindings are project-controlled")
+                    if not any(a["semantic_id"] == body["entity_id"] for a in self.server.project.imports.get(self.server.project.active_scene, {}).get("actors", [])):
+                        raise ProjectError("Appearance request requires an actor in the active scene")
+                    if route == "/api/actor-appearance-options":
+                        self._json(200, self.server.project.appearance_options(body["entity_id"]))
+                        return
+                    frame_index = body.get("frame_index")
+                    if exporting and (type(frame_index) is not int or frame_index < 0):
+                        raise ProjectError("Choose a nonnegative animation frame index to export")
+                    preview = self.server.actor_appearance_preview(body["entity_id"])
+                    self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
+                    return
                 if route == "/api/actor-script":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
                         raise ProjectError("Script inspection accepts only an imported entity_id; bytes, addresses and paths are not accepted")
@@ -320,8 +350,12 @@ class EditorHandler(BaseHTTPRequestHandler):
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
         if route == "/api/command" and body.get("type") in (
-                "set_transform", "clear_transform", "create_actor_template", "apply_actor_template"):
+                "set_transform", "clear_transform", "create_actor_template", "apply_actor_template", "set_actor_appearance", "clear_actor_appearance"):
             required_strings[route] = ("entity_id",)
+        if route == "/api/command" and body.get("type") in ("set_actor_appearance", "clear_actor_appearance"):
+            allowed = {"type", "entity_id", "donor_entity_id"} if body["type"] == "set_actor_appearance" else {"type", "entity_id"}
+            if set(body) != allowed:
+                raise ProjectError("Appearance commands accept an entity and donor identity only")
         for key in required_strings.get(route, ()):
             if not isinstance(body.get(key), str) or not body[key].strip():
                 raise ProjectError(f"{key} must be a nonempty string")

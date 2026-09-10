@@ -135,10 +135,29 @@ def serialize_man_stream(
     """
     original, consumed = decompress_lzs(original_stream, decoded_size)
     changed, audit = patch_man_positions(original, scene, edits)
+    replacement, sizes = _serialize_man_decoded(original_stream, original, consumed, changed, scene)
+    return replacement, audit, sizes
+
+
+def serialize_man_decoded(original_stream: bytes, decoded_size: int, changed: bytes,
+                          scene: str) -> tuple[bytes, dict[str, int]]:
+    """Encode a final composed decoded MAN once within its original stream span.
+
+    Callers own field-level provenance/audit validation. No file or input buffer
+    is modified; this guard verifies exact decoded length and final LZS bytes.
+    """
+    original, consumed = decompress_lzs(original_stream, decoded_size)
+    return _serialize_man_decoded(original_stream, original, consumed, changed, scene)
+
+
+def _serialize_man_decoded(original_stream, original, consumed, changed, scene):
+    if not isinstance(changed, bytes) or len(changed) != len(original):
+        raise ImportError("composed MAN must preserve its exact decoded byte length")
+    decoded_size = len(original)
     original_span = original_stream[:consumed]
-    if not audit:
-        return original_span, [], {"original_encoded_size": consumed, "new_encoded_size": consumed,
-                                   "decoded_size": decoded_size}
+    if changed == original:
+        return original_span, {"original_encoded_size": consumed, "new_encoded_size": consumed,
+                               "decoded_size": decoded_size}
     encoded = compress_lzs(changed)
     decoded, encoded_consumed = decompress_lzs(encoded, decoded_size)
     if decoded != changed or encoded_consumed != len(encoded):
@@ -148,5 +167,5 @@ def serialize_man_stream(
     replacement = encoded + original_span[len(encoded):]
     if decompress_lzs(replacement, decoded_size)[0] != changed:
         raise ImportError("padded MAN replacement failed decode validation")
-    return replacement, audit, {"original_encoded_size": consumed,
-                                "new_encoded_size": len(encoded), "decoded_size": decoded_size}
+    return replacement, {"original_encoded_size": consumed,
+                         "new_encoded_size": len(encoded), "decoded_size": decoded_size}

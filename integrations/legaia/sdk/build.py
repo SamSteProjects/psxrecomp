@@ -12,7 +12,8 @@ import zipfile
 
 from importer.core import ImportError, canonical_json, decompress_lzs
 from importer.pipeline import _bounded_scene_range, _disc_context, _read_scene_man, import_scene
-from importer.serialization import serialize_man_stream
+from importer.serialization import patch_man_positions, serialize_man_decoded, serialize_man_stream
+from importer.man_assignments import load_man_assignment_context
 from .project import ProjectError
 
 
@@ -56,7 +57,8 @@ def _write_exact(path: Path, content: bytes, boundary: Path) -> None:
 def build_project(project, output_dir: Path | str | None = None) -> dict:
     """Emit a deterministic .psxmod archive, package sources and bounded audit.
 
-    Supports representable authored field X/Z placement and unchanged retail
+    Supports representable authored field X/Z placement, evidenced initial
+    MAN donor model/animation assignments, and unchanged retail
     builds after clearing overrides. The input disc
     and imported metadata remain unchanged. Installation/enabling and a live
     launch are separate actions; this function does not claim runtime testing.
@@ -79,15 +81,29 @@ def _build_project(project, output_dir) -> dict:
     for identifier, components in sorted(project.overrides.items()):
         if identifier not in entity_lookup:
             raise BuildError(f"Authored entity has no imported provenance: {identifier}")
-        if (not isinstance(components, dict) or set(components) != {"Transform"} or
-                not isinstance(components["Transform"], dict) or
-                set(components["Transform"]) != {"position"}):
-            raise BuildError(f"{identifier}: only authored Transform.position X/Z edits can be built; model/facing changes are unsupported")
-        position = components["Transform"]["position"]
-        if not isinstance(position, dict) or not position or set(position) - {"x", "z"}:
-            raise BuildError(f"{identifier}: only X/Z placement can be built; height and other fields are unsupported")
         scene_id, actor = entity_lookup[identifier]
-        scene_edits.setdefault(scene_id, {})[actor["source_record"]["record_index"]] = position
+        if (not isinstance(components, dict) or not components or
+                set(components) - {"Transform", "ActorAppearance"}):
+            raise BuildError(f"{identifier}: only authored Transform.position and ActorAppearance donor assignments can be built")
+        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}})
+        record = actor["source_record"]["record_index"]
+        if "Transform" in components:
+            transform = components["Transform"]
+            if not isinstance(transform, dict) or set(transform) != {"position"}:
+                raise BuildError(f"{identifier}: only authored Transform.position X/Z edits can be built")
+            position = transform["position"]
+            if not isinstance(position, dict) or not position or set(position) - {"x", "z"}:
+                raise BuildError(f"{identifier}: only X/Z placement can be built; height and other fields are unsupported")
+            edits["positions"][record] = position
+        if "ActorAppearance" in components:
+            appearance = components["ActorAppearance"]
+            if (not isinstance(appearance, dict) or set(appearance) != {"donor_entity_id"} or
+                    not isinstance(appearance["donor_entity_id"], str)):
+                raise BuildError(f"{identifier}: ActorAppearance requires only donor_entity_id")
+            donor_id = appearance["donor_entity_id"]
+            if donor_id not in entity_lookup or entity_lookup[donor_id][0] != scene_id:
+                raise BuildError(f"{identifier}: appearance donor must be an imported actor in the same scene")
+            edits["assignments"][record] = donor_id
 
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
@@ -111,7 +127,31 @@ def _build_project(project, output_dir) -> dict:
             body = archive.read_entry(entry)
             stream_offset = bundle.table_offset + descriptor.data_offset
             original_span = body[stream_offset:stream_offset + consumed]
-            replacement, changes, sizes = serialize_man_stream(original_span, descriptor.size, scene, edits)
+            if edits["assignments"]:
+                context = load_man_assignment_context(project.disc_path, scene)
+                assignments = {}
+                for record, donor_id in edits["assignments"].items():
+                    donor = entity_lookup[donor_id][1]
+                    pair = {"model_index": donor["model_reference"]["model_index"],
+                            "animation_id": donor["placement_fields"]["animation_id"]}
+                    options = context.options(record)
+                    if not options["supported"] or not any(
+                            option["model_index"] == pair["model_index"] and
+                            option["animation_id"] == pair["animation_id"] and
+                            donor["source_record"]["record_index"] in option["donor_records"]
+                            for option in options["pairs"]):
+                        raise BuildError(f"{scene} actor {record}: unsupported initial donor assignment; "
+                                         + (options["reason"] or "pair lacks compatible same-scene donor evidence"))
+                    assignments[record] = pair
+                baseline = decompress_lzs(original_span, descriptor.size)[0]
+                changed, changes = context.patch(assignments, original=baseline)
+                for change in changes:
+                    change["donor_entity_id"] = edits["assignments"][change["record_index"]]
+                changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
+                changes.extend(position_changes)
+                replacement, sizes = serialize_man_decoded(original_span, descriptor.size, changed, scene)
+            else:
+                replacement, changes, sizes = serialize_man_stream(original_span, descriptor.size, scene, edits["positions"])
             if not changes:
                 continue
             if len(replacement) != len(original_span):
@@ -160,14 +200,21 @@ def _build_project(project, output_dir) -> dict:
     _guard_output(destination, boundary)
     destination = destination.resolve()
     package_dir = destination / "package"
+    has_appearance = any(change.get("scope") == "initial-man-header-only" for change in audit_edits)
+    package_suffix = " authored actor headers" if has_appearance else (" authored placements" if overlays else " retail baseline")
+    feature_name = "Authored actor headers" if has_appearance else "Authored actor placements"
+    description = ("Private initial model/animation and placement headers; script compatibility is unverified."
+                   if has_appearance else "Private authored field placements for the verified retail disc.")
+    feature_description = ("Apply initial MAN donor assignments and X/Z placements; scripts may override appearance."
+                           if has_appearance else "Apply this project's representable field X/Z placement edits.")
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
-        f"name = {json.dumps(project.name + (' authored placements' if overlays else ' retail baseline'))}",
-        'author = "Local SDK project"', 'description = "Private authored field placements for the verified retail disc."',
+        f"name = {json.dumps(project.name + package_suffix)}",
+        'author = "Local SDK project"', f"description = {json.dumps(description)}",
         'license = "Private user-owned retail derivative; not for redistribution"', 'resolver = "declarative"',
         "", "[[target]]", 'game_id = "SCUS-94254"', f'disc_sha256 = "{disc_hash}"',
-        "", "[[feature]]", 'id = "placements"', 'name = "Authored actor placements"',
-        'description = "Apply this project\'s representable field X/Z placement edits."',
+        "", "[[feature]]", 'id = "placements"', f"name = {json.dumps(feature_name)}",
+        f"description = {json.dumps(feature_description)}",
         'group = "Scene authoring"', "default_enabled = false",
     ]
     for overlay in overlays:
@@ -217,6 +264,6 @@ def _build_project(project, output_dir) -> dict:
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
         "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
         "runtime_status": "package_built_not_launched", "feature_id": "placements",
-        "install_instruction": ("Import the .psxmod in the runtime mod manager, enable Authored actor placements, then launch against the matching stock disc."
+        "install_instruction": (f"Import the .psxmod in the runtime mod manager, enable {feature_name}, then launch against the matching stock disc."
                                 if overlays else "This verified retail baseline has no modified bytes. Build & Run starts a fresh private run without previous placement overlays."),
     }

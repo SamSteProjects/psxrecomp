@@ -1,9 +1,9 @@
 # Existing actor initial model and animation assignments
 
 `importer/man_assignments.py` provides a private, bounded patch helper for an
-existing MAN actor's initial model/animation pair. It is independent of the
-editor, project schema, package build service and runtime. Those integrations
-are not implied by this helper. It creates no actor and writes no RAM or disc.
+existing MAN actor's initial model/animation pair. The project commands, editor,
+scene preview and package build service now use this helper. It creates no actor
+and writes no RAM or source disc. Gameplay acceptance remains separate.
 
 ## Encoding and pinned evidence
 
@@ -79,7 +79,7 @@ They do not prove NPC behavior compatibility. Scripts can replace the initial
 model or animation, select later clips, address object indices, or set collision
 and story state. Equal object counts do not establish anatomical channel meaning,
 visual suitability, collision dimensions or script assumptions. The audit labels
-script compatibility `unverified`; a future editor must preserve that distinction.
+script compatibility `unverified`; the editor preserves that distinction.
 
 Only the existing pair is borrowed. Locals, script bytes, entity identity,
 placement, flags, text, texture resources and animation records are unchanged.
@@ -87,6 +87,33 @@ No new model imports, arbitrary clip combinations, global-bank remapping or
 native spawning are supported.
 
 ## Validation
+
+The editor's **Choose donor appearance** action queries source-verified options
+for the selected actor. `set_actor_appearance` stores only an imported
+`donor_entity_id` in `ActorAppearance`; `clear_actor_appearance` removes that
+component without clearing transforms. Both commands participate in Undo/Redo
+and Save/Open. Imported ModelRenderer and Animation components remain intact;
+the separate appearance component displays imported, authored and effective data.
+Opening a project checks metadata structure; applying, previewing and building
+an assignment additionally verify the user-owned source disc.
+
+Scene geometry uses the donor's initial pose at the target's existing placement.
+Changing appearance invalidates the scene geometry cache. The authored preview
+and static posed GLB export retain target and donor provenance. Runtime script
+visibility, pose changes and timing are not simulated.
+
+Build composes the donor header edit with X/Z changes before a single bounded
+compression pass. Position-only packages retain their existing serialization
+and manifest behavior. Package audits report exact changed fields and explicitly
+leave script compatibility unverified. Clearing all changes reproduces the
+baseline package. No proprietary payload is included in tracked tests or docs.
+
+Focused project, scene, build and HTTP tests cover preservation and rejection
+paths. Private browser acceptance used town01 actor0049 with donor0036: Apply,
+Undo, Redo, frame2 GLB export, Save/Open, Build, Clear and Undo all succeeded.
+The resulting package contains one overlay and two header fields. This is editor
+and package acceptance, not a claim that this donor works with the target's
+scripts in gameplay.
 
 `test_importer_man_assignments.py` covers exact two-byte changes, composable
 position edits, original compressed no-op, full independent decode, invalid

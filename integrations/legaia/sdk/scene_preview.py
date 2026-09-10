@@ -23,8 +23,12 @@ def source_key(project) -> str | None:
     if not project.disc_path or not document:
         return None
     path = resolve_disc_path(Path(project.disc_path)).resolve()
+    appearances = {actor["semantic_id"]: deepcopy(project.overrides[actor["semantic_id"]]["ActorAppearance"])
+                   for actor in document["actors"]
+                   if "ActorAppearance" in project.overrides.get(actor["semantic_id"], {})}
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
+                   "appearances": appearances,
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
 
 
@@ -105,14 +109,26 @@ class ScenePreviewService:
             catalog = pose_loader_factory(project.disc_path, document["scene"]["name"]) if pose_loader_factory else None
             for actor in actors:
                 identifier = actor["semantic_id"]
-                asset_id = actor["model_reference"].get("asset_semantic_id")
+                resolver = getattr(project, "appearance_source_actor", None)
+                appearance = project.overrides.get(identifier, {}).get("ActorAppearance")
+                if resolver is None and appearance is not None:
+                    raise ProjectError("Scene appearance override requires a verified source resolver")
+                source_actor = resolver(identifier, verify_disc=True) if resolver else actor
+                # Never let a resolver fabricate geometry provenance or cross scene boundaries.
+                if source_actor not in actors:
+                    raise ProjectError("Scene appearance source differs from verified scene evidence")
+                asset_id = source_actor["model_reference"].get("asset_semantic_id")
                 asset = project.assets.records.get(asset_id)
                 binding = {"asset_id": asset_id, "geometry_key": None, "renderable": False,
+                           "source_actor_id": source_actor["semantic_id"],
+                           "source_record": deepcopy(source_actor.get("source_record")),
+                           "model_reference": deepcopy(source_actor["model_reference"]),
+                           "appearance_authored": appearance is not None,
                            "pose_kind": "unavailable", "reason": "Imported model reference is unresolved"}
                 bindings[identifier] = binding
                 if asset is None:
                     continue
-                animation_id = actor.get("placement_fields", {}).get("animation_id", 0)
+                animation_id = source_actor.get("placement_fields", {}).get("animation_id", 0)
                 geometry_key = digest({"asset": asset_id, "animation_id": animation_id})
                 if geometry_key in decoded:
                     binding.update(decoded[geometry_key])
@@ -128,7 +144,7 @@ class ScenePreviewService:
                         preview.pop("frames", None)
                         pose_kind = "reference_party_idle"
                     elif animation_id and catalog is not None:
-                        preview = catalog.pose_preview(actor, asset, 0)
+                        preview = catalog.pose_preview(source_actor, asset, 0)
                         # Texture association remains owned by the server adapter.
                         preview = model_loader(asset, prepared=preview)
                         pose_kind = "imported_scene_animation_frame0"

@@ -203,6 +203,60 @@ class ProjectService:
                 raise ProjectError("Entity is outside the active scene")
         self.selected = identifier
 
+    def _appearance_binding(self, identifier: str, value: dict) -> tuple[dict, dict, dict]:
+        if not isinstance(value, dict) or set(value) != {"donor_entity_id"} or not isinstance(value["donor_entity_id"], str):
+            raise ProjectError("Actor appearance requires one imported donor_entity_id")
+        actor = self._actor(identifier)
+        document = next(doc for doc in self.imports.values() if any(a["semantic_id"] == identifier for a in doc["actors"]))
+        donor = next((a for a in document["actors"] if a["semantic_id"] == value["donor_entity_id"]), None)
+        if donor is None:
+            raise ProjectError("Appearance donor must belong to the actor's imported scene")
+        counts = []
+        for item in (actor, donor):
+            reference = item["model_reference"]
+            model, animation = reference.get("model_index"), item["placement_fields"].get("animation_id")
+            asset = self.assets.records.get(reference.get("asset_semantic_id"), {})
+            count = asset.get("source_record", {}).get("object_count")
+            if (type(model) is not int or not 0 <= model < 240 or type(animation) is not int or
+                    not 1 <= animation <= 255 or type(count) is not int or count < 1):
+                raise ProjectError("Appearance requires existing scene models with nonzero initial animation and known object counts")
+            counts.append(count)
+        if counts[0] != counts[1]:
+            raise ProjectError("Appearance donor must have the same object count as the imported actor")
+        return document, actor, donor
+
+    def appearance_options(self, identifier: str) -> dict:
+        from importer.man_assignments import load_man_assignment_context
+        from importer.pipeline import _disc_context, import_scene
+        if not self.disc_path:
+            raise ProjectError("Appearance options require the project's user-owned disc")
+        actor = self._actor(identifier)
+        document = next(doc for doc in self.imports.values() if any(a["semantic_id"] == identifier for a in doc["actors"]))
+        with _disc_context(self.disc_path):
+            if digest(import_scene(self.disc_path, document["scene"]["name"])) != digest(document):
+                raise ProjectError("Appearance source differs from freshly verified imported evidence")
+            context = load_man_assignment_context(self.disc_path, document["scene"]["name"])
+            support = context.options(actor["source_record"]["record_index"])
+            records = {a["source_record"]["record_index"]: a for a in document["actors"]}
+            options = []
+            for pair in support["pairs"]:
+                for index in pair["donor_records"]:
+                    donor = records[index]
+                    options.append({"donor_entity_id": donor["semantic_id"], "label": f"Actor {index:04d} · model {pair['model_index']} / animation {pair['animation_id']}",
+                                    "asset_id": donor["model_reference"]["asset_semantic_id"],
+                                    "animation_id": pair["animation_id"], "unchanged": pair["unchanged"]})
+            return {"supported": support["supported"], "reason": support["reason"], "options": options,
+                    "limitations": support["limitations"], "source": context.provenance()}
+
+    def appearance_source_actor(self, identifier: str, verify_disc: bool = False) -> dict:
+        value = self.overrides.get(identifier, {}).get("ActorAppearance")
+        if value is None:
+            return self._actor(identifier)
+        _, _, donor = self._appearance_binding(identifier, value)
+        if verify_disc and not any(o["donor_entity_id"] == donor["semantic_id"] for o in self.appearance_options(identifier)["options"]):
+            raise ProjectError("Appearance donor is not a verified compatible initial model/animation pair")
+        return donor
+
     def set_scene(self, identifier: str) -> None:
         if identifier not in self.imports:
             raise ProjectError("Scene has not been imported")
@@ -213,6 +267,28 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get("type") in ("set_actor_appearance", "clear_actor_appearance"):
+            identifier = command.get("entity_id")
+            self._actor(identifier)
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            if command["type"] == "set_actor_appearance":
+                value = {"donor_entity_id": command.get("donor_entity_id")}
+                self._appearance_binding(identifier, value)
+                if not any(o["donor_entity_id"] == value["donor_entity_id"] for o in self.appearance_options(identifier)["options"]):
+                    raise ProjectError("Appearance donor is not a verified compatible initial pair")
+                after["ActorAppearance"] = value
+            else:
+                after.pop("ActorAppearance", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("create_actor_template", "apply_actor_template", "delete_actor_template"):
             self._template_command(command)
             return
@@ -405,10 +481,17 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or set(components) != {"Transform"} or not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance"}:
                 raise ProjectError("Unsupported authored component")
-            result.command({"type": "set_transform", "entity_id": identifier,
-                            "position": components["Transform"]["position"]})
+            if "Transform" in components:
+                if not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
+                    raise ProjectError("Unsupported authored transform")
+                result.command({"type": "set_transform", "entity_id": identifier,
+                                "position": components["Transform"]["position"]})
+            if "ActorAppearance" in components:
+                # Opening metadata remains possible offline; preview/build reverify wire resources.
+                result._appearance_binding(identifier, components["ActorAppearance"])
+                result.overrides.setdefault(identifier, {})["ActorAppearance"] = deepcopy(components["ActorAppearance"])
         templates = raw.get("actor_templates", {})
         if not isinstance(templates, dict) or len(templates) > 128:
             raise ProjectError("Invalid authored template collection")
@@ -437,8 +520,17 @@ class ProjectService:
             effective = deepcopy(imported)
             effective["position"].update(authored.get("position", {}))
             model = actor["model_reference"]
+            appearance = deepcopy(self.overrides.get(identifier, {}).get("ActorAppearance", {}))
+            donor = self.appearance_source_actor(identifier)
+            original_pair = {"asset_id": model.get("asset_semantic_id"), "animation_id": actor["placement_fields"].get("animation_id")}
+            effective_pair = {"asset_id": donor["model_reference"].get("asset_semantic_id"),
+                              "animation_id": donor["placement_fields"].get("animation_id")}
+            if appearance:
+                effective_pair["donor_entity_id"] = donor["semantic_id"]
             entities.append({"id": identifier, "name": "Actor " + identifier.rsplit("/", 1)[-1],
                              "components": {"Transform": {"imported": imported, "authored": authored, "effective": effective},
+                                            "ActorAppearance": {"imported": original_pair, "authored": appearance, "effective": effective_pair,
+                                                                "limitations": ["Initial model/animation pair only; scripts may replace it. Script and gameplay compatibility remain unverified."]},
                                             "ModelRenderer": {"asset_id": model.get("asset_semantic_id"), "resolution_status": model.get("resolution_status")},
                                             "Animation": {"imported_id": actor["placement_fields"].get("animation_id"), "resolution_status": "unresolved"},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
