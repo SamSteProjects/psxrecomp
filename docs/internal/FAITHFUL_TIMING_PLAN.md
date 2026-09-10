@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Sample opaque terrain overdraw candidate
+
+- Previous turn was progress: player packet identification. Parsed private checkpoint10 VRAM and sampled candidate GP0 quad772 (page0C/CLUT7D00) at raw polygon pixels155/117,154/116,156/118. Barycentric UVs and all four floor/ceil neighboring texels produce nonzero15-bit colors, supporting opaque coverage rather than transparent holes. Evidence `arrival-live/overdraw-texture-samples.json`.
+- Captured frame setup before candidate: E2zero texture window, E6zero mask, E5offset(0,4). VRAM and GP0 timestamps differ, so this is not an exact raster replay. No texture/transparency bug demonstrated; ordering/terrain height remains the next question.
+- No runtime mutation, restart or renderer patch. Full objective active; edited arrival still not reached.
+
+
 ### 2026-09-10 — Identify submitted player geometry and overdraw candidate
 
 - Previous turn was progress: same-view GPU pair. Parsed checkpoint09 player+44 model table800C9568 into10 bounded object records; every decoded primitive count matches its declared count (132,90,16,18,18,16,16,29,16,29). Textured groups use CLUT7780/7783/7781/7782, confirming the previously candidate GPU groups belong to player geometry. Evidence `arrival-live/player-model-cluts.json`.
