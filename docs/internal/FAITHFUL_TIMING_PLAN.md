@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (dialogue option menus):** Previous new-binary startup was
+  progress. Located pinned MES picker evidence for27/28/29 and implemented
+  structurally bounded read-only menu tables/labels with entry-relative signed
+  targets. Shared script UI lists options; pager continuation stays unresolved.
+  Retail actor0001 PC107 exposes four options and remains non-writable. All32
+  targeted tests and JS syntax pass; catalog totals unchanged. Browser layout
+  and menu runtime execution remain unaccepted. Full SDK goal remains active.
+
+
 - **2026-09-10 (new executable cold start):** Previous actual build was progress.
   Fresh private baseline launch of96eaf949... verified readiness/process identity,
   rendered full title menu and advanced301 frames over five seconds. Active

@@ -8,6 +8,22 @@ from importer.core import ImportError
 from importer.script_inspection import _instruction
 
 class FaceRotationInspection(unittest.TestCase):
+    def test_picker_table_labels_and_signed_entry_relative_targets(self):
+        for count in (2, 3, 4):
+            for continuation in (b"", b"\x24", b"\x25", b"\x48", b"\x4c\xff"):
+                encoded = bytes([0x25 + count]) + b"".join(struct.pack("<h", -2 + i) for i in range(count))
+                encoded += continuation + b"\x1fChoice\0" * count
+                row = _instruction(encoded, 0)
+                self.assertEqual(row["length"], len(encoded))
+                self.assertEqual(row["successors"], [])
+                options = row["operands"]["options"]
+                self.assertEqual([o["encoded_target"] for o in options], [-1 + 3*i for i in range(count)])
+                self.assertEqual([o["label"] for o in options], ["Choice"] * count)
+                self.assertIn("unresolved_control_flow", row["operands"])
+                for end in range(1, len(encoded)):
+                    with self.assertRaises(ImportError):
+                        _instruction(encoded[:end], 0)
+
     def test_flag_word_branch_signed_target_and_context(self):
         for sub in (0xA0, 0xA1, 0xA2):
             for header in (bytes([0x4C]), bytes([0xCC, 5])):

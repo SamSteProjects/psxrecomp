@@ -94,6 +94,32 @@ def _instruction(data: bytes, pc: int) -> dict:
         size, mnemonic = 2, "MOVE_TO"
         coords = list(data[operand:operand + 2])
         args = {"encoded_xz": coords, "world_xz": [(v & 127) * 128 + (128 if v & 128 else 64) for v in coords]}
+    elif op in (0x27, 0x28, 0x29) and header == 1:
+        # Pinned mes/picker.rs: pager controls, not ordinary field-VM ops.
+        # Decode only a structurally complete table + labels at this reached PC.
+        # Do not infer the independent post-page continuation or execute choices.
+        count = op - 0x25
+        need(count * 2 + 1)
+        cursor = operand + count * 2
+        continuation = data[cursor]
+        if continuation in (0x24, 0x25, 0x48):
+            cursor += 1
+        if data[cursor:cursor + 2] == b"\x4c\xff":
+            cursor += 2
+        options = []
+        for index in range(count):
+            entry = operand + index * 2
+            delta = struct.unpack_from("<h", data, entry)[0]
+            label = decode_inline_message(data, cursor)
+            options.append({"index": index, "label": label["text"],
+                            "label_pc": cursor, "label_length": label["length"],
+                            "entry_pc": entry, "relative_jump": delta,
+                            "encoded_target": entry + delta})
+            cursor += label["length"]
+        size, mnemonic, branches = cursor - operand, "DIALOGUE_PICKER", []
+        args = {"option_count": count, "options": options,
+                "continuation_byte": continuation, "runtime_choice": "not_observed",
+                "unresolved_control_flow": f"dialogue picker 0x{op:02x} labels and choice targets decoded; pager continuation and runtime branch execution unresolved"}
     elif op == 0x26:
         need(2)
         delta = struct.unpack_from("<h", data, operand)[0]

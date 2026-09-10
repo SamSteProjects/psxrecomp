@@ -655,6 +655,12 @@ function appendScriptOperands(cell,instruction){
     summary.textContent=`${axes}. ${immediate?'Immediate assignment':`Timed movement (${operands.ticks} encoded ticks; interpolation unresolved)`}. Runtime position is not observed.`;
     cell.append(summary);
   }
+  if(instruction.mnemonic==='DIALOGUE_PICKER'&&Array.isArray(operands?.options)){
+    const options=document.createElement('ol');
+    for(const option of operands.options){const item=document.createElement('li');item.textContent=`${option.label} — encoded target ${scriptOffset(option.encoded_target)}`;options.append(item);}
+    const note=document.createElement('p');note.className='field-note';note.textContent='Menu choice and continuation are unresolved. These targets are source evidence, not executable navigation.';
+    cell.append(options,note);
+  }
   const details=document.createElement('details'),label=document.createElement('summary'),raw=document.createElement('pre');
   label.textContent='Encoded operands';raw.textContent=typeof operands==='string'?operands:JSON.stringify(operands??{},null,2);
   details.open=instruction.mnemonic!=='ACTOR_POSITION';details.append(label,raw);cell.append(details);

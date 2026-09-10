@@ -179,3 +179,22 @@ after the real patch operation. This supports source-span authoring integrity,
 not target identity or runtime behavior. Eight dialogue-authoring tests passed
 with retail input enabled; no new runtime patch or authoring restriction was
 needed.
+
+
+### Dialogue option menu inspection (2026-09-10)
+
+Pinned d6e64c68ede25813d35db20980da82a1a025549b `crates/mes/src/picker.rs`
+identifies bare27/28/29 controls as2/3/4-option menus. Each signed16-bit jump
+is relative to its own table entry, not the open byte. A structurally complete
+label region is required: labels may immediately follow the table, follow
+24/25/48, or follow4C FF. Existing bounded MES decoding preserves label tokens.
+Inspection consumes the complete menu atomically and exposes labels/encoded
+targets, but leaves pager continuation unresolved with no traversed successors.
+High-bit forms remain unsupported by this adapter; no runtime choice is inferred.
+
+Town01 actor0001 exposes four options at PC107. Its real authoring options still
+reject writing. Private picker-inspection.json retains source operands/stops;
+retail text is not tracked. Four focused tests plus23 inspection and5 catalog
+tests pass with retail enabled, including unchanged catalog totals. Shared
+actor/trigger tables list labels and encoded targets; JavaScript syntax passes,
+while browser layout and actual menu execution remain unverified.
