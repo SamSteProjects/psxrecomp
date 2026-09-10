@@ -587,3 +587,19 @@ removal and regeneration in the existing producer/build integration, not retail
 scene replacement. No production change was needed. The initial sandboxed run
 was denied at Ninja startup; the approved run supplied the passing evidence.
 The additional empty/regrowth cases have not yet been run under other generators.
+
+
+## Generated part filename agreement (2026-09-10)
+
+Fixed a producer/discovery mismatch: Python's minimum-width index formatting
+can emit part10000, but both cleanup and CMake staging previously recognized
+only four-digit indices. Cleanup's prefix-plus-search match could additionally
+remove a neighboring file such as overlays_static_backup_0000.c. Python now
+requires an exact numeric suffix of at least four ASCII digits; CMake stages
+the same suffix family. No inventory cap or runtime overlay policy changed.
+
+A focused fixture checks0000 and10000 in both discovery paths, excludes backup,
+extra-suffix and short-number neighbors, and verifies monolithic cleanup removes
+only actual generated parts. It and the nine-variant Ninja/GCC executable
+fixture passed in6.909s. This tests high-index discovery with sparse files, not
+a10001-overlay compilation or retail transition. No proprietary data is used.

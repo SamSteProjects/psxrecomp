@@ -5860,7 +5860,7 @@ def _static_capture_job(cap, args, toml, forced_interiors, static_out, result):
 STATIC_HEADER = ('/* Auto-generated overlay dispatch -- do not edit.\n'
                  ' * Rebuild: python3 psxrecomp/tools/compile_overlays.py --static ...\n'
                  ' */\n')
-_STATIC_PART_RE = re.compile(r'_(\d{4})\.c$')
+_STATIC_PART_RE = re.compile(r'[0-9]{4,}\.c$')
 
 
 def static_part_paths(static_out: str) -> list:
@@ -5871,7 +5871,7 @@ def static_part_paths(static_out: str) -> list:
         return []
     out = []
     for fn in os.listdir(d):
-        if fn.startswith(stem + '_') and _STATIC_PART_RE.search(fn):
+        if fn.startswith(stem + '_') and _STATIC_PART_RE.fullmatch(fn[len(stem) + 1:]):
             out.append(os.path.join(d, fn))
     return sorted(out)
 

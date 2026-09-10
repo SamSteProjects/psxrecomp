@@ -17,6 +17,38 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class StaticOverlayBuildTests(unittest.TestCase):
+    def test_part_discovery_matches_numeric_suffix_without_deleting_neighbors(self):
+        sys.path.insert(0, str(ROOT / 'tools'))
+        import compile_overlays
+        cmake = shutil.which('cmake')
+        if not cmake:
+            self.skipTest('CMake is required')
+        with tempfile.TemporaryDirectory(prefix='overlay names ') as tmp:
+            root = Path(tmp)
+            dispatcher = root / 'overlays_static.c'
+            valid = ['overlays_static_0000.c', 'overlays_static_10000.c']
+            neighbors = ['overlays_static_backup_0000.c', 'overlays_static_0000_extra.c',
+                         'overlays_static_123.c']
+            for name in valid + neighbors:
+                (root / name).write_text('/* fixture */', encoding='utf-8')
+            self.assertEqual({Path(p).name for p in compile_overlays.static_part_paths(str(dispatcher))}, set(valid))
+            groups = root / 'groups'
+            result = subprocess.run([cmake, '-DPSX_STAGE_STATIC_OVERLAY_PARTS=ON',
+                f'-DPSX_OVERLAY_DISPATCH={dispatcher}', '-DPSX_OVERLAY_PART_GROUPS=2',
+                f'-DPSX_OVERLAY_GROUP_DIR={groups}', '-P',
+                str(ROOT / 'runtime/psx_static_overlay_parts.cmake')], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            wrappers = ''.join(p.read_text(encoding='utf-8') for p in groups.glob('*.c'))
+            for name in valid:
+                self.assertIn(name, wrappers)
+            for name in neighbors:
+                self.assertNotIn(name, wrappers)
+            compile_overlays.write_static_outputs(str(dispatcher), [], [], '', single_file=True)
+            for name in valid:
+                self.assertFalse((root / name).exists())
+            for name in neighbors:
+                self.assertTrue((root / name).exists())
+
     def test_clean_and_incremental_generated_inventory(self):
         cmake = shutil.which('cmake')
         cc = os.environ.get('CC') or shutil.which('gcc') or shutil.which('clang')

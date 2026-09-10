@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (precompile filename agreement fix):** Previous empty-inventory
+  acceptance was progress. Found producer indices beyond9999 were omitted by
+  discovery and cleanup could include backup-name neighbors. Updated Python and
+  CMake to recognize exact numeric suffixes of four or more digits. Sparse
+  high-index staging/cleanup and nine executable Ninja/GCC variants pass (two
+  tests,6.909s). No arbitrary inventory limit, runtime policy or retail payload
+  changed. Full SDK goal remains active.
+
+
 - **2026-09-10 (empty precompile inventory):** Previous dialogue integrity
   regression was progress. Inspected stale split-output cleanup and extended
   the executable build fixture through four-to-zero-to-two overlays, asserting
