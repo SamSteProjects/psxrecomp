@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (resource build-report navigation):** Previous actor browser
+  acceptance was progress. Extended build-change links to current authored TIM
+  and partition-two script records resolved through assetRecords. Texture links
+  switch source scenes and use the existing verified preview; P2 links open the
+  owned script with the edited run focused. Missing authored resource owners
+  remain plain report text. Four extracted production-handler same/cross-scene
+  scenarios plus missing-owner checks pass; syntax/diff checks pass. Resource
+  navigation browser acceptance remains pending. Full SDK goal remains active.
+
+
 - **2026-09-10 (build report browser acceptance):** Previous source navigation
   implementation was progress. Fresh private town01/town0c project built three
   actor49 changes: model103->94, animation15->18 and Z12096->12288. Report showed
