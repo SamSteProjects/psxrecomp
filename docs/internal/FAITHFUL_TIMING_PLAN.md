@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Inspect saved visibility states without loading
+
+- Previous turn was progress: paired private checkpoints. Parsed version7 PST header/section wire and zlib RAM sections offline, checking declared lengths and complete file consumption; no live-state restore or RAM write. Checkpoints share player pointer80083794 and flags09820880, and unchanged model-related words in the bounded156-byte record. Changed words include XYZ/duplicate XYZ, heading, offsets2C/30/34,68 and98.
+- Checkpoint11 SHA bf83862f822d8614deddd2abfb806285fe6840bf5774e81b2e6fad707913e077; checkpoint10 SHA7ae3ceb37682b3e8db7613dabe383e644293073b84b037af9ee372691f19639d. Evidence `arrival-live/checkpoint-player-comparison.json`.
+- These checkpoints span a local camera transition; unidentified offsets2C/30/34 must not be assumed screen coordinates. No flag/model-pointer corruption demonstrated, no root cause established. Same live runtime responded to identity-guarded player read. Next useful isolation is matching visible/invisible samples within the same view or renderer submission tracing. Full objective active.
+
+
 ### 2026-09-10 — Narrow and checkpoint field visibility reproduction
 
 - Previous turn was progress: live visibility issue captured. North90 restored visible Vahn through local camera transition (north-check-2.png). Diagonal90 returned to village steps visibly; subsequent Down30 made Vahn disappear (short-south.png), with player XYZ3264/128/3520 ->3264/96/3280. NPC/camera behavior and identity checks remain responsive. This narrows a location-dependent reproduction without identifying root cause.
