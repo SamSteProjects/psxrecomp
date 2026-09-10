@@ -14,6 +14,31 @@ from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class ProjectDialogue(unittest.TestCase):
+    def test_partition_two_command_history_and_offline_persistence(self):
+        with tempfile.TemporaryDirectory() as raw:
+            p = ProjectService(Path(raw)); p.import_metadata(synthetic_scene())
+            script = "scene://fixture/scripts/man-p2/0003"
+            run = "script://fixture/scripts/man-p2/0003/dialogue/0010/run/0011"
+            context = SimpleNamespace(options=lambda _: {"runs": [{"semantic_id": run}]}, patch=Mock())
+            with patch.object(p, "_dialogue_context", return_value=context):
+                p.command({"type": "set_dialogue_text", "entity_id": script, "run_id": run, "text": "Ready"})
+            context.patch.assert_called_once_with({run: "Ready"})
+            authored = deepcopy(p.overrides)
+            p.undo(); self.assertEqual(p.overrides, {})
+            p.redo(); self.assertEqual(p.overrides, authored)
+            restored = ProjectService.open(p.save())
+            self.assertEqual(restored.overrides, authored)
+            restored.command({"type": "clear_dialogue_text", "entity_id": script, "run_id": run})
+            self.assertEqual(restored.overrides, {})
+            restored.undo(); self.assertEqual(restored.overrides, authored)
+            with self.assertRaises(ProjectError):
+                restored._dialogue_document("scene://missing/scripts/man-p2/0003")
+            before = deepcopy(restored.overrides)
+            with patch.object(restored, "_dialogue_context", side_effect=ImportError("record is aliased")):
+                with self.assertRaisesRegex(ImportError, "aliased"):
+                    restored.command({"type": "set_dialogue_text", "entity_id": script, "run_id": run, "text": "No"})
+            self.assertEqual(restored.overrides, before)
+
     def test_text_command_history_clear_and_offline_reopen(self):
         with tempfile.TemporaryDirectory() as raw:
             p = ProjectService(Path(raw))

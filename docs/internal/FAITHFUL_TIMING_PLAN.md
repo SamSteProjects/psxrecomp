@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (P2 project/build plumbing):** Added P2 dialogue identities to
+  project source resolution, commands, undo/redo and offline persistence.
+  Set commands still reverify the imported scene and exact source run; failed
+  verification is transactional. Builds accept only Dialogue on P2 targets,
+  resolve the imported scene, and pass record/run ownership through the same
+  context patch and audited merge as P1. Focused project/history, core authoring
+  and build tests pass; P2 history/save/reopen and failed-source preservation
+  have dedicated coverage. P2 browser controls and a real P2 package acceptance
+  are not yet implemented/verified. Opening tail ownership remains unresolved.
+
 - **2026-09-10 (P2 authoring core):** DialogueAuthoringContext now accepts
   scene-scoped P2 script identities and uses the existing all-partition alias,
   section-overlap and prefix bounds before exposing runs. Equal-span patching

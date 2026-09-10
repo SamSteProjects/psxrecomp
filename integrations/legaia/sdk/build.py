@@ -148,6 +148,23 @@ def _build_project(project, output_dir) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(identifier, str) and "/scripts/man-p2/" in identifier:
+            from importer.dialogue_authoring import validate_run_id
+            validate_run_id(identifier, "script://" + identifier.removeprefix("scene://") + "/dialogue/0000/run/0000")
+            scene_id = identifier.split("/scripts/man-p2/", 1)[0]
+            if scene_id not in project.imports or not isinstance(components, dict) or set(components) != {"Dialogue"}:
+                raise BuildError("Partition-2 script overrides require an imported scene and only Dialogue")
+            dialogue = components["Dialogue"]
+            if (not isinstance(dialogue, dict) or set(dialogue) != {"runs"} or
+                    not isinstance(dialogue["runs"], dict) or not dialogue["runs"]):
+                raise BuildError("Partition-2 Dialogue requires nonempty runs")
+            for run, text in dialogue["runs"].items():
+                validate_run_id(identifier, run)
+                if not isinstance(text, str):
+                    raise BuildError("Dialogue replacement must be text")
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}})
+            edits["dialogues"][identifier] = dialogue["runs"]
+            continue
         if identifier not in entity_lookup:
             raise BuildError(f"Authored entity has no imported provenance: {identifier}")
         scene_id, actor = entity_lookup[identifier]
@@ -250,7 +267,8 @@ def _build_project(project, output_dir) -> dict:
                     context = load_dialogue_authoring_context(project.disc_path, scene)
                     requested, expected_runs = {}, {}
                     for identifier, runs in edits["dialogues"].items():
-                        record = entity_lookup[identifier][1]["source_record"]["record_index"]
+                        record = (int(identifier.rsplit("/", 1)[1]) if "/scripts/man-p2/" in identifier
+                                  else entity_lookup[identifier][1]["source_record"]["record_index"])
                         options = context.options(identifier)
                         allowed = {run["semantic_id"]: run for run in options["runs"]}
                         for run_id, text in runs.items():

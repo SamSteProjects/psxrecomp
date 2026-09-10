@@ -285,7 +285,7 @@ class ProjectService:
 
     def _validate_dialogue(self, identifier: str, value: dict) -> None:
         from importer.dialogue_authoring import MAX_EDIT_RUNS, validate_dialogue_text, validate_run_id
-        self._actor(identifier)
+        self._dialogue_document(identifier)
         if (not isinstance(value, dict) or set(value) != {"runs"} or
                 not isinstance(value["runs"], dict) or not 1 <= len(value["runs"]) <= MAX_EDIT_RUNS):
             raise ProjectError("Dialogue requires a bounded nonempty text-run collection")
@@ -293,13 +293,24 @@ class ProjectService:
             validate_run_id(identifier, run_id)
             validate_dialogue_text(text)
 
+    def _dialogue_document(self, identifier: str) -> dict:
+        """Resolve the imported scene; actual P2 membership is verified on edit/build."""
+        if isinstance(identifier, str) and "/scripts/man-p2/" in identifier:
+            from importer.dialogue_authoring import validate_run_id
+            validate_run_id(identifier, "script://" + identifier.removeprefix("scene://") + "/dialogue/0000/run/0000")
+            scene_id = identifier.split("/scripts/man-p2/", 1)[0]
+            if scene_id not in self.imports:
+                raise ProjectError("Dialogue script scene has not been imported")
+            return self.imports[scene_id]
+        self._actor(identifier)
+        return next(doc for doc in self.imports.values() if any(a["semantic_id"] == identifier for a in doc["actors"]))
+
     def _dialogue_context(self, identifier: str):
         from importer.dialogue_authoring import load_dialogue_authoring_context
         from importer.pipeline import _disc_context, import_scene
-        self._actor(identifier)
+        document = self._dialogue_document(identifier)
         if not self.disc_path:
             raise ProjectError("Dialogue authoring requires the project's user-owned disc")
-        document = next(doc for doc in self.imports.values() if any(a["semantic_id"] == identifier for a in doc["actors"]))
         with _disc_context(self.disc_path):
             if import_scene(self.disc_path, document["scene"]["name"]) != document:
                 raise ProjectError("Dialogue source differs from freshly verified imported evidence")
@@ -399,7 +410,7 @@ class ProjectService:
         if command.get("type") in ("set_dialogue_text", "clear_dialogue_text"):
             from importer.dialogue_authoring import validate_run_id
             identifier, run_id = command.get("entity_id"), command.get("run_id")
-            self._actor(identifier)
+            self._dialogue_document(identifier)
             validate_run_id(identifier, run_id)
             before = deepcopy(self.overrides.get(identifier))
             after = deepcopy(before or {})
