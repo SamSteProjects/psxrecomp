@@ -138,6 +138,7 @@ class EditorServer(ThreadingHTTPServer):
             report = inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
             try:
                 report["dialogue_authoring"] = project.dialogue_options(entity_id)
+                report["transition_authoring"] = project.transition_options(entity_id)
             except (RetailImportError, ProjectError) as exc:
                 report["dialogue_authoring"] = {"supported": False, "reason": str(exc), "runs": [],
                                                 "unresolved_overrides": sorted(project.overrides.get(entity_id, {}).get("Dialogue", {}).get("runs", {})),
@@ -349,6 +350,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import partition_two_script_preview
                     report = partition_two_script_preview(self.server.project, body["entity_id"])
                     report["dialogue_authoring"] = self.server.project.dialogue_options(body["entity_id"])
+                    report["transition_authoring"] = self.server.project.transition_options(body["entity_id"])
                     self._json(200, report)
                     return
                 if route == "/api/trigger-script":
@@ -358,6 +360,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report = trigger_script_preview(self.server.project, body["asset_id"])
                     identifier = "scene://" + report["script_id"].removeprefix("script://")
                     report["dialogue_authoring"] = self.server.project.dialogue_options(identifier)
+                    report["transition_authoring"] = self.server.project.transition_options(identifier)
                     self._json(200, report)
                     return
                 if route == "/api/field-map-preview":
@@ -463,6 +466,13 @@ class EditorHandler(BaseHTTPRequestHandler):
             allowed = {"type", "entity_id", "run_id", "text"} if body["type"] == "set_dialogue_text" else {"type", "entity_id", "run_id"}
             if set(body) != allowed:
                 raise ProjectError("Dialogue commands accept only entity/run identities and authored text")
+        if route == "/api/command" and body.get("type") in ("set_transition_entry", "clear_transition_entry"):
+            allowed = {"type", "entity_id", "transition_id"}
+            if body["type"] == "set_transition_entry":
+                allowed.add("values")
+            if set(body) != allowed:
+                raise ProjectError("Transition commands accept only owner/transition identities and encoded values")
+            required_strings[route] = ("entity_id", "transition_id")
         for key in required_strings.get(route, ()):
             if not isinstance(body.get(key), str) or not body[key].strip():
                 raise ProjectError(f"{key} must be a nonempty string")

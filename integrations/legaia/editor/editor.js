@@ -1015,13 +1015,40 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     const instructionNavigation=appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report);
 
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
-    scriptReport=report;renderDialogueAuthoring();
+    scriptReport=report;renderDialogueAuthoring();renderTransitionAuthoring();
     scriptDialog.scrollTop=scroll;
     if(Number.isInteger(focusInstruction)){
       $('script-report').querySelector('.script-instructions').open=true;
       if(!instructionNavigation.select(focusInstruction))notify('The selected instruction was not found in the verified report.',true);
     }
-  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);input?.focus({preventScroll:true});}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
+  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);input?.focus({preventScroll:true});}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
+}
+
+function renderTransitionAuthoring(){
+  const authoring=scriptReport?.transition_authoring;if(!authoring?.transitions?.length)return;
+  const section=document.createElement('section'),heading=document.createElement('h3'),note=document.createElement('p');
+  heading.textContent='Transition entries';note.className='field-note';
+  note.textContent='Edit encoded entry bytes (0–255). World coordinates and direction meanings are not established. Destination names remain fixed.';
+  section.append(heading,note);$('script-report').append(section);
+  for(const entry of authoring.transitions){
+    const form=document.createElement('form');form.className='transition-entry';
+    const title=document.createElement('h4');title.textContent=`${entry.destination} at ${scriptOffset(entry.pc)}`;form.append(title);
+    const inputs={};
+    for(const [field,label] of [['entry_x_encoded','Entry X'],['entry_z_encoded','Entry Z'],['direction_encoded','Direction']]){
+      const row=document.createElement('label'),input=document.createElement('input');
+      row.textContent=`${label} (imported ${entry.values[field]}) `;input.type='number';input.min='0';input.max='255';input.step='1';input.required=true;
+      input.setAttribute('aria-label',`${label} at ${scriptOffset(entry.pc)}`);
+      input.value=scriptDrafts.get(entry.semantic_id)?.[field] ?? entry.effective_values[field];inputs[field]=input;row.append(input);form.append(row);
+      input.oninput=()=>{scriptDrafts.set(entry.semantic_id,Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])));updateScriptActions();};
+    }
+    const apply=document.createElement('button'),clear=document.createElement('button'),discard=document.createElement('button');
+    apply.type='submit';apply.textContent='Apply entry';clear.type=discard.type='button';clear.textContent='Clear entry override';discard.textContent='Discard draft';form.append(apply,clear,discard);
+    form.updateState=()=>{const editable=!busy&&canEditDialogue();for(const input of Object.values(inputs))input.disabled=!editable;apply.disabled=!editable||!Object.values(inputs).every(i=>i.value!==''&&Number.isInteger(Number(i.value))&&Number(i.value)>=0&&Number(i.value)<=255);clear.disabled=!editable||!Object.keys(entry.authored_values).length;discard.disabled=busy;discard.hidden=!scriptDrafts.has(entry.semantic_id);};
+    const send=async(type)=>{if(busy||!canEditDialogue())return;const command={type,entity_id:scriptEntity.id,transition_id:entry.semantic_id};if(type==='set_transition_entry')command.values=Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,Number(v.value)]));
+      if(await api('/api/command',command)){scriptDrafts.delete(entry.semantic_id);await openActorScript(scriptEntity,true);}else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;};
+    form.onsubmit=e=>{e.preventDefault();if(!apply.disabled)send('set_transition_entry');};clear.onclick=()=>send('clear_transition_entry');discard.onclick=()=>{scriptDrafts.delete(entry.semantic_id);for(const [field,input] of Object.entries(inputs))input.value=entry.effective_values[field];updateScriptActions();};
+    section.append(form);form.updateState();
+  }
 }
 
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
@@ -1033,6 +1060,7 @@ function updateScriptActions(){
   $('script-save').disabled=busy||pending||!state.project?.dirty;
   $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':projectSaveStatus();
   for(const form of scriptDialog.querySelectorAll('.dialogue-run'))updateDialogueRun(form);
+  for(const form of scriptDialog.querySelectorAll('.transition-entry'))form.updateState();
   for(const button of scriptDialog.querySelectorAll('[data-clear-unresolved]'))button.disabled=busy||!canEditDialogue();
 }
 function updateDialogueRun(form){

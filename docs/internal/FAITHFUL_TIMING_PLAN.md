@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Transition inspector controls and HTTP lifecycle
+
+- Previous turn was progress: exact retail package and clear-baseline verification. Added transition authoring data to script responses, strict command HTTP keys, and inspector byte inputs with Apply/Clear/Discard, imported values and shared draft/history guards.
+- JavaScript syntax check passed. Focused retail HTTP lifecycle passed: inspect, apply, effective refresh, undo, redo, clear and rejection of client source offsets. No runtime launched.
+- Existing P2 dialogue HTTP test failed before reaching edit assertions because its flag total expects 1123; current catalog has 1183 after prior decoder expansions. Preserved that failure for later coverage maintenance; no broad regression pass claimed.
+- Browser layout/interaction validation remains pending, as does live transition gameplay acceptance. Full goal remains active.
+
+
 ### 2026-09-10 — Package encoded transition entry overrides
 
 - Previous turn was progress: persistent transition commands committed. Build now accepts validated P1/P2 Transitions, rechecks source membership, merges exact byte audits with header/dialogue edits, and preserves the existing compressed-capacity and round-trip guards. Reports retain transition resource IDs and package descriptions identify the new scope.

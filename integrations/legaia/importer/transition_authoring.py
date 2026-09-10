@@ -1,7 +1,7 @@
 """Bounded record-level scene-entry edits; no scene relocation or world mapping.
 
 Pinned engine-vm/field/step.rs opcode3F consumes name + three unsigned bytes.
-This serializer is a foundation API, not yet connected to project commands/build.
+Project commands and Build consume these audited, source-preserving edits.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ LIMITATIONS = [
     "Only encoded entry X, Z and direction bytes are editable; world coordinates and direction semantics are not inferred.",
     "Destination names, instruction sizes and opaque bytes remain unchanged.",
     "Unknown or conflicting source paths and aliased records are unsupported.",
-    "Project commands, editor controls and playable packaging are not yet connected.",
+    "Encoded entry edits do not establish live transition reachability or gameplay behavior.",
 ]
 
 
