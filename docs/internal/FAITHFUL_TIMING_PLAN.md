@@ -216,7 +216,9 @@ on a fixed region -> next.
 - **2026-09-10 (placement warning browser acceptance):** Previous serializer
   feedback was implementation progress. Synthetic editor displayed the exact
   X125 grid/range warning and authored Y0 project-only warning. Browser Undo
-  removed both; entering X128 and leaving the field applied it without warnings.
+  removed both; entering X128 showed no warnings, but the retained server log
+  does not confirm submission of that edit. Valid-coordinate service behavior
+  is established by the preceding focused test, not this browser input.
   Browser errors empty; private placement-feedback-browser server stopped
   normally. This is synthetic editor acceptance, not a retail build or gameplay
   result. Full SDK and release-parity goal remains active.
