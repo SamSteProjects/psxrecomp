@@ -1,5 +1,11 @@
 # Legaia SDK feature matrix
 
+2026-09-10 animation preview assignments: the animation asset picker now offers
+separate Imported and Authored effective previews, plus combined labels when
+unchanged. Browser verification opened actor0040's authored clip0012 (15 frames,
+stepped to frame2) and original clip0008 (25 frames) through their respective
+verified preview services. No runtime animation or gameplay equivalence claim.
+
 2026-09-10 animation usage: animation asset details now expose imported and
 effective actor links using verified catalog bindings and authored appearance
 donors. Fresh retail metadata checks cover all 39 town01 bindings and an actual

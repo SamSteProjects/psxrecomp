@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (authored animation resource preview):** Previous usage-link
+  acceptance was progress. Animation asset preview choices now include authored
+  effective assignments through the existing guarded appearance preview service,
+  retaining separate imported choices. Exact verified usage replaces the old
+  independent actor/model membership filter. Isolated browser project assigned
+  actor0046 to actor0040; clip0012 offered Actor0040 Authored effective/model0099,
+  opened an Authored appearance preview with15frames and stepped to2/15. Clip0008
+  separately offered Actor0040 Imported/model0092 and opened Imported animation
+  with25frames. Browser errors were empty; JS syntax and the39binding usage smoke
+  passed. Private project/final state under
+  `local-output/sdk-20260909/animation-preview-browser`; owned service exited0.
+  No game process or retail mutation. Runtime timing, appearance gameplay and
+  the full SDK goal remain unaccepted.
+
 - **2026-09-10 (animation usage browser acceptance):** Prior animation usage
   implementation was progress. Fresh isolated service/project on port4394
   imported town01 and assigned supported actor0046 appearance to actor0040.
