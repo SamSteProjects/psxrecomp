@@ -518,3 +518,19 @@ the logo but lacks menu text. This probe does not establish the cause or
 persistence of that visual difference. Visual restoration remains unresolved;
 these observations establish completed loads and continued frame/audio
 progress only, not full title/field/cross-scene restoration acceptance.
+
+## Title restore visual comparison (2026-09-10)
+
+A follow-up used separate fresh control and restore runs of61d99eac..., with
+private baseline packages and matching25-second startup/three five-second
+observation stages. Control saved but never loaded; restore saved and loaded
+three times. Both exited0. The control's final screenshot also lacked menu
+text, while the restore run's final screenshot displayed the complete menu.
+The first restored capture was logo-only. These observations disprove a
+persistent restore-only loss of menu text in this bounded comparison; a single
+logo-only screenshot does not diagnose snapshot corruption. The exact cause
+of the intermittent capture appearance has not been established.
+
+Private title-restore-visual-ab/acceptance.json and staged screenshots retain
+both runs. This adds bounded repeated title visual recovery, not field or
+cross-scene restore acceptance, input responsiveness or audible-quality proof.

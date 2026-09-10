@@ -213,6 +213,16 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (title restore visual A/B):** Prior repeated-restore probe was
+  evidence-producing progress. Separate cold control/save-only and three-load
+  runs completed with exit0. Control's final screenshot was also logo-only;
+  restored final screenshot contained the full menu again. Thus previous
+  missing-text capture does not establish persistent restore-only corruption.
+  Intermittent appearance cause remains unknown. Private staged evidence in
+  title-restore-visual-ab; bounded title visual recovery only, with no field/
+  cross-scene or input/audio-quality acceptance. Full goal remains active.
+
+
 - **2026-09-10 (repeated title restore probe):** Previous texture workflow was
   verified progress. Fresh owned61d99eac... run completed one save and three
   loads with successful status generations. Five-second windows advanced302,
