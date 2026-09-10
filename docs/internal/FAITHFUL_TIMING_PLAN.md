@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Identify submitted player geometry and overdraw candidate
+
+- Previous turn was progress: same-view GPU pair. Parsed checkpoint09 player+44 model table800C9568 into10 bounded object records; every decoded primitive count matches its declared count (132,90,16,18,18,16,16,29,16,29). Textured groups use CLUT7780/7783/7781/7782, confirming the previously candidate GPU groups belong to player geometry. Evidence `arrival-live/player-model-cluts.json`.
+- Invisible frame57910 contains player packets581..707. Later textured quad772 (op2C, OTrank1754, source0009E750) spans (172,138),(126,137),(186,108),(119,110), overlapping player screen region. Captured exact packet in player-overdraw-candidate.json. Submission exists; texture coverage/raster depth/order cause remains unverified. No blanket ordering or terrain hack applied.
+- Same runtime remains available; no state load or RAM write. Next useful step is exact quad texture/raster coverage or retail renderer ordering comparison. Full objective active.
+
+
 ### 2026-09-10 — Capture GPU frames across same-view visibility change
 
 - Previous turn was progress: offline player-record comparison. Same runtime produced invisible-frame GPU dump57910 with915commands. Initial newest-1 sample had0commands; newest-2 captured a rendered frame. North20 then made Vahn visible within the same village camera view; captured frame59344 with910commands. Screenshots and bounded GP0/GTE captures retained as invisible-render-2/near-step-render under arrival-live.
