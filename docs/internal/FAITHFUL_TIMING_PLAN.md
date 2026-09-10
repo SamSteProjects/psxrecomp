@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-10 (retail P2 package verification):** A fresh scan of town01's
+  39 P2 records finds records 36 and 37 authorable, each with one ten-byte run.
+  Added a private-disc P2[36] package regression: one punctuation byte changes,
+  the packaged MAN decompresses to exactly the audited result, and clearing
+  the override reproduces the baseline package hash. The test found and fixed
+  build audit labels incorrectly assigning P2 edits to same-index P1 actors;
+  dialogue audit identity now comes from the verified source run owner.
+  Focused build, project dialogue and authoring tests pass. This proves package
+  construction, not in-game display; browser controls and opening ownership
+  work remain. No runtime or saved editor project was modified.
+
 - **2026-09-10 (P2 project/build plumbing):** Added P2 dialogue identities to
   project source resolution, commands, undo/redo and offline persistence.
   Set commands still reverify the imported scene and exact source run; failed

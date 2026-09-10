@@ -132,5 +132,37 @@ class RetailDialogueBuild(unittest.TestCase):
             self.assertEqual(document, original_document)
 
 
+@unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
+class RetailP2DialogueBuild(unittest.TestCase):
+    def test_p2_package_exact_span_and_clear_baseline(self):
+        from importer.pipeline import import_scene
+        from importer.dialogue_authoring import load_dialogue_authoring_context
+        from importer.core import decompress_lzs
+        disc = os.environ["LEGAIA_DISC_BIN"]
+        document = import_scene(disc, "town01")
+        context = load_dialogue_authoring_context(disc, "town01")
+        identifier = "scene://town01/scripts/man-p2/0036"
+        run = context.options(identifier)["runs"][0]
+        replacement = run["text"][:-1] + ("?" if run["text"][-1] != "?" else "!")
+        private = ROOT / "local-output/sdk-20260909"
+        with tempfile.TemporaryDirectory(prefix="p2-dialogue-build-", dir=private) as directory:
+            project = SimpleNamespace(root=Path(directory), name="P2 verification", disc_path=disc,
+                                      imports={"scene://town01": document}, overrides={})
+            baseline = build_project(project)
+            project.overrides = {identifier: {"Dialogue": {"runs": {run["semantic_id"]: replacement}}}}
+            built = build_project(project)
+            self.assertEqual((built["overlay_count"], built["changed_fields"]), (1, 1))
+            expected, changes = context.patch({run["semantic_id"]: replacement})
+            original, _ = context.patch({})
+            self.assertEqual(len(changes), 1)
+            self.assertEqual(sum(a != b for a, b in zip(original, expected)), 1)
+            with zipfile.ZipFile(built["path"]) as package:
+                self.assertEqual(decompress_lzs(package.read("assets/town01-man.lzs"), len(expected))[0], expected)
+            audit = json.loads(Path(built["audit"]).read_text())
+            self.assertEqual(audit["edits"][0]["semantic_id"], identifier)
+            project.overrides = {}
+            self.assertEqual(build_project(project)["sha256"], baseline["sha256"])
+
+
 if __name__ == "__main__":
     unittest.main()
