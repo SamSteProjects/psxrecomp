@@ -21,6 +21,27 @@ def sha(data):
 
 
 class AnimationAuthoringTests(unittest.TestCase):
+    def test_shared_bank_merges_axes_and_preview_rejects_conflicts(self):
+        catalog, actor, asset, model = fixture()
+        other = deepcopy(actor)
+        other["semantic_id"] += "-shared"
+        catalog._actors[other["semantic_id"]] = other
+        source = sha(catalog._body[8:])
+        index = actor["placement_fields"]["animation_id"] - 1
+        binding = {"animation_id": f"animation://{catalog.scene}/scene-anm/{index:04d}", "source_record_sha256": source}
+        overrides = {
+            actor["semantic_id"]: {**binding, "edits": [{"frame_index": 1, "object_index": 0, "translation": {"x": 100}}]},
+            other["semantic_id"]: {**binding, "edits": [{"frame_index": 1, "object_index": 0, "translation": {"y": 200}}]}}
+        with patch("importer.scene_animation.load_model_preview", return_value=deepcopy(model)):
+            preview = catalog.authored_bank_preview(actor, asset, overrides)
+        bank, audit = catalog.authored_bank(overrides)
+        self.assertEqual(decode_animation_record(bank[8:])["frames"][1]["object_transforms"][0]["translation"], [100, 200, 0])
+        self.assertEqual(preview["frames"][1]["vertices"], [[101, 202, 3]])
+        self.assertEqual(len(audit), 2)
+        overrides[other["semantic_id"]]["edits"][0]["translation"]["x"] = 99
+        with self.assertRaisesRegex(ImportError, "Conflicting"):
+            catalog.authored_bank_preview(actor, asset, overrides)
+
     def test_exhaustive_translation_wire_roundtrip_preserves_opaque_nibbles(self):
         # Cover every signed12 value in all axes, all rotation bytes and every
         # opaque nibble using independently constructed source bytes.
@@ -83,6 +104,11 @@ class AnimationAuthoringTests(unittest.TestCase):
             before = catalog.animation_preview(actor, asset)
             authored = catalog.authored_animation_preview(actor, asset, edits, sha(raw))
             after = catalog.animation_preview(actor, asset)
+        with patch("importer.scene_animation.load_model_preview", side_effect=AssertionError("record API must not expand meshes")):
+            changed, metadata = catalog.authored_animation_record(actor, asset, edits, sha(raw))
+        self.assertEqual(metadata, authored["authored"])
+        self.assertEqual(sha(changed), metadata["effective_record_sha256"])
+        self.assertEqual(decode_animation_record(changed)["frames"][1]["object_transforms"][0]["translation"][0], 100)
         self.assertEqual(before, after)
         self.assertEqual(authored["frames"][1]["vertices"], [[101, 2, 3]])
         self.assertEqual(authored["frames"][0], before["frames"][0])

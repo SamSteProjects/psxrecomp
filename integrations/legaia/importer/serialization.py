@@ -150,9 +150,15 @@ def serialize_man_decoded(original_stream: bytes, decoded_size: int, changed: by
     return _serialize_man_decoded(original_stream, original, consumed, changed, scene)
 
 
-def _serialize_man_decoded(original_stream, original, consumed, changed, scene):
+def serialize_lzs_decoded(original_stream: bytes, decoded_size: int, changed: bytes, label: str):
+    """Re-encode equal-size decoded data within the original consumed LZS span."""
+    original, consumed = decompress_lzs(original_stream, decoded_size)
+    return _serialize_man_decoded(original_stream, original, consumed, changed, label, kind="data")
+
+
+def _serialize_man_decoded(original_stream, original, consumed, changed, scene, kind="MAN"):
     if not isinstance(changed, bytes) or len(changed) != len(original):
-        raise ImportError("composed MAN must preserve its exact decoded byte length")
+        raise ImportError(f"composed {kind} must preserve its exact decoded byte length")
     decoded_size = len(original)
     original_span = original_stream[:consumed]
     if changed == original:
@@ -167,11 +173,11 @@ def _serialize_man_decoded(original_stream, original, consumed, changed, scene):
             encoded = compress_lzs_optimal(changed)
     decoded, encoded_consumed = decompress_lzs(encoded, decoded_size)
     if decoded != changed or encoded_consumed != len(encoded):
-        raise ImportError("independent LZS decode did not verify encoded MAN bytes")
+        raise ImportError(f"independent LZS decode did not verify encoded {kind} bytes")
     if len(encoded) > consumed:
-        raise ImportError(f"{scene} edited MAN requires {len(encoded)} compressed bytes but its original span holds {consumed}; relocation is unsupported")
+        raise ImportError(f"{scene} edited {kind} requires {len(encoded)} compressed bytes but its original span holds {consumed}; relocation is unsupported")
     replacement = encoded + original_span[len(encoded):]
     if decompress_lzs(replacement, decoded_size)[0] != changed:
-        raise ImportError("padded MAN replacement failed decode validation")
+        raise ImportError(f"padded {kind} replacement failed decode validation")
     return replacement, {"original_encoded_size": consumed,
                          "new_encoded_size": len(encoded), "decoded_size": decoded_size, **compression_info}

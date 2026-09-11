@@ -154,6 +154,81 @@ class SceneActorAnimationCatalog:
         index, decoded = self._binding(actor, asset)
         return self._animation_preview(actor, asset, index, decoded)
 
+    def authored_bank(self, overrides: dict[str, dict]) -> tuple[bytes, list[dict]]:
+        """Compose shared clip edits, rejecting contradictory writes to one axis."""
+        from .animation_authoring import patch_animation_channels
+        grouped = {}
+        for identifier, override in sorted(overrides.items()):
+            actor = self._actors[identifier]
+            asset = self._assets[actor["model_reference"]["asset_semantic_id"]]
+            index, _ = self._binding(actor, asset)
+            if override["animation_id"] != f"animation://{self.scene}/scene-anm/{index:04d}":
+                raise ImportError("Authored clip differs from the imported actor binding")
+            self.authored_animation_record(actor, asset, override["edits"], override["source_record_sha256"])
+            group = grouped.setdefault(index, {"axes": {}, "owners": []})
+            group["owners"].append(identifier)
+            for edit in override["edits"]:
+                for field in ("translation", "rotation_psx"):
+                    for axis, value in edit.get(field, {}).items():
+                        key = (edit["frame_index"], edit["object_index"], field, axis)
+                        if key in group["axes"] and group["axes"][key] != value:
+                            raise ImportError("Conflicting actor overrides target the same shared animation channel")
+                        group["axes"][key] = value
+        result, audit = bytearray(self._body), []
+        for index, group in sorted(grouped.items()):
+            edits = {}
+            for (frame, obj, field, axis), value in sorted(group["axes"].items()):
+                edit = edits.setdefault((frame, obj), {"frame_index": frame, "object_index": obj})
+                edit.setdefault(field, {})[axis] = value
+            start, end = self._ranges[index]
+            original = self._body[start:end]
+            changed, changes = patch_animation_channels(original, hashlib.sha256(original).hexdigest(), list(edits.values()))
+            result[start:end] = changed
+            for change in changes:
+                audit.append({**change, "animation_id": f"animation://{self.scene}/scene-anm/{index:04d}",
+                              "animation_record_offset": start, "authored_owners": group["owners"],
+                              "scope": "shared-scene-animation-record"})
+        allowed = {offset for row in audit for offset in range(
+            row["animation_record_offset"] + row["channel_byte_offset"],
+            row["animation_record_offset"] + row["channel_byte_offset"] + 8)}
+        if len(result) != len(self._body) or any(a != b and i not in allowed
+                                               for i, (a, b) in enumerate(zip(self._body, result))):
+            raise ImportError("Animation composition changed bytes outside audited channels")
+        return bytes(result), audit
+
+    def authored_bank_preview(self, actor: dict, asset: dict, overrides: dict[str, dict]) -> dict:
+        """Preview the same composed shared bank that enters the build."""
+        index, _ = self._binding(actor, asset)
+        changed, audit = self.authored_bank(overrides)
+        start, end = self._ranges[index]
+        preview = self._animation_preview(actor, asset, index, decode_animation_record(changed[start:end]))
+        preview["representation"] = "authored"
+        animation_id = f"animation://{self.scene}/scene-anm/{index:04d}"
+        preview["authored"] = {"animation_id": animation_id,
+                               "source_record_sha256": hashlib.sha256(self._body[start:end]).hexdigest(),
+                               "effective_record_sha256": hashlib.sha256(changed[start:end]).hexdigest(),
+                               "changes": [row for row in audit if row["animation_id"] == animation_id],
+                               "scope": "shared-scene-animation-record"}
+        return preview
+
+    def authored_animation_record(self, actor: dict, asset: dict, edits: list[dict],
+                                  expected_record_sha256: str) -> tuple[bytes, dict]:
+        """Validate a binding and serialize its record without expanding posed meshes.
+
+        Returned bytes are private build material. The metadata contains source
+        identity and an audit suitable for project validation or packaging.
+        """
+        from .animation_authoring import patch_animation_channels
+        index, _ = self._binding(actor, asset)
+        start, end = self._ranges[index]
+        changed, audit = patch_animation_channels(self._body[start:end], expected_record_sha256, edits)
+        return changed, {"animation_id": f"animation://{self.scene}/scene-anm/{index:04d}",
+                         "source_record_sha256": expected_record_sha256,
+                         "effective_record_sha256": hashlib.sha256(changed).hexdigest(),
+                         "byte_offset": start, "byte_length": end - start,
+                         "byte_coordinate_space": "decoded_scene_anm_descriptor",
+                         "changes": audit, "scope": "existing_rigid_channels"}
+
     def authored_animation_preview(self, actor: dict, asset: dict, edits: list[dict],
                                    expected_record_sha256: str) -> dict:
         """Preview exact authored channels separately from the imported cache.
@@ -162,15 +237,11 @@ class SceneActorAnimationCatalog:
         Record identity remains imported; authored metadata identifies the
         effective frames. This is an offline preview, not runtime acceptance.
         """
-        from .animation_authoring import patch_animation_channels
         index, _ = self._binding(actor, asset)
-        start, end = self._ranges[index]
-        changed, audit = patch_animation_channels(self._body[start:end], expected_record_sha256, edits)
+        changed, metadata = self.authored_animation_record(actor, asset, edits, expected_record_sha256)
         preview = self._animation_preview(actor, asset, index, decode_animation_record(changed))
         preview["representation"] = "authored"
-        preview["authored"] = {"source_record_sha256": expected_record_sha256,
-                               "effective_record_sha256": hashlib.sha256(changed).hexdigest(),
-                               "changes": audit, "scope": "existing_rigid_channels"}
+        preview["authored"] = metadata
         return preview
 
     def _animation_preview(self, actor, asset, index, decoded):
@@ -185,15 +256,23 @@ class SceneActorAnimationCatalog:
         return dict(self._metadata(actor, asset, index, decoded), geometry=geometry, frames=frames,
                     representation="imported")
 
-    def pose_preview(self, actor: dict, asset: dict, frame_index: int = 0) -> dict:
+    def pose_preview(self, actor: dict, asset: dict, frame_index: int = 0, *, authored_bank: bytes | None = None) -> dict:
         """Bake one actor-local pose without materializing every posed frame."""
         index, decoded = self._binding(actor, asset)
+        if authored_bank is not None:
+            if len(authored_bank) != len(self._body):
+                raise ImportError("Authored pose bank must retain its source length")
+            start, end = self._ranges[index]
+            decoded = decode_animation_record(authored_bank[start:end])
         if type(frame_index) is not int or not 0 <= frame_index < decoded["frame_count"]:
             raise ImportError("scene animation frame index is outside the decoded clip")
         geometry = self._geometry(asset, decoded)
         frame = decoded["frames"][frame_index]
         vertices = pose_vertices(geometry["vertices"], geometry["objects"], frame["object_transforms"])
         metadata = self._metadata(actor, asset, index, decoded)
+        if authored_bank is not None:
+            metadata["representation"] = "authored"
+            metadata["effective_record_sha256"] = hashlib.sha256(authored_bank[start:end]).hexdigest()
         geometry.update(vertices=vertices, bounds=_bounds(vertices), posed=True,
                         coordinate_system="retail_psx_actor_local_y_down",
                         pose=dict(metadata, frame_index=frame_index,

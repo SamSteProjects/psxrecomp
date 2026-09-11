@@ -74,7 +74,7 @@ class EnvironmentBuildTests(unittest.TestCase):
             self.assertEqual(overlay['sha256'],sha256(changed).hexdigest())
             self.assertEqual(audit['edits'][0]['affected_grid_cells'],[14*128+41,16*128+41])
             self.assertEqual(result['report']['changes'][0]['affected_grid_cell_count'],2)
-            self.assertEqual(audit['validation']['lz_decode_round_trip'],'not_required_no_MAN_overlay')
+            self.assertEqual(audit['validation']['lz_decode_round_trip'],'not_required_no_compressed_scene_overlay')
             self.assertEqual(audit['validation']['live_runtime'],'not_run')
 
 

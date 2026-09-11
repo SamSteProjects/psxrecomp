@@ -29,6 +29,8 @@ def source_key(project, *, geometry_only=False) -> str | None:
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
+                   "animation_channels": {a["semantic_id"]: deepcopy(project.overrides[a["semantic_id"]]["AnimationChannels"])
+                                          for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})},
                    "environment": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
 
@@ -206,6 +208,12 @@ class ScenePreviewService:
             if fresh != document:
                 raise ProjectError("Imported scene evidence differs from the verified retail source")
             catalog = pose_loader_factory(project.disc_path, document["scene"]["name"]) if pose_loader_factory else None
+            animation_overrides = {a["semantic_id"]: project.overrides[a["semantic_id"]]["AnimationChannels"]
+                                   for a in actors if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})}
+            if animation_overrides and catalog is None:
+                raise ProjectError("Authored animation preview requires the verified scene animation catalog")
+            authored_bank = catalog.authored_bank(animation_overrides)[0] if animation_overrides else None
+            authored_clips = {v["animation_id"] for v in animation_overrides.values()}
             for actor in actors:
                 identifier = actor["semantic_id"]
                 resolver = getattr(project, "appearance_source_actor", None)
@@ -243,10 +251,13 @@ class ScenePreviewService:
                         preview.pop("frames", None)
                         pose_kind = "reference_party_idle"
                     elif animation_id and catalog is not None:
-                        preview = catalog.pose_preview(source_actor, asset, 0)
+                        clip_id = f"animation://{document['scene']['name']}/scene-anm/{animation_id - 1:04d}"
+                        changed_clip = clip_id in authored_clips
+                        preview = (catalog.pose_preview(source_actor, asset, 0, authored_bank=authored_bank)
+                                   if changed_clip else catalog.pose_preview(source_actor, asset, 0))
                         # Texture association remains owned by the server adapter.
                         preview = model_loader(asset, prepared=preview)
-                        pose_kind = "imported_scene_animation_frame0"
+                        pose_kind = "authored_scene_animation_frame0" if changed_clip else "imported_scene_animation_frame0"
                     else:
                         preview = model_loader(asset)
                         if len(preview.get("objects", [])) != 1:

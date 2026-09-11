@@ -26,15 +26,23 @@ at world Z2112. Package SHA-256:
 This is a partial scene-authoring workflow, not completion of the full SDK.
 Detailed chronological evidence remains in `docs/internal/FAITHFUL_TIMING_PLAN.md`.
 
-2026-09-10 animation authoring foundation: a source-hash-bound serializer now
-writes sparse translation/rotation axes in existing rigid frame/object channels,
-with exact integer encoding and preserved record layout/opaque bits. The scene
-animation catalog can preview authored frames separately from imported caches.
-Five focused checks and five existing scene-animation checks passed with private
-retail input. This is **partial / SDK preview only**: project persistence, editor
-controls, playable carrier packaging and gameplay acceptance remain unfinished.
-It does not yet support arbitrary animation import, extra frames/channels,
-playback timing or skeletal retargeting.
+2026-09-10 animation authoring: sparse exact translation/rotation edits now
+persist through commands, undo/redo and save/reopen. Browser controls show shared
+clip users; imported and composed authored clips preview separately. The main
+scene uses authored frame zero and invalidates geometry on override changes.
+The package builder emits a guarded, equal-span scene ANM overlay with independent
+LZS decoding; conflicting shared-axis writes and capacity overflow are rejected.
+Browser acceptance covered Actor 0011 X=100, saved reopen, undo/redo and visible
+imported/authored pose comparison. A private package combined that edit with the
+wall override. Retail scene geometry showed exactly +100 X on affected vertices.
+This remains **PARTIAL / runtime acceptance pending**: in-game animation playback,
+main-scene browser rendering remain unverified. Imported/authored baked GLB exports
+were parsed independently: 675 positions with only the intended +100 X delta,
+and embedded authored source hashes/change evidence preserved. External viewer
+acceptance of these new authored exports remains pending.
+Arbitrary animation import, extra frames/channels, playback timing and skeletal
+retargeting remain unsupported. Shared clip edits can affect other actors and
+script-selected uses beyond the imported initial actor references.
 
 2026-09-10 script path navigation: actor/dialogue and trigger script instruction
 views share clickable decoded successors, incoming-edge navigation, highlighted

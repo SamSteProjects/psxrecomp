@@ -213,6 +213,98 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Animation workflow checkpoint validation
+- Previous turn made progress hardening commands and correcting shared-clear wording. Reviewed accumulated animation workflow changes before checkpoint.
+- Ran 33 focused animation, scene-preview, serialization, build-report, MAP and appearance-assignment checks with retail input. 32 passed; one MAP test expected the old no_MAN audit label. Updated it to no_compressed_scene_overlay (MAN and ANM now participate), then both MAP build tests passed.
+- Full goal remains active. Checkpoint covers partial exact-channel authoring workflow, not arbitrary animation import or game playback acceptance. No game launch or user project mutation.
+
+
+### Animation command boundary and shared clear wording
+- Previous goal turn made progress independently parsing authored GLB output. Added exact set/clear command key validation and nonempty string actor identity checks in ProjectService before state mutation.
+- Five malformed command shapes plus Live-mode clear were rejected with overrides and undo/redo stacks unchanged on the isolated project.
+- Corrected channel editor clear/blank wording: clearing removes only the selected actor contribution; contributions from other actors sharing the clip remain. No user project save or game interaction.
+
+
+### Authored baked GLB export verification
+- Previous turn made progress verifying real scene vertex deltas. Exported imported and authored Actor 0011 frame zero through EditorServer into the isolated test project Exports.
+- Independently parsed GLB headers, JSON/BIN chunks, buffer views and float32 POSITION accessors: both contain 675 positions; deltas are exactly +100 X or unchanged. Embedded animation representation and authored audit retain the selected source/change evidence.
+- Imported file model-e6209792d71d496aab2e86f5653ed160.glb; authored file model-a3a7b727797d464e8e8b36867d0fc8e1.glb. Static baked pose export only; no skeletal animation channel export claim. External viewer and live game acceptance remain pending.
+
+
+### Retail main-scene geometry evidence and feature ledger
+- Previous goal turn made progress connecting authored bank poses and source-key invalidation. Fresh scene service on the isolated saved project confirmed Actor 0011 authored frame-zero metadata, followed by imported metadata and a new source key after removing only in-memory overrides.
+- Compared actual scene vertices: deltas were exactly (100,0,0) for the edited object or (0,0,0) for unaffected vertices. No project save or game interaction.
+- Updated FEATURE_MATRIX to reflect implemented persistence, browser channel controls, shared preview/build composition, guarded package emission and measured scene geometry, while retaining explicit runtime, main-scene browser and GLB export acceptance gaps.
+
+
+### Main scene authored pose integration
+- Previous goal turn made progress through browser author/apply/save/preview/undo verification. Found the main scene still used imported frame zero; connected the shared authored bank to bounded single-frame pose generation and tagged changed poses as authored.
+- Animation overrides now participate in scene geometry cache identity. Shared affected actors and appearance donors resolve through the same composed bank; unrelated clips preserve imported poses. Authored asset detection now includes direct animation overrides.
+- Sixteen focused animation/scene-preview tests passed. Browser rendering of this new main-scene path and live playback remain pending; the isolated browser server still runs its prior Python code until deliberately refreshed.
+
+
+### Browser animation workflow acceptance
+- Previous turn made progress with shared-bank preview parity. Started isolated editor on port 4402 (session 52315), using new local-output/sdk-20260909/animation-browser-check project; original wall project and game untouched.
+- Browser selected Actor 0011, opened source-verified controls, listed six shared actor references, applied frame 0/object 0/translation X=100 and saved. Fresh ProjectService.open verified exact persisted override.
+- Visually inspected authored preview: head displaced sideways by the test channel edit. Switching to imported clip restored assembled pose. Browser Undo removed authored button state; Redo restored command. This verifies editor preview and persistence, not game playback.
+
+
+### Shared animation preview parity
+- Previous goal turn made progress with packaged animation overlays. Corrected preview/build mismatch: authored preview now consumes the same composed scene animation bank as build, including contributions from other actor overrides. Actors sharing an authored clip can select its authored preview even without a direct override.
+- Animation authoring options and dialog list imported same-clip actor references without claiming runtime actor identity or reachability.
+- Added one focused two-owner composition check: separate X/Y writes merge into the expected posed vertex; contradictory X writes fail. Eleven animation checks passed with retail input; JavaScript syntax passed. Browser acceptance and live playback remain outstanding.
+
+
+### Shared animation package build
+- Previous goal turn made progress by connecting authored/imported previews. Added shared-bank composition with contradictory axis rejection and unchanged surrounding byte checks. Reused bounded LZS encoding with independent decode verification; no descriptor relocation or source writes.
+- Build now emits animation overlays alongside existing MAN/MAP/texture overlays, validates the exact source disc span, and reports shared-clip scope. Editor describes shared effects, compression capacity, and outstanding runtime acceptance.
+- Retail Actor 0011 frame 0 object 0 X=100 plus the existing wall override successfully built under local-output/sdk-20260909/animation-package-smoke. Package SHA 7bf95ced33244b2058adaa80a409acb9d27ead9b404a3300c55713e3b376a97a. No user project save or game launch. This is packaging evidence, not live playback acceptance.
+
+
+### Authored animation preview integration
+- Previous goal turn made progress: implemented channel editor controls and validated syntax/decoder behavior.
+- Actor animation preview now accepts explicit imported/authored representation, validates saved source-bound overrides, and exposes both clips. Editor clip selection and frame export retain that representation; imported defaults remain unchanged.
+- Retail service exercise on Actor 0011 confirmed the edited frame changes while all other frames and the subsequent imported preview remain equal. The exercise changed only in-memory state and did not save the user project or control the game.
+- Thirteen focused animation and appearance HTTP tests passed with retail input; JavaScript syntax and diff whitespace checks passed. Browser visual acceptance, animation export acceptance, and playable ANM packaging remain pending.
+
+
+### Animation channel editor controls
+- Previous goal turn was no progress (acknowledged user interpretation of interior NPC positions); resumed concrete implementation without changing actor coordinates.
+- Added source-verified animation channel dialog with zero-based frame/object selectors, exact translation and PSX rotation axes, inherited blank axes, preservation of other channel overrides, and clear-all command. Guards reject stale project/scene/selection and Live mode edits.
+- Existing animation persistence API is connected through normal command/undo/save flow. Playable packaging remains explicitly unsupported; authored preview integration and browser workflow acceptance remain pending.
+- Ten focused animation tests passed with the retail disc enabled; JavaScript syntax check passed. No game process launched or controlled.
+
+
+### Editor animation options API
+- Added strict actor-ID-only /api/animation-authoring-options route and exposed saved channel overrides in both options and entity Animation component. The UI can now obtain source-bound clip metadata and display authored edits separately.
+- Python compilation passed; ten focused animation checks passed with two retail-dependent skips in this invocation (prior disc-enabled run passed all ten). HTTP/browser route acceptance and editing controls remain pending.
+
+
+### Animation persistence workflow acceptance
+- In a separate temporary project populated from imported town01 evidence, set Actor0011 frame0/object0 translationX100; undo removed it, redo restored it, save/reopen retained exact source-bound edits, and clear removed it. Original user project was not saved or modified.
+- Build rejected AnimationChannels rather than silently omitting it. Replaced generic component error with explicit saved-but-packaging-unimplemented explanation. Temporary project removed by scoped TemporaryDirectory cleanup. Playable animation packaging remains required work.
+
+
+### Persistent animation command integration
+- Added set/clear_animation_channels commands using the existing override undo/redo representation, strict imported animation identity/source digest/channel serialization validation, and save/load component recognition. Opening these components currently requires the retail source for validation.
+- Read-only-opened current project in a separate Python process and applied Actor0011 frame0/object0 translationX100 in memory; validation succeeded against animation0012. Did not save or alter the user project. Save/reopen/undo/build-rejection verification remains pending; build currently rejects the new unsupported component.
+
+
+### Project animation authoring options
+- Added ProjectService animation_authoring_options with fresh imported-disc digest comparison and supported imported actor binding resolution, exposing exact translation/rotation limits and animation metadata. Read-only validation against current project resolved Actor0011 to animation0012, 15 frames and 6 rigid channels.
+- Build validation currently rejects unknown authored components rather than silently dropping them. Animation override persistence remains not implemented; options are the verified context for the next command integration.
+
+
+### Unified animation serialization and preview
+- Authored animation preview now uses the public authored-record serializer, so preview and future packaging share the same binding/hash validation and audit. Extended focused check verifies decoded edited value, identical metadata/effective digest, immutable imported preview, and no model expansion in record-only serialization.
+- Ten animation authoring/scene checks passed with private retail disc enabled, no skips (first run without disc skipped two). This is serializer/preview validation, not project persistence or playable output.
+
+
+### Animation authoring record API
+- Traced existing serializer/catalog and ProjectService command boundaries. Added public authored_animation_record API that verifies actor/model binding and record hash, serializes bounded channel edits, and returns private bytes plus source-coordinate/audit metadata without expanding posed meshes. This supports subsequent project validation and packaging without accessing private catalog buffers.
+- Existing animation-authoring checks rerun with both integration and tests import paths (first invocation lacked tests path). Project persistence/editor/build integration remains unfinished.
+
+
 ### Node field checkpoint and next authoring gap
 - Reviewed field-inspector changes and feature ledger. Node field expansion is browser-verified on an unmatched node; notes formatting is included.
 - Authoritative ledger still identifies sparse rigid animation editing as SDK-preview-only: project persistence, editor controls, playable carrier packaging and gameplay acceptance are absent. ProjectService search found no animation override integration. This is the next substantial authoring workflow to extend after the inspector checkpoint; arbitrary import/extra channels remain distinct requirements.

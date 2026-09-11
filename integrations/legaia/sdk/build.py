@@ -176,10 +176,18 @@ def _build_project(project, output_dir) -> dict:
         raise BuildError("Build requires at least one verified imported scene")
     scene_edits: dict[str, dict] = {}
     environment_edits = {}
+    animation_edits = {}
     entity_lookup = {actor["semantic_id"]: (scene_id, actor)
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(components, dict) and "AnimationChannels" in components:
+            project._validate_animation_override(identifier, components["AnimationChannels"])
+            scene_id, _actor = entity_lookup[identifier]
+            animation_edits.setdefault(scene_id, {})[identifier] = components["AnimationChannels"]
+            components = {k:v for k,v in components.items() if k != "AnimationChannels"}
+            if not components:
+                continue
         if isinstance(components, dict) and "Environment" in components:
             project._validate_environment(identifier, components["Environment"])
             environment_edits[identifier] = components["Environment"]
@@ -264,7 +272,7 @@ def _build_project(project, output_dir) -> dict:
 
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
-    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits)) or project.imports:
+    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits)) or project.imports:
         document = project.imports[scene_id]
         fresh = import_scene(project.disc_path, document["scene"]["name"])
         if canonical_json(document) != canonical_json(fresh):
@@ -273,6 +281,28 @@ def _build_project(project, output_dir) -> dict:
     overlays = []
     audit_edits = []
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
+        for scene_id, bindings in sorted(animation_edits.items()):
+            from importer.scene_animation import load_scene_actor_animation_catalog
+            from importer.serialization import serialize_lzs_decoded
+            scene = project.imports[scene_id]["scene"]["name"]
+            catalog = load_scene_actor_animation_catalog(project.disc_path, scene)
+            changed, changes = catalog.authored_bank(bindings)
+            if not changes:
+                continue
+            source = catalog._source
+            entry = archive.entry(source["prot_entry_index"])
+            body = archive.read_entry(entry)
+            offset, consumed = source["compressed_stream_offset"], source["compressed_bytes_consumed"]
+            original = body[offset:offset + consumed]
+            replacement, sizes = serialize_lzs_decoded(original, len(catalog._body), changed, scene + " animation")
+            location = (archive.node.extent_lba + entry.start_lba) * 2048 + offset
+            if _image.read_user(0, location, len(original), (_image.size // 2352) * 2048) != original:
+                raise BuildError("Animation overlay differs from its verified disc span")
+            overlays.append({"scene": scene, "offset": location, "size": len(replacement),
+                             "file": f"assets/{scene}-animation.lzs", "payload": replacement,
+                             "sha256": _hash(replacement), "expected_sha256": _hash(original),
+                             "decoded_before_sha256": _hash(catalog._body), "decoded_after_sha256": _hash(changed), **sizes})
+            audit_edits.extend({**change, "scene": scene, "semantic_id": change["animation_id"]} for change in changes)
         for scene_id, binding in sorted(environment_edits.items()):
             from importer.environment_authoring import patch_environment_overrides
             from importer.environment import load_environment_placements
@@ -465,8 +495,8 @@ def _build_project(project, output_dir) -> dict:
         "edits": audit_edits,
         "overlays": [{key: value for key, value in overlay.items() if key != "payload"} for overlay in overlays],
         "validation": {"retail_provenance": "fresh_import_match", "unchanged_opaque_bytes": True,
-                       "lz_decode_round_trip": (True if any(o["file"].endswith('-man.lzs') for o in overlays)
-                                                else "not_required_no_MAN_overlay" if overlays else "not_required_unmodified_disc"),
+                       "lz_decode_round_trip": (True if any(o["file"].endswith(('-man.lzs', '-animation.lzs')) for o in overlays)
+                                                else "not_required_no_compressed_scene_overlay" if overlays else "not_required_unmodified_disc"),
                        "live_runtime": "not_run"},
     }
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")

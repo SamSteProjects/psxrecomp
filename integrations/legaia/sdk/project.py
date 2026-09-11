@@ -296,6 +296,50 @@ class ProjectService:
             raise ProjectError("Appearance donor must have the same object count as the imported actor")
         return document, actor, donor
 
+    def _validate_animation_override(self, identifier: str, value: dict) -> None:
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        if not isinstance(value, dict) or set(value) != {"animation_id", "source_record_sha256", "edits"}:
+            raise ProjectError("Animation override requires source identity, digest and channel edits")
+        options = self.animation_authoring_options(identifier)
+        binding = options["binding"]
+        if value["animation_id"] != binding["semantic_id"]:
+            raise ProjectError("Animation override differs from the imported actor binding")
+        document = next(doc for doc in self.imports.values()
+                        if any(a["semantic_id"] == identifier for a in doc["actors"]))
+        actor = self._actor(identifier)
+        asset = next(a for a in document["assets"]["models"]
+                     if a["semantic_id"] == binding["asset_semantic_id"])
+        catalog = load_scene_actor_animation_catalog(self.disc_path, document["scene"]["name"])
+        catalog.authored_animation_record(actor, asset, value["edits"], value["source_record_sha256"])
+
+    def animation_authoring_options(self, identifier: str) -> dict:
+        """Resolve editable imported rigid channels against current retail evidence."""
+        from importer.pipeline import _disc_context, import_scene
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        if not self.disc_path:
+            raise ProjectError("Animation authoring requires the project's user-owned disc")
+        actor = self._actor(identifier)
+        document = next(doc for doc in self.imports.values()
+                        if any(a["semantic_id"] == identifier for a in doc["actors"]))
+        with _disc_context(self.disc_path):
+            if digest(import_scene(self.disc_path, document["scene"]["name"])) != digest(document):
+                raise ProjectError("Animation source differs from freshly verified imported evidence")
+            catalog = load_scene_actor_animation_catalog(self.disc_path, document["scene"]["name"])
+            bindings = catalog.referenced_animation_metadata()["bindings"]
+            binding = next((item for item in bindings
+                            if item.get("actor_semantic_id") == identifier), None)
+            if binding is None:
+                raise ProjectError("Actor has no supported imported rigid animation binding")
+            return {"entity_id": identifier, "binding": deepcopy(binding),
+                    "shared_actor_ids": [a["semantic_id"] for a in document["actors"]
+                                         if a["placement_fields"].get("animation_id") == actor["placement_fields"].get("animation_id")
+                                         and type(a["model_reference"].get("model_index")) is int
+                                         and 0 <= a["model_reference"]["model_index"] < 0xF0],
+                    "authored": deepcopy(self.overrides.get(identifier, {}).get("AnimationChannels")),
+                    "scope": "existing_imported_rigid_channels",
+                    "translation": {"minimum": -2048, "maximum": 2047, "step": 1},
+                    "rotation_psx": {"minimum": 0, "maximum": 4080, "step": 16}}
+
     def appearance_options(self, identifier: str) -> dict:
         from importer.man_assignments import load_man_assignment_context
         from importer.pipeline import _disc_context, import_scene
@@ -528,6 +572,31 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get("type") in ("set_animation_channels", "clear_animation_channels"):
+            allowed = {"type", "entity_id", "value"} if command["type"] == "set_animation_channels" else {"type", "entity_id"}
+            if set(command) != allowed:
+                raise ProjectError("Animation commands accept only an actor identity and channel override")
+            identifier = command.get("entity_id")
+            if not isinstance(identifier, str) or not identifier.strip():
+                raise ProjectError("Animation commands require a nonempty actor identity")
+            self._actor(identifier)
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            if command["type"] == "set_animation_channels":
+                value = deepcopy(command.get("value"))
+                self._validate_animation_override(identifier, value)
+                after["AnimationChannels"] = value
+            else:
+                after.pop("AnimationChannels", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_environment_transforms", "clear_environment_transforms"):
             identifier = command.get("entity_id")
             if identifier not in self.imports:
@@ -901,8 +970,11 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "Environment"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "Environment", "AnimationChannels"}:
                 raise ProjectError("Unsupported authored component")
+            if "AnimationChannels" in components:
+                result._validate_animation_override(identifier, components["AnimationChannels"])
+                result.overrides.setdefault(identifier, {})["AnimationChannels"] = deepcopy(components["AnimationChannels"])
             if "Environment" in components:
                 result._validate_environment(identifier, components["Environment"])
                 result.overrides.setdefault(identifier, {})["Environment"] = deepcopy(components["Environment"])
@@ -1049,7 +1121,7 @@ class ProjectService:
                                             "ActorAppearance": {"imported": original_pair, "authored": appearance, "effective": effective_pair,
                                                                 "limitations": ["Initial model/animation pair only; scripts may replace it. Script and gameplay compatibility remain unverified."]},
                                             "ModelRenderer": {"asset_id": model.get("asset_semantic_id"), "resolution_status": model.get("resolution_status")},
-                                            "Animation": {"imported_id": actor["placement_fields"].get("animation_id"), "resolution_status": "unresolved"},
+                                            "Animation": {"imported_id": actor["placement_fields"].get("animation_id"), "resolution_status": "unresolved", "authored_channels": deepcopy(self.overrides.get(identifier, {}).get("AnimationChannels"))},
                                             "Dialogue": {"authored": deepcopy(self.overrides.get(identifier, {}).get("Dialogue", {})),
                                                          "limitations": ["Only verified plain-text runs are writable; controls and record boundaries remain fixed. Source capacity is rechecked on edit/build."]},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),

@@ -106,11 +106,13 @@ class EditorServer(ThreadingHTTPServer):
         self.observer.close()
         super().server_close()
 
-    def actor_animation_preview(self, entity_id: str) -> dict:
+    def actor_animation_preview(self, entity_id: str, representation: str = "imported") -> dict:
         """Resolve an imported actor; clients cannot supply a model or clip binding."""
         from importer.pipeline import _disc_context
         from importer.scene_animation import load_scene_actor_animation_catalog
         project = self.project
+        if representation not in ("imported", "authored"):
+            raise ProjectError("Animation representation must be imported or authored")
         if not project.disc_path:
             raise ProjectError("Actor animation preview requires the project's user-owned disc")
         document = project.imports.get(project.active_scene)
@@ -123,14 +125,26 @@ class EditorServer(ThreadingHTTPServer):
             raise ProjectError("Actor's imported model is unresolved")
         with _disc_context(project.disc_path):
             catalog = load_scene_actor_animation_catalog(project.disc_path, document["scene"]["name"])
-            animation = catalog.animation_preview(actor, asset)
+            overrides = {a["semantic_id"]: project.overrides[a["semantic_id"]]["AnimationChannels"]
+                         for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})}
+            initial_id = actor["placement_fields"].get("animation_id")
+            clip_id = f"animation://{document['scene']['name']}/scene-anm/{initial_id - 1:04d}" if type(initial_id) is int and initial_id > 0 else None
+            affected = any(value["animation_id"] == clip_id for value in overrides.values())
+            if representation == "authored":
+                if not affected:
+                    raise ProjectError("Actor's imported clip has no authored animation channels")
+                animation = catalog.authored_bank_preview(actor, asset, overrides)
+            else:
+                animation = catalog.animation_preview(actor, asset)
             preview = self.model_preview(asset, prepared=animation.pop("geometry"))
             preview["frames"] = animation.pop("frames")
-            animation.update(source_clip_id=animation["clip_id"], clip_id="scene-header", entity_id=entity_id)
+            animation.update(source_clip_id=animation["clip_id"], clip_id="authored-channels" if representation == "authored" else "scene-header", entity_id=entity_id, representation=representation)
             preview["animation"] = animation
             preview["animation_support"] = {
-                "supported": True, "clips": [{"id": "scene-header", "label": animation["label"]}],
+                "supported": True, "clips": [{"id": "scene-header", "label": "Imported scene animation"}],
                 "evidence": "verified_man_header_initial_animation_not_runtime_script_state"}
+            if affected:
+                preview["animation_support"]["clips"].append({"id": "authored-channels", "label": "Authored channel overrides"})
         return preview
 
     def actor_script_preview(self, entity_id: str) -> dict:
@@ -395,6 +409,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
                     return
+                if route == "/api/animation-authoring-options":
+                    if set(body) != {"entity_id"} or not isinstance(body.get("entity_id"), str):
+                        raise ProjectError("Animation options require an actor identity only")
+                    self._json(200, self.server.project.animation_authoring_options(body["entity_id"]))
+                    return
                 if route in ("/api/actor-appearance-options", "/api/actor-appearance-preview", "/api/export/actor-appearance"):
                     exporting = route == "/api/export/actor-appearance"
                     expected = {"entity_id", "frame_index"} if exporting else {"entity_id"}
@@ -418,13 +437,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route in ("/api/actor-animation-preview", "/api/export/actor-animation"):
                     exporting = route == "/api/export/actor-animation"
-                    allowed = {"entity_id", "frame_index"} if exporting else {"entity_id"}
+                    allowed = {"entity_id", "representation", "frame_index"} if exporting else {"entity_id", "representation"}
                     if set(body) - allowed or not isinstance(body.get("entity_id"), str) or not body["entity_id"]:
                         raise ProjectError("Actor animation accepts an imported entity_id and export frame only; source bindings and output paths are project-controlled")
                     frame_index = body.get("frame_index")
                     if exporting and (type(frame_index) is not int or frame_index < 0):
                         raise ProjectError("Choose a nonnegative animation frame index to export")
-                    preview = self.server.actor_animation_preview(body["entity_id"])
+                    preview = self.server.actor_animation_preview(body["entity_id"], body.get("representation", "imported"))
                     self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
                     return
                 if route == "/api/scene-preview":

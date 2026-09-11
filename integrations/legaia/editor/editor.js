@@ -287,6 +287,7 @@ function setBusy(value) {
   renderRunStatus();renderBuildStatus();
   document.querySelectorAll('[data-axis]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
+  document.querySelectorAll('[data-animation-edit]').forEach(button=>button.disabled=value||state.project.mode!=='edit');
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
   if($('scene-transitions'))$('scene-transitions').disabled=value || !state.capabilities?.scene_transitions;
   if($('scene-flags'))$('scene-flags').disabled=value || !state.capabilities?.scene_flags;
@@ -365,7 +366,7 @@ function position(entity){
   const preview=scenePreviewCurrent()?activeScenePreview()?.entities.find(item=>item.entity_id===entity.id):null;
   return displayPosition(preview?.preview_position??source);
 }
-function authored(entity){return Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0 || !!entity.components?.ActorAppearance?.authored?.donor_entity_id || Object.keys(entity.components?.Dialogue?.authored?.runs ?? {}).length>0;}
+function authored(entity){return !!entity.components?.Animation?.authored_channels || Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0 || !!entity.components?.ActorAppearance?.authored?.donor_entity_id || Object.keys(entity.components?.Dialogue?.authored?.runs ?? {}).length>0;}
 function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceChildren();d.showModal();}
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.name ?? 'Legaia project'; $('project-path-input').value=state.project?.path ?? '';showDialog('project-dialog'); };
@@ -1161,6 +1162,7 @@ function renderInspector(){
   const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
   const actorAnimation=components.Animation?.preview_support;
   if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview imported scene animation';button.title='Verify and decode this actor’s imported animation association';button.onclick=()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id);$('inspect-model').after(button);}
+  if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.dataset.animationEdit='true';button.textContent=components.Animation?.authored_channels?'Edit authored animation channels':'Author animation channels';button.disabled=busy||state.project.mode!=='edit';button.onclick=()=>openAnimationChannels(entity);$('inspect-model').after(button);}
   if(animatedAsset && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview reference locomotion';button.title='Decoded idle/walk clips for this model; separate from the placement animation ID';button.onclick=()=>openModel(animatedAsset.id,'idle');$('inspect-model').after(button);}
   if($('inspect-templates'))$('inspect-templates').onclick=showTemplates;
   $('inspector').querySelectorAll('[data-axis]').forEach(input=>input.addEventListener('change',async()=>{
@@ -1171,6 +1173,29 @@ function renderInspector(){
   }));
 }
 
+const animationEditDialog=document.createElement('dialog');animationEditDialog.className='project-dialog';document.body.append(animationEditDialog);
+async function openAnimationChannels(entity){
+  if(busy||state.project.mode!=='edit')return;
+  const context=JSON.stringify([state.project.path,state.scene?.id,entity.id]);
+  const current=()=>animationEditDialog.open&&state.project.mode==='edit'&&JSON.stringify([state.project.path,state.scene?.id,state.selection?.entity_id])===context;
+  animationEditDialog.innerHTML='<h2>Edit imported animation channels</h2><p>Verifying source…</p><button type="button">Close</button>';
+  animationEditDialog.querySelector('button').onclick=()=>animationEditDialog.close();animationEditDialog.showModal();setBusy(true);
+  try{
+    const response=await fetch('/api/animation-authoring-options',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(result.error||'Could not load animation channels');if(!current())return;
+    const binding=result.binding,edits=result.authored?.edits??[];
+    animationEditDialog.innerHTML=`<h2>Edit imported animation channels</h2><p>${escapeHTML(binding.semantic_id)}</p><p>Imported actors sharing this clip: ${escapeHTML((result.shared_actor_ids??[]).join(", "))}</p><p>Edits apply to the imported clip. Blank axes remove this actor’s contribution; other shared-clip edits still apply. Build patches the shared scene clip within its original compressed capacity. Other actors using that clip are affected. Conflicting overrides or edits that need relocation are rejected. In-game playback has not yet been verified.</p><form><label>Frame (zero based)<input name="frame" type="number" min="0" max="${binding.frame_count-1}" step="1" value="0" required></label><label>Rigid object (zero based)<input name="object" type="number" min="0" max="${binding.bone_count-1}" step="1" value="0" required></label><div class="animation-channel-fields"></div><p class="dialog-error" role="alert"></p><button type="submit">Apply channel override</button><button type="button" class="clear-animation">Clear this actor’s channel edits</button><button type="button" class="close-animation">Close</button></form>`;
+    const form=animationEditDialog.querySelector('form'),fields=form.querySelector('.animation-channel-fields'),error=form.querySelector('[role="alert"]');
+    for(const group of ['translation','rotation_psx'])for(const axis of ['x','y','z']){const limits=result[group],label=document.createElement('label');label.textContent=`${group==='translation'?'Translation':'Rotation (PSX units)'} ${axis.toUpperCase()}`;const input=document.createElement('input');input.name=`${group}_${axis}`;input.type='number';input.min=limits.minimum;input.max=limits.maximum;input.step=limits.step;input.placeholder='Retail';label.append(input);fields.append(label);}
+    const refresh=()=>{const edit=edits.find(e=>e.frame_index===Number(form.elements.frame.value)&&e.object_index===Number(form.elements.object.value));for(const group of ['translation','rotation_psx'])for(const axis of ['x','y','z'])form.elements[`${group}_${axis}`].value=edit?.[group]?.[axis]??'';};
+    form.elements.frame.onchange=refresh;form.elements.object.onchange=refresh;refresh();
+    form.querySelector('.close-animation').onclick=()=>animationEditDialog.close();
+    form.querySelector('.clear-animation').disabled=!edits.length;
+    const apply=async command=>{if(busy||!current())return;if(!await api('/api/command',command,{dialog:animationEditDialog,success:'Animation override updated. Save project to persist.'}))error.textContent=$('status').textContent;};
+    form.querySelector('.clear-animation').onclick=()=>apply({type:'clear_animation_channels',entity_id:entity.id});
+    form.onsubmit=async event=>{event.preventDefault();if(!form.reportValidity())return;const edit={frame_index:Number(form.elements.frame.value),object_index:Number(form.elements.object.value)};for(const group of ['translation','rotation_psx'])for(const axis of ['x','y','z']){const input=form.elements[`${group}_${axis}`];if(input.value!=='')(edit[group]??={})[axis]=Number(input.value);}const next=edits.filter(e=>e.frame_index!==edit.frame_index||e.object_index!==edit.object_index);if(edit.translation||edit.rotation_psx)next.push(edit);await apply(next.length?{type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:next}}:{type:'clear_animation_channels',entity_id:entity.id});};
+  }catch(error){if(animationEditDialog.open)animationEditDialog.querySelector('p').textContent=String(error.message);}finally{setBusy(false);}
+}
 const appearanceDialog=document.createElement('dialog');appearanceDialog.id='appearance-dialog';document.body.append(appearanceDialog);
 async function openAppearanceOptions(entity){
   if(busy||!canEditAppearance())return;setBusy(true);
@@ -1518,12 +1543,12 @@ const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
 async function openModel(assetId,clipId=null,entityId=null){
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest;
   try{
-    const response=await fetch(entityId?(clipId==='authored-appearance'?'/api/actor-appearance-preview':'/api/actor-animation-preview'):clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
+    const response=await fetch(entityId?(clipId==='authored-appearance'?'/api/actor-appearance-preview':'/api/actor-animation-preview'):clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId,...(clipId==='authored-channels'?{representation:'authored'}:{})}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
     const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
     if(clipId && (!Array.isArray(data.frames) || !data.frames.length || data.frames.length*data.vertices.length>1000000 || data.frames.some(frame=>frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(frame.vertices)||frame.vertices.length!==data.vertices.length||frame.vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(numeric)))))throw new Error('Animation service returned an invalid or oversized posed vertex stream.');
-    model=data;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · ${clipId==='authored-appearance'?'Authored appearance':'Imported animation'}`:assetId.split('/').slice(-2).join(' / ');
+    model=data;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · ${clipId==='authored-appearance'?'Authored appearance':clipId==='authored-channels'?'Authored animation':'Imported animation'}`:assetId.split('/').slice(-2).join(' / ');
     modelTextures=new Map();$('model-textures').replaceChildren();
     for(const texture of model.textures ?? []){
       const card=document.createElement('div');card.className='texture-card';
@@ -1563,7 +1588,7 @@ function configureAnimation(clipId){
 }
 function stopAnimation(){if(animationTick!==null)cancelAnimationFrame(animationTick);animationTick=null;animationClock=null;$('animation-play').textContent='Play';}
 function setAnimationFrame(index){const count=model?.frames?.length ?? 0;if(!count)return;animationFrame=((index%count)+count)%count;$('animation-frame').value=animationFrame;$('animation-frame-label').textContent=`${animationFrame+1} / ${count}`;drawModel();}
-$('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,['scene-header','authored-appearance'].includes(clip)?modelEntityId:null);};
+$('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,['scene-header','authored-appearance','authored-channels'].includes(clip)?modelEntityId:null);};
 $('animation-frame').oninput=()=>{stopAnimation();setAnimationFrame(Number($('animation-frame').value));};
 $('animation-previous').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame-1);};
 $('animation-next').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame+1);};
@@ -1578,7 +1603,7 @@ $('model-dialog').addEventListener('close',()=>{stopAnimation();modelRequest++;}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAnimation();});
 $('model-export').onclick=async()=>{
   if(busy||!modelAssetId)return;stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
-  const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
+  const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame,...(clip==='authored-channels'?{representation:'authored'}:{})}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
   try{
     const response=await fetch(modelEntityId?(clip==='authored-appearance'?'/api/export/actor-appearance':'/api/export/actor-animation'):'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Model export failed');
