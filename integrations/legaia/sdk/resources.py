@@ -21,10 +21,12 @@ def _verify(project, document):
         raise ProjectError("Resource source differs from freshly verified imported evidence")
 
 
-def model_shape_source(project, asset_id: str) -> dict:
+def model_shape_source(project, asset_id: str, format: str = 'tmd') -> dict:
     """Private source download for editing an existing model's local shape."""
     from hashlib import sha256
     from importer.assets import load_model_source, decode_tmd
+    if format not in ('tmd', 'obj'):
+        raise ProjectError('Choose TMD or OBJ model source')
     document, key = _scene(project)
     asset = next((a for a in document['assets']['models'] if a['semantic_id'] == asset_id), None)
     if asset is None:
@@ -35,11 +37,18 @@ def model_shape_source(project, asset_id: str) -> dict:
         preview = decode_tmd(data)
     if key != source_key(project):
         raise ProjectError('Model source changed while reading; refresh again')
-    return dict(semantic_id=asset_id, scene_id=project.active_scene, source_key=key,
+    result = dict(semantic_id=asset_id, scene_id=project.active_scene, source_key=key,
                 source_sha256=sha256(data).hexdigest(), byte_length=len(data),
                 filename='original-model.tmd', tmd_base64=base64.b64encode(data).decode('ascii'),
                 object_count=len(preview['objects']), coordinate_system=preview['coordinate_system'],
                 limitations=['Shape edits preserve source object layout, topology, materials and padding.'])
+    if format == 'obj':
+        from importer.model_obj import export_shape_obj
+        obj = export_shape_obj(data)
+        result.pop('tmd_base64')
+        result.update(obj_base64=base64.b64encode(obj).decode('ascii'), filename='original-model.obj', byte_length=len(obj))
+        result['limitations'].append('OBJ preserves vertex/face order and integer Y-down coordinates; TMD normals remain unchanged.')
+    return result
 
 
 def refresh_resource_catalog(project) -> dict:

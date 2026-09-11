@@ -334,6 +334,8 @@ class EditorHandler(BaseHTTPRequestHandler):
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
             if urlsplit(self.path).path == '/api/model-shape-replacement':
                 request_limit = 6 * 1024 * 1024
+            if urlsplit(self.path).path == '/api/model-obj-replacement':
+                request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
             content = self.rfile.read(length)
@@ -344,17 +346,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
-                if route == '/api/model-shape-replacement':
-                    if set(body) != {'asset_id','tmd_base64'} or not isinstance(body['asset_id'], str):
+                if route in ('/api/model-shape-replacement', '/api/model-obj-replacement'):
+                    obj_upload = route == '/api/model-obj-replacement'
+                    payload_key = 'obj_base64' if obj_upload else 'tmd_base64'
+                    if set(body) != {'asset_id',payload_key} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Model shape upload requires asset_id and tmd_base64 only')
-                    encoded = body['tmd_base64']
-                    if not isinstance(encoded, str) or len(encoded) > 5592408:
-                        raise ProjectError('Model shape exceeds 4 MiB')
+                    encoded = body[payload_key]
+                    if not isinstance(encoded, str) or len(encoded) > (22369624 if obj_upload else 5592408):
+                        raise ProjectError('Model shape exceeds the format size limit')
                     try:
                         payload = base64.b64decode(encoded, validate=True)
                     except ValueError as exc:
                         raise ProjectError('Model shape requires valid base64') from exc
-                    self.server.project.set_model_replacement(body['asset_id'], payload)
+                    if obj_upload:
+                        self.server.project.set_model_obj(body['asset_id'], payload)
+                    else:
+                        self.server.project.set_model_replacement(body['asset_id'], payload)
                     self._json(200, self.server.state())
                     return
                 if route in ('/api/model-shape-preview', '/api/export/model-shape'):
@@ -434,10 +441,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, report)
                     return
                 if route == "/api/model-shape-source":
-                    if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:
+                    if set(body) - {"asset_id", "format"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
                         raise ProjectError("Model source accepts a catalog identity only")
                     from .resources import model_shape_source
-                    self._json(200, model_shape_source(self.server.project, body["asset_id"]))
+                    self._json(200, model_shape_source(self.server.project, body["asset_id"], body.get('format','tmd')))
                     return
                 if route == "/api/field-map-preview":
                     if set(body) - {"asset_id", "layer"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:

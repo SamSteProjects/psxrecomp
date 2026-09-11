@@ -291,7 +291,7 @@ def _build_project(project, output_dir) -> dict:
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
         from importer.model_authoring import model_shape_overlays
         model_assets, model_payloads = {}, {}
-        for identifier, binding in sorted(project.model_overrides.items()):
+        for identifier, binding in sorted(getattr(project, 'model_overrides', {}).items()):
             model_payloads[identifier] = project.read_model_replacement(identifier, binding)
             document = project.imports[binding['source_scene_id']]
             model_assets[identifier] = next(a for a in document['assets']['models'] if a['semantic_id'] == identifier)

@@ -213,6 +213,46 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### OBJ workflow checkpoint
+- Previous turn made progress accepting actual browser file input/upload. Added2 focused OBJ regressions covering decimal integer exports, UTF8 BOM, ignored external material declarations, exact byte scope, topology/order/count rejection, negative indices and nonrepresentable coordinates.
+- All15 focused OBJ/model/importer/project checks passed, plus Node syntax and diff checks. Updated feature matrix to reflect browser and Blender acceptance and retain scene/gameplay/shared-stream gaps.
+- Local checkpoint includes upload draft guards, optional model collection build fix and OBJ interchange/UI/documentation. Only explicit source/test/docs paths selected; private Blender outputs remain untracked.
+
+### Browser OBJ file-upload workflow acceptance
+- Previous turn made progress verifying Blender roundtrip. Located bundled Playwright via workspace dependencies and used a separate headless Edge test browser, not the user browser or game. Started fresh isolated editor4405/session69467 for the existing private model-shape test project.
+- Automated actual file input selected Blender-edited NPC0105 OBJ, verified view/export disabled, discarded it, reselected/uploaded, verified authored preview and cleared override back to retail. Zero page errors. Test process7716 completed successfully; scene rebuild requests accounted for its elapsed time.
+- No project Save or game interaction. Existing saved model0000 test override was retained; temporary NPC0105 override cleared. Updated user guide with browser acceptance. Gameplay and broader external-tool configurations remain unverified.
+
+### Blender OBJ external-tool roundtrip
+- Previous turn made progress integrating OBJ source/upload. Located installed Blender through uninstall registry at D:/Games/Steam/steamapps/common/Blender/blender.exe; version5.2.1. Used factory-startup background processes only, no existing scene changes.
+- Private NPC model0105 (130vertices/225triangles) exported to OBJ, imported unsplit with validation off and Y-forward/Z-up, then exported matching axes with modifiers/UV/normals/materials off. SDK reimport preserved every original TMD byte.
+- Second Blender run moved vertex0 X+20; SDK reimport audited exactly one X coordinate+20 and preserved all other source bytes. Documented supported settings/limitations in docs/legaia-model-shapes.md. Browser file-picker and gameplay remain pending.
+
+### OBJ source/upload editor integration
+- Previous turn made progress implementing ordered OBJ interchange. Added source format choice and16MiB OBJ upload route with strict base64 limits, routed through existing shape validation/storage. TMD path retains4MiB limit.
+- Model inspector now offers Download shape OBJ and accepts TMD/OBJ files; common draft context guards and authored preview are reused. UI explains unchanged normals, source axes/integer positions and required vertex/face order.
+- Fresh temporary HTTP server passed retail OBJ download, one vertex X+10 upload and exact authored-vs-retail preview comparison; other vertices identical. Node/Python syntax checks passed. Browser upload and external3D-tool roundtrip remain unverified. No user project/runtime changes.
+
+### Ordered OBJ model shape interchange
+- Previous turn made progress verifying combined NPC animation/shape. Added standard OBJ source export and position-only import into source TMD, preserving source vertex/face order, topology, materials, normal words and padding.
+- OBJ requires positive indices, exact source triangulation, bounded UTF8 input and signed16 integer positions; material-file references are ignored, never followed. Added project adapter through existing validated TMD asset storage/history.
+- Synthetic no-op roundtrip and single-vertex edit passed; fractional coordinates, changed face order and extra vertices rejected. OBJ HTTP/UI and external-tool roundtrip remain to implement/verify. This does not add arbitrary topology replacement or normal recalculation.
+
+### NPC shape plus authored animation acceptance
+- Previous turn made progress protecting upload drafts. Read animation-browser-check without saving; copied metadata/animation override into a temporary project and authored one20unit vertex change on actor0011's model0105.
+- Corrected the check's authored_bank argument to use AnimationChannels values (initial invocation passed whole components and raised KeyError; no source defect). All15 NPC pose frames retained a20unit transformed vertex delta, identical other vertices, immutable input pose and both authored-animation/shape provenance.
+- Combined shape+animation build produced2 overlays. No user project mutation or game input. This proves local posed geometry and package composition for these separate streams, not live gameplay or exact shared-stream composition.
+
+### Model upload draft ownership
+- Previous turn made progress verifying mixed model/texture build. Added explicit selected-TMD draft ownership (file, model, project/scene), guard before/after asynchronous file reading, and discard action.
+- Pending files block model/layer changes, clear and export; failed upload retains its selection, successful upload clears before reopening authored view, closing inspector discards only the unsubmitted file. Empty upload action is disabled.
+- Node syntax passed. File-picker browser interaction remains unverified; these draft controls are implementation progress, not an acceptance claim. Existing projects/runtime untouched.
+
+### Mixed model and texture package verification
+- Previous turn made progress checkpointing501c47f8. Ran texture build guards: nine fault subcases initially raised AttributeError because older project adapters omit model_overrides. Build now treats an absent optional model collection as empty, matching texture handling.
+- All3 texture-build tests passed after correction, including stale source/payload/audit/overlap rejection and retail texture/MAN composition.
+- Temporary retail model0000 one-coordinate edit plus town01 TIM5/raw/0 payload edit built two nonoverlapping overlays, with both model.shape and texture.tim audit records. This establishes that pair only; exact shared compressed-stream cross-family composition remains unresolved. No user project or runtime mutation.
+
 ### Model shape checkpoint verification
 - Previous turn made progress with party animation and authored navigation. Added two focused synthetic regressions for every source byte including normal XYZ/padding, vector alias rejection, known90degree pose result, immutable input, and missing transform rejection.
 - All31 focused model/importer/export/project/build-report/scene/MAP-build checks passed with retail input. Updated FEATURE_MATRIX with implemented model-shape scope and unverified boundaries.
