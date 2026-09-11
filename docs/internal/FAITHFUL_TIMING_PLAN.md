@@ -213,6 +213,56 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Runtime overlay checkpoint
+- Pick runtime node is now disabled when live epoch/correlation evidence is unavailable and its active mode clears when that evidence is lost, avoiding a misleading pressed tool in Edit mode.
+- Checkpoint includes visually verified cyan overlays, mode suppression, isolated guard checks, frame/node inspector links, overlapping subset checks, and browser-confirmed explicit picking of 31 stacked nodes. Alt-key shortcut remains not independently browser-accepted.
+
+
+### Runtime picking browser acceptance
+- Read current browser API documentation: LocatorClickOptions does not support position, explaining prior center-click misses. Used documented tab.click([1126,700]) against the visible cyan stack with Pick runtime node enabled. Dialog opened 31 of 31 captured nodes, including distinct node IDs at 16320/0/16320.
+- Explicit picking and overlapping-hit selection are now browser-accepted. Alt shortcut remains separately unverified. No authored state or game input changed. Updated README to reflect actual evidence.
+
+
+### Explicit runtime picking mode
+- Added Pick runtime node toggle which enables the runtime layer and selects node hits without requiring Alt. Empty hits report no sampled node and do not select scenery.
+- Browser toggle activated and empty-hit path verified, preserving Actor 0011 selection. Attempted positional click did not hit the visible marker; browser coordinate delivery remains unresolved. Syntax passes.
+
+
+### Runtime marker browser picking attempt
+- Refreshed screenshot confirms 90 cyan runtime positions and the relocated legend clear of the preview badge.
+- Attempted Alt-modified viewport click through browser automation. The labeled viewport accepted the action but selected scenery rather than opening the node dialog. End-to-end picking is therefore not accepted; next investigation must distinguish modifier delivery/coordinate mapping from hit-handler behavior. Existing Observed nodes list remains usable.
+
+
+### Runtime inspection workflow documentation
+- Reviewed accumulated runtime overlay/picking diff and documented the complete read-only workflow in integrations/legaia/README.md: connect, observe, display nodes, filter/frame, inspect candidates, refresh semantics, and overlapping picks. Kept pending Alt-click browser acceptance explicit.
+- Previous turn made implementation and focused-validation progress. Broader SDK authoring and release acceptance remain open; no completion claim.
+
+
+### Overlapping runtime marker inspection
+- Alt-click hit handling now opens all sampled nodes within the hit radius rather than choosing the first. Dialog refresh preserves the hit-ID subset; current epoch rejection still clears stale samples.
+- Executed the actual dialog renderer with two overlapping selected IDs and a third excluded node: two rows retained, refresh remained scoped, and stale epoch emptied the list. JavaScript syntax/diff checks pass. Physical browser Alt-click remains unverified.
+
+
+### Viewport runtime-node picking
+- Added Alt-click on cyan runtime markers to open the observed-node dialog filtered by captured node ID. Normal click retains frontmost scene-mesh selection. Hit entries rebuild each draw and are checked against accepted live epoch before opening.
+- JavaScript syntax passes; browser gesture acceptance remains pending. Overlapping markers currently open the first sampled hit and do not assert entity identity; multi-hit chooser is a follow-up usability item.
+
+
+### Runtime overlay guard checks
+- Executed the actual drawRuntimeNodeLayer function in an isolated Node context: valid sample draws, Edit mode, absent runtime, unavailable correlation, stale correlation epoch, stale node epoch, and invalid coordinate suppress drawing (7 checks passed). No user-game disruption.
+- Browser mode round-trip cleared captured overlays and requires fresh Observe actors, as intended. Refreshed observation requested; adjusted legend visual confirmation remains pending until capture renders.
+
+
+### Runtime layer visual acceptance
+- Browser screenshots show cyan sampled-node diamonds over the scene in Live mode and their removal after switching to Edit, with the authored scene retained. This proves mode suppression, not disconnect/epoch-change suppression.
+- Found runtime legend overlapping the existing preview badge; moved its canvas baseline from 42 to 78 pixels. Updated placement needs a refreshed visual check. Current wide camera views scenery backs; it is not a game-camera parity view.
+
+
+### All-node viewport layer
+- Added optional Runtime positions layer: cyan diamond overlays for up to 128 finite XYZ samples in the accepted live epoch, independent of imported candidate identity. Legend explicitly includes occluded nodes; authored meshes remain separate. Edit mode and invalid epochs suppress markers.
+- JavaScript syntax passed and browser toggle was activated/verified pressed on revision runtime-position-layer. Pixel-level overlay and invalidation verification remain pending.
+
+
 ### Candidate timing live verification
 - Reloaded comparison service only (session 49105). Browser freshly captured nodes, filtered 80082c9c, and selected Actor 0011. Inspector showed Binding capture frame 168271 separately from Position capture frames 168238-168238. This verifies distinct read provenance through the complete observer-to-inspector path.
 - Reviewed observer/schema diff and whitespace check; no game input or authored transform changes. Full SDK goal remains incomplete beyond this inspector checkpoint.

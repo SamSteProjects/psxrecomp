@@ -13,14 +13,17 @@ const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
 const sceneLayers={actors:true,scenery:true,ground:true};
+let showObservedNodes=false,runtimeNodeHits=[],pickRuntimeNodes=false;
+const observedLayerButton=document.createElement('button');observedLayerButton.textContent='Runtime positions';observedLayerButton.setAttribute('aria-pressed','false');observedLayerButton.title='Alt-click a sampled marker to inspect it, including occluded nodes; not confirmed NPC identities';observedLayerButton.onclick=()=>{showObservedNodes=!showObservedNodes;observedLayerButton.setAttribute('aria-pressed',String(showObservedNodes));draw();};$('frame-selected').after(observedLayerButton);
+const pickRuntimeButton=document.createElement('button');pickRuntimeButton.textContent='Pick runtime node';pickRuntimeButton.setAttribute('aria-pressed','false');pickRuntimeButton.onclick=()=>{pickRuntimeNodes=!pickRuntimeNodes;pickRuntimeButton.setAttribute('aria-pressed',String(pickRuntimeNodes));if(pickRuntimeNodes){showObservedNodes=true;observedLayerButton.setAttribute('aria-pressed','true');}draw();};$('frame-selected').after(pickRuntimeButton);
 const nodesButton=document.createElement('button');nodesButton.textContent='Observed nodes';$('frame-selected').after(nodesButton);
 const nodesDialog=document.createElement('dialog');nodesDialog.className='project-dialog observed-nodes-dialog';document.body.append(nodesDialog);
 nodesButton.onclick=()=>renderObservedNodes();
-function renderObservedNodes(query=''){
+function renderObservedNodes(query='',nodeIds=null){
   nodesDialog.replaceChildren();const heading=document.createElement('h2');heading.textContent='Observed runtime nodes';nodesDialog.append(heading);
   const note=document.createElement('p');note.textContent='Captured positions, independent of imported actor matching. Framing changes only the editor camera.';nodesDialog.append(note);
   const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation,context=JSON.stringify([state.project?.path,state.scene?.id]);
-  const nodes=state.project?.mode==='live'&&epoch&&correlation?.available===true&&correlation.epoch_id===epoch?correlation.runtime_nodes??[]:[];
+  const nodes=state.project?.mode==='live'&&epoch&&correlation?.available===true&&correlation.epoch_id===epoch?(correlation.runtime_nodes??[]).filter(node=>!nodeIds||nodeIds.includes(node.runtime_node_id)):[];
   const search=document.createElement('input');search.type='search';search.value=query;search.placeholder='Filter by node, coordinates, or candidate';search.setAttribute('aria-label','Filter observed nodes');nodesDialog.append(search);
   const list=document.createElement('div');list.className='observed-nodes-list';nodesDialog.append(list);
   const count=document.createElement('p');count.setAttribute('role','status');nodesDialog.append(count);
@@ -38,7 +41,7 @@ function renderObservedNodes(query=''){
   }
   const filter=()=>{const query=search.value.trim().toLowerCase();let shown=0;for(const item of rows){item.row.hidden=!item.text.includes(query);if(!item.row.hidden)shown++;}count.textContent=`${shown} of ${nodes.length} captured nodes`;};search.oninput=filter;filter();
   if(!nodes.length){const empty=document.createElement('p');empty.textContent='No accepted actor sample. Enter Live mode and Observe actors first.';nodesDialog.append(empty);}
-  const refresh=document.createElement('button');refresh.textContent='Refresh captured list';refresh.onclick=()=>renderObservedNodes(search.value);nodesDialog.append(refresh);
+  const refresh=document.createElement('button');refresh.textContent='Refresh captured list';refresh.onclick=()=>renderObservedNodes(search.value,nodeIds);nodesDialog.append(refresh);
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 };
 
@@ -1357,6 +1360,16 @@ function observedCandidatePoints(){
   if(!Array.isArray(candidates))return [];
   return candidates.slice(0,128).filter(candidate=>candidate?.epoch_id===epoch&&['x','y','z'].every(axis=>numeric(candidate.observed_position?.[axis]))).map(candidate=>displayPosition(candidate.observed_position));
 }
+function drawRuntimeNodeLayer(){
+  runtimeNodeHits=[];
+  if(!showObservedNodes)return;
+  const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation;
+  if(state.project?.mode!=='live'||!epoch||correlation?.available!==true||correlation.epoch_id!==epoch)return;
+  const nodes=(correlation.runtime_nodes??[]).slice(0,128).filter(node=>node.epoch_id===epoch&&['x','y','z'].every(axis=>numeric(node.observed_position?.[axis])));
+  ctx.save();ctx.strokeStyle='#79d5e8';ctx.fillStyle='#79d5e8';ctx.lineWidth=1.5;ctx.font='11px "Segoe UI",sans-serif';
+  for(const node of nodes){const point=project(displayPosition(node.observed_position));if(!point||!numeric(point.x)||!numeric(point.y))continue;runtimeNodeHits.push({x:point.x,y:point.y,id:node.runtime_node_id,epoch});ctx.beginPath();ctx.moveTo(point.x,point.y-5);ctx.lineTo(point.x+5,point.y);ctx.lineTo(point.x,point.y+5);ctx.lineTo(point.x-5,point.y);ctx.closePath();ctx.stroke();}
+  ctx.fillText(`${nodes.length} sampled runtime positions · Alt-click to inspect · includes occluded nodes`,12,78);ctx.restore();
+}
 function drawObservedCandidates(){
   const points=observedCandidatePoints();if(!points.length)return;
   ctx.save();ctx.strokeStyle='#cea9fa';ctx.fillStyle='#d7bcfa';ctx.lineWidth=1.5;ctx.font='11px "Segoe UI",sans-serif';
@@ -1389,6 +1402,10 @@ function draw(){
   if(!ctx)return;ctx.clearRect(0,0,width,height);projected=[];handles=[];
   if(sceneModelsReady()){try{sceneRenderer.draw(sceneView());}catch(error){sceneError=error.message;}}
   updateSceneBadge();frameSamplesButton.disabled=observedCandidatePoints().length===0;
+  const runtimeEpoch=acceptedEpoch(state.runtime),runtimeCorrelation=state.runtime_correlation;
+  pickRuntimeButton.disabled=state.project?.mode!=='live'||!runtimeEpoch||runtimeCorrelation?.available!==true||runtimeCorrelation.epoch_id!==runtimeEpoch;
+  if(pickRuntimeButton.disabled&&pickRuntimeNodes){pickRuntimeNodes=false;pickRuntimeButton.setAttribute('aria-pressed','false');}
+
   if(grid&&!sceneModelsReady()){const spacing=10**Math.floor(Math.log10(camera.distance/7)),half=spacing*12,cx=Math.round(camera.target.x/spacing)*spacing,cz=Math.round(camera.target.z/spacing)*spacing;for(let i=-12;i<=12;i++){line({x:cx+i*spacing,y:0,z:cz-half},{x:cx+i*spacing,y:0,z:cz+half},i===0?'#39504f88':'#33474c66');line({x:cx-half,y:0,z:cz+i*spacing},{x:cx+half,y:0,z:cz+i*spacing},i===0?'#39504f88':'#33474c66');}}
   drawFieldMap();
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
@@ -1417,7 +1434,7 @@ function draw(){
       ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});
     }
   }
-  drawObservedCandidates();
+  drawRuntimeNodeLayer();drawObservedCandidates();
 }
 function resize(){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;width=rect.width;height=rect.height;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
 new ResizeObserver(resize).observe(canvas);
@@ -1461,6 +1478,15 @@ canvas.addEventListener('pointerup',async event=>{
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
   else if(!finished.moved && event.button===0){
+    if((event.altKey||pickRuntimeNodes)&&showObservedNodes&&state.project?.mode==='live'){
+      const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation;
+      if(epoch&&correlation?.available===true&&correlation.epoch_id===epoch){
+        const hits=runtimeNodeHits.filter(hit=>hit.epoch===epoch&&Math.hypot(hit.x-p.x,hit.y-p.y)<9);
+        if(hits.length){renderObservedNodes('',hits.map(hit=>hit.id));draw();return;}
+        if(pickRuntimeNodes){notify('No sampled runtime node at this point');draw();return;}
+      }
+    }
+
     // Resolve the frontmost visible mesh before overlay markers. Otherwise a
     // projected actor behind scenery steals a click on the scenery surface.
     let hit=null;

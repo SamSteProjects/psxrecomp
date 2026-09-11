@@ -33,3 +33,24 @@ field observation reports unavailable unless the profile's execution witnesses
 and scene guards actually match the running game.
 No editor route writes live RAM. See the repository's `docs/FEATURE_MATRIX.md`
 for exact subsystem status and `docs/legaia-release-parity.md` for runtime checks.
+
+## Inspecting runtime positions
+
+Use Check runtime, enter Live mode, then Observe actors. Runtime positions toggles
+cyan markers for accepted sampled nodes, including nodes behind scenery. These
+are captured coordinates, not confirmed NPC identities or live replacement meshes.
+Follow live refreshes observations through the existing guarded observer.
+
+Observed nodes lists captured XYZ and position-read frame intervals independently
+of imported actor matches. Filter by node ID, coordinates, or candidate ID; Frame
+node moves only the editor camera. Inspect candidate opens the entity inspector,
+which keeps imported, authored and observed values separate and distinguishes
+position-read timing from later binding evidence. Refresh captured list uses the
+latest sample already held by the editor; Observe actors obtains a new sample.
+
+Enable Pick runtime node and click a cyan marker to inspect nearby sampled nodes,
+including overlapping hits. This path was verified in-browser with 31 stacked nodes.
+Turn picking off for normal scene-mesh selection. Alt-click is an additional
+shortcut; modifier-based browser acceptance remains pending.
+Markers are suppressed outside Live mode or when accepted epoch evidence is lost.
+No runtime position control writes game RAM or modifies authored transforms.
