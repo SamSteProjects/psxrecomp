@@ -33,6 +33,14 @@ function renderObservedNodes(query='',nodeIds=null){
     const row=document.createElement('div'),label=document.createElement('p');const p=node.observed_position;label.textContent=`${node.runtime_node_id} | position frames ${node.position_capture_frames?.before??'unknown'}–${node.position_capture_frames?.after??'unknown'} | XYZ ${p?.x??'?'} / ${p?.y??'?'} / ${p?.z??'?'} | ${node.candidate_entity_ids?.length??0} candidate entities`;row.append(label);
     const button=document.createElement('button');button.textContent='Frame node';button.disabled=node.epoch_id!==epoch||!p||!['x','y','z'].every(a=>numeric(p[a]));
     button.onclick=()=>{if(state.project?.mode!=='live'||acceptedEpoch(state.runtime)!==epoch||JSON.stringify([state.project?.path,state.scene?.id])!==context||state.runtime_correlation?.available!==true||state.runtime_correlation.epoch_id!==epoch)return;coordinateProbe={point:{...p},epoch,context};cancelViewportGesture();camera.target=displayPosition(p);camera.distance=800;cameraRevision++;nodesDialog.close();draw();};row.append(button);list.append(row);rows.push({row,text:[node.runtime_node_id,p?.x,p?.y,p?.z,...(node.candidate_entity_ids??[])].join(' ').toLowerCase()});
+    const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Captured fields and evidence';details.append(summary);
+    for(const field of node.decoded_fields??[]){
+      const entry=document.createElement('p');const interpreted=field.interpreted_value;
+      const value=interpreted===null||interpreted===undefined?'Unknown':typeof interpreted==='object'?JSON.stringify(interpreted):String(interpreted);
+      entry.textContent=`${field.property}: ${value} | raw ${field.raw_numeric_value??'unknown'} | ${field.confidence??'unknown'} | applicability ${field.applicability??'unknown'}${field.unresolved?' | unresolved':''}`;
+      const evidence=document.createElement('small');evidence.textContent=` ${field.notes??''} ${(field.evidence??[]).join(', ')}`;entry.append(evidence);details.append(entry);
+    }
+    row.append(details);
     for(const id of node.candidate_entity_ids??[]){
       const entity=entities().find(item=>item.id===id);if(!entity)continue;
       const inspect=document.createElement('button');inspect.textContent=`Inspect candidate ${entity.name??entity.label??id}`;inspect.title='Unconfirmed identity match; opens imported and observed values separately';

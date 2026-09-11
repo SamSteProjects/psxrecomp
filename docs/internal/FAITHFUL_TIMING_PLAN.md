@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Node field checkpoint and next authoring gap
+- Reviewed field-inspector changes and feature ledger. Node field expansion is browser-verified on an unmatched node; notes formatting is included.
+- Authoritative ledger still identifies sparse rigid animation editing as SDK-preview-only: project persistence, editor controls, playable carrier packaging and gameplay acceptance are absent. ProjectService search found no animation override integration. This is the next substantial authoring workflow to extend after the inspector checkpoint; arbitrary import/extra channels remain distinct requirements.
+
+
+### Unmatched node fields browser acceptance
+- Reloaded editor service only (session 64288) and captured 90 nodes. Filtered unmatched 80083284 and expanded Captured fields and evidence. Browser displayed raw data, Unknown conditional interpretation, unresolved applicability, strongly_inferred/confirmed/contradictory confidence, and reference notes without asserting subclass identity.
+- Separated evidence notes into a block with whitespace after visible concatenation was found. No extra guest reads beyond the existing Observe actors operation.
+
+
+### Unmatched node field inspector
+- Independent runtime-node entries now expose copied decoded fields from the already guarded prefix capture, without additional memory reads. Collapsible UI displays interpreted/raw values, confidence, applicability, unresolved status, notes and evidence IDs. This enables inspection without an imported actor match.
+- Eight correlation tests and JavaScript syntax pass. Server reload/fresh browser field expansion remains pending.
+
+
 ### Runtime overlay checkpoint
 - Pick runtime node is now disabled when live epoch/correlation evidence is unavailable and its active mode clears when that evidence is lost, avoiding a misleading pressed tool in Edit mode.
 - Checkpoint includes visually verified cyan overlays, mode suppression, isolated guard checks, frame/node inspector links, overlapping subset checks, and browser-confirmed explicit picking of 31 stacked nodes. Alt-key shortcut remains not independently browser-accepted.

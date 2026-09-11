@@ -67,3 +67,5 @@
 .observed-nodes-dialog > input { width: 100%; box-sizing: border-box; }
 .observed-nodes-list { max-height: 55vh; overflow: auto; overflow-wrap: anywhere; }
 .observed-nodes-list > div { padding: 8px; border-bottom: 1px solid #435064; }
+
+.observed-nodes-list details small { display: block; margin-top: 4px; color: #a9bac4; }

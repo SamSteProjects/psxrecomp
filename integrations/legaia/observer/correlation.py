@@ -264,6 +264,7 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
         node_fields = _fields(node_lookup[node_id])
         runtime_entry = {"runtime_node_id": node_id, "candidate_entity_ids": [],
                          "reason": observed.get("reason"), "binding_confirmed": False,
+                         "decoded_fields": deepcopy(node_lookup[node_id].get("decoded_fields", [])),
                          "observed_position": {axis: node_fields.get("position_" + axis, {}).get("interpreted_value") for axis in ("x", "y", "z")},
                          "epoch_id": epoch["epoch_id"], "frame": node_lookup[node_id].get("position_capture_frames", {}).get("after"),
                          "position_capture_frames": deepcopy(node_lookup[node_id].get("position_capture_frames"))}
