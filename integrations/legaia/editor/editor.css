@@ -57,3 +57,8 @@
 .transition-unresolved code { overflow-wrap: anywhere; }
 
 .ramp-filter { display: block; width: 100%; margin-top: 10px; }
+
+.coordinate-comparison { width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed; }
+.coordinate-comparison caption { text-align:left; margin:8px 0; }
+.coordinate-comparison th,.coordinate-comparison td { padding:5px 3px; text-align:right; overflow-wrap:anywhere; border-bottom:1px solid #33474c; }
+.coordinate-comparison th:first-child { text-align:left; }

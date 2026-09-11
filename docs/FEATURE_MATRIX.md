@@ -1,70 +1,30 @@
 # Legaia SDK feature matrix
 
-2026-09-10 decoration move handles: X/Z viewport dragging now authors individual
-static-decoration offsets. Browser acceptance covers free X movement, Undo,
-64-unit Z snapping, unchanged shared counterpart and Save. Spawnable scenery
-remains shared-only in the numeric inspector; in-game behavior is unverified.
+Current scene-editor status (2026-09-10):
 
-2026-09-10 scenery preview performance: transform edits now reuse decoded scene
-geometry. Retail service measurement: initial18.423s, clear0.386s, restore1.122s,
-with identical asset payloads and correct individual positions. This measures
-the SDK service, not browser rendering/network latency.
+| Capability | Status and verified scope | Remaining work |
+| --- | --- | --- |
+| Assembled field scene | Implemented and browser-validated for town01: 52 actors (51 renderable), 46 placed scenery objects, 162 decorations and one textured ground entity. | Complete retail scene parity, including ground holes and exact runtime terrain behavior. |
+| Selection and inspection | Hierarchy, viewport picking, selection outlines, object framing and Actors/Scenery/Ground visibility layers work together. Source provenance remains separate from authored transforms. | Broader scene acceptance and extensible inspector coverage. |
+| Shared scenery transforms | Writable numeric offsets/rotations, undo/redo, save/reopen, effective preview and guarded MAP packaging. Browser edit/save/undo accepted. | In-game visual/behavior acceptance; spawnable scenery remains shared-only. |
+| Individual decorations | Writable cell-local transforms clone a descriptor into an unreferenced zero-filled slot while preserving grid flags. Retail checks verify distinct transforms for cells1833/2089 and unchanged unrelated bytes. | In-game rendered result and broader allocation/lifecycle acceptance. |
+| Decoration move handles | Browser-validated X/Z dragging, free X movement, Undo, origin-aligned64-unit Z snapping, unchanged shared counterpart and Save. | Spawnable-object handles and other transform tools. |
+| Preview performance | Transform changes reuse decoded geometry. Measured SDK service cold18.423s, clear0.386s, restore1.122s with identical geometry payloads and correct positions. | Browser/network performance; controls briefly disappear during refresh. |
+| Playable scenery package | The saved gizmo edit built successfully. The same windowed runtime consumed all36 MAP sectors (73728 bytes), and four read-only RAM comparisons matched both descriptors and grid references. Normal title/prologue/field flow and movement reached. | User screenshot and explicit confirmation verify the visible wall gap in the manual run. Collision behavior and broader lifecycle acceptance remain unverified. |
 
-2026-09-10 individual-decoration browser acceptance: selecting cell1833,
-editing X128, viewing X5440 while cell2089 remains X5312, saving and undoing
-back to X5312 passed in the textured scene editor. All20 retail-enabled build
-tests pass. Scene regeneration is still slow and briefly hides scenery controls;
-in-game allocation behavior remains unverified.
+Current coordinate/live-inspector additions:
 
-2026-09-10 individual static decorations: project commands, undo/redo,
-save/reopen, effective preview and guarded build output now support cell-local
-transform overrides after shared record edits. The serializer clones into an
-unreferenced zero-filled descriptor and preserves grid flags. Retail town01
-acceptance proves distinct X values for cells1833 and2089, allocation into slot5,
-and unchanged unrelated bytes. Inspector controls are implemented and syntax
-checked; browser and in-game acceptance remain pending. Spawnable scenery is
-shared-only. Earlier dated entries below describe historical milestones.
+- Actor preview elevation uses source terrain triangles where available, without changing imported or authored Y. In town01,25/52 actors resolve a source-ground sample; eight have nonzero heights. Actor0011 was visually checked on raised ground. The remaining27 still lack a matching displayed ground cell; this is not complete runtime elevation parity.
+- Live candidate inspectors compare imported/effective/sampled guest XYZ, signed deltas, captured placement-header coordinates and header agreement. The table was exercised through guarded live sampling. Header/model compatibility does not establish identity, and runtime deltas are not a coordinate calibration.
+- Frame live samples is browser-validated and restricted to accepted-epoch candidates in Live mode. Locate coordinates frames a separate camera-only reference marker; the captured1886/0/1740 point visually agrees with nearby ramp/path/rock landmarks.
+- Same-scene refresh retains the previous preview with stale-value labels and disabled scenery editing. Browser acceptance covers retained inspector controls; a deferred-response check covers Undo cancelling a pending update.
 
-The assembled town01 preview includes52 actors,46 placed objects,162 decorations
-and one ground entity, with selection outlines, hierarchy/inspector navigation
-and visibility layers. Shared scenery authoring is browser-accepted through
-edit/save/undo and package-verified; in-game behavior remains unverified.
-
-2026-09-10 textured ground: town01's1946 source cells now render alongside actors
-and46 placed environment objects. All11 ground materials resolve through the
-scene texture catalog, with authored replacements supported by the adapter.
-Browser inspection verified paths/grass/beach near house137 and ground selection/
-framing. This remains a source reference surface with holes; decorations,
-cell-level inspection and complete retail scene parity are unfinished.
-
-2026-09-10 environment editor selection: searchable hierarchy rows, viewport-pick
-routing, a read-only transform/source inspector and object framing are connected
-to the combined scene preview. Node syntax passes; browser interaction and visual
-acceptance remain pending. Environment selection is temporary preview UI state,
-not an authored actor or a persistent project edit.
-
-2026-09-10 combined scene-preview service: the HTTP preview now includes textured
-environment instances with full world transforms alongside MAN actors. A fresh
-town01 service run produced46/46 environment meshes and51/52 actor meshes, sharing
-57 geometries. Four focused checks passed. Browser visual verification and
-environment hierarchy/inspector integration remain pending; ground/decorations
-are still absent, so this is not yet the full scene workflow.
-
-2026-09-10 environment geometry resolution: all46 town01 placed objects now
-resolve to stable scene model IDs using the explicitly inferred reference pool
-selection. Partition-0 headers resolve37 binds; the SDK preview decodes32 static
-placements and14 animated prop poses,5371 triangles across instances. Five
-focused tests pass. **SDK geometry only**: texture/world-transform assembly and
-viewport/hierarchy/inspector integration still need implementation and browser
-verification. This does not yet cover tiled ground or decorations.
-
-2026-09-10 full-scene priority: the environment importer now enumerates placed
-MAP objects separately from MAN actors, retaining per-cell identities, source
-hashes, rotations and floor-derived positions. Retail town01 yields46 placements,
-including37 bind-owned and9 other placements; three focused checks pass. This is
-**import foundation only**. Environment mesh/prop-pose resolution, viewport and
-hierarchy integration, ground tiles and decorations remain unfinished. The
-current actor viewport is not a complete scene inspector.
+The active scenery validation package moves decoration cell1833 by authored
+MAP offset Z=-256, producing preview world Z2112 instead of1856. Cell2089 stays
+at world Z2112. Package SHA-256:
+`823dd770b419003b7d09a655bb9246d2f3f966bd719744be7b16d6acc1195dde`.
+This is a partial scene-authoring workflow, not completion of the full SDK.
+Detailed chronological evidence remains in `docs/internal/FAITHFUL_TIMING_PLAN.md`.
 
 2026-09-10 animation authoring foundation: a source-hash-bound serializer now
 writes sparse translation/rotation axes in existing rigid frame/object channels,

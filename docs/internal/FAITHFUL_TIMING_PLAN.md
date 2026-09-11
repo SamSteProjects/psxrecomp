@@ -213,6 +213,187 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-10 — Checkpoint coordinate comparison workflow
+
+- Previous turn was progress: checked interior geometry and preserved unresolved positions. Preparing a scoped checkpoint of the preview refresh fixes, separate derived elevations, live coordinate/header tables, sampled framing and manual coordinate locator, together with the user's rendered-wall acceptance evidence.
+- Focused tests and browser checks are recorded above. Interior/script placement, comprehensive identity binding and the full SDK buildout remain incomplete; this checkpoint is not goal completion.
+
+### 2026-09-10 — Check unresolved actors against interior geometry
+
+- Previous turn was progress: reviewed checkpoint diff before user clarified interior placement. Tested transformed scenery bounds at the four unresolved coordinate groups. Positions4544/12096 and3776/12096 overlap objects168/184;12096/7488 overlaps decoration280;16320/16320 overlaps no preview scenery bounds.
+- Browser framing Actor0036 at12096/7488 shows a furnished room and bed at its location. This supports the user's interior-geometry explanation for at least this actor. Bounds overlap alone does not establish floor height or correct pose, and the screenshot does not validate its character mesh appearance.
+- Preserved all actor coordinates; no automatic terrain snap or inferred relocation. Twenty-two actors at the boundary remain unclassified. No game input sent.
+
+### 2026-09-10 — Expose unresolved preview surface placement
+
+- Previous turn was progress: regression checks and capability documentation. Examined the captured height-preview output:22 of27 unsampled actors share16320/16320; remaining five occupy4544/12096 (two),3776/12096 (two),12096/7488 (one). No semantic inactive/parked classification is inferred from that distribution.
+- Added explicit preview_height_status and an unresolved-elevation inspector section explaining missing displayed source-ground cells and the ground-plane fallback. Source interpolation is still separate from imported/authored/runtime heights.
+- JavaScript syntax and five scene-preview tests pass. Browser/server refresh acceptance for this label remains pending. No game inputs sent.
+
+### 2026-09-10 — Check coordinate preview regressions and capability scope
+
+- Previous turn was progress: browser-validated coordinate locator and local landmarks. Ran seven existing scene-preview/environment-project tests; all pass, covering transform cache reuse and authored state behavior. These are focused fixture checks, not full game acceptance.
+- Updated FEATURE_MATRIX with current derived-height coverage, live coordinate/header comparisons, camera framing, coordinate locator and retained-preview evidence, explicitly preserving unresolved heights and identity/registration limits.
+- No game inputs or source payload tracking. Full goal remains incomplete.
+
+### 2026-09-10 — Verify coordinate locator against captured wall landmarks
+
+- Previous turn was progress: user confirmed rendered scenery gap. Browser-tested Locate coordinates with the earlier live position1886/0/1740. Marker and camera target use guest values through the existing Y display conversion; no actor correspondence or authored position mutation.
+- After orbiting to the inner wall face, screenshot shows the reference on the pale path between the broken ramp and the dark rock at the wall base, consistent with the earlier user screenshot at that coordinate. This supports local visual agreement, not complete scene registration or exact camera parity.
+- Locator is functional in-browser; global height/actor/script placement and full SDK requirements remain open. No game inputs sent.
+
+### 2026-09-10 — User confirms rendered wall edit
+
+- User explicitly confirmed the opposite wall instance is missing and supplied `C:/Users/sammo/AppData/Local/Temp/codex-clipboard-3f2b5ce9-901a-4087-8bc7-1e4b7ba48cd6.png`. Screenshot visibly shows a gap at the wall base beside Vahn and the pale path. Combined with the prior matching package/live MAP spans, this supplies user-observed visual acceptance of the edited scenery gap.
+- This validates the visible change in the manual run, not collision changes, full-scene coordinate parity or all NPC placement. The individual offset moves a wall section; it does not author a collision opening.
+- Coordinate-locator implementation began before the user message (camera-only reference marker, not yet browser-validated). Broader coordinate and live-inspector work remains open.
+
+### 2026-09-10 — Establish repeated wall model instances
+
+- Previous turn was progress: browser-validated live framing. Queried scene placements near captured player1886/1740: nearest wall is record193 cell1805 at1728/0/1856, using model0007; edited record194 cell1833 uses the same model0007 at5312/0/2112. Record193 has Y rotation2048 versus record194 rotation0.
+- Selected/framed record193 in the browser and orbited the camera to inspect the surrounding village. This establishes repeated model instances and disqualifies texture resemblance alone as landmark identity. It does not yet prove complete scene alignment or the rendered edit.
+- No game inputs or authored edits. Current browser selection is the nearby unedited wall for comparison.
+
+### 2026-09-10 — Browser-validate sampled-position camera framing
+
+- Previous turn was progress: implemented Frame live samples. Refreshed comparison editor4394 and invoked it with Actor0011's retained epoch-scoped sample. Camera centered the purple sampled marker in the separate interior geometry region, while the inspector retained imported placement and derived previewY-128 as distinct values.
+- Switching to Edit disabled Frame live samples. The browser also displays the new Preview elevation section with cell5398. No game input or new continuous sampling was sent.
+- This verifies camera/inspector interaction only, not candidate identity or scene/runtime registration. Full goal remains incomplete.
+
+### 2026-09-10 — Frame sampled actor locations in the viewport
+
+- Previous turn was progress: exposed captured placement-header evidence. Added Frame live samples to the scene toolbar, using only selected actor candidates accepted by existing live-mode/epoch/finite-coordinate guards. It frames all candidates together, preserving ambiguity, and changes only the editor camera.
+- Button disables when no eligible sample remains; activation rechecks the guard. Guest positions pass through the existing display conversion. Syntax and whitespace checks pass; browser interaction validation remains pending. No game input sent.
+
+### 2026-09-10 — Distinguish placement headers from runtime relocation
+
+- Previous turn was progress: live coordinate table accepted. Inspected the retained authoritative observer output: Actor0011 candidate header2880/5440 agrees with imported placement despite current9664/8640. The prior appearance-only explanation was incomplete; matching header is additional evidence, while scripted relocation and unconfirmed identity remain possible.
+- Added placement-header agreement and captured header X/Z to each candidate inspector. Clarified that runtime-minus-effective deltas are not coordinate calibration. Several other headers also agree while current positions differ, so no global offset is justified by these samples.
+- JavaScript syntax and whitespace checks pass. No new game input, sampling or guest writes. Coordinate registration remains open.
+
+### 2026-09-10 — Exercise live coordinate table through guarded sampling
+
+- Previous turn was progress: browser-checked terrain-derived Actor0011 placement. In comparison editor4394, Check runtime, Live and Follow live succeeded. The new comparison table displays sampled guest coordinates and missing imported height correctly; stopped following after inspection.
+- Actor0011 imported2880/unknown/5440 has an unconfirmed appearance candidate at9664/0/8640, node80082c9c (sample frame82403), yielding X/Z deltas6784/3200. This does not establish that actor identity or a coordinate offset; appearance reuse remains ambiguous and must not drive placement correction.
+- Corrected the SDK preview limitation text to describe terrain-derived height fallback. No controller input or guest writes. Full registration remains unresolved.
+
+### 2026-09-10 — Load and inspect terrain-derived actor elevations
+
+- Previous turn was progress: implemented source-terrain interpolation. Restarted only editor4394 (new server session84253), leaving user's game untouched. Fresh service output samples25/52 actors, eight at nonzero height; all sampled actors retain imported Y=null and model matrices use the reflected preview Y. Remaining27 lack a source-ground cell.
+- Refreshed the user's comparison tab and framed Actor0011 at2880/-128/5440: screenshot shows the actor on the raised grass surface. Added a separate derived preview-elevation inspector section and corrected the obsolete ground-plane-only text. Syntax passes; the added label needs a further browser refresh.
+- Full coordinate registration and broader live-inspector acceptance remain open. No game input sent.
+
+### 2026-09-10 — Derive actor preview elevation from visible terrain
+
+- User requested continued coordinate/live-inspector implementation. Added triangle interpolation over the decoded source ground mesh for actors whose imported/effective Y is unknown. SDK output keeps original position unchanged and exposes separate preview_position and preview_ground_sample evidence; viewport actor positions consume that derived value only for a current preview.
+- Both source triangle slopes, diagonal seam, missing cells, negative/invalid coordinates passed focused checks. The user's last captured X1886/Z1740 samples source terrainY0, agreeing with the earlier liveY0 at that one point. This is a single-point agreement, not global coordinate registration or runtime collision validation.
+- Syntax/diff checks pass. Server restart/browser acceptance and wider live landmark comparison remain pending. No game input or runtime writes.
+
+### 2026-09-10 — Begin coordinate comparison inspector
+
+- User prioritized position/coordinate agreement and a live inspector prototype. Added a guest XYZ comparison table to existing sampled candidate panels: imported, effective, observed and observed-minus-effective, preserving unknown heights and uncertain correspondence.
+- Actual coordinate helper checks pass for authored deltas, missing heights and signed guest Y; JavaScript syntax and diff checks pass. Browser/live acceptance of this new table is pending. NPC floor placement and decoration/runtime alignment are still unresolved and remain the priority; this table does not claim to fix either.
+- Recovered an interrupted local text write using HEAD plus the exact prior preview-refresh edits, then checked the restored file's syntax and scoped diff. No game input sent.
+
+### 2026-09-10 — Compare user wall screenshot and preview limitations
+
+- User's new screenshot shows Vahn on the pale path beside a textured wall and broken stone ramp, matching the kinds and arrangement of landmarks in the framed preview; the game wall appears continuous where the editor shows a gap. This is a visual mismatch requiring registration, not proof the user chose a wrong location.
+- Read-only current player capture is1886/0/1740. Editor cell1833 origin5312/0/2112 and local mesh bounds[-64,-1216,-128]..[128,0,128] cannot be reconciled by merely calling the origin a wide mesh boundary. Exact landmark/instance correspondence remains unresolved; repeated scenery is possible.
+- Source confirms actor preview height still substitutes a ground plane when imported Y is unknown, while terrain uses decoded elevations. This can put NPC meshes under terrain and is not a faithful assembled-scene placement implementation. No runtime input or source patch was made for this comparison.
+
+### 2026-09-10 — Inspect user's manual wall verification
+
+- User requested focused investigation while broader goal remains paused. Captured their manually launched runtime (identity proc-abd75bec0a104051650be98afddbb94bf87d94b858174adf9487bc55aae71c1a), without controller input. Screenshot shows Vahn beside cliff/trees; read-only player position1838/-192/2794 differs from authored decoration5312/0/2112.
+- Active overlay plan matches the intended package;36 sectors consumed. Live descriptor5 has Z offset-256, descriptor194 remains unchanged and cell1833 references5, confirming MAP byte delivery in this fresh manual run. This does not establish rendered behavior.
+- Opened the actual saved build project in separate editor4394 for visual location comparison. The earlier inability to access tool-launched windows remains a user-reported launch problem; a window handle alone was insufficient evidence of usability.
+
+### 2026-09-10 — Browser-check retained scenery inspector
+
+- Previous turn was progress: handled Undo during preview refresh. Opened a separate copied project on4395 (server session89045, browser tab63); no writes to the user's running project's saved data and no game input.
+- Browser loaded260/261 meshes. Cell1833 individual X64 produced effective5376/0/2112; X128 produced5440/0/2112. Captured the intermediate DOM showing both previous-preview position labels and the disabled individual Apply button, with the selected decoration still present. This verifies the retained-inspector path in-browser; rapid Undo timing remains covered by the deferred-response function check rather than a browser capture.
+
+### 2026-09-10 — Handle undo during retained-preview refresh
+
+- Previous turn was progress: retained same-scene preview and gated scenery edits. Added cancellation when Undo returns to the already loaded source key, clearing the pending badge immediately and rejecting the superseded response. Same-scene refresh errors retain renderer geometry for a later Undo recovery.
+- Executed the actual refresh function with a deferred response: Undo aborts the request, preserves geometry and rejects its late response without loading it. Node syntax passes. Browser acceptance remains pending; no runtime input sent while user navigates.
+
+### 2026-09-10 — Retain scene context during preview refresh
+
+- Previous turn was progress: consolidated capability documentation. While user controls the existing game, changed the editor to retain the previous preview for the same project/scene during refresh, with an explicit previous-preview badge and position label.
+- Scenery numeric controls and move handles are disabled until the source key is current; command callbacks reject stale inspector keys. Different projects/scenes cannot reuse the retained preview. No game input was sent.
+- Node syntax and diff whitespace checks passed. Actual helper-function checks cover retained/current previews, project/scene isolation, failed preview and capability removal. Browser refresh acceptance remains pending; no new browser claim is made.
+
+### 2026-09-10 — Consolidate current scene-editor capability status
+
+- Previous turn was progress: verified windowed runtime and released input for user navigation. No controller input sent this turn.
+- Replaced contradictory superseded scene-editor milestone paragraphs at the top of FEATURE_MATRIX with a current capability/evidence/remaining-work table. Preserved explicit boundaries between browser acceptance, package-byte/runtime consumption evidence and still-pending rendered-wall acceptance. Animation and broader SDK requirements remain unchanged.
+- This documentation change does not claim full scene parity or goal completion. User retains navigation control.
+
+### 2026-09-10 — Hand navigation to user in existing windowed runtime
+
+- Previous turn was progress: finished Mei dialogue and resumed movement. Continued normal input around plaza to4802/-192/3502. User offered to navigate to the wall in a non-headless run.
+- Verified PID30176 already owns a native game window titled `Legend of Legaia Recompiled`, handle10488622. No replacement launch needed. At frame83970, pad status confirms override=-1, override_frames=0 and released buttonsFFFF; automated input is inactive. Preserve this run and let user navigate.
+- Scenery visual acceptance remains pending; full goal active.
+
+### 2026-09-10 — Finish Mei introduction and restore route movement
+
+- Previous turn was progress: identified the active dialogue as the movement gate. Finished Mei's conversation through visible choices and ordinary Cross input, selecting the offered not-now response for measurements. Text and camera advanced; Mei departed.
+- Repeated Right40 after conversation completion moved Vahn from2368/-64/3392 to2688/-64/3392 at frame77111, proving normal control resumed in the same identity-checked4399 runtime. Package consumption remains36 sectors. Private evidence: `route-east-retry-after.json/png`.
+- Next route segment heads toward higher Z around the source collision boundary. Full SDK goal and scenery appearance acceptance remain open.
+
+### 2026-09-10 — Identify active Mei dialogue on viewing route
+
+- Previous turn was progress: decoded a source-grid viewing approach. Revalidated the same runtime through controller/capture requests. Right40 left player2368/-64/3392 unchanged; inspecting the screenshot revealed Mei's active introduction dialogue, so this movement result is not collision evidence.
+- Advanced two visible dialogue pages with ordinary Cross inputs. Camera and text advance normally; no process restart, guest writes or savestate loads. Continue the conversation before attempting the route. Scenery visual acceptance remains open.
+
+### 2026-09-10 — Revalidate runtime and inspect source route
+
+- Previous goal turn was no progress (acknowledged the Select correction only). Revalidated the same live process through runtime identity and a fresh player read: frame60414, position2368/-64/3392, 36 overlay sectors consumed. No restart or guest writes.
+- Decoded the retail collision baseline before further movement. The edited wall coordinate5312/2112 lies in a blocked source subcell; walking directly to its center is therefore an unsuitable acceptance route. A private breadth-first source-grid route now identifies the nearest reachable viewing approach, with runtime collision/script differences explicitly unverified. Evidence: `local-output/sdk-20260909/decoration-gizmo-browser/source-route.json` and `near-wall-route.json`.
+- Scenery rendering acceptance and the full SDK goal remain open.
+
+### 2026-09-10 — Route toward the edited wall and reproduce step visibility
+
+- Previous turn was progress: reached controllable field. Continued bounded normal movement in the same4399 run. At3152/32/3182 and3282/96/3246 Vahn was not visibly rendered; moving up to3282/128/3486 restored visibility. This reproduces the earlier step-area symptom on executable97f0f026, without establishing cause or implicating the scenery edit.
+- Western route retained visibility at2668/-64/3294; Down stopped atZ3182. Continued around the west side to2368/-64/3392 near the round house, frame46514. These are measured route constraints, not an accepted gameplay collision bug diagnosis. Latest private screenshot `west-around-boundary-after.png`.
+- Host53840 remains live and identity checks pass. Full MAP overlay consumption unchanged; no RAM writes/state loads. Edited wall rendering still unverified; full goal active.
+
+### 2026-09-10 — Reach controllable field with edited scenery loaded
+
+- Previous turn was progress: exact runtime MAP spans matched the package. Advanced the elder introduction using normal Cross inputs and the visible Yes choice. At frame35393 the camera returned to normal field view. A bounded30-frame Down input visibly moved Vahn away from the tree; before/after player captures provide coordinates for routing.
+- Same identity-checked runtime4399 and host session53840 remain live. Full overlay consumption remains36 sectors/73728 bytes with no guard failure. Private `elder-page-*.png` and `player-before/after.json` preserve evidence. No restart, RAM write or savestate load.
+- This additionally accepts interactive field progression for the current stability executable with the instance package. The edited wall's rendered placement remains unverified; full goal active.
+
+### 2026-09-10 — Verify individual scenery bytes in the running field
+
+- Previous turn was progress: Select skipped prologue and full MAP overlay consumption was observed. Same4399 process advanced through the name prompt with normal inputs; Vahn rendered beside the Genesis Tree in the field introduction.
+- Revalidated the previously observed MAP address candidate0x80139530 through exact package comparisons: descriptor5 is a32-byte match including authored Z=-256; descriptor194 remains a32-byte source match; cell1833 contains0x2005 and counterpart2089 contains0x20c2. All four bounded reads match generated package spans exactly. Runtime identity was checked before reading; no RAM writes or state loads.
+- Evidence: private `map-candidate.json` and `runtime-map-comparison.json`, frame25298, plus field-intro screenshot. This accepts loaded runtime data, not final rendered-wall placement or collision behavior. Host session53840 remains live; full objective active.
+
+### 2026-09-10 — Skip prologue and observe edited MAP consumption
+
+- User supplied the correct prologue skip input: Select. Sent normal port1 Select (active-low65534,8frames) to the same identity-checked4399 run. The prologue skipped; overlay telemetry advanced from0 to36 sector applications/73728 bytes, lastLBA480.
+- At frame18375 the runtime visibly rendered the town field establishing view (`field-loaded.png`). This proves the package's full MAP overlay was consumed and field rendering began; the edited wall instance itself has not yet been located/compared in-game. Evidence is `after-select.json` and `field-loaded.json` under the private decoration-gizmo-browser directory.
+- Host session53840 remains live for continuation. No restart, RAM writes or savestate loads. Full SDK goal active.
+
+### 2026-09-10 — Verify New Game progression in the retained run
+
+- Previous turn was progress/verified live observation, but its claim that Cross selected New Game was too strong. The character movie returned to the title menu: treat those images as attract-sequence evidence only. Corrected that interpretation before continuing.
+- Same identity-checked process on4399 remained live (host session53840). Start from the title menu reached the rendered story prologue at frame12140; subsequent Cross inputs advanced its text/scene. Latest capture `story-current-2.png` is frame14250. No restart, memory mutation or savestate load.
+- MAP overlay consumption remains0 sectors; field scenery is not yet accepted. Continue the retained process from the story prologue. Full goal remains active.
+
+### 2026-09-10 — Advance persistent scenery validation toward the field
+
+- Previous turn was progress: built and cold-launched the saved gizmo package. Started a separate persistent RunService host, session53840, runtime PID30176 on4399, run `20260911T000231Z-d6cb2b6e`, identity `proc-91ac4df721f370c2fb84739d64acbfd3c6d4e5bed055996ab707ad86be236415`. Its live handle was polled successfully; this run remains active for continuation. Stop via the private `stop-field-run` marker to let the owner close its exact process handle.
+- Normal port1 Cross selected New Game. The title image persisted while FMV/XA state was active; captured pad/MDEC/FM V diagnostics rather than assuming a crash. Normal Start advanced to the visible Genesis Tree opening sequence at frame5896. No RAM writes or savestate loads.
+- Package remains enabled and disc guard intact, but overlay sector consumption is still0: target field not yet loaded. Evidence and identity-checking control script live under `local-output/sdk-20260909/decoration-gizmo-browser`; original runtime4397 remains untouched. Full goal active; continue this same process rather than relaunching on an observation timeout.
+
+### 2026-09-10 — Build and cold-launch the viewport-authored decoration
+
+- Previous turn was progress: browser-accepted and committed decoration gizmos. Built the actual saved cell1833 Z=-256 override from the gizmo project into private package8fdcffdf488d06cf, SHA256823dd770b419003b7d09a655bb9246d2f3f966bd719744be7b16d6acc1195dde. Audit reports one individual cell edit and one73728-byte MAP overlay.
+- Cold launched through RunService on separate port4399 using executable SHA25697f0f0260f7d4c977a385e0dcd3b5f625c7112f9eefd04bcfeab1684998fd4aa. Initial capture was prematurely at frame0/display-disabled and stopped cleanly. A second bounded cold launch reached frame837 and visibly rendered the Prokion logo. Runtime identity, disc identity and one committed enabled overlay were verified; disc guard did not fail. Both owned runs stopped with exit0; original runtime/editor sessions were untouched.
+- Evidence: `local-output/sdk-20260909/decoration-gizmo-browser/{build-result.json,early-launch.json,cold-launch.json,scenery-cold.png}`. Overlay consumption remained0 sectors: the target field has not loaded, so this is package activation/startup evidence only, not scenery gameplay acceptance. Full objective active.
+
 ### 2026-09-10 — Browser acceptance for scenery move handles
 
 - Previous turn was progress: implemented decoration X/Z handles and checked command conversion. In isolated town01 editor4395, dragging the X handle moved cell1833 from X5312 to5619; viewport outline and inspector matched, Undo restored5312. Enabling64-unit snapping and dragging Z moved1856 to2112, encoded as individual offsetZ=-256.

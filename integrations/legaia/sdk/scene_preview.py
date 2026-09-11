@@ -93,6 +93,27 @@ def environment_matrix(transform: dict) -> list:
             basis[0][2], basis[1][2], basis[2][2], position["z"], 0, 0, 0, 1]
 
 
+def sample_preview_ground(ground, x, z):
+    """Interpolate the displayed source triangles, not runtime collision height."""
+    import math
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in (x, z)):
+        return None
+    col, row = math.floor(x / 128), math.floor(z / 128)
+    if not (0 <= col < 128 and 0 <= row < 128):
+        return None
+    cell = next((c for c in ground.get("cells", []) if c["cell_index"] == row * 128 + col), None)
+    if cell is None:
+        return None
+    start = cell["vertex_start"]
+    points = ground["vertices"][start:start + 4]
+    if len(points) != 4:
+        return None
+    u, v = x / 128 - col, z / 128 - row
+    a, b, c, d = (p[1] for p in points)
+    height = a + u * (b - a) + v * (c - a) if u + v <= 1 else d + (1 - v) * (b - d) + (1 - u) * (c - d)
+    return {"y": height, "cell_index": cell["cell_index"], "evidence": "source_preview_triangle_interpolation"}
+
+
 class ScenePreviewService:
     """One bounded geometry cache. Transform edits never invalidate asset bytes."""
 
@@ -127,20 +148,26 @@ class ScenePreviewService:
             self._build(project, geometry_key, model_loader, pose_loader_factory, environment_loader_factory, terrain_loader)
         projected = project.state()["scene"]
         instances = []
+        ground = next((asset["preview"] for asset in self._assets if asset.get("pose_kind") == "source_heightfield"), {})
         for entity in projected["entities"]:
             transform = entity["components"]["Transform"]
             position = deepcopy(transform["effective"]["position"])
-            displayed = _display_position(position)
+            preview_position = deepcopy(position)
+            ground_sample = sample_preview_ground(ground, position.get("x"), position.get("z")) if position.get("y") is None else None
+            if ground_sample is not None:
+                preview_position["y"] = ground_sample["y"]
+            displayed = _display_position(preview_position)
             matrix = list(POSITION_TO_DISPLAY)
             matrix[3], matrix[7], matrix[11] = displayed["x"], displayed["y"], displayed["z"]
             binding = self._bindings[entity["id"]]
             instances.append({"entity_id": entity["id"], **deepcopy(binding),
-                              "position": position, "display_position": displayed,
+                              "position": position, "preview_position": preview_position, "preview_ground_sample": ground_sample, "display_position": displayed,
+                              "preview_height_status": "explicit" if position.get("y") is not None else "source_surface" if ground_sample is not None else "unresolved_no_source_surface",
                               "model_to_scene": matrix,
                               "retail_position": deepcopy(transform["imported"]["position"]),
                               "authored_position": deepcopy(transform["authored"].get("position", {})),
                               "evidence": {"position": "imported placement plus authored overrides",
-                                           "height": "ground-plane preview only" if position.get("y") is None else "authored value",
+                                           "height": "source terrain preview only; runtime elevation unverified" if ground_sample is not None else "ground-plane preview only" if position.get("y") is None else "authored value",
                                            "heading": "unknown; identity orientation is a display convention",
                                            "scale": "source units retained; physical scale is unknown"}})
         environment = deepcopy(self._environment)
@@ -162,7 +189,7 @@ class ScenePreviewService:
                 "environment_authoring": deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
                 "assets": deepcopy(self._assets), "entities": instances, "metrics": dict(self._metrics),
                 "limits": ["Authored placement reference, not scripted runtime placement or visibility",
-                           "Unknown heights use a display ground plane and unknown heading uses identity",
+                           "Unknown heights use source terrain where available, otherwise a display ground plane; unknown heading uses identity",
                            "Unsupported multipart poses remain markers; no fabricated object assembly",
                            "Static reference poses; no live equipment, animated palettes or exact PSX blending"]}
 

@@ -13,6 +13,30 @@ const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
 const sceneLayers={actors:true,scenery:true,ground:true};
+let coordinateProbe=null;
+const locateButton=document.createElement('button');locateButton.textContent='Locate coordinates';$('frame-selected').after(locateButton);
+const locateDialog=document.createElement('dialog');locateDialog.className='project-dialog';locateDialog.innerHTML='<form><h2>Locate guest coordinates</h2><p>Place a reference marker using game coordinates. This changes only the editor camera.</p><label>X <input name="x" type="number" step="any" required></label><label>Y <input name="y" type="number" step="any" required value="0"></label><label>Z <input name="z" type="number" step="any" required></label><button type="submit">Locate</button><button type="button" data-clear>Clear marker</button><button type="button" data-close>Cancel</button></form>';document.body.append(locateDialog);
+locateButton.onclick=()=>locateDialog.showModal();
+locateDialog.querySelector('[data-close]').onclick=()=>locateDialog.close();
+locateDialog.querySelector('[data-clear]').onclick=()=>{coordinateProbe=null;locateDialog.close();draw();};
+locateDialog.querySelector('form').onsubmit=event=>{
+  event.preventDefault();const point={};for(const axis of ['x','y','z']){const input=locateDialog.querySelector(`[name="${axis}"]`);point[axis]=Number(input.value);if(!input.value.trim()||!Number.isFinite(point[axis]))return;}
+  coordinateProbe={point,context:JSON.stringify([state.project?.path,state.scene?.id])};cancelViewportGesture();camera.target=displayPosition(point);camera.distance=1000;cameraRevision++;locateDialog.close();draw();
+};
+function drawCoordinateProbe(){
+  if(!coordinateProbe||coordinateProbe.context!==JSON.stringify([state.project?.path,state.scene?.id]))return;
+  const world=displayPosition(coordinateProbe.point),p=project(world);if(!p)return;
+  ctx.save();ctx.strokeStyle='#ffda78';ctx.fillStyle='#ffda78';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.moveTo(p.x-15,p.y);ctx.lineTo(p.x+15,p.y);ctx.moveTo(p.x,p.y-15);ctx.lineTo(p.x,p.y+15);ctx.stroke();ctx.font='12px "Segoe UI",sans-serif';const v=coordinateProbe.point;ctx.fillText(`Reference X ${v.x} Y ${v.y} Z ${v.z}`,p.x+18,p.y-12);ctx.restore();
+}
+
+const frameSamplesButton=document.createElement('button');frameSamplesButton.textContent='Frame live samples';frameSamplesButton.disabled=true;frameSamplesButton.title='Frame all accepted-epoch candidates for the selected actor without changing authored placement';$('frame-selected').after(frameSamplesButton);
+frameSamplesButton.onclick=()=>{
+  const points=observedCandidatePoints();if(!points.length)return;
+  cancelViewportGesture();
+  const min={},max={};for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}
+  camera.distance=Math.max(800,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
+};
+
 function hiddenSceneEntities(){return new Set((activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id));}
 for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',ground:'Ground'})){
   const button=document.createElement('button');button.textContent=label;button.className='active';button.setAttribute('aria-pressed','true');button.title=`Show ${label.toLowerCase()} in the scene view`;
@@ -269,11 +293,11 @@ function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id=
 function movableSelection(){
   const environment=selectedEnvironment();
   if(!environment)return selected();
-  if(!environment.entity_id.includes('/decorations/')||hiddenSceneEntities().has(environment.entity_id))return null;
+  if(!scenePreviewCurrent()||!environment.entity_id.includes('/decorations/')||hiddenSceneEntities().has(environment.entity_id))return null;
   return {id:environment.entity_id,components:{Transform:{effective:{position:environment.position}}}};
 }
 async function moveDecoration(identifier,axis,worldValue){
-  const item=selectedEnvironment();if(!item||item.entity_id!==identifier)return;
+  const item=selectedEnvironment();if(!scenePreviewCurrent()||!item||item.entity_id!==identifier)return;
   const source=item.source_record,cell=(source.source_record.grid_byte_offset-0x8000)/2;
   const binding=activeScenePreview()?.environment_authoring;
   const shared=binding?.edits?.find(e=>e.record_index===source.object_record_index);
@@ -295,7 +319,11 @@ function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:i
 function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
-function position(entity){return displayPosition(entity.components?.Transform?.effective?.position ?? entity.components?.Transform?.imported?.position);}
+function position(entity){
+  const source=entity.components?.Transform?.effective?.position ?? entity.components?.Transform?.imported?.position;
+  const preview=scenePreviewCurrent()?activeScenePreview()?.entities.find(item=>item.entity_id===entity.id):null;
+  return displayPosition(preview?.preview_position??source);
+}
 function authored(entity){return Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0 || !!entity.components?.ActorAppearance?.authored?.donor_entity_id || Object.keys(entity.components?.Dialogue?.authored?.runs ?? {}).length>0;}
 function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceChildren();d.showModal();}
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
@@ -356,7 +384,8 @@ function render(){
   if(lastSceneId!==state.scene?.id){lastSceneId=state.scene?.id;frame();}else draw();
   refreshScenePreview();
 }
-function activeScenePreview(){return scenePreview&&sceneKey===state.scene_preview_source_key&&scenePreview.scene_id===state.scene?.id?scenePreview:null;}
+function activeScenePreview(){return scenePreview&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&sceneProjectPath===state.project?.path&&scenePreview.scene_id===state.scene?.id?scenePreview:null;}
+function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===state.scene_preview_source_key&&!sceneError;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
 function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(draft)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
@@ -365,16 +394,17 @@ function updateSceneBadge(){
   const hidden=hiddenSceneEntities(),visible=ready?sceneRenderer.instances.filter(instance=>!hidden.has(instance.entity_id)).length:0;
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
-  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?'Loading supported scene models…':ready?`${count} / ${entities().length+environmentEntities().length} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
+  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?(ready?'Updating scene · showing previous preview (scenery editing paused)':'Loading supported scene models…'):ready?`${count} / ${entities().length+environmentEntities().length} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
   $('coordinate-note').textContent=environmentEntities().length?'Environment: imported transforms · Actors: unknown height/facing use preview conventions':'Unknown actor heights are shown on the ground plane.';
   $('coordinate-note').title=JSON.stringify(activeScenePreview()?.limits ?? []);
 }
 async function refreshScenePreview(){
   const key=state.scene_preview_source_key;
   if(!state.capabilities?.scene_preview||!key||!modelsEnabled){sceneAbort?.abort();scenePendingKey=null;updateSceneBadge();return;}
-  if(sceneKey===key||scenePendingKey===key||sceneFailedKey===key){updateSceneBadge();return;}
+  if(activeScenePreview()&&sceneKey===key){sceneAbort?.abort();sceneAbort=null;scenePendingKey=null;sceneFailedKey=null;sceneError=null;updateSceneBadge();return;}
+  if(scenePendingKey===key||sceneFailedKey===key){updateSceneBadge();return;}
   const preserveCamera=sceneLoadedId===state.scene?.id && sceneProjectPath===state.project?.path;
-  sceneAbort?.abort();const controller=new AbortController();sceneAbort=controller;scenePendingKey=key;sceneError=null;scenePreview=null;sceneRenderer?.clear();
+  sceneAbort?.abort();const controller=new AbortController();sceneAbort=controller;scenePendingKey=key;sceneError=null;if(!preserveCamera){scenePreview=null;sceneRenderer?.clear();}
   const expectedScene=state.scene?.id,revision=cameraRevision;updateSceneBadge();draw();
   try{
     if(!sceneRenderer){const module=await import('/scene-renderer.js');if(controller.signal.aborted)return;sceneRenderer=new module.SceneRenderer($('scene-models'),message=>{sceneError=message;updateSceneBadge();draw();});}
@@ -386,7 +416,7 @@ async function refreshScenePreview(){
     const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
     renderHierarchy();renderInspector();if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
-  }catch(error){if(error.name!=='AbortError'&&state.scene_preview_source_key===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;sceneRenderer?.clear();notify(error.message,true);}}
+  }catch(error){if(error.name!=='AbortError'&&state.scene_preview_source_key===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();draw();}}
 }
 function renderHierarchy(){
@@ -982,6 +1012,18 @@ function renderTemplates(){
   }
   if(!templates.length)$('template-list').innerHTML='<p class="field-note">No authored actor templates yet.</p>';
 }
+function coordinateComparisonRows(transform,observed){
+  return ['x','y','z'].map(axis=>{
+    const imported=transform?.imported?.position?.[axis],effective=transform?.effective?.position?.[axis],sample=observed?.[axis];
+    return {axis,imported:numeric(imported)?imported:null,effective:numeric(effective)?effective:null,
+      observed:numeric(sample)?sample:null,delta:numeric(effective)&&numeric(sample)?sample-effective:null};
+  });
+}
+function coordinateComparisonMarkup(entityId,observed){
+  const transform=entities().find(entity=>entity.id===entityId)?.components?.Transform;
+  const cell=value=>value===null?'Unknown':escapeHTML(String(value));
+  return '<table class="coordinate-comparison"><caption>Guest world coordinates - sampled candidate</caption><thead><tr><th>Axis</th><th>Imported</th><th>Effective</th><th>Sampled</th><th>Sample - effective</th></tr></thead><tbody>'+coordinateComparisonRows(transform,observed).map(row=>`<tr><th>${row.axis.toUpperCase()}</th><td>${cell(row.imported)}</td><td>${cell(row.effective)}</td><td>${cell(row.observed)}</td><td>${cell(row.delta)}</td></tr>`).join('')+'</tbody></table><p class="field-note">Values use guest coordinates; the viewport flips Y for display. Unknown height is not zero. Deltas compare current runtime position with authored-effective placement, not a coordinate calibration. Scripts may relocate actors; candidate identity remains unconfirmed.</p>';
+}
 function runtimeCandidateSummary(correlation,entityId){
   const candidates=correlation.candidates??[];
   if(!candidates.length)return `<p class="field-note">${escapeHTML(correlation.reason??'No accepted candidate observation.')}</p>`;
@@ -989,7 +1031,7 @@ function runtimeCandidateSummary(correlation,entityId){
     const layers=(candidate.appearance_layers??[]).map(layer=>({imported:'Imported',effective:'Effective'})[layer]).filter(Boolean);
     const donor=candidate.effective_donor_id;
     const position=candidate.observed_position??{};
-    return `<div class="appearance-layer"><h4>Unconfirmed runtime candidate</h4>${property('Captured node',candidate.runtime_node_id)}${property('Appearance match',layers.join(' + ')||'Not classified')}${donor&&donor!==entityId?property('Effective donor',donor):''}${property('Capture frame',candidate.frame)}${property('Captured world position',`X ${format(position.x)} · Y ${format(position.y)} · Z ${format(position.z)}`)}<p class="field-note">Captured evidence only. Structural compatibility does not establish actor identity.</p></div>`;
+    return `<div class="appearance-layer"><h4>Unconfirmed runtime candidate</h4>${property('Captured node',candidate.runtime_node_id)}${property('Appearance match',layers.join(' + ')||'Not classified')}${donor&&donor!==entityId?property('Effective donor',donor):''}${property('Capture frame',candidate.frame)}${property('Placement header matches imported X/Z',candidate.placement_header_agrees_with_import===true?'Yes':candidate.placement_header_agrees_with_import===false?'No':'Unknown')}${property('Captured placement header',`X ${format(candidate.placement_position?.x)} · Z ${format(candidate.placement_position?.z)}`)}${property('Captured world position',`X ${format(position.x)} · Y ${format(position.y)} · Z ${format(position.z)}`)}${coordinateComparisonMarkup(entityId,position)}<p class="field-note">Captured evidence only. Structural compatibility does not establish actor identity.</p></div>`;
   }).join('');
 }
 function renderInspector(){
@@ -1015,12 +1057,14 @@ function renderInspector(){
         const heading=document.createElement('h4');heading.textContent=label;section.append(heading);
         for(const axis of ['x','y','z']){
           const row=document.createElement('label');row.textContent=`${axis.toUpperCase()} · ${individual?'inherited':'imported'} ${base[axis]} `;
-          const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${individual?'Individual ':''}${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live';row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
+          const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${individual?'Individual ':''}${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live'||!scenePreviewCurrent();row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
         }
       }
-      const effective=document.createElement('p');effective.textContent=`Effective position: ${JSON.stringify(environment.effective_transform?.position??transform.position)}`;section.append(effective);
-      const apply=document.createElement('button');apply.textContent=individual?'Apply individual transform':'Apply shared transform';apply.disabled=state.project?.mode==='live';
+      const effective=document.createElement('p');effective.textContent=`${scenePreviewCurrent()?'Effective position':'Previous preview position (refresh pending)'}: ${JSON.stringify(environment.effective_transform?.position??transform.position)}`;section.append(effective);
+      const apply=document.createElement('button');apply.textContent=individual?'Apply individual transform':'Apply shared transform';apply.disabled=state.project?.mode==='live'||!scenePreviewCurrent();
+      const inspectorKey=sceneKey;
       apply.onclick=async()=>{
+        if(!scenePreviewCurrent()||sceneKey!==inspectorKey)return;
         const edit=individual?{cell_index:cell}:{record_index:source.object_record_index};
         for(const {field,axis,input,base} of inputs){if(!input.value.trim()||!input.checkValidity()){input.reportValidity();return;}const value=Number(input.value);if(value!==base)(edit[field]??={})[axis]=value;}
         const edits=(binding?.edits??[]).filter(e=>individual||e.record_index!==source.object_record_index);
@@ -1054,7 +1098,12 @@ function renderInspector(){
   const components=entity.components ?? {}, transform=components.Transform ?? {}, original=transform.imported?.position ?? {}, override=transform.authored?.position ?? {}, effective=transform.effective?.position ?? original;
   let html=`<div class="entity-heading"><h2>${escapeHTML(entity.name ?? entity.id)}</h2><code>${escapeHTML(entity.id)}</code></div><section class="component"><h3>Transform <small>Scene units</small></h3><div class="transform-table"><span></span><span class="column-title">Imported</span><span class="column-title">Authored</span><span class="column-title">Effective</span>`;
   for(const axis of ['x','y','z'])html+=`<span class="axis-${axis}">${axis.toUpperCase()}</span><output title="${format(original[axis])}">${format(original[axis])}</output><input data-axis="${axis}" aria-label="Authored ${axis.toUpperCase()}" type="number" step="1" placeholder="—" value="${numeric(override[axis])?override[axis]:''}" ${canEdit()?'':'disabled'}><output class="effective">${format(effective[axis])}</output>`;
-  html+='</div>'+((entity.components.Transform.build_issues ?? []).map(issue=>`<p class="script-warning">Build: ${escapeHTML(issue)}</p>`).join(''))+'<p class="field-note">Edits are project overrides. Empty authored fields inherit the imported value. Unknown heights use the ground plane. Scene display axes follow the SDK conversion.</p></section>';
+  html+='</div>'+((entity.components.Transform.build_issues ?? []).map(issue=>`<p class="script-warning">Build: ${escapeHTML(issue)}</p>`).join(''))+'<p class="field-note">Edits are project overrides. Empty authored fields inherit the imported value. Unknown heights use source terrain for preview when available, otherwise the ground plane. Scene display axes follow the SDK conversion.</p></section>';
+  const actorPreview=scenePreviewCurrent()?activeScenePreview()?.entities.find(item=>item.entity_id===entity.id):null;
+  if(actorPreview?.preview_ground_sample){html+=`<section class="component"><h3>Preview elevation <small>Derived, not authored</small></h3>${property('Guest Y',actorPreview.preview_position.y)}${property('Terrain cell',actorPreview.preview_ground_sample.cell_index)}<p class="field-note">Interpolated from the displayed source terrain. Runtime collision, ramps and script elevation may differ.</p></section>`;}
+  else if(actorPreview?.preview_height_status==='unresolved_no_source_surface'){html+='<section class="component"><h3>Preview elevation <small>Unresolved</small></h3><p class="field-note">No displayed source-ground cell exists at this placement. The mesh uses the preview ground plane; this is not a measured game height. Inspect a live sample to compare runtime placement.</p></section>';}
+
+
   if(state.capabilities?.actor_appearance && components.ActorAppearance){const appearance=components.ActorAppearance,imported=appearance.imported ?? {},effective=appearance.effective ?? imported,donor=appearance.authored?.donor_entity_id;html+=`<section class="component appearance-component"><h3>Actor appearance <small>Model + animation pair</small></h3><div class="appearance-layer"><h4>Imported</h4>${property('Model',imported.asset_id)}${property('Animation ID',imported.animation_id)}</div><div class="appearance-layer"><h4>Authored override</h4>${property('Donor actor',donor ?? 'None · inherit imported appearance')}</div><div class="appearance-layer"><h4>Effective</h4>${property('Model',effective.asset_id)}${property('Animation ID',effective.animation_id)}</div><p class="field-note">Assign a verified donor pair to this existing actor. Script behavior and gameplay compatibility are not established by a matching model and animation.</p><button id="choose-appearance" class="model-preview-button" data-appearance-edit ${canEditAppearance()?'':'disabled'}>Choose donor appearance…</button>${donor?`<button id="clear-appearance" class="model-preview-button" data-appearance-edit ${canEditAppearance()?'':'disabled'}>Clear appearance override</button><button id="preview-appearance" class="model-preview-button">Preview authored appearance</button>`:''}<details><summary>Appearance evidence and limits</summary><pre>${escapeHTML(JSON.stringify(appearance,null,2))}</pre></details></section>`;}
   if(state.capabilities?.authored_transform_templates)html+='<section class="component"><h3>Authored templates <small>Position / appearance</small></h3><p class="field-note">Capture or apply saved position and appearance presets to this existing actor.</p><button id="inspect-templates">Open actor templates…</button></section>';
   if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${property('Asset',model.asset_id)}${property('Resolution',model.resolution_status)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${model.asset_id?'<button id="inspect-model" class="model-preview-button">Inspect model objects</button>':''}</section>`;}
@@ -1309,7 +1358,7 @@ function drawEnvironmentSelection(){
 function draw(){
   if(!ctx)return;ctx.clearRect(0,0,width,height);projected=[];handles=[];
   if(sceneModelsReady()){try{sceneRenderer.draw(sceneView());}catch(error){sceneError=error.message;}}
-  updateSceneBadge();
+  updateSceneBadge();frameSamplesButton.disabled=observedCandidatePoints().length===0;
   if(grid&&!sceneModelsReady()){const spacing=10**Math.floor(Math.log10(camera.distance/7)),half=spacing*12,cx=Math.round(camera.target.x/spacing)*spacing,cz=Math.round(camera.target.z/spacing)*spacing;for(let i=-12;i<=12;i++){line({x:cx+i*spacing,y:0,z:cz-half},{x:cx+i*spacing,y:0,z:cz+half},i===0?'#39504f88':'#33474c66');line({x:cx-half,y:0,z:cz+i*spacing},{x:cx+half,y:0,z:cz+i*spacing},i===0?'#39504f88':'#33474c66');}}
   drawFieldMap();
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
@@ -1328,7 +1377,7 @@ function draw(){
       if(canEdit()){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
-  drawEnvironmentSelection();
+  drawEnvironmentSelection();drawCoordinateProbe();
   const scenery=selectedEnvironment(),movable=movableSelection();
   if(scenery&&movable&&canEdit()){
     const world=draft?.id===movable.id?draft.position:position(movable),p=project(world),length=camera.distance*.085;
