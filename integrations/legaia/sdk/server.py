@@ -57,6 +57,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["live_mode"] = self.live_status.get("available", False)
         state["capabilities"]["runtime_discovery"] = True
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["model_shape_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         from .scene_preview import source_key
         try:
@@ -193,7 +194,7 @@ class EditorServer(ThreadingHTTPServer):
             atomic_write(output / ".gitignore", b"*\n")
         return result
 
-    def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None) -> dict:
+    def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None, effective_shape: bool = False) -> dict:
         from importer.assets import load_model_preview
         from importer.animation import animation_capabilities, load_animation_preview
         from importer.textures import (associate_material, load_asset_texture_catalog,
@@ -209,6 +210,10 @@ class EditorServer(ThreadingHTTPServer):
             preview["animation"] = animation
         else:
             preview = load_model_preview(Path(project.disc_path), asset)
+        if effective_shape and asset['semantic_id'] in project.model_overrides:
+            from importer.model_authoring import preview_model_shape
+            binding = project.model_overrides[asset['semantic_id']]
+            preview = preview_model_shape(preview, project.read_model_replacement(asset['semantic_id'], binding), binding)
         preview["animation_support"] = animation_capabilities(asset)
         scene = asset.get("source_record", {}).get("prot_entry_name")
         if scene == "befect_data":
@@ -327,6 +332,8 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
+            if urlsplit(self.path).path == '/api/model-shape-replacement':
+                request_limit = 6 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
             content = self.rfile.read(length)
@@ -337,6 +344,37 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route == '/api/model-shape-replacement':
+                    if set(body) != {'asset_id','tmd_base64'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Model shape upload requires asset_id and tmd_base64 only')
+                    encoded = body['tmd_base64']
+                    if not isinstance(encoded, str) or len(encoded) > 5592408:
+                        raise ProjectError('Model shape exceeds 4 MiB')
+                    try:
+                        payload = base64.b64decode(encoded, validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Model shape requires valid base64') from exc
+                    self.server.project.set_model_replacement(body['asset_id'], payload)
+                    self._json(200, self.server.state())
+                    return
+                if route in ('/api/model-shape-preview', '/api/export/model-shape'):
+                    if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Authored model preview accepts an asset identity only')
+                    from importer.assets import decode_tmd
+                    project = self.server.project
+                    binding = project.model_overrides.get(body['asset_id'])
+                    if binding is None or binding['source_scene_id'] != project.active_scene:
+                        raise ProjectError('No authored model shape in the active scene')
+                    asset = project.assets.records.get(body['asset_id'])
+                    if asset is None:
+                        raise ProjectError('Unknown model asset')
+                    content = project.read_model_replacement(body['asset_id'], binding)
+                    preview = decode_tmd(content)
+                    preview.update(semantic_id=body['asset_id'], source_record=asset['source_record'],
+                                   representation='authored-shape', authored_shape=dict(binding))
+                    preview = self.server.model_preview(asset, prepared=preview)
+                    self._json(200, self.server.export_preview(preview, None) if route.endswith('model-shape') else preview)
+                    return
                 if route in ("/api/texture-source", "/api/texture-replacement"):
                     expected = {"asset_id", "tim_base64"} if route.endswith("replacement") else {"asset_id"}
                     if set(body) != expected or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
@@ -394,6 +432,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report["dialogue_authoring"] = self.server.project.dialogue_options(identifier)
                     report["transition_authoring"] = _transition_authoring_report(self.server.project, identifier)
                     self._json(200, report)
+                    return
+                if route == "/api/model-shape-source":
+                    if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:
+                        raise ProjectError("Model source accepts a catalog identity only")
+                    from .resources import model_shape_source
+                    self._json(200, model_shape_source(self.server.project, body["asset_id"]))
                     return
                 if route == "/api/field-map-preview":
                     if set(body) - {"asset_id", "layer"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
@@ -458,7 +502,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from importer.environment import load_environment_preview_catalog
                     from .terrain_preview import terrain_preview
                     self._json(200, self.server.scene_previews.preview(
-                        self.server.project, self.server.model_preview, load_scene_actor_animation_catalog,
+                        self.server.project, lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, **kwargs), load_scene_actor_animation_catalog,
                         load_environment_preview_catalog, terrain_preview))
                     return
                 if route in ("/api/preview", "/api/animation-preview", "/api/export/model"):

@@ -620,7 +620,7 @@ function initialAssetUsage(record,modelReferences){
 }
 function showAssetDetails(record){
   const isAuthored=!!record.authoredRecord;
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property('Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
   if(['model','animation'].includes(record.type)){
@@ -636,7 +636,7 @@ function showAssetDetails(record){
 async function activateAsset(record){
   if(busy)return;
   if(record.type==='template'){showTemplates();return;}
-  if(record.authoredRecord&&['actor','texture','script'].includes(record.type)&&record.sceneId!==state.scene?.id){
+  if(record.authoredRecord&&['actor','texture','script','model'].includes(record.type)&&record.sceneId!==state.scene?.id){
     if(!record.sceneId){notify('This authored item does not identify an imported source scene.',true);return;}
     if(!await api('/api/scene',{scene_id:record.sceneId}))return;
   }
@@ -646,7 +646,7 @@ async function activateAsset(record){
     if(await api('/api/selection',{entity_id:record.id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}
   }else if(record.type==='scene'){
     if(await api('/api/scene',{scene_id:record.id}))document.querySelector('.workspace-tabs [data-panel="viewport"]').click();
-  }else if(record.type==='model')openModel(record.id);
+  }else if(record.type==='model')openModel(record.id,null,null,record.authoredRecord?'authored':'imported');
   else if(record.type==='texture')openTexture(record);
   else if(record.type==='animation')openAnimationResource(record);
   else if(['collision','trigger','region'].includes(record.type))openFieldResource(record);
@@ -684,6 +684,7 @@ function clearFieldMap(){
 function validateFieldMap(result,record,key){
   if(key!==resourceStateKey()||result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.asset_kind!=='collision'||result.coordinate_system!=='psx_guest_xz')throw new Error('Field map source changed while loading. Refresh scene resources and retry.');
   if(!Array.isArray(result.rectangles)||result.rectangles.length>65536||result.rectangles.some(r=>!r||![r.x_min,r.x_max,r.z_min,r.z_max].every(numeric)||r.x_min>r.x_max||r.z_min>r.z_max)||!Array.isArray(result.triggers)||result.triggers.length>65536)throw new Error('Field map service returned invalid or oversized geometry.');
+  if(result.authored_changes!==undefined&&(!Array.isArray(result.authored_changes)||result.authored_changes.length>4096||result.authored_changes.some(r=>!r||!Number.isInteger(r.row)||r.row<1||r.row>127||!Number.isInteger(r.column)||r.column<0||r.column>127||!Number.isInteger(r.quadrant)||r.quadrant<0||r.quadrant>3||typeof r.before_value!=='boolean'||typeof r.after_value!=='boolean')))throw new Error('Collision service returned invalid authored changes.');
   return result;
 }
 async function loadFieldMap(record){
@@ -695,7 +696,7 @@ async function loadFieldMap(record){
     if(controller.signal.aborted)return false;
     if(result.representation!==layer)throw new Error('Collision service did not return the requested layer.');
     if(fieldDialog.open)fieldDialog.querySelector('.dialog-error').textContent='';
-    fieldMap=validateFieldMap(result,record,key);fieldKey=key;fieldNote.textContent=`${layer==='effective'?'EFFECTIVE authored source':'RETAIL source'} · ${fieldMap.rectangles.length} blocked rectangles · ${fieldMapScope}`;fieldNote.title=(fieldMap.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');fieldNote.hidden=false;return true;
+    fieldMap=validateFieldMap(result,record,key);fieldKey=key;const changes=fieldMap.authored_changes??[],added=changes.filter(r=>r.after_value).length,removed=changes.filter(r=>!r.after_value).length;fieldNote.textContent=`${layer==='effective'?'EFFECTIVE source':'RETAIL source'} · ${fieldMap.rectangles.length} blocked rectangles${changes.length?` · Added ${added} (green solid) · Removed ${removed} (pink dashed)`:''} · ${fieldMapScope}`;fieldNote.title=(fieldMap.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');fieldNote.hidden=false;return true;
   }catch(error){clearFieldMap();if(error.name!=='AbortError'){notify(error.message,true);if(fieldDialog.open)fieldDialog.querySelector('.dialog-error').textContent=error.message;}return false;}
   finally{if(fieldAbort===controller)fieldAbort=null;fieldPending=false;setBusy(false);draw();}
 }
@@ -745,9 +746,16 @@ function openFieldResource(record){
       const refresh=()=>{const c=cell(),rectangle=snapshot.rectangles.find(r=>r.row===c.row&&r.column===c.column&&r.quadrant===c.quadrant);form.elements.blocked.checked=!!rectangle;const x=c.column*128+(c.quadrant&1)*64,z=c.row*128-128+(c.quadrant>>1)*64;status.textContent=`Effective: ${rectangle?'blocked':'unblocked'} · integer X (${x}, ${x+64}], Z [${z}, ${z+64})`;};
       let draftCell=cell(),appliedBlocked=false;
       const discard=document.createElement('button');discard.type='button';discard.textContent='Discard unapplied wall change';form.append(discard);
+      const appliedLabel=document.createElement('label');appliedLabel.textContent='Applied wall edits';const applied=document.createElement('select');applied.setAttribute('aria-label','Applied wall edits');appliedLabel.append(applied);form.prepend(appliedLabel);
+      const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose an authored cell…';applied.append(placeholder);
+      const wallEdits=[...(snapshot.authored?.edits??[])].sort((a,b)=>a.row-b.row||a.column-b.column||a.quadrant-b.quadrant);
+      for(const [index,edit] of wallEdits.entries()){const option=document.createElement('option');option.value=String(index);option.textContent=`Row ${edit.row} · column ${edit.column} · quadrant ${edit.quadrant} · ${edit.blocked?'blocked':'unblocked'}`;applied.append(option);}
+      const restore=document.createElement('button');restore.type='button';restore.textContent='Restore selected cell to retail';form.append(restore);
+      const sameCell=(a,b)=>a.row===b.row&&a.column===b.column&&a.quadrant===b.quadrant;
       const dirty=()=>form.elements.blocked.checked!==appliedBlocked;
-      const updateDraft=()=>{discard.disabled=!dirty();for(const name of ['row','column','quadrant'])form.elements[name].disabled=dirty();};
+      const updateDraft=()=>{discard.disabled=!dirty();for(const name of ['row','column','quadrant'])form.elements[name].disabled=dirty();applied.disabled=dirty()||!wallEdits.length;restore.disabled=dirty()||!wallEdits.some(e=>sameCell(e,cell()));form.querySelector('[type="submit"]').disabled=!dirty();const index=wallEdits.findIndex(e=>sameCell(e,cell()));applied.value=index<0?'':String(index);};
       const selectCell=()=>{draftCell=cell();refresh();appliedBlocked=form.elements.blocked.checked;updateDraft();};
+      applied.onchange=()=>{if(dirty()){updateDraft();return;}const edit=wallEdits[Number(applied.value)];if(!edit||applied.value==='')return;for(const name of ['row','column','quadrant'])form.elements[name].value=edit[name];selectCell();};
       for(const name of ['row','column','quadrant'])form.elements[name].oninput=()=>{if(dirty()){for(const axis of ['row','column','quadrant'])form.elements[axis].value=draftCell[axis];return;}selectCell();};
       form.elements.blocked.oninput=updateDraft;discard.onclick=()=>{form.elements.blocked.checked=appliedBlocked;updateDraft();};selectCell();
       const locateCell=document.createElement('button');locateCell.type='button';locateCell.textContent='Locate cell in viewport';form.append(locateCell);
@@ -759,7 +767,9 @@ function openFieldResource(record){
         fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();draw();
       };
       const apply=async command=>{if(busy||state.project.mode!=='edit'||resourceStateKey()!==key||state.scene.id!==scene)return;await api('/api/command',command,{dialog:fieldDialog,success:'Source wall edits updated. Save project to persist.'});};
-      form.onsubmit=async event=>{event.preventDefault();if(!form.reportValidity())return;const c=cell(),edits=(snapshot.authored?.edits??[]).filter(e=>e.row!==c.row||e.column!==c.column||e.quadrant!==c.quadrant);edits.push({...c,blocked:form.elements.blocked.checked});await apply({type:'set_collision_walls',entity_id:scene,value:{source_sha256:snapshot.asset.source_record.containing_span_sha256,edits}});};
+      const applyEdits=edits=>apply(edits.length?{type:'set_collision_walls',entity_id:scene,value:{source_sha256:snapshot.asset.source_record.containing_span_sha256,edits}}:{type:'clear_collision_walls',entity_id:scene});
+      restore.onclick=()=>{if(dirty()||!form.reportValidity())return;return applyEdits(wallEdits.filter(e=>!sameCell(e,cell())));};
+      form.onsubmit=async event=>{event.preventDefault();if(!dirty()||!form.reportValidity())return;const c=cell(),edits=wallEdits.filter(e=>!sameCell(e,c)),change=snapshot.authored_changes?.find(e=>sameCell(e,c)),retailBlocked=change?change.before_value:appliedBlocked;if(form.elements.blocked.checked!==retailBlocked)edits.push({...c,blocked:form.elements.blocked.checked});await applyEdits(edits);};
       form.querySelector('.clear-collision').disabled=!snapshot.authored?.edits?.length;form.querySelector('.clear-collision').onclick=()=>apply({type:'clear_collision_walls',entity_id:scene});
     };
   }
@@ -905,7 +915,9 @@ function renderTriggerScript(result,report){
 function drawFieldMap(){
   if(!fieldMap||fieldKey!==resourceStateKey())return;
   ctx.save();ctx.strokeStyle='#e1ac688f';ctx.fillStyle='#d39d4b10';ctx.lineWidth=1;
-  for(const rectangle of fieldMap.rectangles){
+  const deltas=(fieldMap.authored_changes??[]).map(change=>{const x=change.column*128+(change.quadrant&1)*64,z=change.row*128-128+(change.quadrant>>1)*64;return {x_min:x,x_max:x+64,z_min:z,z_max:z+64,added:change.after_value};});
+  for(const rectangle of [...fieldMap.rectangles,...deltas]){
+    if(rectangle.added!==undefined){ctx.strokeStyle=rectangle.added?'#68f0ac':'#ff91b8';ctx.fillStyle=rectangle.added?'#68f0ac30':'#ff91b818';ctx.lineWidth=3;ctx.setLineDash(rectangle.added?[]:[6,4]);}
     const points=[[rectangle.x_min,rectangle.z_min],[rectangle.x_max,rectangle.z_min],[rectangle.x_max,rectangle.z_max],[rectangle.x_min,rectangle.z_max]].map(([x,z])=>project({x,y:0,z}));
     if(points.some(p=>!p||!numeric(p.x)||!numeric(p.y))||points.every(p=>p.x<0)||points.every(p=>p.x>width)||points.every(p=>p.y<0)||points.every(p=>p.y>height))continue;
     ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const point of points.slice(1))ctx.lineTo(point.x,point.y);ctx.closePath();ctx.fill();ctx.stroke();
@@ -1597,10 +1609,11 @@ let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
 let modelAssetId=null, modelEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
-async function openModel(assetId,clipId=null,entityId=null){
+const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed.</p><button id="shape-source">Download source TMD</button><label>Edited TMD<input id="shape-file" type="file" accept=".tmd"></label><button id="shape-upload">Apply shape</button><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
+async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'){
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest;
   try{
-    const response=await fetch(entityId?(clipId==='authored-appearance'?'/api/actor-appearance-preview':'/api/actor-animation-preview'):clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId,...(clipId==='authored-channels'?{representation:'authored'}:{})}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
+    const response=await fetch(shapeLayer==='authored'?'/api/model-shape-preview':entityId?(clipId==='authored-appearance'?'/api/actor-appearance-preview':'/api/actor-animation-preview'):clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId,...(clipId==='authored-channels'?{representation:'authored'}:{})}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
     const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
@@ -1617,16 +1630,35 @@ async function openModel(assetId,clipId=null,entityId=null){
       const statusLabel={address_match:'Matched texture',missing:'Texture not found',ambiguous:'Multiple possible textures',unsupported:'Unsupported texture',untextured:'Vertex colors'}[texture.status] ?? 'Texture unavailable';
       const label=document.createElement('span');label.textContent=`Material ${texture.material_index} · ${statusLabel}${texture.width?' · '+texture.width+'×'+texture.height:''}`;card.append(label);card.title=texture.reason ?? 'Static texture addresses; runtime residency is not confirmed'; $('model-textures').append(card);
     }
-    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId?'Decoded rigid animation pose':'Retail object-local geometry · Unposed'} · ${modelTextures.size?(model.texture_scope==='field_party'?'Shared party texture bank':'Static texture address matches'):'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
+    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId?'Decoded rigid animation pose':shapeLayer==='authored'?'Authored object-local shape · Unposed':'Retail object-local geometry · Unposed'} · ${modelTextures.size?(model.texture_scope==='field_party'?'Shared party texture bank':'Static texture address matches'):'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
     $('model-object').replaceChildren();
     if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
     $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? (d.kind==='equipment_templates_excluded'?'Equipment template objects 10 and 11 are excluded from this pose.':JSON.stringify(d))).join(' · ');
     configureAnimation(clipId);
+    shapeControls.hidden=!state.capabilities?.model_shape_authoring;
+    $('shape-file').value='';const shape=state.model_overrides?.[assetId];
+    for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
+    $('shape-clear').disabled=state.project.mode!=='edit'||!shape;$('shape-authored').disabled=!shape;
+    $('shape-status').textContent=`Viewing ${shapeLayer==='authored'?'AUTHORED object-local shape':clipId?'imported/assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
     if(!$('model-dialog').open)$('model-dialog').showModal();
     fitModelObject();
   }catch(error){if($('model-dialog').open){$('model-error').textContent=error.message;$('animation-clip').value=model?.animation?.clip_id ?? '';}else notify(error.message,true);}finally{$('animation-clip').disabled=false;setBusy(false);}
 }
+$('shape-retail').onclick=()=>openModel(modelAssetId);
+$('shape-authored').onclick=()=>openModel(modelAssetId,null,null,'authored');
+$('shape-clear').onclick=async()=>{if(!busy&&await api('/api/command',{type:'clear_model_replacement',asset_id:modelAssetId}))await openModel(modelAssetId);};
+$('shape-source').onclick=async()=>{
+  if(busy||!modelAssetId)return;setBusy(true);
+  try{const response=await fetch('/api/model-shape-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:modelAssetId})}),data=await response.json();if(!response.ok)throw new Error(data.error);if(typeof data.tmd_base64!=='string'||data.tmd_base64.length>5592408)throw new Error('Invalid model source size');const bytes=Uint8Array.from(atob(data.tmd_base64),c=>c.charCodeAt(0));if(bytes.length!==data.byte_length)throw new Error('Model source length mismatch');const url=URL.createObjectURL(new Blob([bytes])),link=document.createElement('a');link.href=url;link.download='original-model.tmd';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('shape-status').textContent=`Downloaded source TMD · SHA-256 ${data.source_sha256}`;}catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
+};
+$('shape-upload').onclick=async()=>{
+  if(busy||state.project.mode!=='edit')return;const file=$('shape-file').files?.[0];if(!file||file.size<1||file.size>4194304){$('model-error').textContent='Choose an edited TMD up to 4 MiB.';return;}
+  const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);setBusy(true);let encoded;
+  try{encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('Could not read TMD'));reader.readAsDataURL(file);});}catch(error){$('model-error').textContent=error.message;return;}finally{setBusy(false);}
+  if(!encoded||asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||!$('model-dialog').open)return;
+  if(await api('/api/model-shape-replacement',{asset_id:asset,tmd_base64:encoded}))await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');
+};
 function modelObject(){return $('model-object').value==='all' && model?.frames?.length?{vertex_start:0,vertex_count:model.vertices.length,triangle_start:0,triangle_count:model.triangles.length}:model?.objects[Number($('model-object').value)];}
 function frameVertices(){return model?.frames?.[animationFrame]?.vertices ?? model?.vertices ?? [];}
 function configureAnimation(clipId){
@@ -1662,7 +1694,7 @@ $('model-export').onclick=async()=>{
   if(busy||!modelAssetId)return;stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
   const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame,...(clip==='authored-channels'?{representation:'authored'}:{})}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
   try{
-    const response=await fetch(modelEntityId?(clip==='authored-appearance'?'/api/export/actor-appearance':'/api/export/actor-animation'):'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const response=await fetch(model.representation==='authored-shape'?'/api/export/model-shape':modelEntityId?(clip==='authored-appearance'?'/api/export/actor-appearance':'/api/export/actor-animation'):'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Model export failed');
     exportDialog.innerHTML=`<div class="dialog-heading"><h2>${result.audit.posed?'Static posed model exported':'Object-local model exported'}</h2><button id="close-export" aria-label="Close">×</button></div><p>${result.audit.object_count} objects · ${result.audit.triangle_count} triangles · ${result.audit.texture_count} embedded textures${result.audit.posed?' · Frame '+(result.audit.frame_index+1):''}</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><p>Full model export${result.audit.posed?' with the displayed animation frame baked into geometry':''}. Source units are retained; physical meter scale is unknown. Animation channels and skin hierarchy are not exported.</p><details><summary>Export provenance and limitations</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
     $('close-export').onclick=()=>exportDialog.close();exportDialog.showModal();

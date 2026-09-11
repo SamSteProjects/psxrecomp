@@ -101,6 +101,7 @@ class ProjectService:
         self.overrides: dict[str, dict] = {}
         self.actor_templates: dict[str, dict] = {}
         self.texture_overrides: dict[str, dict] = {}
+        self.model_overrides: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
         self.undo_stack: list[dict] = []
@@ -156,7 +157,8 @@ class ProjectService:
                             for key, value in sorted(self.imports.items())],
                 "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
                 "actor_templates": deepcopy(self.actor_templates),
-                **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {})}
+                **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
+                **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
     def dirty(self) -> bool:
@@ -194,7 +196,7 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Actor and dialogue edits", "actor_templates": "Actor presets",
-                  "texture_overrides": "Texture replacements"}
+                  "texture_overrides": "Texture replacements", "model_overrides": "Model shapes"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -203,7 +205,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides")}
+                                "authored", "actor_templates", "texture_overrides", "model_overrides")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -592,9 +594,79 @@ class ProjectService:
                                 "before": before, "after": deepcopy(binding)})
         self.redo_stack.clear()
 
+    def _model_source(self, asset_id: str, scene_id: str):
+        from importer.pipeline import _disc_context, import_scene
+        from importer.assets import load_model_source
+        document = self.imports.get(scene_id)
+        if document is None or not self.disc_path:
+            raise ProjectError('Model shape requires an imported scene and its disc')
+        asset = next((a for a in document['assets']['models'] if a['semantic_id'] == asset_id), None)
+        if asset is None:
+            raise ProjectError('Unknown imported model identity')
+        with _disc_context(self.disc_path):
+            if import_scene(self.disc_path, document['scene']['name']) != document:
+                raise ProjectError('Model source differs from imported evidence')
+            return load_model_source(self.disc_path, asset)
+
+    def read_model_replacement(self, asset_id: str, binding: dict) -> bytes:
+        from importer.model_authoring import replace_model_shape
+        if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'}
+                or binding['format'] != 'tmd-shape' or type(binding['byte_length']) is not int
+                or not 1 <= binding['byte_length'] <= 4*1024*1024
+                or any(not isinstance(binding[k],str) or len(binding[k]) != 64 or any(c not in '0123456789abcdef' for c in binding[k]) for k in ('asset_sha256','source_sha256'))
+                or not isinstance(binding['source_scene_id'], str)):
+            raise ProjectError('Invalid model shape binding')
+        path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
+        if not path.resolve().is_relative_to(self.root) or path.stat().st_size != binding['byte_length']:
+            raise ProjectError('Model shape path or size differs from binding')
+        content = path.read_bytes()
+        if hashlib.sha256(content).hexdigest() != binding['asset_sha256']:
+            raise ProjectError('Model shape content hash differs from binding')
+        replace_model_shape(self._model_source(asset_id, binding['source_scene_id']), binding['source_sha256'], content)
+        return content
+
+    def set_model_replacement(self, asset_id: str, content: bytes) -> None:
+        from importer.model_authoring import replace_model_shape
+        if self.mode != 'edit':
+            raise ProjectError('Model shape authoring requires Edit mode')
+        if not isinstance(asset_id, str) or len(asset_id) > 512 or not isinstance(content, bytes) or not 1 <= len(content) <= 4*1024*1024:
+            raise ProjectError('Model shape requires an asset identity and at most 4 MiB of TMD data')
+        if asset_id not in self.model_overrides and len(self.model_overrides) >= 128:
+            raise ProjectError('Project supports at most 128 model shapes')
+        original = self._model_source(asset_id, self.active_scene)
+        source_hash = hashlib.sha256(original).hexdigest()
+        _, audit = replace_model_shape(original, source_hash, content)
+        before = deepcopy(self.model_overrides.get(asset_id))
+        binding = {'format':'tmd-shape','source_scene_id':self.active_scene,'source_sha256':source_hash,
+                   'asset_sha256':hashlib.sha256(content).hexdigest(),'byte_length':len(content)} if audit else None
+        if before == binding:
+            return
+        if binding is not None:
+            path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
+            if not path.resolve().is_relative_to(self.root):
+                raise ProjectError('Model shape path escapes project root')
+            if path.exists():
+                self.read_model_replacement(asset_id, binding)
+            else:
+                atomic_write(path, content)
+            self.model_overrides[asset_id] = binding
+        else:
+            self.model_overrides.pop(asset_id, None)
+        self.undo_stack.append({'target':'model_overrides','asset_id':asset_id,'before':before,'after':deepcopy(binding)})
+        self.redo_stack.clear()
+
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'clear_model_replacement':
+            if set(command) != {'type','asset_id'} or not isinstance(command['asset_id'],str):
+                raise ProjectError('Clear model shape requires asset_id only')
+            identifier = command['asset_id']
+            before = deepcopy(self.model_overrides.pop(identifier, None))
+            if before is not None:
+                self.undo_stack.append({'target':'model_overrides','asset_id':identifier,'before':before,'after':None})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_collision_walls", "clear_collision_walls"):
             setting = command["type"] == "set_collision_walls"
             if set(command) != ({"type", "entity_id", "value"} if setting else {"type", "entity_id"}):
@@ -942,8 +1014,8 @@ class ProjectService:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
         entry = source.pop()
         value = deepcopy(entry[field])
-        if entry.get("target") == "texture_overrides":
-            collection, identifier = self.texture_overrides, entry["asset_id"]
+        if entry.get("target") in ("texture_overrides", "model_overrides"):
+            collection, identifier = getattr(self, entry['target']), entry["asset_id"]
         else:
             collection = self.actor_templates if entry.get("target") == "actor_templates" else self.overrides
             identifier = entry["template_id"] if entry.get("target") == "actor_templates" else entry["entity_id"]
@@ -960,6 +1032,8 @@ class ProjectService:
         self._apply_history(self.redo_stack, self.undo_stack, "after")
 
     def save(self) -> Path:
+        for asset_id, binding in self.model_overrides.items():
+            self.read_model_replacement(asset_id, binding)
         for binding in self.texture_overrides.values():
             self.read_texture_replacement(binding)
         if not (self.root / "Imported").resolve().is_relative_to(self.root):
@@ -1064,6 +1138,12 @@ class ProjectService:
                 raise ProjectError("Texture reference does not belong to its imported scene")
             result.read_texture_replacement(binding)
         result.texture_overrides = deepcopy(textures)
+        models = raw.get('model_overrides', {})
+        if not isinstance(models, dict) or len(models) > 128:
+            raise ProjectError('Invalid model shape collection')
+        for asset_id, binding in models.items():
+            result.read_model_replacement(asset_id, binding)
+        result.model_overrides = deepcopy(models)
         if raw.get("active_scene") is not None:
             result.set_scene(raw["active_scene"])
         result.undo_stack.clear()
@@ -1122,6 +1202,13 @@ class ProjectService:
                                 "scene_id": scene_id, "source_scene": self.imports[scene_id]["scene"]["name"],
                                 "changes": changes, "authored": deepcopy(edits),
                                 "script_id": "script://" + identifier.removeprefix("scene://")})
+        for identifier, binding in sorted(self.model_overrides.items()):
+            scene_id = binding['source_scene_id']
+            asset = next(a for a in self.imports[scene_id]['assets']['models'] if a['semantic_id'] == identifier)
+            records.append({'id':identifier, 'kind':'model', 'name':'Model shape ' + identifier.rsplit('/',1)[-1],
+                            'scene_id':scene_id, 'source_scene':self.imports[scene_id]['scene']['name'],
+                            'changes':['TMD shape replacement'], 'authored':deepcopy(binding),
+                            'source_record':deepcopy(asset['source_record'])})
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]
             records.append({"id": identifier, "kind": "texture", "name": "TIM " + identifier.split("/", 3)[-1].replace("/", " / "),
@@ -1193,6 +1280,7 @@ class ProjectService:
                 "assets": deepcopy(list(self.assets.records.values())),
                 "model_references": self.model_references(), "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),
+                "model_overrides": deepcopy(self.model_overrides),
                 "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",

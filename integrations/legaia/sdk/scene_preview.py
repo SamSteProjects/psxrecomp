@@ -29,6 +29,7 @@ def source_key(project, *, geometry_only=False) -> str | None:
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
+                   "model_shapes": deepcopy(project.model_overrides),
                    "animation_channels": {a["semantic_id"]: deepcopy(project.overrides[a["semantic_id"]]["AnimationChannels"])
                                           for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})},
                    "environment": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
@@ -138,6 +139,8 @@ class ScenePreviewService:
 
     def preview(self, project, model_loader, pose_loader_factory=None, environment_loader_factory=None, terrain_loader=None) -> dict:
         # Cached geometry must not hide missing or modified authored files.
+        for asset_id, binding in project.model_overrides.items():
+            project.read_model_replacement(asset_id, binding)
         for binding in project.texture_overrides.values():
             if binding["source_scene_id"] == project.active_scene:
                 project.read_texture_replacement(binding)

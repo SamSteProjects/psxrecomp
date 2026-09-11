@@ -21,6 +21,27 @@ def _verify(project, document):
         raise ProjectError("Resource source differs from freshly verified imported evidence")
 
 
+def model_shape_source(project, asset_id: str) -> dict:
+    """Private source download for editing an existing model's local shape."""
+    from hashlib import sha256
+    from importer.assets import load_model_source, decode_tmd
+    document, key = _scene(project)
+    asset = next((a for a in document['assets']['models'] if a['semantic_id'] == asset_id), None)
+    if asset is None:
+        raise ProjectError('Choose a model from the active imported scene')
+    with _disc_context(project.disc_path):
+        _verify(project, document)
+        data = load_model_source(project.disc_path, asset)
+        preview = decode_tmd(data)
+    if key != source_key(project):
+        raise ProjectError('Model source changed while reading; refresh again')
+    return dict(semantic_id=asset_id, scene_id=project.active_scene, source_key=key,
+                source_sha256=sha256(data).hexdigest(), byte_length=len(data),
+                filename='original-model.tmd', tmd_base64=base64.b64encode(data).decode('ascii'),
+                object_count=len(preview['objects']), coordinate_system=preview['coordinate_system'],
+                limitations=['Shape edits preserve source object layout, topology, materials and padding.'])
+
+
 def refresh_resource_catalog(project) -> dict:
     from importer.texture_catalog import load_texture_asset_catalog
     from importer.animation_catalog import load_animation_asset_catalog

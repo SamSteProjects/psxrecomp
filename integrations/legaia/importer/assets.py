@@ -165,8 +165,8 @@ def decode_tmd(data: bytes) -> dict[str, Any]:
     return result
 
 
-def load_model_preview(disc: Path | str, asset: dict[str, Any]) -> dict[str, Any]:
-    """Read a verified imported model's exact source span and decode privately."""
+def load_model_source(disc: Path | str, asset: dict[str, Any]) -> bytes:
+    """Read the imported model span with the same disc and container guards as preview."""
     if not isinstance(asset, dict) or asset.get("asset_kind") != "tmd_model":
         raise ImportError("preview requires an imported TMD model asset")
     source = asset.get("source_record", {})
@@ -202,7 +202,12 @@ def load_model_preview(disc: Path | str, asset: dict[str, Any]) -> dict[str, Any
             raise ImportError("model containing source size no longer matches")
         offset, length = source["byte_offset"], source["byte_length"]
         _range(body, offset, length, "model source")
-        preview = decode_tmd(body[offset:offset + length])
-        preview["semantic_id"] = asset["semantic_id"]
-        preview["source_record"] = source
-        return preview
+        return body[offset:offset + length]
+
+
+def load_model_preview(disc: Path | str, asset: dict[str, Any]) -> dict[str, Any]:
+    """Decode a source-verified model privately in object-local coordinates."""
+    preview = decode_tmd(load_model_source(disc, asset))
+    preview["semantic_id"] = asset["semantic_id"]
+    preview["source_record"] = asset["source_record"]
+    return preview

@@ -213,6 +213,67 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Model shape checkpoint verification
+- Previous turn made progress with party animation and authored navigation. Added two focused synthetic regressions for every source byte including normal XYZ/padding, vector alias rejection, known90degree pose result, immutable input, and missing transform rejection.
+- All31 focused model/importer/export/project/build-report/scene/MAP-build checks passed with retail input. Updated FEATURE_MATRIX with implemented model-shape scope and unverified boundaries.
+- Checkpoint includes earlier collision review/difference display improvements. No proprietary payloads are among the explicitly selected source/test/document paths. Browser file upload, NPC/scene visual acceptance, mixed shared-container composition and gameplay remain pending; full SDK goal remains incomplete.
+
+### Animated shape verification and authored asset navigation
+- Previous turn made progress with effective scene shapes. Registered model shapes in project-wide Authored Assets with their imported source records, separate authored bindings, and source-scene navigation to explicit authored model view.
+- Retail party idle test passed all15frames: one local vertex displaced20units retains20unit distance after rigid pose, all other vertices identical,10object equipment-excluding prefix unchanged; imported preview remained unchanged. Authored model entry was present. Node syntax passed.
+- Browser authored-asset navigation, NPC animation shape and scene visual checks remain pending; no gameplay or user project changes.
+
+### Effective scene model shape integration
+- Previous turn made progress with browser preview/export and GLB provenance. Added preview_model_shape: validates existing object ranges, supports party prefix excluding equipment, and reapplies explicit frame/pose transforms to authored local vertices without changing retail geometry or channels.
+- Scene route opts into effective shapes via model loader adapter; ordinary retail preview remains unchanged. Shape bindings enter scene geometry cache identity, and file/source validity is checked before cache reuse.
+- Fresh retail scene service found one authored-shape geometry from the isolated model0000 project. Five scene-preview tests passed. Animated shape and browser scene rendering still require direct verification; existing4404 server predates this adapter. No game or user project changes.
+
+### Browser model shape and GLB provenance verification
+- Previous turn made progress adding browser controls. Created isolated model-shape-browser-check project with model0000 object0 X+100, started fresh editor4404/session43064 (module has no direct main invocation; used explicit main()), and browser tab73.
+- Browser loaded authored object-local preview and exported50 source vertices/72triangles/two textures. Export inspection found missing authored shape metadata; added representation and authored_shape binding to GLB extras/audit.
+- Fresh direct-service export independently parsed216 expanded GLB positions and matched all converted authored vertices plus representation and source/replacement hashes. Fresh file model-bfe979b780224999abc62ef4ac17aabb.glb is verified; the earlier browser export predates the metadata fix. Current4404 server also predates that Python exporter fix.
+- Browser file-picker/upload interaction remains unverified (API upload passed previously). No user project/game changes. Scene/posed model shape integration and mixed-container composition remain pending.
+
+### Model shape browser controls
+- Previous turn made progress verifying source/upload/preview/clear HTTP workflow. Added capability-gated model inspector controls for source TMD download, bounded edited TMD upload, retail/authored unposed views and clear override. Upload captures project/scene/asset context across file reading; server validates all bytes.
+- Authored shape preview is labeled separately, and Export GLB selects the authored-shape route when that layer is displayed. Existing animation selection remains imported/assigned; main-scene and posed shape integration are still pending.
+- Node syntax and Python compile checks passed. Browser rendering/upload/export controls require verification against a fresh isolated editor; existing user editor/game remain untouched. No claim of UI acceptance yet.
+
+### Model shape upload and explicit preview API
+- Previous turn made progress packaging model shapes. Added bounded4MiB model upload route, authored object-local preview and authored GLB-export route, explicit clear command/history, and model_overrides in editor state.
+- Temporary real HTTP server passed source download, replacement upload, authored preview, retail preview and clear. Exactly one vertex X changed by1; source_record remained equal between layers. Server shut down after check; no existing editor restart or user project change.
+- Authored GLB route is implemented but unverified. Browser upload controls, main scene/posed geometry integration and authored asset browser still pending. Preview currently object-local shape only, preserving imported animation behavior.
+
+### Model shape package integration
+- Previous turn made progress with persisted model assets. Added raw member overlays and grouped compressed-container shape composition, conservative same-span LZS encoding, original disc-span checks and coordinate audit records; removed the temporary blanket Build rejection.
+- Model shapes now participate in build authored-state identity and report before/after hashes. First temporary build exposed missing scene in shape audit; corrected it and reran successfully.
+- Two town01 scene models with one coordinate edit each built as one overlay with two audited model changes and verified compression roundtrip. UI/preview remains pending; raw model packaging and mixed edit families need verification. Existing cross-family overlapping-overlay rejection remains, so shared-container texture/animation composition is not yet complete. No game input or user project changes.
+
+### Persistent model shape assets
+- Previous turn made progress validating all119 retail model layouts and adding private source access. Added project model_overrides with content-addressed Authored/Models TMDs, strict binding/hash/size/path validation and fresh imported-source validation.
+- Registration requires Edit mode and exact supported shape layout, supports128 entries, uses shared undo/redo, tracks dirty sections, saves/reopens with revalidation, and clears the override when original source is supplied. Build explicitly rejects these overrides until packaging is connected, preventing silent omission.
+- Retail temporary-project workflow passed registration, undo/redo, dirty section, save/reopen, content equality, source restoration and undo of restoration. No user project save, game launch or input. Model preview/UI upload, authored browser listing and package integration remain pending.
+
+### Retail shape compatibility and private source API
+- Previous turn made progress with shape serializer. Extracted load_model_source from the existing preview reader so downloads/replacements share disc/container/source-span guards; preview delegates to it without changing decoding behavior.
+- Retail town01 check accepted one local vertex-coordinate edit for all 119 imported models with exactly one audit item each; no alias/primitive overlap rejection. Four existing model decoder tests passed. This proves bounded shape compatibility, not arbitrary replacement or gameplay.
+- Added freshly reimport-verified model_shape_source service and /api/model-shape-source route for private base64 TMD downloads keyed by active-scene asset identity. Python compile/diff checks passed; new HTTP route and UI download remain unverified/not wired respectively. No game or saved-project changes.
+
+### Model shape replacement serializer foundation
+- Previous turn made progress with removed collision visualization. Inspected current assets.py decoder and source locators before starting the model replacement frontier.
+- Added source-hash-bound same-layout TMD shape replacement validator for vertex/normal XYZ words. Protects descriptors, topology, materials, vector padding and opaque bytes; rejects vector aliasing and primitive overlap. This is a serializer foundation, not yet an editor import/build workflow or arbitrary topology replacement.
+- Synthetic textured-quad mutation check changed each byte independently, accepting only 24 coordinate bytes and rejecting all protected bytes; no-op preserved identical source. Retail shape replacement, normal-vector fixtures, service registration, previews, persistence and packaged output remain to implement/verify.
+
+### Authored collision viewport differences
+- Previous turn made progress with individual wall review/restoration. Added bounded audit validation and effective-layer delta drawing: added walls green solid, removed walls pink dashed, with counts in the legend. Imported geometry remains unchanged.
+- Browser tab72/editor4403 visually verified temporary removal at row14/column41/quadrant0: pink dashed rectangle centered at X5280/Y0/Z1696 and Removed1 legend over the scene. Restored the temporary edit through the form afterward; no project save or game input.
+- Node syntax and diff checks passed. Added-wall green appearance remains unverified visually; removed-wall display is verified. Source collision height remains a labeled placeholder.
+
+### Review and restore individual collision edits
+- Previous turn made progress and checkpointed collision workflow at 4ee77392; tracked worktree was clean before this extension.
+- Added sorted Applied wall edits selector and Restore selected cell to retail. Both respect unapplied draft protection. Apply now requires a change and removes an existing override when the checkbox returns to retail; removing the final edit clears Collision only.
+- Isolated browser tab71/editor4403 verified a temporary row1/column0/quadrant0 blocked edit appearing in the list, then restored it: unblocked baseline, empty disabled edit selector, disabled restore/clear actions. No project save or game interaction. Node syntax passed; the final placeholder selection correction is syntax-checked only.
+
 ### Collision authored asset integration and checkpoint
 - Previous turn made progress with browser-verified cell location. Reviewed current serializer, project commands, persistence, resource preview, server and MAP composition changes.
 - Fixed collision overrides missing from Authored Assets: scenes now expose one combined authored entry for Collision and Environment, while retaining separate component provenance.

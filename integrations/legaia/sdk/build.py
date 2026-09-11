@@ -34,7 +34,8 @@ def authored_state_key(project) -> str:
     return _hash(canonical_json({"name": project.name, "root": str(project.root),
                                 "disc_path": str(project.disc_path), "imports": project.imports,
                                 "overrides": project.overrides,
-                                "textures": getattr(project, "texture_overrides", {})}).encode("utf-8"))
+                                "textures": getattr(project, "texture_overrides", {}),
+                                "models": getattr(project, "model_overrides", {})}).encode("utf-8"))
 
 
 def build_report(audit) -> dict:
@@ -45,7 +46,7 @@ def build_report(audit) -> dict:
         if field == "dialogue.text":
             before = bytes.fromhex(change["before_hex"]).decode("ascii")
             after = bytes.fromhex(change["after_hex"]).decode("ascii")
-        elif field == "texture.tim":
+        elif field in ("texture.tim", "model.shape"):
             before, after = change["before_sha256"], change["after_sha256"]
         else:
             before = change.get("before_value", change.get("before_byte"))
@@ -288,6 +289,18 @@ def _build_project(project, output_dir) -> dict:
     overlays = []
     audit_edits = []
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
+        from importer.model_authoring import model_shape_overlays
+        model_assets, model_payloads = {}, {}
+        for identifier, binding in sorted(project.model_overrides.items()):
+            model_payloads[identifier] = project.read_model_replacement(identifier, binding)
+            document = project.imports[binding['source_scene_id']]
+            model_assets[identifier] = next(a for a in document['assets']['models'] if a['semantic_id'] == identifier)
+        shape_overlays, shape_changes = model_shape_overlays(archive, model_assets, model_payloads)
+        for overlay in shape_overlays:
+            if _hash(_image.read_user(0, overlay['offset'], overlay['size'], (_image.size // 2352)*2048)) != overlay['expected_sha256']:
+                raise BuildError('Model shape overlay differs from its original disc span')
+            overlays.append({**overlay, 'scene':'shared-model-source', 'file':f"assets/model-shape-{overlay['offset']:08x}.bin"})
+        audit_edits.extend({**change, 'scene':project.imports[project.model_overrides[change['semantic_id']]['source_scene_id']]['scene']['name']} for change in shape_changes)
         for scene_id, bindings in sorted(animation_edits.items()):
             from importer.scene_animation import load_scene_actor_animation_catalog
             from importer.serialization import serialize_lzs_decoded
@@ -517,7 +530,7 @@ def _build_project(project, output_dir) -> dict:
         "edits": audit_edits,
         "overlays": [{key: value for key, value in overlay.items() if key != "payload"} for overlay in overlays],
         "validation": {"retail_provenance": "fresh_import_match", "unchanged_opaque_bytes": True,
-                       "lz_decode_round_trip": (True if any(o["file"].endswith(('-man.lzs', '-animation.lzs')) for o in overlays)
+                       "lz_decode_round_trip": (True if any(o["file"].endswith(('-man.lzs', '-animation.lzs')) or 'decoded_after_sha256' in o for o in overlays)
                                                 else "not_required_no_compressed_scene_overlay" if overlays else "not_required_unmodified_disc"),
                        "live_runtime": "not_run"},
     }

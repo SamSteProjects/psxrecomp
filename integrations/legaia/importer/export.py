@@ -238,6 +238,8 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None) ->
     audit = {
         "schema_version": "legaia.model-export.v1", "format": "glb", "asset_semantic_id": preview.get("semantic_id"),
         "source_record": deepcopy(preview.get("source_record")), "reference_commit": preview.get("reference_commit"),
+        "representation": preview.get("representation", "imported"),
+        **({"authored_shape": deepcopy(preview["authored_shape"])} if preview.get("authored_shape") else {}),
         "source_coordinate_system": source_space, "coordinate_conversion": "[x,-y,z]; reverse triangle winding",
         "units": "source units retained; physical meter scale is unknown", "frame_index": frame_index,
         "posed": pose is not None, "animation": deepcopy(preview.get("animation")) if pose else None,
