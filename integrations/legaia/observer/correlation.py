@@ -261,8 +261,12 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
         if node_id not in node_lookup or node_id in seen:
             return unavailable("Binding evidence contains unknown or duplicate runtime nodes")
         seen.add(node_id)
+        node_fields = _fields(node_lookup[node_id])
         runtime_entry = {"runtime_node_id": node_id, "candidate_entity_ids": [],
-                         "reason": observed.get("reason"), "binding_confirmed": False}
+                         "reason": observed.get("reason"), "binding_confirmed": False,
+                         "observed_position": {axis: node_fields.get("position_" + axis, {}).get("interpreted_value") for axis in ("x", "y", "z")},
+                         "epoch_id": epoch["epoch_id"], "frame": node_lookup[node_id].get("position_capture_frames", {}).get("after"),
+                         "position_capture_frames": deepcopy(node_lookup[node_id].get("position_capture_frames"))}
         result["runtime_nodes"].append(runtime_entry)
         if observed.get("available") is not True:
             continue
@@ -302,6 +306,7 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
                          "appearance_layers": matching_layers,
                          "effective_donor_id": donor_id if "effective" in matching_layers else None,
                          "epoch_id": epoch["epoch_id"], "frame": observed["observed_frame"],
+                         "position_capture_frames": deepcopy(node_lookup[node_id].get("position_capture_frames")),
                          "evidence": ["MAN model selector and pool", "MAN animation selector", "MAN local-count prefix",
                                       "independent runtime model object count"],
                          "placement_header_agrees_with_import": placement_agrees,

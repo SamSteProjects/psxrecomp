@@ -136,6 +136,7 @@
         "epoch_scoped_node_id": { "type": "string", "pattern": "^runtime://epoch-[0-9a-f]{64}/field-node/[0-9a-f]{8}$" },
         "node_address": { "$ref": "#/$defs/address" },
         "chain_index": { "type": "integer", "minimum": 0 },
+        "position_capture_frames": {"type": "object", "additionalProperties": false, "required": ["before", "after"], "properties": {"before": {"type": "integer", "minimum": 0}, "after": {"type": "integer", "minimum": 0}}},
         "source_read_range": {
           "type": "object", "additionalProperties": false,
           "required": ["base", "length"],

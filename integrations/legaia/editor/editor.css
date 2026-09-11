@@ -62,3 +62,8 @@
 .coordinate-comparison caption { text-align:left; margin:8px 0; }
 .coordinate-comparison th,.coordinate-comparison td { padding:5px 3px; text-align:right; overflow-wrap:anywhere; border-bottom:1px solid #33474c; }
 .coordinate-comparison th:first-child { text-align:left; }
+
+.observed-nodes-dialog { width: min(900px, 90vw); max-height: 85vh; overflow: auto; }
+.observed-nodes-dialog > input { width: 100%; box-sizing: border-box; }
+.observed-nodes-list { max-height: 55vh; overflow: auto; overflow-wrap: anywhere; }
+.observed-nodes-list > div { padding: 8px; border-bottom: 1px solid #435064; }

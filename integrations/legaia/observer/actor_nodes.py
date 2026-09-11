@@ -192,6 +192,7 @@ def traverse_actor_chain(
                 "epoch_scoped_node_id": f"runtime://{epoch.epoch_id}/field-node/{current:08x}",
                 "node_address": _format_address(current),
                 "chain_index": len(nodes),
+                "position_capture_frames": {"before": frame_before, "after": frame_after},
                 "source_read_range": {"base": _format_address(current), "length": prefix_length},
                 "next_pointer": pointer_metadata(next_value, profile, dereferenced=next_value != 0),
                 "prefix_length": prefix_length,

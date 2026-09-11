@@ -213,6 +213,52 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Candidate timing live verification
+- Reloaded comparison service only (session 49105). Browser freshly captured nodes, filtered 80082c9c, and selected Actor 0011. Inspector showed Binding capture frame 168271 separately from Position capture frames 168238-168238. This verifies distinct read provenance through the complete observer-to-inspector path.
+- Reviewed observer/schema diff and whitespace check; no game input or authored transform changes. Full SDK goal remains incomplete beyond this inspector checkpoint.
+
+
+### Candidate inspector sample timing
+- Candidate records now carry the coordinate read interval separately from their later binding-evidence frame. Inspector labels both explicitly; older samples show unknown coordinate timing.
+- Added a focused regression proving coordinate frame 100 remains separate from later binding reads and legacy records do not invent a coordinate timestamp. Eighteen correlation/service checks and JavaScript syntax pass. Browser served Python must reload before newly added candidate intervals appear.
+
+
+### Runtime node to entity inspector workflow
+- Observed nodes now includes Inspect candidate actions for existing scene entities, guarded by current live epoch and project/scene context. Selection uses the existing project selection API; no identity is promoted to confirmed and no transform is authored.
+- JavaScript syntax passed. Browser filtered node 80082c9c and activated Inspect candidate Actor 0011. First click during page initialization needed retry after loading; subsequent dialog and selection actions succeeded.
+
+
+### Fresh capture interval acceptance
+- Restarted comparison editor service only (session 11991, port 4394); user game remained connected. Fresh observation exposed rejection of the new node frame interval by the strict observation schema. Added the optional typed position_capture_frames schema property.
+- Retried through the browser successfully: 90 nodes, filter 80082c9c retained through Refresh captured list, position frames 154611-154611 and XYZ 9664/0/8640. Seventeen observer service/correlation checks pass. This resolves the prior fresh-capture and refresh-list acceptance items.
+
+
+### Coordinate capture provenance and dialog refresh
+- Added Refresh captured list inside Observed nodes, retaining its filter without closing the dialog. This refresh displays the latest accepted sample already held by the editor.
+- Node traversal now records the guarded read frame interval beside decoded coordinates. Independent runtime-node entries use this interval instead of the later MAN binding-read frame; older samples explicitly show unknown. The separate candidate summary frame still denotes binding evidence.
+- JavaScript syntax and seven correlation checks pass. Server restart/fresh capture and browser acceptance of these latest changes remain pending.
+
+
+### Observed-node browser acceptance
+- Previous continuation made implementation progress. Browser 4394 was refreshed, Live mode entered, and Observe actors captured 90 nodes. Filtering 80082c9c reduced the dialog to 1 of 90 at guest XYZ 9664/0/8640; Frame node activated and closed the dialog. No controller input or authored coordinate mutation was issued.
+- Opening the dialog while capture was still pending showed an empty snapshot; reopening after completion populated it. Refresh-in-dialog and exact coordinate capture-frame provenance remain follow-up improvements. This is inspector workflow evidence, not full scene parity acceptance.
+
+
+### Observed-node inspector continuation
+- Added bounded scrolling and filtering by runtime node identity, coordinates, or candidate entity ID to the captured-node dialog. Camera framing remains guarded by live mode, project/scene context, and accepted observation epoch.
+- JavaScript syntax check passed. Seven correlation checks passed with PYTHONPATH=integrations/legaia (initial invocation lacked the required import path). Editor API on port 4394 currently reports runtime available. Browser interaction acceptance of the new filter remains pending; no game input or authored NPC coordinate changes were made.
+
+
+### User interior-placement clarification
+- User reports that remaining NPCs appear correctly positioned in houses beside the main map. Preserve their imported coordinates; absence of a displayed source-ground cell is an unresolved preview elevation, not proof of a misplaced NPC. The previously inspected furnished interior supports this interpretation, but individual runtime placements remain to be verified.
+
+
+### 2026-09-10 — Inspect runtime nodes without imported matches
+
+- Previous turn was progress: committed coordinate workflow checkpoint. Added observed XYZ/epoch/frame to independent runtime-node correlation entries, including nodes without candidate entities. Added Observed nodes dialog with captured coordinates, candidate counts and camera-only Frame node actions.
+- Dialog framing rechecks live mode/epoch; captured marker hides when mode/epoch changes and is labeled separately from a manual reference. No identity inference or runtime write is introduced.
+- Seven correlation tests and JavaScript syntax pass. Server refresh and browser acceptance for the new node dialog remain pending.
+
 ### 2026-09-10 — Checkpoint coordinate comparison workflow
 
 - Previous turn was progress: checked interior geometry and preserved unresolved positions. Preparing a scoped checkpoint of the preview refresh fixes, separate derived elevations, live coordinate/header tables, sampled framing and manual coordinate locator, together with the user's rendered-wall acceptance evidence.

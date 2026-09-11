@@ -13,6 +13,35 @@ const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
 const sceneLayers={actors:true,scenery:true,ground:true};
+const nodesButton=document.createElement('button');nodesButton.textContent='Observed nodes';$('frame-selected').after(nodesButton);
+const nodesDialog=document.createElement('dialog');nodesDialog.className='project-dialog observed-nodes-dialog';document.body.append(nodesDialog);
+nodesButton.onclick=()=>renderObservedNodes();
+function renderObservedNodes(query=''){
+  nodesDialog.replaceChildren();const heading=document.createElement('h2');heading.textContent='Observed runtime nodes';nodesDialog.append(heading);
+  const note=document.createElement('p');note.textContent='Captured positions, independent of imported actor matching. Framing changes only the editor camera.';nodesDialog.append(note);
+  const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation,context=JSON.stringify([state.project?.path,state.scene?.id]);
+  const nodes=state.project?.mode==='live'&&epoch&&correlation?.available===true&&correlation.epoch_id===epoch?correlation.runtime_nodes??[]:[];
+  const search=document.createElement('input');search.type='search';search.value=query;search.placeholder='Filter by node, coordinates, or candidate';search.setAttribute('aria-label','Filter observed nodes');nodesDialog.append(search);
+  const list=document.createElement('div');list.className='observed-nodes-list';nodesDialog.append(list);
+  const count=document.createElement('p');count.setAttribute('role','status');nodesDialog.append(count);
+  const current=()=>state.project?.mode==='live'&&acceptedEpoch(state.runtime)===epoch&&JSON.stringify([state.project?.path,state.scene?.id])===context&&state.runtime_correlation?.available===true&&state.runtime_correlation.epoch_id===epoch;
+  const rows=[];
+  for(const node of nodes){
+    const row=document.createElement('div'),label=document.createElement('p');const p=node.observed_position;label.textContent=`${node.runtime_node_id} | position frames ${node.position_capture_frames?.before??'unknown'}–${node.position_capture_frames?.after??'unknown'} | XYZ ${p?.x??'?'} / ${p?.y??'?'} / ${p?.z??'?'} | ${node.candidate_entity_ids?.length??0} candidate entities`;row.append(label);
+    const button=document.createElement('button');button.textContent='Frame node';button.disabled=node.epoch_id!==epoch||!p||!['x','y','z'].every(a=>numeric(p[a]));
+    button.onclick=()=>{if(state.project?.mode!=='live'||acceptedEpoch(state.runtime)!==epoch||JSON.stringify([state.project?.path,state.scene?.id])!==context||state.runtime_correlation?.available!==true||state.runtime_correlation.epoch_id!==epoch)return;coordinateProbe={point:{...p},epoch,context};cancelViewportGesture();camera.target=displayPosition(p);camera.distance=800;cameraRevision++;nodesDialog.close();draw();};row.append(button);list.append(row);rows.push({row,text:[node.runtime_node_id,p?.x,p?.y,p?.z,...(node.candidate_entity_ids??[])].join(' ').toLowerCase()});
+    for(const id of node.candidate_entity_ids??[]){
+      const entity=entities().find(item=>item.id===id);if(!entity)continue;
+      const inspect=document.createElement('button');inspect.textContent=`Inspect candidate ${entity.name??entity.label??id}`;inspect.title='Unconfirmed identity match; opens imported and observed values separately';
+      inspect.onclick=async()=>{if(busy||!current())return;nodesDialog.close();await api('/api/selection',{entity_id:id});};row.append(inspect);
+    }
+  }
+  const filter=()=>{const query=search.value.trim().toLowerCase();let shown=0;for(const item of rows){item.row.hidden=!item.text.includes(query);if(!item.row.hidden)shown++;}count.textContent=`${shown} of ${nodes.length} captured nodes`;};search.oninput=filter;filter();
+  if(!nodes.length){const empty=document.createElement('p');empty.textContent='No accepted actor sample. Enter Live mode and Observe actors first.';nodesDialog.append(empty);}
+  const refresh=document.createElement('button');refresh.textContent='Refresh captured list';refresh.onclick=()=>renderObservedNodes(search.value);nodesDialog.append(refresh);
+  const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
+};
+
 let coordinateProbe=null;
 const locateButton=document.createElement('button');locateButton.textContent='Locate coordinates';$('frame-selected').after(locateButton);
 const locateDialog=document.createElement('dialog');locateDialog.className='project-dialog';locateDialog.innerHTML='<form><h2>Locate guest coordinates</h2><p>Place a reference marker using game coordinates. This changes only the editor camera.</p><label>X <input name="x" type="number" step="any" required></label><label>Y <input name="y" type="number" step="any" required value="0"></label><label>Z <input name="z" type="number" step="any" required></label><button type="submit">Locate</button><button type="button" data-clear>Clear marker</button><button type="button" data-close>Cancel</button></form>';document.body.append(locateDialog);
@@ -25,8 +54,9 @@ locateDialog.querySelector('form').onsubmit=event=>{
 };
 function drawCoordinateProbe(){
   if(!coordinateProbe||coordinateProbe.context!==JSON.stringify([state.project?.path,state.scene?.id]))return;
+  if(coordinateProbe.epoch&&(state.project?.mode!=='live'||acceptedEpoch(state.runtime)!==coordinateProbe.epoch||state.runtime_correlation?.available!==true||state.runtime_correlation.epoch_id!==coordinateProbe.epoch))return;
   const world=displayPosition(coordinateProbe.point),p=project(world);if(!p)return;
-  ctx.save();ctx.strokeStyle='#ffda78';ctx.fillStyle='#ffda78';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.moveTo(p.x-15,p.y);ctx.lineTo(p.x+15,p.y);ctx.moveTo(p.x,p.y-15);ctx.lineTo(p.x,p.y+15);ctx.stroke();ctx.font='12px "Segoe UI",sans-serif';const v=coordinateProbe.point;ctx.fillText(`Reference X ${v.x} Y ${v.y} Z ${v.z}`,p.x+18,p.y-12);ctx.restore();
+  ctx.save();ctx.strokeStyle='#ffda78';ctx.fillStyle='#ffda78';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.moveTo(p.x-15,p.y);ctx.lineTo(p.x+15,p.y);ctx.moveTo(p.x,p.y-15);ctx.lineTo(p.x,p.y+15);ctx.stroke();ctx.font='12px "Segoe UI",sans-serif';const v=coordinateProbe.point;ctx.fillText(`${coordinateProbe.epoch?'Captured node':'Reference'} X ${v.x} Y ${v.y} Z ${v.z}`,p.x+18,p.y-12);ctx.restore();
 }
 
 const frameSamplesButton=document.createElement('button');frameSamplesButton.textContent='Frame live samples';frameSamplesButton.disabled=true;frameSamplesButton.title='Frame all accepted-epoch candidates for the selected actor without changing authored placement';$('frame-selected').after(frameSamplesButton);
@@ -1031,7 +1061,7 @@ function runtimeCandidateSummary(correlation,entityId){
     const layers=(candidate.appearance_layers??[]).map(layer=>({imported:'Imported',effective:'Effective'})[layer]).filter(Boolean);
     const donor=candidate.effective_donor_id;
     const position=candidate.observed_position??{};
-    return `<div class="appearance-layer"><h4>Unconfirmed runtime candidate</h4>${property('Captured node',candidate.runtime_node_id)}${property('Appearance match',layers.join(' + ')||'Not classified')}${donor&&donor!==entityId?property('Effective donor',donor):''}${property('Capture frame',candidate.frame)}${property('Placement header matches imported X/Z',candidate.placement_header_agrees_with_import===true?'Yes':candidate.placement_header_agrees_with_import===false?'No':'Unknown')}${property('Captured placement header',`X ${format(candidate.placement_position?.x)} · Z ${format(candidate.placement_position?.z)}`)}${property('Captured world position',`X ${format(position.x)} · Y ${format(position.y)} · Z ${format(position.z)}`)}${coordinateComparisonMarkup(entityId,position)}<p class="field-note">Captured evidence only. Structural compatibility does not establish actor identity.</p></div>`;
+    return `<div class="appearance-layer"><h4>Unconfirmed runtime candidate</h4>${property('Captured node',candidate.runtime_node_id)}${property('Appearance match',layers.join(' + ')||'Not classified')}${donor&&donor!==entityId?property('Effective donor',donor):''}${property('Binding capture frame',candidate.frame)}${property('Position capture frames',candidate.position_capture_frames?`${candidate.position_capture_frames.before}–${candidate.position_capture_frames.after}`:'Unknown')}${property('Placement header matches imported X/Z',candidate.placement_header_agrees_with_import===true?'Yes':candidate.placement_header_agrees_with_import===false?'No':'Unknown')}${property('Captured placement header',`X ${format(candidate.placement_position?.x)} · Z ${format(candidate.placement_position?.z)}`)}${property('Captured world position',`X ${format(position.x)} · Y ${format(position.y)} · Z ${format(position.z)}`)}${coordinateComparisonMarkup(entityId,position)}<p class="field-note">Captured evidence only. Structural compatibility does not establish actor identity.</p></div>`;
   }).join('');
 }
 function renderInspector(){

@@ -87,6 +87,20 @@ def status(count=1):
 
 
 class CorrelationTests(unittest.TestCase):
+    def test_position_capture_is_separate_from_later_binding_reads(self):
+        live = status()
+        live["observation"]["actor_chain"]["nodes"][0]["position_capture_frames"] = {"before": 99, "after": 100}
+        result = correlate(imported(), live)
+        node = result["runtime_nodes"][0]
+        candidate = next(iter(result["entities"].values()))["candidates"][0]
+        self.assertEqual(node["frame"], 100)
+        self.assertEqual(candidate["position_capture_frames"], {"before": 99, "after": 100})
+        self.assertGreater(candidate["frame"], node["frame"])
+        self.assertEqual(node["observed_position"], {"x": 500, "y": 0, "z": 600})
+        legacy = correlate(imported(), status())["runtime_nodes"][0]
+        self.assertIsNone(legacy["frame"])
+        self.assertIsNone(legacy["position_capture_frames"])
+
     def test_authored_appearance_preserves_target_structure_and_retail_candidates(self):
         document = imported()
         target = document["actors"][0]["semantic_id"]
