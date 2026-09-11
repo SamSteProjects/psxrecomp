@@ -161,6 +161,13 @@ def _instruction(data: bytes, pc: int) -> dict:
                           0x39: (1, "GIVE_ITEM"), 0x3A: (3, "ADD_MONEY"), 0x3B: (2, "SET_ITEM_COUNT"),
                           0x3C: (1, "PARTY_ADD"), 0x3D: (1, "PARTY_REMOVE"),
                           0x44: (1, "SPAWN_RECORD"), 0x4A: (2, "WAIT_FRAMES")}[op]
+        if op == 0x44:
+            need(1)
+            # Pinned step.rs calls FUN_8003BDE0 with global_index-N0-N1.
+            # This is a partition2 script context, not a partition1 NPC ID.
+            args = {"global_record_index": data[operand],
+                    "target_partition": 2,
+                    "index_semantics": "global_index_minus_partition0_and_partition1_counts"}
     elif op == 0x3E:
         need(1)
         warp = 100 <= data[operand] < 255
@@ -179,6 +186,16 @@ def _instruction(data: bytes, pc: int) -> dict:
     elif op == 0x40:
         need(1)
         size, mnemonic = 1 + data[operand], "INLINE_DATA"
+    elif op == 0x4D:
+        # Pinned executing step.rs / FUN_801E3614: outside branch uses
+        # the skip-word location as its relative base, not the next opcode.
+        size, mnemonic = 6, "BBOX_TEST"
+        need(size)
+        delta = struct.unpack_from("<h", data, operand + 4)[0]
+        args = {"tile_bounds": list(data[operand:operand + 4]), "delta": delta,
+                "coordinate_mode": "runtime_global_flag_dependent"}
+        branches = [{"pc": operand + 6, "condition": "inside_box"},
+                    {"pc": (operand + 4 + delta) & 0xFFFF, "condition": "outside_box"}]
     elif op == 0x42:
         need(4)
         if data[operand] > 1:
@@ -226,7 +243,16 @@ def _instruction(data: bytes, pc: int) -> dict:
         # Face setup is a configuration/ramp, not a scalar heading.
         need(1)
         sub = data[operand]
-        if sub == 7:
+        if sub == 2:
+            # Pinned executing actor_ctrl.rs: seven operands including selector,
+            # three actor operands, a u16 argument and a trailing byte.
+            size, mnemonic = 7, "THREE_ACTOR_TALK"
+            need(size)
+            args = {"sub_op": sub, "actor_operands": list(data[operand + 1:operand + 4]),
+                    "argument_u16": struct.unpack_from("<H", data, operand + 4)[0],
+                    "trailing_operand": data[operand + 6],
+                    "runtime_effect": "not_evaluated"}
+        elif sub == 7:
             size, mnemonic = 16, "FACE_ROTATION_SETUP"
             need(size)
             args = {"sub_op": sub, "face_id": data[operand + 1],
@@ -272,7 +298,14 @@ def _instruction(data: bytes, pc: int) -> dict:
     elif op == 0x4C:
         need(1)
         sub = data[operand]
-        if 0x30 <= sub <= 0x3F:
+        if 0x10 <= sub <= 0x1F:
+            # Pinned menu_ctrl.rs outer nibble1 consumes five payload bytes
+            # and advances unconditionally after the host call.
+            size, mnemonic = 6, "MENU_CTRL_SUB1"
+            need(size)
+            args = {"sub_op": sub, "values": list(data[operand + 1:operand + 6]),
+                    "destination_semantics": "host_defined"}
+        elif 0x30 <= sub <= 0x3F:
             size, mnemonic = 1, "FIELD_STATE_CONTROL"
             args = {"sub_op": sub, "can_yield": sub in (0x30, 0x31, 0x37)}
         elif 0x40 <= sub <= 0x4D and sub != 0x49:
@@ -339,6 +372,15 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "can_yield": sub < 0x72}
             if sub >= 0x72:
                 args["mask"] = data[operand + 5]
+        elif sub == 0x8A:
+            # Pinned executing menu_ctrl/nibble_8.rs: fixed header+10
+            # continuation after three signed words and one packed u24.
+            size, mnemonic = 10, "WRITE_FIELD_QUAD"
+            need(size)
+            args = {"sub_op": sub,
+                    "signed_words": list(struct.unpack_from("<hhh", data, operand + 1)),
+                    "packed_u24": int.from_bytes(data[operand + 7:operand + 10], "little"),
+                    "destination_semantics": "host_defined"}
         elif sub == 0xCD:
             size, mnemonic, branches = 1, "SCRIPT_CONTEXT_ALLOC", []
             args = {"sub_op": sub, "can_wait_for_external_state": True}

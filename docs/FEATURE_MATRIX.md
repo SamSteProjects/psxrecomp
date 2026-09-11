@@ -4,6 +4,7 @@ Current scene-editor status (2026-09-10):
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
+| Native actor candidates | Source-bound donor append, reached spawn-index rewrites, container growth prototype and browser-verified Inspector diagnostics. Seven focused structural/reindex/container checks pass. Retail candidate inspection creates no project entity or game actor. | Complete script/reference coverage, spawn scheduling, shared PROT archive relocation, project commands/persistence, Build and gameplay acceptance. See [candidate implementation](legaia-native-actor-candidates.md). |
 | Assembled field scene | Implemented and browser-validated for town01: 52 actors (51 renderable), 46 placed scenery objects, 162 decorations and one textured ground entity. | Complete retail scene parity, including ground holes and exact runtime terrain behavior. |
 | Selection and inspection | Hierarchy, viewport picking, selection outlines, object framing and Actors/Scenery/Ground visibility layers work together. Source provenance remains separate from authored transforms. | Broader scene acceptance and extensible inspector coverage. |
 | Shared scenery transforms | Writable numeric offsets/rotations, undo/redo, save/reopen, effective preview and guarded MAP packaging. Browser edit/save/undo accepted. | In-game visual/behavior acceptance; spawnable scenery remains shared-only. |
@@ -15,6 +16,7 @@ Current scene-editor status (2026-09-10):
 Current coordinate/live-inspector additions:
 
 - Actor preview elevation uses source terrain triangles where available, without changing imported or authored Y. In town01,25/52 actors resolve a source-ground sample; eight have nonzero heights. Actor0011 was visually checked on raised ground. The remaining27 still lack a matching displayed ground cell; this is not complete runtime elevation parity.
+- The user reports that remaining NPCs occupy houses beside the outdoor map. Preserve their coordinates; absent displayed ground/interior geometry is not evidence of misplaced actors. Interior placement still needs independent comparison.
 - Live candidate inspectors compare imported/effective/sampled guest XYZ, signed deltas, captured placement-header coordinates and header agreement. The table was exercised through guarded live sampling. Header/model compatibility does not establish identity, and runtime deltas are not a coordinate calibration.
 - Frame live samples is browser-validated and restricted to accepted-epoch candidates in Live mode. Locate coordinates frames a separate camera-only reference marker; the captured1886/0/1740 point visually agrees with nearby ramp/path/rock landmarks.
 - Same-scene refresh retains the previous preview with stale-value labels and disabled scenery editing. Browser acceptance covers retained inspector controls; a deferred-response check covers Undo cancelling a pending update.

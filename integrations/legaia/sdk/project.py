@@ -630,6 +630,8 @@ class ProjectService:
         if self.mode != 'edit':
             raise ProjectError('Model shape authoring requires Edit mode')
         source = self._model_source(asset_id, self.active_scene)
+        if asset_id in self.model_overrides:
+            source = self.read_model_replacement(asset_id, self.model_overrides[asset_id])
         replacement, _ = import_shape_obj(source, hashlib.sha256(source).hexdigest(), content)
         self.set_model_replacement(asset_id, replacement)
 

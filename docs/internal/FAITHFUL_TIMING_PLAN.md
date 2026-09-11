@@ -213,6 +213,150 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Candidate workflow local checkpoint
+- Previous turn updated the feature matrix and ran combined regressions. Preparing a scoped local checkpoint of source-bound actor candidates, script decoding/reindexing, container/PROT diagnostics, browser-verified Inspector control and previously verified authored OBJ iteration changes.
+- Explicit source/test/docs paths only; private retail/Blender/game artifacts excluded. No push, project Save or runtime interaction. Native actor creation and the full SDK objective remain incomplete.
+
+### Feature matrix and combined regression review
+- Previous turn browser-validated candidate inspection. Updated feature matrix with its actual source-bound/structural/browser scope, remaining native creation requirements and user's interior-NPC observation without asserting unverified placement correctness.
+- Reviewed pending authored OBJ source changes alongside candidate integration; ran focused OBJ, model authoring and script-inspection suites. No user editor/game restart or project Save. Full goal remains incomplete.
+
+### Candidate browser workflow acceptance
+- Previous turn verified HTTP. Started isolated test editor4406/session44088 and separate automated Edge. Initial exact accessible-name selector timed out before clicking actor; corrected to observed button text and reran against the same server.
+- Browser selected actor0011, opened candidate dialog, verified368-byte growth, expanded technical evidence/build_ready false, closed dialog and observed zero page errors. Browser closed; temporary editor received Ctrl-C. No project Save or game interaction. Full actor creation remains incomplete.
+
+### Candidate HTTP acceptance
+- Previous turn added Inspector control. Opened the saved isolated model-shape test project in a temporary loopback EditorServer on an OS-assigned port. Actual HTTP POST by stable actor ID returned200 with matching identity/read_only true/build_ready false. Extra client path field returned400.
+- Temporary server shutdown and socket close completed in finally; no persistent server restart, project Save or game interaction. Browser rendering remains unverified; full SDK goal stays incomplete.
+
+### Inspector candidate diagnostics control
+- Previous turn added stable-entity API. Added advertised actor_candidate_inspection capability and an Inspector button opening retail donor diagnostics: changed spawn references, partial script count, growth and overlapping archive count, with expandable metadata evidence.
+- UI explicitly says no NPC is created and project overrides are excluded. Uses textContent for response data and discards results after dialog closure; no commands or writes. Node syntax and diff checks passed. Browser/HTTP acceptance remains pending; no user server restart or runtime interaction.
+
+### Editor candidate inspection route
+- Previous turn added source-bound importer diagnostics. Added /api/actor-candidate-inspection accepting only entity_id, resolved through the active scene's imported actor. Response marks retail_donor_candidate and includes_project_overrides false; no project command, asset creation or runtime write occurs.
+- Direct editor-service retail smoke resolved actor11's stable identity and verified response identity plus false build readiness/override inclusion. HTTP/browser control still needs validation and UI integration. Full goal remains incomplete.
+
+### Source-bound actor candidate inspection API
+- Previous turn documented the integrated candidate pipeline. Added inspect_actor_candidate(disc, scene, donor_record_index), owning one verified disc scope and returning metadata-only actor/container/archive diagnostics with disc hash and pinned reference revision. Raw MAN/container payloads remain internal and nothing is written.
+- Retail town01 donor11 inspection passed: new record53,368 bytes candidate growth, three overlapping archive entries, explicit read_only true/build_ready false. JSON output contained neither raw_hex nor encoded_hex payload fields.
+- This is an importer API foundation for editor diagnostics, not a project command or playable build. Full goal remains incomplete.
+
+### Native actor candidate integration handoff
+- Previous turn established exact shared TOC provenance. Added docs/legaia-native-actor-candidates.md describing implemented API sequence, pinned evidence, measured retail outcomes and explicit remaining scheduling/reference/archive/project/UI/build acceptance work.
+- Seven focused structural/reindex/container tests passed together. No runtime interaction or completion claim; candidate workflow remains development-only and full SDK scope is preserved.
+
+### PROT shared TOC provenance
+- Previous turn established overlapping read windows. Pinned crates/prot/src/archive.rs uses the same sliding TOC formulas as our parser; overlap is not introduced by a newly divergent size formula. The same TOC words contribute to multiple entry interpretations.
+- Footprint inspector now exposes exact TOC word indices, byte offsets, values and indexed/footprint formulas. Retail entry2's three inputs were verified directly against raw TOC bytes and reproduced118 indexed sectors.
+- No archive mutation. Independent entry resize remains unverified; shared TOC/reference handling must precede packaging. Full SDK goal remains active.
+
+### PROT overlapping read-window constraint
+- Previous turn verified container preservation. Inspected authoritative ProtArchive sizing: town01 scene buffer is entry2 LBA239/read118 sectors, while entry3 starts LBA240. Entry3 overlaps117 sectors of that read window. A scene-buffer roundtrip does not prove an independently resizable archive member.
+- Added inspect_entry_footprint exposing all overlapping indexed read windows and explicitly false independent-resize verification. Retail check confirmed entry3 overlap. Container growth stays a development candidate, not an archive patch; relocation needs shared archive reference analysis.
+- No source disc, project or runtime mutation. Broader goal remains active; other SDK work remains available while archive ownership is investigated.
+
+### Container preservation regression
+- Previous turn verified retail container growth. Fixed unchanged MAN encoding to retain original compressed bytes, and report moved descriptors only when growth actually occurs. Updated module description to reflect optional relocation.
+- Added synthetic container test: exact no-op, default over-capacity rejection, opt-in growth, four-byte growth alignment, decompression equality and five subsequent payloads preserved at relocated descriptors. Test passed. No runtime or archive packaging; full goal remains incomplete.
+
+### Container growth candidate roundtrip
+- Previous turn implemented bounded slot encoding. Measured retail town01 slot24894 bytes, original re-encode24891, actor candidate25259: growth is not merely a baseline compressor regression.
+- Added explicit allow_growth candidate mode: insert four-byte-rounded capacity, adjust following descriptor offsets, preserve following payload bytes exactly, update decoded size and expose external-container-size work. Default still rejects growth; build_ready remains false.
+- Retail candidate roundtrip passed with368 bytes growth and four relocated descriptor offsets. Reparsed descriptor/decompressed MAN exactly matched candidate. No PROT archive resize/build integration or game interaction; opaque external references and script/scheduling gaps remain open.
+
+### MAN container candidate encoding
+- Previous turn integrated structural append and reached spawn rewrites. Inspected core scene descriptor parsing and pinned scene_asset_table encode_size_word: high byte type, low24 decoded size.
+- Added encode_man_candidate with verified container/decoded hashes, unique descriptor and bounded slot checks, compression roundtrip, descriptor-size update and explicit build_ready false. It preserves container length and rejects compressed growth beyond the existing slot.
+- Retail town01 donor11 candidate exceeded existing compressed slot capacity and was correctly rejected. This establishes that container repacking/descriptor offset relocation is needed for this candidate; no output was packaged or game launched. Full actor creation remains incomplete.
+
+### Integrated structural actor candidate
+- Previous turn added synthetic structural regression coverage. Added append_actor_candidate combining source-bound donor append, validated index mapping, reached P1/P2 rewrites and cloned-donor rewrites. It validates operand preimages and unchanged layout/length, records structural/final hashes and exact changed bytes, and marks build_ready false.
+- Retail donor11 candidate changed exactly three existing spawn operands. Donor10 candidate changed exactly four, including the cloned donor's own operand. Byte diffs matched audit offsets precisely; final hashes verified. No project output packaged or runtime interaction.
+- Partial paths, partition0, other global references, scheduling and descriptor sizing remain open; candidate creation is integrated but not playable acceptance.
+
+### Structural append regression fixture
+- Previous turn added fixed actor-interaction decoding while preserving unresolved acquire semantics. Added two compact synthetic MAN regressions for partition-table growth, original record/section byte preservation, donor coordinates, shifted global target identity, stale source rejection, aliased donor rejection and modified target rejection.
+- Both tests passed without retail data. Fixture contains synthetic bytes only. No runtime interaction; structural tests do not establish script scheduling or playable append acceptance.
+
+### Actor-control continuation evidence
+- Previous turn expanded P1/P2 reindex inventory. Current stop census is dominated by dialogue picker/external continuation uncertainty, then halt and actor-control0/1. Pinned actor_ctrl.rs acquire forms read a signed target through operand+4 but advance only header+4 in the narrow form; this boundary inconsistency requires retail verification before decoding.
+- Added the independently unambiguous ACTOR_CTRL2 THREE_ACTOR_TALK form: three encoded actor operands, u16 argument and trailing byte, fixed header+7. Normal/extended forms and every payload truncation passed focused smoke. Actor IDs/effects remain encoded/not observed.
+- No invented acquire widths or runtime interaction. Full relocation remains incomplete.
+
+### Partition-wide reached spawn rewrite inventory
+- Previous turn added focused decoder regressions. Added inspect_spawn_reindex combining validated target mapping and existing bounded P2 header parsing to inventory all P1/P2 candidate rewrites without mutating source/candidate buffers.
+- Retail town0192 records:32 decoded-supported-paths,60 partial, no rejected records. Three reached operands require rewriting: P1[0], P1[10], P2[6]. The newly decoded scene-entry path therefore exposed an additional real reference, and P2 coverage found another.
+- Partition0 is explicitly excluded; partial paths and other reference families remain unverified. No playable build or game interaction. Complete relocation remains false.
+
+### Focused script authoring regression checks
+- Previous turn completed supported-path decoding of town01 entry. Added four focused regressions for extended spawn-target preservation, opaque spawn-like bytes left untouched, missing/invalid mappings and stale hash rejection, BBOX backward/wrapped branch bases and truncated payload rejection, plus fixed MENU_CTRL payload boundaries and signed values.
+- All four tests passed. These cover the new decoding/rewriting byte boundary risks without expanding into the deferred comprehensive test campaign. No game interaction; full native actor creation and the broader SDK goal remain incomplete.
+
+### Town01 entry supported-path decode completed
+- Previous turn expanded bounding-box branches. Pinned menu_ctrl.rs proves outer nibble1 consumes five payload bytes and advances header+6. Added MENU_CTRL_SUB1 for10..1F with host-defined destination semantics, without inventing effects for13.
+- All16 selectors passed normal/extended fixed-width smoke. Town01 P1[0] now decodes180 instructions with decoded_supported_paths and no stops, up from77. This proves coverage of the inspector's encoded paths, not runtime reachability or native-spawn acceptance. No game interaction.
+
+### Bounding-box branch decoding
+- Previous turn expanded scene-entry coverage to opcode4D. Read pinned executing step.rs and helpers.rs: six operand bytes, inside fallthrough, outside signed/wrapped16 skip from the skip-word location. Tile conversion depends on runtime global state.
+- Added BBOX_TEST with both encoded successors and explicit runtime-dependent coordinate mode. Normal/extended backward-branch smoke exercised the correct base and wrapping. No game interaction; broader native-actor acceptance remains open.
+
+### Scene-entry script coverage expansion
+- Previous turn verified retail actor10 reindexing. Town01 P1 system record0 stopped after32 instructions at MENU_CTRL8A. Inspected pinned executing nibble_8.rs: fixed header+10 continuation, three signed16 operands and one u24 operand.
+- Added WRITE_FIELD_QUAD decoding with host-defined destination semantics; normal/extended synthetic forms verified signed extrema and packed u24. Town01 entry now decodes57 instructions, stopping at unsupported opcode4D at PC175. No byte recovery or invented width.
+- Existing script-inspection suite22 passed/1 skipped. No runtime interaction. Entry scheduling and remaining opcode4D decoding are still incomplete.
+
+### Retail spawn rewrite target preservation
+- Previous turn implemented reached operand rewriting. Retail pass across52 actor scripts found one decoded spawn operand in actor10, with no missing-map rejection; partial paths remain partial and partition0/system/P2 coverage is not implied.
+- Added spawn_index_map derived from old/new MAN layouts. It requires unchanged P2 count and exact target-record bytes and rejects encoded byte overflow. This replaces hand-specified index arithmetic with validated structural identity for this step.
+- Retail actor10 operand95 rewrote to96 while retaining P2 record6. Deliberately changing the rebuilt target's bytes was rejected. No runtime or playable-build acceptance; full reference coverage and scheduling remain open.
+
+### Reached spawn operand rewriting
+- Previous turn progressed MAN target resolution. Added script_reindex.reindex_spawn_operands with exact source hash and bounded byte-index map. It changes only reached opcode44 operand bytes, supports extended actor-target headers, rejects missing mappings/overflow and checks instruction boundaries, successors and opaque bytes after rewriting.
+- Synthetic normal/extended sequence changed exactly offsets1 and4; overflow, boolean keys and missing target mapping rejected. Audit retains partial/full supported-path coverage and explicitly does not claim complete relocation. Caller must still validate mapping against MAN layouts; other reference families and opaque paths remain unresolved.
+- No build/UI connection or runtime interaction. This is a serializer step toward native actor creation, not playable acceptance.
+
+### Resolve encoded spawn references
+- Previous turn established the global-index dependency. Added resolve_spawn_record against the bounded MAN layout: byte operands resolve to partition2 record index and source span, or explicitly outside_partition2. Donor diagnostics now carry resolved target metadata rather than an unqualified numeric operand.
+- Retail town01 check classified all256 byte operands and verified all39 partition2 targets preserve identical record bytes after +1 index remapping in the structural candidate. Old operand89 becomes invalid after append, directly demonstrating why a byte-preserving append alone is not playable.
+- Existing script-inspection suite:23 tests ran, one retail test skipped without its environment variable. No auto-rewrite of opaque scripts, build integration or game interaction. Full goal remains incomplete.
+
+### Global script index dependency established
+- Previous turn progressed donor coverage diagnostics. Pinned engine-vm/src/field/step.rs establishes opcode44 operand as a GLOBAL record index rebased by N0+N1 into partition2 (FUN_8003BDE0), not a partition1 NPC identifier. Appending P1 changes those global identities even when every old record byte is retained.
+- Inspector now decodes global_record_index, target_partition and index semantics for normal/extended SPAWN_RECORD instructions. Donor audits include reached spawn references and explicitly require global-index rewriting; town01 P2 range89..127 shifts by1. No automatic rewrite through undecoded bytes.
+- Focused smoke passed normal/extended operand decoding and retail town01 shift audit. Playable append remains unverified until all affected encoded references and scheduling are handled. No runtime interaction.
+
+### Donor script coverage diagnostics
+- Previous turn progressed source-bound donor selection. Inspected pinned engine-vm field/step/flow.rs and camera.rs plus engine-core man_field_scripts/records.rs. Camera apply uses an absolute PC within supplied bytecode; reference record walking supplies a record slice. This is distinct from an absolute MAN file offset. Pinned flow.rs also documents correction of older 0x4E absolute-jump interpretations; do not blindly rewrite operands based on old man_edit comments.
+- Donor candidate audits now include supported-path instruction/dialogue counts, opaque byte and stop counts, camera-apply jumps and explicit spawn counts using the existing bounded graph inspector. No raw script/dialogue payload is included; decoded coverage never enables relocation/spawn acceptance automatically.
+- All52 retail donor reports produced successfully:49 partial and3 decoded-supported-paths. Both relocation and spawn-scheduling verification remain false. Full execution-base/host behavior and actor scheduling still require evidence. No game or user project mutation.
+
+### Source-bound native actor donor selection
+- Previous turn made progress verifying structural append. Inspected pinned Andrew man_edit.rs address handling: its record resizing keeps the table-derived payload base fixed, whereas adding an actor grows the table. Its relocation acceptance cannot establish our actor-append safety.
+- Added append_actor_donor: resolves an existing partition1 actor from a verified source hash, rejects non-integer/system/out-of-range and aliased donor identifiers, and records donor offsets, model/animation and original coordinates. It accepts no caller-supplied script payload.
+- Retail town01 passed all52 source-bound donor clones and six invalid-identifier checks. Candidate audits explicitly retain false script-relocation and spawn-scheduling verification. No project/build wiring or runtime mutation; executable script-address semantics and scheduling remain the next native-creation work.
+
+### Actor append structure and coordinate preservation
+- Previous response only acknowledged the user's interior-NPC observation (no progress). Resumed by inspecting current source and running the pending structural append against retail town01.
+- Structural append adds partition1 record53, retaining existing indices and bytes, and preserves all six trailing sections. Added source/result/donor hashes, before/after sizes and partition counts to its audit, plus an explicit result-size invariant.
+- All52 retail donor records independently appended and parsed as a 53rd actor; existing X/Z and model/animation assignments remained unchanged. Empty/malformed donor and stale source hash were rejected. The initial expanded smoke used incorrect dataclass field names; corrected it to world_x/world_z/model_index before rerunning successfully.
+- NPC coordinates remain intact: the user's report that remaining NPCs belong inside houses is plausible, not yet independently verified. No game interaction occurred. Absolute script relocation, external decoded-size updates, project/UI/build integration and native-spawn gameplay acceptance remain incomplete; this structural prototype is not packaged as playable content.
+
+### Native actor structural layout foundation
+- Previous turn made progress verifying authored OBJ revision. Began native actor frontier by reading current MAN parser and pinned Andrew d6e64c68 man_edit.rs/reference tree. Offset-table growth moves the derived data base; edited-record jumps and external decoded-size descriptors are separate concerns, so merely cloning editor entities is insufficient.
+- Added bounded read_man_layout exposing all partition record offsets/spans, six section spans and trailing bytes. It does not claim arbitrary script relocation or allocate a native actor yet.
+- Retail town01 check matched every existing actor offset/length against parse_man. This layout reader is a structural serialization foundation; script reference handling, actor-record creation, descriptor resizing, commands/UI/build and runtime acceptance remain open.
+
+### Authored OBJ revision acceptance
+- Previous turn made progress with authored source downloads and preserving current TMD normals. Retail model0009 test authored a normal then changed a vertex through OBJ; normal bytes remained intact.
+- Stopped only isolated editor4405/session69467 after confirmed completion, restarted current code as session74672. Separate automated Edge browser downloaded authored and retail OBJ from saved test model0000; all50 authored vertices were X+100 relative to retail, with correct distinct filenames. Test18026 completed successfully.
+- No user editor/game interaction or project Save. Iterative authored OBJ download now browser-verified; broad source formats and gameplay remain open.
+
+### Continue editing authored shapes
+- Previous turn made progress checkpointing OBJ workflow. Added explicit imported/authored source download layers with separate original/effective TMD hashes; browser offers Download authored OBJ when an override exists.
+- OBJ application now begins from the validated current TMD shape, preserving any previously authored normal words while changing positions. Final output is still checked against immutable retail source by the existing replacement validator.
+- Retail authored OBJ download/reupload was a history-free no-op; retail download stayed distinct with equal source/effective hashes. Node syntax passed. Browser authored-download control and existing authored-normal preservation need direct checks. No user project/runtime mutation.
+
 ### OBJ workflow checkpoint
 - Previous turn made progress accepting actual browser file input/upload. Added2 focused OBJ regressions covering decimal integer exports, UTF8 BOM, ignored external material declarations, exact byte scope, topology/order/count rejection, negative indices and nonrepresentable coordinates.
 - All15 focused OBJ/model/importer/project checks passed, plus Node syntax and diff checks. Updated feature matrix to reflect browser and Blender acceptance and retain scene/gameplay/shared-stream gaps.

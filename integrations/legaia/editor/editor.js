@@ -1204,6 +1204,7 @@ function renderInspector(){
   if($('clear-appearance'))$('clear-appearance').onclick=()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id});
   if($('preview-appearance'))$('preview-appearance').onclick=()=>openModel(components.ActorAppearance.effective.asset_id,'authored-appearance',entity.id);
   if($('inspect-script'))$('inspect-script').onclick=()=>openActorScript(entity);
+  if($('inspect-script')&&state.capabilities?.actor_candidate_inspection){const button=document.createElement('button');button.textContent='Inspect NPC creation candidate';button.className='model-preview-button';button.onclick=()=>openActorCandidate(entity);$('inspect-script').after(button);}
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
   const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
   const actorAnimation=components.Animation?.preview_support;
@@ -1289,6 +1290,23 @@ async function openAppearanceOptions(entity){
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
 let scriptEntity=null,scriptReport=null,scriptDrafts=new Map();
 const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUpperCase():'Unknown';
+async function openActorCandidate(entity){
+  if(busy)return;
+  const dialog=document.createElement('dialog');
+  dialog.innerHTML='<h2>NPC creation candidate</h2><p>Inspecting the retail donor…</p><button>Close</button>';
+  dialog.querySelector('button').onclick=()=>dialog.close();
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  document.body.append(dialog);dialog.showModal();
+  try{
+    const response=await fetch('/api/actor-candidate-inspection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
+    const report=await response.json();if(!response.ok||report.error)throw new Error(report.error||'Candidate inspection failed');
+    if(!dialog.open)return;
+    if(report.entity_id!==entity.id)throw new Error('Candidate identity mismatch');
+    const rows=report.actor.script_coverage.records;
+    dialog.querySelector('p').textContent=`${entity.name}: retail donor only; project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${report.container.growth_bytes} bytes. Overlapping archive entries: ${report.archive.overlapping_entries.length}. Playable creation remains unavailable until script, scheduling and archive dependencies are resolved.`;
+    const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Technical evidence';pre.textContent=JSON.stringify(report,null,2);details.append(summary,pre);dialog.append(details);
+  }catch(error){if(dialog.open)dialog.querySelector('p').textContent=String(error.message||error);}
+}
 async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null){
   if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;setBusy(true);
   if(!refresh){scriptEntity=entity;scriptDrafts.clear();
@@ -1609,7 +1627,7 @@ let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
 let modelAssetId=null, modelEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
-const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ must preserve vertex and face order, triangulation and integer source coordinates; normals remain unchanged.</p><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><label>Edited TMD or OBJ<input id="shape-file" type="file" accept=".tmd,.obj"></label><button id="shape-upload">Apply shape</button><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
+const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ must preserve vertex and face order, triangulation and integer source coordinates; normals remain unchanged.</p><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><label>Edited TMD or OBJ<input id="shape-file" type="file" accept=".tmd,.obj"></label><button id="shape-upload">Apply shape</button><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
 async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'){
   if($('model-dialog').open&&$('shape-file').files?.length){$('model-error').textContent='Apply or discard the selected shape file before changing the model view.';$('animation-clip').value=model?.animation?.clip_id??'';return;}
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest;
@@ -1654,7 +1672,7 @@ function updateShapeDraft(){
   discardShape.hidden=!pending;
   $('shape-upload').disabled=!pending||state.project?.mode!=='edit';
   $('shape-retail').disabled=pending;$('shape-authored').disabled=pending||!shape;
-  $('shape-clear').disabled=pending||!shape||state.project?.mode!=='edit';
+  $('shape-clear').disabled=pending||!shape||state.project?.mode!=='edit';$('shape-download-authored').disabled=pending||!shape;
   $('model-export').disabled=pending;
 }
 $('shape-file').onchange=()=>{const file=$('shape-file').files?.[0];shapeDraft=file?{file,asset:modelAssetId,context:JSON.stringify([state.project.path,state.scene.id])}:null;updateShapeDraft();if(file)$('shape-status').textContent=`Selected ${file.name} · not applied. Apply or discard before changing model views.`;};
@@ -1665,9 +1683,10 @@ $('shape-authored').onclick=()=>openModel(modelAssetId,null,null,'authored');
 $('shape-clear').onclick=async()=>{if(!busy&&!shapeDraft&&await api('/api/command',{type:'clear_model_replacement',asset_id:modelAssetId}))await openModel(modelAssetId);};
 $('shape-source').onclick=()=>downloadShapeSource('tmd');
 $('shape-source-obj').onclick=()=>downloadShapeSource('obj');
-async function downloadShapeSource(format){
+$('shape-download-authored').onclick=()=>downloadShapeSource('obj','authored');
+async function downloadShapeSource(format,layer='imported'){
   if(busy||!modelAssetId)return;setBusy(true);
-  try{const response=await fetch('/api/model-shape-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:modelAssetId,format})}),data=await response.json();if(!response.ok)throw new Error(data.error);const encoded=data[format+'_base64'];if(typeof encoded!=='string'||encoded.length>(format==='obj'?22369624:5592408))throw new Error('Invalid model source size');const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));if(bytes.length!==data.byte_length)throw new Error('Model source length mismatch');const url=URL.createObjectURL(new Blob([bytes])),link=document.createElement('a');link.href=url;link.download='original-model.'+format;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('shape-status').textContent=`Downloaded source ${format.toUpperCase()} · TMD SHA-256 ${data.source_sha256}`;}catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
+  try{const response=await fetch('/api/model-shape-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:modelAssetId,format,layer})}),data=await response.json();if(!response.ok)throw new Error(data.error);const encoded=data[format+'_base64'];if(typeof encoded!=='string'||encoded.length>(format==='obj'?22369624:5592408))throw new Error('Invalid model source size');const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));if(bytes.length!==data.byte_length)throw new Error('Model source length mismatch');const url=URL.createObjectURL(new Blob([bytes])),link=document.createElement('a');link.href=url;link.download=(layer==='authored'?'authored':'original')+'-model.'+format;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('shape-status').textContent=`Downloaded ${layer} ${format.toUpperCase()} · TMD SHA-256 ${data.effective_sha256}`;}catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
 };
 $('shape-upload').onclick=async()=>{
   if(busy||state.project.mode!=='edit')return;const file=$('shape-file').files?.[0];if(!file||file.size<1||file.size>(/\.obj$/i.test(file.name)?16777216:4194304)){$('model-error').textContent='Choose a TMD up to 4 MiB or an ordered OBJ up to 16 MiB.';return;}

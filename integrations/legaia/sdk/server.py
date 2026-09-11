@@ -77,6 +77,7 @@ class EditorServer(ThreadingHTTPServer):
                 entity["components"]["Animation"]["preview_support"] = actor_animation_capabilities(actor, asset)
         state["capabilities"]["actor_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
@@ -147,6 +148,23 @@ class EditorServer(ThreadingHTTPServer):
             if affected:
                 preview["animation_support"]["clips"].append({"id": "authored-channels", "label": "Authored channel overrides"})
         return preview
+
+    def actor_candidate_inspection(self, entity_id: str) -> dict:
+        from importer.actor_candidate_inspection import inspect_actor_candidate
+        project = self.project
+        if not project.disc_path:
+            raise ProjectError("Actor candidate inspection requires the project's disc")
+        document = project.imports.get(project.active_scene)
+        actor = next((item for item in (document or {}).get("actors", [])
+                      if item["semantic_id"] == entity_id), None)
+        if actor is None:
+            raise ProjectError("Actor candidate requires an imported actor in the active scene")
+        report = inspect_actor_candidate(project.disc_path, document["scene"]["name"],
+                                         actor["source_record"]["record_index"])
+        report["entity_id"] = entity_id
+        report["representation"] = "retail_donor_candidate"
+        report["includes_project_overrides"] = False
+        return report
 
     def actor_script_preview(self, entity_id: str) -> dict:
         from importer.script_inspection import inspect_actor_script
@@ -441,10 +459,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, report)
                     return
                 if route == "/api/model-shape-source":
-                    if set(body) - {"asset_id", "format"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
+                    if set(body) - {"asset_id", "format", "layer"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
                         raise ProjectError("Model source accepts a catalog identity only")
                     from .resources import model_shape_source
-                    self._json(200, model_shape_source(self.server.project, body["asset_id"], body.get('format','tmd')))
+                    self._json(200, model_shape_source(self.server.project, body["asset_id"], body.get('format','tmd'), body.get('layer','imported')))
                     return
                 if route == "/api/field-map-preview":
                     if set(body) - {"asset_id", "layer"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
@@ -485,6 +503,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Choose a nonnegative animation frame index to export")
                     preview = self.server.actor_appearance_preview(body["entity_id"])
                     self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
+                    return
+                if route == "/api/actor-candidate-inspection":
+                    if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
+                        raise ProjectError("Actor candidate inspection accepts only an imported entity_id")
+                    self._json(200, self.server.actor_candidate_inspection(body["entity_id"]))
                     return
                 if route == "/api/actor-script":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:

@@ -21,12 +21,14 @@ def _verify(project, document):
         raise ProjectError("Resource source differs from freshly verified imported evidence")
 
 
-def model_shape_source(project, asset_id: str, format: str = 'tmd') -> dict:
+def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str = 'imported') -> dict:
     """Private source download for editing an existing model's local shape."""
     from hashlib import sha256
     from importer.assets import load_model_source, decode_tmd
     if format not in ('tmd', 'obj'):
         raise ProjectError('Choose TMD or OBJ model source')
+    if layer not in ('imported', 'authored'):
+        raise ProjectError('Choose imported or authored model shape')
     document, key = _scene(project)
     asset = next((a for a in document['assets']['models'] if a['semantic_id'] == asset_id), None)
     if asset is None:
@@ -34,11 +36,17 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd') -> dict:
     with _disc_context(project.disc_path):
         _verify(project, document)
         data = load_model_source(project.disc_path, asset)
+        source_hash = sha256(data).hexdigest()
+        if layer == 'authored':
+            binding = project.model_overrides.get(asset_id)
+            if binding is None:
+                raise ProjectError('No authored shape exists for this model')
+            data = project.read_model_replacement(asset_id, binding)
         preview = decode_tmd(data)
     if key != source_key(project):
         raise ProjectError('Model source changed while reading; refresh again')
     result = dict(semantic_id=asset_id, scene_id=project.active_scene, source_key=key,
-                source_sha256=sha256(data).hexdigest(), byte_length=len(data),
+                source_sha256=source_hash, effective_sha256=sha256(data).hexdigest(), representation=layer, byte_length=len(data),
                 filename='original-model.tmd', tmd_base64=base64.b64encode(data).decode('ascii'),
                 object_count=len(preview['objects']), coordinate_system=preview['coordinate_system'],
                 limitations=['Shape edits preserve source object layout, topology, materials and padding.'])
@@ -48,6 +56,7 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd') -> dict:
         result.pop('tmd_base64')
         result.update(obj_base64=base64.b64encode(obj).decode('ascii'), filename='original-model.obj', byte_length=len(obj))
         result['limitations'].append('OBJ preserves vertex/face order and integer Y-down coordinates; TMD normals remain unchanged.')
+    result['filename'] = ('authored' if layer == 'authored' else 'original') + '-model.' + format
     return result
 
 
