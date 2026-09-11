@@ -396,10 +396,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, report)
                     return
                 if route == "/api/field-map-preview":
-                    if set(body) != {"asset_id"} or not isinstance(body["asset_id"], str) or not body["asset_id"]:
+                    if set(body) - {"asset_id", "layer"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:
                         raise ProjectError("Field map preview accepts a catalog identity only; coordinates and paths are source-controlled")
                     from .resources import field_map_preview
-                    self._json(200, field_map_preview(self.server.project, body["asset_id"]))
+                    self._json(200, field_map_preview(self.server.project, body["asset_id"], body.get("layer", "imported")))
                     return
                 if route == "/api/texture-preview":
                     if (not {"asset_id", "palette_index"} <= set(body) or set(body) - {"asset_id", "palette_index", "layer"} or

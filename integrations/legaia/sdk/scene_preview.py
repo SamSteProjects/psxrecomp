@@ -32,6 +32,7 @@ def source_key(project, *, geometry_only=False) -> str | None:
                    "animation_channels": {a["semantic_id"]: deepcopy(project.overrides[a["semantic_id"]]["AnimationChannels"])
                                           for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})},
                    "environment": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
+                   "collision": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Collision")),
                    "disc_stamp": _disc_stamp(path), "schema": "legaia.scene-preview.v1"})
 
 

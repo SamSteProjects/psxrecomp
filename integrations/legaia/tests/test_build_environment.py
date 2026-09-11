@@ -18,6 +18,37 @@ from sdk.scene_preview import environment_effective_transforms
 
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'), 'requires private retail disc')
 class EnvironmentBuildTests(unittest.TestCase):
+    def test_collision_and_scenery_share_one_persisted_map(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.disc_path = os.environ['LEGAIA_DISC_BIN']
+            project.import_metadata(import_scene(project.disc_path, 'town01'))
+            owner = 'scene://town01'
+            original = project._environment_source(owner)
+            digest = sha256(original).hexdigest()
+            wall = {'source_sha256': digest, 'edits': [dict(row=1, column=0, quadrant=0,
+                    blocked=not bool(original[0x4080] & 16))]}
+            project.command({'type': 'set_collision_walls', 'entity_id': owner, 'value': wall})
+            self.assertEqual(project.authored_assets()[0]['authored'], {'Collision': wall})
+            scenery = {'source_sha256': digest, 'edits': [{'record_index': 194, 'offset': {'x': 128}}]}
+            project.command({'type': 'set_environment_transforms', 'entity_id': owner, 'value': scenery})
+            project.command({'type': 'clear_collision_walls', 'entity_id': owner})
+            self.assertEqual(project.overrides[owner], {'Environment': scenery})
+            project.undo()
+            reopened = ProjectService.open(project.save())
+            self.assertEqual(reopened.overrides[owner], {'Environment': scenery, 'Collision': wall})
+            entries = [r for r in reopened.authored_assets() if r['id'] == owner]
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(set(entries[0]['authored']), {'Environment', 'Collision'})
+            result = build_project(reopened)
+            self.assertEqual(result['overlay_count'], 1)
+            audit = json.loads(Path(result['audit']).read_text(encoding='utf-8'))
+            changed = (Path(result['package_directory']) / audit['overlays'][0]['file']).read_bytes()
+            self.assertEqual(changed[0x4080], original[0x4080] ^ 16)
+            self.assertEqual(struct.unpack_from('<h', changed, 194*32)[0], 128)
+            self.assertEqual([i for i,(a,b) in enumerate(zip(original,changed)) if a!=b], [194*32, 0x4080])
+            self.assertEqual(len(audit['edits']), 2)
+
     def test_individual_decoration_persists_previews_and_builds(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

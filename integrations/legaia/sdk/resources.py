@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+from copy import deepcopy
 from importer.core import ImportError as RetailImportError
 from importer.pipeline import _disc_context, import_scene
 from .project import ProjectError
@@ -99,12 +100,27 @@ def partition_two_script_preview(project, identifier: str) -> dict:
     return {**report, "scene_id": project.active_scene, "source_key": key}
 
 
-def field_map_preview(project, asset_id: str) -> dict:
+def field_map_preview(project, asset_id: str, layer: str = "imported") -> dict:
     from importer.field_map import preview_field_map
+    if layer not in ("imported", "effective"):
+        raise ProjectError("Choose imported or effective collision preview")
     document, key = _scene(project)
     with _disc_context(project.disc_path):
         _verify(project, document)
         preview = preview_field_map(project.disc_path, document["scene"]["name"], asset_id)
+        preview["representation"] = layer
+        if layer == "effective":
+            from importer.collision_authoring import patch_collision_walls
+            from importer.field_map import _rectangles
+            binding = project.overrides.get(project.active_scene, {}).get("Collision")
+            preview["authored"] = deepcopy(binding)
+            if binding is not None:
+                project._validate_collision(project.active_scene, binding)
+                changed, audit = patch_collision_walls(project._environment_source(project.active_scene), binding["source_sha256"], binding["edits"])
+                preview["rectangles"] = _rectangles(changed[0x4000:0x8000])
+                preview["rectangle_count"] = len(preview["rectangles"])
+                preview["authored_changes"] = audit
+            preview["limitations"] = [*preview["limitations"], "Effective source wall edits only; runtime script paints and actor blockers remain unobserved."]
     if key != source_key(project):
         raise ProjectError("Field map source changed during preview; refresh again")
     return {**preview, "semantic_id": preview["asset"]["semantic_id"], "asset_kind": "collision",

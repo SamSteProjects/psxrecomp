@@ -213,6 +213,57 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Collision authored asset integration and checkpoint
+- Previous turn made progress with browser-verified cell location. Reviewed current serializer, project commands, persistence, resource preview, server and MAP composition changes.
+- Fixed collision overrides missing from Authored Assets: scenes now expose one combined authored entry for Collision and Environment, while retaining separate component provenance.
+- Added a retail workflow check: collision-only authored listing, scenery coexistence, clear/undo, save/reopen, combined authored listing, exactly one built MAP, and exact two-byte change scope. All 16 focused collision/importer/MAP-build/scene-preview checks passed with retail input.
+- Collision package behavior remains unverified in gameplay. No game launch, controller input or user project save; tests use temporary private projects.
+
+### Collision cell viewport locator
+- Previous turn made progress implementing draft protection. Verified it in isolated browser tab70/editor4403: toggling Blocked disabled all cell selectors; Discard restored navigation and row2 showed X(0,64], Z[128,192).
+- Added Locate cell in viewport, using the selected quadrant center and the existing reference marker/camera. It rejects stale project context, invalid cells, and pending wall drafts; it changes no authored or runtime positions.
+- Browser verification of row14/column41/quadrant0 showed the wall-side collision overlay and Reference X5280 Y0 Z1696. Y0 remains an explicitly labeled display placeholder, not decoded floor height. Node syntax and diff checks passed. No game input or project save.
+
+### Collision form draft protection
+- Previous response was no progress (acknowledged the user's house-interior explanation). Revalidated current branch e02d73a3 and pending collision implementation before continuing.
+- Preserve remaining NPC coordinates: missing sampled ground does not establish incorrect placement or scene membership.
+- Collision form now locks row/column/quadrant while its blocked checkbox differs from the inspected value. Added explicit discard of the unapplied wall change; programmatic input events also restore the draft cell instead of transferring its value.
+- Node syntax check and all 15 focused collision/importer/build/scene-preview checks passed with retail input. The new draft UI has not yet been browser-verified. No game launch, input, or user project save.
+
+### Collision undo and preservation regression
+- Previous turn made progress with browser Apply and route-validator correction. Fresh HTTP check verified browser Undo: effective rectangle set equals imported and authored collision override is absent.
+- Added focused exhaustive byte/quadrant preservation test (256 byte values, 1024 wall-bit changes), deterministic audit/revert, no-op, malformed/bool indices, duplicate/capacity and hash/size rejection.
+- Fifteen collision/importer/MAP-build/scene-preview checks passed with retail input. No runtime/game launch or saved project mutation.
+
+
+### Browser collision apply and route correction
+- Previous turn made progress adding collision controls. Fresh isolated editor on4403/tab69 exposed a misplaced layer validator: collision still rejected layer while neighboring route accepted it. Restored neighboring strict validator and corrected collision route, then restarted only isolated server (current75133).
+- Browser form showed cell row1/column0/quadrant0 unblocked and world bounds X(0,64], Z[0,64). Checked Blocked and Apply; independent HTTP comparison showed one additional effective rectangle and unchanged imported data. Invoked browser Undo; no save or game interaction. Cleared stale dialog errors on successful preview reload.
+
+
+### Collision layer selector and source wall controls
+- Previous goal turn made progress with effective collision preview and source-key invalidation. Added retail/effective viewport selector, explicit overlay labels and response-layer validation.
+- Collision resource inspector now opens source wall controls for canonical row/column/quadrant, reports integer world bounds and current effective blocked state, and applies one wall bit while retaining existing overrides through the command system. Clear scene wall edits and stale-context/Edit-mode guards included.
+- JavaScript syntax passed. Browser apply/undo/build workflow verification and runtime movement acceptance remain pending.
+
+
+### Imported and effective collision preview
+- Previous turn made progress with collision persistence and composed MAP build. Added explicit imported/effective field-map preview layers; effective rectangles use verified wall overrides while retaining imported asset provenance and separate authored audit. Runtime collision claims remain excluded.
+- Retail single-bit check changed exactly one effective rectangle and preserved imported rectangles/asset metadata. Collision override identity now participates in preview source keys without forcing actor geometry reconstruction. Browser layer controls remain pending.
+
+
+### Collision commands and composed MAP packaging
+- Previous turn made progress adding exact wall-bit serializer. Added strict source-bound Collision component commands, undo/redo and saved project reopening.
+- Build composes collision bits and scenery changes into one verified MAP overlay, preventing overlapping output spans and preserving independent edits. Retail smoke combined one changed collision bit with existing wall-decoration edit: one overlay/two audited fields.
+- Isolated save/reopen retained Collision and Environment together; undo/redo preserved other edits. No user project save or game launch. Browser collision controls and runtime movement acceptance remain pending.
+
+
+### Source collision authoring foundation
+- Previous turn made progress checkpointing channel inspector. Reviewed broader feature ledger and selected source collision authoring as next scene workflow; existing field_map evidence defines four upper-nibble wall bits and canonical row/column/quadrant mapping.
+- Added source-hash-bound equal-size wall-bit serializer, strict bounded requests, duplicate rejection, deterministic audit and unaudited-bit verification. Low floor-tier nibble and other MAP content remain untouched.
+- Synthetic all-four-quadrant write/decode/revert check passed, including exact source-byte restoration. Project commands, browser controls, composed MAP builds and runtime movement acceptance remain to implement/verify. Updated stale animation table status to match prior authoring evidence.
+
+
 ### Channel inspector regression checkpoint
 - Previous turn made progress finding/fixing browser draft selector bug and validating discard. Extended existing shared-bank regression to cover retail/effective channel values, contributors, composed hash, invalid indices and geometry-free inspection.
 - Sixteen focused animation and scene-preview tests passed with retail input; JavaScript syntax passed. Checkpoint includes source/effective readout, conflict-at-Apply validation, navigation/discard and position-ghost correction. Full SDK/runtime acceptance remains incomplete.

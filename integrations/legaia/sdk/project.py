@@ -427,6 +427,14 @@ class ProjectService:
                 raise ProjectError("Dialogue source differs from freshly verified imported evidence")
             return load_dialogue_authoring_context(self.disc_path, document["scene"]["name"])
 
+    def _validate_collision(self, identifier: str, value: dict) -> None:
+        from importer.collision_authoring import patch_collision_walls
+        if not isinstance(identifier, str) or identifier not in self.imports:
+            raise ProjectError("Collision owner must be an imported scene")
+        if not isinstance(value, dict) or set(value) != {"source_sha256", "edits"}:
+            raise ProjectError("Collision override requires source SHA256 and wall edits")
+        patch_collision_walls(self._environment_source(identifier), value["source_sha256"], value["edits"])
+
     def _validate_environment(self, identifier: str, value: dict) -> None:
         import re
         import struct
@@ -587,6 +595,30 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get("type") in ("set_collision_walls", "clear_collision_walls"):
+            setting = command["type"] == "set_collision_walls"
+            if set(command) != ({"type", "entity_id", "value"} if setting else {"type", "entity_id"}):
+                raise ProjectError("Collision commands accept only scene identity and wall override")
+            identifier = command["entity_id"]
+            if not isinstance(identifier, str) or identifier not in self.imports:
+                raise ProjectError("Collision owner must be an imported scene")
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            if setting:
+                value = deepcopy(command["value"])
+                self._validate_collision(identifier, value)
+                after["Collision"] = value
+            else:
+                after.pop("Collision", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_animation_channels", "clear_animation_channels"):
             allowed = {"type", "entity_id", "value"} if command["type"] == "set_animation_channels" else {"type", "entity_id"}
             if set(command) != allowed:
@@ -985,8 +1017,11 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "Environment", "AnimationChannels"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "Environment", "AnimationChannels", "Collision"}:
                 raise ProjectError("Unsupported authored component")
+            if "Collision" in components:
+                result._validate_collision(identifier, components["Collision"])
+                result.overrides.setdefault(identifier, {})["Collision"] = deepcopy(components["Collision"])
             if "AnimationChannels" in components:
                 result._validate_animation_override(identifier, components["AnimationChannels"])
                 result.overrides.setdefault(identifier, {})["AnimationChannels"] = deepcopy(components["AnimationChannels"])
@@ -1041,11 +1076,18 @@ class ProjectService:
         records = []
         for scene_id, document in sorted(self.imports.items()):
             environment = self.overrides.get(scene_id, {}).get("Environment")
+            collision = self.overrides.get(scene_id, {}).get("Collision")
+            scene_changes, scene_authored = [], {}
             if environment:
+                scene_changes.append(f"Scenery transforms: {len(environment.get('edits', []))} shared records, {len(environment.get('instances', []))} individual cells")
+                scene_authored["Environment"] = deepcopy(environment)
+            if collision:
+                scene_changes.append(f"Collision walls: {len(collision['edits'])} authored bits")
+                scene_authored["Collision"] = deepcopy(collision)
+            if scene_authored:
                 records.append({"id":scene_id, "kind":"scene", "name":document["scene"]["name"],
                                 "scene_id":scene_id, "source_scene":document["scene"]["name"],
-                                "changes":[f"Scenery transforms: {len(environment.get('edits', []))} shared records, {len(environment.get('instances', []))} individual cells"],
-                                "authored":{"Environment":deepcopy(environment)}})
+                                "changes":scene_changes, "authored":scene_authored})
             for actor in document["actors"]:
                 identifier = actor["semantic_id"]
                 edits = self.overrides.get(identifier, {})

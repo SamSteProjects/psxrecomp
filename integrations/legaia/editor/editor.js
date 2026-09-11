@@ -670,11 +670,13 @@ function renderAssets(){
 const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dialog';document.body.append(fieldDialog);
 const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
 const fieldNote=document.createElement('div');fieldNote.className='field-map-note';fieldNote.hidden=true;fieldNote.setAttribute('role','status');document.querySelector('.viewport-toolbar').after(fieldNote);
+const collisionLayer=document.createElement('select');collisionLayer.setAttribute('aria-label','Collision preview layer');collisionLayer.innerHTML='<option value="imported">Retail collision</option><option value="effective">Effective collision</option>';fieldToggle.after(collisionLayer);
 let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false;
 const fieldMapScope='Base blocked grid only · Y = 0 is a display placeholder, not decoded height. Runtime/script paints and actors are excluded. Canonical positive-X range only; wrapping and boundary aliases are not shown. Lines are drawn over models.';
 function updateFieldToggle(){
   fieldToggle.hidden=!state.capabilities?.field_map_preview;fieldToggle.disabled=busy||fieldPending;
-  fieldToggle.classList.toggle('active',!!fieldMap);fieldToggle.setAttribute('aria-pressed',!!fieldMap);fieldToggle.textContent=fieldPending?'Loading collision…':'Base collision';
+  collisionLayer.hidden=fieldToggle.hidden;collisionLayer.disabled=busy||fieldPending;
+  fieldToggle.classList.toggle('active',!!fieldMap);fieldToggle.setAttribute('aria-pressed',!!fieldMap);fieldToggle.textContent=fieldPending?'Loading collision…':collisionLayer.value==='effective'?'Effective collision':'Base collision';
 }
 function clearFieldMap(){
   fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;updateFieldToggle();
@@ -686,12 +688,14 @@ function validateFieldMap(result,record,key){
 }
 async function loadFieldMap(record){
   if(busy||!state.capabilities?.field_map_preview||resourceKey!==resourceStateKey())return false;
-  clearFieldMap();draw();const key=resourceStateKey(),controller=new AbortController();fieldAbort=controller;fieldPending=true;setBusy(true);
+  clearFieldMap();draw();const key=resourceStateKey(),layer=collisionLayer.value,controller=new AbortController();fieldAbort=controller;fieldPending=true;setBusy(true);
   try{
-    const response=await fetch('/api/field-map-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id}),signal:controller.signal});
+    const response=await fetch('/api/field-map-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id,layer}),signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Field map verification failed');
     if(controller.signal.aborted)return false;
-    fieldMap=validateFieldMap(result,record,key);fieldKey=key;fieldNote.textContent=`${fieldMap.rectangles.length} blocked rectangles · ${fieldMapScope}`;fieldNote.title=(fieldMap.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');fieldNote.hidden=false;return true;
+    if(result.representation!==layer)throw new Error('Collision service did not return the requested layer.');
+    if(fieldDialog.open)fieldDialog.querySelector('.dialog-error').textContent='';
+    fieldMap=validateFieldMap(result,record,key);fieldKey=key;fieldNote.textContent=`${layer==='effective'?'EFFECTIVE authored source':'RETAIL source'} · ${fieldMap.rectangles.length} blocked rectangles · ${fieldMapScope}`;fieldNote.title=(fieldMap.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');fieldNote.hidden=false;return true;
   }catch(error){clearFieldMap();if(error.name!=='AbortError'){notify(error.message,true);if(fieldDialog.open)fieldDialog.querySelector('.dialog-error').textContent=error.message;}return false;}
   finally{if(fieldAbort===controller)fieldAbort=null;fieldPending=false;setBusy(false);draw();}
 }
@@ -702,6 +706,7 @@ fieldToggle.onclick=async()=>{
   if(candidates.length!==1){notify(candidates.length?'Choose a collision record in the asset browser.':'No verified base collision record is available for this scene.',true);return;}
   await loadFieldMap(candidates[0]);
 };
+collisionLayer.onchange=async()=>{updateFieldToggle();if(busy||!fieldMap)return;const record=assetRecords().find(r=>r.id===fieldMap.semantic_id&&r.type==='collision');if(record)await loadFieldMap(record);else{clearFieldMap();draw();}};
 function openFieldResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
   const collision=record.type==='collision',data=record.data;
@@ -729,6 +734,35 @@ function openFieldResource(record){
   const limits=document.createElement('p');limits.className='field-note';limits.textContent=(data.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');summary.append(limits);
   fieldDialog.querySelector('pre').textContent=JSON.stringify(data,null,2);$('close-field-map').onclick=()=>fieldDialog.close();
   if(collision){$('show-base-collision').disabled=!state.capabilities?.field_map_preview;$('show-base-collision').onclick=async()=>{if(await loadFieldMap(record)){fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}};}
+  if(collision){
+    const editButton=document.createElement('button');editButton.textContent='Edit source wall bits';editButton.disabled=state.project.mode!=='edit';summary.append(editButton);
+    editButton.onclick=async()=>{
+      if(busy||state.project.mode!=='edit')return;collisionLayer.value='effective';if(!await loadFieldMap(record)||!fieldDialog.open)return;
+      editButton.disabled=true;const snapshot=fieldMap,key=resourceStateKey(),scene=state.scene.id;
+      const form=document.createElement('form');form.innerHTML='<h3>Source wall edit</h3><p>Only the selected wall bit changes. Floor tiers, runtime actors and script collision paints are separate.</p><label>Grid row<input name="row" type="number" min="1" max="127" step="1" value="1" required></label><label>Grid column<input name="column" type="number" min="0" max="127" step="1" value="0" required></label><label>Quadrant<select name="quadrant"><option value="0">0 · low X / low Z</option><option value="1">1 · high X / low Z</option><option value="2">2 · low X / high Z</option><option value="3">3 · high X / high Z</option></select></label><label><input name="blocked" type="checkbox"> Blocked in source grid</label><p class="collision-cell-status"></p><button type="submit">Apply wall bit</button><button type="button" class="clear-collision">Clear scene wall edits</button>';
+      summary.append(form);const status=form.querySelector('.collision-cell-status');
+      const cell=()=>({row:Number(form.elements.row.value),column:Number(form.elements.column.value),quadrant:Number(form.elements.quadrant.value)});
+      const refresh=()=>{const c=cell(),rectangle=snapshot.rectangles.find(r=>r.row===c.row&&r.column===c.column&&r.quadrant===c.quadrant);form.elements.blocked.checked=!!rectangle;const x=c.column*128+(c.quadrant&1)*64,z=c.row*128-128+(c.quadrant>>1)*64;status.textContent=`Effective: ${rectangle?'blocked':'unblocked'} · integer X (${x}, ${x+64}], Z [${z}, ${z+64})`;};
+      let draftCell=cell(),appliedBlocked=false;
+      const discard=document.createElement('button');discard.type='button';discard.textContent='Discard unapplied wall change';form.append(discard);
+      const dirty=()=>form.elements.blocked.checked!==appliedBlocked;
+      const updateDraft=()=>{discard.disabled=!dirty();for(const name of ['row','column','quadrant'])form.elements[name].disabled=dirty();};
+      const selectCell=()=>{draftCell=cell();refresh();appliedBlocked=form.elements.blocked.checked;updateDraft();};
+      for(const name of ['row','column','quadrant'])form.elements[name].oninput=()=>{if(dirty()){for(const axis of ['row','column','quadrant'])form.elements[axis].value=draftCell[axis];return;}selectCell();};
+      form.elements.blocked.oninput=updateDraft;discard.onclick=()=>{form.elements.blocked.checked=appliedBlocked;updateDraft();};selectCell();
+      const locateCell=document.createElement('button');locateCell.type='button';locateCell.textContent='Locate cell in viewport';form.append(locateCell);
+      locateCell.onclick=()=>{
+        if(busy||resourceStateKey()!==key||state.scene.id!==scene||!form.reportValidity())return;
+        if(dirty()){fieldDialog.querySelector('.dialog-error').textContent='Apply or discard the wall change before locating its cell.';return;}
+        const c=cell(),point={x:c.column*128+(c.quadrant&1)*64+32,y:0,z:c.row*128-128+(c.quadrant>>1)*64+32};
+        coordinateProbe={point,context:JSON.stringify([state.project?.path,state.scene?.id])};cancelViewportGesture();camera.target=displayPosition(point);camera.distance=1000;cameraRevision++;
+        fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();draw();
+      };
+      const apply=async command=>{if(busy||state.project.mode!=='edit'||resourceStateKey()!==key||state.scene.id!==scene)return;await api('/api/command',command,{dialog:fieldDialog,success:'Source wall edits updated. Save project to persist.'});};
+      form.onsubmit=async event=>{event.preventDefault();if(!form.reportValidity())return;const c=cell(),edits=(snapshot.authored?.edits??[]).filter(e=>e.row!==c.row||e.column!==c.column||e.quadrant!==c.quadrant);edits.push({...c,blocked:form.elements.blocked.checked});await apply({type:'set_collision_walls',entity_id:scene,value:{source_sha256:snapshot.asset.source_record.containing_span_sha256,edits}});};
+      form.querySelector('.clear-collision').disabled=!snapshot.authored?.edits?.length;form.querySelector('.clear-collision').onclick=()=>apply({type:'clear_collision_walls',entity_id:scene});
+    };
+  }
   if(record.type==='trigger'&&state.capabilities?.trigger_script_preview&&(data.script_reference?.partition===2||data.trigger_type==='partition_2_trigger')){
     const button=document.createElement('button');button.className='accent';button.id='inspect-trigger-script';button.textContent='Inspect referenced script';button.onclick=()=>openTriggerScript(record);summary.append(button);
   }
