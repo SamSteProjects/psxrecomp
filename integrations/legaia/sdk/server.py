@@ -409,6 +409,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
                     return
+                if route == "/api/animation-channel-values":
+                    if set(body) != {"entity_id", "frame_index", "object_index"} or not isinstance(body.get("entity_id"), str):
+                        raise ProjectError("Channel inspection requires an actor, frame and object index only")
+                    self._json(200, self.server.project.animation_channel_values(body["entity_id"], body["frame_index"], body["object_index"]))
+                    return
                 if route == "/api/animation-authoring-options":
                     if set(body) != {"entity_id"} or not isinstance(body.get("entity_id"), str):
                         raise ProjectError("Animation options require an actor identity only")

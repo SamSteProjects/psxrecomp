@@ -311,6 +311,21 @@ class ProjectService:
                      if a["semantic_id"] == binding["asset_semantic_id"])
         catalog = load_scene_actor_animation_catalog(self.disc_path, document["scene"]["name"])
         catalog.authored_animation_record(actor, asset, value["edits"], value["source_record_sha256"])
+        proposed = {a["semantic_id"]: self.overrides[a["semantic_id"]]["AnimationChannels"]
+                    for a in document["actors"] if "AnimationChannels" in self.overrides.get(a["semantic_id"], {})}
+        proposed[identifier] = value
+        catalog.authored_bank(proposed)
+
+    def animation_channel_values(self, identifier: str, frame_index: int, object_index: int) -> dict:
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        options = self.animation_authoring_options(identifier)
+        document = next(doc for doc in self.imports.values()
+                        if any(a["semantic_id"] == identifier for a in doc["actors"]))
+        catalog = load_scene_actor_animation_catalog(self.disc_path, document["scene"]["name"])
+        asset = next(a for a in document["assets"]["models"] if a["semantic_id"] == options["binding"]["asset_semantic_id"])
+        overrides = {a["semantic_id"]: self.overrides[a["semantic_id"]]["AnimationChannels"]
+                     for a in document["actors"] if "AnimationChannels" in self.overrides.get(a["semantic_id"], {})}
+        return catalog.channel_values(self._actor(identifier), asset, frame_index, object_index, overrides)
 
     def animation_authoring_options(self, identifier: str) -> dict:
         """Resolve editable imported rigid channels against current retail evidence."""

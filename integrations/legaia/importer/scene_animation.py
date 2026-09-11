@@ -154,6 +154,33 @@ class SceneActorAnimationCatalog:
         index, decoded = self._binding(actor, asset)
         return self._animation_preview(actor, asset, index, decoded)
 
+    def channel_values(self, actor: dict, asset: dict, frame_index: int, object_index: int,
+                       overrides: dict[str, dict] | None = None) -> dict:
+        """Return one source channel without loading geometry or expanding poses."""
+        index, decoded = self._binding(actor, asset)
+        if type(frame_index) is not int or not 0 <= frame_index < decoded["frame_count"]:
+            raise ImportError("Animation frame is outside the imported clip")
+        if type(object_index) is not int or not 0 <= object_index < decoded["bone_count"]:
+            raise ImportError("Animation object is outside the imported clip")
+        channel = decoded["frames"][frame_index]["object_transforms"][object_index]
+        start, end = self._ranges[index]
+        result = {"frame_index": frame_index, "object_index": object_index,
+                "source_record_sha256": hashlib.sha256(self._body[start:end]).hexdigest(),
+                "retail": {field: dict(zip("xyz", channel[field])) for field in ("translation", "rotation_psx")}}
+        result["effective"] = deepcopy(result["retail"])
+        result["contributors"] = []
+        if overrides:
+            bank, _audit = self.authored_bank(overrides)
+            effective = decode_animation_record(bank[start:end])["frames"][frame_index]["object_transforms"][object_index]
+            result["effective"] = {field: dict(zip("xyz", effective[field])) for field in ("translation", "rotation_psx")}
+            result["effective_record_sha256"] = hashlib.sha256(bank[start:end]).hexdigest()
+            clip = f"animation://{self.scene}/scene-anm/{index:04d}"
+            result["contributors"] = sorted(owner for owner, value in overrides.items()
+                                             if value["animation_id"] == clip and any(
+                                                 e["frame_index"] == frame_index and e["object_index"] == object_index
+                                                 for e in value["edits"]))
+        return result
+
     def authored_bank(self, overrides: dict[str, dict]) -> tuple[bytes, list[dict]]:
         """Compose shared clip edits, rejecting contradictory writes to one axis."""
         from .animation_authoring import patch_animation_channels
@@ -172,7 +199,10 @@ class SceneActorAnimationCatalog:
                     for axis, value in edit.get(field, {}).items():
                         key = (edit["frame_index"], edit["object_index"], field, axis)
                         if key in group["axes"] and group["axes"][key] != value:
-                            raise ImportError("Conflicting actor overrides target the same shared animation channel")
+                            raise ImportError(
+                                f"Conflicting shared animation {index:04d}, frame {key[0]}, object {key[1]}, "
+                                f"{field}.{axis}: {identifier} requests {value}; another actor requests {group['axes'][key]}. "
+                                "Clear or align that channel contribution before applying.")
                         group["axes"][key] = value
         result, audit = bytearray(self._body), []
         for index, group in sorted(grouped.items()):

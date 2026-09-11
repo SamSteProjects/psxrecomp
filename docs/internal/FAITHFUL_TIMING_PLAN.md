@@ -213,6 +213,48 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Channel inspector regression checkpoint
+- Previous turn made progress finding/fixing browser draft selector bug and validating discard. Extended existing shared-bank regression to cover retail/effective channel values, contributors, composed hash, invalid indices and geometry-free inspection.
+- Sixteen focused animation and scene-preview tests passed with retail input; JavaScript syntax passed. Checkpoint includes source/effective readout, conflict-at-Apply validation, navigation/discard and position-ghost correction. Full SDK/runtime acceptance remains incomplete.
+
+
+### Browser draft guard correction
+- Previous turn made progress adding discard, but tab unavailable. Refreshed the exact isolated server session on port4403 after stopping80930; new session82116 and tab68. Browser verified retail/effective values, contributor IDs and applied-channel picker.
+- Browser input showed onchange did not protect frame selection promptly. Changed selector handling to oninput and added Apply channel-identity guard. Retest retained frame0 and draft X125 when switching to frame1, displayed Apply/Discard message; Discard restored applied X100 and disabled itself. No applied override or save occurred.
+
+
+### Discard unapplied channel changes
+- Previous turn made progress adding applied-channel navigation and draft protection. Added explicit Discard unapplied channel changes action, enabled only after axis input, restoring the selected actor applied values without project mutation. Navigation message now explains Apply or Discard.
+- JS syntax passed. Browser verification attempt found tab67 no longer belonged to the active browser session; no browser acceptance claimed for these latest controls. Full goal remains active; no game interaction.
+
+
+### Applied animation channel navigation
+- Previous turn made progress rejecting shared conflicts before mutation. Added sorted applied-channel picker listing frame/object and edited axis values, with explicit empty state and scoped navigation.
+- Prevented channel navigation from silently discarding un-applied input: selectors restore the edited channel and request Apply before switching. No project mutation from navigation. JavaScript syntax passed; browser acceptance remains pending.
+
+
+### Reject shared animation conflict before Apply
+- Previous turn made progress adding effective channel values and contributor disclosure. Project animation validation now composes the proposed override with existing scene contributions before mutating state, preventing conflicting saves from breaking preview/build later.
+- Retail isolated-project check rejected Actor0012 X=99 against Actor0011 X=100 with overrides and undo/redo unchanged; independent Y=-80 accepted and effective XYZ became 100/-80/0. No save.
+- Conflict diagnostics now identify clip/frame/object/axis and requested values.
+
+
+### Effective shared channel inspection
+- Previous goal turn made progress verifying retail readout and main scene in browser. Extended one-channel inspection with retail/effective values, composed record hash and contributing actor identities. UI separates applied shared values from the selected actor editable inputs.
+- Retail service check on Actor0012 returned retail X=0, effective X=100 and contributor Actor0011 from the saved isolated test override, proving cross-owner effect disclosure without mutating imported values. JS syntax passed. Updated effective readout browser acceptance remains pending.
+
+
+### Browser retail readout and authored scene acceptance
+- Previous turn made progress adding one-channel retail inspection. Updated isolated editor on 4403/session80930, browser tab67. Prior tab66 was no longer available; new tab used without touching the user game.
+- Browser readout showed retail XYZ 0/-89/0 and rotation 0/0/0 separately from authored X=100. Main scene Focus visually showed displaced heads on selected Actor0011 and another shared-clip actor.
+- Visual check exposed a bogus imported-position marker for animation-only changes; restricted position ghost to transform edits/drafts. No saved project writes this turn. Runtime animation acceptance remains pending.
+
+
+### Retail animation channel inspection
+- Previous goal turn made progress checkpointing animation workflow. Added bounded one-channel source lookup, project/HTTP adapter, and retail translation/rotation readout in the animation dialog. No mesh/pose expansion needed.
+- UI checks source record hash and ignores stale request/context responses when frame/object selection changes. Synthetic lookup returned expected X=10, rejected five invalid/bool index cases, and proved no geometry load. Eleven existing checks passed with two retail skips; JS syntax passed. New readout browser acceptance remains pending.
+
+
 ### Animation workflow checkpoint validation
 - Previous turn made progress hardening commands and correcting shared-clear wording. Reviewed accumulated animation workflow changes before checkpoint.
 - Ran 33 focused animation, scene-preview, serialization, build-report, MAP and appearance-assignment checks with retail input. 32 passed; one MAP test expected the old no_MAN audit label. Updated it to no_compressed_scene_overlay (MAN and ANM now participate), then both MAP build tests passed.

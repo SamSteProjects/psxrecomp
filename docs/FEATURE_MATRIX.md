@@ -35,8 +35,8 @@ LZS decoding; conflicting shared-axis writes and capacity overflow are rejected.
 Browser acceptance covered Actor 0011 X=100, saved reopen, undo/redo and visible
 imported/authored pose comparison. A private package combined that edit with the
 wall override. Retail scene geometry showed exactly +100 X on affected vertices.
-This remains **PARTIAL / runtime acceptance pending**: in-game animation playback,
-main-scene browser rendering remain unverified. Imported/authored baked GLB exports
+This remains **PARTIAL / runtime acceptance pending**: in-game animation playback remains unverified. Main-scene browser rendering
+visibly showed the displaced head on the selected and another shared-clip actor. Imported/authored baked GLB exports
 were parsed independently: 675 positions with only the intended +100 X delta,
 and embedded authored source hashes/change evidence preserved. External viewer
 acceptance of these new authored exports remains pending.
