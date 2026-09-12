@@ -213,6 +213,162 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Candidate and disc implementation checkpoint
+
+- Previous turn browser-verified placement inheritance and authored coordinates. Ran the focused structural/reindex/container/physical-layout/ISO/service checks together:15 passed. Updated feature matrix to include experimental disc output and its acceptance limits.
+- Checkpoint scope contains only SDK/framework source, synthetic tests and documentation; private disc and reports remain outside staging. Full SDK goal remains active: persistent new-entity authoring, script completeness and gameplay acceptance are not established by this checkpoint.
+
+### Candidate placement browser acceptance
+
+- Previous turn added explicit placement labels. Isolated Edge against temporary editor4406 verified retail inheritance text and donor-script navigation without page errors. Applied unsaved X3008 to actor0011 in the temporary project session and verified the authored coordinate label.
+- First authored harness used an exact button label changed by authored state and timed out; selecting via stable actor ID passed. Test browsers closed and temporary server37121 was stopped. No Save, user editor change or game interaction.
+
+### Candidate override reporting and service isolation
+
+- Previous turn forwarded authored placement. Added a focused service check proving only X/Z reaches candidate construction, authored Y/appearance remain explicitly excluded, missing actors reject and project/undo state is unchanged. The check passed.
+- Candidate dialog now lists exact included coordinate values and excluded authored components/axes outside the technical JSON. Browser validation remains pending; persistent new-entity commands and gameplay scheduling are still open.
+
+### Candidate inspection consumes authored placement
+
+- Previous turn added appended-record positioning. Connected optional position through importer inspection and the editor service, taking only selected actor authored X/Z. Report names included overrides, excluded components and excluded transform axes explicitly; browser copy distinguishes positioned candidates from retail placement.
+- Fresh retail positioned donor11 inspection and physical container encoding passed; editor JavaScript syntax passed. Browser workflow remains unverified for this addition. No entity is created or saved by inspection, and no disc/game interaction occurred.
+
+### Explicit placement for appended actor candidates
+
+- Previous turn fixed integration imports and checked ISO transforms. Reviewed existing project templates/commands; added optional X/Z placement to append_actor_candidate through the existing exact retail placement serializer, with byte-change audit and structural-layout preservation.
+- Retail donor11 candidate record53 accepted X3008/Z5440. Exactly one placement byte differed from the unpositioned candidate; unsupported Y, off-grid X and boolean X rejected. Existing NPC records were unchanged relative to the base candidate. No project persistence, disc rewrite or game interaction in this turn; command/viewport integration remains open.
+
+### Disc integration import and ISO regression checks
+
+- Previous turn validated experimental output. Fixed disc writer's dependency on launching from repository root: it now resolves the generic sector codec relative to its source checkout. Verified import/codec loading from local-output with only integrations/legaia on PYTHONPATH.
+- Added3 focused synthetic ISO checks covering relocated root and nonstandard path-table locations, both endian formats, exact zero-growth behavior, boundary extents, padding/truncation and overlapping/mismatched records. All passed. No new disc write or runtime interaction.
+
+### Generated disc content and encoding validation
+
+- Previous turn emitted experimental donor11 disc. Compared source/output directory inventories (47 entries), sizes/relocated extents and all44 non-PROT file hashes. Compared139219 unchanged-sector payload/protection regions exactly across relocation. Saved metadata-only preservation report beside private image.
+- Reopened through normal scene lookup and verified exact regenerated donor11 MAN, SHA256646b9d6183a999e59160ef3e7d401c207a13f40c26d533780b230d81111221de. Checked all59215 regenerated PROT/metadata sectors with the encoder; process5516 exited0. This is internal parity verification, not an independent encoder oracle or gameplay acceptance. Initial harness import error was corrected before execution.
+- No game interaction. Actor scheduling/reference completeness and project authoring integration remain unfinished.
+
+### Experimental actor disc emitted and reopened
+
+- Previous turn integrated ISO metadata relocation. Implemented streaming write_grown_prot_disc: exclusive new destination, source disc/PROT hashes, bounded metadata transforms, full EDC/ECC, MSF relocation and reopened PROT equality. Retail framing inspection found59205 ordinary subheaders and one terminal subheader; the writer preserves the terminal distinction.
+- Actual donor11 candidate rebuilt and wrote local-output/sdk-20260909/native-actor-disc-20260911.bin; process64639 exited0. Output466716768 bytes, SHA256325db468440bd9246181de2e70290fb17e8431131de0043b87b9449d1ab4a56a. One sector growth,8 ISO metadata sectors, reopened PROT exact. Source disc hash rechecked unchanged.
+- No game launch/input. Full-image independent validation, script completeness, runtime scheduling and project Build integration remain open; experimental output is not gameplay-accepted.
+
+### Integrated ISO metadata relocation pass
+
+- Previous turn verified generic sector parity. Connected PVD, path tables and bounded recursive directory traversal into collect_metadata_relocation, returning changed logical sectors keyed by original LBA for the upcoming streaming writer.
+- Source-preimage and overlapping-patch conflict checks preserve composed sector edits; directory aliases, record boundaries and traversal limits are checked. Retail one-sector growth produces8 changed metadata sectors at16,18,19,20,21,22,59448,138777 across53 records/3 directories/4 tables. Zero growth produces no changed sectors.
+- No disc output or game interaction. Streaming output and full-image reopening remain next; actor runtime acceptance is still open.
+
+### Generic Mode 2 sector encoding
+
+- Previous turn implemented PVD relocation. Added tools/cd_sector.py with generic Form1 EDC/P/Q encoding and bounded BCD MSF address relocation. Existing prepare_disc.py zeroes ECC, so it was not sufficient for this writer. Cross-checked layout and parity parameters against pinned iso/write.rs.
+- Fresh comparison reproduced521 retail sectors byte-for-byte (ISO front matter plus512 PROT sectors). Relocating each header by one LBA preserved valid EDC/P/Q and every byte outside the address. No source disc mutation or game interaction.
+- Integrated streaming disc output, full-image verification and project Build remain outstanding.
+
+### Primary volume descriptor relocation
+
+- Previous turn implemented path-table relocation. Added the PVD transform for matching dual-endian volume size, derived table pointers and embedded root record, with block-size, overlap and overflow validation.
+- Retail one-sector growth updated volume198433->198434 in both copies and preserved all other PVD bytes; zero growth was byte-identical. A deliberately mismatched volume copy rejected. Physical sector serialization and integrated disc verification remain open; no disc write or game interaction.
+
+### ISO path-table relocation
+
+- Previous turn implemented dual-endian directory relocation. Added primary-descriptor path-table discovery and bounded endian-aware path-table transforms, preserving identifiers, parent references and padding; malformed records and overflow reject.
+- Fresh retail check read all four locations from the PVD (18,19,20,21), relocated MOV/XA by one sector and confirmed all four decoded tables agree. Zero-growth output preserved each source table exactly. PVD size/address rewriting and physical sector serialization remain open; no disc write or runtime interaction.
+
+### ISO directory relocation preserves dual-endian metadata
+
+- Previous turn completed logical candidate archive roundtrip. Added iso_relocation.relocate_directory_record to grow the exact PROT file record and relocate later extents at the insertion boundary, updating both endian copies while preserving unrelated fields.
+- Rejects mismatched endian fields, overlapping allocations, unsupported extended/interleaved/multi-extent records and integer overflow. Fresh retail traversal checked53 records in3 directories:46 changed for one-sector growth; both endian copies agree and zero-growth output equals every original record. Original retail endian fields were confirmed consistent.
+- Physical sector writer, PVD/path-table transforms and integrated disc output remain outstanding. No source disc write or game interaction.
+
+### 2026-09-11: actor candidate through rebuilt logical archive
+
+- Previous reporting turn refreshed the feature matrix; resumed implementation by composing MAN encoding, sector padding and raw TOC relocation in prot_rebuild.rebuild_man_entry.
+- The function reopens the rebuilt archive through the production parser, resolves the target scene table and independently decompresses the MAN, requiring exact candidate equality. Source hash, physical ownership and caller/header agreement remain checked.
+- Fresh retail donor11 append passed the composed path: one sector growth,1229 relocated starts and exact reopened MAN equality. All work stayed in memory; no disc image emitted, project mutation or game interaction. Disc serialization and complete actor scheduling/reference acceptance remain open.
+
+### SDK status report lookup
+
+- Read current FEATURE_MATRIX.md, release parity summary and native actor candidate report for the user's status-report request. Updated the matrix's candidate row to include logical PROT relocation and distinguish the unfinished disc-level writer.
+- These reports document bounded acceptance, not full SDK completion. No runtime interaction or new build validation performed in this reporting turn.
+
+### Logical PROT growth implementation
+
+- Previous turn made progress by verifying physical ownership and reviewing the reference disc writer. Implemented source-hashed, sector-aligned physical replacement and downstream raw TOC relocation in prot_rebuild.py; malformed/nonmonotonic tables, unknown successor, shrink and stale source reject.
+- Retail in-memory entry4 growth check shifted1229 starts, including index1233 end sentinel59206->59207, and preserved all following payload bytes. Raw TOC is required because the importer read-window list excludes that sentinel. No disc output or game interaction.
+- Added focused synthetic coverage for no-op, preserved adjacent payloads, shifted sentinel, terminal zero and invalid inputs. Full disc relocation and actor Build integration remain outstanding.
+
+### Physical span verification and disc relocation review
+
+- Previous clarification turn recorded the user's interior-placement constraint; this turn resumed source-bound actor work. Fresh donor11 inspection confirmed physical entry4,227328 source bytes,229376 rounded candidate bytes and one-sector growth.
+- Added focused synthetic checks for boundary ownership, overlapping read windows, missing successor rows, unresolved tails and ambiguous physical spans. Candidate remains read-only and not build-ready.
+- Reviewed pinned iso/relayout.rs and rando/disc.rs: full growth requires downstream TOC, sector framing/checksums and ISO reference updates. Reference writer hardcodes path-table locations and visibly patches only LE directory extent/size fields; documented these limitations before implementing a disc writer. No game launch/input or disc write.
+
+### User clarification: side-of-map interior NPC placements
+
+- User reports that the remaining NPCs appear correctly placed inside houses beside the map. Treat this as a placement hypothesis to verify against interior geometry and live actor identity, not evidence of a global coordinate error.
+- Preserve authored NPC coordinates; do not automatically ground or move actors based on missing exterior floor geometry. No game launch or input performed for this clarification.
+
+### Physical entry candidate encoding
+- Previous turn identified true scene owner entry4. Source-bound inspection now reads its exact consecutive-start physical span, passes the scene-table offset relative to that span to container encoding and reports sector-rounded candidate size/growth.
+- Retail donor11 passed emitted table/MAN verification in physical entry4:227328 source bytes,229376 sector-rounded candidate bytes, one sector growth. Extended read-window bytes are no longer treated as the resizable candidate container. No archive/disc write or runtime interaction; downstream TOC/ISO relocation remains open.
+
+### Physical scene owner identified
+- Previous turn browser-verified candidate model navigation. Found pinned rando/disc.rs grow_prot_entries and entry_true_footprint_sectors: relocation uses consecutive-start physical spans, preserves index space, rewrites downstream TOC starts, then full ISO LBA relocation. Overlapping read windows are not the allocation spans.
+- Retail town01 scene table resides at physical entry4 LBA243..354, offset0, although find_scene_bundle found it through entry2's extended read window at offset8192. This changes the next packaging action: target entry4's true span, not grow entry2's read window.
+- Added bounded locate_physical_span with exact consecutive indices and ambiguity rejection; tails with missing next rows remain unresolved. No disc/runtime mutation. Full relocation still unimplemented.
+
+### Candidate busy-state fix and model navigation acceptance
+- Previous browser turn exposed a timing failure. Candidate Inspector button did not reflect busy state although its handler ignored clicks while busy. Added stable button ID and disabled-state updates during rendering/setBusy.
+- Isolated Edge against temporary editor4406/session64576 now completed actor0011 selection, candidate inspection, Preview donor model, exact asset0105 request to /api/preview and RETAIL viewer state with zero page errors. Browser closed; temporary server stopped with terminal exit. No project Save or game interaction.
+
+### Candidate model browser check incomplete
+- Previous turn added model navigation. Temporary editor4406/session91971 and isolated Edge tests attempted the workflow. First harness waited for incorrect /api/model-preview instead of actual /api/preview and timed out; corrected run then timed out waiting for candidate model button. Browser acceptance is not established; investigate editor busy/selection timing and dialog contents next.
+- Test browsers closed through finally; temporary server stopped with terminal exit. No project Save or game interaction. Do not claim model navigation accepted from syntax/API checks alone.
+
+### Candidate model dependency navigation
+- Previous turn added verified donor asset bindings. Candidate dialog now shows model identity and initial animation frame/channel metadata, with Preview donor model routed to the existing imported model viewer. Missing model/animation bindings remain explicit; scene changes reject navigation.
+- Node syntax/diff checks passed. Browser model-navigation acceptance remains pending. No user server restart, project write or runtime interaction; full goal stays incomplete.
+
+### Candidate donor asset dependencies
+- Previous turn retained partial container diagnostics. Added freshly imported donor model reference and verified initial scene-animation asset bindings to candidate response, retaining unavailable status when animation binding is not established.
+- Retail actor11 resolved model0105 and animation scene-anm0012 from original ID13. No geometry/payload export or project write; script-selected assets and runtime compatibility are not inferred. Full goal remains incomplete.
+
+### Partial candidate inspection retention
+- Previous turn added context-ID representability. Candidate inspection now retains verified actor/archive diagnostics if container encoding raises a supported-domain error, reporting supported false/reason/null growth instead of hiding all evidence. Structural source errors still fail normally.
+- UI renders unavailable growth with the reason. Injected container failure under retail source inspection preserved actor53/archive overlap data and false build readiness; Node syntax passed. No runtime/project mutation.
+
+### Context target representability
+- Previous turn established reference spawn ID rules. Pinned field_channels::resolve_target explicitly excludes F8/FB special contexts and accepts byte-encoded targets. Added actor_context_reference_status to candidate audits, distinguishing ordinary byte IDs, known reserved targets and IDs outside byte range without claiming allocation validity.
+- Focused checks passed town01 ID89, reserved F8/FB and ID256. These are diagnostics rather than invented global actor-count limits. No runtime or project mutation; full goal remains incomplete.
+
+### Reference actor spawn rule established
+- Previous turn strengthened container roundtrip. Pinned engine-core/field_channels.rs documents FUN_8003AEB0 calling FUN_8003A1E4 per P1 placement at scene entry; context bytecode base is record base and script ID=N0+record index. This is reference evidence, not our runtime acceptance.
+- Candidate audit now exposes expected context ID89/entry PC for town01 appended actor. Reindex inventories expose extended-context target operands as a separate reference family requiring review, beyond opcode44 spawn indices.
+- Retail inspection verified context ID89 and searched reached extended references in shifted P2 range. No runtime interaction; native spawn acceptance and full relocation remain incomplete.
+
+### Emitted container verification
+- Previous turn improved script coverage reasons. Container encoder now rejects descriptors pointing inside the table, reparses its emitted table, checks every type/size/offset against the intended relocation and independently decodes the emitted MAN payload.
+- Synthetic container test and retail town01 donor11 inspection passed the stronger checks (368-byte growth unchanged). No archive packaging or runtime interaction; full goal remains incomplete.
+
+### Explicit candidate coverage reasons
+- Previous turn browser-verified donor navigation. Inspected project template validation: current scopes are position/appearance presets, not complete native actor definitions. Preserved that distinction rather than treating preset duplication as native creation.
+- Reindex audits and partition inventory now expose each stop's PC/reason and opaque byte count, without raw script data. Candidate technical evidence therefore explains partial coverage instead of only labeling it partial. Four focused reindex tests passed. No runtime/project mutation; spawnable template semantics remain unfinished.
+
+### Candidate-to-script browser acceptance
+- Previous turn added script navigation. Separate Edge against temporary editor4406/session35130 selected actor0011, opened candidate diagnostics and followed Inspect donor script. Captured actor-script POST retained scene://town01/actors/man-p1/0011 and returned200; candidate dialog removed, script dialog opened/closed, zero page errors.
+- Browser closed and temporary server stopped by Ctrl-C with terminal exit. No project Save or game interaction. Native actor creation and full SDK acceptance remain incomplete.
+
+### Candidate-to-script navigation
+- Previous turn verified all52 town01 candidate inspections. Added Inspect donor script to candidate diagnostics, connecting directly to the existing script/dialogue inspector with the same stable actor identity.
+- Candidate request now aborts when closed and rejects scene changes before presenting results or opening donor script. Node syntax and diff checks passed; direct browser navigation acceptance remains pending. No project or runtime mutation.
+
+### All town01 donor inspection acceptance
+- Previous turn checkpointed work at073eddc2. Ran the integrated source-bound inspection across all52 town01 donors under one verified disc scope:52 passed, no rejected candidates, container growth24..1492 bytes.
+- Every response retained read_only true/build_ready false. Updated native actor guide with measured scope. This verifies construction across donors, not runtime behavior or complete relocation. No project Save, persistent server or game interaction.
+
 ### Candidate workflow local checkpoint
 - Previous turn updated the feature matrix and ran combined regressions. Preparing a scoped local checkpoint of source-bound actor candidates, script decoding/reindexing, container/PROT diagnostics, browser-verified Inspector control and previously verified authored OBJ iteration changes.
 - Explicit source/test/docs paths only; private retail/Blender/game artifacts excluded. No push, project Save or runtime interaction. Native actor creation and the full SDK objective remain incomplete.

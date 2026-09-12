@@ -18,6 +18,10 @@ def encode_man_candidate(container: bytes, expected_sha256: str, table_offset: i
     if len(matches) != 1:
         raise ImportError('MAN container requires exactly one MAN descriptor')
     descriptor = matches[0]
+    table_end = table_offset+8+8*len(table.descriptors)
+    if any(not table_end <= table_offset+d.data_offset <= len(container)
+           for d in table.descriptors):
+        raise ImportError('MAN container descriptor overlaps table or exceeds source bounds')
     start = table_offset+descriptor.data_offset
     end = min([table_offset+d.data_offset for d in table.descriptors
                if d.data_offset > descriptor.data_offset]+[len(container)])
@@ -53,7 +57,19 @@ def encode_man_candidate(container: bytes, expected_sha256: str, table_offset: i
                               after=d.data_offset+growth))
     if result[end+growth:] != container[end:]:
         raise ImportError('MAN container growth altered following payload bytes')
-    return bytes(result), dict(descriptor_index=descriptor.index,
+    emitted = bytes(result)
+    reparsed = parse_scene_table(emitted, 0, table_offset)
+    if reparsed is None:
+        raise ImportError('MAN candidate descriptor table did not reparse')
+    for before, after in zip(table.descriptors, reparsed.descriptors):
+        expected_offset = before.data_offset+(growth if table_offset+before.data_offset >= end else 0)
+        expected_size = len(candidate) if before.index == descriptor.index else before.size
+        if (after.type_byte, after.size, after.data_offset) != (before.type_byte, expected_size, expected_offset):
+            raise ImportError('MAN candidate descriptor did not roundtrip')
+    verified, _ = decompress_lzs(emitted[start:start+len(stream)], len(candidate))
+    if verified != candidate:
+        raise ImportError('MAN emitted payload did not roundtrip')
+    return emitted, dict(descriptor_index=descriptor.index,
                               decoded_size_before=descriptor.size, decoded_size_after=len(candidate),
                               stream_offset=start, compressed_size=len(stream), capacity=end-start,
                               container_sha256=sha256(result).hexdigest(), growth_bytes=growth,

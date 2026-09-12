@@ -11,7 +11,20 @@ from .man_layout import read_man_layout, resolve_spawn_record
 from .script_inspection import inspect_record
 
 
-def append_actor_candidate(source: bytes, expected_sha256: str, donor_record_index: int):
+def actor_context_reference_status(partition0_count: int, record_index: int) -> dict:
+    """Describe encoded target limits, without claiming allocation success."""
+    if any(type(v) is not int or not 0 <= v <= 32767 for v in (partition0_count, record_index)):
+        raise ImportError('Actor context indices must be nonnegative signed-header integers')
+    context_id = partition0_count+record_index
+    status = ('outside_byte_target_range' if context_id > 255 else
+              'reserved_reference_target' if context_id in (0xF8, 0xFB) else
+              'byte_target_representable')
+    return dict(script_context_id=context_id, cross_context_target_status=status,
+                reserved_targets_known=[0xF8, 0xFB], allocation_verified=False)
+
+
+def append_actor_candidate(source: bytes, expected_sha256: str, donor_record_index: int,
+                           *, position: dict | None = None):
     """Append donor and repair reached opcode44 references; not build-ready."""
     from .script_reindex import inspect_spawn_reindex, spawn_index_map, reindex_spawn_operands
     structural, audit = append_actor_donor(source, expected_sha256, donor_record_index)
@@ -44,10 +57,18 @@ def append_actor_candidate(source: bytes, expected_sha256: str, donor_record_ind
     result = bytes(output)
     if len(result) != len(structural) or read_man_layout(result) != layout:
         raise ImportError('Actor candidate rewrite changed structural layout')
+    placement_changes = []
+    if position is not None:
+        from .serialization import patch_man_positions
+        result, placement_changes = patch_man_positions(
+            result, 'authored-candidate', {audit['record_index']: position})
+        if read_man_layout(result) != layout:
+            raise ImportError('Candidate placement changed structural layout')
     audit.update(structural_result_sha256=audit['result_sha256'],
                  result_sha256=sha256(result).hexdigest(),
                  existing_record_bytes_preserved=not any(r['changes'] for r in inventory['records']),
                  reached_spawn_changes=changes, script_coverage=inventory,
+                 authored_placement_changes=placement_changes,
                  build_ready=False)
     return result, audit
 
@@ -79,6 +100,14 @@ def append_actor_donor(source: bytes, expected_sha256: str, donor_record_index: 
                          model_index=donor.model_index, animation_id=donor.animation_id,
                          world_x=donor.world_x, world_z=donor.world_z)
     audit['spawn_scheduling_verified'] = False
+    audit['context_reference'] = actor_context_reference_status(
+        layout['partition_counts'][0], audit['record_index'])
+    audit['reference_spawn_rule'] = dict(
+        evidence='pinned engine-core/src/field_channels.rs::spawn_channels',
+        setup_function='FUN_8003AEB0', allocator_function='FUN_8003A1E4',
+        script_context_id=layout['partition_counts'][0]+audit['record_index'],
+        entry_pc=1+donor.local_count*2+4,
+        status='reference_evidence_not_runtime_verified')
     audit['global_record_index_rewrite_required'] = True
     audit['shifted_global_index_range'] = dict(
         partition=2, first_before=sum(layout['partition_counts'][:2]),

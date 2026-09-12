@@ -280,6 +280,7 @@ function notify(message, error=false) {
 }
 function setBusy(value) {
   busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
+  if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
@@ -1204,7 +1205,7 @@ function renderInspector(){
   if($('clear-appearance'))$('clear-appearance').onclick=()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id});
   if($('preview-appearance'))$('preview-appearance').onclick=()=>openModel(components.ActorAppearance.effective.asset_id,'authored-appearance',entity.id);
   if($('inspect-script'))$('inspect-script').onclick=()=>openActorScript(entity);
-  if($('inspect-script')&&state.capabilities?.actor_candidate_inspection){const button=document.createElement('button');button.textContent='Inspect NPC creation candidate';button.className='model-preview-button';button.onclick=()=>openActorCandidate(entity);$('inspect-script').after(button);}
+  if($('inspect-script')&&state.capabilities?.actor_candidate_inspection){const button=document.createElement('button');button.textContent='Inspect NPC creation candidate';button.id='inspect-actor-candidate';button.disabled=busy;button.className='model-preview-button';button.onclick=()=>openActorCandidate(entity);$('inspect-script').after(button);}
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
   const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
   const actorAnimation=components.Animation?.preview_support;
@@ -1292,19 +1293,38 @@ let scriptEntity=null,scriptReport=null,scriptDrafts=new Map();
 const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUpperCase():'Unknown';
 async function openActorCandidate(entity){
   if(busy)return;
+  const sceneId=state.scene?.id,controller=new AbortController();
   const dialog=document.createElement('dialog');
   dialog.innerHTML='<h2>NPC creation candidate</h2><p>Inspecting the retail donor…</p><button>Close</button>';
   dialog.querySelector('button').onclick=()=>dialog.close();
-  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  dialog.addEventListener('close',()=>{controller.abort();dialog.remove();},{once:true});
   document.body.append(dialog);dialog.showModal();
   try{
-    const response=await fetch('/api/actor-candidate-inspection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})});
+    const response=await fetch('/api/actor-candidate-inspection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id}),signal:controller.signal});
     const report=await response.json();if(!response.ok||report.error)throw new Error(report.error||'Candidate inspection failed');
     if(!dialog.open)return;
     if(report.entity_id!==entity.id)throw new Error('Candidate identity mismatch');
+    if(state.scene?.id!==sceneId)throw new Error('Active scene changed; inspect this donor again');
     const rows=report.actor.script_coverage.records;
-    dialog.querySelector('p').textContent=`${entity.name}: retail donor only; project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${report.container.growth_bytes} bytes. Overlapping archive entries: ${report.archive.overlapping_entries.length}. Playable creation remains unavailable until script, scheduling and archive dependencies are resolved.`;
+    const containerStatus=report.container.supported===false?`unavailable (${report.container.reason})`:`${report.container.growth_bytes} bytes`;
+    dialog.querySelector('p').textContent=`${entity.name}: ${report.includes_project_overrides ? "retail donor with authored X/Z placement" : "retail donor at imported placement"}; other project overrides are excluded. This inspection does not create an NPC. ${report.actor.reached_spawn_changes.length} decoded spawn references need updates; ${rows.filter(row=>row.coverage!=='decoded_supported_paths').length} scripts remain partial. Container growth: ${containerStatus}. Overlapping archive entries: ${report.archive.overlapping_entries.length}. Playable creation remains unavailable until script, scheduling and archive dependencies are resolved.`;
+    const placement=document.createElement('p');
+    const included=Object.entries(report.included_overrides?.Transform?.position??{}).map(([axis,value])=>`${axis.toUpperCase()}=${value}`);
+    const excluded=[...(report.excluded_override_components??[]),...(report.excluded_transform_axes??[]).map(axis=>`Position ${axis.toUpperCase()}`)];
+    placement.textContent=`Candidate placement: ${included.length?included.join(', ')+'; remaining axes inherit the donor':'inherited from the retail donor'}.${excluded.length?' Excluded authored values: '+excluded.join(', ')+'.':''}`;
+    dialog.append(placement);
     const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Technical evidence';pre.textContent=JSON.stringify(report,null,2);details.append(summary,pre);dialog.append(details);
+    const inspect=document.createElement('button');inspect.textContent='Inspect donor script';
+    inspect.onclick=()=>{if(busy)return;if(state.scene?.id!==sceneId){dialog.querySelector('p').textContent='Active scene changed; inspect this donor again';return;}dialog.close();openActorScript(entity);};
+    dialog.append(inspect);
+    const dependencies=report.donor_dependencies;
+    if(dependencies){
+      const info=document.createElement('p');
+      info.textContent=`Donor model: ${dependencies.model?.asset_semantic_id??'unresolved'}. Initial animations: ${(dependencies.animations??[]).map(a=>`${a.semantic_id} (${a.frame_count} frames, ${a.channel_count} channels)`).join(', ')||'unavailable'}. Scripts may select other assets at runtime.`;
+      dialog.append(info);
+      const assetId=dependencies.model?.asset_semantic_id;
+      if(assetId){const model=document.createElement('button');model.textContent='Preview donor model';model.onclick=()=>{if(busy)return;if(state.scene?.id!==sceneId){info.textContent='Active scene changed; inspect this donor again';return;}dialog.close();openModel(assetId);};dialog.append(model);}
+    }
   }catch(error){if(dialog.open)dialog.querySelector('p').textContent=String(error.message||error);}
 }
 async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null){

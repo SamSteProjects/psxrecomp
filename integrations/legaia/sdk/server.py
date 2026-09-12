@@ -159,11 +159,17 @@ class EditorServer(ThreadingHTTPServer):
                       if item["semantic_id"] == entity_id), None)
         if actor is None:
             raise ProjectError("Actor candidate requires an imported actor in the active scene")
+        overrides = project.overrides.get(entity_id, {})
+        authored = overrides.get("Transform", {}).get("position", {})
+        position = {axis: authored[axis] for axis in ("x", "z") if axis in authored}
         report = inspect_actor_candidate(project.disc_path, document["scene"]["name"],
-                                         actor["source_record"]["record_index"])
+                                         actor["source_record"]["record_index"], position=position or None)
         report["entity_id"] = entity_id
-        report["representation"] = "retail_donor_candidate"
-        report["includes_project_overrides"] = False
+        report["representation"] = "positioned_retail_donor_candidate" if position else "retail_donor_candidate"
+        report["includes_project_overrides"] = bool(position)
+        report["included_overrides"] = {"Transform": {"position": position}} if position else {}
+        report["excluded_override_components"] = sorted(key for key in overrides if key != "Transform")
+        report["excluded_transform_axes"] = sorted(set(authored)-set(position))
         return report
 
     def actor_script_preview(self, entity_id: str) -> dict:

@@ -19,7 +19,9 @@ def inspect_spawn_reindex(source: bytes, rebuilt: bytes) -> dict:
         try:
             entry = 1+record[0]*2+4 if span['partition'] == 1 else _p2_entry(record)[0]
             _, audit = reindex_spawn_operands(record, sha256(record).hexdigest(), entry, mapping)
-            report.update(coverage=audit['coverage'], changes=audit['changes'])
+            report.update(coverage=audit['coverage'], changes=audit['changes'],
+                          stops=audit['stops'], opaque_byte_count=audit['opaque_byte_count'],
+                          extended_context_references=audit['extended_context_references'])
         except ImportError as exc:
             report.update(coverage='rejected', reason=str(exc), changes=[])
         reports.append(report)
@@ -86,4 +88,9 @@ def reindex_spawn_operands(record: bytes, expected_sha256: str, script_offset: i
         raise ImportError('Spawn reindex changed script boundaries or opaque bytes')
     return rebuilt, dict(source_sha256=expected_sha256,
                          result_sha256=sha256(rebuilt).hexdigest(), changes=changes,
+                         stops=[dict(pc=stop['pc'], reason=stop['reason']) for stop in graph['stops']],
+                         opaque_byte_count=sum(region['length'] for region in graph['opaque_regions']),
+                         extended_context_references=[dict(pc=row['pc'], target=row['target_context'])
+                                                      for row in graph['instructions']
+                                                      if row['target_context'] is not None],
                          coverage=graph['status'], complete_relocation_verified=False)
