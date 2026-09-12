@@ -72,6 +72,7 @@ def encode_scene_glb(scene):
                 node['children'].append(len(doc['nodes']));doc['nodes'].append(deepcopy(child))
         else:unavailable.append({'entity_id':identifier,'reason':entity.get('reason')})
     audit={'schema_version':'legaia.scene-export.v1','scene_id':scene.get('scene_id'),'source_key':scene.get('source_key'),
+           'representation':scene.get('representation','authored'),'project_source_key':scene.get('project_source_key'),
            'entity_count':len(entities),'geometry_count':len(assets),'unavailable_entities':unavailable,
            'geometry_exports':audits,'limitations':scene.get('limits',[])+['Static source preview, not runtime state. Unavailable entities retain metadata nodes only.',
             'Source units retained; physical meter scale unknown. Meshes are shared across instances.']}

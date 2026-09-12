@@ -630,8 +630,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                     preview = self.server.actor_animation_preview(body["entity_id"], body.get("representation", "imported"))
                     self._json(200, self.server.export_preview(preview, frame_index, clip_fps) if exporting else preview)
                     return
-                if route == "/api/scene-preview":
-                    if set(body) - {'representation'}:
+                if route in ("/api/scene-preview", "/api/export/scene"):
+                    exporting = route == "/api/export/scene"
+                    if set(body) - ({'representation', 'source_key'} if exporting else {'representation'}):
                         raise ProjectError("Scene preview uses the active imported scene; client geometry and paths are not accepted")
                     from .scene_preview import preview_project, source_key
                     from importer.scene_animation import load_scene_actor_animation_catalog
@@ -639,6 +640,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .terrain_preview import terrain_preview
                     representation = body.get('representation', 'authored')
                     original_key = source_key(self.server.project)
+                    if exporting and (not original_key or body.get("source_key") != original_key):
+                        raise ProjectError("Scene export source changed; refresh the scene before exporting")
                     view = preview_project(self.server.project, representation)
                     preview = self.server.scene_previews.preview(
                         view, lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, project_view=view, **kwargs),
@@ -647,7 +650,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Project changed during scene comparison preview')
                     preview['representation'] = representation
                     preview['project_source_key'] = original_key
-                    self._json(200, preview)
+                    if exporting:
+                        from importer.scene_export import encode_scene_glb
+                        from importer.export import write_encoded_glb
+                        data, audit = encode_scene_glb(preview)
+                        if source_key(self.server.project) != original_key:
+                            raise ProjectError('Scene changed during export; refresh and retry')
+                        self._json(200, write_encoded_glb(data, audit, self.server.project.root / 'Exports', 'scene'))
+                    else:
+                        self._json(200, preview)
                     return
                 if route == '/api/terrain-point':
                     from .scene_preview import source_key, sample_preview_ground

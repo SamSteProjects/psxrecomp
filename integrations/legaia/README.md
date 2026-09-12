@@ -78,3 +78,7 @@ Turn picking off for normal scene-mesh selection. Alt-click is an additional
 shortcut; modifier-based browser acceptance remains pending.
 Markers are suppressed outside Live mode or when accepted epoch evidence is lost.
 No runtime position control writes game RAM or modifies authored transforms.
+
+### Export an assembled scene
+
+After the scene preview finishes loading, choose **Export scene GLB** in the viewport toolbar. The export uses the selected authored or retail representation and includes temporarily hidden instances. Restore any temporary animation inspection pose first. Files are saved with unique names in the project Exports folder. Shared geometry, instance transforms and source provenance are preserved; unavailable instances remain metadata-only nodes. This is a static source-preview export, not captured gameplay, exact PSX lighting/blending, or a physically scaled scene. External rendered consumer acceptance remains pending.

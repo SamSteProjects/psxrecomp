@@ -326,6 +326,13 @@ def write_model_export(preview: dict[str, Any], output_root: Path | str,
     The SDK supplies project/Exports; no client-provided path is needed.
     """
     data, audit = encode_model_glb(preview, frame_index, clip_fps=clip_fps)
+    return write_encoded_glb(data, audit, output_root)
+
+
+def write_encoded_glb(data: bytes, audit: dict, output_root: Path | str, prefix: str = "model") -> dict:
+    """Private exclusive write shared by verified model and scene encoders."""
+    if prefix not in ("model", "scene") or not isinstance(data, bytes) or len(data)>MAX_GLB_BYTES:
+        raise ImportError("Invalid encoded GLB output")
     root = Path(output_root).absolute()
 
     def guard():
@@ -340,7 +347,7 @@ def write_model_export(preview: dict[str, Any], output_root: Path | str,
     guard()
     root.mkdir(parents=True, exist_ok=True)
     guard()
-    name = "model-" + uuid.uuid4().hex + ".glb"
+    name = prefix + "-" + uuid.uuid4().hex + ".glb"
     path = root / name
     with path.open("xb") as handle:
         handle.write(data)
