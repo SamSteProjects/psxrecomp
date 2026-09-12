@@ -24,6 +24,20 @@ def _transition_authoring_report(project, identifier):
                 "limitations": ["Read-only inspection does not establish transition-write safety."]}
 
 
+def _animation_export_choice(body):
+    """Exactly one export representation, before expensive source decoding."""
+    import math
+    if 'clip_fps' in body:
+        fps = body['clip_fps']
+        if 'frame_index' in body or type(fps) not in (int, float) or not math.isfinite(fps) or not 1 <= fps <= 120:
+            raise ProjectError('Choose either a frame index or an explicit clip rate from 1 to 120 fps')
+        return None, fps
+    frame = body.get('frame_index')
+    if type(frame) is not int or frame < 0:
+        raise ProjectError('Choose a nonnegative animation frame index to export')
+    return frame, None
+
+
 class EditorServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
@@ -237,13 +251,13 @@ class EditorServer(ThreadingHTTPServer):
             preview["animation_support"]["clips"] = [{"id": "authored-appearance", "label": "Authored initial appearance"}]
             return preview
 
-    def export_preview(self, preview: dict, frame_index: int | None) -> dict:
+    def export_preview(self, preview: dict, frame_index: int | None, clip_fps: float | None = None) -> dict:
         from .build import _guard_output
         from .project import atomic_write
         from importer.export import write_model_export
         output = self.project.root / "Exports"
         _guard_output(output / ".gitignore", self.project.root)
-        result = write_model_export(preview, output, frame_index)
+        result = write_model_export(preview, output, frame_index, clip_fps=clip_fps)
         if not (output / ".gitignore").exists():
             atomic_write(output / ".gitignore", b"*\n")
         return result
@@ -541,19 +555,20 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route in ("/api/actor-appearance-options", "/api/actor-appearance-preview", "/api/export/actor-appearance"):
                     exporting = route == "/api/export/actor-appearance"
-                    expected = {"entity_id", "frame_index"} if exporting else {"entity_id"}
+                    expected = {"entity_id", "clip_fps" if "clip_fps" in body else "frame_index"} if exporting else {"entity_id"}
                     if set(body) != expected or not isinstance(body.get("entity_id"), str) or not body["entity_id"]:
-                        raise ProjectError("Appearance requests accept only an imported entity_id and export frame; source bindings are project-controlled")
+                        raise ProjectError("Appearance requests accept only an imported entity_id and export frame or clip rate; source bindings are project-controlled")
                     if not any(a["semantic_id"] == body["entity_id"] for a in self.server.project.imports.get(self.server.project.active_scene, {}).get("actors", [])):
                         raise ProjectError("Appearance request requires an actor in the active scene")
                     if route == "/api/actor-appearance-options":
                         self._json(200, self.server.project.appearance_options(body["entity_id"]))
                         return
                     frame_index = body.get("frame_index")
-                    if exporting and (type(frame_index) is not int or frame_index < 0):
-                        raise ProjectError("Choose a nonnegative animation frame index to export")
+                    clip_fps = None
+                    if exporting:
+                        frame_index, clip_fps = _animation_export_choice(body)
                     preview = self.server.actor_appearance_preview(body["entity_id"])
-                    self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
+                    self._json(200, self.server.export_preview(preview, frame_index, clip_fps) if exporting else preview)
                     return
                 if route == "/api/export/actor-drafts":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
@@ -599,14 +614,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route in ("/api/actor-animation-preview", "/api/export/actor-animation"):
                     exporting = route == "/api/export/actor-animation"
-                    allowed = {"entity_id", "representation", "frame_index"} if exporting else {"entity_id", "representation"}
+                    allowed = {"entity_id", "representation", "frame_index", "clip_fps"} if exporting else {"entity_id", "representation"}
                     if set(body) - allowed or not isinstance(body.get("entity_id"), str) or not body["entity_id"]:
-                        raise ProjectError("Actor animation accepts an imported entity_id and export frame only; source bindings and output paths are project-controlled")
+                        raise ProjectError("Actor animation accepts an imported entity_id and export frame or clip rate only; source bindings and output paths are project-controlled")
                     frame_index = body.get("frame_index")
-                    if exporting and (type(frame_index) is not int or frame_index < 0):
-                        raise ProjectError("Choose a nonnegative animation frame index to export")
+                    clip_fps = None
+                    if exporting:
+                        frame_index, clip_fps = _animation_export_choice(body)
                     preview = self.server.actor_animation_preview(body["entity_id"], body.get("representation", "imported"))
-                    self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
+                    self._json(200, self.server.export_preview(preview, frame_index, clip_fps) if exporting else preview)
                     return
                 if route == "/api/scene-preview":
                     if set(body) - {'representation'}:
@@ -659,15 +675,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         if clip_id not in clips:
                             raise ProjectError("Choose a supported animation clip for this model: " + ", ".join(clips))
                     if route == "/api/export/model":
-                        if set(body) - {"asset_id", "clip_id", "frame_index"}:
-                            raise ProjectError("Export accepts asset, clip and frame only; geometry and output paths are project-controlled")
+                        if set(body) - {"asset_id", "clip_id", "frame_index", "clip_fps"}:
+                            raise ProjectError("Export accepts asset, clip and frame or clip rate only; geometry and output paths are project-controlled")
                         frame_index = body.get("frame_index")
-                        if clip_id is None and frame_index is not None:
+                        if clip_id is None and (frame_index is not None or "clip_fps" in body):
                             raise ProjectError("A frame export requires a supported animation clip")
-                        if clip_id is not None and (type(frame_index) is not int or frame_index < 0):
-                            raise ProjectError("Choose a nonnegative animation frame index to export")
+                        clip_fps = None
+                        if clip_id is not None:
+                            frame_index, clip_fps = _animation_export_choice(body)
                         preview = self.server.model_preview(asset, clip_id)
-                        self._json(200, self.server.export_preview(preview, frame_index))
+                        self._json(200, self.server.export_preview(preview, frame_index, clip_fps))
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
                     return

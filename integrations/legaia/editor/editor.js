@@ -2034,7 +2034,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
     $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? (d.kind==='equipment_templates_excluded'?'Equipment template objects 10 and 11 are excluded from this pose.':JSON.stringify(d))).join(' · ');
-    configureAnimation(clipId);showScenePose.disabled=!modelSceneEntityId||!data.frames?.length||state.project?.mode!=='edit';
+    configureAnimation(clipId);exportClipControls.hidden=!data.frames?.length;showScenePose.disabled=!modelSceneEntityId||!data.frames?.length||state.project?.mode!=='edit';
     shapeControls.hidden=!state.capabilities?.model_shape_authoring;
     $('shape-file').value='';const shape=state.model_overrides?.[assetId];
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
@@ -2109,14 +2109,18 @@ $('animation-play').onclick=()=>{
 };
 $('model-dialog').addEventListener('close',()=>{stopAnimation();modelRequest++;});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAnimation();});
-$('model-export').onclick=async()=>{
+const exportClipControls=document.createElement('span');exportClipControls.innerHTML='<label>Export fps <input id="clip-export-rate" type="number" min="1" max="120" step="1" value="10" style="width:4em"></label> <button id="model-export-clip" type="button">Export full clip GLB</button>';$('model-export').after(exportClipControls);
+$('model-export').onclick=()=>exportModel(false);
+$('model-export-clip').onclick=()=>exportModel(true);
+async function exportModel(fullClip=false){
   if(shapeDraft){$('model-error').textContent='Apply or discard the selected shape file before exporting.';return;}
-  if(busy||!modelAssetId)return;stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
+  if(busy||!modelAssetId)return;const fps=Number($('clip-export-rate').value);if(fullClip&&(!model?.frames?.length||!Number.isFinite(fps)||fps<1||fps>120)){$('model-error').textContent='Load a clip and choose an export rate from 1 to 120 fps.';return;}stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
   const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame,...(clip==='authored-channels'?{representation:'authored'}:{})}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
+  if(fullClip){delete payload.frame_index;payload.clip_fps=fps;}
   try{
     const response=await fetch(model.representation==='authored-shape'?'/api/export/model-shape':modelEntityId?(clip==='authored-appearance'?'/api/export/actor-appearance':'/api/export/actor-animation'):'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Model export failed');
-    exportDialog.innerHTML=`<div class="dialog-heading"><h2>${result.audit.posed?'Static posed model exported':'Object-local model exported'}</h2><button id="close-export" aria-label="Close">×</button></div><p>${result.audit.object_count} objects · ${result.audit.triangle_count} triangles · ${result.audit.texture_count} embedded textures${result.audit.posed?' · Frame '+(result.audit.frame_index+1):''}</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><p>Full model export${result.audit.posed?' with the displayed animation frame baked into geometry':''}. Source units are retained; physical meter scale is unknown. Animation channels and skin hierarchy are not exported.</p><details><summary>Export provenance and limitations</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
+    exportDialog.innerHTML=`<div class="dialog-heading"><h2>${result.audit.full_clip?'Animation clip exported':result.audit.posed?'Static posed model exported':'Object-local model exported'}</h2><button id="close-export" aria-label="Close">×</button></div><p>${result.audit.object_count} objects · ${result.audit.triangle_count} triangles · ${result.audit.texture_count} embedded textures${result.audit.posed?' · Frame '+(result.audit.frame_index+1):''}</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><p>Full model export${result.audit.posed?' with the displayed animation frame baked into geometry':''}. Source units are retained; physical meter scale is unknown. ${result.audit.full_clip?`Rigid animation channels exported at ${result.audit.export_fps} selected fps; ${result.audit.frame_count} decoded frames. Retail timing is unverified; looping is controlled by the receiving application.`:'Animation channels and skin hierarchy are not exported.'}</p><details><summary>Export provenance and limitations</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
     $('close-export').onclick=()=>exportDialog.close();exportDialog.showModal();
   }catch(error){$('model-error').textContent=error.message;}finally{$('model-export').disabled=false;setBusy(false);}
 };
