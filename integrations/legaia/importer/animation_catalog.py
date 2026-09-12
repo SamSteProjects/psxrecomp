@@ -78,3 +78,34 @@ def load_animation_asset_catalog(disc: Any, scene: str) -> dict:
     }
     validate_metadata_only(result)
     return result
+
+
+def load_global_animation_asset_catalog(disc: Any, scene: str) -> dict:
+    """Discover pinned model/clip pairs without decoding or exporting geometry."""
+    from .pipeline import import_scene, _disc_context
+    from .animation import animation_capabilities, _source
+    records = []
+    with _disc_context(disc):
+        document = import_scene(disc, scene)
+        for model in document['assets']['models']:
+            support = animation_capabilities(model)
+            for clip in support['clips']:
+                decoded, source, slot = _source(disc, model, clip['id'])
+                records.append({
+                    'semantic_id': f"animation://legaia/field-locomotion/{source['record_index']:04d}",
+                    'asset_kind': 'animation', 'kind': 'animation', 'scope': 'global-field',
+                    'name': ('Vahn', 'Noa', 'Gala', 'Savepoint', 'Auxiliary model')[slot] + ' · ' + clip['label'],
+                    'source_record': source, 'reference_commit': REFERENCE_COMMIT,
+                    'frame_count': decoded['frame_count'], 'bone_count': decoded['bone_count'],
+                    'channel_count': decoded['bone_count'], 'record_index': source['record_index'],
+                    'association_kind': 'reference_pinned_global_model_clip',
+                    'preview': {'asset_id': model['semantic_id'], 'clip_id': clip['id']},
+                    'asset_semantic_ids': [model['semantic_id']], 'bindings': [],
+                    'runtime_state': 'not_observed',
+                    'limitations': ['Model/clip association is reference-pinned and source-verified; no scene actor is asserted to be playing this clip.',
+                                    'Only the eight currently supported shared clips are advertised; other shared-bank records remain unclassified.'],
+                })
+    result = {'assets': sorted(records, key=lambda row: row['semantic_id']), 'metadata_only': True,
+              'limitations': ['Shared animation catalog lists supported reference model/clip pairs, not live or initial actor clip assignments.']}
+    validate_metadata_only(result)
+    return result

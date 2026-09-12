@@ -62,7 +62,7 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str =
 
 def refresh_resource_catalog(project) -> dict:
     from importer.texture_catalog import load_texture_asset_catalog
-    from importer.animation_catalog import load_animation_asset_catalog
+    from importer.animation_catalog import load_animation_asset_catalog, load_global_animation_asset_catalog
     from importer.script_catalog import load_script_asset_catalog
     from importer.field_map import load_field_map_catalog
     document, key = _scene(project)
@@ -73,6 +73,7 @@ def refresh_resource_catalog(project) -> dict:
     with _disc_context(project.disc_path):
         _verify(project, document)
         for kind, loader in (("Textures", load_texture_asset_catalog), ("Animations", load_animation_asset_catalog),
+                             ("Shared field animations", load_global_animation_asset_catalog),
                              ("Scripts and dialogue", load_script_asset_catalog),
                              ("Field collision and triggers", load_field_map_catalog)):
             try:

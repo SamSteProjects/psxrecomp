@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (SDK shared animation discovery — offline verified):** Added a metadata-only shared field animation catalog for the eight supported reference model/clip pairs (records 0, 1, 7, 8, 14, 15, 21, 22). Resource refresh independently discovers these alongside scene MAN animations. Asset Browser entries expose source provenance, frame/channel counts and a direct reference-clip preview; no initial or live actor assignments are inferred. Five focused animation catalog tests passed with the private retail disc, including stable town01/Dolk2 results without geometry loading. Headless editor-browser check passed: Dolk2 441/441 preview, eight shared resources, savepoint opens loop frame 1/30, no page errors. This is editor-only verification; no game was launched or controlled. Runtime animation timing and all existing manual acceptance checks remain deferred in docs/legaia-gameplay-verification-queue.md. The broad SDK/stability goal remains incomplete; continue work that does not require gameplay.
+
+
 ### 2026-09-12 — Graphics lifecycle recovery acceptance
 
 - Actual WEBGL_lose_context test on the retail savepoint viewer: rendered frame3 normally, returned to frame2, lost context, advanced to frame3 while lost, restored context. Canvas screenshot bytes exactly matched the normal frame3 screenshot; no page errors. This validates current-frame recovery rather than only retained source metadata.

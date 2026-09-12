@@ -83,6 +83,17 @@ class AnimationCatalogTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class RetailAnimationCatalogTests(unittest.TestCase):
+    def test_shared_catalog_is_stable_across_scenes_without_geometry_or_actor_claims(self):
+        from importer.animation_catalog import load_global_animation_asset_catalog
+        with patch('importer.animation.load_model_preview', side_effect=AssertionError('catalog must not decode preview geometry')):
+            first = load_global_animation_asset_catalog(os.environ['LEGAIA_DISC_BIN'], 'town01')
+            second = load_global_animation_asset_catalog(os.environ['LEGAIA_DISC_BIN'], 'dolk2')
+        self.assertEqual(canonical_json(first), canonical_json(second))
+        self.assertEqual([a['record_index'] for a in first['assets']], [0,1,7,8,14,15,21,22])
+        self.assertTrue(all(not a['bindings'] and a['runtime_state']=='not_observed' for a in first['assets']))
+        self.assertEqual([(a['bone_count'],a['frame_count']) for a in first['assets'][-2:]], [(3,30),(2,15)])
+        validate_metadata_only(first)
+
     def test_town01_referenced_records_metadata_only_and_repeatable(self):
         disc = os.environ["LEGAIA_DISC_BIN"]
         with patch("importer.scene_animation.load_model_preview", side_effect=AssertionError("metadata must not load geometry")):
