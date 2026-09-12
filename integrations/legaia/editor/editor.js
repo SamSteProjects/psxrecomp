@@ -459,6 +459,34 @@ $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.n
 for(const id of ['import-button','empty-import']) $(id).onclick=()=>showDialog('import-dialog');
 $('project-form').onsubmit=async event=>{event.preventDefault();await api('/api/project/new',{name:$('project-name-input').value,path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project created.'});};
 $('open-project').onclick=async()=>{if(!$('project-path-input').reportValidity())return;await api('/api/project/open',{path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project opened.'});};
+const sceneCatalog=document.createElement('section');sceneCatalog.id='import-scene-catalog';
+sceneCatalog.innerHTML='<h3>Find a scene</h3><label>Name prefix<input id="catalog-prefix" placeholder="town, dolk, station…" spellcheck="false"></label><div class="dialog-actions"><button type="button" id="catalog-search">Read scene catalog</button><button type="button" id="catalog-previous" disabled>Previous</button><button type="button" id="catalog-next" disabled>Next</button></div><p id="catalog-status" role="status">Scans 16 structural blocks per page. Placement support does not establish complete models or gameplay compatibility.</p><div id="catalog-scenes"></div>';
+$('scene-input').parentElement.before(sceneCatalog);
+let catalogGeneration=0,catalogOffset=0,catalogNext=null;
+function clearSceneCatalog(){catalogGeneration++;catalogOffset=0;catalogNext=null;$('catalog-status').textContent='Read the catalog for the current disc path and name prefix. Placement support does not verify models or gameplay.';$('catalog-scenes').replaceChildren();$('catalog-previous').disabled=true;$('catalog-next').disabled=true;}
+$('disc-input').addEventListener('input',clearSceneCatalog);$('catalog-prefix').oninput=clearSceneCatalog;
+$('import-dialog').addEventListener('close',clearSceneCatalog);
+async function readSceneCatalog(offset=0){
+  if(busy)return;
+  const disc=$('disc-input').value.trim(),prefix=$('catalog-prefix').value.trim();
+  if(!disc){$('catalog-status').textContent='Enter your local disc image path first.';return;}
+  const generation=++catalogGeneration;setBusy(true);$('catalog-search').disabled=true;$('catalog-previous').disabled=true;$('catalog-next').disabled=true;$('catalog-scenes').replaceChildren();$('catalog-status').textContent='Reading verified retail scene blocks…';
+  try{
+    const response=await fetch('/api/scene-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disc,prefix,offset})});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(result.error||'Scene catalog failed');
+    if(generation!==catalogGeneration||!$('import-dialog').open)return;
+    if(result.schema_version!=='legaia.scene-catalog.v1'||!Array.isArray(result.scenes)||!Array.isArray(result.unsupported_blocks)||result.scenes.length+result.unsupported_blocks.length>16||(result.next_offset!==null&&(!Number.isInteger(result.next_offset)||result.next_offset<=offset)))throw new Error('Invalid scene catalog response');
+    catalogOffset=offset;catalogNext=result.next_offset;
+    $('catalog-status').textContent=`${result.scenes.length} placement-readable scenes · ${result.unsupported_blocks.length} unsupported blocks · scanned ${result.scanned_blocks} at offset ${offset} of ${result.total_blocks}. Models and gameplay are not verified by this scan.`;
+    for(const scene of result.scenes){
+      const button=document.createElement('button');button.type='button';button.className='catalog-scene';button.textContent=`${scene.name} · ${scene.actor_count} actors · ${scene.man_source_kind}`;button.title=scene.semantic_id;
+      button.onclick=()=>{$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project.`;};$('catalog-scenes').append(button);
+    }
+    if(result.unsupported_blocks.length){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Unsupported structural blocks';details.append(summary);for(const block of result.unsupported_blocks){const row=document.createElement('p');row.textContent=`${block.name}: ${block.reason}`;details.append(row);}$('catalog-scenes').append(details);}
+  }catch(error){if(generation===catalogGeneration)$('catalog-status').textContent=String(error.message);}
+  finally{setBusy(false);$('catalog-search').disabled=false;$('catalog-previous').disabled=catalogOffset===0;$('catalog-next').disabled=catalogNext===null;}
+}
+$('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick=()=>readSceneCatalog(Math.max(0,catalogOffset-16));$('catalog-next').onclick=()=>{if(catalogNext!==null)readSceneCatalog(catalogNext);};
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
 const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-button';draftsButton.textContent='NPC drafts';draftsButton.onclick=()=>openNpcDrafts();$('save-button').after(draftsButton);

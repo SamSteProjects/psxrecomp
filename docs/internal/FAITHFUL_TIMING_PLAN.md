@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Verified scene discovery in the import workflow
+
+- Connected the existing bounded retail scene catalog to a new read-only /api/scene-catalog route, with strict disc/offset/prefix fields and a fixed 16-block page. Boolean offsets and out-of-range values reject before disc reading.
+- Import dialog now provides prefix search, Previous/Next, placement-readable scene selection, carrier kind, actor count and expandable unsupported reasons. Selecting fills the import name; it does not mutate the project. Disc/prefix changes and dialog closure invalidate old results.
+- Retail browser scan found two Dolk scenes and selected dolk2 with no page errors; invalid boolean offset returned HTTP400. Two full unfiltered pages scanned16 blocks each, had disjoint names and next offset32 of124 structural blocks (14 then16 supported placements). An initial pagination probe using town had no next page and rejected null offset; the unfiltered probe exercised actual pagination.
+- Python/JavaScript syntax and diff checks passed. No game launched, no project import/save performed. Models and gameplay are explicitly not established by placement discovery. Temporary server/browser stopped; full goal active.
+
+
 ### 2026-09-12 — Iterative animation channel editing
 
 - Successful animation commands now reopen verified channel options at the selected frame/object, preserving editing context while refreshing authored values and shared effective evidence.

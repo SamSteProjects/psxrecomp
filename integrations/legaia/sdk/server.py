@@ -400,6 +400,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route == '/api/scene-catalog':
+                    if set(body) != {'disc', 'offset', 'prefix'} or not isinstance(body['disc'], str) or not body['disc'].strip() or type(body['offset']) is not int or not 0 <= body['offset'] <= 65536 or not isinstance(body['prefix'], str) or len(body['prefix']) > 64:
+                        raise ProjectError('Scene catalog requires a disc path, bounded integer offset and name prefix')
+                    from importer.pipeline import list_scenes
+                    self._json(200, list_scenes(body['disc'], offset=body['offset'], limit=16, prefix=body['prefix']))
+                    return
                 if route in ('/api/model-shape-replacement', '/api/model-obj-replacement'):
                     obj_upload = route == '/api/model-obj-replacement'
                     payload_key = 'obj_base64' if obj_upload else 'tmd_base64'
