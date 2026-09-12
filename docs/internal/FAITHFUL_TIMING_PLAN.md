@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Retail/authored movement target viewport layers
+
+- Added explicit source/effective target layers, source-key invalidation and verified-report gating. NPC_RUN effective parked status is recomputed separately from the immutable imported status.
+- Seven focused movement project/serializer tests passed. Actual Dolk2 browser comparison confirmed retail X9280 versus saved authored X9408, two unchanged targets, partial partition-2 authored preview disabled, zero browser errors and zero mutation commands. Authored screenshot inspected; evidence remains private under local-output/sdk-20260909/movement-overlay-layers-20260912.
+- No game launched. Gameplay remains deferred in the verification queue; broader SDK goal stays active and offline work remains.
+
+
 ### 2026-09-12 — Streaming and experimental disc movement composition
 
 - Connected ScriptMovement to streaming and descriptor draft preparation, including verified rebasing after NPC append and separate movement_changes audits. Existing layout, source preimage, word padding, PROT rebuild and final disc readback guards remain in force. Export-history summaries now identify Script movement without exposing script payloads.

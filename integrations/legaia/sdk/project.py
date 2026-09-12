@@ -513,6 +513,7 @@ class ProjectService:
         return MovementAuthoringContext(self._dialogue_context(identifier))
 
     def movement_options(self, identifier: str) -> dict:
+        from importer.movement_authoring import validate_movement_values
         result = self._movement_context(identifier).options(identifier)
         authored = self.overrides.get(identifier, {}).get("ScriptMovement", {}).get("entries", {})
         known = set()
@@ -521,6 +522,8 @@ class ProjectService:
             known.add(key)
             entry["authored_values"] = deepcopy(authored.get(key, {}))
             entry["effective_values"] = dict(entry["values"], **authored.get(key, {}))
+            encoded = validate_movement_values(entry["effective_values"])
+            entry["effective_parked_target"] = ((encoded['x'] & 127) == 127 and (encoded['z'] & 127) == 127) if entry['mnemonic'] == 'NPC_RUN' else None
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
 

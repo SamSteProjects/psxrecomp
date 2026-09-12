@@ -87,7 +87,7 @@ function drawScriptTargets(){
   if(!overlay)pickScriptTargets=false;
   scriptTargetTools.querySelector('[data-pick]').setAttribute('aria-pressed',String(pickScriptTargets));
   if(!overlay)return;
-  scriptTargetTools.querySelector('[role="status"]').textContent=`${overlay.identity} · ${overlay.targets.length} decoded targets · reference Y ${overlay.height} · ${overlay.partial?'partial paths':'inspected paths'} · execution unknown`;
+  scriptTargetTools.querySelector('[role="status"]').textContent=`${overlay.identity} · ${overlay.representation??'retail'} targets · ${overlay.targets.length} decoded targets · reference Y ${overlay.height} · ${overlay.partial?'partial paths':'inspected paths'} · execution unknown`;
   const labels=[],markerPoints=overlay.targets.map(target=>project(displayPosition({...target.position,y:overlay.height}))).filter(Boolean);let hiddenLabels=0;
   ctx.save();ctx.strokeStyle='#e9abff';ctx.fillStyle='#e9abff';ctx.lineWidth=2;ctx.font='11px "Segoe UI",sans-serif';
   for(const target of overlay.targets){
@@ -1126,7 +1126,7 @@ function appendScriptOperands(cell,instruction){
   label.textContent='Encoded operands';raw.textContent=typeof operands==='string'?operands:JSON.stringify(operands??{},null,2);
   details.open=!['ACTOR_POSITION','DIALOGUE_PICKER','NPC_RUN','MOVE_TO','SET_ACTOR_MODEL'].includes(instruction.mnemonic);details.append(label,raw);cell.append(details);
 }
-function appendScriptInstructions(host,report,identity=report.semantic_id??report.script_id??'Inspected script'){
+function appendScriptInstructions(host,report,identity=report.semantic_id??report.script_id??'Inspected script',movementAuthoring=report.movement_authoring){
   host.replaceChildren();host.classList.remove('script-table-wrap');
   const messages=(report.dialogues??[]).map(message=>({pc:message.pc,mnemonic:'DIALOGUE_SEGMENT',operands:{text:message.text},
     successors:[{pc:message.pc+message.length,condition:'encoded_continuation'}]}));
@@ -1146,15 +1146,23 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
     const height=document.createElement('input');height.type='number';height.step='any';height.min='-1000000000';height.max='1000000000';height.required=true;height.setAttribute('aria-label','Script targets reference Y');height.placeholder='Script height is unknown';label.append(height);
     const show=document.createElement('button');show.type='button';show.className='script-show-targets';show.textContent=`Show ${targets.length} targets in scene`;show.disabled=targets.length>256;
     const note=document.createElement('p');note.className='field-note';note.textContent=targets.length>256?'This report exceeds the 256-marker overlay limit. Locate individual instructions instead.':'All markers use your reference Y. No movement path, current actor position or executed branch is inferred; parked targets remain included.';
+    const layer=document.createElement('select');layer.setAttribute('aria-label','Script target layer');
+    const importedOption=document.createElement('option');importedOption.value='retail';importedOption.textContent='Retail source targets';
+    const effectiveOption=document.createElement('option');effectiveOption.value='authored';effectiveOption.textContent='Authored effective targets';
+    const effective=new Map((movementAuthoring?.targets??[]).map(target=>[target.pc,target]));
+    effectiveOption.disabled=movementAuthoring?.supported!==true||!!movementAuthoring?.unresolved_overrides?.length||!targets.every(target=>{const item=effective.get(target.pc);return item?.mnemonic===target.mnemonic&&numeric(item.effective_values?.x)&&numeric(item.effective_values?.z);});
+    layer.append(importedOption,effectiveOption);
     const key=resourceStateKey();
     show.onclick=()=>{
       if(busy||key!==resourceStateKey()||!height.reportValidity()||!height.value.trim()||!numeric(Number(height.value)))return;
-      scriptTargetOverlay={key,identity,targets,height:Number(height.value),partial:report.status==='partial'};
+      if(layer.value==='authored'&&effectiveOption.disabled)return;
+      const chosen=layer.value==='authored'?targets.map(target=>({...target,position:{...target.position,...effective.get(target.pc).effective_values},parked:!!effective.get(target.pc).effective_parked_target})):targets;
+      scriptTargetOverlay={key,identity,targets:chosen,representation:layer.value,height:Number(height.value),partial:report.status==='partial'};
       const targetSelect=scriptTargetTools.querySelector('select');targetSelect.replaceChildren();
-      for(const target of targets){const option=document.createElement('option');option.value=target.pc;option.textContent=`${scriptOffset(target.pc)} ${target.mnemonic} · X ${target.position.x}, Z ${target.position.z}`;targetSelect.append(option);}
+      for(const target of chosen){const option=document.createElement('option');option.value=target.pc;option.textContent=`${scriptOffset(target.pc)} ${target.mnemonic} · X ${target.position.x}, Z ${target.position.z}`;targetSelect.append(option);}
       host.closest('dialog')?.close();frameScriptTargets();
     };
-    tools.append(label,show,note);navigation.prepend(tools);
+    tools.append(layer,label,show,note);navigation.prepend(tools);
   }
   for(const instruction of instructions)for(const next of instruction.successors??[]){
     if(!incoming.has(next.pc))incoming.set(next.pc,new Set());incoming.get(next.pc).add(instruction.pc);
@@ -1216,7 +1224,7 @@ function renderTriggerScript(result,report){
   for(const limit of result.limitations ?? []){const line=document.createElement('p');line.className='field-note';line.textContent=typeof limit==='string'?limit:JSON.stringify(limit);warnings.append(line);}
   const dialogues=$('trigger-script-dialogues');if(!report.dialogues.length)dialogues.textContent='No dialogue was decoded in these paths.';
   for(const dialogue of report.dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length ?? 'Unknown')} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text;card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);dialogues.append(card);}
-  appendScriptInstructions($('trigger-script-instructions'),report,result.script_id);
+  appendScriptInstructions($('trigger-script-instructions'),report,result.script_id,result.movement_authoring);
   host.querySelector('.script-raw pre').textContent=JSON.stringify(result,null,2);
 }
 function drawFieldMap(){
@@ -1795,7 +1803,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
 function renderMovementAuthoring(){
   const authoring=scriptReport?.movement_authoring;if(!authoring)return;
   const section=document.createElement('section');section.className='movement-authoring';
-  section.innerHTML='<h3>Script movement targets</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project. Build supports descriptor MAN scenes; Export disc also supports streaming scenes and NPC drafts. Gameplay remains unverified. The instruction table and target overlay still show retail source coordinates.</p>';
+  section.innerHTML='<h3>Script movement targets</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project. Build supports descriptor MAN scenes; Export disc also supports streaming scenes and NPC drafts. Gameplay remains unverified. The instruction table shows retail coordinates; the target overlay offers retail and authored layers.</p>';
   $('script-report').append(section);
   const owner=scriptEntity.id,key=resourceStateKey(),current=()=>!busy&&canEditDialogue()&&key===resourceStateKey()&&scriptEntity?.id===owner;
   const send=async(id,type,values)=>{

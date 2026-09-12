@@ -89,7 +89,7 @@ Use **Export selected GLB** to export one selected actor, NPC draft, scenery ins
 ## Compare script movement targets
 
 Select an actor and open **Inspect script and dialogue**, then expand **Instruction
-paths**. For scripts with decoded movement targets, enter a **Reference Y** and
+paths**. Choose the retail or authored **Script target layer**, enter a **Reference Y** and
 choose **Show targets in scene**. The viewport labels each source instruction's
 PC and X/Z; **Top (X/Z)** helps compare placement. **Frame script targets** restores
 the overview and **Clear script targets** removes the overlay.
@@ -119,6 +119,8 @@ to restore the retail target, and the script toolbar for Undo/Redo and Save.
 
 Build packages these edits for supported descriptor MAN scenes such as town01.
 Experimental **Export disc** also supports streaming scenes and appended NPCs.
-Gameplay behavior is unverified. The instruction table and viewport
-movement overlay still display retail source targets. Y, executed branches and
+Gameplay behavior is unverified. The instruction table displays retail source
+coordinates; the viewport offers retail and authored effective target layers.
+Authored preview requires a complete verified movement report with no unresolved
+overrides. Y, executed branches and
 runtime actor identity remain unresolved.

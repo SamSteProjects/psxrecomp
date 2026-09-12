@@ -9,6 +9,18 @@ from importer.core import ImportError
 from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 class ProjectMovements(unittest.TestCase):
+    def test_effective_parked_target_does_not_overwrite_source_status(self):
+        from test_importer_dialogue_authoring import fixture, ACTOR
+        source,_=fixture(b'\x4c\x51\x7f\xff\0\1\x3f\0\0\x06town01\1\2\3')
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene())
+            with patch.object(p,'_dialogue_context',return_value=source):
+                target=p.movement_options(ACTOR)['targets'][0]
+                self.assertTrue(target['parked_target']);self.assertTrue(target['effective_parked_target'])
+                p.command({'type':'set_movement_target','entity_id':ACTOR,'movement_id':target['semantic_id'],'values':{'z':64}})
+                target=p.movement_options(ACTOR)['targets'][0]
+                self.assertTrue(target['parked_target']);self.assertFalse(target['effective_parked_target'])
+
     def test_real_serializer_layers_and_missing_disc_boundary(self):
         from test_importer_dialogue_authoring import fixture, ACTOR
         from sdk.build import build_project, BuildError
