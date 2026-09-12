@@ -24,6 +24,16 @@ def _transition_authoring_report(project, identifier):
                 "limitations": ["Read-only inspection does not establish transition-write safety."]}
 
 
+def _movement_authoring_report(project, identifier):
+    """Unsupported authoring must not suppress the read-only script report."""
+    try:
+        return project.movement_options(identifier)
+    except (RetailImportError, ProjectError) as exc:
+        return {"supported": False, "reason": str(exc), "targets": [],
+                "unresolved_overrides": sorted(project.overrides.get(identifier, {}).get("ScriptMovement", {}).get("entries", {})),
+                "limitations": ["Read-only inspection does not establish movement-write safety."]}
+
+
 def _animation_export_choice(body):
     """Exactly one export representation, before expensive source decoding."""
     import math
@@ -227,6 +237,7 @@ class EditorServer(ThreadingHTTPServer):
             raise ProjectError("Script inspection requires an imported actor in the active scene")
         with _disc_context(project.disc_path):
             report = inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
+            report["movement_authoring"] = _movement_authoring_report(project, entity_id)
             try:
                 report["dialogue_authoring"] = project.dialogue_options(entity_id)
                 report["transition_authoring"] = _transition_authoring_report(project, entity_id)
@@ -517,6 +528,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report = partition_two_script_preview(self.server.project, body["entity_id"])
                     report["dialogue_authoring"] = self.server.project.dialogue_options(body["entity_id"])
                     report["transition_authoring"] = _transition_authoring_report(self.server.project, body["entity_id"])
+                    report["movement_authoring"] = _movement_authoring_report(self.server.project, body["entity_id"])
                     self._json(200, report)
                     return
                 if route == "/api/trigger-script":
@@ -527,6 +539,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     identifier = "scene://" + report["script_id"].removeprefix("script://")
                     report["dialogue_authoring"] = self.server.project.dialogue_options(identifier)
                     report["transition_authoring"] = _transition_authoring_report(self.server.project, identifier)
+                    report["movement_authoring"] = _movement_authoring_report(self.server.project, identifier)
                     self._json(200, report)
                     return
                 if route == "/api/model-shape-source":
@@ -732,6 +745,13 @@ class EditorHandler(BaseHTTPRequestHandler):
             allowed = {"type", "entity_id", "run_id", "text"} if body["type"] == "set_dialogue_text" else {"type", "entity_id", "run_id"}
             if set(body) != allowed:
                 raise ProjectError("Dialogue commands accept only entity/run identities and authored text")
+        if route == "/api/command" and body.get("type") in ("set_movement_target", "clear_movement_target"):
+            allowed = {"type", "entity_id", "movement_id"}
+            if body["type"] == "set_movement_target":
+                allowed.add("values")
+            if set(body) != allowed:
+                raise ProjectError("Movement commands accept only owner/target identities and X/Z values")
+            required_strings[route] = ("entity_id", "movement_id")
         if route == "/api/command" and body.get("type") in ("set_transition_entry", "clear_transition_entry"):
             allowed = {"type", "entity_id", "transition_id"}
             if body["type"] == "set_transition_entry":

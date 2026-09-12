@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Movement authoring service integration
+
+- Actor, partition-2 and trigger script responses now include movement_authoring options using server-verified owner identities. Unsupported records retain their read-only script inspection and clearable unresolved override IDs. Actor movement reporting is independent of dialogue-authoring failures.
+- Added strict HTTP command shapes for set_movement_target / clear_movement_target; client-provided source offsets, extra fields and invalid identities are rejected before dispatch. Exact coordinate validation and source membership remain in the project/serializer layer.
+- Six focused HTTP/project checks passed with the retail disc configured. Actual Dolk2 actor0002 report/edit/report confirmed retail X9280 and effective X9344; HTTP Undo/Redo/Clear passed. Invalid65, boolean coordinates, null identities and injected source offsets returned400. Dolk2 partition-2 script0007 retained decoded instructions while its unsupported authoring report stayed disabled. Existing town01/Dolk2 transition HTTP workflows passed as regressions. Temporary servers shut down and joined.
+- No gameplay launched. Editor authoring controls and composed Build/disc integration remain outstanding, and playable Build continues explicitly rejecting saved ScriptMovement edits. Full SDK goal remains incomplete.
+
+
 ### 2026-09-12 — Script movement project commands and persistence
 
 - Added a separate ScriptMovement component with set_movement_target / clear_movement_target commands, immutable retail/authored/effective target layers, undo/redo, offline schema validation and save/reopen. Source owner/PC membership and serializer constraints are freshly checked before applying edits; clearing remains possible offline. Actor and partition-2 authored asset summaries now include movement targets.
