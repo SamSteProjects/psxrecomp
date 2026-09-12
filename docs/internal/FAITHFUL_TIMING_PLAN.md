@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Effective animation clipboard acceptance
+
+- Previous turn made verified animation-authoring progress. Actual town01 actor0011 browser applied frame0/object0 X123, copied effective values, rejected paste into object1, pasted X123 into frame1/object0, and discarded without another command. Only the original source edit was submitted; Undo restored it. Zero browser errors. Private evidence: local-output/sdk-20260909/animation-effective-copy-check.json.
+- Fresh production channel read after Undo confirmed retail/effective translation [0,-89,0], rotation [0,0,0], and empty contributors. This proves the copied123 differed from retail0 and that the test restored the project. Retail-copy and effective-copy workflows now both have browser acceptance; no clipboard mutation occurs until Apply.
+- Test server stopped; project not saved and no game launched. Shared-clip runtime playback, broader animation import and full SDK acceptance remain open. Goal active, gameplay deferred.
+
+
 ### 2026-09-12 — Copy animation channels between frames
 
 - Previous turn improved package metadata. Added dialog-local Copy retail / Copy effective channel and Paste channel into draft controls. Copies retain verified values, source frame and rigid object; same-object paste fills six axes without issuing a command. Existing Apply/history/save and draft-switch guards remain authoritative. Different-object paste rejects inferred retargeting; clipboard ends when the editor reopens.
