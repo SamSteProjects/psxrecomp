@@ -1967,7 +1967,14 @@ canvas.addEventListener('pointerup',async event=>{
 });
 canvas.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
 canvas.addEventListener('lostpointercapture',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
-canvas.addEventListener('wheel',event=>{pendingEntityFrame=null;event.preventDefault();camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(event.deltaY*.001)));cameraRevision++;draw();},{passive:false});
+function zoomSceneAt(x,y,delta){
+  const before=groundAt(x,y,camera.target.y);
+  camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(delta*.001)));
+  const after=groundAt(x,y,camera.target.y);
+  if(before&&after){camera.target.x+=before.x-after.x;camera.target.z+=before.z-after.z;}
+  cameraRevision++;
+}
+canvas.addEventListener('wheel',event=>{pendingEntityFrame=null;event.preventDefault();cancelViewportGesture();const p=pointer(event);zoomSceneAt(p.x,p.y,event.deltaY);draw();},{passive:false});
 
 // Unposed assets stay object-local. Only decoder-provided frames assemble objects.
 const modelCanvas=$('model-canvas');let modelRenderer=null,modelRenderSource=null,modelRenderObject=null,modelRenderFrame=null;
