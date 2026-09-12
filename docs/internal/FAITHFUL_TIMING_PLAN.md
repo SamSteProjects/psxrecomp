@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (SDK partial-object export integration verified):** Previous turn made progress in 0afcac78. Traced partial-object scene animation through EditorServer.actor_animation_preview, texture association, and encode_model_glb. No export implementation repair was needed. Added a focused private-disc regression for Station actor 0010 and Balden2 actor 0015, exporting first and last frames through the real server adapter without starting its request loop or connecting to a game. Four GLBs passed container/buffer-view parsing, active-object node identity, expected 290/174 triangle counts and three exported positions per triangle; preview input remained unchanged. One focused integration test passed. These are in-memory posed snapshots, not complete animated-clip exports, and no permanent proprietary artifact was written. Gameplay remains deferred; whole SDK goal incomplete.
+
+
 - **2026-09-12 (SDK script-to-viewport coordinate navigation):** Previous turn made progress in d0b62196. Added readable NPC_RUN target summaries and Locate target actions to the shared instruction renderer used by actor and trigger script inspectors. The action closes its script dialog, opens the existing coordinate locator with decoded X/Z, and leaves required Y blank with an explicit unknown-height prompt. Parked targets and unobserved branch/runtime state remain visible; no source coordinates or project data are changed. Captured scene/project context rejects stale navigation after a scene switch. Node syntax check passed. Isolated Edge DOM check against the actual appendScriptOperands function passed: X3136/Z2560 filled, source dialog closed, locator opened, empty required Y prevented submission, stale-scene click rejected. This was a component DOM check, not a full editor or game acceptance run. No gameplay launched; broad SDK goal remains active.
 
 

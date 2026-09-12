@@ -155,6 +155,33 @@ class GlbExportTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class RetailGlbExportTests(unittest.TestCase):
+    def test_partial_object_actor_frames_export_through_server_adapter(self):
+        from importer.pipeline import import_scene
+        from sdk.project import ProjectService
+        from sdk.server import EditorServer
+        disc = os.environ['LEGAIA_DISC_BIN']
+        with tempfile.TemporaryDirectory() as temp:
+            for scene,index,objects,triangles in (('station',10,7,290),('balden2',15,1,174)):
+                project=ProjectService(Path(temp)/scene)
+                project.import_metadata(import_scene(disc,scene),disc)
+                server=EditorServer(('127.0.0.1',0),project)
+                try:
+                    model=server.actor_animation_preview(f'scene://{scene}/actors/man-p1/{index:04d}')
+                    original=deepcopy(model)
+                    for frame in (0,len(model['frames'])-1):
+                        raw,audit=encode_model_glb(model,frame)
+                        doc,binary=parse_glb(raw)
+                        self.assertEqual((audit['object_count'],audit['triangle_count']),(objects,triangles))
+                        self.assertEqual([n['name'] for n in doc['nodes']],[f'object-{i}' for i in range(objects)])
+                        exported=sum(doc['accessors'][primitive['attributes']['POSITION']]['count']
+                                     for mesh in doc['meshes'] for primitive in mesh['primitives'])
+                        self.assertEqual(exported,triangles*3)
+                        self.assertNotIn('animations',doc) # Explicit posed snapshot, not a clip export.
+                    self.assertEqual(model,original)
+                finally:
+                    server.server_close()
+
+
     def test_actual_party_pose_and_scene_tree_export(self):
         from importer.assets import load_model_preview
         from importer.animation import load_animation_preview
