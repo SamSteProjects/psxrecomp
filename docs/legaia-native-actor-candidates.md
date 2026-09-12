@@ -129,6 +129,22 @@ This is not gameplay acceptance or project Build integration.
 Candidate audits retain `build_ready: false`; no current coverage count, roundtrip
 or synthetic test changes that status.
 
+## Saved-draft experimental export
+
+`python -m sdk.draft_build --project <project-directory> --draft <authored-actor-identity> --output <new-directory>`
+exports all saved drafts in the selected draft's scene. Set `PYTHONPATH=integrations/legaia`
+from the repository root. The output directory must not exist. A successful export
+contains `draft.bin` and `report.json`; the report binds the authored snapshot,
+source disc, archive audit and output disc hash. A BIN without the report is an
+incomplete export. The command never launches the game or updates the project's
+normal Build/Play result.
+
+Same-scene original actor X/Z, supported donor appearance assignments and bounded
+actor/P2 dialogue edits compose with drafts. Other override families and multi-scene drafts currently reject.
+Drafts retain their donor's retail initial appearance; changing that donor actor's
+appearance does not change the appended actor. Script coverage and scheduling
+remain experimental, and the report explicitly retains unverified gameplay.
+
 ## Focused checks
 
 Run from the repository root with `PYTHONPATH=integrations/legaia`:

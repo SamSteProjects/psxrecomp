@@ -186,6 +186,9 @@ class ScenePreviewService:
             if donor is None:
                 raise ProjectError('Draft preview donor is unavailable')
             instance = deepcopy(donor)
+            retail_binding = self._bindings.get(draft['donor_entity_id'] + '/retail-draft-source')
+            if retail_binding is not None:
+                instance.update(deepcopy(retail_binding))
             position = {**draft['position'], 'y':None}
             sample = sample_preview_ground(ground,position['x'],position['z'])
             preview_position = {**position,'y':sample['y'] if sample else None}
@@ -199,7 +202,7 @@ class ScenePreviewService:
                             retail_position=None,authored_position=deepcopy(draft['position']),
                             preview_height_status='source_surface' if sample else 'unresolved_no_source_surface',
                             evidence={'position':'authored NPC draft',
-                                      'appearance':'effective donor preview; candidate serialization uses retail donor',
+                                      'appearance':'retail donor assignment; shared authored asset edits may affect preview',
                                       'runtime':'not spawned or gameplay verified'})
             instances.append(instance)
         environment = deepcopy(self._environment)
@@ -246,13 +249,18 @@ class ScenePreviewService:
                 raise ProjectError("Authored animation preview requires the verified scene animation catalog")
             authored_bank = catalog.authored_bank(animation_overrides)[0] if animation_overrides else None
             authored_clips = {v["animation_id"] for v in animation_overrides.values()}
-            for actor in actors:
+            actor_views = [(actor, False) for actor in actors]
+            actor_views += [(actor, True) for actor in actors
+                            if 'ActorAppearance' in project.overrides.get(actor['semantic_id'], {})]
+            for actor, retail_draft_source in actor_views:
                 identifier = actor["semantic_id"]
                 resolver = getattr(project, "appearance_source_actor", None)
-                appearance = project.overrides.get(identifier, {}).get("ActorAppearance")
+                appearance = None if retail_draft_source else project.overrides.get(identifier, {}).get("ActorAppearance")
                 if resolver is None and appearance is not None:
                     raise ProjectError("Scene appearance override requires a verified source resolver")
-                source_actor = resolver(identifier, verify_disc=True) if resolver else actor
+                source_actor = resolver(identifier, verify_disc=True) if resolver and not retail_draft_source else actor
+                if retail_draft_source:
+                    identifier += '/retail-draft-source'
                 # Never let a resolver fabricate geometry provenance or cross scene boundaries.
                 if source_actor not in actors:
                     raise ProjectError("Scene appearance source differs from verified scene evidence")

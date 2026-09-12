@@ -213,6 +213,91 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Draft export checkpoint
+
+- Reviewed scoped worktree changes and passed git diff --check. Checkpoint includes deterministic batch appending, saved-draft archive/disc export, appearance/dialogue composition, retail donor preview bindings and focused regressions. Private disc/project outputs remain excluded.
+- Existing focused test and private export evidence above remains bounded; editor Play, additional override families, multi-scene composition and complete runtime acceptance remain open. No game interaction or remote push.
+
+### 2026-09-12 P2 dialogue append regression
+
+- Extended synthetic P2 dialogue coverage through the production structural donor append, then verified the relocated glyph span, all surrounding bytes and parsed actor placements. The fixture's short controller record prevents full script-reindex candidate acceptance, so this test explicitly covers structural append composition; the private retail candidate check remains separate evidence.
+- Dialogue importer/build/export checks:13 passed,3 optional retail checks skipped. Initial full-candidate fixture attempt rejected on script coverage as designed; no production guard was relaxed. No game interaction.
+
+### 2026-09-11 P2 dialogue composed with drafts
+
+- Draft archive composition now recognizes exact same-scene P2 script identities for Dialogue only; source context verifies record existence and run ownership. Actor-only components on P2 identities reject.
+- Private town01 P2[37] dialogue edit composed with the saved draft into121255936 bytes, with exact reopened MAN verification and audited glyph offset44605->44608. An injected P2 Transform override rejected. Updated export support documentation. No Save, output disc or game launch; gameplay remains unverified.
+
+### 2026-09-11 Original actor dialogue composed with drafts
+
+- Connected supported original actor Dialogue runs to draft archive serialization with owner validation, source baseline guard and relocated glyph-span application after appearance/placement edits. Audit separates dialogue changes and their semantic owners. P2 dialogue and other component families remain unsupported in this path.
+- Private retail composition combined the saved draft, actor49 donor15 appearance and one equal-span dialogue replacement. Exactly2 appearance changes and1 dialogue change entered a121255936-byte archive with exact reopened MAN verification. No Save, disc output or game launch.
+
+### 2026-09-11 Dialogue rebasing for appended actor tables
+
+- Added verified equal-span dialogue patch rebasing by original record identity and relative glyph offset. It checks record extent, exact glyph preimage and unchanged MAN layout, retaining original and relocated offsets in the audit. Original source dialogue validation still owns allowable text and control boundaries.
+- Synthetic grown-table check verifies only the relocated five-byte text span changes and rejects an already-modified preimage. Dialogue importer suite:9 passed,1 optional retail test skipped. Draft archive wiring remains next; no game interaction.
+
+### 2026-09-11 Batch draft regression and combined checks
+
+- Added synthetic batch coverage proving byte-identical output and audit under reversed input ordering, stable authored identity to record mapping, exact independent X/Z placements, duplicate identity rejection and rejection of donors that exist only after appending.
+- Combined actor structure, script reindex, appearance assignment, scene preview, draft lifecycle and export tests:22 passed,1 optional retail test skipped. No runtime launch. These checks retain explicit incomplete script/scheduling and gameplay status.
+
+### 2026-09-11 Saved draft end-to-end disc export
+
+- Ran the new CLI against the private saved one-draft project. Session44160 exited0 and published local-output/sdk-20260909/saved-draft-export-20260911/report.json plus draft.bin. Output466716768 bytes, SHA256 f8a75661a02acd537257029a9df9e7e79ec1703b766a942a333e63c217e04f97, independently rehashed after completion.
+- Report confirms reopened MAN and PROT equality and one authored draft. Documented export invocation, supported composition and incomplete-output semantics. No game launch; script/scheduling and gameplay acceptance remain open. This does not validate every non-PROT sector independently for this new image.
+
+### 2026-09-11 Experimental saved-draft disc export entry point
+
+- Added export_draft_disc and a module CLI accepting saved project, draft UUID and a new output directory. It connects archive composition to the existing verified disc writer and publishes report.json only after successful write and unchanged full authored identity. Existing directories reject; failed artifacts remain diagnostic and no game is launched.
+- Synthetic export test passed for successful report publication, overwrite rejection and concurrent-edit rejection without a completion report. CLI help passed. Full saved-draft disc export and gameplay remain unverified; editor Play integration remains open.
+
+### 2026-09-11 Complete draft build-input freshness guard
+
+- Draft serializer now snapshots the shared authored build identity, copies imported donor evidence and checks the complete identity before returning an archive. Previously only drafts and actor overrides were compared, allowing a concurrent texture/model/import/source change to escape the completion guard. Audit now includes the authored state key.
+- Injected a texture edit after the real private archive rebuild: serialization rejected the completed result with ProjectError instead of returning stale output. No project Save, disc write or game interaction. This addresses freshness, not support for those additional override families.
+
+### 2026-09-11 Draft preview donor assignment parity
+
+- Found draft viewport copied the donor's effective appearance while serialization intentionally clones its retail assignment. Geometry decoding now retains a retail binding for appearance-overridden actors; drafts use that binding without altering the original actor's effective preview.
+- Scene preview regression creates a draft from an appearance-overridden target and verifies original geometry/source identity, authored placement and geometry cache reuse. All5 scene preview tests pass. Shared authored asset edits can still affect preview and remain explicitly identified; no game interaction or browser acceptance this turn.
+
+### 2026-09-11 Appearance assignments composed with NPC drafts
+
+- Draft archive serialization now accepts same-scene ActorAppearance alongside X/Z overrides. It checks the exact selected donor against the verified assignment context, guards the retail MAN baseline and applies relocated header edits after donor appending. Audit includes donor identity and both header offsets.
+- Private saved-draft project composed actor49's donor15 assignment (model103/animation15 to94/18) into a121255936-byte archive with reopened MAN equality. Both header offsets shifted by3; archive following payload preservation passed. No project Save, output disc write or game interaction. Playable Build integration and other override families remain open.
+
+### 2026-09-11 Appearance patch rebasing for grown MAN tables
+
+- Added ManAssignmentContext.patch_appended to validate appearance assignments against the retail context and resolve original actor header offsets in a grown MAN. The audit retains both source and relocated offsets; changed header preimages reject. Appended donor appearances are not implicitly changed.
+- Synthetic table-growth regression verifies exactly two relocated bytes change and rejects a mismatched baseline header. Assignment suite: 7 passed, 1 optional retail test skipped. Draft archive wiring and retail composition verification remain next; no game interaction.
+
+### 2026-09-11 SDK status report refresh
+
+- Reviewed the feature matrix, release parity report and latest work log for the user's status request. Updated the matrix's draft row to include accepted X/Z gizmos and the same-scene logical archive prototype.
+- Playable draft Build integration, complete script/scheduling coverage and broader runtime acceptance remain open. This documentation refresh ran no game or new runtime tests.
+
+### Existing actor placements composed with drafts
+
+- Draft archive serialization now accepts same-scene X/Z actor overrides and applies them to original record indices after draft append. Audit separates existing placement changes from appended records and includes final MAN hash; other component/scene mixtures still reject.
+- Private donor0011 X3264 override composed with draft X3008 and exact reopened MAN verification. No Save/disc write/game interaction. Remaining override families and multi-scene composition are still open.
+
+### Multiple project drafts serialized together
+
+- Saved-draft serializer now gathers all same-scene drafts, validates each donor and passes stable IDs into batch MAN appending. Version2 audit maps every authored draft to its generated record. Changed draft collections reject after serialization.
+- Private two-draft project produced records53/54 and reopened MAN equality in a121255936-byte logical archive. No Save/disc write/game interaction. Multiple scenes and other authored override composition still reject explicitly and remain implementation work.
+
+### Deterministic batch actor candidates
+
+- Added append_actor_candidates with unique authored IDs, original-source donor validation and stable identity ordering. Each append rebases reached references against the current MAN, including previously appended records.
+- Retail two-donor check produced records53/54 at requested positions and byte-identical output when request order reversed. Opaque script coverage remains unverified; batch project serialization is the next integration step. No disc write/game interaction.
+
+### Saved draft to logical archive
+
+- Added sdk.draft_build.prepare_draft_archive connecting persisted authored UUID/donor/XZ to source-verified MAN append and logical PROT rebuild. Audit retains draft metadata, imported document digest, source disc/PROT hashes and structural/encoding evidence.
+- Private saved draft produced121255936 bytes and exact reopened MAN verification. Current prototype rejects multiple drafts and other overrides rather than silently omitting them; composing those remains required for full Build support. No output write or game interaction.
+
 ### Draft Z handle and gesture cancellation acceptance
 
 - Isolated browser moved draft Z5440->5504 with X3008 unchanged, verified exact-grid command and Undo restoration. Separate Escape-during-X-drag check issued no command and left saved position unchanged.

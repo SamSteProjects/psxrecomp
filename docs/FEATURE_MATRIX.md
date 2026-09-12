@@ -1,10 +1,10 @@
 # Legaia SDK feature matrix
 
-Current scene-editor status (2026-09-10):
+Current scene-editor status (2026-09-11):
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
-| Authored NPC drafts | Stable UUIDs and donor references; create/edit/delete commands, undo/redo, Save/Open, dirty/build identity tracking. Browser-verified creation, management, hierarchy, donor-model rendering, framing, picking, main Inspector and serialized-candidate inspection. | Gizmo editing, complete script/scheduling acceptance and playable Build integration. Builds currently reject drafts rather than omitting them. |
+| Authored NPC drafts | Stable UUIDs and donor references; create/edit/delete commands, undo/redo, Save/Open, dirty/build identity tracking. Browser-verified creation, management, hierarchy, donor-model rendering, framing, picking, main Inspector, X/Z gizmos with Undo/cancellation and serialized-candidate inspection. Same-scene batch drafts and existing actor X/Z edits compose into a verified logical archive prototype. | Other override families, multiple scenes, complete script/scheduling acceptance and playable Build integration. Builds currently reject drafts rather than omitting them. |
 | Native actor candidates | Source-bound donor append, reached spawn-index rewrites, physical container growth and browser-verified Inspector diagnostics. Logical PROT and experimental disc growth preserve downstream data; a donor11 image reopened with exact candidate MAN, 44 unchanged file hashes and 59215 internally verified regenerated sectors. Candidate Inspector placement and donor navigation passed browser checks. Retail candidate inspection creates no project entity or game actor. | Complete script/reference coverage, spawn scheduling, project commands/persistence, Build and gameplay acceptance. See [candidate implementation](legaia-native-actor-candidates.md). |
 | Assembled field scene | Implemented and browser-validated for town01: 52 actors (51 renderable), 46 placed scenery objects, 162 decorations and one textured ground entity. | Complete retail scene parity, including ground holes and exact runtime terrain behavior. |
 | Selection and inspection | Hierarchy, viewport picking, selection outlines, object framing and Actors/Scenery/Ground visibility layers work together. Source provenance remains separate from authored transforms. | Broader scene acceptance and extensible inspector coverage. |

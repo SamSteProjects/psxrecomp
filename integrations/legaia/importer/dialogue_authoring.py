@@ -199,6 +199,35 @@ class DialogueAuthoringContext:
                                            limitations=list(LIMITATIONS))
         return deepcopy(self._options[actor_id])
 
+    def patch_appended(self, candidate: bytes, edits: dict[str, str]) -> tuple[bytes, list[dict]]:
+        """Rebase supported original dialogue spans after actor table growth."""
+        from .man_layout import read_man_layout
+        _, changes = self.patch(edits)
+        layout = read_man_layout(candidate)
+        records = {(r['partition'],r['record_index']):r for r in layout['records']}
+        output, audit = bytearray(candidate), []
+        for change in changes:
+            run = self._runs[change['run_id']]
+            owner = self._actors[run['actor_id']]
+            partition = 2 if '/scripts/man-p2/' in run['actor_id'] else 1
+            record = records.get((partition,change['record_index']))
+            if record is None or record['byte_length'] != owner.byte_length:
+                raise ImportError('Appended dialogue record differs from verified source extent')
+            relative = change['decoded_byte_offset'] - owner.byte_offset
+            size = change['byte_length']
+            if not 0 <= relative <= record['byte_length']-size:
+                raise ImportError('Appended dialogue span escapes its record')
+            offset = record['byte_offset'] + relative
+            if candidate[offset:offset+size].hex() != change['before_hex']:
+                raise ImportError('Appended dialogue preimage differs from verified source')
+            output[offset:offset+size] = bytes.fromhex(change['after_hex'])
+            audit.append(dict(change,source_decoded_byte_offset=change['decoded_byte_offset'],
+                              decoded_byte_offset=offset,appended_man_sha256=_sha(candidate)))
+        result = bytes(output)
+        if read_man_layout(result) != layout:
+            raise ImportError('Appended dialogue patch changed MAN layout')
+        return result,audit
+
     def patch(self, edits: dict[str, str], *, original: bytes | None = None) -> tuple[bytes, list[dict]]:
         if original is not None and original != self._man:
             raise ImportError("dialogue MAN source differs from the verified baseline")

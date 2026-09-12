@@ -132,6 +132,16 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 cached = service.preview(project, loader, lambda *_: Catalog())
                 self.assertEqual(cached["entities"][0]["position"]["x"], 333)
                 self.assertEqual(len(posed), 2)
+                draft_id = 'authored-actor://cffa550b-224d-4698-bb90-6a76fa491fee'
+                project.actor_drafts[draft_id] = dict(scene_id=project.active_scene,
+                    donor_entity_id=target['semantic_id'], position=dict(x=704,z=704), name='Retail donor draft')
+                draft_preview = service.preview(project, loader, lambda *_: self.fail('draft rebuilt geometry'))
+                draft_binding = next(e for e in draft_preview['entities'] if e['entity_id']==draft_id)
+                self.assertEqual(draft_binding['source_actor_id'], target['semantic_id'])
+                self.assertEqual(draft_binding['geometry_key'], first['entities'][0]['geometry_key'])
+                self.assertFalse(draft_binding['appearance_authored'])
+                self.assertEqual(draft_binding['position']['x'],704)
+                project.actor_drafts.clear()
                 del project.overrides[target["semantic_id"]]["ActorAppearance"]
                 self.assertEqual(source_key(project), initial_key)
                 reverted = service.preview(project, loader, lambda *_: Catalog())

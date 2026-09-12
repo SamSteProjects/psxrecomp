@@ -158,6 +158,32 @@ class ManAssignmentContext:
                 raise ImportError("MAN assignment round-trip validation failed")
         return changed, audit
 
+    def patch_appended(self, candidate: bytes, edits: dict[int, dict[str, int]]) -> tuple[bytes, list[dict]]:
+        """Rebase verified original-actor header edits onto an appended MAN.
+
+        Appended donors retain their retail appearance. Never reuse baseline
+        absolute offsets after the partition table has grown.
+        """
+        _, audit = self.patch(edits)
+        actors = {a.record_index: a for a in parse_man(candidate, self.scene).actors}
+        result = bytearray(candidate)
+        rebased = []
+        for change in audit:
+            actor = actors.get(change['record_index'])
+            original = self._actor(change['record_index'])
+            if actor is None or (actor.local_count, actor.model_index, actor.animation_id) != (
+                    original.local_count, original.model_index, original.animation_id):
+                raise ImportError('Appended MAN original actor header differs from baseline')
+            delta = 0 if change['field'] == 'model_index' else 1
+            offset = actor.byte_offset + 1 + actor.local_count * 2 + delta
+            if candidate[offset] != change['before_byte']:
+                raise ImportError('Appended MAN assignment preimage differs from baseline')
+            result[offset] = change['after_byte']
+            rebased.append(dict(change, source_decoded_byte_offset=change['decoded_byte_offset'],
+                                decoded_byte_offset=offset,
+                                appended_man_sha256=_sha(candidate)))
+        return bytes(result), rebased
+
     def serialize(self, edits: dict[int, dict[str, int]]) -> tuple[bytes, list[dict], dict]:
         """Equal-span encoded replacement; reject compressed growth, no relocation."""
         changed, audit = self.patch(edits)

@@ -11,6 +11,33 @@ from .man_layout import read_man_layout, resolve_spawn_record
 from .script_inspection import inspect_record
 
 
+def append_actor_candidates(source: bytes, expected_sha256: str, drafts: list[dict]):
+    """Append authored drafts in stable identity order, rebasing after each append."""
+    if not isinstance(source,bytes) or sha256(source).hexdigest()!=expected_sha256:
+        raise ImportError('Actor batch source hash mismatch')
+    if not isinstance(drafts,list) or not 1<=len(drafts)<=128:
+        raise ImportError('Actor batch requires 1 through 128 drafts')
+    original_actors={a.record_index for a in parse_man(source).actors}
+    identities=set()
+    for item in drafts:
+        if not isinstance(item,dict) or set(item)!={'id','donor_record_index','position'}:
+            raise ImportError('Actor batch draft fields are invalid')
+        if not isinstance(item['id'],str) or not item['id'] or item['id'] in identities:
+            raise ImportError('Actor batch identities must be unique nonempty strings')
+        identities.add(item['id'])
+        if type(item['donor_record_index']) is not int or item['donor_record_index'] not in original_actors:
+            raise ImportError('Actor batch donors must belong to the original MAN')
+    result=source
+    audits=[]
+    for item in sorted(drafts,key=lambda item:item['id']):
+        result,audit=append_actor_candidate(result,sha256(result).hexdigest(),
+            item['donor_record_index'],position=item['position'])
+        audits.append({'draft_id':item['id'],**audit})
+    return result,dict(source_sha256=expected_sha256,result_sha256=sha256(result).hexdigest(),
+                       drafts=audits,build_ready=False,
+                       reference_coverage='Reached decoded references only; opaque paths remain unverified')
+
+
 def actor_context_reference_status(partition0_count: int, record_index: int) -> dict:
     """Describe encoded target limits, without claiming allocation success."""
     if any(type(v) is not int or not 0 <= v <= 32767 for v in (partition0_count, record_index)):

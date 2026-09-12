@@ -36,6 +36,22 @@ def fixture(script=b"\x1fHello\0", alias=False):
 
 
 class DialogueAuthoringTests(unittest.TestCase):
+    def test_grown_table_dialogue_rebases_exact_span(self):
+        context,source=fixture()
+        run=context.options(ACTOR)['runs'][0]['semantic_id']
+        grown=bytearray(source[:0x2b]+source[0x2b:0x2e]+source[0x2b:])
+        struct.pack_into('<h',grown,0x22,2)
+        grown=bytes(grown)
+        result,audit=context.patch_appended(grown,{run:'World'})
+        change=audit[0]
+        self.assertEqual(change['decoded_byte_offset'],change['source_decoded_byte_offset']+3)
+        offset=change['decoded_byte_offset']
+        self.assertEqual(result[offset:offset+5],b'World')
+        self.assertEqual(result[:offset],grown[:offset])
+        self.assertEqual(result[offset+5:],grown[offset+5:])
+        with self.assertRaisesRegex(ImportError,'preimage'):
+            context.patch_appended(result,{run:'World'})
+
     def test_loader_rejects_descriptor_alias_and_oversize_before_decode(self):
         from contextlib import nullcontext
         from types import SimpleNamespace
@@ -76,6 +92,16 @@ class DialogueAuthoringTests(unittest.TestCase):
                 self.assertEqual(changed[:offset], man[:offset])
                 self.assertEqual(changed[offset + 5:], man[offset + 5:])
                 self.assertEqual(len(audit), 1)
+                from hashlib import sha256
+                from importer.man_actor_structure import append_actor_donor
+                appended,_=append_actor_donor(man,sha256(man).hexdigest(),1)
+                composed,relocated=context.patch_appended(appended,{run['semantic_id']:'Hi'})
+                new_offset=relocated[0]['decoded_byte_offset']
+                self.assertGreater(new_offset,offset)
+                self.assertEqual(composed[new_offset:new_offset+5],b'Hi   ')
+                self.assertEqual(composed[:new_offset],appended[:new_offset])
+                self.assertEqual(composed[new_offset+5:],appended[new_offset+5:])
+                self.assertEqual(parse_man(composed),parse_man(appended))
             else:
                 self.assertEqual(options["runs"], [])
         context, _ = fixture()

@@ -36,6 +36,20 @@ def fixture(*, bones=(2, 2), model_counts=None, alias=False, compressed=False, o
 
 
 class AssignmentTests(unittest.TestCase):
+    def test_header_patch_rebases_after_table_growth(self):
+        context, original = fixture()
+        # An extra P0 table entry shifts every actor record by three bytes.
+        candidate = bytearray(original[:0x2b] + original[0x2b:0x2e] + original[0x2b:])
+        struct.pack_into('<h', candidate, 0x22, struct.unpack_from('<h', original, 0x22)[0] + 1)
+        candidate = bytes(candidate)
+        changed, audit = context.patch_appended(candidate, {1: {'model_index': 5, 'animation_id': 2}})
+        self.assertEqual({i for i, (a, b) in enumerate(zip(candidate, changed)) if a != b},
+                         {a['decoded_byte_offset'] for a in audit})
+        self.assertTrue(all(a['decoded_byte_offset'] == a['source_decoded_byte_offset'] + 3 for a in audit))
+        self.assertEqual((parse_man(changed).actors[0].model_index, parse_man(changed).actors[0].animation_id), (5, 2))
+        with self.assertRaisesRegex(ImportError, 'baseline'):
+            context.patch_appended(changed, {1: {'model_index': 5, 'animation_id': 2}})
+
     def test_donor_pair_patches_only_two_bytes_and_composes_positions(self):
         context, original = fixture()
         changed, audit = context.patch({1: {"model_index": 5, "animation_id": 2}}, original=original)
