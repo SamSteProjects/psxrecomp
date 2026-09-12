@@ -12,9 +12,12 @@ from sdk.draft_build import prepare_draft_archive
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class StreamingAppearanceBuild(unittest.TestCase):
-    def test_streaming_texture_reopens_as_exact_changed_tim(self):
+    def test_streaming_texture_and_model_reopen_as_exact_changed_assets(self):
         from hashlib import sha256
         from importer.texture_authoring import load_texture_authoring_context
+        from importer.assets import load_model_source
+        from importer.core import decompress_lzs
+        import struct
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))
@@ -28,7 +31,17 @@ class StreamingAppearanceBuild(unittest.TestCase):
             replacement = bytes(replacement)
             project.texture_overrides = {identifier: dict(source_scene_id="scene://dolk2", format="tim",
                 asset_sha256=sha256(replacement).hexdigest(), byte_length=len(replacement))}
-            with patch.object(project, "read_texture_replacement", return_value=replacement):
+            model = project.imports["scene://dolk2"]["assets"]["models"][0]
+            model_id = model["semantic_id"]
+            model_original = load_model_source(project.disc_path, model)
+            model_replacement = bytearray(model_original)
+            vertex_offset = 12 + struct.unpack_from("<I", model_original, 12)[0]
+            model_replacement[vertex_offset] ^= 1
+            model_replacement = bytes(model_replacement)
+            project.model_overrides = {model_id: dict(source_scene_id="scene://dolk2", format="tmd",
+                asset_sha256=sha256(model_replacement).hexdigest(), byte_length=len(model_replacement))}
+            with patch.object(project, "read_texture_replacement", return_value=replacement), patch.object(
+                    project, "read_model_replacement", return_value=model_replacement):
                 output, audit = prepare_draft_archive(project)
             carrier = audit["scenes"]["scene://dolk2"]["texture_changes"]["carriers"][0]
             self.assertTrue(carrier["reopened_payload_verified"])
@@ -40,6 +53,15 @@ class StreamingAppearanceBuild(unittest.TestCase):
             a, b = final_carrier["ranges"][source["pack_slot"]]
             self.assertEqual(final_carrier["decoded"][a:b], replacement)
             self.assertEqual(context.original_tim(identifier), original)
+            model_carrier = audit["scenes"]["scene://dolk2"]["model_changes"]["carriers"][0]
+            self.assertTrue(model_carrier["reopened_payload_verified"])
+            model_source = model["source_record"]
+            entry_body = archive.read_entry(archive.entry(model_source["prot_entry_index"]))
+            decoded, _ = decompress_lzs(entry_body[model_source["compressed_stream_offset"]:], model_source["containing_size"])
+            offset = model_source["byte_offset"]
+            self.assertEqual(decoded[offset:offset + len(model_replacement)], model_replacement)
+            self.assertEqual(load_model_source(project.disc_path, model), model_original)
+
 
     def test_raw_animation_and_man_changes_survive_composition(self):
         from hashlib import sha256

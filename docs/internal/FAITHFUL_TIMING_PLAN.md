@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming model shape export
+
+- Connected streaming scene model bindings to the existing source-bound model overlay writer and final carrier reopening. This supports existing-layout vertex/normal XYZ replacement; topology, materials, descriptors and padding remain protected. It does not add arbitrary models or change topology.
+- A real Dolk2 model-0000 vertex probe passed compressed-capacity and rebuilt-carrier checks. Private metadata: `local-output/sdk-20260909/streaming-model-composition-20260912.json`.
+- Seven focused model/OBJ/streaming composition tests passed with retail checks enabled. The combined model+texture test uses separate compressed sections of one physical entry, reopens the final archive, decodes each pack and compares exact replacement TMD/TIM bytes; both source-disc assets remain unchanged.
+- No game launched. Streaming NPC additions/payload growth remain unfinished; model visual suitability and gameplay behavior remain deferred. Full goal active.
+
+
 ### 2026-09-12 — Streaming texture replacement export
 
 - Texture authoring now resolves entry-head asset directories independently of MAN presence, matching the existing texture catalog's four/five-entry streaming-directory support. Descriptor type/offset, alias, span, TIM layout and compressed capacity checks remain enforced.

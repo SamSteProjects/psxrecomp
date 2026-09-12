@@ -13,8 +13,8 @@ def prepare_streaming_scene(project, scene_id):
     key = authored_state_key(project)
     document = deepcopy(project.imports[scene_id])
     scene = document['scene']['name']
-    if project.actor_drafts or project.model_overrides:
-        raise ProjectError('Streaming export does not yet support NPC additions or model replacements')
+    if project.actor_drafts:
+        raise ProjectError('Streaming export does not yet support NPC additions')
     if import_scene(project.disc_path, scene) != document:
         raise ProjectError('Streaming imported evidence differs from the source disc')
     actors = {a['semantic_id']: a for a in document['actors']}
@@ -85,6 +85,11 @@ def prepare_streaming_scene(project, scene_id):
             from .map_build import prepare_map_patch
             patch, map_audit = prepare_map_patch(project, scene_id, map_components, archive)
             patches.append(patch)
+        model_audit = None
+        if project.model_overrides:
+            from .model_build import prepare_model_patches
+            model_patches, model_audit = prepare_model_patches(project, scene_id, project.model_overrides, archive)
+            patches.extend(model_patches)
         texture_audit = None
         if project.texture_overrides:
             from .texture_build import prepare_texture_patches
@@ -99,7 +104,7 @@ def prepare_streaming_scene(project, scene_id):
         source_disc_sha256=disc_hash, source_prot_sha256=sha256(prot).hexdigest(),
         authored_state_key=key, imported_document_sha256=digest(document),
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
-        texture_changes=texture_audit, animation_changes=animation_audit, transition_changes=transition_changes, existing_actor_appearance_changes=appearance_changes,
+        model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, transition_changes=transition_changes, existing_actor_appearance_changes=appearance_changes,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,
