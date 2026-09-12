@@ -34,6 +34,14 @@ class SceneBundleBoundaries(unittest.TestCase):
         struct.pack_into('<I', data, 12, 32)
         self.assertIsNone(parse_scene_assets(data, 69))
 
+    def test_five_asset_directory_keeps_man_selection_separate(self):
+        data = bytearray(88)
+        struct.pack_into('<I', data, 0, 5)
+        for index, kind in enumerate((1, 2, 6, 7, 20)):
+            struct.pack_into('<II', data, 8 + index * 8, (kind << 24) | 8, 48 + index * 8)
+        self.assertEqual(len(parse_scene_assets(data, 319).descriptors), 5)
+        self.assertIsNone(parse_scene_table(data, 319))
+
     def test_borrowed_tail_rejected_but_owned_table_kept(self):
         table=bytearray(128)
         struct.pack_into('<I',table,0,6)

@@ -69,6 +69,7 @@ class TimTests(unittest.TestCase):
 
     def test_retail_opaque_flag_exception_is_preserved(self):
         self.assertEqual(parse_tim(tim(flags=0x10008)).flags, 0x10008)
+        self.assertEqual(parse_tim(tim(flags=0x80000008)).flags, 0x80000008)
         for flags in (4, 7, 0x20008, 0x10009):
             with self.subTest(flags=flags), self.assertRaisesRegex(ImportError, "unsupported TIM"):
                 parse_tim(tim(flags=flags))

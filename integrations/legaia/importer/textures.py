@@ -62,9 +62,11 @@ def parse_tim(data: bytes) -> Tim:
         raise ImportError("truncated TIM header")
     magic, flags = struct.unpack_from("<II", data)
     # Pinned lib.rs's strict_rejects_reserved_flag_bits test documents the
-    # retail 0x00010008 variant. Preserve that opaque word, accept no other
-    # reserved flags, and interpret only the documented low mode bits.
-    if magic != 0x10 or (flags & ~0xF and flags != 0x10008) or (flags & 7) > 3:
+    # retail 0x00010008 variant. Station's typed TIM pack also contains
+    # 0x80000008 (slots 11/22); the reference's non-strict asset parser
+    # retains reserved bits. Preserve these observed opaque words and
+    # interpret only low mode bits; arbitrary reserved variants still fail.
+    if magic != 0x10 or (flags & ~0xF and flags not in (0x10008, 0x80000008)) or (flags & 7) > 3:
         raise ImportError("unsupported TIM magic, reserved flags or mixed pixel mode")
     bpp = (4, 8, 16, 24)[flags & 7]
     pos = 8

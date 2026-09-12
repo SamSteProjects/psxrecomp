@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Station sky texture opaque TIM flag support
+
+- Previous turn identified a verified visual defect. Station descriptor TIM slots 11/22 are structurally bounded 66,080-byte members with flags `0x80000008`, previously rejected. Pinned TIM parser's lenient structural-asset path retains reserved bits. Added this exact observed opaque flag variant, retaining flags and all block validation rather than broadly accepting reserved values.
+- Station catalog grows from 46 to 48 textures; page-138 material now resolves to `texture://station/227/0/11`. Browser screenshot `local-output/sdk-20260909/streaming-station-texture-fixed-20260912.png` inspected: gray shapes are now textured sky domes. Their size is source geometry, not a reason to rescale positions; selective visibility is a future editor usability improvement.
+- Twenty-four focused texture/project tests ran: twenty-one passed, three skipped. No gameplay launched; temporary browser/editor closed. Full runtime palette, visibility and placement parity remain deferred.
+
+### 2026-09-12 Station and Balden2 integrated previews expose missing Station textures
+
+- Previous goal turn was verified implementation progress. Fresh private projects and full preview reports created for station/balden2 under `local-output/sdk-20260909/streaming-{scene}-preview-20260912` and `streaming-{scene}-full-preview-20260912.json`.
+- Station resolves 304/306 entities and Balden2 149/155; neither raises terrain, environment or animation-source errors. Both browser previews loaded and were visually inspected (`streaming-{scene}-browser-20260912.png`).
+- Station fails visual acceptance: large gray scenery surfaces occlude the scene. Traced models 0001/0012 to missing texture VRAM (640,0), page 138; do not change geometry scale/placement as a workaround. Balden2 room geometry is visible but runtime parity remains unverified. Coverage report records this distinction; mesh counts alone are not acceptance.
+- No gameplay launched. Temporary editor server and browser closed. Next source work is Station missing texture upload coverage.
+
+### 2026-09-12 Station extended animation bank and Balden2 five-entry asset table
+
+- Previous goal turn produced actionable coverage evidence. Station entry 228 has a 96,256-byte indexed window but a 165,888-byte extended footprint; its type-5 bank is complete only in the latter (140,144 bytes at offset 22580). Streaming animation now reads the extended footprint while clipping to scene ownership and rechecking MAN provenance.
+- Balden2 entry 319 uses five descriptors (types 1,2,6,7,20) with first payload at 48. Structural asset parsing now accepts this count without changing the separate MAN-bearing bundle gate. Fresh import resolves 66/66 actor models from 162 scene plus five shared models; 48 actor animation bindings validate. Station validates 15 bindings over 57 records.
+- Updated public streaming coverage report; browser integration for these scenes remains pending, and no runtime acceptance is claimed. No game launched.
+
+### 2026-09-12 Streaming coverage beyond dolk2
+
+- Previous turn was verified source/browser progress. Reviewed unresolved dolk2 actors: all nine use shared multipart F3/F4 models with missing pose association; do not substitute unassembled geometry or claim model-reference failure.
+- Fresh offline checks across dolk2/rikuroa/rayman/station/balden2 establish full model-reference coverage in the first four, supported scene animation bindings in the first three, and terrain in all five. Station has no uniquely resolved same-carrier type-5 bank; balden2 lacks a resolved scene model pack (7/66 actors resolve through shared models).
+- Saved `docs/legaia-streaming-scene-status.md` and private `local-output/sdk-20260909/streaming-scene-coverage-20260912.json`. These newly identified source-discovery gaps guide the next implementation work and do not require immediate gameplay. No game or browser launched this turn.
+
 ### 2026-09-12 Streaming scenery and integrated browser review
 
 - Previous turn made verified animation progress. Environment previews now consume the same verified streaming animation bank through an immutable-byte/copied-provenance handoff, retaining existing per-placement pose checks and MAP transforms. Streaming animation reading is clipped to scene ownership, rechecks MAN bytes and limits bank size.

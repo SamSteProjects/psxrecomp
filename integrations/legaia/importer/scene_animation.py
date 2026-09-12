@@ -332,7 +332,7 @@ def load_scene_actor_animation_catalog(disc: Any, scene: str) -> SceneActorAnima
             entry = archive.entry(carrier.entry_index)
             following = [e.start_lba * archive.SECTOR for e in archive.entries if e.index >= end]
             limit = min(following) if following else archive.node.size
-            raw = archive.read_entry(entry, extended=False)[:max(0, limit - entry.start_lba * archive.SECTOR)]
+            raw = archive.read_entry(entry, extended=True)[:max(0, limit - entry.start_lba * archive.SECTOR)]
             if raw[carrier.payload_offset:carrier.payload_offset + len(carrier.payload)] != carrier.payload:
                 raise ImportError('streaming MAN changed during animation bank resolution')
             chunks, _ = streaming_chunks(raw)

@@ -447,7 +447,7 @@ def parse_scene_assets(data: bytes, entry_index: int, offset: int = 0) -> SceneB
     if offset < 0 or offset + 8 > len(data):
         return None
     count = _u32(data, offset)
-    if count not in (4, 6, 7):
+    if count not in (4, 5, 6, 7):
         return None
     table_size = 8 + count * 8
     if offset + table_size > len(data):
