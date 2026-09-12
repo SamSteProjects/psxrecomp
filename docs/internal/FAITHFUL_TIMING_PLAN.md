@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Cancel stale animation file reads
+
+- Previous goal turn made verified progress at d0674782: optional source-bound file preview with unchanged project/history checks. Current worktree was clean before this follow-up.
+- Found the FileReader completion path guarded dialog identity but not changes to selected file/format; an old read could reach Import after the user changed their selection. Added a selection revision token, file/format identity checks after reading and preview response, and matching guards for asynchronous error reporting. Changing format away and back also invalidates the prior read; selecting another file clears old preview/error text.
+- Actual browser delayed FileReader until after JSON -> raw -> JSON selection changes. Releasing the read produced zero animation import requests and no page errors. Private evidence: local-output/sdk-20260909/animation-json-project-20260912/stale-read-check.json. The normal browser effective download/preview/no-mutation/import/Undo regression passed after the change. Node syntax and diff checks passed; browser and test server stopped. No game launched; full goal remains active.
+
+
 ### 2026-09-12 — Animation file preview without authored mutation
 
 - Previous goal turn made verified progress:47609431 connected readable JSON interchange and passed349 SDK tests. Current source/worktree confirmed clean before extending the editor workflow.
