@@ -213,6 +213,17 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Bounded script movement authoring foundation
+
+- Added `importer/movement_authoring.py`: verified MAN owner/PC identities, immutable context, target options and atomic exact-byte X/Z patch audits for decoded MOVE_TO and NPC_RUN. Uses the existing exact retail placement-grid encoder; does not change instruction lengths, control flow, extended context, depth/move operands or Y. Unknown/conflicting stops, aliased owners, foreign IDs, nonrepresentable coordinates and mismatched baselines reject authoring.
+- Reference refreshed at d6e64c68ede25813d35db20980da82a1a025549b: engine-vm field step.rs opcode0x23, helpers.rs grid_to_world, and menu_ctrl/nibble_5_6_7.rs sub0x51. No runtime dependency on the reference repository.
+- Focused tests cover all256 coordinate-byte no-op roundtrips across four ordinary/extended opcode forms, preserved operands/context, invalid/unvisited/truncated inputs, immutable MAN baselines and parked-target metadata. Initial fixtures used unsupported/unresolved terminal instructions and correctly failed the stop guard; corrected fixtures use a decoded scene-transfer terminator, with no relaxation of authoring checks.
+- Retail offline proof: Dolk2 actor0002 MOVE_TO PC0x27 X9280->9344 changes only MAN byte7492; town01 actor0011 NPC_RUN PC0x23 X9664->9728 changes only byte7948. Each has identical MAN layout, unchanged Z, exact no-op bytes and fresh reinspection of the requested X. Dolk2 raw payload stays44036bytes. Town01 re-encodes24891bytes within24894 and independently decodes exactly to the edited MAN.
+- Private artifacts and hashes: `local-output/sdk-20260909/movement-authoring-20260912/retail-check.json` plus source-sized edited MAN/payload files. Source disc and existing projects/builds remain untouched.
+- Validation:36 focused movement/transition/script-inspection tests passed with the retail disc configured, no skips. Diff whitespace checks passed.
+- Integration remains required: project commands/undo/save, editor authored/retail controls, composed Build/disc packaging and later gameplay verification. This is a serializer foundation, not an exposed or gameplay-accepted editor feature. Full SDK goal remains incomplete.
+
+
 ### 2026-09-12 — Viewport target to source instruction navigation
 
 - Added a source-instruction selector and explicit Pick script target mode to the movement overlay. Marker or visible-label picking reopens the verified actor or partition-2 script report at that exact PC. Normal mesh selection remains the default; transform handles are disabled while explicitly picking script targets.
