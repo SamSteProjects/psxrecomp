@@ -213,6 +213,25 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Streaming scenery and integrated browser review
+
+- Previous turn made verified animation progress. Environment previews now consume the same verified streaming animation bank through an immutable-byte/copied-provenance handoff, retaining existing per-placement pose checks and MAP transforms. Streaming animation reading is clipped to scene ownership, rechecks MAN bytes and limits bank size.
+- Integrated dolk2 browser preview now returns 432 renderable entities out of 441: source terrain, scenery and supported actors. Nine actors remain markers. Inspected `local-output/sdk-20260909/streaming-dolk2-actors-browser-20260912.png`; visible room layouts/scenery are present, but this is not runtime visibility, palette or placement parity proof.
+- Eighteen focused environment/terrain/animation/scene tests ran: sixteen passed, two skipped. The test editor and browser were closed. No game launched, no authored coordinates changed, and manual gameplay remains deferred.
+
+### 2026-09-12 Streaming scene actor animation poses
+
+- Previous goal turn made verified model-slot progress. The verified dolk2 MAN carrier entry 70 also contains one raw type-5 bank at payload offset 44088, length 114764, SHA256 `0d168cb7093fb4034de9f494b93635b30a27f886ac16918b27dc2e3ad6f80006`.
+- All 58 animation records decode; all 56 nonzero scene-model actor bindings match the source model object counts. Added same-carrier, unique-type-5 animation loading with explicit raw chunk provenance and per-actor binding validation. Compressed descriptor behavior is unchanged; raw animation offsets are not labeled as decoded LZS.
+- Retail service preview now renders 63/72 actors plus terrain (64/73 instances, 17 geometries, 7,719 triangles). Private report `local-output/sdk-20260909/streaming-dolk2-posed-preview-20260912.json`. These are initial reference poses, not live scene behavior. Streaming scenery assembly remains unsupported; gameplay and browser visual review of the new poses remain outstanding.
+- No game launched; temporary service socket closed. Model and animation changes remain available in the worktree for the next integrated browser check.
+
+### 2026-09-12 Explicit streaming scene model slots
+
+- Previous goal turn made verified texture progress. The generic dolk2 scan reports 142 TMD hits (141 from entry-69 descriptor 1, one incidental raw hit in entry 70). Added an explicit single-pack streaming model reader using the scene asset directory and word-offset pack slots; invalid members cannot silently compress slot numbering, and multiple competing packs reject resolution.
+- Fresh dolk2 import resolves all 72 actor model references from 141 scene slots plus five shared models. New private project `local-output/sdk-20260909/streaming-dolk2-models-20260912` preserves the older fixture rather than replacing its imported evidence.
+- Real service preview now renders seven actors plus terrain (eight instances, 5,152 total triangles). Scene animation assembly remains unavailable, so resolved references are not claimed as fully rendered or runtime-verified. Report `local-output/sdk-20260909/streaming-dolk2-model-preview-20260912.json`; no game launched and temporary service socket closed.
+
 ### 2026-09-12 MAN-less asset directories supply streaming terrain textures
 
 - Previous goal turn was verified implementation/browser progress. Retail dolk2 had zero catalog textures because its entry-69 four-descriptor asset directory lacks MAN; the texture importer incorrectly required a six/seven-descriptor MAN-bearing directory.

@@ -74,6 +74,10 @@ class SceneActorAnimationCatalog:
             raise ImportError("scene animation channel count does not match the actor model's object count")
         return index, decoded
 
+    def source_bank(self) -> tuple[bytes, dict]:
+        """Immutable verified bank for other scene consumers, with copied provenance."""
+        return self._body, deepcopy(self._source)
+
     def capabilities(self, actor: dict, asset: dict) -> dict:
         """Validate the binding and wire record without loading triangle geometry."""
         try:
@@ -125,7 +129,7 @@ class SceneActorAnimationCatalog:
     def _metadata(self, actor, asset, index, decoded):
         start, end = self._ranges[index]
         source = dict(deepcopy(self._source), record_index=index, byte_offset=start, byte_length=end - start,
-                      containing_size=len(self._body), byte_coordinate_space="decoded_scene_anm_descriptor")
+                      containing_size=len(self._body), byte_coordinate_space=("raw_scene_anm_chunk" if self._source.get('source_kind') == 'raw_streaming_anm' else "decoded_scene_anm_descriptor"))
         skeleton_id = "skeleton://" + asset["semantic_id"].removeprefix("asset://")
         return {
             "schema_version": "legaia.animation-preview.v1",
@@ -317,7 +321,36 @@ def load_scene_actor_animation_catalog(disc: Any, scene: str) -> SceneActorAnima
         if document["source"]["disc_identity"] != "sha256:" + digest:
             raise ImportError("scene animation source identity changed during verification")
         start, end = _bounded_scene_range(archive, mapping, scene)
-        bundle, raw = find_scene_bundle(archive, start, end)
+        try:
+            bundle, raw = find_scene_bundle(archive, start, end)
+        except ImportError:
+            from .man_source import read_man_source
+            from .streaming_man import streaming_chunks
+            carrier = read_man_source(archive, start, end, scene)
+            if carrier.kind != 'raw_streaming_man':
+                raise ImportError('scene animation source changed during streaming resolution')
+            entry = archive.entry(carrier.entry_index)
+            following = [e.start_lba * archive.SECTOR for e in archive.entries if e.index >= end]
+            limit = min(following) if following else archive.node.size
+            raw = archive.read_entry(entry, extended=False)[:max(0, limit - entry.start_lba * archive.SECTOR)]
+            if raw[carrier.payload_offset:carrier.payload_offset + len(carrier.payload)] != carrier.payload:
+                raise ImportError('streaming MAN changed during animation bank resolution')
+            chunks, _ = streaming_chunks(raw)
+            candidates = [c for c in chunks if c['type_byte'] == 5]
+            if len(candidates) != 1:
+                raise ImportError('streaming MAN carrier requires one unambiguous type-5 animation bank')
+            chunk = candidates[0]
+            if chunk['size'] > 4 * 1024 * 1024:
+                raise ImportError('streaming scene animation bank exceeds byte bound')
+            offset = chunk['header_offset'] + 4
+            body = raw[offset:offset + chunk['size']]
+            source = {'disc': {'sha256': digest, 'serial': 'SCUS-94254'}, 'iso_file': 'PROT.DAT',
+                      'prot_entry_index': carrier.entry_index, 'prot_entry_name': scene,
+                      'source_kind': 'raw_streaming_anm', 'compression': 'none',
+                      'chunk_header_offset': chunk['header_offset'], 'payload_offset': offset,
+                      'payload_byte_length': len(body), 'payload_sha256': hashlib.sha256(body).hexdigest(),
+                      'association_evidence': 'type_5_in_verified_man_carrier_with_per_actor_channel_validation'}
+            return SceneActorAnimationCatalog(disc, scene, document, body, source)
         candidates = [d for d in bundle.descriptors if d.type_byte == 5 and d.size > 0]
         if len(candidates) != 1:
             raise ImportError("scene requires exactly one evidenced type-0x05 animation descriptor")

@@ -264,8 +264,6 @@ def load_environment_preview_catalog(disc, scene: str) -> EnvironmentPreviewCata
     with _disc_context(disc) as (_, digest, _, archive):
         metadata = load_environment_catalog(disc, scene)
         source, _, bundle, raw = _load_environment_source(disc, scene)
-        if bundle is None:
-            raise ImportError('Streaming environment mesh and animation carriers are not yet resolved')
         if source["source_record"] != metadata["source_record"]:
             raise ImportError("environment source changed during preview resolution")
         document = import_scene(disc, scene)
@@ -296,6 +294,11 @@ def load_environment_preview_catalog(disc, scene: str) -> EnvironmentPreviewCata
             placement["source_record"]["map_sha256"] = sha256(data).hexdigest()
             placement["record_offset"] = dict(zip("xyz", struct.unpack_from("<3h", data, placement["object_record_index"] * 32)))
         metadata["limitations"][0] = "Placed objects and field decorations are included; ground is a separate layer."
+        if bundle is None:
+            from .scene_animation import load_scene_actor_animation_catalog
+            bank, provenance = load_scene_actor_animation_catalog(disc, scene).source_bank()
+            metadata['animation_source'] = provenance
+            return EnvironmentPreviewCatalog(disc, metadata, document['assets']['models'], bank)
         candidates = [d for d in bundle.descriptors if d.type_byte == 5 and d.size > 0]
         if len(candidates) != 1:
             raise ImportError("environment preview requires one scene animation descriptor")

@@ -530,7 +530,8 @@ def import_scene(disc: Path | str, scene: str = SUPPORTED_SCENE) -> dict[str, An
         source=read_man_source(archive,start,end,scene)
         raw=source.kind=='raw_streaming_man'
         bundle,descriptor,consumed,parsed=source.bundle,source.descriptor,source.encoded_size,source.parsed
-        scene_models = () if raw else scene_tmd_pool(archive, start, end)
+        from .core import streaming_scene_tmd_pool
+        scene_models = streaming_scene_tmd_pool(archive, start, end) if raw else scene_tmd_pool(archive, start, end)
         global_models = global_special_tmd_pool(archive)
         if (not raw and not scene_models) or not global_models:
             raise ImportError(f"unsupported scene {scene!r}: model pools did not enumerate structural assets")

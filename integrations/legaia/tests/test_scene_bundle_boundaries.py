@@ -2,10 +2,28 @@
 import struct
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 from importer.core import find_scene_bundle, ImportError, parse_scene_assets, parse_scene_table
 
 
 class SceneBundleBoundaries(unittest.TestCase):
+    def test_streaming_model_slots_reject_invalid_members_and_multiple_pools(self):
+        from importer.core import streaming_scene_tmd_pool
+        descriptor = SimpleNamespace(type_byte=2, size=32, data_offset=40, index=1)
+        bundle = SimpleNamespace(descriptors=[descriptor])
+        archive = SimpleNamespace(entry=lambda i:i, read_entry=lambda *a, **kw:bytes(100))
+        body = struct.pack('<III', 2, 3, 5) + bytes(20)
+        with patch('importer.core.parse_scene_assets', return_value=bundle), \
+             patch('importer.core.decompress_lzs', return_value=(body, 32)), \
+             patch('importer.core._tmd_extent', side_effect=[(8, 1), None]):
+            with self.assertRaisesRegex(ImportError, 'slot 1 is invalid'):
+                streaming_scene_tmd_pool(archive, 0, 1)
+        with patch('importer.core.parse_scene_assets', return_value=bundle), \
+             patch('importer.core.decompress_lzs', return_value=(body, 32)), \
+             patch('importer.core._tmd_extent', return_value=(8, 1)):
+            with self.assertRaisesRegex(ImportError, 'multiple TMD packs'):
+                streaming_scene_tmd_pool(archive, 0, 2)
+
     def test_four_asset_directory_does_not_imply_man_source(self):
         data = bytearray(72)
         struct.pack_into('<I', data, 0, 4)

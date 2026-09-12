@@ -686,6 +686,42 @@ def _pack_ranges(data: bytes) -> tuple[tuple[int, int], ...]:
     return tuple(zip(offsets, ends))
 
 
+def streaming_scene_tmd_pool(archive: ProtArchive, start: int, end: int) -> tuple[TmdRecord, ...]:
+    """One explicit scene TMD pack; do not assign slots from incidental magic hits."""
+    pools = []
+    for index in range(start, end):
+        entry = archive.entry(index)
+        raw = archive.read_entry(entry, extended=True)
+        bundle = parse_scene_assets(raw, index)
+        if bundle is None:
+            continue
+        for descriptor in bundle.descriptors:
+            if descriptor.type_byte != 2 or not descriptor.size:
+                continue
+            ceiling = min([d.data_offset for d in bundle.descriptors
+                           if d.data_offset > descriptor.data_offset] + [len(raw)])
+            if (sum(d.size > 0 and d.data_offset == descriptor.data_offset for d in bundle.descriptors) != 1
+                    or not 8 + 8 * len(bundle.descriptors) <= descriptor.data_offset < ceiling <= len(raw)):
+                raise ImportError('streaming scene TMD descriptor has invalid resource boundaries')
+            body, _ = decompress_lzs(raw[descriptor.data_offset:ceiling], descriptor.size)
+            ranges = _pack_ranges(body)
+            if not ranges or ranges[0][0] != 4 + len(ranges) * 4 or len(ranges) > 240:
+                raise ImportError('streaming scene TMD pack has unsupported slot directory')
+            records = []
+            for slot, (a, b) in enumerate(ranges):
+                extent = _tmd_extent(body[a:b], 0)
+                if extent is None:
+                    raise ImportError(f'streaming scene TMD slot {slot} is invalid; cannot compress slot numbering')
+                length, objects = extent
+                records.append(TmdRecord('scene_tmd', slot, index, 'decoded_lzs_section',
+                                         a, length, len(body), objects,
+                                         container_section=descriptor.index, stream_offset=descriptor.data_offset))
+            pools.append(tuple(records))
+    if len(pools) > 1:
+        raise ImportError('streaming scene has multiple TMD packs; slot ownership is unresolved')
+    return pools[0] if pools else ()
+
+
 def global_special_tmd_pool(archive: ProtArchive) -> tuple[TmdRecord, ...]:
     entry_index = 874
     raw = archive.read_entry(archive.entry(entry_index), extended=True)
