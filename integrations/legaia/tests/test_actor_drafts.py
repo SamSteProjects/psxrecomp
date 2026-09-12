@@ -9,6 +9,30 @@ from sdk.build import authored_state_key, _build_project, BuildError
 
 
 class ActorDraftTests(unittest.TestCase):
+    def test_rename_duplicate_independence_and_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));scene=synthetic_scene();p.import_metadata(scene)
+            p.command({'type':'create_actor_draft','donor_entity_id':scene['actors'][0]['semantic_id'],
+                       'position':{'x':128,'z':256},'name':'Resident'})
+            original=next(iter(p.actor_drafts))
+            p.command({'type':'rename_actor_draft','entity_id':original,'name':'North resident'})
+            count=len(p.undo_stack)
+            p.command({'type':'rename_actor_draft','entity_id':original,'name':'North resident'})
+            self.assertEqual(len(p.undo_stack),count)
+            p.command({'type':'duplicate_actor_draft','entity_id':original,'name':'South resident'})
+            duplicate=next(key for key in p.actor_drafts if key!=original)
+            p.command({'type':'set_actor_draft_position','entity_id':duplicate,'position':{'x':192,'z':256}})
+            self.assertEqual(p.actor_drafts[original]['position']['x'],128)
+            p.undo();p.undo();self.assertNotIn(duplicate,p.actor_drafts)
+            p.redo();self.assertEqual(p.actor_drafts[duplicate]['name'],'South resident')
+            saved=p.save();q=ProjectService.open(saved)
+            self.assertEqual(q.actor_drafts,p.actor_drafts)
+            before=deepcopy(p._document());history=len(p.undo_stack)
+            for name in ('',None,'x'*121):
+                with self.assertRaises(ValueError):
+                    p.command({'type':'rename_actor_draft','entity_id':original,'name':name})
+            self.assertEqual(p._document(),before);self.assertEqual(len(p.undo_stack),history)
+
     def test_lifecycle_persistence_and_build_invalidation(self):
         with tempfile.TemporaryDirectory() as directory:
             p=ProjectService(Path(directory)); original=synthetic_scene()

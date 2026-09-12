@@ -676,6 +676,24 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') in ('rename_actor_draft', 'duplicate_actor_draft'):
+            identifier=command.get('entity_id')
+            if set(command)!={'type','entity_id','name'} or not isinstance(identifier,str) or identifier not in self.actor_drafts:
+                raise ProjectError('Draft action requires an existing identity and name')
+            before=deepcopy(self.actor_drafts[identifier])
+            after={**before,'name':command['name']}
+            duplicating=command['type']=='duplicate_actor_draft'
+            if duplicating:
+                if len(self.actor_drafts)>=128:
+                    raise ProjectError('Actor draft limit reached')
+                identifier='authored-actor://'+str(uuid.uuid4())
+            self._validate_actor_draft(identifier,after)
+            if duplicating or before!=after:
+                self.actor_drafts[identifier]=after
+                self.undo_stack.append({'target':'actor_drafts','entity_id':identifier,
+                                       'before':None if duplicating else before,'after':deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get('type') == 'create_actor_draft':
             if set(command) != {'type', 'donor_entity_id', 'position', 'name'}:
                 raise ProjectError('Actor draft requires donor, position and name')

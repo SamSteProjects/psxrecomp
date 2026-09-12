@@ -10,7 +10,7 @@ transformTools.innerHTML='<label><input id="transform-snap" type="checkbox"> Sna
 $('viewport-wrap').before(transformTools);
 function snappedTransformCoordinate(value,step){return Math.round(value/(step||1))*(step||1);}
 const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
-let width=1, height=1, projected=[], handles=[], drag=null, draft=null;
+let width=1, height=1, projected=[], handles=[], drag=null, draft=null, pendingEntityFrame=null;
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
 const sceneLayers={actors:true,scenery:true,ground:true};
 let showObservedNodes=false,runtimeNodeHits=[],pickRuntimeNodes=false;
@@ -309,7 +309,7 @@ function setBusy(value) {
   if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
   if($('export-npc-drafts'))$('export-npc-drafts').disabled=value||!canEdit();
-  document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
+  document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#duplicate-npc-draft,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
@@ -341,7 +341,7 @@ async function api(path, payload, {dialog,success}={}) {
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
-    if(path==='/api/selection'){environmentSelection=null;npcDraftSelection=null;}state=data; render();
+    if(path==='/api/selection'){pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;}state=data; render();
     $('connection-dot').classList.add('connected');
     if(dialog) dialog.close();
     if(success) notify(success);
@@ -363,7 +363,7 @@ let environmentSelection=null;
 let npcDraftSelection=null;
 function selectedNpcDraft(){const value=state.actor_drafts?.[npcDraftSelection];return value?.scene_id===state.scene?.id?value:null;}
 function frameNpcDraft(){const value=selectedNpcDraft();if(value)frame({id:npcDraftSelection,components:{Transform:{imported:{position:{...value.position,y:null}}}}});}
-function selectNpcDraft(id){npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
+function selectNpcDraft(id){pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
@@ -392,7 +392,7 @@ async function moveDecoration(identifier,axis,worldValue){
   await api('/api/command',remaining.length||edits.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits,instances:remaining}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
 }
 function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
-function selectEnvironment(identifier){npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function selectEnvironment(identifier){pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
 function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
 function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
@@ -495,7 +495,10 @@ async function refreshScenePreview(){
     if(!Array.isArray(data.position_to_display)||data.position_to_display.length!==16||!data.position_to_display.every(numeric))throw new Error('SDK did not provide a valid scene display conversion.');
     const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
-    renderHierarchy();renderInspector();if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
+    renderHierarchy();renderInspector();
+    const waiting=pendingEntityFrame;pendingEntityFrame=null;
+    if(waiting&&waiting.key===key&&waiting.scene===state.scene?.id&&waiting.project===state.project?.path&&waiting.revision===cameraRevision&&!drag)frame(waiting.entity);
+    else if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
   }catch(error){if(error.name!=='AbortError'&&state.scene_preview_source_key===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();draw();}}
 }
@@ -1192,6 +1195,13 @@ function renderInspector(){
     const id=npcDraftSelection;
     $('selection-summary').textContent=`${npc.name} · Authored NPC draft`;
     $('inspector').innerHTML=`<section class="component"><h3>Authored NPC draft</h3>${property('Identity',id)}${property('Retail donor',npc.donor_entity_id)}<p class="field-note">No retail placement or runtime identity exists for this draft. X/Z handles snap to the required 64-unit grid. Preview uses the retail donor assignment; shared authored assets may affect its appearance. Playable creation remains unverified.</p><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
+    const nameForm=document.createElement('form');nameForm.id='draft-name-form';
+    const nameLabel=document.createElement('label');nameLabel.textContent='Name ';const nameInput=document.createElement('input');nameInput.name='name';nameInput.required=true;nameInput.maxLength=120;nameInput.value=npc.name;nameLabel.append(nameInput);
+    const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
+    nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
+    const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
+    duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
+    for(const control of [nameInput,rename,duplicate])control.disabled=busy||!canEdit();
     const form=$('draft-inspector-form');form.elements.x.value=npc.position.x;form.elements.z.value=npc.position.z;
     form.querySelectorAll('input,button').forEach(control=>control.disabled=busy||!canEdit());
     form.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}});};
@@ -1585,6 +1595,11 @@ function renderDialogueAuthoring(){
 }
 
 function frame(entity){
+  pendingEntityFrame=null;
+  if(entity&&modelsEnabled&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&!scenePreviewCurrent()&&!sceneError){
+    pendingEntityFrame={entity,key:state.scene_preview_source_key,scene:state.scene?.id,project:state.project?.path,revision:cameraRevision};
+    return;
+  }
   const points=entity?[position(entity)]:(sceneLayers.actors?entities().map(position):[]);
   const hasMesh=sceneModelsReady()&&(!entity||sceneRenderer.hasEntity(entity.id));
   if(hasMesh)points.push(...sceneRenderer.bounds(sceneView().positions,entity?.id,hiddenSceneEntities()));
@@ -1707,6 +1722,7 @@ function transformGestureCurrent(gesture){
 window.addEventListener('blur',cancelViewportGesture);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewportGesture();});
 canvas.addEventListener('pointerdown',event=>{
+  pendingEntityFrame=null;
   if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus();canvas.setPointerCapture(event.pointerId);
   const handle=event.button===0 && entity && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
   drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null,snapStep:$('transform-snap').checked?Number($('transform-snap-step').value):1};
@@ -1752,7 +1768,7 @@ canvas.addEventListener('pointerup',async event=>{
 });
 canvas.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
 canvas.addEventListener('lostpointercapture',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
-canvas.addEventListener('wheel',event=>{event.preventDefault();camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(event.deltaY*.001)));cameraRevision++;draw();},{passive:false});
+canvas.addEventListener('wheel',event=>{pendingEntityFrame=null;event.preventDefault();camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(event.deltaY*.001)));cameraRevision++;draw();},{passive:false});
 
 // Unposed assets stay object-local. Only decoder-provided frames assemble objects.
 const modelCanvas=$('model-canvas'), modelContext=modelCanvas.getContext('2d');

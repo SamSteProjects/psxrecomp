@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Frame newly authored entities after preview completion
+
+- Diagnosed duplicate framing before the new preview exists: placeholder height and absent model bounds put the camera inside scenery. Entity framing now waits for the matching project/scene/source preview, then uses its rendered position and bounds.
+- Camera interaction, explicit selection or a newer frame request cancels the pending request; source-key and camera-revision guards prevent stale completion from moving the camera.
+- Actual duplicate workflow in the separate snapshot project passed. Inspected local-output/sdk-20260909/draft-frame-ready-20260912.png: selected NPC visible on terrain at unchanged authored X3008/Z5440, versus the prior inside-scenery framing. Temporary editor/browser stopped; no game or working-project mutation.
+
+
+### 2026-09-12 Draft rename and duplication workflow
+
+- Added Edit-mode rename/duplicate commands, validated names, independent UUIDs, shared retail donor provenance, exact position copies and existing command history/persistence integration. Duplicate respects the 128-draft bound; identical rename adds no undo entry.
+- Inspector exposes name editing and Duplicate draft, selects the new draft and explains that it starts at the same position. Five focused lifecycle/catalog checks passed; actual browser rename/duplicate selected Gate resident copy at X3008 in a separate snapshot project, without saving.
+- Temporary editor and browser stopped. Screenshot: local-output/sdk-20260909/draft-duplicate-20260912.png. Working project and game were untouched; gameplay checks remain deferred.
+
+
 ### 2026-09-12 NPC draft asset usage and navigation
 
 - Model assignment references now include authored NPC drafts across imported scenes. Draft references retain the retail donor independently of authored donor appearance, distinguish draft versus imported assignments, and make no runtime identity claim. Animation usage projection retains that draft identity.
