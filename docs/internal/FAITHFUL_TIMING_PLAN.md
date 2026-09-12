@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Scene blend preview
+
+- Scene WebGL renderer consumes decoded ABE/ABR and per-texel STP evidence. STP is encoded into a spare uploaded alpha value while zero-transparent texels remain discarded; it is not treated as blanket opacity. Invalid masks/modes reject mesh upload.
+- Added opaque/depth-write pass then enabled-fragment blend pass using half-add, add, reverse-subtract and quarter-source-add. Blended instances sort back to front by transformed bounds center, with no depth writes. Picking bypasses color blending while preserving transparent holes. Grid and next-frame state are restored.
+- Actual WebGL pixel checks against foreground204/51/102 and background51/102/153 returned127/76/127,255/153/255,0/51/51,102/115/179 for modes0–3 (within2 units of independent equations). STP0 stayed opaque, STP1 blended, alpha0 exposed/picked the background; all other cases picked foreground, zero GL errors. Private evidence scene-blend-gpu-check-20260912.json.
+- Retail browser kept441/441 Dolk2 entities, selected/framed actor0061, no page errors. Inspected dolk2-scene-blend-preview-20260912.png. Badge labels approximate blends; exact retail ordering-table submission, intra-mesh translucent sorting, GTE/color precision and transparent canvas-background interaction are not established. Standalone model viewer still uses its prior opaque rendering path.
+- No game launched or project saved. Temporary browser/server stopped, full SDK goal active.
+
+
 ### 2026-09-12 — Preserve transparency evidence through preview transport
 
 - Renderer audit found that decoded per-texel STP masks were discarded by model_preview before reaching clients. Added stp_base64 alongside matched RGBA data, requiring one binary byte per pixel and accounting for both payloads in per-model and combined-scene budgets.

@@ -33,15 +33,16 @@ export class SceneRenderer {
       uniform mat4 u_view;uniform mat4 u_model;varying vec3 v_color;varying vec2 v_uv;
       void main(){gl_Position=u_view*u_model*vec4(a_position,1.0);v_color=a_color;v_uv=a_uv;}`);
     fragment=shader(gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 v_color;varying vec2 v_uv;
-      uniform sampler2D u_texture;uniform bool u_textured;uniform bool u_picking;uniform vec3 u_pick;
-      void main(){vec4 color=vec4(v_color,1.0);if(u_textured){vec4 texel=texture2D(u_texture,v_uv);if(texel.a<0.01)discard;color*=texel;}
+      uniform sampler2D u_texture;uniform bool u_textured;uniform bool u_picking;uniform vec3 u_pick;uniform bool u_semi;uniform int u_pass;
+      void main(){vec4 color=vec4(v_color,1.0);bool semi=u_semi;if(u_textured){vec4 texel=texture2D(u_texture,v_uv);if(texel.a<0.01)discard;color.rgb*=texel.rgb;semi=semi&&texel.a<0.75;}
+      if(!u_picking&&((u_pass==0&&semi)||(u_pass==1&&!semi)))discard;
       gl_FragColor=u_picking?vec4(u_pick,1.0):color;}`);
     this.program=gl.createProgram();gl.attachShader(this.program,vertex);gl.attachShader(this.program,fragment);gl.linkProgram(this.program);
     if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
     }catch(error){if(this.program)gl.deleteProgram(this.program);this.program=null;throw error;}
     finally{if(vertex)gl.deleteShader(vertex);if(fragment)gl.deleteShader(fragment);}
     this.locations={};for(const name of ['position','color','uv'])this.locations[name]=gl.getAttribLocation(this.program,'a_'+name);
-    for(const name of ['view','model','texture','textured','picking','pick'])this.locations[name]=gl.getUniformLocation(this.program,'u_'+name);
+    for(const name of ['view','model','texture','textured','picking','pick','semi','pass'])this.locations[name]=gl.getUniformLocation(this.program,'u_'+name);
     this.gridBuffer=gl.createBuffer();this.gridKey=null;this.gridCount=0;this.pickTarget=null;
     this.whiteTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.whiteTexture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
@@ -89,13 +90,22 @@ export class SceneRenderer {
     const batches=[];
     try{
       for(const [material,data] of groups){
-        const batch={buffer:gl.createBuffer(),count:data.length/8,texture:null};batches.push(batch);
+        const blend=preview.materials?.[material]?.blend;
+        if(blend&&(!Number.isInteger(blend.mode)||blend.mode<0||blend.mode>3||typeof blend.enabled!=='boolean'))throw new Error('Invalid material blend metadata.');
+        const batch={buffer:gl.createBuffer(),count:data.length/8,texture:null,semi:blend?.enabled===true,blendMode:blend?.mode??0};batches.push(batch);
         gl.bindBuffer(gl.ARRAY_BUFFER,batch.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);
         const texture=textureData.get(material);
         if(texture){
           if(!Number.isInteger(texture.width)||!Number.isInteger(texture.height)||texture.width<1||texture.height<1||texture.width*texture.height>1048576)throw new Error('Texture dimensions exceed scene preview bounds.');
           const bytes=Uint8Array.from(atob(texture.rgba_base64),value=>value.charCodeAt(0));
           if(bytes.length!==texture.width*texture.height*4)throw new Error('Decoded texture size does not match its dimensions.');
+          if(texture.stp_base64!==undefined){
+            const mask=Uint8Array.from(atob(texture.stp_base64),value=>value.charCodeAt(0));
+            if(mask.length!==texture.width*texture.height||mask.some(bit=>bit>1))throw new Error('Invalid texture transparency mask.');
+            // Keep transparent-zero texels at 0; encode the separate STP bit in
+            // a spare alpha value for the shader, not as blanket opacity.
+            for(let i=0;i<mask.length;i++)if(bytes[i*4+3]&&mask[i])bytes[i*4+3]=128;
+          }else if(batch.semi)throw new Error('Blend-enabled texture requires its decoded transparency mask.');
           batch.texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,batch.texture);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
           gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,texture.width,texture.height,0,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
           gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
@@ -144,12 +154,33 @@ export class SceneRenderer {
     gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     gl.useProgram(this.program);gl.uniformMatrix4fv(l.view,false,this.viewMatrix(view));gl.uniform1i(l.texture,0);gl.uniform1i(l.picking,picking);gl.activeTexture(gl.TEXTURE0);
     gl.disable(gl.DITHER);gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);
-    for(let index=0;index<this.instances.length;index++){
+    const drawInstance=(index,pass)=>{
       const instance=this.instances[index],mesh=this.meshes.get(instance.geometry_key),id=index+1;
-      if(view.hiddenEntities?.has(instance.entity_id))continue;
+      if(view.hiddenEntities?.has(instance.entity_id))return;
       gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions)));gl.uniform3f(l.pick,(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255);
-      for(const batch of mesh.batches){this.bind(batch.buffer);gl.uniform1i(l.textured,!!batch.texture);gl.bindTexture(gl.TEXTURE_2D,batch.texture??this.whiteTexture);gl.drawArrays(gl.TRIANGLES,0,batch.count);}
+      gl.uniform1i(l.pass,pass);
+      for(const batch of mesh.batches){
+        if(pass===1&&!batch.semi)continue;
+        if(pass===1){
+          const mode=batch.blendMode;gl.blendColor(mode===3?.25:.5,mode===3?.25:.5,mode===3?.25:.5,mode===3?.25:.5);
+          gl.blendEquationSeparate(mode===2?gl.FUNC_REVERSE_SUBTRACT:gl.FUNC_ADD,gl.FUNC_ADD);
+          gl.blendFuncSeparate(mode===0||mode===3?gl.CONSTANT_ALPHA:gl.ONE,mode===0?gl.CONSTANT_ALPHA:gl.ONE,gl.ONE,gl.ZERO);
+        }
+        this.bind(batch.buffer);gl.uniform1i(l.semi,batch.semi);gl.uniform1i(l.textured,!!batch.texture);gl.bindTexture(gl.TEXTURE_2D,batch.texture??this.whiteTexture);gl.drawArrays(gl.TRIANGLES,0,batch.count);
+      }
+    };
+    for(let index=0;index<this.instances.length;index++)drawInstance(index,0);
+    if(!picking){
+      // Editor depth approximation: opaque first, then blended instances back
+      // to front. This does not reconstruct retail ordering-table submission.
+      const order=this.instances.map((instance,index)=>{
+        const mesh=this.meshes.get(instance.geometry_key),center=transformPoint(this.matrix(instance,view.positions),{x:(mesh.min[0]+mesh.max[0])/2,y:(mesh.min[1]+mesh.max[1])/2,z:(mesh.min[2]+mesh.max[2])/2});
+        return {index,depth:dot(center,view.basis.forward)};
+      }).sort((a,b)=>b.depth-a.depth||a.index-b.index);
+      gl.enable(gl.BLEND);gl.depthMask(false);for(const item of order)drawInstance(item.index,1);
+      gl.disable(gl.BLEND);gl.depthMask(true);gl.blendEquation(gl.FUNC_ADD);
     }
+    gl.uniform1i(l.semi,false);gl.uniform1i(l.pass,0);
     if(!picking&&view.grid)this.drawGrid(view);
   }
 
