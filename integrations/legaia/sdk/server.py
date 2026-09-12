@@ -248,12 +248,12 @@ class EditorServer(ThreadingHTTPServer):
             atomic_write(output / ".gitignore", b"*\n")
         return result
 
-    def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None, effective_shape: bool = False) -> dict:
+    def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None, effective_shape: bool = False, project_view=None) -> dict:
         from importer.assets import load_model_preview
         from importer.animation import animation_capabilities, load_animation_preview
         from importer.textures import (associate_material, load_asset_texture_catalog,
                                        load_scene_texture_catalog, uses_field_party_textures)
-        project = self.project
+        project = self.project if project_view is None else project_view
         if prepared is not None:
             from copy import deepcopy
             preview = deepcopy(prepared)
@@ -594,14 +594,23 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
                     return
                 if route == "/api/scene-preview":
-                    if body:
+                    if set(body) - {'representation'}:
                         raise ProjectError("Scene preview uses the active imported scene; client geometry and paths are not accepted")
+                    from .scene_preview import preview_project, source_key
                     from importer.scene_animation import load_scene_actor_animation_catalog
                     from importer.environment import load_environment_preview_catalog
                     from .terrain_preview import terrain_preview
-                    self._json(200, self.server.scene_previews.preview(
-                        self.server.project, lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, **kwargs), load_scene_actor_animation_catalog,
-                        load_environment_preview_catalog, terrain_preview))
+                    representation = body.get('representation', 'authored')
+                    original_key = source_key(self.server.project)
+                    view = preview_project(self.server.project, representation)
+                    preview = self.server.scene_previews.preview(
+                        view, lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, project_view=view, **kwargs),
+                        load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
+                    if source_key(self.server.project) != original_key:
+                        raise ProjectError('Project changed during scene comparison preview')
+                    preview['representation'] = representation
+                    preview['project_source_key'] = original_key
+                    self._json(200, preview)
                     return
                 if route == '/api/terrain-point':
                     from .scene_preview import source_key, sample_preview_ground

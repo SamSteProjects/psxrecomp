@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Whole-scene retail/authored preview service
+
+- Added explicit authored/retail scene preview projection and HTTP request support. Retail uses a separate view with overrides, NPC drafts and model/TIM replacements excluded; the working project and undo history are preserved. Model/texture resolution receives that projected view rather than leaking the server's authored state into retail geometry.
+- Responses identify their representation, projected source key and current project source key. Unknown representations/client geometry remain rejected. Seven focused preview tests passed, including authored->retail->authored position restoration and no project/history mutation.
+- Real saved-project HTTP check: authored 433 renderable meshes/one draft; retail 432/zero drafts. Both agree on project source identity and the authored-state digest remained unchanged. Private metadata `local-output/sdk-20260909/scene-comparison-http-20260912.json`. Temporary HTTP server stopped.
+- This is service groundwork: viewport comparison control, marker/picking layer consistency and editing restrictions remain to implement before claiming the complete comparison workflow. No game launched; full goal active.
+
+
 ### 2026-09-12 — Saved streaming NPC browser review workflow
 
 - Rechecked the original Unity-like workflow requirements and exercised the saved streaming NPC project in the actual editor browser. Scene preview loaded 433/442 supported meshes; Export history displayed the matching one-draft export. Its Verify saved files button passed the disc and two snapshot file checks.

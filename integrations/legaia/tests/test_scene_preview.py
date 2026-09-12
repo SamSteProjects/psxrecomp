@@ -21,6 +21,37 @@ def geometry():
 
 
 class ScenePreviewWorkflow(unittest.TestCase):
+    def test_retail_projection_preserves_authored_edits_and_history(self):
+        from sdk.scene_preview import preview_project
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            imported = synthetic_scene()
+            imported['actors'][0]['placement_fields']['animation_id'] = 0
+            project.import_metadata(imported)
+            disc = Path(directory) / 'fixture.bin'
+            disc.write_bytes(b'synthetic')
+            project.disc_path = str(disc)
+            actor = imported['actors'][0]['semantic_id']
+            project.command({'type': 'set_transform', 'entity_id': actor, 'position': {'x': 500}})
+            before = deepcopy(project._document()), deepcopy(project.undo_stack)
+            retail = preview_project(project, 'retail')
+            self.assertIsNot(retail, project)
+            with patch('sdk.scene_preview._disc_context', side_effect=lambda _: nullcontext()), patch(
+                    'sdk.scene_preview.import_scene', return_value=deepcopy(imported)):
+                service = ScenePreviewService()
+                authored = service.preview(project, lambda *_: geometry())
+                baseline = service.preview(retail, lambda *_: geometry())
+                restored = service.preview(project, lambda *_: geometry())
+            self.assertEqual(authored['entities'][0]['position']['x'], 500)
+            self.assertEqual(baseline['entities'][0]['position']['x'], 100)
+            self.assertEqual(restored['entities'], authored['entities'])
+            self.assertEqual((project._document(), project.undo_stack), before)
+            for field in ('actor_drafts', 'model_overrides', 'texture_overrides'):
+                getattr(project, field)['sentinel'] = {}
+                self.assertFalse(getattr(preview_project(project, 'retail'), field))
+                self.assertTrue(getattr(project, field))
+            with self.assertRaises(ProjectError): preview_project(project, 'live')
+
     def test_missing_animation_catalog_keeps_static_geometry_but_not_guessed_poses(self):
         from importer.core import ImportError as RetailImportError
         with tempfile.TemporaryDirectory() as directory:

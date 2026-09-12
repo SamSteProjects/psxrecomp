@@ -1,7 +1,7 @@
 """Derived scene geometry for the editor; never authored or live game state."""
 from __future__ import annotations
 
-from copy import deepcopy
+from copy import deepcopy, copy
 import math
 from pathlib import Path
 import time
@@ -17,6 +17,20 @@ MAX_GEOMETRIES = 128
 MAX_TRIANGLES = 200_000
 MAX_TEXTURE_BYTES = 16 * 1024 * 1024
 
+
+
+def preview_project(project, representation='authored'):
+    """A read-only layer projection; never clear edits on the live project."""
+    if representation not in ('authored', 'retail'):
+        raise ProjectError('Scene representation must be authored or retail')
+    if representation == 'authored':
+        return project
+    view = copy(project)
+    view.overrides = {}
+    view.actor_drafts = {}
+    view.model_overrides = {}
+    view.texture_overrides = {}
+    return view
 
 def source_key(project, *, geometry_only=False) -> str | None:
     document = project.imports.get(project.active_scene)
