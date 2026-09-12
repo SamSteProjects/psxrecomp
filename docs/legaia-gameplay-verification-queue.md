@@ -163,3 +163,16 @@ Package: `Builds/3f58c4c8568e7f56/legaia.sdk.0f096fa3c17d-0.1.0-3f58c4c8568e7f56
 SHA256: `9ee1bf808795d71e5bc26af514b7977962e3a64f07cec6f0cb471c569dd73ebf`.
 
 The probe edits town01 scene clip0012, object0: frame0 X123 and full copied channel values on frames1..3. This is a serialization/authoring probe, not a finished animation design. Six scalar differences fit one41595-byte animation overlay; Save/Open and30 sampled frame/object comparisons passed. The source clip is shared by actors0011,0012,0016,0028,0044,0046. Confirm scene/clip activation, visible motion, other shared users and scene transitions when gameplay verification resumes. Timing is not established by this source edit. No game has been launched for this package.
+
+
+## Readable animation JSON import probe (2026-09-12)
+
+Saved private project: `local-output/sdk-20260909/animation-json-project-20260912`.
+Package: `Builds/13bfaa4efe06bfb6/legaia.sdk.0f096fa3c17d-0.1.0-13bfaa4efe06bfb6.psxmod`.
+SHA256: `69e7af4585f4c2334c2ed2e1374d2a27e156faab49edb8e6c0b0153e2f29db9d`.
+This is a diagnostic probe, not a finished animation: town01 actor0011 contributes
+frame2/object0 translation X202 and rotation Y64 to shared clip0012. Other users
+of the clip may visibly change. Offline JSON round trips, browser import/Undo,
+Save/Open and a two-axis package report passed. Later manual acceptance should
+check animation playback and shared users; source cadence and visual suitability
+remain unverified. No installation or game launch was performed.

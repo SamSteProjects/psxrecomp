@@ -7,6 +7,7 @@ This does not allocate records, infer timing or prove runtime model compatibilit
 from __future__ import annotations
 
 import hashlib
+import json
 
 from .animation import decode_animation_record
 from .core import ImportError
@@ -122,3 +123,51 @@ def replace_animation_record(original: bytes, expected_sha256: str,
     if changed != replacement:
         raise ImportError("Animation replacement changed header, padding, trailer or opaque channel bits")
     return changed, audit
+
+
+def export_animation_channels(original: bytes) -> bytes:
+    """Export complete existing channels with an immutable source binding."""
+    decoded = decode_animation_record(original)
+    if decoded['frame_count'] * decoded['bone_count'] > MAX_CHANNEL_EDITS:
+        raise ImportError('Animation interchange exceeds the channel budget')
+    channels = [{'frame_index': frame['frame_index'], 'object_index': channel['object_index'],
+                 **{field: dict(zip('xyz', channel[field])) for field in ('translation', 'rotation_psx')}}
+                for frame in decoded['frames'] for channel in frame['object_transforms']]
+    return (json.dumps({'schema_version': 'legaia.animation-channels.v1',
+                        'source_record_sha256': hashlib.sha256(original).hexdigest(),
+                        'frame_count': decoded['frame_count'], 'object_count': decoded['bone_count'],
+                        'channels': channels}, sort_keys=True, indent=2) + '\n').encode('utf-8')
+
+
+def import_animation_channels(original: bytes, content: bytes) -> tuple[bytes, list[dict]]:
+    """Import a complete bounded JSON clip; never infer missing channels/axes."""
+    if not isinstance(content, bytes) or not 1 <= len(content) <= 4 * 1024 * 1024:
+        raise ImportError('Animation channel JSON must contain at most 4 MiB')
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate JSON key')
+            result[key] = value
+        return result
+    try:
+        document = json.loads(content.decode('utf-8-sig'), object_pairs_hook=unique)
+    except (UnicodeError, ValueError, RecursionError) as exc:
+        raise ImportError('Animation channels require valid unambiguous JSON') from exc
+    fields = {'schema_version', 'source_record_sha256', 'frame_count', 'object_count', 'channels'}
+    if not isinstance(document, dict) or set(document) != fields or document['schema_version'] != 'legaia.animation-channels.v1':
+        raise ImportError('Unsupported animation channel document')
+    decoded = decode_animation_record(original)
+    for key, expected in (('frame_count', decoded['frame_count']), ('object_count', decoded['bone_count'])):
+        if type(document[key]) is not int or document[key] != expected:
+            raise ImportError('Animation channel document layout differs from source')
+    channels = document['channels']
+    if not isinstance(channels, list) or len(channels) != decoded['frame_count'] * decoded['bone_count']:
+        raise ImportError('Animation channel document must contain every source channel')
+    for channel in channels:
+        if not isinstance(channel, dict) or set(channel) != {'frame_index','object_index','translation','rotation_psx'}:
+            raise ImportError('Animation interchange requires full channel values')
+        for field in ('translation', 'rotation_psx'):
+            if not isinstance(channel[field], dict) or set(channel[field]) != set('xyz'):
+                raise ImportError('Animation interchange requires all three axes')
+    return patch_animation_channels(original, document['source_record_sha256'], channels)

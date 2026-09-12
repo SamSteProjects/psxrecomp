@@ -1,6 +1,7 @@
 """Exact channel writes and immutable imported preview evidence."""
 from copy import deepcopy
 import hashlib
+import json
 import os
 from pathlib import Path
 import struct
@@ -10,7 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.animation import decode_animation_record
-from importer.animation_authoring import patch_animation_channels, replace_animation_record
+from importer.animation_authoring import patch_animation_channels, replace_animation_record, export_animation_channels, import_animation_channels
 from importer.core import ImportError
 from importer.scene_animation import load_scene_actor_animation_catalog
 from test_importer_scene_animation import fixture
@@ -21,6 +22,23 @@ def sha(data):
 
 
 class AnimationAuthoringTests(unittest.TestCase):
+    def test_json_interchange_is_complete_source_bound_and_unambiguous(self):
+        catalog,actor,asset,model=fixture();source=catalog._body[8:]
+        exported=export_animation_channels(source)
+        self.assertEqual(import_animation_channels(source,exported),(source,[]))
+        doc=json.loads(exported);doc['channels'][1]['translation']['x']=321
+        changed,audit=import_animation_channels(source,json.dumps(doc).encode())
+        self.assertEqual(len(audit),1);self.assertEqual(audit[0]['after_value'],321)
+        self.assertEqual(replace_animation_record(source,sha(source),changed),(changed,audit))
+        invalid=[]
+        for key,value in [('source_record_sha256','0'*64),('frame_count',True),('object_count',99),('channels',doc['channels'][:-1])]:
+            candidate=deepcopy(doc);candidate[key]=value;invalid.append(json.dumps(candidate).encode())
+        candidate=deepcopy(doc);candidate['channels'][1]=deepcopy(candidate['channels'][0]);invalid.append(json.dumps(candidate).encode())
+        candidate=deepcopy(doc);del candidate['channels'][0]['translation']['x'];invalid.append(json.dumps(candidate).encode())
+        invalid.append(exported.replace(b'"frame_count":',b'"frame_count": 2, "frame_count":',1))
+        for content in invalid:
+            with self.assertRaises(ImportError):import_animation_channels(source,content)
+
     def test_record_replacement_preserves_opaque_source_and_audits_values(self):
         catalog, actor, asset, model = fixture()
         source = catalog._body[8:]
@@ -167,6 +185,7 @@ class RetailAnimationAuthoringTests(unittest.TestCase):
                 continue
             seen.add(source["record_index"])
             raw = catalog._body[source["byte_offset"]:source["byte_offset"] + source["byte_length"]]
+            self.assertEqual(import_animation_channels(raw, export_animation_channels(raw)), (raw, []))
             first = decode_animation_record(raw)["frames"][0]["object_transforms"][0]
             edit = {"frame_index": 0, "object_index": 0,
                     **{field: dict(zip("xyz", first[field])) for field in ("translation", "rotation_psx")}}

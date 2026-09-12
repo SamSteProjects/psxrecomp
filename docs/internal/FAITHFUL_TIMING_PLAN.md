@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Readable animation JSON interchange and full regression
+
+- Added complete source-bound animation channel JSON export/import with strict schema, duplicate-key/channel rejection, complete XYZ channels, source hash and layout checks, numeric bounds and 4096-channel/4 MiB budgets. Existing raw record routes accept an explicit JSON format; editor format choice supports retail/effective downloads and file import. Effective JSON preserves the retail binding. Imports use ordinary channel commands, conflict checks and history.
+- All eight animation tests passed with the retail disc, including every referenced town01 record JSON no-op round trip. Actual project checks passed effective byte equality, import, Undo/Redo, Save/Open and stale-source rejection without mutation. Browser effective JSON download matched the saved edited values; file import and Undo passed with no page errors. Test browser/server stopped; no game launched.
+- Private evidence/project: local-output/sdk-20260909/animation-json-project-20260912. Package SHA25669e7af4585f4c2334c2ed2e1374d2a27e156faab49edb8e6c0b0153e2f29db9d contains two axis changes and one41595-byte overlay. Independently decoded ZIP stream equals the exact authored bank. Initial readback probe incorrectly assumed a size header; corrected using the evidenced headerless stream and catalog output length, then passed. Deferred probe added to gameplay queue.
+- Full retail-enabled SDK discovery passed349 tests in140.743s; log local-output/sdk-20260909/sdk-json-regression-20260912.log. This supersedes the prior347-test failed run and focused qualification recheck. Node syntax and diff whitespace checks passed. General retargeting/clip layout conversion, runtime playback and broader full SDK work remain open; goal stays active.
+
+
 ### 2026-09-12 — Shared animation record import/package acceptance
 
 - Previous turn added effective-record export. Actual town01 actors0011/0012 record imports verified conflict atomicity including unchanged Undo history, matching contributions, and retail-clear of0011 preserving0012's effective frame2/object0 X201. Save/Open retained the final single contributor.

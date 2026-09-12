@@ -326,10 +326,12 @@ class ProjectService:
         proposed[identifier] = value
         catalog.authored_bank(proposed)
 
-    def animation_record_source(self, identifier: str, layer: str = "retail") -> tuple[bytes, dict]:
+    def animation_record_source(self, identifier: str, layer: str = "retail", format: str = "record") -> tuple[bytes, dict]:
         """Return a freshly verified private source record and its binding."""
         from importer.pipeline import _disc_context
         from importer.scene_animation import load_scene_actor_animation_catalog
+        if format not in ('record', 'json'):
+            raise ProjectError('Choose record or json animation format')
         if layer not in ('retail', 'effective'):
             raise ProjectError('Choose retail or effective animation record')
         if not self.disc_path:
@@ -348,17 +350,26 @@ class ProjectService:
                 bank, _ = catalog.authored_bank(overrides)
                 start = binding['source_record']['byte_offset']
                 source = bank[start:start + len(source)]
+            if format == 'json':
+                import json
+                from importer.animation_authoring import export_animation_channels
+                document = json.loads(export_animation_channels(source))
+                document['source_record_sha256'] = binding['source_record']['record_sha256']
+                source = (json.dumps(document, sort_keys=True, indent=2) + '\n').encode('utf-8')
             return source, deepcopy(binding)
 
-    def import_animation_record(self, identifier: str, content: bytes) -> dict:
+    def import_animation_record(self, identifier: str, content: bytes, format: str = "record") -> dict:
         """Replace this actor's clip contribution using validated source channels."""
-        from importer.animation_authoring import replace_animation_record
+        from importer.animation_authoring import replace_animation_record, import_animation_channels
+        if format not in ('record', 'json'):
+            raise ProjectError('Choose record or json animation format')
         if self.mode != 'edit':
             raise ProjectError('Animation record import requires Edit mode')
         if not isinstance(content, bytes) or not 1 <= len(content) <= 4 * 1024 * 1024:
             raise ProjectError('Animation record import requires at most 4 MiB of bytes')
         source, binding = self.animation_record_source(identifier)
-        _, audit = replace_animation_record(source, binding['source_record']['record_sha256'], content)
+        _, audit = (import_animation_channels(source, content) if format == 'json' else
+                    replace_animation_record(source, binding['source_record']['record_sha256'], content))
         edits = {}
         for row in audit:
             key = (row['frame_index'], row['object_index'])

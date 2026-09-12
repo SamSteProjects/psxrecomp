@@ -181,3 +181,17 @@ applied contributions. **Download retail animation record** keeps the original
 bytes. Both retain the same source binding; effective export can include other
 actors' shared-clip contributions. Importing that file assigns its differences
 from retail to the selected actor, subject to conflict checks.
+
+
+For readable values, choose **Editable channel JSON (.json)** in **Animation
+interchange format** before downloading or importing. The document contains
+`legaia.animation-channels.v1`, the retail `source_record_sha256`, unchanged
+`frame_count`/`object_count`, and every channel's zero-based `frame_index` and
+`object_index`. Each channel requires complete `translation` and `rotation_psx`
+XYZ objects. Translation uses signed 12-bit source units (-2048..2047); rotation
+uses 0..4080 in steps of 16. No unit conversion, resampling or retargeting occurs.
+Effective JSON contains composed values but retains the retail source hash.
+Missing/duplicate channels or keys, incomplete axes, changed layout, stale source
+hashes and out-of-range values reject before a project command is applied.
+The interchange budget is 4096 channels and 4 MiB. Save preserves the resulting
+ordinary channel overrides; reopening does not require the imported JSON file.
