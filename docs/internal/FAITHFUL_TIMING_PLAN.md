@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — SDK regression sweep and continuous top-view orbit
+
+- Previous turn was verified progress (retail/authored movement overlays). This turn removed the first-drag camera pitch snap from Top view. Real browser drags preserve top pitch on horizontal movement and change it by exactly 0.02 radians for four upward pixels, without mutation commands or page errors. Private evidence: local-output/sdk-20260909/camera-top-orbit-check.json.
+- Retail-enabled discovery ran 344 tests in 129.688 seconds with two failures and two errors. Fixed missing shared-animation/world-map synthetic loader mocks, aligned the stale HTTP flag count with the independently tested 1249-reference catalog, and replaced the empty animation clip-choice error with an explicit unsupported-preview explanation.
+- All seven affected tests passed in 13.966 seconds. Full discovery recheck started with output at local-output/sdk-20260909/sdk-suite-recheck-20260912.log; final result still pending at this checkpoint. No game launched; manual verification remains deferred. Full SDK goal remains active.
+
+
 ### 2026-09-12 — Retail/authored movement target viewport layers
 
 - Added explicit source/effective target layers, source-key invalidation and verified-report gating. NPC_RUN effective parked status is recomputed separately from the immutable imported status.

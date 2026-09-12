@@ -704,6 +704,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if route == "/api/animation-preview" or clip_id is not None:
                         from importer.animation import animation_capabilities
                         clips = [clip['id'] for clip in animation_capabilities(asset)['clips']]
+                        if not clips:
+                            raise ProjectError("This model does not support animation preview with a verified clip")
                         if clip_id not in clips:
                             raise ProjectError("Choose a supported animation clip for this model: " + ", ".join(clips))
                     if route == "/api/export/model":

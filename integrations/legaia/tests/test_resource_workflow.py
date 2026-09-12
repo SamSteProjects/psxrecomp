@@ -83,6 +83,8 @@ class ResourceWorkflow(unittest.TestCase):
             with patch("sdk.resources.source_key", return_value="verified-key"), patch("sdk.resources._disc_context"), \
                     patch("sdk.resources.import_scene", return_value=document), \
                     patch("importer.texture_catalog.load_texture_asset_catalog", return_value={"assets": [texture]}), \
+                    patch("importer.animation_catalog.load_global_animation_asset_catalog", return_value={"assets": []}), \
+                    patch("importer.worldmap_menu.load_worldmap_asset_catalog", return_value={"assets": []}), \
                     patch("importer.animation_catalog.load_animation_asset_catalog", return_value={"assets": []}), \
                     patch("importer.script_catalog.load_script_asset_catalog", side_effect=RetailImportError("unsupported MAN layout")), \
                     patch("importer.field_map.load_field_map_catalog", return_value={"assets": []}):
@@ -106,6 +108,8 @@ class ResourceWorkflow(unittest.TestCase):
             with patch("sdk.resources.source_key", return_value="verified-key"), patch("sdk.resources._disc_context"), \
                     patch("sdk.resources.import_scene", return_value=document), \
                     patch("importer.texture_catalog.load_texture_asset_catalog", return_value={"assets": [texture]}), \
+                    patch("importer.animation_catalog.load_global_animation_asset_catalog", return_value={"assets": []}), \
+                    patch("importer.worldmap_menu.load_worldmap_asset_catalog", return_value={"assets": []}), \
                     patch("importer.animation_catalog.load_animation_asset_catalog", return_value={"assets": [animation]}), \
                     patch("importer.script_catalog.load_script_asset_catalog", return_value={"assets": [script, dialogue]}), \
                     patch("importer.field_map.load_field_map_catalog", return_value={"assets": []}):
