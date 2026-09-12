@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Reopen shifted streaming animation banks
+
+- Streaming animation carrier evidence now includes structural chunk ordinal/type. Final-archive verification traverses the physical owner's complete chunk chain and validates type, payload length and hash, so an earlier grown MAN cannot leave validation at a stale byte offset.
+- Three retail streaming composition tests passed. The animation test now grows the MAN after composing its channel edit, successfully verifies the shifted bank, and proves that the old unbound offset and a wrong chunk type reject. Failed checks remove prior success flags.
+- This closes the shifted-bank verification gap needed for streaming NPC project integration. Project draft composition remains next; no game launched, manual gameplay still deferred, full goal active.
+
+
 ### 2026-09-12 — Streaming NPC physical archive growth
 
 - Connected the streaming MAN growth primitive to sector-aligned physical archive replacement and TOC relocation. Equal-span batch requests retain the existing byte-preserving path; growth requests reopen and compare the complete relocated carrier and structural chunk sequence.

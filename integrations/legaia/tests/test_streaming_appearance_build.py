@@ -103,6 +103,25 @@ class StreamingAppearanceBuild(unittest.TestCase):
             for offset, size in ((bank_offset, len(expected)), (man_offset, len(candidate))):
                 restored[offset:offset + size] = source[offset:offset + size]
             self.assertEqual(bytes(restored), source)
+            from copy import deepcopy
+            from sdk.map_build import verify_rebuilt_maps
+            from sdk.project import ProjectError
+            from importer.prot_rebuild import rebuild_streaming_man_entry
+            enlarged, _ = rebuild_streaming_man_entry(output, sha256(output).hexdigest(), request["entry_index"],
+                request["chunk_header_offset"], sha256(candidate).hexdigest(), candidate + bytes(4))
+            moved = deepcopy(carrier)
+            verify_rebuilt_maps(enlarged, [moved])
+            self.assertTrue(moved["reopened_payload_verified"])
+            stale = deepcopy(carrier)
+            stale.pop("streaming_binding")
+            with self.assertRaises(ProjectError):
+                verify_rebuilt_maps(enlarged, [stale])
+            self.assertNotIn("reopened_payload_verified", stale)
+            wrong = deepcopy(carrier)
+            wrong["streaming_binding"]["type_byte"] = 3
+            with self.assertRaises(ProjectError):
+                verify_rebuilt_maps(enlarged, [wrong])
+
 
     def test_appearance_dialogue_transition_and_position_survive_archive_reopen(self):
         with tempfile.TemporaryDirectory() as directory:

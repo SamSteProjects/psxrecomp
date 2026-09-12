@@ -50,6 +50,19 @@ def verify_rebuilt_maps(prot: bytes, audits: list[dict]) -> None:
     for audit in audits:
         entry=archive.entry(audit['map_entry_index'])
         relative=audit.get('relative_offset',0)
+        streaming = audit.get('streaming_binding')
+        if streaming:
+            from importer.streaming_man import streaming_chunks
+            from importer.prot_layout import locate_physical_span
+            span = locate_physical_span(archive, entry.start_lba * 2048)
+            raw = prot[span['byte_offset']:span['byte_offset'] + span['byte_length']]
+            chunks, terminated = streaming_chunks(raw)
+            index = streaming.get('chunk_index')
+            if (not terminated or type(index) is not int or not 0 <= index < len(chunks) or
+                    chunks[index]['type_byte'] != streaming.get('type_byte') or
+                    chunks[index]['size'] != audit['byte_length']):
+                raise ProjectError('Rebuilt streaming asset binding is missing or changed')
+            relative = chunks[index]['header_offset'] + 4
         binding=audit.get('descriptor_binding')
         if binding:
             raw=archive.read_entry(entry)

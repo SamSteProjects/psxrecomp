@@ -15,7 +15,7 @@ def prepare_animation_patches(project,scene_id,bindings,archive):
     entry=archive.entry(source['prot_entry_index'])
     if source.get('source_kind') == 'raw_streaming_anm':
         from importer.prot_layout import locate_physical_span
-        from importer.streaming_man import replace_streaming_payload
+        from importer.streaming_man import replace_streaming_payload, streaming_chunks
         from .project import ProjectError
         start = entry.start_lba * 2048
         span = locate_physical_span(archive, start)
@@ -33,6 +33,10 @@ def prepare_animation_patches(project,scene_id,bindings,archive):
         overlays = [dict(offset=archive.node.extent_lba * 2048 + start + offset,
                          payload=checked[offset:offset + len(changed)], expected_sha256=sha256(original).hexdigest())]
         patches, carriers = archive_overlay_patches(archive, overlays)
+        chunks, _ = streaming_chunks(body)
+        index = next(i for i, chunk in enumerate(chunks) if chunk['header_offset'] == source['chunk_header_offset'])
+        for carrier in carriers:
+            carrier['streaming_binding'] = dict(chunk_index=index, type_byte=5)
         return patches, dict(changes=changes, carriers=carriers, source_kind='raw_streaming_anm')
     body=archive.read_entry(entry)
     offset=source['compressed_stream_offset']
