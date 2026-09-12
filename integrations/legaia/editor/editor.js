@@ -78,10 +78,32 @@ frameSamplesButton.onclick=()=>{
   camera.distance=Math.max(800,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
 };
 
-function hiddenSceneEntities(){return new Set((activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id));}
+let sceneHidden=new Set(),sceneHiddenScope=null;
+function hiddenSceneEntities(){
+  const scope=JSON.stringify([state.project?.path,state.scene?.id]);
+  if(scope!==sceneHiddenScope){sceneHidden.clear();sceneHiddenScope=scope;}
+  return new Set([...sceneHidden,...(activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id)]);
+}
+function visibilitySelection(){return environmentSelection??npcDraftSelection??state.selection?.entity_id;}
+for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hide-model','Hide model instances',true],['show-hidden','Show hidden',null]]){
+  const button=document.createElement('button');button.id=id;button.textContent=label;
+  button.title='Temporary viewport visibility only; does not edit or export the scene';
+  button.onclick=()=>{
+    hiddenSceneEntities();
+    if(sameModel===null)sceneHidden.clear();
+    else{
+      const identifier=visibilitySelection();if(!identifier)return;
+      const item=activeScenePreview()?.entities.find(e=>e.entity_id===identifier);
+      if(sameModel){if(!item?.asset_id)return;for(const e of activeScenePreview().entities)if(e.asset_id===item.asset_id)sceneHidden.add(e.entity_id);}
+      else if(sceneHidden.has(identifier))sceneHidden.delete(identifier);else sceneHidden.add(identifier);
+    }
+    cancelViewportGesture();renderHierarchy();draw();
+  };
+  $('frame-all').before(button);
+}
 for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',ground:'Ground'})){
   const button=document.createElement('button');button.textContent=label;button.className='active';button.setAttribute('aria-pressed','true');button.title=`Show ${label.toLowerCase()} in the scene view`;
-  button.onclick=()=>{sceneLayers[layer]=!sceneLayers[layer];button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));cancelViewportGesture();draw();};
+  button.onclick=()=>{sceneLayers[layer]=!sceneLayers[layer];button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));cancelViewportGesture();renderHierarchy();draw();};
   $('frame-all').before(button);
 }
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
@@ -477,6 +499,12 @@ function updateSceneBadge(){
   $('entity-count').textContent=entities().length+environmentEntities().length+draftCount;
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
   const hidden=hiddenSceneEntities(),visible=ready?sceneRenderer.instances.filter(instance=>!hidden.has(instance.entity_id)).length:0;
+  const visibilityId=visibilitySelection(),visibilityItem=activeScenePreview()?.entities.find(e=>e.entity_id===visibilityId);
+  $('hide-selected').disabled=!visibilityId;
+  $('hide-selected').textContent=sceneHidden.has(visibilityId)?'Show selected':'Hide selected';
+  $('hide-model').disabled=!visibilityItem?.asset_id;
+  $('show-hidden').disabled=sceneHidden.size===0;
+  $('show-hidden').textContent=sceneHidden.size?`Show hidden (${sceneHidden.size})`:'Show hidden';
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
   document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?(ready?'Updating scene · showing previous preview (scenery editing paused)':'Loading supported scene models…'):ready?`${count} / ${activeScenePreview()?.entities.length??0} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
@@ -522,6 +550,13 @@ function renderHierarchy(){
   if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
   for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',item.entity_id===environmentSelection);row.classList.toggle('selected',item.entity_id===environmentSelection);row.textContent=item.name;row.title=item.entity_id;row.onclick=()=>selectEnvironment(item.entity_id);row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
+  const hidden=hiddenSceneEntities();
+  for(const row of list.querySelectorAll('.entity-row')){
+    if(!hidden.has(row.title))continue;
+    row.classList.add('viewport-hidden');
+    const badge=document.createElement('small');badge.textContent='Hidden';badge.style.marginLeft='auto';
+    row.append(badge);row.setAttribute('aria-label',`${row.textContent} in viewport`);
+  }
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
@@ -1622,7 +1657,7 @@ function frame(entity){
     pendingEntityFrame={entity,key:state.scene_preview_source_key,scene:state.scene?.id,project:state.project?.path,revision:cameraRevision};
     return;
   }
-  const points=entity?[position(entity)]:(sceneLayers.actors?entities().map(position):[]);
+  const points=entity?[position(entity)]:(sceneLayers.actors?entities().filter(e=>!hiddenSceneEntities().has(e.id)).map(position):[]);
   const hasMesh=sceneModelsReady()&&(!entity||sceneRenderer.hasEntity(entity.id));
   if(hasMesh)points.push(...sceneRenderer.bounds(sceneView().positions,entity?.id,hiddenSceneEntities()));
   if(!points.length){camera.target={x:0,y:0,z:0};camera.distance=2000;draw();return;}
@@ -1700,7 +1735,7 @@ function draw(){
   drawFieldMap();
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
-    if(!sceneLayers.actors)continue;
+    if(!sceneLayers.actors||hiddenSceneEntities().has(entity.id))continue;
     const active=!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
     if(rendered&&!active)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();

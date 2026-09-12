@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Hidden hierarchy state and visibility scope acceptance
+
+- Previous turn made verified visibility implementation progress. Hidden hierarchy rows now carry an accessible Hidden badge; selected objects can be restored individually. Visibility and layer actions refresh the hierarchy, and project/scene scope remains client-only.
+- Browser checks passed hidden badge creation/removal and Show selected behavior. Project-switch verification passed through actual Project/Open controls from Station to Balden2: all 149 supported Balden2 entities visible and Show hidden disabled. An initial test attempted to call a module-private API function from page scope and failed; the UI-path rerun passed. JavaScript syntax passed.
+- No game launched. Temporary browser/editor closed; authored scene data remains unchanged.
+
+### 2026-09-12 Temporary per-entity and model-instance visibility
+
+- Previous goal turn was verified texture progress. Added Hide selected, Hide model instances and Show hidden controls to the viewport. Visibility is client-only, scoped to project/scene, reset on scope changes and merged with existing layer hiding. Renderer picking/bounds already consume the hidden-ID set; actor markers and frame-all point bounds now respect it too.
+- Browser test on Station selected model-0001 scenery, hid both instances (304 to 302 visible), restored all (304), and confirmed project dirty remained false with no page errors. Screenshot `local-output/sdk-20260909/scene-visibility-controls-20260912.png` inspected. JavaScript syntax passed before browser execution.
+- No game launched or authored geometry changed. Temporary browser/editor closed. Runtime visibility semantics remain outside these explicitly temporary inspection controls.
+
 ### 2026-09-12 Station sky texture opaque TIM flag support
 
 - Previous turn identified a verified visual defect. Station descriptor TIM slots 11/22 are structurally bounded 66,080-byte members with flags `0x80000008`, previously rejected. Pinned TIM parser's lenient structural-asset path retains reserved bits. Added this exact observed opaque flag variant, retaining flags and all block validation rather than broadly accepting reserved values.
