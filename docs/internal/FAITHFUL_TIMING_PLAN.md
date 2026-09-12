@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Graphics lifecycle recovery acceptance
+
+- Actual WEBGL_lose_context test on the retail savepoint viewer: rendered frame3 normally, returned to frame2, lost context, advanced to frame3 while lost, restored context. Canvas screenshot bytes exactly matched the normal frame3 screenshot; no page errors. This validates current-frame recovery rather than only retained source metadata.
+- Fixed restoration path discarding mesh-upload failure reports. Recovery now keeps the renderer unavailable and reports the upload error instead of sending a successful/null status.
+- Injected upload-failure check across an actual context loss/restore produced the expected failure message, lost=true and no success status. Initial same-task restoration attempt timed out; issuing restore in a separate browser task passed. No game/runtime implication from that test scheduling issue.
+- JavaScript syntax passed. Private model-context-restored-20260912.png retained. No game launched or project saved; browser/server stopped. Full SDK goal remains active.
+
+
 ### 2026-09-12 — Unified model and scene rendering
 
 - Replaced the standalone model viewer's separate Canvas2D affine/painter path with the shared WebGL renderer. Model/animation inspection now receives the same vertex-color modulation, depth tests, texture sampling and decoded blend/STP behavior as the scene viewport. Existing local-Y reflection and orbit framing remain explicit.

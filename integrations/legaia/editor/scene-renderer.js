@@ -20,7 +20,7 @@ export class SceneRenderer {
     canvas.addEventListener('webglcontextrestored',()=>{
       // The restored context invalidates every old GPU handle, including cached meshes.
       const scene=this.scene;this.meshes.clear();this.instances=[];
-      try{this.initialize();this.lost=false;if(scene)this.load(scene);this.onStatus(null);}catch(error){this.lost=true;this.onStatus(error.message);}
+      try{this.initialize();this.lost=false;if(scene){const failures=this.load(scene);if(failures.length)throw new Error('Graphics recovery could not upload scene meshes: '+failures.join('; '));}this.onStatus(null);}catch(error){this.lost=true;this.onStatus(error.message);}
     });
   }
 
