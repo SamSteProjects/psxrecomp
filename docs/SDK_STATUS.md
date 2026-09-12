@@ -12,7 +12,7 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 
 ## Validation scope
 
-The current retail-enabled SDK discovery run passed **349 tests in 140.743 seconds**, including the repaired package-description qualification regressions and channel JSON codec checks. Log: `local-output/sdk-20260909/sdk-json-regression-20260912.log`. The readable JSON workflow additionally passed real browser effective download/file import/Undo, service Save/Open and stale-binding rejection, and independent package decompression to the exact authored bank. Runtime and external Blender/Unity animated playback acceptance remain separate.
+The retail-enabled SDK discovery run at47609431 passed **349 tests in 140.743 seconds**, including the repaired package-description qualification regressions and channel JSON codec checks. Log: `local-output/sdk-20260909/sdk-json-regression-20260912.log`. The readable JSON workflow additionally passed real browser effective download/file import/Undo, service Save/Open and stale-binding rejection, and independent package decompression to the exact authored bank. The subsequent optional file-preview feature passed16 focused animation/scene-preview tests plus retail service and browser no-mutation/import/Undo checks. Runtime and external Blender/Unity animated playback acceptance remain separate.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

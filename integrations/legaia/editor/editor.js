@@ -1724,17 +1724,29 @@ async function openAnimationChannels(entity,initialChannel=null){
     }
     const recordFile=document.createElement('input');recordFile.type='file';recordFile.accept='.anm,.bin,.json';recordFile.setAttribute('aria-label','Replacement animation record');
     const importRecord=document.createElement('button');importRecord.type='button';importRecord.textContent='Import animation record';
-    importRecord.onclick=async()=>{
+    const previewRecord=document.createElement('button');previewRecord.type='button';previewRecord.textContent='Preview animation file';
+    const recordPreview=document.createElement('div');recordPreview.setAttribute('aria-label','Animation file preview');
+    recordFile.onchange=recordFormat.onchange=()=>{recordPreview.replaceChildren();};
+    const readRecord=async(previewOnly=false)=>{
       if(!current()||busy||!form.isConnected)return;
       if(channelDirty){error.textContent='Apply or discard the current channel draft before importing a record.';return;}
       const file=recordFile.files?.[0];if(!file||!file.size||file.size>4194304){error.textContent='Choose an animation record of at most 4 MiB.';return;}
       const format=recordFormat.value;let encoded;setBusy(true);
       try{encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('Could not read animation record'));reader.readAsDataURL(file);});}catch(exc){if(current()&&form.isConnected)error.textContent=exc.message;return;}finally{setBusy(false);}
       if(!current()||!form.isConnected)return;
+      if(previewOnly){
+        setBusy(true);recordPreview.replaceChildren();
+        try{const response=await fetch('/api/animation-record-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id,record_base64:encoded,format})}),data=await response.json();if(!current()||!form.isConnected||recordFile.files?.[0]!==file||recordFormat.value!==format)return;if(!response.ok||data.error)throw new Error(data.error||'Animation file preview failed');
+          const summary=document.createElement('p');summary.textContent=`${data.changed_axes} axis changes from retail across ${data.changed_channels} channels. ${data.action==='clear_contribution'?'This would clear this actor’s contribution.':'This would replace this actor’s contribution.'} Shared-clip conflict check passed. Project unchanged; importing revalidates the file.`;recordPreview.append(summary);
+          const rows=document.createElement('pre');rows.textContent=data.changes.slice(0,256).map(row=>`Frame ${row.frame_index}, object ${row.object_index} · ${row.field}: ${row.before_value} → ${row.after_value}`).join('\n');recordPreview.append(rows);
+          if(data.changes.length>256){const more=document.createElement('p');more.textContent=`Showing the first 256 of ${data.changes.length} axis changes.`;recordPreview.append(more);}
+        }catch(exc){if(current()&&form.isConnected)error.textContent=exc.message;}finally{setBusy(false);}return;
+      }
       const channel={frame:channelFrame,object:channelObject};
       if(await api('/api/animation-record-replacement',{entity_id:entity.id,record_base64:encoded,format},{dialog:animationEditDialog,success:'Animation record imported. Save project to persist.'})){const actor=selected();if(actor?.id===entity.id)await openAnimationChannels(actor,channel);}
     };
-    recordTools.prepend(recordNote);recordTools.append(recordFile,importRecord);form.querySelector('.close-animation').before(recordTools);
+    previewRecord.onclick=()=>readRecord(true);importRecord.onclick=()=>readRecord();
+    recordTools.prepend(recordNote);recordTools.append(recordFile,previewRecord,importRecord,recordPreview);form.querySelector('.close-animation').before(recordTools);
     const rangeControls=document.createElement('div');rangeControls.className='animation-copy-range';
     const rangeInputs={};
     for(const [name,label] of [['start','First target frame'],['end','Last target frame']]){

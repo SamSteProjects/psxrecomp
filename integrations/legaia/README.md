@@ -195,3 +195,11 @@ Missing/duplicate channels or keys, incomplete axes, changed layout, stale sourc
 hashes and out-of-range values reject before a project command is applied.
 The interchange budget is 4096 channels and 4 MiB. Save preserves the resulting
 ordinary channel overrides; reopening does not require the imported JSON file.
+
+
+**Preview animation file** checks the selected file without applying a command.
+It reports proposed differences from retail, whether import would replace or
+clear this actor's contribution, and validates composition with other shared-clip
+contributors. The Inspector shows up to 256 axis rows with a total count.
+Preview does not save or change Undo history. Import remains a separate action
+and revalidates the current file and project; a preview is not runtime acceptance.

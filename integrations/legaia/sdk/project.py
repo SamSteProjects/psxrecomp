@@ -358,8 +358,8 @@ class ProjectService:
                 source = (json.dumps(document, sort_keys=True, indent=2) + '\n').encode('utf-8')
             return source, deepcopy(binding)
 
-    def import_animation_record(self, identifier: str, content: bytes, format: str = "record") -> dict:
-        """Replace this actor's clip contribution using validated source channels."""
+    def _prepare_animation_record(self, identifier: str, content: bytes, format: str = "record") -> tuple[dict, dict]:
+        """Resolve a file to a source-bound command without mutating project state."""
         from importer.animation_authoring import replace_animation_record, import_animation_channels
         if format not in ('record', 'json'):
             raise ProjectError('Choose record or json animation format')
@@ -376,16 +376,31 @@ class ProjectService:
             edit = edits.setdefault(key, {'frame_index': key[0], 'object_index': key[1]})
             field, axis = row['field'].split('.')
             edit.setdefault(field, {})[axis] = row['after_value']
-        if edits:
-            self.command({'type': 'set_animation_channels', 'entity_id': identifier,
-                          'value': {'animation_id': binding['semantic_id'],
-                                    'source_record_sha256': binding['source_record']['record_sha256'],
-                                    'edits': list(edits.values())}})
-        else:
-            self.command({'type': 'clear_animation_channels', 'entity_id': identifier})
-        return {'animation_id': binding['semantic_id'], 'changed_axes': len(audit),
-                'changed_channels': len(edits), 'scope': 'actor_channel_contribution',
-                'shared_clip_users': 'Other contributors remain unchanged; conflicts reject the import.'}
+        value = {'animation_id': binding['semantic_id'],
+                 'source_record_sha256': binding['source_record']['record_sha256'],
+                 'edits': list(edits.values())}
+        command = ({'type': 'set_animation_channels', 'entity_id': identifier, 'value': value} if edits else
+                   {'type': 'clear_animation_channels', 'entity_id': identifier})
+        report = {'animation_id': binding['semantic_id'], 'changed_axes': len(audit),
+                  'changed_channels': len(edits), 'scope': 'actor_channel_contribution',
+                  'shared_clip_users': 'Other contributors remain unchanged; conflicts reject the import.'}
+        return command, {**report, 'changes': audit, 'source_record_sha256': value['source_record_sha256'],
+                         'proposed_value': value}
+
+    def preview_animation_record(self, identifier: str, content: bytes, format: str = "record") -> dict:
+        """Check source and composed shared channels; leave history and overrides unchanged."""
+        command, report = self._prepare_animation_record(identifier, content, format)
+        self._validate_animation_override(identifier, report.pop('proposed_value'))
+        report['action'] = 'replace_contribution' if report['changed_axes'] else 'clear_contribution'
+        report['comparison'] = 'retail_source'
+        return report
+
+    def import_animation_record(self, identifier: str, content: bytes, format: str = "record") -> dict:
+        """Replace this actor's clip contribution using validated source channels."""
+        command, report = self._prepare_animation_record(identifier, content, format)
+        self.command(command)
+        return {key: value for key, value in report.items()
+                if key not in ('changes', 'source_record_sha256', 'proposed_value')}
 
     def animation_channel_values(self, identifier: str, frame_index: int, object_index: int) -> dict:
         from importer.scene_animation import load_scene_actor_animation_catalog

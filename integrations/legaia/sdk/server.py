@@ -420,7 +420,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
-            if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement'):
+            if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview'):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path == '/api/model-obj-replacement':
                 request_limit = 24 * 1024 * 1024
@@ -570,7 +570,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                                      'representation': body.get('layer', 'retail'), 'byte_length': len(payload),
                                      'record_base64': base64.b64encode(payload).decode('ascii')})
                     return
-                if route == '/api/animation-record-replacement':
+                if route in ('/api/animation-record-replacement', '/api/animation-record-preview'):
                     if not {'entity_id', 'record_base64'} <= set(body) or set(body) - {'entity_id', 'record_base64', 'format'} or not isinstance(body['entity_id'], str) or not body['entity_id'].strip():
                         raise ProjectError('Animation upload requires actor identity and record_base64 and optional format')
                     encoded = body['record_base64']
@@ -580,6 +580,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                         payload = base64.b64decode(encoded, validate=True)
                     except ValueError as exc:
                         raise ProjectError('Animation record requires valid base64') from exc
+                    if route == '/api/animation-record-preview':
+                        self._json(200, self.server.project.preview_animation_record(body['entity_id'], payload, body.get('format', 'record')))
+                        return
                     self.server.project.import_animation_record(body['entity_id'], payload, body.get('format', 'record'))
                     self._json(200, self.server.state())
                     return

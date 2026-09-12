@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Animation file preview without authored mutation
+
+- Previous goal turn made verified progress:47609431 connected readable JSON interchange and passed349 SDK tests. Current source/worktree confirmed clean before extending the editor workflow.
+- Added optional Preview animation file for raw and JSON records. A shared preparation path resolves file differences to the ordinary import command; preview checks source binding and composed shared clips without executing the command. Reports explicitly compare against retail, distinguish contribution replacement/clear, and expose bounded Inspector rows. Import revalidates independently. Changed file/format selection and detached dialogs discard stale preview responses.
+- Actual town01 service checks verified three proposed axis differences, retail-clear preview, and conflicting actor0012 contribution rejection with unchanged overrides and Undo/Redo stacks. Browser preview displayed the expected values and unchanged project state, followed by successful Import/Undo with no page errors. Private evidence: local-output/sdk-20260909/animation-json-project-20260912/preview-check.json and browser-preview-check.json. Browser and test server stopped; no game launched.
+- Sixteen retail-enabled animation/scene-preview tests passed in1.241s; Node syntax and diff checks passed. Prior349-test full run predates this feature and is documented accordingly. Offline work and full SDK goal remain active; manual gameplay remains deferred.
+
+
 ### 2026-09-12 — Readable animation JSON interchange and full regression
 
 - Added complete source-bound animation channel JSON export/import with strict schema, duplicate-key/channel rejection, complete XYZ channels, source hash and layout checks, numeric bounds and 4096-channel/4 MiB budgets. Existing raw record routes accept an explicit JSON format; editor format choice supports retail/effective downloads and file import. Effective JSON preserves the retail binding. Imports use ordinary channel commands, conflict checks and history.
