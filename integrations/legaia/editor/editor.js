@@ -1703,6 +1703,26 @@ async function openAnimationChannels(entity,initialChannel=null){
       if(!await api('/api/command',command,{dialog:animationEditDialog,success:'Animation override updated. Save project to persist.'})){error.textContent=$('status').textContent;return;}
       const actor=selected();if(actor?.id===entity.id&&state.project.mode==='edit')await openAnimationChannels(actor,channel);
     };
+    const rangeControls=document.createElement('div');rangeControls.className='animation-copy-range';
+    const rangeInputs={};
+    for(const [name,label] of [['start','First target frame'],['end','Last target frame']]){
+      const row=document.createElement('label');row.textContent=label;const input=document.createElement('input');input.type='number';input.min='0';input.max=String(binding.frame_count-1);input.step='1';input.value=String(channelFrame);input.required=true;input.setAttribute('aria-label',label);row.append(input);rangeControls.append(row);rangeInputs[name]=input;
+    }
+    const rangeNote=document.createElement('p');rangeNote.className='field-note';rangeNote.textContent='Repeat all six copied values on the same object for every frame in the inclusive range. Existing contributions for those channels are replaced. Other objects and frames remain unchanged. No interpolation is performed.';
+    const applyRange=document.createElement('button');applyRange.type='button';applyRange.textContent='Apply copied channel to frame range';
+    applyRange.onclick=async()=>{
+      if(!current()||busy)return;
+      if(channelDirty){error.textContent='Apply or discard the current draft before applying a frame range.';return;}
+      if(!copiedChannel){error.textContent='Copy a verified channel first.';return;}
+      if(copiedChannel.object!==channelObject){error.textContent='Frame range copy requires the same rigid object.';return;}
+      if(!rangeInputs.start.reportValidity()||!rangeInputs.end.reportValidity())return;
+      const start=Number(rangeInputs.start.value),end=Number(rangeInputs.end.value);
+      if(start>end){error.textContent='First target frame must not exceed last target frame.';return;}
+      const next=edits.filter(e=>e.object_index!==channelObject||e.frame_index<start||e.frame_index>end);
+      for(let frame=start;frame<=end;frame++)next.push({frame_index:frame,object_index:channelObject,...structuredClone(copiedChannel.values)});
+      await apply({type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:next}});
+    };
+    rangeControls.append(rangeNote,applyRange);form.querySelector('.close-animation').before(rangeControls);
     clearChannel.onclick=()=>{
       if(channelDirty){error.textContent='Apply or discard unapplied channel changes before clearing the selected contribution.';return;}
       const next=edits.filter(edit=>edit.frame_index!==channelFrame||edit.object_index!==channelObject);

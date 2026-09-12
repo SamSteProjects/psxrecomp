@@ -155,3 +155,10 @@ draft**. Paste fills translation and rotation axes; **Apply channel override**
 creates the project edit. Discard removes unapplied input. Clipboard contents
 last only for the current dialog and do not retarget between objects. Shared
 clip users are affected when the override is applied and built.
+
+
+To repeat a copied animation channel, enter **First target frame** and **Last
+target frame**, then **Apply copied channel to frame range**. Both endpoints are
+included. This replaces the selected object's six values in those frames as one
+Undo step, retaining other frames and objects. It repeats a pose without
+interpolation; shared-clip effects still apply.

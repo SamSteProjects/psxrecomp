@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Repeated animation channel frame ranges
+
+- Previous turn made verified regression/status progress. Animation clipboard now supports an inclusive first/last target frame range for the same rigid object. One existing set_animation_channels command replaces those six-axis contributions and retains edits outside the range; no interpolation or retargeting is inferred. Current drafts and reversed/out-of-bounds ranges reject before submission; source/conflict validation remains server-owned.
+- Actual town01 actor0011 browser established frame0 X123, copied effective values, rejected range3..1, and applied range1..3 as one command with the original frame0 edit retained. Undo removed the range, second Undo removed setup; fresh authoring-options read confirmed no override remained. Zero page errors. Private evidence: local-output/sdk-20260909/animation-range-copy-check.json.
+- Five synthetic animation tests passed with one retail opt-in skipped; JS syntax/whitespace passed. No game launched, test server stopped, and no project saved. Gameplay deferred; full SDK objective active.
+
+
 ### 2026-09-12 — Consolidated SDK status and package qualification regression
 
 - Previous turn made verified clipboard progress. Added docs/SDK_STATUS.md as a consolidated review entry point covering offline capabilities, evidence limits, deferred gameplay and major unfinished features. Full objective remains active and offline work is not exhausted.
