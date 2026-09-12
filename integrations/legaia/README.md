@@ -174,3 +174,10 @@ this actor's contribution; a retail-identical record clears it. Other shared
 contributors remain, and conflicting values reject. Undo restores the prior
 contribution; Save persists a successful import. This is a raw game record,
 not a general Blender/Unity animation import format.
+
+
+**Download effective animation record** exports the composed shared clip with
+applied contributions. **Download retail animation record** keeps the original
+bytes. Both retain the same source binding; effective export can include other
+actors' shared-clip contributions. Importing that file assigns its differences
+from retail to the selected actor, subject to conflict checks.

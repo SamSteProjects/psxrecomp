@@ -563,11 +563,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
                     return
                 if route == '/api/animation-record-source':
-                    if set(body) != {'entity_id'} or not isinstance(body['entity_id'], str) or not body['entity_id'].strip():
-                        raise ProjectError('Animation source requires an actor identity only')
-                    payload, binding = self.server.project.animation_record_source(body['entity_id'])
+                    if set(body) - {'entity_id', 'layer'} or not isinstance(body.get('entity_id'), str) or not body['entity_id'].strip():
+                        raise ProjectError('Animation source requires actor identity and optional layer only')
+                    payload, binding = self.server.project.animation_record_source(body['entity_id'], body.get('layer', 'retail'))
                     self._json(200, {'entity_id': body['entity_id'], 'binding': binding,
-                                     'representation': 'retail', 'byte_length': len(payload),
+                                     'representation': body.get('layer', 'retail'), 'byte_length': len(payload),
                                      'record_base64': base64.b64encode(payload).decode('ascii')})
                     return
                 if route == '/api/animation-record-replacement':

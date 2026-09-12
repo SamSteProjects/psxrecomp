@@ -326,10 +326,12 @@ class ProjectService:
         proposed[identifier] = value
         catalog.authored_bank(proposed)
 
-    def animation_record_source(self, identifier: str) -> tuple[bytes, dict]:
+    def animation_record_source(self, identifier: str, layer: str = "retail") -> tuple[bytes, dict]:
         """Return a freshly verified private source record and its binding."""
         from importer.pipeline import _disc_context
         from importer.scene_animation import load_scene_actor_animation_catalog
+        if layer not in ('retail', 'effective'):
+            raise ProjectError('Choose retail or effective animation record')
         if not self.disc_path:
             raise ProjectError('Animation source requires the project user-owned disc')
         with _disc_context(self.disc_path):
@@ -340,6 +342,12 @@ class ProjectService:
             catalog = load_scene_actor_animation_catalog(self.disc_path, document['scene']['name'])
             asset = next(a for a in document['assets']['models'] if a['semantic_id'] == binding['asset_semantic_id'])
             source, _ = catalog.authored_animation_record(self._actor(identifier), asset, [], binding['source_record']['record_sha256'])
+            if layer == 'effective':
+                overrides = {a['semantic_id']: self.overrides[a['semantic_id']]['AnimationChannels']
+                             for a in document['actors'] if 'AnimationChannels' in self.overrides.get(a['semantic_id'], {})}
+                bank, _ = catalog.authored_bank(overrides)
+                start = binding['source_record']['byte_offset']
+                source = bank[start:start + len(source)]
             return source, deepcopy(binding)
 
     def import_animation_record(self, identifier: str, content: bytes) -> dict:

@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Effective animation record download
+
+- Previous turn completed retail record file workflow. Added explicit retail/effective source layers in the service, HTTP route and download controls. Effective export composes validated shared clip contributions, retaining the original binding/source identity; retail remains unchanged. Unknown layers reject.
+- Actual saved actor0011 service verified distinct retail/effective bytes equal source.anm/edited.anm respectively, identical original bindings and rejected live layer. Browser effective download matched edited.anm byte-for-byte, then replacement file import and Undo passed with no page errors. Private evidence: local-output/sdk-20260909/animation-record-project-20260912/browser-effective-check.json.
+- JS syntax/whitespace passed. Server stopped; no project Save or game launch. Full goal active, gameplay deferred.
+
+
 ### 2026-09-12 — Animation record editor file workflow
 
 - Previous turn connected verified HTTP transport. Animation authoring dialog now downloads the retail record and imports selected ANM/BIN files through ordinary project history. Download checks inspected source hash/size; import rejects unapplied drafts, bounds files to4MiB, and ignores file-read completion after dialog replacement. Record import replaces the selected actor contribution and preserves shared conflict validation.

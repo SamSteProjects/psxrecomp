@@ -1711,11 +1711,14 @@ async function openAnimationChannels(entity,initialChannel=null){
     };
     const recordTools=document.createElement('section');recordTools.className='animation-record-tools';
     const recordNote=document.createElement('p');recordNote.className='field-note';recordNote.textContent='Animation record interchange preserves this clip’s frame/object counts and opaque bytes. Import replaces this actor’s channel contributions; other contributors remain and conflicting values reject. A retail-identical record clears this actor’s contribution. Save the project after importing.';
-    const downloadRecord=document.createElement('button');downloadRecord.type='button';downloadRecord.textContent='Download retail animation record';
+    for(const recordLayer of ['retail','effective']){
+    const downloadRecord=document.createElement('button');downloadRecord.type='button';downloadRecord.textContent=`Download ${recordLayer} animation record`;
     downloadRecord.onclick=async()=>{
       if(!current()||busy||!form.isConnected)return;setBusy(true);
-      try{const response=await fetch('/api/animation-record-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id})}),data=await response.json();if(!current()||!form.isConnected)return;if(!response.ok||data.error)throw new Error(data.error||'Animation source download failed');if(data.binding?.source_record?.record_sha256!==binding.source_record.record_sha256||typeof data.record_base64!=='string'||data.record_base64.length>5592408)throw new Error('Animation source identity or size changed; reopen the editor.');const bytes=Uint8Array.from(atob(data.record_base64),c=>c.charCodeAt(0));if(!bytes.length||bytes.length!==data.byte_length||bytes.length>4194304)throw new Error('Animation source length mismatch');const url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'})),link=document.createElement('a');link.href=url;link.download='retail-animation-'+binding.semantic_id.split('/').pop()+'.anm';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(exc){if(current()&&form.isConnected)error.textContent=exc.message;}finally{setBusy(false);}
+      try{const response=await fetch('/api/animation-record-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entity.id,layer:recordLayer})}),data=await response.json();if(!current()||!form.isConnected)return;if(!response.ok||data.error)throw new Error(data.error||'Animation source download failed');if(data.binding?.source_record?.record_sha256!==binding.source_record.record_sha256||typeof data.record_base64!=='string'||data.record_base64.length>5592408)throw new Error('Animation source identity or size changed; reopen the editor.');const bytes=Uint8Array.from(atob(data.record_base64),c=>c.charCodeAt(0));if(!bytes.length||bytes.length!==data.byte_length||bytes.length>4194304)throw new Error('Animation source length mismatch');const url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'})),link=document.createElement('a');link.href=url;link.download=recordLayer+'-animation-'+binding.semantic_id.split('/').pop()+'.anm';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(exc){if(current()&&form.isConnected)error.textContent=exc.message;}finally{setBusy(false);}
     };
+    recordTools.append(downloadRecord);
+    }
     const recordFile=document.createElement('input');recordFile.type='file';recordFile.accept='.anm,.bin';recordFile.setAttribute('aria-label','Replacement animation record');
     const importRecord=document.createElement('button');importRecord.type='button';importRecord.textContent='Import animation record';
     importRecord.onclick=async()=>{
@@ -1728,7 +1731,7 @@ async function openAnimationChannels(entity,initialChannel=null){
       const channel={frame:channelFrame,object:channelObject};
       if(await api('/api/animation-record-replacement',{entity_id:entity.id,record_base64:encoded},{dialog:animationEditDialog,success:'Animation record imported. Save project to persist.'})){const actor=selected();if(actor?.id===entity.id)await openAnimationChannels(actor,channel);}
     };
-    recordTools.append(recordNote,downloadRecord,recordFile,importRecord);form.querySelector('.close-animation').before(recordTools);
+    recordTools.prepend(recordNote);recordTools.append(recordFile,importRecord);form.querySelector('.close-animation').before(recordTools);
     const rangeControls=document.createElement('div');rangeControls.className='animation-copy-range';
     const rangeInputs={};
     for(const [name,label] of [['start','First target frame'],['end','Last target frame']]){
