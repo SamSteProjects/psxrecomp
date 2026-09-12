@@ -38,6 +38,13 @@ class AnimationAuthoringTests(unittest.TestCase):
         self.assertEqual(decode_animation_record(bank[8:])["frames"][1]["object_transforms"][0]["translation"], [100, 200, 0])
         self.assertEqual(preview["frames"][1]["vertices"], [[101, 202, 3]])
         self.assertEqual(len(audit), 2)
+        self.assertEqual({row['field']:row['axis_owners'] for row in audit},
+                         {'translation.x':[actor['semantic_id']], 'translation.y':[other['semantic_id']]})
+        agreed=deepcopy(overrides);agreed[other['semantic_id']]['edits'][0]['translation']['x']=100
+        agreed_bank,agreed_audit=catalog.authored_bank(agreed)
+        self.assertEqual(agreed_bank,bank)
+        self.assertEqual(next(row for row in agreed_audit if row['field']=='translation.x')['axis_owners'],sorted(overrides))
+
         with patch("importer.scene_animation.load_model_preview", side_effect=AssertionError("channel inspection must not load geometry")):
             values = catalog.channel_values(other, asset, 1, 0, overrides)
         self.assertEqual(values["retail"]["translation"], {"x": 10, "y": 0, "z": 0})

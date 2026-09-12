@@ -219,7 +219,7 @@ class SceneActorAnimationCatalog:
             if override["animation_id"] != f"animation://{self.scene}/scene-anm/{index:04d}":
                 raise ImportError("Authored clip differs from the imported actor binding")
             self.authored_animation_record(actor, asset, override["edits"], override["source_record_sha256"])
-            group = grouped.setdefault(index, {"axes": {}, "owners": []})
+            group = grouped.setdefault(index, {"axes": {}, "owners": [], "axis_owners": {}})
             group["owners"].append(identifier)
             for edit in override["edits"]:
                 for field in ("translation", "rotation_psx"):
@@ -231,6 +231,7 @@ class SceneActorAnimationCatalog:
                                 f"{field}.{axis}: {identifier} requests {value}; another actor requests {group['axes'][key]}. "
                                 "Clear or align that channel contribution before applying.")
                         group["axes"][key] = value
+                        group["axis_owners"].setdefault(key, []).append(identifier)
         result, audit = bytearray(self._body), []
         for index, group in sorted(grouped.items()):
             edits = {}
@@ -242,8 +243,11 @@ class SceneActorAnimationCatalog:
             changed, changes = patch_animation_channels(original, hashlib.sha256(original).hexdigest(), list(edits.values()))
             result[start:end] = changed
             for change in changes:
+                field, axis = change["field"].split(".")
+                contributors = group["axis_owners"][(change["frame_index"], change["object_index"], field, axis)]
                 audit.append({**change, "animation_id": f"animation://{self.scene}/scene-anm/{index:04d}",
-                              "animation_record_offset": start, "authored_owners": group["owners"],
+                              "animation_record_offset": start, "authored_owners": list(group["owners"]),
+                              "axis_owners": list(contributors),
                               "scope": "shared-scene-animation-record"})
         allowed = {offset for row in audit for offset in range(
             row["animation_record_offset"] + row["channel_byte_offset"],

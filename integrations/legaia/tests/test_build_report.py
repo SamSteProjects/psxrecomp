@@ -76,6 +76,9 @@ class BuildReportTests(unittest.TestCase):
         self.assertTrue(all(c['field']=='translation.x' for c in report['changes']))
         self.assertEqual(report['changes'][0]['authored_owners'],['actor-a','actor-b'])
         report['changes'][0]['authored_owners'].clear();self.assertEqual(edits[0]['authored_owners'],['actor-a','actor-b'])
+        edits[0]['axis_owners']=['actor-b']
+        exact=build_report({'edits':edits,'overlays':[],'validation':{}})['changes'][0]
+        self.assertEqual(exact['authored_owners'],['actor-b']);self.assertEqual(exact['contributor_scope'],'axis')
 
     def test_transition_report_retains_navigable_resource_and_owner(self):
         owner = "scene://fixture/scripts/man-p2/0000"

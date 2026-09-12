@@ -77,7 +77,8 @@ def build_report(audit) -> dict:
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         **({"frame_index": change["frame_index"], "object_index": change["object_index"],
-                            "authored_owners": list(change.get("authored_owners", []))}
+                            "authored_owners": list(change.get("axis_owners", change.get("authored_owners", []))),
+                            "contributor_scope": "axis" if "axis_owners" in change else "clip"}
                            if change.get("scope") == "shared-scene-animation-record" else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),

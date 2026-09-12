@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Per-value shared animation contributors
+
+- Previous turn completed report navigation. Shared animation composition now records deterministic per-frame/object/axis contributors in addition to clip-wide owners. Reports use exact axis owners when present and explicitly retain clip scope for older audits; editor links label value versus clip contributors accordingly.
+- Eleven focused tests passed, one retail opt-in skipped: independent X/Y owners, matching duplicate values, conflict rejection, report compatibility and detached metadata. Actual town01 actors0011/0012 matching frame1/object0 X123 contributions produced exactly the same animation bank as the original single-owner override, while only that value acquired both contributors. All other changed values retained0011 alone. Private evidence: local-output/sdk-20260909/animation-axis-contributors-check.json.
+- JS syntax and whitespace passed. No gameplay, build replacement or saved-project mutation. Full SDK goal remains active, gameplay deferred.
+
+
 ### 2026-09-12 — Animation build report source navigation
 
 - Previous turn verified saved range packaging. Build reports now retain detached authored clip contributors alongside frame/object indices; each contributor has an explicit source link. Navigation selects the imported scene/actor and opens the exact channel only if its current authored clip identity still agrees. Contributors describe shared clip ownership, not per-axis ownership.
