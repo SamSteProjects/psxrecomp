@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (remaining kingdom browser coverage):** Previous turn progressed inf55a5a55 with the synchronized audio runtime build. Opened the existing isolated map02 and map03 review projects in actual Edge editor sessions. map02 rendered283/283 and map03 rendered263/263 with zero page errors. Frame all, perspective rendering and Top(X/Z) orthographic rendering completed; all four private screenshots were visually inspected and show assembled terrain/ocean/scenery. Per-scene browser-check.json and browser-perspective.png/browser-top.png retained under their map0N-coverage-20260912 folders. Grid overlays remain visible over ocean at the shared plane; source elevation/blending/visibility approximations remain. Updated feature matrix to remove the no-longer-pending browser coverage item, without claiming retail camera, water animation, encounters or gameplay parity. Both browser and server sessions stopped. No game launched or controlled; broader SDK goal remains active.
+
+
 - **2026-09-12 (audio snapshot synchronization MSVC build):** Previous turn progressed in698087e5. Verified existing isolated project/build roots and preserved97f0f026... executable as audio-stats-lock-20260912/LegaiaStability-before.exe. Reconfigured to refresh embedded source identity. Initial PowerShell build failed before CL execution on duplicate Path/PATH; Git Bash retry completed MSVC Release psx-runtime parallel2 exit0. New executable SHA2563ce6d5461628e8962bb9dd6459ddc5c2a442747500500d4b361eee644f2bcd6d contains nightly-282-g698087e5. Private verification.json records binary/source/log hashes and no runtime execution. Existing compiler warnings remain in the log; no gameplay or audible-acceptance claim. No game launched or controlled. Broader SDK goal and deferred gameplay queue remain active.
 
 
