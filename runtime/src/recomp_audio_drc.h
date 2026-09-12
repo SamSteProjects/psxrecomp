@@ -19,9 +19,9 @@
  * Threading: rab_push() is called by the producer (emulation thread), rab_pull()
  * by the consumer (host audio callback). One producer, one consumer. The shared
  * state touched across threads (in_count / out_pos / ring) is accessed in a
- * single-producer/single-consumer pattern; integate with whatever memory ordering
- * the host runner already uses for its existing queue (a mutex around push/pull is
- * fine and is what most of these runners already have).
+ * single-producer/single-consumer pattern, but these fields are not atomic. The
+ * host must serialize push/pull and statistics snapshots with the same lock.
+ * Read-only diagnostics are not exempt: the callback updates stats during pull.
  */
 #ifndef RECOMP_AUDIO_DRC_H
 #define RECOMP_AUDIO_DRC_H

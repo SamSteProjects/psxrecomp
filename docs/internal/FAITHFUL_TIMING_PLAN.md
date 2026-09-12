@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (runtime audio statistics synchronization):** Previous turn progressed in1087d787. Release-ledger review identified two unlocked rab_get_stats copies while the host callback updates non-atomic bridge statistics. Wrapped pump diagnostics and psx_audio_out_stats snapshots with the existing SDL audio lock/unlock, matching producer synchronization. Clarified bridge threading contract to include read-only statistics. The executable output-health test compiles both production snapshot blocks and requires a held lock during copy, balanced release, and no locks on unavailable paths; passed twice as coverage expanded. No sample scheduling, DRC controller or overflow policy changed. This does not explain or fix startup overflow. Full runtime build is still pending for this source change; latest previously accepted runtime hash remains unchanged. No game launched or controlled; full SDK goal remains active.
+
+
 - **2026-09-12 (SDK landmark inspector and global source scope):** Previous turn progressed in0f25fd76. Corrected derived global asset cards to retain their declared scope instead of labeling them as the active scene. Global asset details now say Source scope. Landmark details expose destination ID/label, menu X/Y, discovery index and unknown runtime state outside the collapsed raw provenance section. Added direct Inspect destination source navigation with project/disc context guard; retained full landmark dialog access. Actual Edge map01 workflow passed:20-record category, global-worldmap-menu scope, Rim Elm96/25 inspection, and direct map01 catalog lookup, zero page errors. JS syntax passed. Editor browser/server stopped; no game launched or controlled. No source-menu authoring or runtime discovery/reachability acceptance claimed; broader SDK goal remains incomplete.
 
 

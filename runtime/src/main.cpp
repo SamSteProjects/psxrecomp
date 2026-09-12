@@ -3176,7 +3176,9 @@ static void sdl_audio_pump(bool discard_output = false) {
          * while the callback keeps pulling); those dry pulls are the mute,
          * not gaps — resync past them instead of reporting them. */
         rab_stats st;
+        psx_sdl_audio_lock(sdl_audio_device);
         rab_get_stats(&s_drc, &st);
+        psx_sdl_audio_unlock(sdl_audio_device);
         static uint64_t prev_underruns = 0;
         extern int g_audio_unmute_resync;
         if (g_audio_unmute_resync) {
@@ -3324,7 +3326,10 @@ extern "C" int psx_audio_out_stats(double *fill_ms, double *target_ms,
         return sdl_audio_device != 0;
     }
     rab_stats st;
+    /* The callback updates these non-atomic fields during rab_pull. */
+    psx_sdl_audio_lock(sdl_audio_device);
     rab_get_stats(&s_drc, &st);
+    psx_sdl_audio_unlock(sdl_audio_device);
     *fill_ms = st.last_fill_ms;
     *target_ms = s_drc.cfg.target_ms;
     *underruns = st.underrun_events;

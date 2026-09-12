@@ -1,5 +1,9 @@
 # Legaia stability and release parity
 
+## Audio statistics synchronization (2026-09-12)
+
+The pump and debug output reporter now copy bridge statistics under the existing SDL audio lock. `rab_pull` updates these non-atomic fields on the host callback thread; previously both readers copied them without synchronization. The focused executable regression compiles both production snapshot blocks, verifies locked reads and balanced release, and preserves unavailable-device behavior. It passed. This is diagnostic consistency only; startup overflow remains unresolved. A full runtime build and gameplay acceptance of this source change remain pending. The previously tested executable identity below is not superseded by this source-only result.
+
 ## Current patch inclusion summary (2026-09-10)
 
 Both supplied SDK prompts remain in scope. The following fixes are implemented
