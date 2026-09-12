@@ -139,6 +139,23 @@ class ScriptAssetCatalogTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class RetailScriptAssetCatalogTests(unittest.TestCase):
+    def test_streaming_catalog_and_partition_two_share_raw_coordinates(self):
+        from importer.trigger_scripts import inspect_partition_two_script
+        disc = os.environ["LEGAIA_DISC_BIN"]
+        result = load_script_asset_catalog(disc, "dolk2")
+        self.assertEqual(result["actor_count"], 72)
+        self.assertEqual(result["source_record"]["man_source"]["compression"], "none")
+        owner = "scene://dolk2/scripts/man-p2/0000"
+        script = next(a for a in result["assets"] if a["asset_kind"] == "script" and a["owner_semantic_id"] == owner)
+        report = inspect_partition_two_script(disc, "dolk2", 0)
+        self.assertEqual(script["source_record"]["byte_coordinate_space"], "raw_man_payload")
+        self.assertEqual(report["source_record"]["byte_coordinate_space"], "raw_man_payload")
+        self.assertEqual(script["source_record"]["sha256"], report["record"]["sha256"])
+        self.assertEqual(script["source_record"]["byte_offset"], report["record"]["byte_offset"])
+        self.assertTrue(any(t["target_scene_name"] == "map01" for t in script["transitions"]))
+        self.assertNotIn("compressed_stream_offset", report["source_record"])
+        self.assertEqual(forbidden_fields(result), set())
+
     def test_actual_town01_counts_ids_partial_coverage_and_payload_free_records(self):
         from importer.pipeline import _disc_context
         with _disc_context(os.environ["LEGAIA_DISC_BIN"]):
@@ -148,9 +165,12 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             # Acquire coverage reveals actor 40's conflicting target boundary;
             # its entire ambiguous graph must be withdrawn.
             # Flag-word branches expose five bounded P2[4] dialogue segments.
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 522))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (613, 60))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1183, 1))
+            # Refreshed against the committed decoder on 2026-09-12: 550
+            # segments and 1249 flag references; streaming reader changes
+            # produce an exactly equal Town01 catalog.
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 550))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (641, 60))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1249, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(result["partition_two_script_count"], 39)
             p2 = assets["script://town01/scripts/man-p2/0037"]

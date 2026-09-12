@@ -213,6 +213,33 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming script catalog and P2 editor access
+
+- Connected streaming script/dialogue resources and partition-2 inspection to the typed raw MAN source. Preserved descriptor behavior and source bounds; raw record coordinates are explicitly `raw_man_payload` and carry no invented LZS offsets.
+- Retail Dolk2 catalog/P2 source offsets and record hashes agree, including P2[0]'s named map01 transition. Metadata remains payload-free. Town01 catalog equals the committed catalog exactly; refreshed stale aggregate test expectations (550 dialogue segments, 1249 flag references).
+- Focused retail-enabled script/dialogue/transition suite: 37 tests passed. Additional Dolk2 and Town01 HTTP edit/undo/redo/clear and client-source rejection tests both passed. Prior streaming dialogue disc and transition composition evidence remain in the deferred queue/private audits.
+- No game was launched or controlled. Streaming NPC growth and model/TIM replacement composition remain implementation work; runtime scene, dialogue and arrival behavior remains unverified. The full goal remains active.
+
+
+### 2026-09-12 Streaming partition-2 dialogue and transition export composition
+
+- Previous turn verified streaming dialogue browser/disc behavior. Transition contexts already inherit the typed dialogue source; connected validated transition-entry edits to streaming preparation using boundary-preserving rebasing onto the composed MAN.
+- Eligible scene changes in the inspected streaming scenes occur in P2 scripts rather than the actor rows checked. Streaming preparation now admits exact same-scene P2 owner identifiers for Dialogue/Transitions only; Transform remains actor-only, and source context still verifies membership, aliases and instruction paths.
+- Real dolk2 P2[0] transition PC0x1A to map01 changed entry_x_encoded54 to55 and reopened successfully through project preparation. Metadata audit `local-output/sdk-20260909/streaming-transition-composition-20260912.json`; no destination name or instruction layout changed. Runtime entry behavior remains unverified.
+- No game or disc writer launched this turn. Browser/P2 authoring and end-to-end transition disc coverage remain outstanding; broader streaming components remain unfinished.
+
+### 2026-09-12 Streaming dialogue browser and disc acceptance
+
+- Previous turn implemented verified raw dialogue preparation. On a separate private project copy, browser Apply changed actor0003's eligible 15-byte run to SDK plus padding; Undo restored the source and dirty=false. Screenshot `local-output/sdk-20260909/streaming-dialogue-applied-20260912.png` inspected. Temporary browser/editor closed.
+- Exported separate probe disc under `streaming-dialogue-export-20260912`, SHA256 `cb8f9914ee04069625b066d7bf043171e5003bc7b62789fdc58065c595ec564f`, 466,714,416 bytes. Independent hash, directly reopened MAN text spans and all snapshot hashes passed. Added exact artifact and branch-execution caveat to deferred gameplay queue.
+- Sixteen focused dialogue/draft tests ran: fifteen passed, one skipped. No gameplay launched; no claim that the edited branch has executed. Broader streaming components and NPC additions remain unfinished.
+
+### 2026-09-12 Equal-span dialogue authoring for raw streaming MAN
+
+- Previous turn checkpointed verified placement/MAP exports. Dialogue context now distinguishes verified raw source bytes from LZS input, preserves existing span/instruction-boundary checks and reports raw packaging limits accurately. Streaming project preparation composes validated actor dialogue runs with positions and MAP edits; unsupported components still reject.
+- Real dolk2 actor0003 run `script://dolk2/actors/man-p1/0003/dialogue/0017/run/0018` (15-byte capacity) accepted `SDK` with padding and passed archive reopen verification. Metadata audit `local-output/sdk-20260909/streaming-dialogue-composition-20260912.json`. Actor0001 has no eligible run and remains non-editable under unchanged safety checks.
+- Fifteen dialogue/archive tests ran before adding the raw-source parity regression: fourteen passed, one skipped. Added raw-versus-LZS patch parity and source/compression rejection coverage. Browser dialogue authoring review and final dialogue disc remain outstanding. No game or disc writer ran.
+
 ### 2026-09-12 Mixed descriptor/streaming relocation and MAP composition
 
 - Previous turn produced a verified streaming disc artifact. Added mixed-format archive regression: compressed owner growth relocates a later streaming owner, whose equal-span MAN patch still reopens correctly; reversing request order gives identical bytes/audit and tail sectors remain unchanged. Ten focused archive/draft regressions pass.

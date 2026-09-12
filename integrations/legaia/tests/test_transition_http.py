@@ -18,11 +18,17 @@ from sdk.server import EditorServer
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class TransitionHTTP(unittest.TestCase):
     def test_transition_apply_history_clear_and_client_source_rejection(self):
+        self._exercise_scene("town01")
+
+    def test_streaming_transition_apply_history_clear_and_client_source_rejection(self):
+        self._exercise_scene("dolk2")
+
+    def _exercise_scene(self, scene):
         private = Path(__file__).resolve().parents[3] / "local-output/sdk-20260909"
         with tempfile.TemporaryDirectory(prefix="p2-http-", dir=private) as directory:
             project = ProjectService(Path(directory))
             project.disc_path = os.environ["LEGAIA_DISC_BIN"]
-            project.import_metadata(import_scene(project.disc_path, "town01"))
+            project.import_metadata(import_scene(project.disc_path, scene))
             project.save()
             server = EditorServer(("127.0.0.1", 0), project)
             thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -33,17 +39,18 @@ class TransitionHTTP(unittest.TestCase):
                 with urlopen(request, timeout=30) as response:
                     return json.load(response)
             try:
-                owner = "scene://town01/scripts/man-p2/0000"
+                owner = f"scene://{scene}/scripts/man-p2/0000"
                 report = post("/api/partition-two-script", {"entity_id": owner})
                 entry = report["transition_authoring"]["transitions"][0]
                 command = dict(entity_id=owner, transition_id=entry["semantic_id"])
-                post("/api/command", dict(command, type="set_transition_arrival", arrival={"x":128, "facing_sector":2}))
-                arrival = post("/api/partition-two-script", {"entity_id":owner})["transition_authoring"]["transitions"][0]
-                self.assertEqual(arrival["effective_values"]["entry_x_encoded"],128)
-                self.assertEqual(arrival["effective_interpretation"]["x"],128)
-                self.assertEqual(arrival["effective_interpretation"]["facing_angle_12bit"],1024)
-                post("/api/undo", {})
-                self.assertFalse(project.overrides)
+                if scene == "town01":
+                    post("/api/command", dict(command, type="set_transition_arrival", arrival={"x":128, "facing_sector":2}))
+                    arrival = post("/api/partition-two-script", {"entity_id":owner})["transition_authoring"]["transitions"][0]
+                    self.assertEqual(arrival["effective_values"]["entry_x_encoded"],128)
+                    self.assertEqual(arrival["effective_interpretation"]["x"],128)
+                    self.assertEqual(arrival["effective_interpretation"]["facing_angle_12bit"],1024)
+                    post("/api/undo", {})
+                    self.assertFalse(project.overrides)
                 post("/api/command", dict(command, type="set_transition_entry", values={"entry_x_encoded": 99}))
                 edited = post("/api/partition-two-script", {"entity_id": owner})["transition_authoring"]["transitions"][0]
                 self.assertEqual(edited["effective_values"]["entry_x_encoded"], 99)

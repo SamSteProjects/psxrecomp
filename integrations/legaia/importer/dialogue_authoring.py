@@ -83,17 +83,23 @@ class DialogueAuthoringContext:
     Build composition merges the audited spans with independently verified header
     edits before final serialization; this module never writes files or disc bytes.
     """
-    def __init__(self, scene: str, man: bytes, stream: bytes, source: dict):
+    def __init__(self, scene: str, man: bytes, stream: bytes, source: dict, *, compression='lzs'):
         if not isinstance(man, bytes) or not 0 < len(man) <= MAX_MAN_BYTES:
             raise ImportError("dialogue MAN source exceeds bounded immutable byte size")
         parsed = parse_man(man, scene)
         if len(parsed.actors) > MAX_ACTORS:
             raise ImportError("dialogue MAN actor count exceeds bound")
-        decoded, consumed = decompress_lzs(stream, len(man))
+        if compression == 'none':
+            decoded, consumed = stream, len(stream)
+        elif compression == 'lzs':
+            decoded, consumed = decompress_lzs(stream, len(man))
+        else:
+            raise ImportError('Unsupported dialogue source compression')
         if decoded != man:
             raise ImportError("dialogue MAN encoded and decoded sources disagree")
         self.scene, self._man, self._stream = scene, man, bytes(stream[:consumed])
         self._source = deepcopy(source)
+        self._compression = compression
         self._actors = {stable_actor_id(scene, 1, a.record_index): a for a in parsed.actors}
         total = sum(parsed.partition_counts)
         region = 0x2B + 3 * total
@@ -117,7 +123,9 @@ class DialogueAuthoringContext:
     def provenance(self) -> dict:
         return dict(deepcopy(self._source), scene=self.scene, reference_commit=REFERENCE_COMMIT,
                     decoded_man_sha256=_sha(self._man), encoded_man_sha256=_sha(self._stream),
-                    decoded_man_size=len(self._man), limitations=list(LIMITATIONS))
+                    decoded_man_size=len(self._man), limitations=[
+                        'Streaming packaging preserves the original raw payload size.' if self._compression == 'none' and 'compressed capacity' in text else text
+                        for text in LIMITATIONS])
 
     def _inspect(self, actor_id: str, man: bytes) -> dict:
         actor = self._actors[actor_id]
@@ -276,7 +284,16 @@ def load_dialogue_authoring_context(disc: Any, scene: str) -> DialogueAuthoringC
     """Read exactly one bounded MAN stream through the verified disc context."""
     with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
-        bundle, raw = find_scene_bundle(archive, start, end)
+        try:
+            bundle, raw = find_scene_bundle(archive, start, end)
+        except ImportError:
+            from .man_source import read_man_source
+            carrier = read_man_source(archive, start, end, scene)
+            if carrier.kind != 'raw_streaming_man':
+                raise ImportError('Dialogue source kind changed during streaming resolution')
+            source = dict(disc_sha256=digest, iso_file='PROT.DAT', prot_entry_index=carrier.entry_index,
+                          man=carrier.provenance())
+            return DialogueAuthoringContext(scene, carrier.payload, carrier.payload, source, compression='none')
         descriptors = [d for d in bundle.descriptors if d.type_byte == 3 and d.size > 0]
         if len(descriptors) != 1:
             raise ImportError("dialogue authoring requires exactly one scene MAN descriptor")

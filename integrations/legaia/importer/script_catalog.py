@@ -118,7 +118,7 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
                       "stops": [{"pc": entry, "reason": str(exc)}]}
         locator = dict(deepcopy(source), record_index=index, partition=partition,
                        byte_offset=offset, byte_length=len(record) if offset is not None else None,
-                       byte_coordinate_space="decoded_lzs_descriptor", sha256=_sha(record) if offset is not None else None,
+                       byte_coordinate_space=source.get("byte_coordinate_space", "decoded_lzs_descriptor"), sha256=_sha(record) if offset is not None else None,
                        record_alias_count=aliases[offset] if offset is not None else None)
         flags = [ref for row in report["instructions"] if (ref := _flag_reference(row)) is not None]
         destinations = [ref for row in report["instructions"] if (ref := _transition(row, record, known_scenes)) is not None]
@@ -178,7 +178,17 @@ def load_script_asset_catalog(disc: Any, scene: str) -> dict:
     """Read one verified scene MAN, then inspect bounded P1/P2 records once."""
     with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
-        bundle, raw = find_scene_bundle(archive, start, end)
+        try:
+            bundle, raw = find_scene_bundle(archive, start, end)
+        except ImportError:
+            from .man_source import read_man_source
+            carrier = read_man_source(archive, start, end, scene)
+            if carrier.kind != "raw_streaming_man":
+                raise ImportError("Script catalog source changed during streaming resolution")
+            source = {"disc": {"sha256": digest, "serial": "SCUS-94254"}, "iso_file": "PROT.DAT",
+                      "prot_entry_index": carrier.entry_index, "man_source": carrier.provenance(),
+                      "byte_coordinate_space": "raw_man_payload"}
+            return _catalog(carrier.payload, scene, source, set(mapping.values()))
         descriptors = [d for d in bundle.descriptors if d.type_byte == 3 and d.size > 0]
         if len(descriptors) != 1:
             raise ImportError("script catalog requires exactly one scene MAN descriptor")

@@ -31,11 +31,17 @@ environment or animation-source exception.
 Browser review found missing textures on Station models 0001/0012 at VRAM
 (640, 0). Their typed TIM pack members use the observed opaque flag 0x80000008;
 supporting that variant restores the texture page. The formerly gray surfaces
-now display sky textures on large dome meshes. Selective visibility is still
-needed for convenient scene inspection; geometry scale/positions remain intact.
+now display sky textures on large dome meshes. Temporary per-object and per-model visibility controls now support scene
+inspection; geometry scale/positions remain intact.
 Balden2's room geometry is visible. Runtime parity remains unverified for both.
 
-Streaming serialization/export remains unfinished. All runtime visibility,
+Equal-span streaming export now supports existing actor positions, bounded
+plain dialogue runs, encoded transition entries (including partition-2 owners),
+and scene MAP scenery/collision edits. Exported placement and dialogue disc
+probes are preserved in the gameplay queue. The resource catalog and P2 script
+inspector share verified raw-MAN coordinates, without fictitious compressed
+source fields. NPC additions, model/texture replacements and payload growth in
+streaming containers still require implementation. All runtime visibility,
 script-driven relocation, palette state and gameplay behavior remain deferred
 to the [gameplay verification queue](legaia-gameplay-verification-queue.md).
 

@@ -36,6 +36,16 @@ def fixture(script=b"\x1fHello\0", alias=False):
 
 
 class DialogueAuthoringTests(unittest.TestCase):
+    def test_raw_source_keeps_equal_span_validation_without_fake_compression(self):
+        compressed, man = fixture()
+        raw = DialogueAuthoringContext('fixture', man, man, {'compression':'none'}, compression='none')
+        run = raw.options(ACTOR)['runs'][0]['semantic_id']
+        self.assertEqual(raw.patch({run:'World'}), compressed.patch({run:'World'}))
+        with self.assertRaisesRegex(ImportError, 'sources disagree'):
+            DialogueAuthoringContext('fixture', man, man + b'x', {}, compression='none')
+        with self.assertRaisesRegex(ImportError, 'compression'):
+            DialogueAuthoringContext('fixture', man, man, {}, compression='unknown')
+
     def test_grown_table_dialogue_rebases_exact_span(self):
         context,source=fixture()
         run=context.options(ACTOR)['runs'][0]['semantic_id']

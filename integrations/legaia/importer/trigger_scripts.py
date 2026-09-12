@@ -114,29 +114,46 @@ def inspect_partition_two_script(disc: Any, scene: str, index: int) -> dict:
     """Inspect a source-bounded P2 record without requiring a trigger alias."""
     with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
-        bundle, raw = find_scene_bundle(archive, start, end)
-        descriptors = [d for d in bundle.descriptors if d.type_byte == 3 and d.size > 0]
-        if len(descriptors) != 1 or descriptors[0].size > MAX_MAN_BYTES:
-            raise ImportError("trigger inspection requires one bounded MAN descriptor")
-        descriptor = descriptors[0]
-        if sum(d.size > 0 and d.data_offset == descriptor.data_offset for d in bundle.descriptors) != 1:
-            raise ImportError("trigger MAN compressed descriptor is aliased")
-        offset = bundle.table_offset + descriptor.data_offset
-        ceiling = min([bundle.table_offset + d.data_offset for d in bundle.descriptors
-                       if d.size > 0 and d.data_offset > descriptor.data_offset] + [len(raw)])
-        if not 0 <= offset < ceiling <= len(raw):
-            raise ImportError("trigger MAN compressed span exceeds its container")
-        man, consumed = decompress_lzs(raw[offset:ceiling], descriptor.size)
-        record, inspection = _inspect(man, scene, index)
-        identity = f"script://{scene}/scripts/man-p2/{index:04d}"
-        source = {"disc": {"sha256": digest, "serial": "SCUS-94254"}, "iso_file": "PROT.DAT",
-                  "prot_entry_index": bundle.entry_index, "prot_entry_name": scene,
-                  "record_kind": "man_partition_2_script", "partition": 2, "record_index": index,
-                  "byte_coordinate_space": "decoded_man_payload", "byte_offset": record["byte_offset"],
-                  "byte_length": record["byte_length"], "sha256": record["sha256"],
-                  "decoded_man_sha256": sha256(man).hexdigest(), "containing_decoded_size": len(man),
-                  "compressed_stream_offset": offset, "compressed_stream_coordinate_space": "prot_entry",
-                  "compressed_bytes_consumed": consumed, "compressed_stream_sha256": sha256(raw[offset:offset + consumed]).hexdigest()}
+        try:
+            bundle, raw = find_scene_bundle(archive, start, end)
+        except ImportError:
+            from .man_source import read_man_source
+            carrier = read_man_source(archive, start, end, scene)
+            if carrier.kind != "raw_streaming_man":
+                raise ImportError("Partition-2 source changed during streaming resolution")
+            man = carrier.payload
+            record, inspection = _inspect(man, scene, index)
+            identity = f"script://{scene}/scripts/man-p2/{index:04d}"
+            source = {"disc": {"sha256": digest, "serial": "SCUS-94254"}, "iso_file": "PROT.DAT",
+                      "prot_entry_index": carrier.entry_index, "prot_entry_name": scene,
+                      "record_kind": "man_partition_2_script", "partition": 2, "record_index": index,
+                      "byte_coordinate_space": "raw_man_payload", "byte_offset": record["byte_offset"],
+                      "byte_length": record["byte_length"], "sha256": record["sha256"],
+                      "decoded_man_sha256": sha256(man).hexdigest(), "containing_decoded_size": len(man),
+                      "man_source": carrier.provenance()}
+        else:
+            descriptors = [d for d in bundle.descriptors if d.type_byte == 3 and d.size > 0]
+            if len(descriptors) != 1 or descriptors[0].size > MAX_MAN_BYTES:
+                raise ImportError("trigger inspection requires one bounded MAN descriptor")
+            descriptor = descriptors[0]
+            if sum(d.size > 0 and d.data_offset == descriptor.data_offset for d in bundle.descriptors) != 1:
+                raise ImportError("trigger MAN compressed descriptor is aliased")
+            offset = bundle.table_offset + descriptor.data_offset
+            ceiling = min([bundle.table_offset + d.data_offset for d in bundle.descriptors
+                           if d.size > 0 and d.data_offset > descriptor.data_offset] + [len(raw)])
+            if not 0 <= offset < ceiling <= len(raw):
+                raise ImportError("trigger MAN compressed span exceeds its container")
+            man, consumed = decompress_lzs(raw[offset:ceiling], descriptor.size)
+            record, inspection = _inspect(man, scene, index)
+            identity = f"script://{scene}/scripts/man-p2/{index:04d}"
+            source = {"disc": {"sha256": digest, "serial": "SCUS-94254"}, "iso_file": "PROT.DAT",
+                      "prot_entry_index": bundle.entry_index, "prot_entry_name": scene,
+                      "record_kind": "man_partition_2_script", "partition": 2, "record_index": index,
+                      "byte_coordinate_space": "decoded_man_payload", "byte_offset": record["byte_offset"],
+                      "byte_length": record["byte_length"], "sha256": record["sha256"],
+                      "decoded_man_sha256": sha256(man).hexdigest(), "containing_decoded_size": len(man),
+                      "compressed_stream_offset": offset, "compressed_stream_coordinate_space": "prot_entry",
+                      "compressed_bytes_consumed": consumed, "compressed_stream_sha256": sha256(raw[offset:offset + consumed]).hexdigest()}
         return {"schema_version": "legaia.partition-two-script-inspection.v1", "read_only": True,
                 "script_id": identity, "partition": 2, "record_index": index,
                 "reference_commit": REFERENCE_COMMIT, "source_record": source,

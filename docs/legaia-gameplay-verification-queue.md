@@ -29,6 +29,14 @@ history workflow. CLI callers may omit `--draft` for project-wide export. A
 project with no authored changes is rejected; ordinary Build remains the retail
 baseline workflow. Export completion still requires later gameplay acceptance.
 
+## Streaming dialogue export probe
+
+- Artifact: `local-output/sdk-20260909/streaming-dialogue-export-20260912/draft.bin`.
+- SHA256: `cb8f9914ee04069625b066d7bf043171e5003bc7b62789fdc58065c595ec564f`; 466,714,416 bytes.
+- Adjacent report and Inputs snapshot preserve one dolk2 actor0003 text override: run `script://dolk2/actors/man-p1/0003/dialogue/0017/run/0018`, replacement `SDK` plus twelve spaces in its original 15-byte capacity.
+- Browser Apply/Undo restored original text and clean state. Exported disc hash, directly reopened MAN text bytes and all snapshot hashes passed independently.
+- Deferred manual check: reach the corresponding actor/script branch in dolk2 and verify the changed message, subsequent messages and interaction progression. Branch execution and story prerequisites have not been established by static decoding. No gameplay run has occurred.
+
 ## Streaming placement export probe
 
 - Artifact: `local-output/sdk-20260909/streaming-placement-export-20260912/draft.bin`.
