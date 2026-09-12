@@ -437,6 +437,16 @@ def _instruction(data: bytes, pc: int) -> dict:
                               0x52: (2, "MENU_ACTIVATION_WAIT"), 0x53: (1, "DIALOG_WAIT"),
                               0x54: (1, "DIALOG_ADVANCE_WAIT")}[sub]
             args = {"sub_op": sub}
+            need(size)
+            if sub == 0x51:
+                x, z, depth, move = data[operand + 1:operand + 5]
+                args.update(x_encoded=x, z_encoded=z, depth_encoded=depth, move_id=move,
+                            target_position={"x": (x & 0x7F) * 128 + 64 + (64 if x & 0x80 else 0),
+                                             "y": None,
+                                             "z": (z & 0x7F) * 128 + 64 + (64 if z & 0x80 else 0)},
+                            coordinate_system="retail_field_world_units",
+                            parked_target=(x & 0x7F, z & 0x7F) == (0x7F, 0x7F),
+                            runtime_effect="not_evaluated")
         else:
             raise ImportError(f"unsupported MENU_CTRL sub-op 0x{sub:02x}")
     elif 0x50 <= op <= 0x77:

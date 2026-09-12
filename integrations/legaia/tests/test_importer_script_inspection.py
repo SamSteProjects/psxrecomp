@@ -21,6 +21,22 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_npc_run_decodes_targets_without_claiming_current_position(self):
+        for x,z,expected,parked in ((0x18,0x93,(3136,2560),False),(0x7f,0xff,(16320,16384),True)):
+            ordinary = bytes([0x4c,0x51,x,z,2,0x26])
+            for data in (ordinary, b'\xcc\x17'+ordinary[1:]):
+                report=inspect_record(data,0)
+                row=report['instructions'][0]
+                self.assertEqual(row['length'],len(data))
+                args=row['operands']
+                self.assertEqual(args['target_position'],{'x':expected[0],'y':None,'z':expected[1]})
+                self.assertEqual(args['parked_target'],parked)
+                self.assertEqual((args['depth_encoded'],args['move_id']),(2,0x26))
+                self.assertEqual(args['runtime_effect'],'not_evaluated')
+                for length in range(1,len(data)):
+                    self.assertEqual(inspect_record(data[:length],0)['instructions'],[])
+
+
     def test_retail_dispatch_halt_does_not_scan_trailing_text(self):
         report = inspect_record(b"\x2a\x1fOpaque\0", 0)
         self.assertEqual(report["status"], "partial")
