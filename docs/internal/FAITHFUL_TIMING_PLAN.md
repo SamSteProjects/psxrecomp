@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Navigate packaged model scalars to vector editing
+
+- Previous goal turn made verified progress at9e7edce5 with inspected-vertex camera navigation. Current worktree confirmed clean before connecting emitted model audits to the vector Inspector.
+- Expanded model audit rows now provide per-object/kind/index Inspector links, deduplicated across changed axes within the bounded displayed scalar set. Existing source/authored report hash checks remain in the navigation path. Vector editor accepts a validated initial selection and rejects unavailable identities rather than guessing. Normal/vertex kinds remain distinct.
+- Actual browser using the saved retail normal-only report opened model0009 object1, kind normals, vector0, X1 in the Inspector. No page errors. Evidence: local-output/sdk-20260909/model-normal-json-project-20260912/vector-report-navigation-check.json.
+- Node syntax and diff checks passed; browser/test server stopped. No gameplay launched. The report-to-edit workflow is connected; broader model authoring and full SDK goal remain active.
+
+
 ### 2026-09-12 — Locate inspected vertices in the model viewer
 
 - Previous goal turn made verified progress atdb8975df with per-vector retail reset. Current worktree confirmed clean before adding camera navigation from vector inspection.

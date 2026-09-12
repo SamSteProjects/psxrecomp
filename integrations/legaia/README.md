@@ -283,3 +283,10 @@ selects the corresponding rigid object and centers the camera on the inspected
 vertex XYZ. This is camera navigation, not a mesh edit or a vertex marker. Apply
 or Discard a pending draft first. Normals are directions and cannot use this
 position locator.
+
+
+Expanded model build audits also offer **Inspect object … · vertex/normal …**
+links. They check the model hashes, open its authored view, and select that exact
+vector in the Inspector. Multiple audited axes for one vector share a link.
+The bounded report display offers links for its displayed changes; older reports
+without scalar coordinates retain model-level navigation.
