@@ -107,3 +107,17 @@ script target** and click a marker or its label. Dragging still controls the
 camera, but actor transform handles are inactive in this picking mode. If targets
 overlap, choose the instruction explicitly from the selector. Clear removes the
 overlay and restores ordinary viewport selection.
+
+
+## Author script movement targets
+
+Open **Inspect script and dialogue** and find **Script movement targets** below
+the source report. Supported instructions expose retail, authored and effective
+X/Z. Enter exact 64-unit coordinates from 64 through 16384, then **Apply movement**.
+Use **Discard movement draft** for unapplied input, **Clear movement override**
+to restore the retail target, and the script toolbar for Undo/Redo and Save.
+
+These edits currently persist in the project but are explicitly rejected by
+playable Build until packaging is integrated. The instruction table and viewport
+movement overlay still display retail source targets. Y, executed branches and
+runtime actor identity remain unresolved.

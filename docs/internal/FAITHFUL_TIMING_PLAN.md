@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Script movement editor controls
+
+- Script inspector now exposes verified movement targets with retail/authored/effective X/Z, Apply, Clear and Discard. Exact64-unit form validation, source-key/owner guards and existing script draft management preserve command ownership. Pending drafts disable project history/save controls until applied or discarded. Unsupported target records retain reasons and unresolved override clearing.
+- Browser workflow on the isolated Dolk2 project: rejected X65, discarded to9344, applied9408, Undo9344/Redo9408, saved and reloaded, cleared to retail9280 and undid Clear. Z10816 and retail X9280 remain distinct. No browser errors. A separate ProjectService disk reopen confirmed saved X9408. The private project intentionally retains this review edit.
+- Screenshot visually inspected: `local-output/sdk-20260909/movement-editor-20260912/authored.png`; browser harness/results in the same folder. JavaScript syntax and diff checks passed. Temporary browser/editor server stopped; no game launched.
+- The UI explicitly states that the instruction table/target overlay still show retail source coordinates and playable Build integration is pending. Composed packaging, effective target overlays and gameplay acceptance remain required; full SDK work remains incomplete.
+
+
 ### 2026-09-12 — Movement authoring service integration
 
 - Actor, partition-2 and trigger script responses now include movement_authoring options using server-verified owner identities. Unsupported records retain their read-only script inspection and clearable unresolved override IDs. Actor movement reporting is independent of dialogue-authoring failures.

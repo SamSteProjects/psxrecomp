@@ -1783,7 +1783,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     const instructionNavigation=appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report);
 
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
-    scriptReport=report;renderDialogueAuthoring();renderTransitionAuthoring();
+    scriptReport=report;renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();updateScriptActions();
     scriptDialog.scrollTop=scroll;
     if(Number.isInteger(focusInstruction)){
       $('script-report').querySelector('.script-instructions').open=true;
@@ -1792,6 +1792,42 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
   }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);if(input){if(focusRun.includes('/transition/'))input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
 }
 
+function renderMovementAuthoring(){
+  const authoring=scriptReport?.movement_authoring;if(!authoring)return;
+  const section=document.createElement('section');section.className='movement-authoring';
+  section.innerHTML='<h3>Script movement targets</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project; playable Build integration is pending. The instruction table and target overlay still show retail source coordinates.</p>';
+  $('script-report').append(section);
+  const owner=scriptEntity.id,key=resourceStateKey(),current=()=>!busy&&canEditDialogue()&&key===resourceStateKey()&&scriptEntity?.id===owner;
+  const send=async(id,type,values)=>{
+    if(!current())return;
+    if(await api('/api/command',{type,entity_id:owner,movement_id:id,...(type==='set_movement_target'?{values}:{})})){
+      scriptDrafts.delete(id);await openActorScript(scriptEntity,true);
+    }else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;
+  };
+  if(authoring.reason){const note=document.createElement('p');note.textContent=authoring.reason;section.append(note);}
+  for(const id of authoring.unresolved_overrides??[]){
+    const button=document.createElement('button');button.textContent=`Clear unresolved movement ${id}`;button.dataset.clearMovement=id;
+    button.onclick=()=>send(id,'clear_movement_target');section.append(button);
+  }
+  for(const target of authoring.targets??[]){
+    const form=document.createElement('form');form.className='movement-entry';form.dataset.movementId=target.semantic_id;
+    const title=document.createElement('h4');title.textContent=`${target.mnemonic} at ${scriptOffset(target.pc)}`;
+    const layers=document.createElement('p');layers.className='movement-layers';layers.textContent=`Retail X ${target.values.x}, Z ${target.values.z} · Authored ${Object.keys(target.authored_values).length?Object.entries(target.authored_values).map(([a,v])=>`${a.toUpperCase()} ${v}`).join(', '):'none'} · Effective X ${target.effective_values.x}, Z ${target.effective_values.z}${target.target_context!==null?` · actor context ${target.target_context} unresolved`:''}`;
+    form.append(title,layers);const fields={};
+    for(const axis of ['x','z']){
+      const label=document.createElement('label'),input=document.createElement('input');label.textContent=`Target ${axis.toUpperCase()}`;
+      input.type='number';input.required=true;input.min='64';input.max='16384';input.step='64';input.value=scriptDrafts.get(target.semantic_id)?.[axis]??target.effective_values[axis];input.setAttribute('aria-label',`Movement ${axis.toUpperCase()} at ${scriptOffset(target.pc)}`);
+      fields[axis]=input;label.append(input);form.append(label);
+      input.oninput=()=>{scriptDrafts.set(target.semantic_id,Object.fromEntries(Object.entries(fields).map(([a,i])=>[a,i.value])));updateScriptActions();};
+    }
+    const apply=document.createElement('button'),clear=document.createElement('button'),discard=document.createElement('button');apply.type='submit';apply.textContent='Apply movement';clear.type=discard.type='button';clear.textContent='Clear movement override';discard.textContent='Discard movement draft';form.append(apply,clear,discard);
+    form.updateState=()=>{const editable=current();for(const input of Object.values(fields))input.disabled=!editable;apply.disabled=!editable||!Object.values(fields).every(input=>input.value!==''&&input.checkValidity());clear.disabled=!editable||!Object.keys(target.authored_values).length;discard.disabled=busy;discard.hidden=!scriptDrafts.has(target.semantic_id);};
+    form.onsubmit=event=>{event.preventDefault();if(!apply.disabled)send(target.semantic_id,'set_movement_target',Object.fromEntries(Object.entries(fields).map(([a,i])=>[a,Number(i.value)])));};
+    clear.onclick=()=>send(target.semantic_id,'clear_movement_target');
+    discard.onclick=()=>{scriptDrafts.delete(target.semantic_id);for(const [axis,input] of Object.entries(fields))input.value=target.effective_values[axis];updateScriptActions();};
+    section.append(form);form.updateState();
+  }
+}
 function renderTransitionAuthoring(){
   const authoring=scriptReport?.transition_authoring;if(!authoring||(!authoring.transitions?.length&&!authoring.unresolved_overrides?.length))return;
   const section=document.createElement('section'),heading=document.createElement('h3'),note=document.createElement('p');
@@ -1845,7 +1881,7 @@ function renderTransitionAuthoring(){
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
 function updateScriptActions(){
   const authoring=scriptReport?.dialogue_authoring;
-  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported);
+  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length);
   const pending=scriptDrafts.size>0;
   $('script-undo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_undo;
   $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;
@@ -1853,6 +1889,8 @@ function updateScriptActions(){
   $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':projectSaveStatus();
   for(const form of scriptDialog.querySelectorAll('.dialogue-run'))updateDialogueRun(form);
   for(const form of scriptDialog.querySelectorAll('.transition-entry'))form.updateState();
+  for(const form of scriptDialog.querySelectorAll('.movement-entry'))form.updateState();
+  for(const button of scriptDialog.querySelectorAll('[data-clear-movement]'))button.disabled=busy||!canEditDialogue();
   for(const button of scriptDialog.querySelectorAll('[data-clear-unresolved],[data-clear-transition]'))button.disabled=busy||!canEditDialogue();
 }
 function updateDialogueRun(form){
