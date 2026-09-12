@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Shared animation record import/package acceptance
+
+- Previous turn added effective-record export. Actual town01 actors0011/0012 record imports verified conflict atomicity including unchanged Undo history, matching contributions, and retail-clear of0011 preserving0012's effective frame2/object0 X201. Save/Open retained the final single contributor.
+- Build produced one41595-byte animation overlay; report attributed the single changed axis exclusively to0012. Actual ZIP payload independently decompressed to the expected composed bank and every byte outside the changed channel remained identical. Package SHA256493203f34dac5418fd8c6df3cc4452ffc3cf739c1c00c374c9a82b06758ba0fa. Private project/workflow-check.json/package-readback.json: local-output/sdk-20260909/animation-record-shared-20260912.
+- No game launched. This closes shared-conflict/clearing/package evidence for existing-layout record import; arbitrary clip conversion and gameplay remain open. Full SDK goal stays active.
+
+
 ### 2026-09-12 — Effective animation record download
 
 - Previous turn completed retail record file workflow. Added explicit retail/effective source layers in the service, HTTP route and download controls. Effective export composes validated shared clip contributions, retaining the original binding/source identity; retail remains unchanged. Unknown layers reject.
