@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Readable model vertex/normal interchange foundation
+
+- Previous goal turn made verified progress at05d71b9a, completing return-to-file/import after proposed scene inspection. Current worktree was clean before moving to model authoring.
+- Added importer/model_json.py with legaia.model-shape.v1 source-bound complete object vertex/normal arrays in original Y-down object-local units. Imports retain ordered object identities and vector counts; exact signed16 integers are required. Duplicate JSON keys, stale bindings, altered coordinate conventions and partial layouts reject. Existing replace_model_shape validation protects topology/materials/descriptors/vector padding and aliased tables. Input/output budget16MiB; normals are explicit source words, not normalized or inferred.
+- Six focused model JSON/shape/OBJ tests passed. A normal-only edit changed exactly two audited scalar words and preserved all other bytes. All119 imported town01 models exported/imported byte-identically; largest JSON50897bytes. Private evidence: local-output/sdk-20260909/animation-json-project-20260912/model-json-roundtrip-check.json.
+- This is an importer foundation; project, HTTP and editor integration remain next. No gameplay launched. Diff checks passed; goal stays active with full model topology/material authoring and other SDK requirements still open.
+
+
 ### 2026-09-12 — Return from scene pose inspection to the selected file
 
 - Previous goal turn made verified progress at8d551ade, connecting proposed animation poses to the model/scene viewers. Current worktree confirmed clean before this workflow extension.
