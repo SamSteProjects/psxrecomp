@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Animation record replacement foundation and regression repairs
+
+- Previous turn was a verified wait. Existing full discovery process62507 reached terminal exit1:347 tests in136.836 seconds, two package-description qualification failures. Restored dialogue glyph-only/no-control-relocation and texture no-resource-relocation statements with explicit family scope. Eight affected retail-enabled build tests passed in18.350 seconds. Full-suite green has not been re-established after these repairs; retain exact distinction in status.
+- Added source-hashed equal-layout animation record replacement: decode candidate channels, derive only changed axes, re-encode against original and require exact candidate equality. Changed headers, counts, opaque bits, padding/trailers and lengths reject. Six focused animation tests passed, one retail opt-in skipped. Helper is not yet connected to ProjectService/file upload; this is foundation for a larger import workflow, not completed animation import.
+- No game launched. Full goal stays active and gameplay deferred. Logs: local-output/sdk-20260909/sdk-regression-5437a5bb.log and package-qualifications-recheck.log.
+
+
 ### 2026-09-12 — Post-animation regression and bounded audio review
 
 - Previous turn completed per-axis inspector implementation with browser evidence. Started full retail-enabled SDK discovery against5437a5bb; retained active process62507 was repeatedly verified live, with log advancing through script-authoring HTTP checks. Final result is pending at this checkpoint; log local-output/sdk-20260909/sdk-regression-5437a5bb.log. Do not restart based on observation timeouts.

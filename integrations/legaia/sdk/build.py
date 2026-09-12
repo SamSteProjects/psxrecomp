@@ -680,6 +680,10 @@ def _build_project(project, output_dir) -> dict:
         feature_description = 'Apply packaged edits: ' + ', '.join(change_kinds) + '. Gameplay remains unverified.'
         if has_appearance:
             feature_description += ' Initial assignments only; scripts may override appearance.'
+        if has_dialogue:
+            feature_description += ' Dialogue: glyph edits only; no script control edits or relocation.'
+        if has_texture:
+            feature_description += ' Textures: layout-compatible payloads; no resource relocation.'
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix)}",

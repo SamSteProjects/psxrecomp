@@ -12,7 +12,7 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 
 ## Validation scope
 
-The last complete SDK discovery run passed344 tests in140.705 seconds at the earlier regression checkpoint. Later features have focused service, browser, source-byte and package checks; that full-suite result must not be represented as a test of every later change. Runtime and external Blender/Unity animated playback acceptance are separate.
+An earlier complete SDK discovery run passed344 tests in140.705 seconds. A later347-test run found two package-description qualification regressions; both were repaired and all eight affected retail build tests passed. A fresh complete green run after those repairs remains pending. Later features have focused service, browser, source-byte and package checks; that full-suite result must not be represented as a test of every later change. Runtime and external Blender/Unity animated playback acceptance are separate.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

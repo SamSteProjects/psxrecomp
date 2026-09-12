@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.animation import decode_animation_record
-from importer.animation_authoring import patch_animation_channels
+from importer.animation_authoring import patch_animation_channels, replace_animation_record
 from importer.core import ImportError
 from importer.scene_animation import load_scene_actor_animation_catalog
 from test_importer_scene_animation import fixture
@@ -21,6 +21,21 @@ def sha(data):
 
 
 class AnimationAuthoringTests(unittest.TestCase):
+    def test_record_replacement_preserves_opaque_source_and_audits_values(self):
+        catalog, actor, asset, model = fixture()
+        source = catalog._body[8:]
+        digest = sha(source)
+        self.assertEqual(replace_animation_record(source,digest,source),(source,[]))
+        replacement,audit=patch_animation_channels(source,digest,[{'frame_index':1,'object_index':0,'translation':{'x':100},'rotation_psx':{'z':4080}}])
+        self.assertEqual(replace_animation_record(source,digest,replacement),(replacement,audit))
+        for at in (0,4,8+4):
+            invalid=bytearray(replacement);invalid[at]^=0x80
+            with self.subTest(offset=at),self.assertRaises(ImportError):
+                replace_animation_record(source,digest,bytes(invalid))
+        for invalid in (replacement[:-1],replacement+b'\0',bytearray(replacement)):
+            with self.assertRaises(ImportError):replace_animation_record(source,digest,invalid)
+        with self.assertRaises(ImportError):replace_animation_record(source,'0'*64,replacement)
+
     def test_shared_bank_merges_axes_and_preview_rejects_conflicts(self):
         catalog, actor, asset, model = fixture()
         other = deepcopy(actor)

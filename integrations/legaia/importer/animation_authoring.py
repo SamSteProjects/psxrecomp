@@ -89,3 +89,36 @@ def patch_animation_channels(original: bytes, expected_sha256: str,
         if actual[field]["xyz".index(axis)] != row["after_value"]:
             raise ImportError("animation channel round-trip failed")
     return changed, audit
+
+
+def replace_animation_record(original: bytes, expected_sha256: str,
+                             replacement: bytes) -> tuple[bytes, list[dict]]:
+    """Import channel values from an equal-layout record, retaining opaque bytes.
+
+    This is a same-clip replacement, not topology/frame-count conversion or
+    retargeting. Re-encoding against the original must reproduce every input
+    byte before the replacement is accepted.
+    """
+    if not isinstance(original, bytes) or hashlib.sha256(original).hexdigest() != expected_sha256:
+        raise ImportError("Animation replacement source hash does not match")
+    if not isinstance(replacement, bytes) or len(replacement) != len(original):
+        raise ImportError("Animation replacement must preserve source byte length")
+    source = decode_animation_record(original)
+    candidate = decode_animation_record(replacement)
+    if any(source[key] != candidate[key] for key in ("frame_count", "bone_count")):
+        raise ImportError("Animation replacement must preserve frame and object counts")
+    edits = []
+    for frame in candidate["frames"]:
+        for channel in frame["object_transforms"]:
+            before = source["frames"][frame["frame_index"]]["object_transforms"][channel["object_index"]]
+            edit = {"frame_index": frame["frame_index"], "object_index": channel["object_index"]}
+            for field in ("translation", "rotation_psx"):
+                axes = {axis: value for axis, value, old in zip("xyz", channel[field], before[field]) if value != old}
+                if axes:
+                    edit[field] = axes
+            if len(edit) > 2:
+                edits.append(edit)
+    changed, audit = patch_animation_channels(original, expected_sha256, edits)
+    if changed != replacement:
+        raise ImportError("Animation replacement changed header, padding, trailer or opaque channel bits")
+    return changed, audit
