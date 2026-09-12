@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (SDK orthographic placement inspection):** Previous turn progressed in aacf0451. Added perspective/orthographic projection selection and Top (X/Z), with +X right and +Z down. Shared WebGL rendering/picking matrix, canvas overlays and move-handle plane rays support the selected projection; camera changes preserve authored data. Eight independent projection/matrix/ray comparisons passed across both projections, oblique/top orientations and two heights. Actual Edge map01 browser rendered313/313, switched projection without errors and produced the visually inspected orthographic-map01-20260912.png private screenshot. Corrected the static viewport heading after screenshot review. Node syntax checks passed. No game launched or controlled; runtime coordinate and visual parity remain deferred, and the full SDK goal remains incomplete.
+
+
 - **2026-09-12 (SDK terrain locator outer-edge sampling):** Corrected source-height sampling at X/Z16384: these coordinates belong to the final rendered quad but previously produced no sample despite being accepted by the locator endpoint. Bound-check coordinates before clamping the cell index; preserve triangle interpolation and reject outside/nonfinite/boolean inputs and missing source coverage. Twelve focused terrain/scene-preview tests passed, including decoder-produced final-cell corners, outer edges, empty cells and non-bilinear triangle interpolation. No game launched or controlled. This is source-preview correctness, not runtime elevation acceptance; the broader SDK goal remains incomplete and manual gameplay remains deferred.
 
 

@@ -150,6 +150,10 @@ export class SceneRenderer {
     const {camera,basis,width,height}=view,origin={x:camera.target.x-camera.distance*basis.forward.x,y:camera.target.y-camera.distance*basis.forward.y,z:camera.target.z-camera.distance*basis.forward.z};
     const focal=Math.min(width,height)*.9,near=Math.max(.02,camera.distance*.00001),far=camera.distance*100+100000;
     const a=2*focal/width,b=2*focal/height,c=(far+near)/(far-near),d=-2*far*near/(far-near),r=basis.right,u=basis.up,f=basis.forward;
+    if(camera.projection==='orthographic'){
+      const sx=a/camera.distance,sy=b/camera.distance,sz=2/(far-near);
+      return columnMajor([sx*r.x,sx*r.y,sx*r.z,-sx*dot(origin,r),sy*u.x,sy*u.y,sy*u.z,-sy*dot(origin,u),sz*f.x,sz*f.y,sz*f.z,-(far+near)/(far-near)-sz*dot(origin,f),0,0,0,1]);
+    }
     return columnMajor([a*r.x,a*r.y,a*r.z,-a*dot(origin,r),b*u.x,b*u.y,b*u.z,-b*dot(origin,u),c*f.x,c*f.y,c*f.z,d-c*dot(origin,f),f.x,f.y,f.z,-dot(origin,f)]);
   }
 

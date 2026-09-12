@@ -9,7 +9,7 @@ const transformTools=document.createElement('div');transformTools.className='tra
 transformTools.innerHTML='<label><input id="transform-snap" type="checkbox"> Snap moves</label><label>Step <select id="transform-snap-step" aria-label="Transform snap step"><option value="16">16 units</option><option value="64" selected>64 units</option><option value="256">256 units</option><option value="1024">1024 units</option></select></label><span id="transform-drag-status" role="status">X/Z moves · snap aligns to scene origin</span>';
 $('viewport-wrap').before(transformTools);
 function snappedTransformCoordinate(value,step){return Math.round(value/(step||1))*(step||1);}
-const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
+const camera = {projection:'perspective',yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null, pendingEntityFrame=null;
 let sceneRepresentation="authored";
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
@@ -129,6 +129,10 @@ for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',gro
   button.onclick=()=>{sceneLayers[layer]=!sceneLayers[layer];button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));cancelViewportGesture();renderHierarchy();draw();};
   $('frame-all').before(button);
 }
+const projectionSelect=document.createElement('select');projectionSelect.id='scene-projection';projectionSelect.setAttribute('aria-label','Scene projection');projectionSelect.innerHTML='<option value="perspective">Perspective</option><option value="orthographic">Orthographic</option>';$('frame-all').before(projectionSelect);
+projectionSelect.onchange=()=>{cancelViewportGesture();pendingEntityFrame=null;camera.projection=projectionSelect.value;document.querySelector('.viewport-type').textContent=projectionSelect.selectedOptions[0].textContent;cameraRevision++;draw();};
+const topViewButton=document.createElement('button');topViewButton.id='scene-top-view';topViewButton.textContent='Top (X/Z)';topViewButton.title='Orthographic top view: +X right, +Z down; camera only';$('frame-all').before(topViewButton);
+topViewButton.onclick=()=>{cancelViewportGesture();pendingEntityFrame=null;camera.projection='orthographic';projectionSelect.value='orthographic';document.querySelector('.viewport-type').textContent='Orthographic';camera.yaw=0;camera.pitch=Math.PI/2;cameraRevision++;draw();};
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
 modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;scenePreview=null;sceneError=null;modelsEnabled=true;}else modelsEnabled=!modelsEnabled;modelToggle.classList.toggle('active',modelsEnabled);modelToggle.setAttribute('aria-pressed',modelsEnabled);refreshScenePreview();draw();};
 const representationSelect=document.createElement('select');representationSelect.id='scene-representation';representationSelect.setAttribute('aria-label','Scene representation');representationSelect.innerHTML='<option value="authored">Authored scene</option><option value="retail">Retail scene · comparison</option>';$('frame-all').before(representationSelect);
@@ -1806,11 +1810,11 @@ function frame(entity){
   draw();
 }
 function basis(){const s=Math.sin(camera.yaw),c=Math.cos(camera.yaw),sp=Math.sin(camera.pitch),cp=Math.cos(camera.pitch);return {right:{x:c,y:0,z:-s},up:{x:-s*sp,y:cp,z:-c*sp},forward:{x:-s*cp,y:-sp,z:-c*cp}};}
-function project(p){const b=basis(),d={x:p.x-camera.target.x,y:p.y-camera.target.y,z:p.z-camera.target.z},dot=v=>d.x*v.x+d.y*v.y+d.z*v.z,depth=camera.distance+dot(b.forward);if(depth<=camera.distance*.01)return null;const scale=Math.min(width,height)*.9/depth;return {x:width/2+dot(b.right)*scale,y:height/2-dot(b.up)*scale,depth,scale};}
+function project(p){const b=basis(),d={x:p.x-camera.target.x,y:p.y-camera.target.y,z:p.z-camera.target.z},dot=v=>d.x*v.x+d.y*v.y+d.z*v.z,depth=camera.distance+dot(b.forward);if(depth<=camera.distance*.01)return null;const scale=Math.min(width,height)*.9/(camera.projection==='orthographic'?camera.distance:depth);return {x:width/2+dot(b.right)*scale,y:height/2-dot(b.up)*scale,depth,scale};}
 function groundAt(x,y,planeY){
   const b=basis(),f=Math.min(width,height)*.9;
   const origin={x:camera.target.x-camera.distance*b.forward.x,y:camera.target.y-camera.distance*b.forward.y,z:camera.target.z-camera.distance*b.forward.z};
-  const ray={};for(const axis of ['x','y','z'])ray[axis]=b.forward[axis]+(x-width/2)/f*b.right[axis]-(y-height/2)/f*b.up[axis];
+  const ray={};for(const axis of ['x','y','z']){const offset=(x-width/2)/f*b.right[axis]-(y-height/2)/f*b.up[axis];if(camera.projection==='orthographic'){origin[axis]+=offset*camera.distance;ray[axis]=b.forward[axis];}else ray[axis]=b.forward[axis]+offset;}
   if(Math.abs(ray.y)<.00001)return null;const t=(planeY-origin.y)/ray.y;if(t<0)return null;
   return {x:origin.x+t*ray.x,y:planeY,z:origin.z+t*ray.z};
 }
