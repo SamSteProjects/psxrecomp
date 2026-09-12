@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Locate inspected vertices in the model viewer
+
+- Previous goal turn made verified progress atdb8975df with per-vector retail reset. Current worktree confirmed clean before adding camera navigation from vector inspection.
+- Added Locate inspected vertex: opens the unposed current model, selects its rigid object, and centers the existing model camera using the inspected source XYZ. Normals do not expose position location; pending drafts disable it until Apply/Discard. The action changes neither vectors nor project history and labels its camera-only scope. It is not a rendered vertex marker.
+- Actual retail model0009 browser test verified camera center exactly equals inspected object0/vertex0 XYZ, selected object0, normals disabled, pending draft disabled and Discard reenabled the action. Zero model-vector requests and zero page errors. Evidence: local-output/sdk-20260909/model-normal-json-project-20260912/vertex-locator-browser-check.json.
+- Node syntax and diff checks passed; browser/test server stopped. No gameplay launched. Full SDK goal remains active.
+
+
 ### 2026-09-12 — Restore individual model vectors to retail
 
 - Previous goal turn made verified progress at3990c69b with direct vector editing. Current worktree confirmed clean before extending the Inspector workflow.

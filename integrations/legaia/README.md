@@ -276,3 +276,10 @@ The vector editor shows both inspected and retail XYZ. **Use retail vector**
 copies the selected vector's source values into the draft; it does not apply
 immediately. Apply restores that vector while preserving other current authored
 vectors. Discard restores the inspected draft, and Undo reverses an applied reset.
+
+
+**Locate inspected vertex** closes vector editing, opens the unposed model,
+selects the corresponding rigid object and centers the camera on the inspected
+vertex XYZ. This is camera navigation, not a mesh edit or a vertex marker. Apply
+or Discard a pending draft first. Normals are directions and cannot use this
+position locator.
