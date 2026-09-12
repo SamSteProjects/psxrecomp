@@ -6,6 +6,55 @@ record separates functioning features, demonstrated failures and remaining
 product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 [16-layer acceptance plan](TEST_PLAN.md) remain authoritative for scope.
 
+## Current buildout status — updated 2026-09-12
+
+Reviewed against source through `a094bc71`. The dated filename is retained for
+existing links. This section supersedes the historical milestone inventory and
+old test counts below; those sections record what was proven at that time.
+
+- **Scene editor:** assembled textured field/world-map previews, hierarchy and
+  picking, authored/retail comparison, orthographic views, coordinate location,
+  actor and scenery transform handles, and inspection of supported animations.
+  Full game-equivalent visibility, placement and live actor correlation remain
+  unverified where the source evidence does not establish them.
+- **Animation authoring:** source-bound channel editing, copy across frames and
+  ranges, raw-record/JSON import and export, shared-clip conflict checks, Undo
+  and persistence. Proposed files can be reviewed and posed in model/scene
+  viewers without applying, then returned to the file form for explicit import.
+  Supported full rigid clips export to GLB; retargeting and arbitrary clip
+  layouts are still unsupported.
+- **Model authoring:** same-layout TMD/OBJ/JSON replacement, complete vertex and
+  normal JSON, file-change preview, direct vector Inspector editing, per-vector
+  retail reset, and inspected-vertex camera location. Build audits show exact
+  scalar changes and link to the matching model/vector with stale-hash checks.
+  Arbitrary topology/material replacement remains unsupported. Browser shaders
+  do not calculate normal-based lighting.
+- **Scene content:** supported dialogue, appearance, transitions, script movement,
+  textures, collision and scenery edits use source-validated overrides. NPC
+  drafts compose into experimental disc exports. General script/control-flow
+  authoring, native spawn scheduling and story behavior remain incomplete.
+- **Output and verification:** saved private projects, packages, hashes and
+  independent archive/member readbacks are retained for later review. All119
+  town01 models passed exact JSON round trips; a retail normal-only edit and a
+  combined model/animation package passed offline readback checks.
+
+The latest complete SDK suite passed **351 tests in140.443 seconds** against
+`6407ade7` (log: `local-output/sdk-20260909/sdk-model-json-regression-20260912.log`).
+Later file-preview, direct-vector, retail-reset, camera-location and exact-vector
+navigation additions have focused service/browser checks; the351-test run must
+not be represented as a test of those later commits.
+
+**Gameplay is deferred at the user's request.** These later changes did not
+launch the game. Full runtime parity, normal lighting, wider scene/animation
+playback, world-map behavior, MAPDSIP coverage and documented runtime acceptance
+remain open. The full SDK goal is active, and offline work is not exhausted.
+
+For current details use [SDK status](SDK_STATUS.md),
+[feature coverage](FEATURE_MATRIX.md), and the
+[deferred gameplay queue](legaia-gameplay-verification-queue.md).
+
+## Historical September 9 milestone evidence
+
 ## Source and preservation
 
 The starting revision was `56892d6216cf1ccf87d4a376c8e0feec67ac4182`, based on
@@ -214,14 +263,14 @@ zero errors/warnings and independent glTF-Transform import (10 nodes, 20 channel
 Rendered animated playback in Blender/Unity remains unverified. Native replacement
 and physical-meter scale are not established by these interchange exports.
 
-## Remaining implementation and acceptance
+## Historical remaining-work assessment
 
 The reproduced STR/XA stall is fixed and reaches the title menu. Muscle Dome
 relocation remains unresolved: the cited old change documents a repair but contains no
 recovered implementation. A title-layer fix requires the failing lifecycle and
 retail comparison, not a guessed runtime address patch.
 
-The SDK now proves a visible savepoint edit and fresh retail revert. Full
+At this milestone, the SDK proved a visible savepoint edit and fresh retail revert. The following was the remaining-work assessment then; use the current status above for later implementations. Full
 posed scene rendering, general animation tools, asset replacement, native
 entity/templates, dialogue encoding and editing,
 script opcode/CFG tools, event flags, transitions and world-map authoring are

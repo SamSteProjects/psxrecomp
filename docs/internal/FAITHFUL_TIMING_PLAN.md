@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Refresh the named SDK buildout report
+
+- User asked whether the buildout MD was current. Checked docs/SDK_BUILDOUT_REPORT_20260909.md against current source a094bc71, SDK_STATUS and recent evidence. It retained a predominantly September9 inventory and obsolete remaining-work framing; it was not fully current.
+- Added a dated current-capability/remaining-work section, distinguished historical milestone evidence, linked current status/feature/verification documents, and accurately scoped351-test evidence to6407ade7 with focused checks for later additions. Updated SDK_STATUS for direct-vector/reset/location/exact-vector navigation. Preserved historical evidence instead of presenting old counts as current acceptance.
+- No code/runtime changes or gameplay launched. Diff checks passed. Full goal remains active; documentation refresh does not imply complete SDK/runtime acceptance.
+
+
 ### 2026-09-12 — Navigate packaged model scalars to vector editing
 
 - Previous goal turn made verified progress at9e7edce5 with inspected-vertex camera navigation. Current worktree confirmed clean before connecting emitted model audits to the vector Inspector.
