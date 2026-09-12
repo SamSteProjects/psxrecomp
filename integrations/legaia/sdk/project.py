@@ -395,6 +395,29 @@ class ProjectService:
         report['comparison'] = 'retail_source'
         return report
 
+    def animation_file_pose_preview(self, identifier: str, content: bytes, format: str = "record") -> tuple[dict, dict]:
+        """Pose a proposed shared clip using private input without applying a command."""
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        _, report = self._prepare_animation_record(identifier, content, format)
+        value = report.pop('proposed_value')
+        document = self.imports.get(self.active_scene)
+        actor = next((item for item in (document or {}).get('actors', [])
+                      if item['semantic_id'] == identifier), None)
+        if actor is None:
+            raise ProjectError('Animation file pose requires an actor in the active scene')
+        asset = next(a for a in document['assets']['models']
+                     if a['semantic_id'] == actor['model_reference']['asset_semantic_id'])
+        overrides = {a['semantic_id']: deepcopy(self.overrides[a['semantic_id']]['AnimationChannels'])
+                     for a in document['actors'] if a['semantic_id'] != identifier and
+                     'AnimationChannels' in self.overrides.get(a['semantic_id'], {})}
+        if value['edits']:
+            overrides[identifier] = value
+        catalog = load_scene_actor_animation_catalog(self.disc_path, document['scene']['name'])
+        preview = catalog.authored_bank_preview(actor, asset, overrides)
+        preview['representation'] = 'file_preview'
+        preview['proposal'] = {**report, 'project_changed': False, 'comparison': 'retail_source'}
+        return preview, deepcopy(asset)
+
     def import_animation_record(self, identifier: str, content: bytes, format: str = "record") -> dict:
         """Replace this actor's clip contribution using validated source channels."""
         command, report = self._prepare_animation_record(identifier, content, format)

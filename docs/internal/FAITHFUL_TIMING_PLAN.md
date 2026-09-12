@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Proposed animation file pose service
+
+- Previous goal turn made verified progress at fe0a1db2, cancelling stale file reads. Current worktree was clean before this feature extension.
+- Added ProjectService.animation_file_pose_preview and bounded /api/animation-file-pose-preview upload route. Proposed channel contributions replace only the selected actor in a detached override map; shared conflicts, source binding and existing pose budgets remain enforced. The response includes textured geometry, complete frame vertices and explicit file_preview/proposal metadata. No project command or persistent override is applied.
+- Actual town01 JSON proposal produced15 frames exactly equal to the subsequently applied bank preview; proposal overrides and Undo/Redo history remained unchanged. Actual HTTP returned15 frames with geometry/textures and file-preview identity, with no project commands. Private evidence: local-output/sdk-20260909/animation-json-project-20260912/file-pose-check.json and file-pose-http-check.json. The test HTTP server stopped; no game launched.
+- Sixteen retail-enabled animation/scene-preview tests passed in1.242s; diff checks passed. This is service groundwork, not yet a connected visual workflow: next connect the file action to the existing model viewer and scene pose inspection, preserve unsaved/proposed labels and prevent export from silently resolving the applied clip. Full SDK goal remains active.
+
+
 ### 2026-09-12 — Cancel stale animation file reads
 
 - Previous goal turn made verified progress at d0674782: optional source-bound file preview with unchanged project/history checks. Current worktree was clean before this follow-up.
