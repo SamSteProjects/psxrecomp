@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Return from scene pose inspection to the selected file
+
+- Previous goal turn made verified progress at8d551ade, connecting proposed animation poses to the model/scene viewers. Current worktree confirmed clean before this workflow extension.
+- Added Return to animation file for proposed scene poses. It restores the project scene and reopens the retained authoring form with file and format preserved. The callback checks form identity, Edit mode, actor/project/scene context and file selection revision; changed contexts require selecting the file again. Ordinary clips do not expose this action. Returning applies no command.
+- Actual browser workflow inspected JSON proposal frame2, returned to the original browser-edit.json with JSON still selected, explicitly imported frame0 X203, then undid. Zero authoring requests occurred before Import; exactly one import request followed. No page errors. Private evidence: local-output/sdk-20260909/animation-json-project-20260912/file-return-browser-check.json.
+- Node syntax and diff checks passed. Browser and test server stopped; no game launched. The file inspect/review/import workflow is now connected end to end, while runtime playback and broader SDK work remain pending. Goal stays active.
+
+
 ### 2026-09-12 — Visual proposed animation file inspection
 
 - Previous goal turn made verified progress at601ed526 with a source-bound proposed-pose service. Current worktree was clean before connecting it to the editor.

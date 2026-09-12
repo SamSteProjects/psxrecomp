@@ -214,3 +214,11 @@ history. It previews composed shared contributions on one instance; other clip
 users are not simultaneously animated. Import the file before exporting an
 applied animation. Diagnostic offsets can visibly separate rigid objects and do
 not establish a suitable animation or verified runtime cadence.
+
+
+While inspecting a proposed file in the scene, **Return to animation file**
+restores the scene and reopens the original file form with its selection and
+format intact. You can then import explicitly. Returning requires the same
+actor/project context and unchanged file selection; otherwise reopen authoring
+and select the file again. Ordinary imported/applied clip inspection does not
+show this action.
