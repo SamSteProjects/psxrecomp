@@ -100,6 +100,7 @@ class ProjectService:
         self.assets = AssetDatabase()
         self.overrides: dict[str, dict] = {}
         self.actor_templates: dict[str, dict] = {}
+        self.actor_drafts: dict[str, dict] = {}
         self.texture_overrides: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
         self.active_scene: str | None = None
@@ -157,6 +158,7 @@ class ProjectService:
                             for key, value in sorted(self.imports.items())],
                 "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
                 "actor_templates": deepcopy(self.actor_templates),
+                **({"actor_drafts": deepcopy(self.actor_drafts)} if self.actor_drafts else {}),
                 **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
@@ -196,7 +198,8 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Actor and dialogue edits", "actor_templates": "Actor presets",
-                  "texture_overrides": "Texture replacements", "model_overrides": "Model shapes"}
+                  "texture_overrides": "Texture replacements", "model_overrides": "Model shapes",
+                  "actor_drafts": "New NPC drafts"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -205,7 +208,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "model_overrides")}
+                                "authored", "actor_templates", "texture_overrides", "model_overrides", "actor_drafts")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -235,6 +238,11 @@ class ProjectService:
         # Reimport cannot silently reinterpret existing authored edits.
         previous = self.imports.get(scene_id)
         if previous and digest(previous) != digest(document):
+            draft_history = [entry.get(field) for entry in self.undo_stack+self.redo_stack
+                             if entry.get('target')=='actor_drafts' for field in ('before','after')]
+            if any(draft and draft.get('scene_id')==scene_id
+                   for draft in list(self.actor_drafts.values())+draft_history):
+                raise ProjectError('Imported evidence changed under NPC drafts or their history; resolve drafts before reimport')
             affected = set(ids) | {actor["semantic_id"] for actor in previous["actors"]}
             if any(key in affected for key in self.overrides) or any(entry["entity_id"] in affected for entry in self.undo_stack + self.redo_stack):
                 raise ProjectError("Imported evidence changed under authored edits or command history; create a new project or resolve edits first")
@@ -668,6 +676,39 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'create_actor_draft':
+            if set(command) != {'type', 'donor_entity_id', 'position', 'name'}:
+                raise ProjectError('Actor draft requires donor, position and name')
+            identifier = 'authored-actor://'+str(uuid.uuid4())
+            draft = {'scene_id': self.active_scene, 'donor_entity_id': command['donor_entity_id'],
+                     'position': deepcopy(command['position']), 'name': command['name']}
+            self._validate_actor_draft(identifier, draft)
+            if len(self.actor_drafts) >= 128:
+                raise ProjectError('Actor draft limit reached')
+            self.actor_drafts[identifier] = draft
+            self.undo_stack.append({'target':'actor_drafts','entity_id':identifier,'before':None,'after':deepcopy(draft)})
+            self.redo_stack.clear()
+            return
+        if command.get('type') == 'set_actor_draft_position':
+            identifier = command.get('entity_id')
+            if set(command) != {'type','entity_id','position'} or not isinstance(identifier,str) or identifier not in self.actor_drafts:
+                raise ProjectError('Draft position requires an existing authored identity and X/Z')
+            before = deepcopy(self.actor_drafts[identifier])
+            after = {**before, 'position': deepcopy(command['position'])}
+            self._validate_actor_draft(identifier,after)
+            if before != after:
+                self.actor_drafts[identifier] = after
+                self.undo_stack.append({'target':'actor_drafts','entity_id':identifier,'before':before,'after':deepcopy(after)})
+                self.redo_stack.clear()
+            return
+        if command.get('type') == 'delete_actor_draft':
+            if set(command) != {'type','entity_id'} or command['entity_id'] not in self.actor_drafts:
+                raise ProjectError('Delete actor draft requires an existing authored identity')
+            identifier = command['entity_id']
+            before = self.actor_drafts.pop(identifier)
+            self.undo_stack.append({'target':'actor_drafts','entity_id':identifier,'before':before,'after':None})
+            self.redo_stack.clear()
+            return
         if command.get('type') == 'clear_model_replacement':
             if set(command) != {'type','asset_id'} or not isinstance(command['asset_id'],str):
                 raise ProjectError('Clear model shape requires asset_id only')
@@ -1017,6 +1058,27 @@ class ProjectService:
                                     "entity_id": template["source"]["entity_id"], "before": deepcopy(template), "after": None})
             self.redo_stack.clear()
 
+    def _validate_actor_draft(self, identifier: str, draft: dict) -> None:
+        from importer.serialization import encode_placement_coordinate
+        if not isinstance(identifier, str) or not identifier.startswith('authored-actor://'):
+            raise ProjectError('Invalid authored actor identity')
+        try:
+            if str(uuid.UUID(identifier.removeprefix('authored-actor://'))) != identifier.removeprefix('authored-actor://'):
+                raise ValueError()
+        except ValueError:
+            raise ProjectError('Invalid authored actor UUID') from None
+        if not isinstance(draft, dict) or set(draft) != {'scene_id','donor_entity_id','position','name'}:
+            raise ProjectError('Invalid actor draft fields')
+        if not isinstance(draft['name'],str) or not draft['name'].strip() or len(draft['name']) > 120:
+            raise ProjectError('Actor draft name must contain 1 through 120 characters')
+        document = self.imports.get(draft['scene_id'])
+        if not document or not any(a['semantic_id']==draft['donor_entity_id'] for a in document['actors']):
+            raise ProjectError('Actor draft donor must belong to its imported scene')
+        if not isinstance(draft['position'],dict) or set(draft['position']) != {'x','z'}:
+            raise ProjectError('Actor draft requires exact X/Z placement')
+        for axis, value in draft['position'].items():
+            encode_placement_coordinate(value, axis)
+
     def _apply_history(self, source: list, target: list, field: str) -> None:
         if self.mode != "edit":
             raise ProjectError("Undo and redo require Edit mode")
@@ -1024,7 +1086,9 @@ class ProjectService:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
         entry = source.pop()
         value = deepcopy(entry[field])
-        if entry.get("target") in ("texture_overrides", "model_overrides"):
+        if entry.get('target') == 'actor_drafts':
+            collection, identifier = self.actor_drafts, entry['entity_id']
+        elif entry.get("target") in ("texture_overrides", "model_overrides"):
             collection, identifier = getattr(self, entry['target']), entry["asset_id"]
         else:
             collection = self.actor_templates if entry.get("target") == "actor_templates" else self.overrides
@@ -1128,6 +1192,12 @@ class ProjectService:
             if "Transitions" in components:
                 result._validate_transitions(identifier, components["Transitions"])
                 result.overrides.setdefault(identifier, {})["Transitions"] = deepcopy(components["Transitions"])
+        drafts = raw.get('actor_drafts', {})
+        if not isinstance(drafts,dict) or len(drafts)>128:
+            raise ProjectError('Invalid actor draft collection')
+        for identifier, draft in drafts.items():
+            result._validate_actor_draft(identifier,draft)
+        result.actor_drafts = deepcopy(drafts)
         templates = raw.get("actor_templates", {})
         if not isinstance(templates, dict) or len(templates) > 128:
             raise ProjectError("Invalid authored template collection")
@@ -1290,6 +1360,7 @@ class ProjectService:
                 "assets": deepcopy(list(self.assets.records.values())),
                 "model_references": self.model_references(), "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),
+                "actor_drafts": deepcopy(self.actor_drafts),
                 "model_overrides": deepcopy(self.model_overrides),
                 "authored_assets": self.authored_assets(),
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},

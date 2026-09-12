@@ -281,6 +281,9 @@ function notify(message, error=false) {
 function setBusy(value) {
   busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
+  if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
+  if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
+  document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
@@ -312,7 +315,7 @@ async function api(path, payload, {dialog,success}={}) {
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
-    if(path==='/api/selection')environmentSelection=null;state=data; render();
+    if(path==='/api/selection'){environmentSelection=null;npcDraftSelection=null;}state=data; render();
     $('connection-dot').classList.add('connected');
     if(dialog) dialog.close();
     if(success) notify(success);
@@ -331,9 +334,15 @@ async function api(path, payload, {dialog,success}={}) {
 }
 function entities(){return state.scene?.entities ?? [];}
 let environmentSelection=null;
+let npcDraftSelection=null;
+function selectedNpcDraft(){const value=state.actor_drafts?.[npcDraftSelection];return value?.scene_id===state.scene?.id?value:null;}
+function frameNpcDraft(){const value=selectedNpcDraft();if(value)frame({id:npcDraftSelection,components:{Transform:{imported:{position:{...value.position,y:null}}}}});}
+function selectNpcDraft(id){npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
+  const npc=selectedNpcDraft();
+  if(npc){if(!scenePreviewCurrent()||hiddenSceneEntities().has(npcDraftSelection))return null;return {id:npcDraftSelection,components:{Transform:{effective:{position:{...npc.position,y:null}}}}};}
   const environment=selectedEnvironment();
   if(!environment)return selected();
   if(!scenePreviewCurrent()||!environment.entity_id.includes('/decorations/')||hiddenSceneEntities().has(environment.entity_id))return null;
@@ -356,8 +365,8 @@ async function moveDecoration(identifier,axis,worldValue){
   const remaining=instances.filter(e=>e.offset||e.rotation_psx),edits=binding?.edits??[];
   await api('/api/command',remaining.length||edits.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits,instances:remaining}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
 }
-function selected(){return selectedEnvironment()?null:entities().find(e=>e.id===state.selection?.entity_id);}
-function selectEnvironment(identifier){environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
+function selectEnvironment(identifier){npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
 function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
 function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
@@ -376,13 +385,14 @@ $('project-form').onsubmit=async event=>{event.preventDefault();await api('/api/
 $('open-project').onclick=async()=>{if(!$('project-path-input').reportValidity())return;await api('/api/project/open',{path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project opened.'});};
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
+const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-button';draftsButton.textContent='NPC drafts';draftsButton.onclick=()=>openNpcDrafts();$('save-button').after(draftsButton);
 $('undo-button').onclick=()=>api('/api/undo',{});
 $('redo-button').onclick=()=>api('/api/redo',{});
 $('edit-mode').onclick=()=>api('/api/mode',{mode:'edit'});
 $('live-mode').onclick=()=>api('/api/mode',{mode:'live'});
 $('entity-search').oninput=renderHierarchy;
 $('frame-all').onclick=()=>frame();
-$('frame-selected').onclick=()=>{if(selectedEnvironment())frameEnvironment();else{const entity=selected();if(entity)frame(entity);}};
+$('frame-selected').onclick=()=>{if(selectedNpcDraft())frameNpcDraft();else if(selectedEnvironment())frameEnvironment();else{const entity=selected();if(entity)frame(entity);}};
 $('grid-toggle').onclick=()=>{grid=!grid;$('grid-toggle').classList.toggle('active',grid);$('grid-toggle').setAttribute('aria-pressed',grid);draw();};
 $('diagnostics-button').onclick=()=>{
   $('diagnostics').replaceChildren();
@@ -397,11 +407,12 @@ document.addEventListener('keydown',event=>{
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!busy)api('/api/project/save',{}, {success:'Project saved.'});}
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='z'){event.preventDefault();const redo=event.shiftKey;if(redo?state.history?.can_redo:state.history?.can_undo)api(redo?'/api/redo':'/api/undo',{});}
-  if(event.key.toLowerCase()==='f'){if(selectedEnvironment())frameEnvironment();else if(selected())frame(selected());}
+  if(event.key.toLowerCase()==='f'){if(selectedNpcDraft())frameNpcDraft();else if(selectedEnvironment())frameEnvironment();else if(selected())frame(selected());}
 });
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
+  draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(drag?.type==='transform'&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';
   $('dirty').hidden=!state.project?.dirty;
@@ -418,7 +429,7 @@ function render(){
   $('live-mode').title=state.capabilities?.live_mode?'Observe runtime state':state.runtime?.reason?.message ?? 'Runtime observation is unavailable';
   reconcileLiveFollow();renderRuntimeControls();
   document.querySelector('.preview-badge').firstChild.textContent=live?'AUTHORED SCENE · LIVE OBSERVATIONS SEPARATE':'SCENE PREVIEW';
-  $('frame-selected').disabled=!selected()&&!selectedEnvironment();
+  $('frame-selected').disabled=!selected()&&!selectedEnvironment()&&!selectedNpcDraft();
   $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
   renderHierarchy();renderAssets();renderInspector();
   templateButton.disabled=!state.capabilities?.authored_transform_templates;
@@ -466,11 +477,14 @@ function renderHierarchy(){
   const list=$('hierarchy');list.replaceChildren();
   const filter=$('entity-search').value.toLowerCase();
   for(const entity of entities().filter(e=>`${e.name} ${e.id}`.toLowerCase().includes(filter))){
-    const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedEnvironment()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedEnvironment()&&entity.id===state.selection?.entity_id);row.title=entity.id;
+    const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.title=entity.id;
     row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
     row.onclick=()=>{environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
   }
   const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
+  const npcDrafts=Object.entries(state.actor_drafts??{}).filter(([id,item])=>item.scene_id===state.scene?.id&&`${item.name} ${id}`.toLowerCase().includes(filter));
+  if(npcDrafts.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`NPC drafts (${npcDrafts.length})`;list.append(heading);}
+  for(const [id,item] of npcDrafts){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.textContent=`${item.name} · Draft`;row.title=id;row.onclick=()=>selectNpcDraft(id);row.setAttribute("aria-selected",id===npcDraftSelection);row.classList.toggle("selected",id===npcDraftSelection);list.append(row);}
   if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
   for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',item.entity_id===environmentSelection);row.classList.toggle('selected',item.entity_id===environmentSelection);row.textContent=item.name;row.title=item.entity_id;row.onclick=()=>selectEnvironment(item.entity_id);row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
@@ -1124,6 +1138,19 @@ function runtimeCandidateSummary(correlation,entityId){
   }).join('');
 }
 function renderInspector(){
+  const npc=selectedNpcDraft();
+  if(npc){
+    const id=npcDraftSelection;
+    $('selection-summary').textContent=`${npc.name} · Authored NPC draft`;
+    $('inspector').innerHTML=`<section class="component"><h3>Authored NPC draft</h3>${property('Identity',id)}${property('Retail donor',npc.donor_entity_id)}<p class="field-note">No retail placement or runtime identity exists for this draft. X/Z handles snap to the required 64-unit grid. Preview uses the effective donor model; playable creation remains unverified.</p><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
+    const form=$('draft-inspector-form');form.elements.x.value=npc.position.x;form.elements.z.value=npc.position.z;
+    form.querySelectorAll('input,button').forEach(control=>control.disabled=busy||!canEdit());
+    form.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}});};
+    $('frame-npc-draft').onclick=()=>frame({id,components:{Transform:{imported:{position:{...npc.position,y:null}}}}});
+    const inspectDraft=document.createElement('button');inspectDraft.id='inspect-npc-draft';inspectDraft.textContent='Inspect serialized candidate';inspectDraft.disabled=busy;inspectDraft.onclick=()=>openActorCandidate({id,name:npc.name,components:{Transform:{effective:{position:{...npc.position,y:null}}}}});$('inspector').querySelector('section').append(inspectDraft);
+    $('delete-npc-draft').disabled=busy||!canEdit();$('delete-npc-draft').onclick=()=>api('/api/command',{type:'delete_actor_draft',entity_id:id});
+    return;
+  }
   const environment=selectedEnvironment();
   if(environment){
     $('selection-summary').textContent=environment.name;
@@ -1291,6 +1318,31 @@ async function openAppearanceOptions(entity){
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
 let scriptEntity=null,scriptReport=null,scriptDrafts=new Map();
 const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUpperCase():'Unknown';
+function openNpcDrafts(focusId=null){
+  if(busy)return;
+  const dialog=document.createElement('dialog');dialog.id='npc-drafts-dialog';
+  dialog.innerHTML='<h2>NPC drafts</h2><p>Project-local new NPCs. Changes support Undo/Redo; Save persists them. Drafts appear in the viewport; playable builds are not yet available.</p><p class="dialog-error" role="alert"></p><button type="button">Close</button>';
+  dialog.querySelector('button').onclick=()=>dialog.close();
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  const drafts=Object.entries(state.actor_drafts??{});
+  if(!drafts.length){const empty=document.createElement('p');empty.textContent='No drafts. Select an imported actor and use Inspect NPC creation candidate to create one.';dialog.append(empty);}
+  for(const [id,draft] of drafts){
+    if(focusId&&id!==focusId)continue;
+    const form=document.createElement('form');
+    form.innerHTML='<h3></h3><p class="field-note"></p><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button><button type="button">Delete draft</button>';
+    form.querySelector('h3').textContent=draft.name;
+    form.querySelector('p').textContent=`${id} · Donor: ${draft.donor_entity_id}`;
+    form.elements.x.value=draft.position.x;form.elements.z.value=draft.position.z;
+    const editable=state.project?.mode==='edit';form.querySelectorAll('input,button').forEach(control=>control.disabled=!editable);
+    form.onsubmit=async event=>{event.preventDefault();await api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}},{dialog,success:'Draft position updated.'});};
+    form.querySelector('button[type=button]').onclick=()=>api('/api/command',{type:'delete_actor_draft',entity_id:id},{dialog,success:'Draft deleted. Undo restores it.'});
+    const focus=document.createElement('button');focus.type='button';focus.textContent='Frame draft';focus.disabled=draft.scene_id!==state.scene?.id;
+    focus.onclick=()=>{dialog.close();frame({id,components:{Transform:{imported:{position:{...draft.position,y:null}}}}});};form.append(focus);
+    dialog.append(form);
+  }
+  document.body.append(dialog);dialog.showModal();
+}
+
 async function openActorCandidate(entity){
   if(busy)return;
   const sceneId=state.scene?.id,controller=new AbortController();
@@ -1313,9 +1365,20 @@ async function openActorCandidate(entity){
     const excluded=[...(report.excluded_override_components??[]),...(report.excluded_transform_axes??[]).map(axis=>`Position ${axis.toUpperCase()}`)];
     placement.textContent=`Candidate placement: ${included.length?included.join(', ')+'; remaining axes inherit the donor':'inherited from the retail donor'}.${excluded.length?' Excluded authored values: '+excluded.join(', ')+'.':''}`;
     dialog.append(placement);
+    const form=document.createElement('form');
+    form.innerHTML='<h3>New NPC draft</h3><label>Name <input name="name" maxlength="120" required></label><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><p>Creates a saved-project draft through Undo/Redo. Use Save to persist it. Drafts appear in the viewport but are not yet included in playable builds.</p><p class="dialog-error" role="alert"></p><button type="submit">Create NPC draft</button>';
+    form.elements.name.value=`${entity.name} draft`;
+    const donorPosition=entity.components.Transform.effective.position;
+    form.elements.x.value=donorPosition.x;form.elements.z.value=donorPosition.z;
+    form.onsubmit=async event=>{
+      event.preventDefault();if(busy)return;
+      if(state.scene?.id!==sceneId){form.querySelector('.dialog-error').textContent='Active scene changed; inspect this donor again';return;}
+      await api('/api/command',{type:'create_actor_draft',donor_entity_id:entity.id,name:form.elements.name.value,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}},{dialog,success:'NPC draft created. Save persists the draft; playable Build is not yet supported.'});
+    };
+    if(!state.actor_drafts?.[entity.id])dialog.append(form);
     const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Technical evidence';pre.textContent=JSON.stringify(report,null,2);details.append(summary,pre);dialog.append(details);
     const inspect=document.createElement('button');inspect.textContent='Inspect donor script';
-    inspect.onclick=()=>{if(busy)return;if(state.scene?.id!==sceneId){dialog.querySelector('p').textContent='Active scene changed; inspect this donor again';return;}dialog.close();openActorScript(entity);};
+    inspect.onclick=()=>{if(busy)return;if(state.scene?.id!==sceneId){dialog.querySelector('p').textContent='Active scene changed; inspect this donor again';return;}dialog.close();openActorScript(entities().find(item=>item.id===(report.donor_entity_id??entity.id))??entity);};
     dialog.append(inspect);
     const dependencies=report.donor_dependencies;
     if(dependencies){
@@ -1551,7 +1614,7 @@ function draw(){
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
     if(!sceneLayers.actors)continue;
-    const active=!selectedEnvironment()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
+    const active=!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
     if(rendered&&!active)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();
     ctx.beginPath();ctx.moveTo(p.x,p.y-radius);ctx.lineTo(p.x+radius,p.y);ctx.lineTo(p.x,p.y+radius);ctx.lineTo(p.x-radius,p.y);ctx.closePath();ctx.fillStyle=active?'#c9edce':authored(entity)?'#d2ae70':'#759d8d';ctx.fill();ctx.strokeStyle=active?'#f1fff0':'#a8c6b6';ctx.lineWidth=active?1.5:1;ctx.stroke();
@@ -1566,7 +1629,7 @@ function draw(){
   }
   drawEnvironmentSelection();drawCoordinateProbe();
   const scenery=selectedEnvironment(),movable=movableSelection();
-  if(scenery&&movable&&canEdit()){
+  if((scenery||selectedNpcDraft())&&movable&&canEdit()){
     const world=draft?.id===movable.id?draft.position:position(movable),p=project(world),length=camera.distance*.085;
     if(p)for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){
       const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;
@@ -1598,6 +1661,7 @@ canvas.addEventListener('pointerdown',event=>{
   const handle=event.button===0 && entity && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
   drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null,snapStep:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
+  if(handle&&state.actor_drafts?.[entity?.id])drag.snapStep=64;
   canvas.classList.add('dragging');
 });
 canvas.addEventListener('pointermove',event=>{
@@ -1616,7 +1680,7 @@ canvas.addEventListener('pointerup',async event=>{
   if(!drag||event.pointerId!==drag.pointerId)return;
   if(drag.type==='transform'&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
-  if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
+  if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(state.actor_drafts?.[finished.entity])await api('/api/command',{type:'set_actor_draft_position',entity_id:finished.entity,position:{...state.actor_drafts[finished.entity].position,[axis]:edit.position[axis]}});else if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
   else if(!finished.moved && event.button===0){
     if((event.altKey||pickRuntimeNodes)&&showObservedNodes&&state.project?.mode==='live'){
       const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation;
@@ -1632,7 +1696,7 @@ canvas.addEventListener('pointerup',async event=>{
     let hit=null;
     if(sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}
     if(!hit)hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;
-    if(hit){if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}}
+    if(hit){if(state.actor_drafts?.[hit])selectNpcDraft(hit);else if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}}
   }
   draw();
 });

@@ -34,6 +34,7 @@ def authored_state_key(project) -> str:
     return _hash(canonical_json({"name": project.name, "root": str(project.root),
                                 "disc_path": str(project.disc_path), "imports": project.imports,
                                 "overrides": project.overrides,
+                                "actor_drafts": getattr(project, "actor_drafts", {}),
                                 "textures": getattr(project, "texture_overrides", {}),
                                 "models": getattr(project, "model_overrides", {})}).encode("utf-8"))
 
@@ -171,6 +172,8 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir) -> dict:
+    if getattr(project, 'actor_drafts', {}):
+        raise BuildError('New NPC drafts are not yet connected to playable Build; remove drafts before building existing overrides')
     if not project.disc_path:
         raise BuildError("Build requires the project's verified user-owned retail disc")
     if not project.imports:

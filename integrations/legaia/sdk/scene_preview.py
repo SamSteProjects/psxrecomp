@@ -30,6 +30,7 @@ def source_key(project, *, geometry_only=False) -> str | None:
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
                    "model_shapes": deepcopy(project.model_overrides),
+                   "actor_drafts": None if geometry_only else {key: deepcopy(value) for key,value in getattr(project,'actor_drafts',{}).items() if value['scene_id']==project.active_scene},
                    "animation_channels": {a["semantic_id"]: deepcopy(project.overrides[a["semantic_id"]]["AnimationChannels"])
                                           for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})},
                    "environment": None if geometry_only else deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
@@ -176,6 +177,31 @@ class ScenePreviewService:
                                            "height": "source terrain preview only; runtime elevation unverified" if ground_sample is not None else "ground-plane preview only" if position.get("y") is None else "authored value",
                                            "heading": "unknown; identity orientation is a display convention",
                                            "scale": "source units retained; physical scale is unknown"}})
+        by_id = {instance['entity_id']: instance for instance in instances}
+        for identifier, draft in getattr(project,'actor_drafts',{}).items():
+            if draft['scene_id'] != project.active_scene:
+                continue
+            project._validate_actor_draft(identifier,draft)
+            donor = by_id.get(draft['donor_entity_id'])
+            if donor is None:
+                raise ProjectError('Draft preview donor is unavailable')
+            instance = deepcopy(donor)
+            position = {**draft['position'], 'y':None}
+            sample = sample_preview_ground(ground,position['x'],position['z'])
+            preview_position = {**position,'y':sample['y'] if sample else None}
+            display = _display_position(preview_position)
+            matrix = list(POSITION_TO_DISPLAY)
+            matrix[3],matrix[7],matrix[11] = display['x'],display['y'],display['z']
+            instance.update(entity_id=identifier,kind='actor_draft',name=draft['name'],
+                            donor_entity_id=draft['donor_entity_id'],position=position,
+                            preview_position=preview_position,display_position=display,
+                            preview_ground_sample=sample,model_to_scene=matrix,
+                            retail_position=None,authored_position=deepcopy(draft['position']),
+                            preview_height_status='source_surface' if sample else 'unresolved_no_source_surface',
+                            evidence={'position':'authored NPC draft',
+                                      'appearance':'effective donor preview; candidate serialization uses retail donor',
+                                      'runtime':'not spawned or gameplay verified'})
+            instances.append(instance)
         environment = deepcopy(self._environment)
         effective = (environment_effective_transforms(project, self._environment_metadata)
                      if self._environment_metadata is not None else {})
@@ -187,6 +213,8 @@ class ScenePreviewService:
                                 model_to_scene=environment_matrix(transform),
                                 effective_transform=deepcopy(transform), authored_transform=True)
         instances.extend(environment)
+        if len(instances)>MAX_ENTITIES:
+            raise ProjectError('Scene preview including drafts exceeds entity limit')
         if source_key(project) != key:
             raise ProjectError("Scene preview source changed during transform projection")
         return {"schema": "legaia.scene-preview.v1", "source_key": key,

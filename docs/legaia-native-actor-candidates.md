@@ -7,6 +7,20 @@ absent from the viewport.
 
 ## Current pipeline
 
+The editor now creates project-local NPC drafts with stable authored UUIDs,
+retail donor references and exact X/Z placement. Create, position edit and delete
+use undo/redo; Save/Open preserves drafts separately from imported actors.
+The draft toolbar, hierarchy and main Inspector expose those records. Drafts
+render using effective donor geometry, support framing and viewport picking,
+and expose their serialized candidate inspection with donor-script navigation.
+These workflows have bounded browser checks; they do not establish runtime
+spawning. Effective donor preview may include overrides that the retail-donor
+candidate serializer excludes, as reported in the preview evidence.
+
+Drafts participate in dirty tracking and build snapshot identity. Changed scene
+reimports cannot reinterpret active drafts or their undo history. Playable Build
+currently rejects projects containing drafts explicitly, rather than omitting them.
+
 `importer.man_actor_structure.append_actor_candidate` takes immutable decoded MAN
 bytes, their SHA-256, and an existing partition-1 donor index. It appends a donor
 record, grows the offset table, preserves existing partition-local indices, and

@@ -213,6 +213,86 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### Draft Z handle and gesture cancellation acceptance
+
+- Isolated browser moved draft Z5440->5504 with X3008 unchanged, verified exact-grid command and Undo restoration. Separate Escape-during-X-drag check issued no command and left saved position unchanged.
+- Temporary server68527 stopped; no Save/game interaction. Draft editor checkpoint follows; playable new-NPC output remains unfinished.
+
+### Draft gizmo browser acceptance
+
+- Inspected draft-handles-20260911.png showing main Inspector and X/Z handles on the rendered draft. Isolated browser dragged X from3008 to3072, verified set_actor_draft_position with unchanged Z5440 and64-unit alignment, then Undo restored3008.
+- Temporary server77847 stopped; no Save/game interaction. Z-axis drag, broader gesture cancellation and playable integration remain unverified.
+
+### Draft transform handles
+
+- Extended movable selection and handle drawing to authored NPC drafts. Drag preview uses the draft identity; release dispatches set_actor_draft_position with the untouched other axis. Draft handles use64-unit snapping to match serialized placement constraints, documented in Inspector.
+- JavaScript syntax passed. Actual drag/Undo browser acceptance remains pending. No runtime interaction or project Save.
+
+### Draft workflow regression checks
+
+- Added two synthetic draft lifecycle checks covering create/edit/delete, undo/redo, Save/Open, immutable donor evidence, build-key invalidation, explicit Build rejection and invalid-input mutation isolation.
+- Ran with existing project workflow and candidate service checks:10 passed. Updated feature matrix with the accepted draft editor workflow and remaining playable integration work. No game interaction.
+
+### Saved draft candidate browser acceptance
+
+- Added stable busy-state handling to the draft candidate button. Isolated browser verified saved draft X3008/Z5440 report, absence of duplicate creation form and script navigation to imported donor0011. Temporary server10300 stopped; no Save or game interaction.
+- Updated native actor report with persistent draft UI/viewport/inspection workflow and current Build/runtime limitations. Full SDK goal remains active.
+
+### Saved draft candidate inspection
+
+- Connected draft IDs to source-bound candidate service using validated same-scene donor and draft X/Z, with explicit authored_npc_draft_candidate representation. Main Inspector now offers Inspect serialized candidate; donor script navigation resolves the imported donor and duplicate creation form is omitted for drafts.
+- Fresh saved-draft service call passed exact identity/position and physical encoding; JavaScript syntax passed. Browser verification of this new route remains pending. No disc write or game interaction.
+
+### Draft build identity and donor reimport protection
+
+- Found build snapshot identity omitted new drafts. Added drafts so authored creation/edits invalidate previously built packages; private position/Undo check confirmed exact key changes and restoration.
+- Changed reimport now rejects active drafts or draft undo/redo history tied to the scene, preventing donor evidence from silently changing. Both active and deleted-with-history cases passed. No Save/build/game interaction.
+
+### Draft Inspector editing and focus acceptance
+
+- Added draft support to toolbar Focus/F shortcut and busy-state reset for authored controls. Isolated browser completed repeated command edits and Focus. Exact imported-row label in harness timed out; text-filter retry verified imported selection clears draft Inspector.
+- Temporary server15881 stopped; no Save/game interaction. Draft main Inspector workflow now has bounded browser acceptance; transforms via gizmo, runtime scheduling and playable Build remain open.
+
+### Draft main Inspector integration
+
+- Previous turn verified rendered drafts/picking. Draft hierarchy and viewport clicks now select a dedicated authored draft in the main Inspector, with identity/donor evidence, X/Z command editing, frame and delete controls. Imported actor selection and environment selection clear draft selection; draft selection suppresses imported transform tools.
+- JavaScript syntax passed. Browser acceptance of this main-Inspector revision remains pending, including selection lifecycle and editing refresh. No game interaction.
+
+### Draft viewport visual and picking acceptance
+
+- Isolated browser verified hierarchy->Frame draft, inspected local screenshot draft-viewport-20260911.png showing two separate donor/draft models, and clicked the rendered draft to open its exact authored controls. First workflow reported zero page errors.
+- Updated UI copy now that draft rendering is verified. Temporary server11680 stopped; no Save/game interaction. Main inspector integration and playable Build remain unfinished.
+
+### Draft hierarchy and viewport routing
+
+- Previous turn added draft preview instances. Added active-scene draft hierarchy rows, focused draft-management opening from viewport hits and Frame draft camera action. Draft hits no longer go to imported-actor selection, which rejects authored IDs.
+- JavaScript syntax and diff checks passed. Actual browser visual/picking acceptance remains pending; draft controls are currently a focused dialog rather than the main component inspector. No runtime interaction.
+
+### Draft scene geometry projection
+
+- Added scene-preview instances for active-scene drafts using effective donor geometry, explicit authored identity/position and source-ground sampling without fabricating retail coordinates. Evidence distinguishes effective donor preview from retail candidate serialization. Draft transforms invalidate projection but retain geometry cache.
+- Fresh scene-preview API returned262 entities including the saved draft at X3008/Z5440 and null retail position. Initial harness assumed every entity had kind; corrected optional-kind lookup passed. Temporary server32982 stopped. Browser visual/picking acceptance and playable integration remain open.
+
+### NPC draft management panel
+
+- Added toolbar draft count and panel listing stable identities/donors, X/Z editing and deletion through commands. Live mode disables edits. Browser check exposed a toolbar click accepted during an in-flight API call; tied the button to busy state and reran successfully.
+- Isolated browser verified edit, reopen with new position, delete and Undo restoration. Temporary server81931 stopped; no Save or game interaction. Draft viewport and playable output integration remain open.
+
+### Browser NPC draft creation
+
+- Previous turn added draft position command. Candidate dialog now includes name and exact-grid X/Z inputs plus Create NPC draft using the normal command API, with scene-change guard and explicit draft/build limitations.
+- Isolated browser created Browser NPC draft at X3136, closed the dialog on success and verified matching server draft state. No Save; temporary server22013 stopped and browser closed. Persistent draft display/edit UI, viewport and playable Build integration remain open.
+
+### Draft position editing and dirty-section reporting
+
+- Previous turn added persistent drafts. Added validated set_actor_draft_position command with identity preservation, undo/redo and no-op suppression. Included drafts in saved-section accounting so UI can identify unsaved new-NPC changes.
+- Private saved draft check passed position change, undo to clean state, redo and no-op history preservation. No Save or game interaction. Draft creation UI, viewport and playable Build remain unfinished.
+
+### Persistent authored NPC drafts
+
+- Previous turn checkpointed source. Added stable authored UUID drafts with imported donor/scene, exact X/Z and name; create/delete commands use undo/redo and serialize separately from retail entities. Open validates drafts and state exposes them. Build rejects drafts explicitly until integrated, preventing silent omission.
+- Private create/undo/redo/save/reopen check passed with stable identity. Initial fixture copied a model override without its asset after changing root; removed that unrelated override from the private in-memory fixture and reran successfully. User project unchanged. Viewport/hierarchy/UI creation and playable integration remain open.
+
 ### Candidate and disc implementation checkpoint
 
 - Previous turn browser-verified placement inheritance and authored coordinates. Ran the focused structural/reindex/container/physical-layout/ISO/service checks together:15 passed. Updated feature matrix to include experimental disc output and its acceptance limits.
