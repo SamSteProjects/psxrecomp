@@ -140,3 +140,10 @@ Hierarchy search also matches authored change types such as **Script movement**,
 **Transitions**, **Dialogue**, and **Position**. Hover an actor's authored badge to
 see its changed components, then select the actor to inspect the corresponding
 retail and authored values.
+
+
+Shape OBJ imports preserve source vertex order and oriented triangle topology.
+Equivalent face reordering, cyclic corner order and relative vertex indices are
+accepted. Reversed winding, missing/duplicate triangles and changed vertex counts
+are rejected. Only vertex positions are imported; source materials and normals
+remain unchanged.

@@ -21,6 +21,22 @@ class ModelObjTests(unittest.TestCase):
         allowed = {audit[0]['byte_offset'], audit[0]['byte_offset']+1}
         self.assertTrue(all(a == b or i in allowed for i,(a,b) in enumerate(zip(source,result))))
 
+    def test_relative_indices_and_cyclic_faces_preserve_source(self):
+        source = model(0x22)
+        digest = sha256(source).hexdigest()
+        obj = export_shape_obj(source)
+        for face in (b'f -4 -3 -2', b'f 2 3 1', b'f -3 -2 -4'):
+            self.assertEqual(import_shape_obj(source, digest, obj.replace(b'f 1 2 3', face)), (source, []))
+        lines=obj.splitlines()
+        faces=[line for line in lines if line.startswith(b'f ')]
+        reordered=b'\n'.join([line for line in lines if not line.startswith(b'f ')]+list(reversed(faces)))+b'\n'
+        self.assertEqual(import_shape_obj(source,digest,reordered),(source,[]))
+        with self.assertRaises(ImportError):
+            import_shape_obj(source,digest,reordered.replace(faces[1],faces[0]))
+        for face in (b'f 0 2 3', b'f -5 -3 -2', b'f -2 -3 -4'):
+            with self.assertRaises(ImportError):
+                import_shape_obj(source, digest, obj.replace(b'f 1 2 3', face))
+
     def test_rejects_changed_order_counts_and_unrepresentable_positions(self):
         source = model(0x22)
         digest = sha256(source).hexdigest()

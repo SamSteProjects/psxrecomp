@@ -1,4 +1,5 @@
 """Ordered OBJ shape interchange, preserving source TMD topology and normals."""
+from collections import Counter
 import math
 import struct
 
@@ -20,7 +21,7 @@ def export_shape_obj(source: bytes) -> bytes:
 
 
 def import_shape_obj(source: bytes, source_sha256: str, content: bytes):
-    """Import positions only; reject changed indexing/topology rather than guess."""
+    """Import positions only; verify oriented topology independent of face ordering."""
     if not isinstance(content, bytes) or not 1 <= len(content) <= 16*1024*1024:
         raise ImportError('OBJ shape must contain at most 16 MiB')
     mesh = decode_tmd(source)
@@ -42,15 +43,18 @@ def import_shape_obj(source: bytes, source_sha256: str, content: bytes):
                 if len(values) != 3 or len(faces) >= len(mesh['triangles']):
                     raise ImportError('OBJ must preserve source triangulation')
                 indices = [int(value.split('/')[0]) for value in values]
-                if any(index <= 0 or index > len(mesh['vertices']) for index in indices):
-                    raise ImportError('OBJ requires positive source vertex indices')
-                faces.append([index-1 for index in indices])
+                resolved = [index-1 if index > 0 else len(vertices)+index for index in indices]
+                if any(index == 0 for index in indices) or any(index < 0 or index >= (len(mesh['vertices']) if original > 0 else len(vertices)) for original, index in zip(indices, resolved)):
+                    raise ImportError('OBJ face indices exceed the source vertex layout')
+                faces.append(resolved)
             elif kind not in ('g','o','s','vn','vt','usemtl','mtllib'):
                 raise ImportError('Unsupported OBJ directive: ' + kind)
     except (UnicodeError, ValueError) as exc:
         raise ImportError('OBJ contains invalid text or numeric fields') from exc
-    if len(vertices) != len(mesh['vertices']) or faces != mesh['triangles']:
-        raise ImportError('OBJ vertex count, face order or topology differs from source')
+    def oriented(triangle):
+        return min(tuple(triangle[i:] + triangle[:i]) for i in range(3))
+    if len(vertices) != len(mesh['vertices']) or Counter(map(oriented, faces)) != Counter(map(oriented, mesh['triangles'])):
+        raise ImportError('OBJ vertex count, triangle winding or topology differs from source')
     changed = bytearray(source)
     for obj in mesh['objects']:
         start = 12 + struct.unpack_from('<I',source,12+obj['object_index']*28)[0]

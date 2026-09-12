@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Equivalent OBJ topology interchange
+
+- Previous turn made verified workflow progress. OBJ shape imports now resolve relative indices at each face declaration and compare oriented triangle multisets, permitting face reordering and cyclic corner rotation without changing source vertex order or primitive/material bytes. Positive source indices retain their existing bounds. Triangle multiplicity and winding remain enforced.
+- Five focused OBJ/model-authoring tests passed, including exact no-op source equality, edited-coordinate byte audit, reversed-winding/duplicate/invalid-index rejection and reordered faces. An initial relative-index test assumed three declared vertices; the four-vertex fixture was corrected. No validation weakening was needed.
+- External-tool/browser acceptance of these additional OBJ forms remains pending. No game launched; gameplay remains deferred and the full SDK objective stays active.
+
+
 ### 2026-09-12 — Discover authored actor changes from hierarchy
 
 - Previous turn made verified progress on shared-instance drags and authored metadata. Hierarchy search now includes human-readable authored component names, and authored badge tooltips/accessibility labels identify the changed components without replacing imported metadata.
