@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Streaming archive writer regression checkpoint
+
+- Previous goal turn made verified retail archive-writer progress. Added a synthetic, parsed MAN-in-PROT roundtrip regression that verifies retained TOC bytes, neighboring chunks/sectors and candidate bytes, plus rejection of boolean indices, nonstructural offsets, stale preimages and payload growth.
+- Seven archive/streaming tests pass. Initial synthetic PROT fixture lacked bytes required by its indexed read window; extending fixture backing bytes corrected the test without relaxing production validation. Retail one-byte archive evidence from the preceding turn remains the integration proof.
+- No game or disc writer ran. Streaming project composition remains the next task; no build-ready or gameplay-complete claim.
+
+### 2026-09-12 Streaming MAN archive replacement and reopened verification
+
+- Previous goal turn made verified streaming-payload writer progress. Added equal-span streaming MAN archive replacement with expected archive/payload hashes, unique physical-owner resolution, MAN validation, retained TOC and reopened payload verification. An animation chunk cannot be targeted through the MAN writer.
+- Real dolk2 actor-1 X patch changed exactly one byte across PROT; reopened MAN matched candidate and TOC stayed identical. Metadata-only audit `local-output/sdk-20260909/streaming-man-archive-patch-20260912.json` records source/result hashes and keeps build_ready false. No disc output or gameplay run.
+- Focused payload regression tests still pass. Project export composition, growing NPC payloads and final disc validation remain unfinished; this archive writer is the next integration foundation rather than an export-completion claim.
+
+### 2026-09-12 Streaming payload replacement foundation
+
+- Previous turn completed verified editor visibility work. Traced draft export's compressed MAN assumption and added a separate source-hash/preimage-verified streaming payload replacement primitive for word-aligned, equal-size MAN/animation chunks. It requires a complete terminated structural chain, preserves all other bytes, and rechecks chunk boundaries. Growing payloads and archive relocation remain separate unfinished work.
+- Two focused streaming tests passed, covering neighbor preservation, changed size rejection and stale source/preimage rejection. Real dolk2 MAN actor-1 X edit exercised the existing placement encoder and the new carrier replacement; private metadata-only audit `local-output/sdk-20260909/streaming-man-placement-patch-20260912.json` records changed bytes and hashes. No disc was written or game launched.
+- This is a writer primitive, not completed streaming project export. Next work must compose supported authored components and verify the final archive/disc before exposing export readiness.
+
 ### 2026-09-12 Hidden hierarchy state and visibility scope acceptance
 
 - Previous turn made verified visibility implementation progress. Hidden hierarchy rows now carry an accessible Hidden badge; selected objects can be restored individually. Visibility and layer actions refresh the hierarchy, and project/scene scope remains client-only.

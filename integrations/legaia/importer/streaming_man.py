@@ -57,3 +57,33 @@ def find_streaming_man_candidates(archive,start,end,scene):
                               source_kind='raw_streaming_man',compression='none',
                               exportable=False))
     return found
+
+
+def replace_streaming_payload(source: bytes, expected_sha256: str, header_offset: int,
+                              expected_payload_sha256: str, candidate: bytes):
+    """Equal-span streaming edit; growing payloads require archive relocation work."""
+    if not isinstance(source, bytes) or sha256(source).hexdigest() != expected_sha256:
+        raise ImportError('Streaming carrier source hash mismatch')
+    if type(header_offset) is not int or header_offset < 0 or not isinstance(candidate, bytes):
+        raise ImportError('Streaming replacement locator or payload is invalid')
+    chunks, terminated = streaming_chunks(source)
+    if not terminated:
+        raise ImportError('Streaming replacement requires a complete terminated carrier')
+    target = next((c for c in chunks if c['header_offset'] == header_offset), None)
+    if target is None or target['type_byte'] not in (3, 5):
+        raise ImportError('Streaming replacement requires a structural MAN or animation chunk')
+    size = target['size']
+    if size % 4 or len(candidate) != size:
+        raise ImportError('Streaming replacement requires an unchanged word-aligned payload size')
+    start, end = header_offset + 4, header_offset + 4 + size
+    before = source[start:end]
+    if sha256(before).hexdigest() != expected_payload_sha256:
+        raise ImportError('Streaming payload preimage mismatch')
+    result = source[:start] + candidate + source[end:]
+    if streaming_chunks(result) != (chunks, terminated):
+        raise ImportError('Streaming edit changed structural chunk boundaries')
+    return result, dict(header_offset=header_offset, payload_offset=start, byte_length=size,
+                        type_byte=target['type_byte'], source_sha256=expected_sha256,
+                        result_sha256=sha256(result).hexdigest(),
+                        payload_before_sha256=expected_payload_sha256,
+                        payload_after_sha256=sha256(candidate).hexdigest())

@@ -4,6 +4,50 @@ import struct
 from .core import ImportError
 
 
+def patch_streaming_man_entry(source: bytes, expected_sha256: str, entry_index: int,
+                              chunk_header_offset: int, source_man_sha256: str,
+                              candidate: bytes, *, header_offset: int = 0):
+    """Replace an equal-size raw MAN in its unique physical owner; retain the TOC."""
+    from .core import ProtArchive, IsoNode, parse_man
+    from .prot_layout import locate_physical_span
+    from .streaming_man import replace_streaming_payload
+    if not isinstance(source, bytes) or sha256(source).hexdigest() != expected_sha256:
+        raise ImportError('PROT source hash mismatch')
+    if type(entry_index) is not int:
+        raise ImportError('PROT entry index must be an integer')
+    parse_man(candidate)
+
+    class MemoryImage:
+        def __init__(self, data): self.data = data
+        def read_user(self, _lba, offset, length, file_size):
+            if offset < 0 or length < 0 or offset + length > min(file_size, len(self.data)):
+                raise ImportError('Logical PROT read exceeds bounds')
+            return self.data[offset:offset + length]
+
+    archive = ProtArchive(MemoryImage(source), IsoNode(0, len(source), False, 'PROT.DAT'))
+    if archive.header_offset != header_offset:
+        raise ImportError('PROT header location disagrees with caller')
+    entry = archive.entry(entry_index)
+    span = locate_physical_span(archive, entry.start_lba * archive.SECTOR)
+    if span['entry_index'] != entry_index:
+        raise ImportError('Streaming MAN entry is not a unique physical owner')
+    start, length = span['byte_offset'], span['byte_length']
+    container = source[start:start + length]
+    patched, audit = replace_streaming_payload(container, sha256(container).hexdigest(),
+                                              chunk_header_offset, source_man_sha256, candidate)
+    if audit['type_byte'] != 3:
+        raise ImportError('Streaming MAN replacement cannot target an animation chunk')
+    output = source[:start] + patched + source[start + length:]
+    reopened = ProtArchive(MemoryImage(output), IsoNode(0, len(output), False, 'PROT.DAT'))
+    raw = reopened.read_entry(reopened.entry(entry_index), extended=True)
+    offset = chunk_header_offset + 4
+    if raw[offset:offset + len(candidate)] != candidate or reopened.toc != archive.toc:
+        raise ImportError('Streaming MAN archive roundtrip or unchanged TOC verification failed')
+    return output, dict(container=audit, entry_index=entry_index,
+                        source_sha256=expected_sha256, result_sha256=sha256(output).hexdigest(),
+                        reopened_man_verified=True, toc_unchanged=True, build_ready=False)
+
+
 def patch_archive_spans(source: bytes, expected_sha256: str, patches: list[dict]) -> tuple[bytes, list[dict]]:
     """Compose source-addressed equal-span assets before physical relocation."""
     if not isinstance(source,bytes) or sha256(source).hexdigest()!=expected_sha256:

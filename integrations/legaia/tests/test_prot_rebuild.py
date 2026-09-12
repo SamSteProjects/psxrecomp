@@ -7,10 +7,35 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.core import ImportError
-from importer.prot_rebuild import replace_physical_entry, rebuild_man_entries, patch_archive_spans
+from importer.prot_rebuild import replace_physical_entry, rebuild_man_entries, patch_archive_spans, patch_streaming_man_entry
 
 
 class ProtRebuildTests(unittest.TestCase):
+    def test_streaming_man_roundtrip_retains_toc_and_neighbor_sectors(self):
+        from test_importer import synthetic_man
+        from importer.serialization import patch_man_positions
+        original = synthetic_man()
+        original += bytes((-len(original)) % 4)
+        candidate, _ = patch_man_positions(original, 'town01', {1: {'x': 64}})
+        chunk = struct.pack('<I', (3 << 24) | len(original)) + original
+        container = (chunk + struct.pack('<I', (5 << 24) | 4) + b'pose' + bytes(4)).ljust(2048, b'\0')
+        source = self.source()
+        source = source[:2048] + container + source[4096:] + b'Z' * (8 * 2048)
+        digest = sha256(source).hexdigest()
+        man_hash = sha256(original).hexdigest()
+        result, audit = patch_streaming_man_entry(source, digest, 0, 0, man_hash, candidate)
+        self.assertEqual(result[:2048], source[:2048])
+        self.assertEqual(result[2048 + len(chunk):], source[2048 + len(chunk):])
+        self.assertEqual(result[2052:2052 + len(candidate)], candidate)
+        self.assertTrue(audit['reopened_man_verified'])
+        self.assertTrue(audit['toc_unchanged'])
+        for index, offset, before, payload in [(True, 0, man_hash, candidate),
+                                              (0, 4, man_hash, candidate),
+                                              (0, 0, 'stale', candidate),
+                                              (0, 0, man_hash, candidate + bytes(4))]:
+            with self.assertRaises(ImportError):
+                patch_streaming_man_entry(source, digest, index, offset, before, payload)
+
     def test_equal_span_assets_are_source_bound_and_disjoint(self):
         source=b'0123456789'
         digest=sha256(source).hexdigest()
