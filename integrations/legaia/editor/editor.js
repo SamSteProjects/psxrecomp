@@ -11,6 +11,7 @@ $('viewport-wrap').before(transformTools);
 function snappedTransformCoordinate(value,step){return Math.round(value/(step||1))*(step||1);}
 const camera = {yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null, pendingEntityFrame=null;
+let sceneRepresentation="authored";
 let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
 const sceneLayers={actors:true,scenery:true,ground:true};
 let showObservedNodes=false,runtimeNodeHits=[],pickRuntimeNodes=false;
@@ -108,6 +109,9 @@ for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',gro
 }
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
 modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;scenePreview=null;sceneError=null;modelsEnabled=true;}else modelsEnabled=!modelsEnabled;modelToggle.classList.toggle('active',modelsEnabled);modelToggle.setAttribute('aria-pressed',modelsEnabled);refreshScenePreview();draw();};
+const representationSelect=document.createElement('select');representationSelect.id='scene-representation';representationSelect.setAttribute('aria-label','Scene representation');representationSelect.innerHTML='<option value="authored">Authored scene</option><option value="retail">Retail scene · comparison</option>';$('frame-all').before(representationSelect);
+representationSelect.onchange=()=>{sceneRepresentation=representationSelect.value;cancelViewportGesture();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=null;sceneAbort?.abort();scenePreview=null;sceneKey=null;scenePendingKey=null;sceneFailedKey=null;sceneError=null;sceneRenderer?.clear();renderHierarchy();renderInspector();refreshScenePreview();draw();notify(sceneRepresentation==='retail'?'Retail scene comparison. Viewport movement is disabled; the Inspector retains authored project values.':'Authored scene restored.');};
+function sceneRequestKey(){return state.scene_preview_source_key?`${state.scene_preview_source_key}|${sceneRepresentation}`:null;}
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
 sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
@@ -405,6 +409,7 @@ function selectNpcDraft(id){pendingEntityFrame=null;npcDraftSelection=id;environ
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
+  if(sceneRepresentation!=="authored")return null;
   const npc=selectedNpcDraft();
   if(npc){if(!scenePreviewCurrent()||hiddenSceneEntities().has(npcDraftSelection))return null;return {id:npcDraftSelection,components:{Transform:{effective:{position:{...npc.position,y:null}}}}};}
   const environment=selectedEnvironment();
@@ -413,6 +418,7 @@ function movableSelection(){
   return {id:environment.entity_id,components:{Transform:{effective:{position:environment.position}}}};
 }
 async function moveDecoration(identifier,axis,worldValue){
+  if(sceneRepresentation!=='authored')return;
   const item=selectedEnvironment();if(!scenePreviewCurrent()||!item||item.entity_id!==identifier)return;
   const source=item.source_record,cell=(source.source_record.grid_byte_offset-0x8000)/2;
   const binding=activeScenePreview()?.environment_authoring;
@@ -436,7 +442,7 @@ function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase(
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
 function position(entity){
-  const source=entity.components?.Transform?.effective?.position ?? entity.components?.Transform?.imported?.position;
+  const source=sceneRepresentation==='retail'?entity.components?.Transform?.imported?.position:entity.components?.Transform?.effective?.position ?? entity.components?.Transform?.imported?.position;
   const preview=scenePreviewCurrent()?activeScenePreview()?.entities.find(item=>item.entity_id===entity.id):null;
   return displayPosition(preview?.preview_position??source);
 }
@@ -502,8 +508,8 @@ function render(){
   if(lastSceneId!==state.scene?.id){lastSceneId=state.scene?.id;frame();}else draw();
   refreshScenePreview();
 }
-function activeScenePreview(){return scenePreview&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&sceneProjectPath===state.project?.path&&scenePreview.scene_id===state.scene?.id?scenePreview:null;}
-function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===state.scene_preview_source_key&&!sceneError;}
+function activeScenePreview(){return scenePreview&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&sceneProjectPath===state.project?.path&&scenePreview.scene_id===state.scene?.id&&scenePreview.representation===sceneRepresentation?scenePreview:null;}
+function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===sceneRequestKey()&&!sceneError;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
 function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(draft)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
@@ -519,12 +525,12 @@ function updateSceneBadge(){
   $('show-hidden').textContent=sceneHidden.size?`Show hidden (${sceneHidden.size})`:'Show hidden';
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
-  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?(ready?'Updating scene · showing previous preview (scenery editing paused)':'Loading supported scene models…'):ready?`${count} / ${activeScenePreview()?.entities.length??0} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
+  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?(ready?'Updating scene · showing previous preview (scenery editing paused)':'Loading supported scene models…'):ready?`${sceneRepresentation==='retail'?'Retail comparison · ':'Authored · '}${count} / ${activeScenePreview()?.entities.length??0} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
   $('coordinate-note').textContent=environmentEntities().length?'Environment: imported transforms · Actors: unknown height/facing use preview conventions':'Unknown actor heights are shown on the ground plane.';
   $('coordinate-note').title=JSON.stringify(activeScenePreview()?.limits ?? []);
 }
 async function refreshScenePreview(){
-  const key=state.scene_preview_source_key;
+  const key=sceneRequestKey();
   if(!state.capabilities?.scene_preview||!key||!modelsEnabled){sceneAbort?.abort();scenePendingKey=null;updateSceneBadge();return;}
   if(activeScenePreview()&&sceneKey===key){sceneAbort?.abort();sceneAbort=null;scenePendingKey=null;sceneFailedKey=null;sceneError=null;updateSceneBadge();return;}
   if(scenePendingKey===key||sceneFailedKey===key){updateSceneBadge();return;}
@@ -533,10 +539,10 @@ async function refreshScenePreview(){
   const expectedScene=state.scene?.id,revision=cameraRevision;updateSceneBadge();draw();
   try{
     if(!sceneRenderer){const module=await import('/scene-renderer.js');if(controller.signal.aborted)return;sceneRenderer=new module.SceneRenderer($('scene-models'),message=>{sceneError=message;updateSceneBadge();draw();});}
-    const response=await fetch('/api/scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const response=await fetch('/api/scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation}),signal:controller.signal});
     const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:'Scene preview failed');
-    if(controller.signal.aborted||state.scene_preview_source_key!==key||state.scene?.id!==expectedScene)return;
-    if(data.source_key!==key||data.scene_id!==expectedScene)throw new Error('Scene preview source changed while loading; retry models.');
+    if(controller.signal.aborted||sceneRequestKey()!==key||state.scene?.id!==expectedScene)return;
+    if(data.project_source_key!==state.scene_preview_source_key||data.representation!==sceneRepresentation||data.scene_id!==expectedScene)throw new Error('Scene preview source changed while loading; retry models.');
     if(!Array.isArray(data.position_to_display)||data.position_to_display.length!==16||!data.position_to_display.every(numeric))throw new Error('SDK did not provide a valid scene display conversion.');
     const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
@@ -544,7 +550,7 @@ async function refreshScenePreview(){
     const waiting=pendingEntityFrame;pendingEntityFrame=null;
     if(waiting&&waiting.key===key&&waiting.scene===state.scene?.id&&waiting.project===state.project?.path&&waiting.revision===cameraRevision&&!drag)frame(waiting.entity);
     else if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
-  }catch(error){if(error.name!=='AbortError'&&state.scene_preview_source_key===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
+  }catch(error){if(error.name!=='AbortError'&&sceneRequestKey()===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();draw();}}
 }
 function renderHierarchy(){
@@ -591,7 +597,7 @@ async function openSceneTransitions(){
   transitionsDialog.innerHTML='<div class="dialog-heading"><h2>Scene transitions</h2><button id="close-scene-transitions" aria-label="Close scene transitions">×</button></div><p id="transitions-summary">Verifying scene scripts…</p><div id="transitions-graph"></div><p class="dialog-error" role="alert"></p>';
   $('close-scene-transitions').onclick=()=>transitionsDialog.close();transitionsDialog.showModal();
   try{
-    const response=await fetch('/api/scene-transitions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const response=await fetch('/api/scene-transitions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation}),signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Transition discovery failed');
     if(controller.signal.aborted||!transitionsDialog.open)return;
     if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.edges)||result.edges.length>16384||!Array.isArray(result.nodes)||result.nodes.length>16385)throw new Error('Transition source changed or returned invalid graph bounds.');
@@ -624,7 +630,7 @@ flagsButton.onclick=async()=>{
   flagsDialog.innerHTML='<div class="dialog-heading"><h2>Flag references</h2><button aria-label="Close flag references">×</button></div><p class="flags-summary">Verifying scene scripts…</p><input type="search" aria-label="Search flag references" placeholder="Search bank, index, script or operation"><div class="flags-results"></div><p class="dialog-error" role="alert"></p>';
   flagsDialog.querySelector('button').onclick=()=>flagsDialog.close();flagsDialog.showModal();
   try{
-    const response=await fetch('/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const response=await fetch('/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation}),signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error??'Flag discovery failed');
     if(controller.signal.aborted||!flagsDialog.open)return;
     if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>16384)throw new Error('Flag references do not match the current scene source.');
@@ -678,7 +684,7 @@ async function refreshResources(){
   const key=resourceStateKey(),sceneId=state.scene?.id,sourceKey=state.scene_preview_source_key,controller=new AbortController();
   resourceAbort?.abort();resourceAbort=controller;resourcePendingKey=key;resourceError=null;resourceRecords=[];resourceLimitations=[];resourceKey=null;setBusy(true);renderAssets();
   try{
-    const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation}),signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
     if(controller.signal.aborted||key!==resourceStateKey())return;
     if(result.scene_id!==sceneId||result.source_key!==sourceKey||!Array.isArray(result.records)||result.records.length>4096||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','collision','trigger','region'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
@@ -1301,14 +1307,14 @@ function renderInspector(){
         const heading=document.createElement('h4');heading.textContent=label;section.append(heading);
         for(const axis of ['x','y','z']){
           const row=document.createElement('label');row.textContent=`${axis.toUpperCase()} · ${individual?'inherited':'imported'} ${base[axis]} `;
-          const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${individual?'Individual ':''}${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live'||!scenePreviewCurrent();row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
+          const input=document.createElement('input');input.type='number';input.step='1';input.min=field==='offset'?'-32768':'0';input.max=field==='offset'?'32767':'4095';input.value=current?.[field]?.[axis]??base[axis];input.setAttribute('aria-label',`${individual?'Individual ':''}${label} ${axis.toUpperCase()}`);input.disabled=state.project?.mode==='live'||sceneRepresentation!=='authored'||!scenePreviewCurrent();row.append(input);section.append(row);inputs.push({field,axis,input,base:base[axis]});
         }
       }
       const effective=document.createElement('p');effective.textContent=`${scenePreviewCurrent()?'Effective position':'Previous preview position (refresh pending)'}: ${JSON.stringify(environment.effective_transform?.position??transform.position)}`;section.append(effective);
-      const apply=document.createElement('button');apply.textContent=individual?'Apply individual transform':'Apply shared transform';apply.disabled=state.project?.mode==='live'||!scenePreviewCurrent();
+      const apply=document.createElement('button');apply.textContent=individual?'Apply individual transform':'Apply shared transform';apply.disabled=state.project?.mode==='live'||sceneRepresentation!=='authored'||!scenePreviewCurrent();
       const inspectorKey=sceneKey;
       apply.onclick=async()=>{
-        if(!scenePreviewCurrent()||sceneKey!==inspectorKey)return;
+        if(sceneRepresentation!=='authored'||!scenePreviewCurrent()||sceneKey!==inspectorKey)return;
         const edit=individual?{cell_index:cell}:{record_index:source.object_record_index};
         for(const {field,axis,input,base} of inputs){if(!input.value.trim()||!input.checkValidity()){input.reportValidity();return;}const value=Number(input.value);if(value!==base)(edit[field]??={})[axis]=value;}
         const edits=(binding?.edits??[]).filter(e=>individual||e.record_index!==source.object_record_index);
@@ -1666,7 +1672,7 @@ function renderDialogueAuthoring(){
 function frame(entity){
   pendingEntityFrame=null;
   if(entity&&modelsEnabled&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&!scenePreviewCurrent()&&!sceneError){
-    pendingEntityFrame={entity,key:state.scene_preview_source_key,scene:state.scene?.id,project:state.project?.path,revision:cameraRevision};
+    pendingEntityFrame={entity,key:sceneRequestKey(),scene:state.scene?.id,project:state.project?.path,revision:cameraRevision};
     return;
   }
   const points=entity?[position(entity)]:(sceneLayers.actors?entities().filter(e=>!hiddenSceneEntities().has(e.id)).map(position):[]);
@@ -1751,14 +1757,14 @@ function draw(){
     const active=!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
     if(rendered&&!active)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();
-    ctx.beginPath();ctx.moveTo(p.x,p.y-radius);ctx.lineTo(p.x+radius,p.y);ctx.lineTo(p.x,p.y+radius);ctx.lineTo(p.x-radius,p.y);ctx.closePath();ctx.fillStyle=active?'#c9edce':authored(entity)?'#d2ae70':'#759d8d';ctx.fill();ctx.strokeStyle=active?'#f1fff0':'#a8c6b6';ctx.lineWidth=active?1.5:1;ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p.x,p.y-radius);ctx.lineTo(p.x+radius,p.y);ctx.lineTo(p.x,p.y+radius);ctx.lineTo(p.x-radius,p.y);ctx.closePath();ctx.fillStyle=active?'#c9edce':sceneRepresentation==='authored'&&authored(entity)?'#d2ae70':'#759d8d';ctx.fill();ctx.strokeStyle=active?'#f1fff0':'#a8c6b6';ctx.lineWidth=active?1.5:1;ctx.stroke();
     if(active){
       ctx.font='11px "Segoe UI", sans-serif';ctx.fillStyle='#c8ddd1';ctx.fillText(entity.name ?? entity.id,p.x+12,p.y-10);
-      if(Object.keys(entity.components?.Transform?.authored?.position??{}).length||draft?.id===entity.id){
+      if(sceneRepresentation==='authored'&&(Object.keys(entity.components?.Transform?.authored?.position??{}).length||draft?.id===entity.id)){
         const original=displayPosition(entity.components?.Transform?.imported?.position),q=project(original);
         if(q&&Math.hypot(q.x-p.x,q.y-p.y)>3){ctx.save();ctx.setLineDash([4,4]);line(original,world,'#d6ad6c',1.5);ctx.setLineDash([]);ctx.strokeStyle='#d6ad6c';ctx.strokeRect(q.x-4,q.y-4,8,8);ctx.fillStyle='#e7c188';ctx.fillText('Imported',q.x+8,q.y+14);ctx.restore();}
       }
-      if(canEdit()){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
+      if(canEdit()&&sceneRepresentation==='authored'){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
   drawEnvironmentSelection();drawCoordinateProbe();

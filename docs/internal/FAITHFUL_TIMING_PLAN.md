@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Retail/authored viewport switch
+
+- Added explicit Authored scene / Retail scene comparison control. Requests and cache readiness include representation; stale responses cannot replace the selected layer. Switching cancels gestures and clears stale geometry while preserving the camera and project edits.
+- Retail actor fallback positions use imported transforms, authored-difference markers are hidden, and viewport movement handles/scenery transform actions are disabled. Inspector remains explicitly authored project state, rather than silently substituting retail values.
+- Browser workflow passed authored433/442 -> retail432/441 -> authored433/442 with unchanged draft data/dirty state and no JavaScript errors. A separate awaited selection check confirmed retail hierarchy selection synchronizes the Inspector. Inspected `scene-retail-comparison-browser-20260912.png` and `scene-retail-selection-browser-20260912.png` under local-output/sdk-20260909. JavaScript syntax passed.
+- Both temporary editor/browser sessions stopped. No game launched; comparison is editor-derived rather than live acceptance. Broader SDK goal remains active.
+
+
 ### 2026-09-12 — Whole-scene retail/authored preview service
 
 - Added explicit authored/retail scene preview projection and HTTP request support. Retail uses a separate view with overrides, NPC drafts and model/TIM replacements excluded; the working project and undo history are preserved. Model/texture resolution receives that projected view rather than leaking the server's authored state into retail geometry.
