@@ -13,7 +13,7 @@ from copy import deepcopy
 import hashlib
 from typing import Any
 
-from .core import ImportError, decompress_lzs, parse_scene_table
+from .core import ImportError, decompress_lzs, parse_scene_assets
 from .pipeline import REFERENCE_COMMIT, _disc_context
 from .textures import (MAX_ENTRY_BYTES, MAX_TIM_BYTES, TextureCatalog, Tim,
                        _pack_members, load_scene_texture_catalog, parse_tim)
@@ -119,7 +119,7 @@ class TextureAuthoringContext:
             return {"kind": "raw_tim_pack", "decoded": raw, "stream": None, "offset": location,
                     "ranges": _pack_members(raw, True), "stream_offset": 0,
                     "source": {"prot_entry_index": entry.index}}
-        table = parse_scene_table(archive.read_entry(entry, extended=False), entry.index)
+        table = parse_scene_assets(archive.read_entry(entry, extended=False), entry.index)
         if table is None:
             raise ImportError("texture source has no verified entry-head descriptor table")
         descriptor = next((d for d in table.descriptors if d.index == descriptor_index), None)

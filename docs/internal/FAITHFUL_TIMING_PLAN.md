@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming texture replacement export
+
+- Texture authoring now resolves entry-head asset directories independently of MAN presence, matching the existing texture catalog's four/five-entry streaming-directory support. Descriptor type/offset, alias, span, TIM layout and compressed capacity checks remain enforced.
+- Streaming scene export now composes verified project texture bindings through shared archive overlays and final carrier verification. NPC growth and model replacement support remain separate unfinished work.
+- Eleven retail-enabled texture/import/export/composition tests passed. A Dolk2 TIM probe is independently decoded from the final archive and compared byte-for-byte with the replacement; original disc TIM remains unchanged. Private metadata evidence: `local-output/sdk-20260909/streaming-texture-composition-20260912.json`. No proprietary payloads were added to Git.
+- No game launched; visual appearance in gameplay remains deferred. Full goal active.
+
+
 ### 2026-09-12 — Streaming animation export composition
 
 - Added raw type-5 animation bank serialization to the shared archive patch path. It verifies the physical owner, complete terminated chunk chain, original bank identity, equal word-aligned payload size and unchanged structural boundaries before composing the replacement.

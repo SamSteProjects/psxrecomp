@@ -12,6 +12,35 @@ from sdk.draft_build import prepare_draft_archive
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class StreamingAppearanceBuild(unittest.TestCase):
+    def test_streaming_texture_reopens_as_exact_changed_tim(self):
+        from hashlib import sha256
+        from importer.texture_authoring import load_texture_authoring_context
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.disc_path = os.environ["LEGAIA_DISC_BIN"]
+            project.import_metadata(import_scene(project.disc_path, "dolk2"))
+            context = load_texture_authoring_context(project.disc_path, "dolk2")
+            identifier = "texture://dolk2/69/0/0"
+            original = context.original_tim(identifier)
+            replacement = bytearray(original)
+            replacement[-2] ^= 1
+            replacement = bytes(replacement)
+            project.texture_overrides = {identifier: dict(source_scene_id="scene://dolk2", format="tim",
+                asset_sha256=sha256(replacement).hexdigest(), byte_length=len(replacement))}
+            with patch.object(project, "read_texture_replacement", return_value=replacement):
+                output, audit = prepare_draft_archive(project)
+            carrier = audit["scenes"]["scene://dolk2"]["texture_changes"]["carriers"][0]
+            self.assertTrue(carrier["reopened_payload_verified"])
+            class MemoryImage:
+                def read_user(self, lba, offset, length, file_size): return output[offset:offset + length]
+            archive = ProtArchive(MemoryImage(), IsoNode(0, len(output), False, "PROT.DAT"))
+            _, source = context._items[identifier]
+            final_carrier = context._carrier(archive, source)
+            a, b = final_carrier["ranges"][source["pack_slot"]]
+            self.assertEqual(final_carrier["decoded"][a:b], replacement)
+            self.assertEqual(context.original_tim(identifier), original)
+
     def test_raw_animation_and_man_changes_survive_composition(self):
         from hashlib import sha256
         from importer.scene_animation import load_scene_actor_animation_catalog
