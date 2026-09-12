@@ -207,7 +207,12 @@ pass Khronos validation with zero errors/warnings and import/render in Blender
 5.2.1. The browser selected idle frame2 and produced a ten-object, 496-triangle,
 four-texture export with explicit static-pose limits. All three party idle/walk
 previews were visually checked with face/clothing textures and frame controls.
-No animated GLB channels, native replacement or physical-meter scale is claimed.
+That initial checkpoint did not include animated GLB channels. As of 2026-09-12,
+full rigid-object clips are available through Export full clip GLB with an
+explicit chosen rate. A 30-frame actor export passed Khronos validation with
+zero errors/warnings and independent glTF-Transform import (10 nodes, 20 channels).
+Rendered animated playback in Blender/Unity remains unverified. Native replacement
+and physical-meter scale are not established by these interchange exports.
 
 ## Remaining implementation and acceptance
 

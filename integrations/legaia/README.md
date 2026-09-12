@@ -34,6 +34,30 @@ and scene guards actually match the running game.
 No editor route writes live RAM. See the repository's `docs/FEATURE_MATRIX.md`
 for exact subsystem status and `docs/legaia-release-parity.md` for runtime checks.
 
+## Inspecting and exporting animation
+
+Select an actor, then use **Preview imported scene animation** for its supported
+MAN assignment, or **Preview reference animation** for a supported shared-model
+clip. Scrub the clip in the model dialog. **Inspect animation in scene** isolates
+that actor's preview geometry and adds a scene frame slider, play/pause, and a
+chosen preview rate. **Restore scene pose** removes the temporary inspection;
+these controls do not author actor positions or animation channels.
+
+**Export GLB** retains its single-frame/static-model behavior. For a complete
+loaded clip, set **Export fps** and choose **Export full clip GLB**. The private
+file is written beneath the project's `Exports` directory. It contains
+independent rigid-object translation/rotation tracks with step interpolation,
+embedded supported textures, and source provenance. Untracked trailing objects
+remain excluded. The final decoded frame is held for one selected frame interval;
+the receiving application controls looping. Export fps is a user choice, not
+verified retail cadence. Source units remain unchanged apart from the documented
+Y-axis conversion; no physical-meter scale or anatomical skin hierarchy is inferred.
+
+As of 2026-09-12, a browser-exported 30-frame actor clip passed Khronos glTF
+validation with zero errors/warnings and imported through glTF-Transform 4.5.0
+with all 20 channels intact. This establishes file conformance and independent
+import, not rendered playback acceptance in Blender/Unity or gameplay parity.
+
 ## Inspecting runtime positions
 
 Use Check runtime, enter Live mode, then Observe actors. Runtime positions toggles
