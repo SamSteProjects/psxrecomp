@@ -1453,6 +1453,7 @@ class ProjectService:
             if appearance:
                 effective_pair["donor_entity_id"] = donor["semantic_id"]
             entities.append({"id": identifier, "name": "Actor " + identifier.rsplit("/", 1)[-1],
+                             "authored_components": sorted(key for key, value in self.overrides.get(identifier, {}).items() if value),
                              "components": {"Transform": {"imported": imported, "authored": authored, "effective": effective,
                                                            "build_issues": placement_issues},
                                             "ActorAppearance": {"imported": original_pair, "authored": appearance, "effective": effective_pair,

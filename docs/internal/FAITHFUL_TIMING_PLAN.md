@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Shared-instance drag acceptance and authored summaries
+
+- Previous turn made implementation progress. Actual Dolk2 browser drags on cell01724/record314 now verify three visible shared instances for both X and Z: each axis changed by17 source units in its own run,366 unrelated instances stayed fixed, and Undo restored every original position. No page errors; private evidence is shared-scenery-multiple-check.json and shared-scenery-multiple-z-check.json under local-output/sdk-20260909. No gameplay claim.
+- Fixed hierarchy/viewport authored badges missing movement-only and transition-only actor edits. Project entity metadata now carries a detached sorted authored-component summary; the existing badge consumes it while retaining compatibility with older component fields. Ten project/movement tests and JS syntax passed, including movement summary Undo/Redo and returned-list isolation. New badge rendering has not received a separate browser acceptance run.
+- Test server stopped; no game launched. Manual checks remain deferred and the full SDK objective remains active.
+
+
 ### 2026-09-12 — Shared placed-scenery handles and regression completion
 
 - Previous turn made verified implementation progress. Re-polled its existing discovery process to terminal exit 0: all 344 retail-enabled SDK tests passed in 140.705 seconds. Log: local-output/sdk-20260909/sdk-suite-recheck-20260912.log. This is SDK regression evidence, not runtime or full-goal acceptance.

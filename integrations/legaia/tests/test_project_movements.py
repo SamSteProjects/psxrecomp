@@ -36,6 +36,12 @@ class ProjectMovements(unittest.TestCase):
             self.assertEqual(result['effective_values'],{'x':128,'z':128})
             self.assertEqual(result['authored_values'],{'x':128})
             self.assertEqual(p.imports,before)
+            summary=lambda: next(e for e in p.state()['scene']['entities'] if e['id']==ACTOR)['authored_components']
+            self.assertEqual(summary(),['ScriptMovement'])
+            p.undo();self.assertEqual(summary(),[])
+            p.redo();self.assertEqual(summary(),['ScriptMovement'])
+            detached=summary();detached.clear();self.assertEqual(summary(),['ScriptMovement'])
+
             with self.assertRaisesRegex(BuildError,'verified user-owned retail disc'):
                 build_project(p)
             self.assertFalse((Path(directory)/'Builds').exists())
