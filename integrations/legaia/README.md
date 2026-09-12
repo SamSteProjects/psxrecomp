@@ -134,3 +134,9 @@ record; every use of that record receives the change. The Inspector lists relate
 instances and the source reference count. Undo restores the edit. Enable the
 handles again after the project changes. Decoration handles continue to create
 individual overrides. Runtime visibility and gameplay behavior remain unverified.
+
+
+Hierarchy search also matches authored change types such as **Script movement**,
+**Transitions**, **Dialogue**, and **Position**. Hover an actor's authored badge to
+see its changed components, then select the actor to inspect the corresponding
+retail and authored values.

@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Discover authored actor changes from hierarchy
+
+- Previous turn made verified progress on shared-instance drags and authored metadata. Hierarchy search now includes human-readable authored component names, and authored badge tooltips/accessibility labels identify the changed components without replacing imported metadata.
+- Actual saved Dolk2 browser workflow searched script movement, found only actor0002, verified its Authored: Script movement badge and navigated to the script report showing retail X9280 versus effective X9408. Zero browser errors and zero edit commands. Evidence: local-output/sdk-20260909/authored-hierarchy-check.json. JS syntax and whitespace checks passed.
+- No game launched. Gameplay remains deferred and the complete SDK objective stays active.
+
+
 ### 2026-09-12 — Shared-instance drag acceptance and authored summaries
 
 - Previous turn made implementation progress. Actual Dolk2 browser drags on cell01724/record314 now verify three visible shared instances for both X and Z: each axis changed by17 source units in its own run,366 unrelated instances stayed fixed, and Undo restored every original position. No page errors; private evidence is shared-scenery-multiple-check.json and shared-scenery-multiple-z-check.json under local-output/sdk-20260909. No gameplay claim.
