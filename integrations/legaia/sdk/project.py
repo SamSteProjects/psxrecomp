@@ -1313,6 +1313,12 @@ class ProjectService:
             records.append({"id": identifier, "kind": "texture", "name": "TIM " + identifier.split("/", 3)[-1].replace("/", " / "),
                             "scene_id": scene_id, "source_scene": self.imports[scene_id]["scene"]["name"],
                             "changes": ["TIM replacement"], "authored": deepcopy(binding)})
+        for identifier, draft in sorted(self.actor_drafts.items()):
+            scene_id = draft['scene_id']
+            records.append({'id': identifier, 'kind': 'actor', 'name': draft['name'],
+                            'scene_id': scene_id, 'source_scene': self.imports[scene_id]['scene']['name'],
+                            'changes': ['NPC draft', 'Position: X, Z'], 'authored': deepcopy(draft),
+                            'draft': True, 'donor_entity_id': draft['donor_entity_id']})
         for identifier, template in sorted(self.actor_templates.items()):
             scene_id = template["source"]["scene_id"]
             records.append({"id": identifier, "kind": "template", "name": template["name"],

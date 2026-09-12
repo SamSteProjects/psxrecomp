@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Complete authored asset discovery for drafts and model shapes
+
+- Fixed Asset Browser filtering that discarded model replacement records. Added project-wide NPC draft catalog records with stable IDs, source scenes, retail donor references and isolated authored snapshots.
+- Draft cards use dedicated selection/framing, including the existing scene-switch and authored-view behavior, instead of the imported actor selection endpoint.
+- Six focused authored-catalog/draft tests passed; JavaScript syntax passed. Browser navigation from the saved Dolk2 review project's Authored assets card opened the draft Inspector without page errors. Initial early click during scene loading was ignored; rerun waited for the completed 433/442 preview before checking navigation. Cross-scene browser acceptance remains untested.
+- Refreshed stale feature-matrix text claiming all draft builds were rejected. No game launched or authored project saved; manual gameplay remains deferred.
+
+
 ### 2026-09-12 — Bounded comparison geometry reuse
 
 - Scene previews retain at most two decoded geometry sets, allowing retail/authored comparison and appearance undo to reuse verified geometry. Each entry retains the existing geometry/triangle/texture budgets; a cache miss evicts before decoding a third set.

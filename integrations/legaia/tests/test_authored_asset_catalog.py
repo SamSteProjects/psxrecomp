@@ -25,6 +25,12 @@ class AuthoredAssetCatalog(unittest.TestCase):
             project.command({'type':'create_actor_draft','donor_entity_id':donor['semantic_id'],
                              'position':{'x':128,'z':256},'name':'New resident'})
             identifier=next(iter(project.actor_drafts))
+            record=next(row for row in project.authored_assets() if row['id']==identifier)
+            self.assertTrue(record['draft'])
+            self.assertEqual(record['donor_entity_id'],donor['semantic_id'])
+            self.assertEqual(record['name'],'New resident')
+            record['authored']['position']['x']=999
+            self.assertEqual(project.actor_drafts[identifier]['position']['x'],128)
             with patch.object(project,'appearance_source_actor',return_value=other):
                 references=project.model_references()
             draft=next(row for row in references if row['source_id']==identifier)
@@ -34,10 +40,12 @@ class AuthoredAssetCatalog(unittest.TestCase):
             self.assertTrue(draft['effective'])
             self.assertEqual(draft['runtime_binding'],'not_asserted')
             project.undo()
+            self.assertFalse(any(row['id']==identifier for row in project.authored_assets()))
             self.assertFalse(any(row['source_id']==identifier for row in project.model_references()))
             project.redo()
             restored=ProjectService.open(project.save())
             self.assertEqual(restored.model_references(),project.model_references())
+            self.assertEqual(restored.authored_assets(),project.authored_assets())
 
     def test_cross_scene_history_persistence_and_snapshot_isolation(self):
         with tempfile.TemporaryDirectory() as directory:
