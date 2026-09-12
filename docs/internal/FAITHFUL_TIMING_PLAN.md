@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Animation build report source navigation
+
+- Previous turn verified saved range packaging. Build reports now retain detached authored clip contributors alongside frame/object indices; each contributor has an explicit source link. Navigation selects the imported scene/actor and opens the exact channel only if its current authored clip identity still agrees. Contributors describe shared clip ownership, not per-axis ownership.
+- Six report tests passed. Actual built audit rendered through the production browser report opened actor0011 frame3/object0 with authored X123 and no page errors. Private evidence: local-output/sdk-20260909/animation-build-navigation-check.json. Browser harness supplied the real report through a test-only entry point; no new package or game was launched.
+- JS syntax/whitespace passed. Server stopped; full SDK goal remains active and gameplay deferred.
+
+
 ### 2026-09-12 — Animation range persistence/build and contextual reports
 
 - Previous turn made verified frame-range authoring progress. Replayed its exact edits into a separate saved town01 project, reopened it, checked30 frame/object samples and built one41595-byte animation overlay. Six audited scalar changes include expected Y differences from copying the full channel. Package SHA2569ee1bf808795d71e5bc26af514b7977962e3a64f07cec6f0cb471c569dd73ebf; private workflow evidence and saved inputs are under local-output/sdk-20260909/animation-range-project-20260912. Added deferred gameplay queue entry.
