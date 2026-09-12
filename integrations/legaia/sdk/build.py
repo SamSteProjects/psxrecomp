@@ -76,6 +76,8 @@ def build_report(audit) -> dict:
         changes.append({"scene": change["scene"], "asset_id": change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"]))),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
+                        **({"frame_index": change["frame_index"], "object_index": change["object_index"]}
+                           if change.get("scope") == "shared-scene-animation-record" else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
                         "scope": change.get("scope", "initial-man-placement-only")})

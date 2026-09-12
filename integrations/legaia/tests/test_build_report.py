@@ -66,6 +66,15 @@ class BuildReportTests(unittest.TestCase):
             self.assertEqual(authored_state_key(reopened), edited)
             self.assertEqual(reopened.actor_templates, project.actor_templates)
 
+    def test_animation_report_retains_frame_and_object_identity(self):
+        edits=[{'scene':'fixture','semantic_id':'animation://fixture/scene-anm/0000',
+                'field':'translation.x','before_value':0,'after_value':123,
+                'scope':'shared-scene-animation-record','frame_index':frame,'object_index':2}
+               for frame in (1,3)]
+        report=build_report({'edits':edits,'overlays':[],'validation':{}})
+        self.assertEqual([(c['frame_index'],c['object_index']) for c in report['changes']],[(1,2),(3,2)])
+        self.assertTrue(all(c['field']=='translation.x' for c in report['changes']))
+
     def test_transition_report_retains_navigable_resource_and_owner(self):
         owner = "scene://fixture/scripts/man-p2/0000"
         resource = "script://fixture/scripts/man-p2/0000/transition/0016"

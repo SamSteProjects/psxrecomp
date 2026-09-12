@@ -154,3 +154,12 @@ Rebuilt PROT readback passed. No game was launched. These are script targets,
 not initial actor positions; a reproducible trigger/story-state setup remains
 to be established before gameplay can verify either target. NPC scheduling,
 visibility, interactions and the proposed location's walkability remain unverified.
+
+
+## Animation repeated-channel review — deferred
+
+Saved project: `local-output/sdk-20260909/animation-range-project-20260912/project.legaia.json`.
+Package: `Builds/3f58c4c8568e7f56/legaia.sdk.0f096fa3c17d-0.1.0-3f58c4c8568e7f56.psxmod` under that project.
+SHA256: `9ee1bf808795d71e5bc26af514b7977962e3a64f07cec6f0cb471c569dd73ebf`.
+
+The probe edits town01 scene clip0012, object0: frame0 X123 and full copied channel values on frames1..3. This is a serialization/authoring probe, not a finished animation design. Six scalar differences fit one41595-byte animation overlay; Save/Open and30 sampled frame/object comparisons passed. The source clip is shared by actors0011,0012,0016,0028,0044,0046. Confirm scene/clip activation, visible motion, other shared users and scene transitions when gameplay verification resumes. Timing is not established by this source edit. No game has been launched for this package.

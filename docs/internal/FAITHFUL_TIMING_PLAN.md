@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Animation range persistence/build and contextual reports
+
+- Previous turn made verified frame-range authoring progress. Replayed its exact edits into a separate saved town01 project, reopened it, checked30 frame/object samples and built one41595-byte animation overlay. Six audited scalar changes include expected Y differences from copying the full channel. Package SHA2569ee1bf808795d71e5bc26af514b7977962e3a64f07cec6f0cb471c569dd73ebf; private workflow evidence and saved inputs are under local-output/sdk-20260909/animation-range-project-20260912. Added deferred gameplay queue entry.
+- Build reports previously omitted frame/object identity, making repeated same-field animation rows ambiguous. Reports now preserve these indices and the editor table displays them. Six report tests passed; fresh report generation from the real build audit retained frames0..3/object0 across all six changes. JS syntax passed. Initial standalone report probe lacked PYTHONPATH; rerun with the established SDK path passed.
+- Existing package payload was not changed by report presentation. No game launched. Runtime playback, shared-user behavior and full objective remain unverified; goal active.
+
+
 ### 2026-09-12 — Repeated animation channel frame ranges
 
 - Previous turn made verified regression/status progress. Animation clipboard now supports an inclusive first/last target frame range for the same rigid object. One existing set_animation_channels command replaces those six-axis contributions and retains edits outside the range; no interpolation or retargeting is inferred. Current drafts and reversed/out-of-bounds ranges reject before submission; source/conflict validation remains server-owned.
