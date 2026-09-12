@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Movement edits after MAN actor append
+
+- MovementAuthoringContext.patch_appended now relocates each original owner by partition/record identity, rechecks unique extent and decoded instruction layout, verifies the coordinate preimage and patches only its rebased bytes. Candidate dispatch context is recorded separately from source context; appended donor records remain untouched. This helper expects an independently validated append candidate, not an arbitrary replacement MAN.
+- Five focused serializer/merge tests passed, including donor-copy preservation, no-op identity, changed-preimage rejection and altered-opcode rejection.
+- Fresh retail append checks: Dolk2 actor0002 target offset7492 rebased to7495 and X9408; town01 actor0011 offset7948 rebased to7951 and X9728. Each changed exactly one candidate byte, retained all other candidate bytes and preserved the complete appended MAN layout. Private outputs and hashes: `local-output/sdk-20260909/movement-appended-20260912/retail-check.json` and two edited MAN files.
+- No game launched. This closes the append-aware serializer step; wiring it into streaming/experimental disc composition, effective target overlays and gameplay verification remain outstanding. Full SDK goal remains incomplete.
+
+
 ### 2026-09-12 — Descriptor MAN movement Build integration
 
 - Build now collects ScriptMovement edits, verifies source-owner membership and requested encoded coordinates, merges audited X/Z bytes with other supported descriptor MAN edits and serializes within original LZS capacity. Rejects conflicting, unaudited, wrong-owner or wrong-request bytes. Reports movement world coordinates and stable instruction IDs separately from initial actor placement. Package description identifies movement edits and retains unverified runtime status.

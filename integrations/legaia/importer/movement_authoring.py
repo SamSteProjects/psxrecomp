@@ -107,6 +107,40 @@ class MovementAuthoringContext:
         return {'supported': bool(targets), 'reason': reason, 'targets': targets,
                 'source': self.provenance(), 'limitations': list(LIMITATIONS)}
 
+    def patch_appended(self, candidate, edits):
+        """Locate original owners after append; preserve all unrelated candidate bytes."""
+        from .man_layout import read_man_layout
+        _, changes = self.patch(edits)
+        layout = read_man_layout(candidate)
+        records = {(row['partition'], row['record_index']): row for row in layout['records']}
+        output, audit = bytearray(candidate), []
+        digest = hashlib.sha256(candidate).hexdigest()
+        for change in changes:
+            owner = change['owner_id']
+            _, original, entry = self._source.verified_record(owner)
+            partition = 2 if '/scripts/man-p2/' in owner else 1
+            record = records.get((partition, int(owner.rsplit('/', 1)[1])))
+            if record is None or record['byte_length'] != len(original):
+                raise ImportError('Appended movement record differs from verified source extent')
+            start = record['byte_offset']
+            if sum(row['byte_offset'] == start for row in layout['records']) != 1:
+                raise ImportError('Appended movement record is aliased')
+            node, coordinate_start = _target(candidate[start:start + len(original)], entry, change['pc'])
+            relative = coordinate_start + ('x', 'z').index(change['field'])
+            if node['mnemonic'] != change['mnemonic'] or relative != change['record_relative_byte_offset']:
+                raise ImportError('Appended movement instruction differs from source layout')
+            offset = start + relative
+            if candidate[offset] != change['before_byte']:
+                raise ImportError('Appended movement preimage differs from source')
+            output[offset] = change['after_byte']
+            audit.append(dict(change, source_decoded_byte_offset=change['decoded_byte_offset'],
+                              decoded_byte_offset=offset, appended_man_sha256=digest,
+                              appended_target_context=node['target_context']))
+        result = bytes(output)
+        if read_man_layout(result) != layout:
+            raise ImportError('Appended movement edit changed MAN layout')
+        return result, audit
+
     def patch(self, edits, *, original=None):
         if original is not None and original != self._man:
             raise ImportError('Movement MAN source differs from the verified baseline')

@@ -7,6 +7,22 @@ from test_importer_dialogue_authoring import fixture, ACTOR
 
 
 class MovementAuthoringTests(unittest.TestCase):
+    def test_appended_source_owner_rebases_without_touching_donor_clone(self):
+        from hashlib import sha256
+        from importer.man_actor_structure import append_actor_donor
+        source,man=fixture(b'\x23\x00\x80\x3f\0\0\x06town01\1\2\3opaque')
+        context=MovementAuthoringContext(source);target=context.options(ACTOR)['targets'][0]
+        appended,_=append_actor_donor(man,sha256(man).hexdigest(),1)
+        edits={target['semantic_id']:{'x':128}}
+        result,audit=context.patch_appended(appended,edits)
+        self.assertEqual(len(audit),1)
+        self.assertEqual(audit[0]['decoded_byte_offset'],target['decoded_byte_offset']+3)
+        self.assertEqual({i for i,(a,b) in enumerate(zip(appended,result)) if a!=b},{target['decoded_byte_offset']+3})
+        self.assertEqual(context.patch_appended(appended,{}),(appended,[]))
+        with self.assertRaisesRegex(ImportError,'preimage'):context.patch_appended(result,edits)
+        wrong=bytearray(appended);wrong[target['decoded_byte_offset']+2]=0x40
+        with self.assertRaises(ImportError):context.patch_appended(bytes(wrong),edits)
+
     def test_all_grid_bytes_roundtrip_and_context_operands_survive(self):
         for header, trailer in ((b'\x23', b''), (b'\xa3\x07', b''),
                                 (b'\x4c\x51', b'\xab\xcd'), (b'\xcc\x07\x51', b'\xab\xcd')):
