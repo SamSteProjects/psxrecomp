@@ -47,6 +47,21 @@ class AuthoredAssetCatalog(unittest.TestCase):
             self.assertEqual(restored.model_references(),project.model_references())
             self.assertEqual(restored.authored_assets(),project.authored_assets())
 
+    def test_animation_only_edits_are_searchable_and_isolated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            scene = synthetic_scene()
+            project.import_metadata(scene)
+            actor = scene['actors'][0]['semantic_id']
+            # Catalog projection consumes validated authored state; encoding is
+            # covered by the animation authoring tests.
+            project.overrides[actor] = {'AnimationChannels': {'edits': [
+                {'frame_index': 3, 'object_index': 1, 'translation': {'x': 100}}]}}
+            record = next(row for row in project.authored_assets() if row['id'] == actor)
+            self.assertEqual(record['changes'], ['Animation: 1 edited channel'])
+            record['authored']['AnimationChannels']['edits'].clear()
+            self.assertEqual(len(project.overrides[actor]['AnimationChannels']['edits']), 1)
+
     def test_cross_scene_history_persistence_and_snapshot_isolation(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

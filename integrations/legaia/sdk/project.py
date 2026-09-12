@@ -1278,6 +1278,9 @@ class ProjectService:
                     changes.append("Position: " + ", ".join(axis.upper() for axis in sorted(position)))
                 if edits.get("ActorAppearance"):
                     changes.append("Initial appearance")
+                channels = edits.get("AnimationChannels", {}).get("edits", [])
+                if channels:
+                    changes.append(f"Animation: {len(channels)} edited channel{'s' if len(channels) != 1 else ''}")
                 runs = edits.get("Dialogue", {}).get("runs", {})
                 if runs:
                     changes.append(f"Dialogue: {len(runs)} text runs")

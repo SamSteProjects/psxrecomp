@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Authored animation discovery and preview navigation
+
+- Authored actor cards now summarize sparse animation channel edits, so animation-only changes are discoverable by name in the project-wide authored browser.
+- Asset details offer direct channel editing and authored animation preview, selecting the source actor/scene first. The model viewer status now distinguishes authored shared animation, authored appearance and retail assigned animation.
+- Three catalog tests passed, including animation-only summary and snapshot isolation; JavaScript syntax passed. Browser searched Animation in authored assets and opened the existing town01 actor0011 authored clip from asset details, showing AUTHORED shared animation with no page errors. The new direct edit action was not separately browser-tested.
+- Existing animation fixture unchanged; no game launched. Temporary browser/server stopped, manual gameplay remains deferred and full goal active.
+
+
 ### 2026-09-12 — Cross-scene authored asset navigation acceptance
 
 - Created an isolated local review project from existing two-scene and model-shape fixtures, adding a town01 draft while opening town0c. Original fixtures were not modified.

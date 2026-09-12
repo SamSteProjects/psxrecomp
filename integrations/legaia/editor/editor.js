@@ -740,6 +740,21 @@ function showAssetDetails(record){
     $('asset-source-data').parentElement.before(usage);
   }
   if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
+  if(isAuthored&&record.type==='actor'&&record.authored?.AnimationChannels){
+    const actions=document.createElement('div');actions.className='dialog-actions';
+    for(const [label,preview] of [['Edit animation channels',false],['Preview authored animation',true]]){
+      const button=document.createElement('button');button.textContent=label;button.disabled=busy||(!preview&&state.project.mode!=='edit');
+      button.onclick=async()=>{
+        if(busy)return;assetDetails.close();
+        if(record.sceneId!==state.scene?.id&&!await api('/api/scene',{scene_id:record.sceneId}))return;
+        if(!await api('/api/selection',{entity_id:record.id}))return;
+        const actor=selected();if(!actor)return;
+        if(preview)await openModel(actor.components.ModelRenderer.asset_id,'authored-channels',actor.id);
+        else await openAnimationChannels(actor);
+      };actions.append(button);
+    }
+    $('asset-authored-data').before(actions);
+  }
   $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();
 }
 async function activateAsset(record){
@@ -1901,7 +1916,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     $('shape-file').value='';const shape=state.model_overrides?.[assetId];
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
     $('shape-clear').disabled=state.project.mode!=='edit'||!shape;$('shape-authored').disabled=!shape;
-    $('shape-status').textContent=`Viewing ${shapeLayer==='authored'?'AUTHORED object-local shape':clipId?'imported/assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
+    $('shape-status').textContent=`Viewing ${shapeLayer==='authored'?'AUTHORED object-local shape':clipId==='authored-channels'?'AUTHORED shared animation':clipId==='authored-appearance'?'AUTHORED appearance animation':clipId?'RETAIL assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
     updateShapeDraft();
     if(!$('model-dialog').open)$('model-dialog').showModal();
     fitModelObject();
