@@ -1456,7 +1456,7 @@ function renderInspector(){
   const actorAnimation=components.Animation?.preview_support;
   if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview imported scene animation';button.title='Verify and decode this actor’s imported animation association';button.onclick=()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id);$('inspect-model').after(button);}
   if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.dataset.animationEdit='true';button.textContent=components.Animation?.authored_channels?'Edit authored animation channels':'Author animation channels';button.disabled=busy||state.project.mode!=='edit';button.onclick=()=>openAnimationChannels(entity);$('inspect-model').after(button);}
-  if(animatedAsset && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview reference locomotion';button.title='Decoded idle/walk clips for this model; separate from the placement animation ID';button.onclick=()=>openModel(animatedAsset.id,'idle');$('inspect-model').after(button);}
+  if(animatedAsset && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview reference animation';button.title='Supported reference clips for this model; separate from the placement animation ID';button.onclick=()=>openModel(animatedAsset.id,animatedAsset.animation_support.clips[0].id,null,'imported',entity.id);$('inspect-model').after(button);}
   if($('inspect-templates'))$('inspect-templates').onclick=showTemplates;
   $('inspector').querySelectorAll('[data-axis]').forEach(input=>input.addEventListener('change',async()=>{
     const axis=input.dataset.axis;
@@ -1948,7 +1948,7 @@ const modelCanvas=$('model-canvas');let modelRenderer=null,modelRenderSource=nul
 const exportDialog=document.createElement('dialog');document.body.append(exportDialog);
 let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
-let modelAssetId=null, modelEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
+let modelAssetId=null, modelEntityId=null, modelSceneEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
 let modelSceneContext=null,scenePoseTick=null,scenePoseClock=null;
 const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button" data-play>Play scene preview</button> <label>Preview fps <select aria-label="Scene preview rate"><option>5</option><option selected>10</option><option>15</option><option>30</option><option>60</option></select></label> <button type="button" data-restore>Restore scene pose</button>';$('frame-selected').after(scenePoseBar);
@@ -1997,18 +1997,18 @@ scenePoseBar.querySelector('[data-play]').onclick=()=>{
   scenePoseTick=requestAnimationFrame(tick);
 };
 showScenePose.onclick=()=>{
-  if(busy||state.project?.mode!=='edit'||!scenePreviewCurrent()||modelSceneContext!==sceneRequestKey()||!modelEntityId||!model?.frames?.length||$('shape-file').files?.length)return;
+  if(busy||state.project?.mode!=='edit'||!scenePreviewCurrent()||modelSceneContext!==sceneRequestKey()||!modelSceneEntityId||!model?.frames?.length||$('shape-file').files?.length)return;
   try{
-    stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,model,modelEntityId,animationFrame);
+    stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,model,modelSceneEntityId,animationFrame);
     const failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
-    scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:model,frame:animationFrame,name:entities().find(e=>e.id===modelEntityId)?.name??modelEntityId};
+    scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:model,frame:animationFrame,name:(modelEntityId?'':'Reference clip · ')+(entities().find(e=>e.id===modelSceneEntityId)?.name??modelSceneEntityId)};
     scenePoseBar.hidden=false;scenePoseBar.querySelector('input').max=model.frames.length-1;
-    $('model-dialog').close();updateScenePoseFrame(animationFrame);const actor=entities().find(e=>e.id===modelEntityId);if(actor)frame(actor);
+    $('model-dialog').close();updateScenePoseFrame(animationFrame);const actor=entities().find(e=>e.id===modelSceneEntityId);if(actor)frame(actor);
   }catch(error){clearScenePose(false);const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');notify(error.message,true);draw();}
 };
 
 const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ must preserve vertex and face order, triangulation and integer source coordinates; normals remain unchanged.</p><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><label>Edited TMD or OBJ<input id="shape-file" type="file" accept=".tmd,.obj"></label><button id="shape-upload">Apply shape</button><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
-async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'){
+async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported',inspectionEntityId=null){
   if($('model-dialog').open&&$('shape-file').files?.length){$('model-error').textContent='Apply or discard the selected shape file before changing the model view.';$('animation-clip').value=model?.animation?.clip_id??'';return;}
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest,requestedSceneContext=sceneRequestKey();
   try{
@@ -2017,7 +2017,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
     if(clipId && (!Array.isArray(data.frames) || !data.frames.length || data.frames.length*data.vertices.length>1000000 || data.frames.some(frame=>frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(frame.vertices)||frame.vertices.length!==data.vertices.length||frame.vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(numeric)))))throw new Error('Animation service returned an invalid or oversized posed vertex stream.');
-    model=data;modelSceneContext=requestedSceneContext;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · ${clipId==='authored-appearance'?'Authored appearance':clipId==='authored-channels'?'Authored animation':'Imported animation'}`:assetId.split('/').slice(-2).join(' / ');
+    model=data;modelSceneContext=requestedSceneContext;modelAssetId=assetId;modelEntityId=entityId;modelSceneEntityId=entityId??inspectionEntityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · ${clipId==='authored-appearance'?'Authored appearance':clipId==='authored-channels'?'Authored animation':'Imported animation'}`:assetId.split('/').slice(-2).join(' / ');
     modelTextures=new Map();$('model-textures').replaceChildren();
     for(const texture of model.textures ?? []){
       const card=document.createElement('div');card.className='texture-card';
@@ -2034,7 +2034,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
     $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? (d.kind==='equipment_templates_excluded'?'Equipment template objects 10 and 11 are excluded from this pose.':JSON.stringify(d))).join(' · ');
-    configureAnimation(clipId);showScenePose.disabled=!entityId||!data.frames?.length||state.project?.mode!=='edit';
+    configureAnimation(clipId);showScenePose.disabled=!modelSceneEntityId||!data.frames?.length||state.project?.mode!=='edit';
     shapeControls.hidden=!state.capabilities?.model_shape_authoring;
     $('shape-file').value='';const shape=state.model_overrides?.[assetId];
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
@@ -2096,7 +2096,7 @@ function configureAnimation(clipId){
 }
 function stopAnimation(){if(animationTick!==null)cancelAnimationFrame(animationTick);animationTick=null;animationClock=null;$('animation-play').textContent='Play';}
 function setAnimationFrame(index){const count=model?.frames?.length ?? 0;if(!count)return;animationFrame=((index%count)+count)%count;$('animation-frame').value=animationFrame;$('animation-frame-label').textContent=`${animationFrame+1} / ${count}`;drawModel();}
-$('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,['scene-header','authored-appearance','authored-channels'].includes(clip)?modelEntityId:null);};
+$('animation-clip').onchange=()=>{const clip=$('animation-clip').value || null;openModel(modelAssetId,clip,['scene-header','authored-appearance','authored-channels'].includes(clip)?modelEntityId:null,'imported',modelSceneEntityId);};
 $('animation-frame').oninput=()=>{stopAnimation();setAnimationFrame(Number($('animation-frame').value));};
 $('animation-previous').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame-1);};
 $('animation-next').onclick=()=>{stopAnimation();setAnimationFrame(animationFrame+1);};
