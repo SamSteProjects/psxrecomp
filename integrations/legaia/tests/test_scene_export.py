@@ -1,11 +1,32 @@
 from copy import deepcopy
 import unittest
+from unittest.mock import patch
 from importer.scene_export import encode_scene_glb, select_scene_export_instance
 from importer.core import ImportError
 from test_importer_export import preview, parse_glb
 from test_animation_clip_export import values
 
 class SceneExportTests(unittest.TestCase):
+    def test_node_budget_includes_unavailable_metadata_roots(self):
+        actor={'entity_id':'actor','renderable':True,'geometry_key':'one',
+               'model_to_scene':[1,0,0,0, 0,-1,0,0, 0,0,1,0, 0,0,0,1]}
+        unavailable={**actor,'entity_id':'unavailable','renderable':False,'reason':'No source geometry'}
+        scene={'schema':'legaia.scene-preview.v1','coordinate_system':'editor_field_y_up_source_units',
+               'assets':[{'geometry_key':'one','preview':preview()}], 'entities':[actor,unavailable]}
+        before=deepcopy(scene)
+        with patch('importer.scene_export.MAX_SCENE_NODES',3):
+            raw,audit=encode_scene_glb(scene)
+            doc,_=parse_glb(raw)
+            self.assertEqual(len(doc['nodes']),3)
+            self.assertEqual(audit['unavailable_entities'],[{'entity_id':'unavailable','reason':'No source geometry'}])
+        for entities in ([actor,unavailable],[unavailable,actor]):
+            scene['entities']=entities
+            with patch('importer.scene_export.MAX_SCENE_NODES',2):
+                with self.assertRaisesRegex(ImportError,'node budget'):
+                    encode_scene_glb(scene)
+        scene['entities']=[actor,unavailable]
+        self.assertEqual(scene,before)
+
     def test_shared_geometry_preserves_instance_transform_and_source(self):
         model=preview()
         scene={'schema':'legaia.scene-preview.v1','coordinate_system':'editor_field_y_up_source_units',

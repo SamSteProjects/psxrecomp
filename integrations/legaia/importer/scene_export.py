@@ -6,6 +6,7 @@ import struct
 from .core import ImportError
 from .export import encode_model_glb, MAX_GLB_BYTES, _vector
 
+MAX_SCENE_NODES = 32768
 
 def select_scene_export_instance(scene, entity_id):
     """Keep one verified instance and its shared geometry, without rebasing it."""
@@ -66,6 +67,8 @@ def encode_scene_glb(scene):
         audits.append({'geometry_key':key,'audit':audit})
     identifiers=set();unavailable=[]
     for entity in entities:
+        if len(doc['nodes']) >= MAX_SCENE_NODES:
+            raise ImportError('Expanded scene hierarchy exceeds export node budget')
         identifier=entity.get('entity_id')
         if not isinstance(identifier,str) or identifier in identifiers:raise ImportError('Duplicate or invalid scene entity identity')
         identifiers.add(identifier)
@@ -80,7 +83,7 @@ def encode_scene_glb(scene):
         if entity.get('renderable'):
             children=templates.get(entity.get('geometry_key'))
             if children is None:raise ImportError('Renderable entity has no exported geometry')
-            if len(doc['nodes'])+len(children)>32768:
+            if len(doc['nodes'])+len(children)>MAX_SCENE_NODES:
                 raise ImportError('Expanded scene hierarchy exceeds export node budget')
             node['children']=[]
             for child in children:

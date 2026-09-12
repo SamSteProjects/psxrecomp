@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Scene export metadata node budget
+
+- Fixed assembled GLB hierarchy budgeting so unavailable instances' metadata roots count toward the same 32,768-node cap as renderable instances and their object children. Previously an unavailable instance after a full hierarchy could exceed the cap.
+- Added a bounded regression covering exact-cap success and rejection with unavailable instances before or after renderable instances; source preview remains unchanged.
+- Validation: `test_scene_export`, `test_importer_export`, and `test_animation_clip_export`: 11 tests passed with the verified retail disc configured, no skips. `git diff --check` passed.
+- No game launch or gameplay acceptance claimed. Deferred gameplay remains queued; broader SDK work remains incomplete.
+
+
 - **2026-09-12 (Balden2 script selector evidence):** Previous turn progressed in840ec7de. Fresh verified retail script catalog identifies7Balden2 selector-bearing scripts: actor0015 selector161,0016=241,0017=242,0062=243,0063/64/65=244. Saved metadata-only report balden2-model-selectors-20260912.json privately. Fresh importer/script checks show actor0008 initial model138/animation38, partial report and no decoded model selector; this does not exclude changes in unvisited/opaque paths or other contexts and does not resolve6channels/4objects. Actor0015 initial model161/animation9 numerically matches its selector161, without proving runtime pool bases. No model reassignment or pose fallback was justified or applied. This new evidence narrows the selector hypothesis but retains the unresolved preview boundary. No game launched or controlled. Further useful work requires source evidence for binding/animation execution or separate offline SDK features; full goal remains active.
 
 
