@@ -21,7 +21,7 @@ previous F3/F4 markers use exact shared-bank reference associations: record21
 the auxiliary model. Retail channel counts agree with pinned reference
 `d6e64c68ede25813d35db20980da82a1a025549b`, `docs/formats/anm.md` and
 `crates/asset/src/character_pack.rs`. The shared field texture upload follows
-`field_char_textures.rs`; unmatched materials remain explicit. Full savepoint
+`field_char_textures.rs`. The boot UI underlay from raw TOC entries0/1 now resolves all four textured savepoint materials, including its two tiny sampled regions in the menu atlas. Semi-transparent blend reconstruction remains unsupported. Full savepoint
 clip scrubbing passed browser checks. F4's gameplay role, scripted visibility,
 scale and runtime playback remain unresolved. Rendering coverage is not scene
 or gameplay parity.

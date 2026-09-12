@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Boot UI texture underlay for shared field models
+
+- Savepoint materials1/4 lacked word(960,496), with CLUT32644. Pinned reference system_ui_bundle.rs and scene/host/scene_entry.rs establish the boot-resident page and raw TOC entries0/1, including table-order overwrites and six clipped row patches.
+- Added bounded raw-entry decoder with exact20/1 member counts, atlas rectangle fingerprint, six pinned row patches, source-member hashes and ordered image/flat-CLUT uploads. Retail produces36 uploads. No arbitrary memory capture or guessed texture substitution.
+- Shared field model catalogs now use this ordered boot bank as an underlay only where no field upload owns a word. Conflicting field uploads remain ambiguous. Metadata exposes source locators/rectangles without pixels; row patches clip at the VRAM edge.
+- Twenty focused texture/underlay tests passed with private retail input. Direct source checks and browser confirm savepoint's four textured materials all match; the fifth uses vertex colors. Inspected savepoint-boot-textures-20260912.png: opaque gray effect surfaces remain because semi-transparent blending is still unsupported. No browser errors; scene remains441/441.
+- Scope currently covers shared field-model texture routing; scene-environment integration remains next work. No game launched or project saved; temporary browser/server stopped, broader goal active.
+
+
 ### 2026-09-12 — Shared F3/F4 pose reconstruction
 
 - Fresh Dolk2 audit isolated all nine unrendered entities to F3/F4 (actor0061 and0062–0069). Pinned reference d6e64c68ede25813d35db20980da82a1a025549b docs/formats/anm.md and character_pack.rs identify shared bank record21/savepoint and22/auxiliary. Retail decoding confirms3 channels/30 frames and2 channels/15 frames.

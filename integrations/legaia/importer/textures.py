@@ -144,6 +144,7 @@ class TextureCatalog:
     disc_sha256: str
     textures: list[tuple[Tim, dict[str, Any]]] = field(default_factory=list)
     diagnostics: list[str] = field(default_factory=list)
+    boot_uploads: list[tuple[TimBlock, dict[str, Any]]] = field(default_factory=list)
 
     def metadata(self) -> dict[str, Any]:
         return {
@@ -156,6 +157,7 @@ class TextureCatalog:
                               clut=tim.clut.metadata() if tim.clut else None)
                          for tim, source in self.textures],
             "diagnostics": list(self.diagnostics),
+            **({"boot_underlay": [dict(source, rectangle=block.metadata()) for block, source in self.boot_uploads]} if self.boot_uploads else {}),
         }
 
 
@@ -317,7 +319,11 @@ def load_asset_texture_catalog(disc: Any, asset: dict[str, Any],
         if asset.get("source_record") != _model_source_locator(digest, "", record):
             raise ImportError("field texture model provenance does not match the verified global pack record")
         raw = archive.read_entry(archive.entry(874), extended=True)
-        return _field_party_catalog(raw, digest)
+        catalog = _field_party_catalog(raw, digest)
+        from .system_ui import load_boot_uploads
+        catalog.boot_uploads = load_boot_uploads(archive, digest)
+        catalog.diagnostics.append('Boot UI underlay applied in pinned upload order; current runtime residency is unverified.')
+        return catalog
 
 
 def associate_material(catalog: TextureCatalog, material: dict[str, Any],
@@ -365,6 +371,15 @@ def associate_material(catalog: TextureCatalog, material: dict[str, Any],
                 offset = ((y - block.y) * w + x - block.x) * 2
                 values.add(struct.unpack_from("<H", block.data, offset)[0])
                 used.add(identity)
+        if not values:
+            # Boot uploads precede the field bank; later boot members win
+            # only where no field upload owns the sampled word.
+            for block, source in reversed(catalog.boot_uploads):
+                if block.x <= x < min(1024, block.x+block.width_words) and block.y <= y < min(512, block.y+block.height):
+                    offset = ((y-block.y)*block.width_words+x-block.x)*2
+                    values.add(struct.unpack_from('<H',block.data,offset)[0])
+                    used.add(source['semantic_id'])
+                    break
         if not values:
             raise LookupError(f"missing VRAM word ({x}, {y})")
         if len(values) > 1:
