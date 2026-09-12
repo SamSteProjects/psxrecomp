@@ -42,7 +42,38 @@ def _png(width: int, height: int, rgba: bytes) -> bytes:
             chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
 
 
-def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None) -> tuple[bytes, dict]:
+def _rigid_clip_tracks(preview: dict, fps: float):
+    """glTF TRS channels for Y-reflected Rz*Ry*Rx object-local poses."""
+    if type(fps) not in (int, float) or not math.isfinite(fps) or not 1 <= fps <= 120:
+        raise ImportError("Full-clip export requires an explicit rate from 1 to 120 fps")
+    frames, objects = preview.get('frames'), preview.get('objects', [])
+    if preview.get('posed') or preview.get('coordinate_system') != 'retail_tmd_object_local':
+        raise ImportError("Full-clip export requires unposed object-local base geometry")
+    if not isinstance(frames, list) or not 1 <= len(frames) <= 4096 or not isinstance(objects, list) or not objects or len(frames)*len(objects)>100000:
+        raise ImportError("Full-clip frame/channel count exceeds bounded export limits")
+    if any(not isinstance(obj, dict) for obj in objects) or any(not isinstance(frame, dict) for frame in frames):
+        raise ImportError('Invalid full-clip frame/object records')
+    tracks = [([], []) for _ in objects]
+    for frame in frames:
+        transforms = frame.get('object_transforms', [])
+        if not isinstance(transforms, list) or len(transforms) != len(objects) or any(not isinstance(t, dict) for t in transforms):
+            raise ImportError("Full-clip channels do not match active model objects")
+        for obj, transform, (translations, rotations) in zip(objects, transforms, tracks):
+            if transform.get('object_index') != obj.get('object_index'):
+                raise ImportError("Full-clip object/channel identity mismatch")
+            tx,ty,tz = _vector(transform.get('translation'),3,'clip translation',-1e9,1e9)
+            angles = _vector(transform.get('rotation_psx'),3,'clip rotation',-65536,65536)
+            rx,ry,rz = [v*math.pi/4096 for v in angles]
+            sx,cx,sy,cy,sz,cz = math.sin(rx),math.cos(rx),math.sin(ry),math.cos(ry),math.sin(rz),math.cos(rz)
+            # Reflect an axial rotation vector across Y: q.xyz -> (-x,y,-z).
+            q = [-(sx*cy*cz-cx*sy*sz), cx*sy*cz+sx*cy*sz,
+                 -(cx*cy*sz-sx*sy*cz), cx*cy*cz+sx*sy*sz]
+            norm=math.sqrt(sum(v*v for v in q));q=[v/norm for v in q]
+            translations.append([tx,-ty,tz]);rotations.append(q)
+    return tracks
+
+
+def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None, *, clip_fps: float | None = None) -> tuple[bytes, dict]:
     """Encode source geometry or one posed frame, with embedded matched PNGs.
 
     Input is assets.load_model_preview decorated with textures[].rgba_base64
@@ -52,6 +83,11 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None) ->
     """
     if preview.get("schema_version") != "legaia.model-preview.v1":
         raise ImportError("export requires the supported decoded model preview schema")
+    tracks = None
+    if clip_fps is not None:
+        if frame_index is not None:
+            raise ImportError("Choose a posed frame or a full clip, not both")
+        tracks = _rigid_clip_tracks(preview, clip_fps)
     vertices = preview.get("vertices", [])
     source_space = preview.get("coordinate_system")
     pose = None
@@ -113,12 +149,12 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None) ->
         doc["bufferViews"].append(entry)
         return len(doc["bufferViews"]) - 1
 
-    def accessor(values, components, position=False):
+    def accessor(values, components, position=False, target=34962):
         flat = [float(v) for row in values for v in row]
         # Bounds must describe the stored float32 values, not Python doubles.
         packed = struct.pack(f"<{len(flat)}f", *flat)
-        entry = dict(bufferView=view(packed, 34962), componentType=5126,
-                     count=len(values), type=f"VEC{components}")
+        entry = dict(bufferView=view(packed, target), componentType=5126,
+                     count=len(values), type="SCALAR" if components == 1 else f"VEC{components}")
         if position:
             stored = list(struct.iter_unpack(f"<{components}f", packed))
             entry.update(min=[min(v[i] for v in stored) for i in range(components)],
@@ -233,6 +269,16 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None) ->
         doc["nodes"].append(node)
     if len(seen_triangles) != len(triangles):
         raise ImportError("export object ranges leave triangles unassigned")
+    if tracks is not None:
+        times = accessor([[i / clip_fps] for i in range(len(preview['frames']) + 1)], 1, True, None)
+        clip = {"name": preview.get('animation', {}).get('label', 'Decoded rigid clip'), "samplers": [], "channels": []}
+        for node_index, (translations, rotations) in enumerate(tracks):
+            for path, values, components in (("translation", translations, 3), ("rotation", rotations, 4)):
+                doc['nodes'][node_index][path] = values[0]
+                output = accessor(values + [values[-1]], components, target=None)
+                clip['channels'].append({"sampler": len(clip['samplers']), "target": {"node": node_index, "path": path}})
+                clip['samplers'].append({"input": times, "output": output, "interpolation": "STEP"})
+        doc['animations'] = [clip]
     if clipped_modulation:
         diagnostics.append("PSX texture modulation above neutral 128 is clamped to glTF COLOR_0's supported range")
     audit = {
@@ -249,6 +295,12 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None) ->
             "Unlit color preview; live lighting, equipment changes and texture animation are not reproduced.",
             "Untextured display RGB is linearized; textured PSX modulation is approximated in glTF linear color space."],
     }
+    if tracks is not None:
+        audit.update(animation=deepcopy(preview.get('animation')), full_clip=True,
+                     frame_count=len(preview['frames']), export_fps=clip_fps,
+                     timing_evidence="caller_selected_rate_not_verified_retail_timing",
+                     interpolation="STEP", duration_seconds=len(preview['frames']) / clip_fps)
+        audit['limitations'][0] = "Independent rigid-object channels; no anatomical skin hierarchy. Last frame held for one selected frame interval; looping is player-controlled."
     doc["extras"] = deepcopy(audit)
     doc["buffers"] = [{"byteLength": len(binary)}]
     try:
@@ -267,13 +319,13 @@ def encode_model_glb(preview: dict[str, Any], frame_index: int | None = None) ->
 
 
 def write_model_export(preview: dict[str, Any], output_root: Path | str,
-                       frame_index: int | None = None) -> dict[str, Any]:
+                       frame_index: int | None = None, *, clip_fps: float | None = None) -> dict[str, Any]:
     """Write a new unique GLB inside a caller-authorized private output root.
 
     Reject symlink/reparse ancestors and never overwrite an existing file.
     The SDK supplies project/Exports; no client-provided path is needed.
     """
-    data, audit = encode_model_glb(preview, frame_index)
+    data, audit = encode_model_glb(preview, frame_index, clip_fps=clip_fps)
     root = Path(output_root).absolute()
 
     def guard():

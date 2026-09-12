@@ -177,6 +177,11 @@ class RetailGlbExportTests(unittest.TestCase):
                                      for mesh in doc['meshes'] for primitive in mesh['primitives'])
                         self.assertEqual(exported,triangles*3)
                         self.assertNotIn('animations',doc) # Explicit posed snapshot, not a clip export.
+                    clip_raw,clip_audit=encode_model_glb(model,clip_fps=15)
+                    clip_doc,_=parse_glb(clip_raw)
+                    self.assertEqual(len(clip_doc['animations'][0]['channels']),objects*2)
+                    self.assertEqual(clip_audit['frame_count'],len(model['frames']))
+                    self.assertEqual(clip_audit['object_count'],objects)
                     self.assertEqual(model,original)
                 finally:
                     server.server_close()
