@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (MOVE_TO teleport target locator):** Previous turn progressed in56473852. Rechecked pinned engine-vm/field/helpers.rs grid_to_world evidence and exposed existing MOVE_TO world_xz values as normalized target_position with unknown Y, teleport kind and unevaluated runtime effect. Shared script operand UI now labels teleport targets and provides Locate target, retaining raw encoded details and requiring manual/source-sampled reference height. Twenty-four focused script tests passed including low/high-bit coordinates and unchanged legacy world_xz. Actual Edge component fixture invoking production operand renderer transferred X3136/Z2560 into locator, kept Yblank and form invalid until height supplied. This fixture is UI wiring evidence, not a reached retail branch or script execution. No script byte authoring added; no game launched or controlled. Browser/server stopped; broad SDK goal active.
+
+
 - **2026-09-12 (authored NPC draft scene export acceptance):** Previous turn progressed in42bb810d. Opened saved streaming-npc-review project and verified442/442 assembled preview instances. Selected the existing authored UUID00000000-0000-4000-8000-000000000003 through its hierarchy row and exported one-instance GLB from the browser. Retail representation request for the same draft correctly returned400. Independent glTF-Transform import retained the authored UUID, actor_draft kind and world translation[64,0,16320]; Khronos validation found zero errors/warnings/no truncation. Private draft-receipt.json and draft-consumer.json retained under scene-export-20260912. Zero browser page errors. This completes offline selected-export checks for actor, scenery, terrain and draft paths; external rendered appearance and actual draft spawning/script behavior remain unverified. No game launched or controlled; browser/server stopped. Broad SDK goal remains active.
 
 

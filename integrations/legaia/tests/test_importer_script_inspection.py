@@ -21,6 +21,17 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_move_to_locator_coordinates_and_unknown_height(self):
+        for x,z,expected in ((0,0,(64,64)),(0x80,0xff,(128,16384)),(0x18,0x93,(3136,2560))):
+            report=inspect_record(bytes([0x23,x,z,0x24]),0)
+            row=report['instructions'][0]
+            self.assertEqual(row['mnemonic'],'MOVE_TO')
+            args=row['operands']
+            self.assertEqual(args['target_position'],{'x':expected[0],'y':None,'z':expected[1]})
+            self.assertEqual(args['world_xz'],list(expected))
+            self.assertEqual(args['movement_kind'],'teleport')
+            self.assertEqual(args['runtime_effect'],'not_evaluated')
+
     def test_npc_run_decodes_targets_without_claiming_current_position(self):
         for x,z,expected,parked in ((0x18,0x93,(3136,2560),False),(0x7f,0xff,(16320,16384),True)):
             ordinary = bytes([0x4c,0x51,x,z,2,0x26])

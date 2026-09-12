@@ -95,6 +95,9 @@ def _instruction(data: bytes, pc: int) -> dict:
         size, mnemonic = 2, "MOVE_TO"
         coords = list(data[operand:operand + 2])
         args = {"encoded_xz": coords, "world_xz": [(v & 127) * 128 + (128 if v & 128 else 64) for v in coords]}
+        args.update(target_position={"x": args["world_xz"][0], "y": None, "z": args["world_xz"][1]},
+                    coordinate_system="retail_field_world_units", movement_kind="teleport",
+                    runtime_effect="not_evaluated")
     elif op in (0x27, 0x28, 0x29):
         # Pinned mes/picker.rs: pager controls, not ordinary field-VM ops.
         # Decode only a structurally complete table + labels at this reached PC.
