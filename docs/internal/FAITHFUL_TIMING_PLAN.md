@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Animation record editor file workflow
+
+- Previous turn connected verified HTTP transport. Animation authoring dialog now downloads the retail record and imports selected ANM/BIN files through ordinary project history. Download checks inspected source hash/size; import rejects unapplied drafts, bounds files to4MiB, and ignores file-read completion after dialog replacement. Record import replaces the selected actor contribution and preserves shared conflict validation.
+- Actual town01 actor0011 browser downloaded bytes exactly equal to source.anm, selected browser-edit.anm, imported frame2/object0 X201 and Undid it with zero page errors. Evidence: local-output/sdk-20260909/animation-record-project-20260912/browser-check.json. Six animation serializer tests passed; one retail opt-in skipped; JS syntax/whitespace passed.
+- This is existing-layout channel replacement, not arbitrary frame/object counts, opaque changes or retargeting. No game launched or project saved in browser check; server stopped. Full SDK goal active, gameplay deferred.
+
+
 ### 2026-09-12 — Animation record HTTP transport
 
 - Previous turn integrated record import with project history. Added actor-bound retail source download and replacement upload routes, strict fields, validated base64, bounded6MiB JSON/4MiB decoded record, and ordinary state responses after project import. Source paths and offsets remain server-controlled; no file is written from a client path.

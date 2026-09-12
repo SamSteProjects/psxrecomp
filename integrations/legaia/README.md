@@ -162,3 +162,15 @@ target frame**, then **Apply copied channel to frame range**. Both endpoints are
 included. This replaces the selected object's six values in those frames as one
 Undo step, retaining other frames and objects. It repeats a pose without
 interpolation; shared-clip effects still apply.
+
+
+## Animation record interchange
+
+Open **Author animation channels**, choose **Download retail animation record**,
+then select a replacement `.anm`/`.bin` and click **Import animation record**.
+The record must retain source length, frame/object counts and opaque bytes.
+Only existing translation/rotation channel values are writable. Import replaces
+this actor's contribution; a retail-identical record clears it. Other shared
+contributors remain, and conflicting values reject. Undo restores the prior
+contribution; Save persists a successful import. This is a raw game record,
+not a general Blender/Unity animation import format.
