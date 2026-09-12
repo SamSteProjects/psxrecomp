@@ -87,3 +87,48 @@ def replace_streaming_payload(source: bytes, expected_sha256: str, header_offset
                         result_sha256=sha256(result).hexdigest(),
                         payload_before_sha256=expected_payload_sha256,
                         payload_after_sha256=sha256(candidate).hexdigest())
+
+
+def grow_streaming_man(source: bytes, expected_sha256: str, header_offset: int,
+                       expected_payload_sha256: str, candidate: bytes):
+    """Grow one MAN chunk and rebase following chunks without altering their bytes.
+
+    The caller must provide a word-aligned MAN and relocate the enclosing
+    physical archive allocation. This function does not update archive TOCs.
+    """
+    if not isinstance(source, bytes) or sha256(source).hexdigest() != expected_sha256:
+        raise ImportError('Streaming growth source hash mismatch')
+    if type(header_offset) is not int or header_offset < 0 or not isinstance(candidate, bytes):
+        raise ImportError('Streaming growth locator or candidate is invalid')
+    chunks, terminated = streaming_chunks(source)
+    if not terminated:
+        raise ImportError('Streaming growth requires a complete terminated carrier')
+    target = next((c for c in chunks if c['header_offset'] == header_offset), None)
+    if target is None or target['type_byte'] != 3:
+        raise ImportError('Streaming growth requires a structural MAN chunk')
+    old_size, new_size = target['size'], len(candidate)
+    if old_size % 4 or new_size % 4 or not old_size <= new_size <= 4 * 1024 * 1024:
+        raise ImportError('Streaming MAN growth requires bounded word-aligned sizes without shrinkage')
+    start, end = header_offset + 4, header_offset + 4 + old_size
+    original = source[start:end]
+    if sha256(original).hexdigest() != expected_payload_sha256:
+        raise ImportError('Streaming growth payload preimage mismatch')
+    parse_man(original)
+    parse_man(candidate)
+    delta = new_size - old_size
+    if len(source) + delta > 16 * 1024 * 1024:
+        raise ImportError('Streaming grown carrier exceeds the byte bound')
+    result = source[:header_offset] + struct.pack('<I', (3 << 24) | new_size) + candidate + source[end:]
+    expected = [dict(c, size=new_size) if c['header_offset'] == header_offset else
+                dict(c, header_offset=c['header_offset'] + delta) if c['header_offset'] > header_offset else dict(c)
+                for c in chunks]
+    if streaming_chunks(result) != (expected, True):
+        raise ImportError('Streaming MAN growth changed the expected chunk chain')
+    return result, dict(header_offset=header_offset, payload_offset=start,
+                        original_payload_size=old_size, payload_size=new_size, growth_bytes=delta,
+                        source_sha256=expected_sha256, result_sha256=sha256(result).hexdigest(),
+                        payload_sha256=sha256(candidate).hexdigest(),
+                        relocated_chunks=[dict(before=c['header_offset'], after=c['header_offset'] + delta,
+                                               type_byte=c['type_byte'], byte_length=c['size'])
+                                          for c in chunks if c['header_offset'] > header_offset],
+                        archive_relocation_verified=False)

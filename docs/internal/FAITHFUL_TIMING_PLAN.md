@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming NPC chunk-growth primitive
+
+- Added source-bound MAN chunk growth with explicit size-word rewriting and structural rebasing of every following chunk. Neighbor bytes and the opaque terminator/tail are preserved exactly. Wrong hashes, non-MAN targets, incomplete chains, unaligned sizes, shrinkage and size-budget violations reject.
+- Three streaming primitive tests passed. A real Dolk2 donor-0001 append produced 73 actors and 176 bytes of aligned growth; subsequent type-4/type-5/type-7 headers shifted by exactly 176 bytes, including the animation bank. Private audit: `local-output/sdk-20260909/streaming-npc-chunk-growth-20260912.json`.
+- This is an in-memory chunk candidate, not an exported playable disc. Physical archive relocation, final animation-carrier rebasing and project NPC integration remain required before streaming NPC export can be enabled. No game launched; goal active.
+
+
 ### 2026-09-12 — Streaming model shape export
 
 - Connected streaming scene model bindings to the existing source-bound model overlay writer and final carrier reopening. This supports existing-layout vertex/normal XYZ replacement; topology, materials, descriptors and padding remain protected. It does not add arbitrary models or change topology.
