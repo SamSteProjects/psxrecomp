@@ -78,13 +78,13 @@ export class SceneRenderer {
     for(let index=0;index<triangles.length;index++){
       const triangle=triangles[index],material=preview.triangle_materials?.[index]??-1;
       if(!Array.isArray(triangle)||triangle.length!==3||triangle.some(v=>!Number.isInteger(v)||v<0||v>=vertices.length))throw new Error('Model has an invalid triangle index.');
-      if(!groups.has(material))groups.set(material,[]);
+      if(!groups.has(material)){const group=[];group.vertexIndices=[];groups.set(material,group);}
       const data=groups.get(material),texture=textureData.get(material),uvs=preview.triangle_uvs?.[index],colors=preview.triangle_colors?.[index];
       for(let corner=0;corner<3;corner++){
         const raw=Array.isArray(colors?.[corner])&&colors[corner].length>=3?colors[corner]:[153,187,167],color=raw.slice(0,3).map(value=>finite(value)?Math.max(0,value)/(texture?128:255):.6);
         const uv=texture&&Array.isArray(uvs?.[corner])?[(uvs[corner][0]-texture.uv_origin[0]+.5)/texture.width,(uvs[corner][1]-texture.uv_origin[1]+.5)/texture.height]:[0,0];
         if(texture&&(!Array.isArray(uvs?.[corner])||!uv.every(finite)))throw new Error('Matched texture has invalid UV coordinates.');
-        data.push(...vertices[triangle[corner]],...color,...uv);
+        data.push(...vertices[triangle[corner]],...color,...uv);data.vertexIndices.push(triangle[corner]);
       }
     }
     const batches=[];
@@ -92,8 +92,8 @@ export class SceneRenderer {
       for(const [material,data] of groups){
         const blend=preview.materials?.[material]?.blend;
         if(blend&&(!Number.isInteger(blend.mode)||blend.mode<0||blend.mode>3||typeof blend.enabled!=='boolean'))throw new Error('Invalid material blend metadata.');
-        const batch={buffer:gl.createBuffer(),count:data.length/8,texture:null,semi:blend?.enabled===true,blendMode:blend?.mode??0};batches.push(batch);
-        gl.bindBuffer(gl.ARRAY_BUFFER,batch.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);
+        const batch={buffer:gl.createBuffer(),data:new Float32Array(data),vertexIndices:data.vertexIndices,count:data.length/8,texture:null,semi:blend?.enabled===true,blendMode:blend?.mode??0};batches.push(batch);
+        gl.bindBuffer(gl.ARRAY_BUFFER,batch.buffer);gl.bufferData(gl.ARRAY_BUFFER,batch.data,gl.DYNAMIC_DRAW);
         const texture=textureData.get(material);
         if(texture){
           if(!Number.isInteger(texture.width)||!Number.isInteger(texture.height)||texture.width<1||texture.height<1||texture.width*texture.height>1048576)throw new Error('Texture dimensions exceed scene preview bounds.');
@@ -113,7 +113,19 @@ export class SceneRenderer {
         }
       }
     }catch(error){for(const batch of batches){gl.deleteBuffer(batch.buffer);if(batch.texture)gl.deleteTexture(batch.texture);}throw error;}
-    return {batches,min,max};
+    return {batches,min,max,vertexCount:vertices.length};
+  }
+
+  updateVertices(key,vertices){
+    const mesh=this.meshes.get(key);if(!mesh||this.lost)return false;
+    if(!Array.isArray(vertices)||vertices.length!==mesh.vertexCount||vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(finite)))throw new Error('Animation vertices differ from the loaded mesh layout.');
+    const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
+    for(const vertex of vertices)for(let axis=0;axis<3;axis++){min[axis]=Math.min(min[axis],vertex[axis]);max[axis]=Math.max(max[axis],vertex[axis]);}
+    for(const batch of mesh.batches){
+      for(let i=0;i<batch.vertexIndices.length;i++)batch.data.set(vertices[batch.vertexIndices[i]],i*8);
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER,batch.buffer);this.gl.bufferSubData(this.gl.ARRAY_BUFFER,0,batch.data);
+    }
+    mesh.min=min;mesh.max=max;const asset=this.scene?.assets.find(item=>item.geometry_key===key);if(asset)asset.preview={...asset.preview,vertices};return true;
   }
 
   hasEntity(identifier){return !this.lost&&this.instances.some(item=>item.entity_id===identifier);}

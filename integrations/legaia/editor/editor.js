@@ -1919,7 +1919,7 @@ canvas.addEventListener('lostpointercapture',event=>{if(event.pointerId===drag?.
 canvas.addEventListener('wheel',event=>{pendingEntityFrame=null;event.preventDefault();camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(event.deltaY*.001)));cameraRevision++;draw();},{passive:false});
 
 // Unposed assets stay object-local. Only decoder-provided frames assemble objects.
-const modelCanvas=$('model-canvas'), modelContext=modelCanvas.getContext('2d');
+const modelCanvas=$('model-canvas');let modelRenderer=null,modelRenderSource=null,modelRenderObject=null,modelRenderFrame=null;
 const exportDialog=document.createElement('dialog');document.body.append(exportDialog);
 let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
@@ -1947,7 +1947,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
       const statusLabel={address_match:'Matched texture',missing:'Texture not found',ambiguous:'Multiple possible textures',unsupported:'Unsupported texture',untextured:'Vertex colors'}[texture.status] ?? 'Texture unavailable';
       const label=document.createElement('span');label.textContent=`Material ${texture.material_index} · ${statusLabel}${texture.width?' · '+texture.width+'×'+texture.height:''}`;card.append(label);card.title=texture.reason ?? 'Static texture addresses; runtime residency is not confirmed'; $('model-textures').append(card);
     }
-    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId?'Decoded rigid animation pose':shapeLayer==='authored'?'Authored object-local shape · Unposed':'Retail object-local geometry · Unposed'} · ${modelTextures.size?(model.texture_scope==='field_party'?'Shared party texture bank':'Static texture address matches'):'Vertex colors'} · No texture-window, animated palette or blend reconstruction`;
+    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId?'Decoded rigid animation pose':shapeLayer==='authored'?'Authored object-local shape · Unposed':'Retail object-local geometry · Unposed'} · ${modelTextures.size?(model.texture_scope==='field_party'?'Shared party texture bank':'Static texture address matches'):'Vertex colors'} · Approximate blends; no texture-window or animated palette reconstruction`;
     $('model-object').replaceChildren();
     if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
@@ -1959,6 +1959,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     $('shape-clear').disabled=state.project.mode!=='edit'||!shape;$('shape-authored').disabled=!shape;
     $('shape-status').textContent=`Viewing ${shapeLayer==='authored'?'AUTHORED object-local shape':clipId==='authored-channels'?'AUTHORED shared animation':clipId==='authored-appearance'?'AUTHORED appearance animation':clipId?'RETAIL assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
     updateShapeDraft();
+    if(!modelRenderer){const module=await import('/scene-renderer.js');modelRenderer=new module.SceneRenderer(modelCanvas,message=>{$('model-error').textContent=message??'';if(!message)requestAnimationFrame(drawModel);});}
     if(!$('model-dialog').open)$('model-dialog').showModal();
     fitModelObject();
   }catch(error){if($('model-dialog').open){$('model-error').textContent=error.message;$('animation-clip').value=model?.animation?.clip_id ?? '';}else notify(error.message,true);}finally{$('animation-clip').disabled=false;setBusy(false);}
@@ -2048,34 +2049,21 @@ function fitModelObject(){
 }
 $('model-object').onchange=fitModelObject;
 function drawModel(){
-  const rect=modelCanvas.getBoundingClientRect(),w=rect.width,h=rect.height,dpr=window.devicePixelRatio||1;if(!w||!h)return;
-  modelCanvas.width=Math.round(w*dpr);modelCanvas.height=Math.round(h*dpr);modelContext.setTransform(dpr,0,0,dpr,0,0);modelContext.clearRect(0,0,w,h);
+  if(!modelRenderer||!$('model-dialog').open)return;
+  const rect=modelCanvas.getBoundingClientRect(),w=rect.width,h=rect.height;if(!w||!h)return;
   const object=modelObject();if(!object)return;
-  const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch),distance=modelView.radius*4/modelView.zoom,f=Math.min(w,h)*1.3;
-  const projectedModel=frameVertices().map(v=>{
-    // PSX local +Y points down. Match pinned LegaiaRE d6e64c68 scene_gltf's
-    // diag(1,-1,1) display conversion without changing the decoded vertices.
-    const x=v[0]-modelView.center[0],y=-(v[1]-modelView.center[1]),z=v[2]-modelView.center[2];const rx=x*c+z*s,rz=-x*s+z*c,ry=y*cp-rz*sp,depth=y*sp+rz*cp+distance;
-    return depth>modelView.radius*.02?{x:w/2+rx*f/depth,y:h/2-ry*f/depth,z:depth}:null;
-  });
-  const faces=[];
-  for(let i=object.triangle_start;i<object.triangle_start+object.triangle_count;i++){
-    const triangle=model.triangles[i];if(!triangle)continue;const points=triangle.map(index=>projectedModel[index]);if(points.some(p=>!p))continue;
-    const colors=model.triangle_colors?.[i];let rgb=[153,187,167];
-    if(Array.isArray(colors)&&colors.length){rgb=Array.isArray(colors[0])?[0,1,2].map(axis=>Math.round(colors.reduce((sum,color)=>sum+(Number(color[axis])||0),0)/colors.length)):colors.slice(0,3);}
-    faces.push({points,z:points.reduce((sum,p)=>sum+p.z,0)/3,color:`rgb(${rgb.map(value=>Math.max(0,Math.min(255,value))).join(',')})`,texture:modelTextures.get(model.triangle_materials?.[i]),uvs:model.triangle_uvs?.[i]});
-  }
-  faces.sort((a,b)=>b.z-a.z);
-  for(const face of faces){modelContext.beginPath();modelContext.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))modelContext.lineTo(p.x,p.y);modelContext.closePath();if(!drawTexturedFace(face)){modelContext.fillStyle=face.color;modelContext.fill();}modelContext.strokeStyle='#10201825';modelContext.lineWidth=.35;modelContext.stroke();}
-  if(!faces.length){modelContext.fillStyle='#819b94';modelContext.font='13px "Segoe UI",sans-serif';modelContext.textAlign='center';modelContext.fillText('This object has no supported drawable triangles.',w/2,h/2);modelContext.textAlign='left';}
-}
-function drawTexturedFace(face){
-  if(!face.texture || !face.uvs)return false;
-  const uv=face.uvs.map(p=>[p[0]-face.texture.origin[0]+.5,p[1]-face.texture.origin[1]+.5]),p=face.points;
-  const [u0,v0]=uv[0],[u1,v1]=uv[1],[u2,v2]=uv[2];
-  const determinant=u0*(v1-v2)+u1*(v2-v0)+u2*(v0-v1);if(Math.abs(determinant)<1e-8)return false;
-  const solve=axis=>[(p[0][axis]*(v1-v2)+p[1][axis]*(v2-v0)+p[2][axis]*(v0-v1))/determinant,(p[0][axis]*(u2-u1)+p[1][axis]*(u0-u2)+p[2][axis]*(u1-u0))/determinant,(p[0][axis]*(u1*v2-u2*v1)+p[1][axis]*(u2*v0-u0*v2)+p[2][axis]*(u0*v1-u1*v0))/determinant];
-  const x=solve('x'),y=solve('y');modelContext.save();modelContext.clip();modelContext.transform(x[0],y[0],x[1],y[1],x[2],y[2]);modelContext.imageSmoothingEnabled=false;modelContext.drawImage(face.texture.image,0,0);modelContext.restore();return true;
+  try{
+    const choice=$('model-object').value,vertices=frameVertices();
+    if(modelRenderSource!==model||modelRenderObject!==choice){
+      const start=object.triangle_start,end=start+object.triangle_count;
+      const preview={...model,vertices,triangles:model.triangles.slice(start,end),triangle_colors:model.triangle_colors?.slice(start,end),triangle_uvs:model.triangle_uvs?.slice(start,end),triangle_materials:model.triangle_materials?.slice(start,end)};
+      const failures=modelRenderer.load({assets:[{geometry_key:'model-view',preview}],entities:[{entity_id:'model-view',geometry_key:'model-view',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});
+      if(failures.length)throw new Error(failures.join('; '));
+      modelRenderSource=model;modelRenderObject=choice;modelRenderFrame=animationFrame;
+    }else if(modelRenderFrame!==animationFrame){if(modelRenderer.updateVertices('model-view',vertices))modelRenderFrame=animationFrame;}
+    const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch);
+    modelRenderer.draw({width:w,height:h,positions:new Map(),grid:false,camera:{target:{x:modelView.center[0],y:-modelView.center[1],z:modelView.center[2]},distance:modelView.radius*4/modelView.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
+  }catch(error){$('model-error').textContent=String(error.message);}
 }
 new ResizeObserver(drawModel).observe(modelCanvas);
 modelCanvas.addEventListener('pointerdown',event=>{modelCanvas.setPointerCapture(event.pointerId);modelDrag={x:event.clientX,y:event.clientY};});

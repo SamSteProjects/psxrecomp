@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Unified model and scene rendering
+
+- Replaced the standalone model viewer's separate Canvas2D affine/painter path with the shared WebGL renderer. Model/animation inspection now receives the same vertex-color modulation, depth tests, texture sampling and decoded blend/STP behavior as the scene viewport. Existing local-Y reflection and orbit framing remain explicit.
+- Added validated vertex-buffer updates for same-layout animation frames: retained interleaved buffers and textures, refreshed bounds and latest source vertices for context restoration. Object/clip changes rebuild the bounded mesh; frame changes update positions only. No arbitrary topology changes.
+- Browser opened savepoint loop, scrubbed to frame2/30, selected object0 and returned to animated assembly, with no page/model/WebGL errors. Inspected savepoint-model-webgl-20260912.png: lit translucent structure replaces prior opaque gray panels. GPU check proved retained buffer identities, updated X/bounds95, latest restore-source95, invalid vertex-count rejection and zero GL errors. Actual graphics-context loss was not simulated this turn.
+- Both viewers retain approximate blended ordering and no retail ordering-table/GTE equivalence claim. No game launched or project saved; temporary browser/server stopped, full goal active.
+
+
 ### 2026-09-12 — Scene blend preview
 
 - Scene WebGL renderer consumes decoded ABE/ABR and per-texel STP evidence. STP is encoded into a spare uploaded alpha value while zero-transparent texels remain discarded; it is not treated as blanket opacity. Invalid masks/modes reject mesh upload.
