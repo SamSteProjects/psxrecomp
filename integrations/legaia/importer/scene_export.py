@@ -11,7 +11,7 @@ def encode_scene_glb(scene):
     if scene.get('schema') != 'legaia.scene-preview.v1' or scene.get('coordinate_system') != 'editor_field_y_up_source_units':
         raise ImportError('Scene export requires a verified scene preview')
     assets, entities = scene.get('assets'), scene.get('entities')
-    if not isinstance(assets, list) or len(assets)>128 or not isinstance(entities,list) or not 0<len(entities)<=2048:
+    if not isinstance(assets, list) or not 0<len(assets)<=128 or not isinstance(entities,list) or not 0<len(entities)<=2048:
         raise ImportError('Scene export exceeds geometry or entity bounds')
     doc={'asset':{'version':'2.0','generator':'Legaia SDK assembled scene exporter'},
          'scene':0,'scenes':[{'nodes':[]}],'nodes':[], 'meshes':[], 'materials':[],
@@ -67,6 +67,8 @@ def encode_scene_glb(scene):
         if entity.get('renderable'):
             children=templates.get(entity.get('geometry_key'))
             if children is None:raise ImportError('Renderable entity has no exported geometry')
+            if len(doc['nodes'])+len(children)>32768:
+                raise ImportError('Expanded scene hierarchy exceeds export node budget')
             node['children']=[]
             for child in children:
                 node['children'].append(len(doc['nodes']));doc['nodes'].append(deepcopy(child))

@@ -24,5 +24,8 @@ class SceneExportTests(unittest.TestCase):
             for x,y,z in positions:
                 m=parent['matrix'];world=[sum(m[c*4+r]*v for c,v in enumerate([x,y,z,1])) for r in range(3)]
                 self.assertEqual(world,[z+10+index*100,y+20,-x+30])
+        empty=deepcopy(scene);empty['assets']=[]
+        for entity in empty['entities']:entity['renderable']=False
+        with self.assertRaises(ImportError):encode_scene_glb(empty)
         scene['entities'][1]['geometry_key']='missing'
         with self.assertRaises(ImportError):encode_scene_glb(scene)
