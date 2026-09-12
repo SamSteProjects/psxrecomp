@@ -1795,7 +1795,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
 function renderMovementAuthoring(){
   const authoring=scriptReport?.movement_authoring;if(!authoring)return;
   const section=document.createElement('section');section.className='movement-authoring';
-  section.innerHTML='<h3>Script movement targets</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project; playable Build integration is pending. The instruction table and target overlay still show retail source coordinates.</p>';
+  section.innerHTML='<h3>Script movement targets</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project. Build supports descriptor MAN scenes; streaming-scene packaging is pending. The instruction table and target overlay still show retail source coordinates.</p>';
   $('script-report').append(section);
   const owner=scriptEntity.id,key=resourceStateKey(),current=()=>!busy&&canEditDialogue()&&key===resourceStateKey()&&scriptEntity?.id===owner;
   const send=async(id,type,values)=>{

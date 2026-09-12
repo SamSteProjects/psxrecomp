@@ -117,7 +117,7 @@ X/Z. Enter exact 64-unit coordinates from 64 through 16384, then **Apply movemen
 Use **Discard movement draft** for unapplied input, **Clear movement override**
 to restore the retail target, and the script toolbar for Undo/Redo and Save.
 
-These edits currently persist in the project but are explicitly rejected by
-playable Build until packaging is integrated. The instruction table and viewport
+Build packages these edits for supported descriptor MAN scenes such as town01.
+Streaming-scene packaging remains pending. Gameplay behavior is unverified. The instruction table and viewport
 movement overlay still display retail source targets. Y, executed branches and
 runtime actor identity remain unresolved.

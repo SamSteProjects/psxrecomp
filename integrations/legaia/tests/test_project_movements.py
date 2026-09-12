@@ -9,7 +9,7 @@ from importer.core import ImportError
 from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 class ProjectMovements(unittest.TestCase):
-    def test_real_serializer_layers_and_build_boundary(self):
+    def test_real_serializer_layers_and_missing_disc_boundary(self):
         from test_importer_dialogue_authoring import fixture, ACTOR
         from sdk.build import build_project, BuildError
         source,_=fixture(b'\x23\x00\x80\x3f\0\0\x06town01\1\2\3')
@@ -24,7 +24,7 @@ class ProjectMovements(unittest.TestCase):
             self.assertEqual(result['effective_values'],{'x':128,'z':128})
             self.assertEqual(result['authored_values'],{'x':128})
             self.assertEqual(p.imports,before)
-            with self.assertRaisesRegex(BuildError,'Script movement'):
+            with self.assertRaisesRegex(BuildError,'verified user-owned retail disc'):
                 build_project(p)
             self.assertFalse((Path(directory)/'Builds').exists())
 

@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Descriptor MAN movement Build integration
+
+- Build now collects ScriptMovement edits, verifies source-owner membership and requested encoded coordinates, merges audited X/Z bytes with other supported descriptor MAN edits and serializes within original LZS capacity. Rejects conflicting, unaudited, wrong-owner or wrong-request bytes. Reports movement world coordinates and stable instruction IDs separately from initial actor placement. Package description identifies movement edits and retains unverified runtime status.
+- Fresh town01 project combines actor0011 initial X2880->128 with NPC_RUN PC0x23 target X9664->9728. Built one24894-byte MAN overlay; opening the emitted psxmod and decompressing its actual payload reproduced exactly the two audited byte changes. Byte7948=203 independently resolves X9728. Package SHA25685cf0202a129ad3fe176830c14d016382a17f9ac52a17f5f5b7ac6a107c8da84; no runtime launch.
+- Private saved project/package and evidence: `local-output/sdk-20260909/movement-build-20260912/{project.legaia.json,build-check.json,package-verification.json}`. Initial build-check used the earlier raw-byte report presentation; package-verification includes the corrected world-coordinate report from the same emitted audit. Payload identity is unchanged.
+- Four focused movement/transition merge and project checks passed; wrong requested coordinates, overlapping prior spans, unaudited bytes and wrong owners reject. JavaScript syntax/diff checks passed. Streaming/appended MAN packaging, experimental disc integration, effective viewport overlays and gameplay acceptance remain outstanding. Full SDK goal remains incomplete.
+
+
 ### 2026-09-12 — Script movement editor controls
 
 - Script inspector now exposes verified movement targets with retail/authored/effective X/Z, Apply, Clear and Discard. Exact64-unit form validation, source-key/owner guards and existing script draft management preserve command ownership. Pending drafts disable project history/save controls until applied or discarded. Unsupported target records retain reasons and unresolved override clearing.
