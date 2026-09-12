@@ -10,6 +10,7 @@ from sdk.export_history import list_exports, verify_export
 class ExportHistoryTests(unittest.TestCase):
     def test_change_summary_covers_streaming_and_legacy_without_payloads(self):
         from sdk.export_history import _change_summary
+        self.assertEqual(_change_summary({'movement_changes':[{}]})['categories'],['Script movement'])
         self.assertEqual(_change_summary({}), {'npc_draft_count': None, 'categories': []})
         result = _change_summary({'drafts': {'id': {'name': 'Private NPC'}}, 'scenes': {'scene://fixture': {
             'existing_actor_dialogue_changes': [{'after_hex': 'private'}],

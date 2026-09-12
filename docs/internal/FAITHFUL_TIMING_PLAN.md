@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming and experimental disc movement composition
+
+- Connected ScriptMovement to streaming and descriptor draft preparation, including verified rebasing after NPC append and separate movement_changes audits. Existing layout, source preimage, word padding, PROT rebuild and final disc readback guards remain in force. Export-history summaries now identify Script movement without exposing script payloads.
+- Fresh multi-scene project exported Dolk2 actor0002 MOVE_TO X9408 plus town01 actor0011 NPC_RUN X9728 and one Dolk2 donor0001 NPC at X64/Z16320. Selected the donor's source scene before creating the draft after an initial fixture correctly rejected a cross-scene donor. No production validation was weakened.
+- Completed export: `local-output/sdk-20260909/movement-disc-20260912/Export/draft.bin`;466716768bytes; SHA2562b9a12bdffbaebf93941623e35b3ba5afc77157ae2b2e35ab3c8fb6e20faccce. Reopened PROT matched the rebuilt archive. Saved project and Inputs snapshot retain both overrides and the draft. Dolk2 target rebased7492->7495; town01 retained7948. Completed report.json contains both movement audits; gameplay_verified remains false.
+- Seven focused export/serializer/merge tests passed before the export-history category update; three focused history tests also passed, followed by JavaScript syntax/diff checks. Added the private combined package to the deferred gameplay queue. This verifies composition and disc readback, not trigger execution, scheduling, donor behavior or runtime rendering. Effective target overlays and manual gameplay acceptance remain outstanding. Full SDK goal remains incomplete.
+
+
 ### 2026-09-12 — Movement edits after MAN actor append
 
 - MovementAuthoringContext.patch_appended now relocates each original owner by partition/record identity, rechecks unique extent and decoded instruction layout, verifies the coordinate preimage and patches only its rebased bytes. Candidate dispatch context is recorded separately from source context; appended donor records remain untouched. This helper expects an independently validated append candidate, not an arbitrary replacement MAN.

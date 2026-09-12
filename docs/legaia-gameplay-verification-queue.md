@@ -140,3 +140,17 @@ without a changed build or a specific unresolved behavior.
 - Expand supported editor tools and source-backed inspection from the original SDK requirements.
 - Validate commands, history, persistence, source preservation, serialization and browser behavior.
 - Prepare minimal manual fixtures as their implementation reaches that boundary.
+
+
+### Deferred: script movement plus NPC composition (2026-09-12)
+
+Private package: `local-output/sdk-20260909/movement-disc-20260912/Export/draft.bin`.
+SHA256: `2b9a12bdffbaebf93941623e35b3ba5afc77157ae2b2e35ab3c8fb6e20faccce`.
+The adjacent report and Inputs snapshot preserve the authored state.
+
+Contains Dolk2 actor0002 MOVE_TO PC0x27 target X9408/Z10816, town01 actor0011
+NPC_RUN PC0x23 target X9728/Z8640, and one Dolk2 donor0001 NPC at X64/Z16320.
+Rebuilt PROT readback passed. No game was launched. These are script targets,
+not initial actor positions; a reproducible trigger/story-state setup remains
+to be established before gameplay can verify either target. NPC scheduling,
+visibility, interactions and the proposed location's walkability remain unverified.

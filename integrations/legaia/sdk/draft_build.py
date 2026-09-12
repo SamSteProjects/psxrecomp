@@ -125,15 +125,19 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     dialogues={}
     animations={}
     transitions={}
+    movements={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions'} if p2 else {'Transform','ActorAppearance','Dialogue','Transitions','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement'} if p2 else {'Transform','ActorAppearance','Dialogue','Transitions','ScriptMovement','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
             raise ProjectError('Draft serialization currently composes only same-scene actor positions, appearances and dialogue')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
         if 'AnimationChannels' in components:
             project._validate_animation_override(identifier,components['AnimationChannels'])
             animations[identifier]=components['AnimationChannels']
+        if 'ScriptMovement' in components:
+            project._validate_movements(identifier,components['ScriptMovement'])
+            movements.update(components['ScriptMovement']['entries'])
         if 'Transitions' in components:
             value=components['Transitions']
             if not isinstance(value,dict) or set(value)!={'entries'} or not isinstance(value['entries'],dict) or not value['entries']:
@@ -161,6 +165,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     context=load_man_assignment_context(project.disc_path,scene) if assignments else None
     dialogue_context=load_dialogue_authoring_context(project.disc_path,scene) if dialogues else None
     transition_context=load_transition_authoring_context(project.disc_path,scene) if transitions else None
+    from importer.movement_authoring import load_movement_authoring_context
+    movement_context=load_movement_authoring_context(project.disc_path,scene) if movements else None
     transition_edits={}
     for identifier,entries in transitions.items():
         allowed={item['semantic_id'] for item in transition_context.options(identifier)['transitions']}
@@ -219,6 +225,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             dialogue_context.patch(dialogue_edits,original=source)
         if transition_context:
             transition_context.patch(transition_edits,original=source)
+        if movement_context:
+            movement_context.patch(movements,original=source)
         if requests:
             candidate,actor_audit=append_actor_candidates(source,sha256(source).hexdigest(),requests)
         else:
@@ -239,6 +247,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         transition_audit=[]
         if transition_context:
             candidate,transition_audit=transition_context.patch_appended(candidate,transition_edits)
+        movement_audit=[]
+        if movement_context:
+            candidate,movement_audit=movement_context.patch_appended(candidate,movements)
         absolute=archive.entry(bundle.entry_index).start_lba*2048+bundle.table_offset
         span=locate_physical_span(archive,absolute)
         prot=archive.image.read_user(archive.node.extent_lba,0,archive.node.size,archive.node.size)
@@ -277,7 +288,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         actor=actor_audit,existing_actor_placement_changes=placement_audit,
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_dialogue_changes=dialogue_audit,
-        transition_changes=transition_audit,
+        transition_changes=transition_audit, movement_changes=movement_audit,
         final_man_sha256=sha256(candidate).hexdigest(),
         container=container_audit,gameplay_verified=False)
 
