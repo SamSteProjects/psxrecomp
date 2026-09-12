@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Draft selection across comparison layers
+
+- Retail hierarchy identifies NPC drafts as Authored only. Framing a selected draft explicitly switches back to the authored scene, retains selection, and waits for matching geometry before framing. Draft Inspector exposes this as Show in authored scene.
+- Added persistent Inspector notice distinguishing retail viewport comparison from authored property fields, beyond the transient switch notification.
+- Browser verified retail draft label/notice, layer switch, retained selection and authored geometry restoration; inspected `local-output/sdk-20260909/retail-draft-return-authored-20260912.png`. Existing donor pose appearance remains reference-derived, not gameplay verified. JavaScript syntax passed. Temporary browser/editor server stopped; project unsaved state was not changed.
+- No game launched. Full SDK goal active; manual gameplay deferred.
+
+
 ### 2026-09-12 — Comparison resource request regression repair
 
 - Found and repaired a regression introduced with the viewport switch: resource-catalog, scene-transition and scene-flag requests had unintentionally gained the scene representation field. These separate endpoints require empty request bodies. Restored their contracts without changing the comparison endpoint.

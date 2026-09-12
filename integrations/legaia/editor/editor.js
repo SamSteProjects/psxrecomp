@@ -114,6 +114,7 @@ representationSelect.onchange=()=>{sceneRepresentation=representationSelect.valu
 function sceneRequestKey(){return state.scene_preview_source_key?`${state.scene_preview_source_key}|${sceneRepresentation}`:null;}
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
 sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
+const comparisonNotice=document.createElement('p');comparisonNotice.id='scene-comparison-note';comparisonNotice.className='field-note';comparisonNotice.textContent='Viewport: retail comparison. Inspector fields remain authored project values; edits appear in Authored scene.';comparisonNotice.hidden=true;$('inspector').before(comparisonNotice);
 const runtimeBox=document.createElement('div');runtimeBox.className='runtime-status';$('inspector').before(runtimeBox);
 const liveFollow={active:false,timer:null,pending:null,controller:null,generation:0,context:null,epoch:null,count:0,reason:'Not following',runPid:null};
 const liveContext=()=>JSON.stringify([state.project?.path,state.scene?.id]);
@@ -404,7 +405,11 @@ function entities(){return state.scene?.entities ?? [];}
 let environmentSelection=null;
 let npcDraftSelection=null;
 function selectedNpcDraft(){const value=state.actor_drafts?.[npcDraftSelection];return value?.scene_id===state.scene?.id?value:null;}
-function frameNpcDraft(){const value=selectedNpcDraft();if(value)frame({id:npcDraftSelection,components:{Transform:{imported:{position:{...value.position,y:null}}}}});}
+function frameNpcDraft(){
+  const value=selectedNpcDraft(),id=npcDraftSelection;if(!value)return;
+  if(sceneRepresentation==='retail'){representationSelect.value='authored';representationSelect.onchange();selectNpcDraft(id);}
+  frame({id,components:{Transform:{imported:{position:{...value.position,y:null}}}}});
+}
 function selectNpcDraft(id){pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
@@ -513,6 +518,7 @@ function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===sceneRe
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
 function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(draft)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
+  comparisonNotice.hidden=sceneRepresentation!=='retail';
   const draftCount=Object.values(state.actor_drafts??{}).filter(item=>item.scene_id===state.scene?.id).length;
   $('entity-count').textContent=entities().length+environmentEntities().length+draftCount;
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
@@ -564,7 +570,7 @@ function renderHierarchy(){
   const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
   const npcDrafts=Object.entries(state.actor_drafts??{}).filter(([id,item])=>item.scene_id===state.scene?.id&&`${item.name} ${id}`.toLowerCase().includes(filter));
   if(npcDrafts.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`NPC drafts (${npcDrafts.length})`;list.append(heading);}
-  for(const [id,item] of npcDrafts){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.textContent=`${item.name} · Draft`;row.title=id;row.onclick=()=>selectNpcDraft(id);row.setAttribute("aria-selected",id===npcDraftSelection);row.classList.toggle("selected",id===npcDraftSelection);list.append(row);}
+  for(const [id,item] of npcDrafts){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.textContent=`${item.name} · ${sceneRepresentation==='retail'?'Authored only':'Draft'}`;row.title=id;row.onclick=()=>selectNpcDraft(id);row.setAttribute("aria-selected",id===npcDraftSelection);row.classList.toggle("selected",id===npcDraftSelection);list.append(row);}
   if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
   for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',item.entity_id===environmentSelection);row.classList.toggle('selected',item.entity_id===environmentSelection);row.textContent=item.name;row.title=item.entity_id;row.onclick=()=>selectEnvironment(item.entity_id);row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
@@ -1279,7 +1285,8 @@ function renderInspector(){
     const form=$('draft-inspector-form');form.elements.x.value=npc.position.x;form.elements.z.value=npc.position.z;
     form.querySelectorAll('input,button').forEach(control=>control.disabled=busy||!canEdit());
     form.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}});};
-    $('frame-npc-draft').onclick=()=>frame({id,components:{Transform:{imported:{position:{...npc.position,y:null}}}}});
+    $('frame-npc-draft').textContent=sceneRepresentation==='retail'?'Show in authored scene':'Frame draft';
+    $('frame-npc-draft').onclick=frameNpcDraft;
     const inspectDraft=document.createElement('button');inspectDraft.id='inspect-npc-draft';inspectDraft.textContent='Inspect serialized candidate';inspectDraft.disabled=busy;inspectDraft.onclick=()=>openActorCandidate({id,name:npc.name,components:{Transform:{effective:{position:{...npc.position,y:null}}}}});$('inspector').querySelector('section').append(inspectDraft);
     const exportDraft=document.createElement('button');exportDraft.id='export-npc-drafts';exportDraft.textContent='Export experimental disc';exportDraft.disabled=busy||!canEdit();exportDraft.onclick=()=>exportNpcDrafts(id);$('inspector').querySelector('section').append(exportDraft);
     $('delete-npc-draft').disabled=busy||!canEdit();$('delete-npc-draft').onclick=()=>api('/api/command',{type:'delete_actor_draft',entity_id:id});
