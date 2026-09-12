@@ -213,6 +213,62 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Streaming script browser presentation and source checkpoint
+
+- Continued offline SDK implementation under the user's deferred-gameplay instruction. Browser inspection of dolk2 actor 0001 displays 34 decoded instructions and one dialogue segment from its own raw streaming MAN.
+- Replaced premature text-edit capability labeling with source inspection; unavailable authoring controls are hidden, and streaming scenes explicitly explain their read-only text/transition status. Existing descriptor serialization rejects streaming sources with an accurate operation-specific error.
+- Focused importer/script/project checks: 37 tests, 36 passed and one skipped. Browser assertion verified the streaming read-only message and hidden authoring toolbar; screenshot inspected at `local-output/sdk-20260909/streaming-script-browser-20260912.png`. JavaScript syntax passed. Initial browser locator and misspelled test-module failures were corrected before acceptance.
+- Added source-handoff regression coverage for ambiguous raw carriers, explicit uncompressed provenance, bounded LZS input and no fallback after malformed preferred descriptors. Streaming scene-local models, terrain and serialization remain unfinished; no game was launched or gameplay acceptance claimed. Temporary editor server and test browser closed.
+
+### 2026-09-12 Streaming actor script inspection
+
+- Actor-script inspection now reads typed MAN sources, exposes raw carrier provenance and reports no compressed-byte consumption for streaming payloads. Shared descriptor reader now enforces the next descriptor's compressed-span ceiling.
+- Retail dolk2 actor0001 inspection decoded34 supported instructions and one dialogue segment with partial coverage. Editor service returned the inspection while explicitly reporting dialogue authoring unsupported; write safety was not inferred.
+- Focused script/preview/stream checks passed. Browser script interaction, streaming dialogue/transition authoring and model mapping remain pending. No game launched or saved project changes.
+
+
+### 2026-09-12 Streaming placement project import
+
+- Scene catalog and import now consume typed MAN sources. Raw streaming actor records carry entry/payload offsets, hash, exact byte sizes and compression=none; descriptor metadata remains unchanged for existing bundle scenes.
+- Imported dolk2's72 actor records into local-output/sdk-20260909/streaming-dolk2-import-20260912, saved and reopened with identical metadata.13 global-special model references resolve; scene-local models remain explicitly unresolved pending streaming pool mapping. Scene catalog reports raw_streaming_man rather than the neighboring suimon bundle.
+- Saved town01 import digest unchanged. Streaming model/resource preview, authoring serializers and export remain incomplete; no gameplay launched or existing user project modified.
+
+
+### 2026-09-12 Typed descriptor and streaming MAN source handoff
+
+- Added ManSource/read_man_source with decoded payload, parsed actors, encoded size, physical locator and explicit compression kind. Descriptor failures do not silently select a different streaming script; streaming fallback requires exactly one validated carrier with actor records.
+- Existing pipeline MAN handoff now uses this abstraction but explicitly rejects raw streaming project imports until source metadata and consumers are adapted. This prevents fabricated descriptor/LZS provenance. Retail checks resolved town01 plus five streaming scenes; town01 saved metadata digest unchanged. Seven focused stream/boundary/preview tests passed.
+- No game launched or retail data modified. Streaming project import, resource mapping and export remain the next implementation work.
+
+
+### 2026-09-12 Raw streaming MAN discovery prototype
+
+- Added bounded streaming chunk walker using the pinned reference's truncated-word advance and zero-size termination. Discovery validates type03 payloads as MAN, clips scene read windows, records raw/noncompressed provenance and avoids duplicate physical payloads.
+- Retail dolk2 carrier entry70 decoded44036 bytes with counts29/73/17, SHA256 a623b1a0534d2e70ca6186037af19693df26cdc7874cd071a9cd2a54319c46b2. Also found distinct carriers in rikuroa,rayman,station,balden2; bubu1/opkorout/opmap01 unresolved by this path. Metadata: local-output/sdk-20260909/streaming-man-carriers-20260912.json.
+- Two focused stream/boundary tests passed. Importer/editor/export integration remains pending; candidates explicitly do not claim export readiness. No gameplay launched or retail bytes changed.
+
+
+### 2026-09-12 Streaming MAN carrier reference identified
+
+- Bounded four-byte-aligned scan found no supported6/7-descriptor MAN tables within the seven unresolved field-scene windows. Evidence: local-output/sdk-20260909/unaligned-scene-table-scan-20260912.json.
+- Read pinned LegaiaRE d6e64c68ede25813d35db20980da82a1a025549b crates/engine-core/src/scene_bundle.rs::streaming_man_payloads and chapter1_hub_sweep_oracle evidence. Reference explicitly corrects dolk2/suimon aliasing as read-window bleed and identifies dolk2's own streaming MAN (partition counts29/73/17).
+- Next importer work should decode validated type03 streaming chunks with independent provenance, rather than treating them as compressed descriptor-table MANs. Existing authoring/export callers assume descriptor compression and require deliberate adaptation. No runtime/game changes or speculative table fallback enabled.
+
+
+### 2026-09-12 Reject borrowed MAN tables beyond scene boundaries
+
+- find_scene_bundle now bounds candidate table origins and full descriptor tables by the next scene's physical start. Overlapping indexed read windows no longer establish ownership of a following scene's MAN table.
+- Synthetic overlap regression plus preview/routing checks:9 passed. Retail rescan preserved88 tables exactly, changed none, and rejected the same9 out-of-range labels from the prior inventory. Report: local-output/sdk-20260909/scene-bundle-boundary-check-20260912.json. Saved town01 import digest independently unchanged.
+- gameover_data,dolk2,rayman,station,balden2,bubu1,opkorout,opmap01,vab_01 remain unresolved by this discovery path; their true formats/ownership need further evidence. This is not a complete payload ownership or asset-pool audit. No gameplay launched or retail bytes changed.
+
+
+### 2026-09-12 Retail MAN physical-owner inventory
+
+- Inventoried all124 CDNAME labels on the verified retail disc:97 returned supported MAN-bearing bundles,27 did not. Nine apparent shared-owner groups resolve to identical physical table offsets, not distinct tables requiring composition.
+- Report: local-output/sdk-20260909/retail-man-owner-inventory-20260912.json. Added each bounded scene range and whether the discovered physical owner falls inside it. Overlapping indexed read windows can expose a following scene's table; discovery boundary validation is the next investigation before enabling shared-owner rebuilds.
+- This is source-layout evidence, not proof of complete scene ownership or relocation safety. No game launched, archive modified or import behavior changed.
+
+
 ### 2026-09-12 Editable export copy browser acceptance
 
 - Browser opened an editable copy through Export history from a separate snapshot-only test project. Result: ReviewCopies/export-10758c5134214dd5a59b103bdab8d84f, scene town01, clean project state. Original collision-export snapshot file hashes independently rechecked unchanged.

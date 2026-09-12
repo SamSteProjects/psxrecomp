@@ -217,7 +217,9 @@ class EditorServer(ThreadingHTTPServer):
                 report["dialogue_authoring"] = project.dialogue_options(entity_id)
                 report["transition_authoring"] = _transition_authoring_report(project, entity_id)
             except (RetailImportError, ProjectError) as exc:
-                report["dialogue_authoring"] = {"supported": False, "reason": str(exc), "runs": [],
+                reason = ("Read-only streaming script inspection. Text and transition authoring are not yet supported for this scene."
+                          if report.get("man_source", {}).get("source_kind") == "raw_streaming_man" else str(exc))
+                report["dialogue_authoring"] = {"supported": False, "reason": reason, "runs": [],
                                                 "unresolved_overrides": sorted(project.overrides.get(entity_id, {}).get("Dialogue", {}).get("runs", {})),
                                                 "limitations": ["Read-only script inspection does not establish text-write safety."]}
             return report

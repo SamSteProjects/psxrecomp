@@ -1307,7 +1307,7 @@ function renderInspector(){
   if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${property('Imported ID',components.Animation.imported_id)}<p class="field-note">${components.Animation.preview_support?.supported?'Imported association is eligible for decoding. Preview verifies the source; retail playback timing and live animation remain unknown.':escapeHTML(components.Animation.preview_support?.reason ?? 'No supported imported animation association is available for this actor.')}</p></section>`;
   if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>Runtime observation <small>Read only · sampled</small></h3>${property('Correlation',correlation.status ?? correlation.state ?? 'Unresolved')}<p class="field-note">Candidate associations preserve ambiguity. They do not replace imported or authored values.</p>${runtimeCandidateSummary(correlation,entity.id)}<details><summary>Epoch, candidates and evidence</summary><pre>${escapeHTML(JSON.stringify(correlation,null,2))}</pre></details></section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata,source=retail.source_record;const summary=source&&typeof source==='object'?(source.prot_entry_name ?? source.scene ?? source.kind ?? 'Imported record'):source;html+=`<section class="component"><h3>Retail metadata <small>Read only</small></h3>${property('Source',summary)}<details><summary>Source, evidence and unresolved fields</summary><pre>${escapeHTML(JSON.stringify({source_record:source,claims:retail.claims,unresolved:retail.unresolved},null,2))}</pre></details></section>`;}
-  if(state.capabilities?.actor_script_preview)html+=`<section class="component"><h3>Script and dialogue <small>${state.capabilities?.actor_dialogue_authoring?'Supported text edits':'Read only'}</small></h3><p class="field-note">Inspect decoded dialogue and supported instruction paths. ${state.capabilities?.actor_dialogue_authoring?'Eligible plain-text runs can be authored within their original byte capacity.':'Unknown instructions stop decoding.'}</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>`;
+  if(state.capabilities?.actor_script_preview)html+=`<section class="component"><h3>Script and dialogue <small>Inspect source</small></h3><p class="field-note">Inspect decoded dialogue and supported instruction paths. ${state.capabilities?.actor_dialogue_authoring?'The inspector checks whether this actor supports text edits.':'Unknown instructions stop decoding.'}</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>`;
   $('inspector').innerHTML=html;
   if($('choose-appearance'))$('choose-appearance').onclick=()=>openAppearanceOptions(entity);
   if($('clear-appearance'))$('clear-appearance').onclick=()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id});
@@ -1553,7 +1553,8 @@ function renderTransitionAuthoring(){
 
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
 function updateScriptActions(){
-  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring;
+  const authoring=scriptReport?.dialogue_authoring;
+  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported);
   const pending=scriptDrafts.size>0;
   $('script-undo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_undo;
   $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;

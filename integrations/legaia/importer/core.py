@@ -469,6 +469,10 @@ def parse_scene_table(data: bytes, entry_index: int, offset: int = 0) -> SceneBu
 
 def find_scene_bundle(archive: ProtArchive, start: int, end: int) -> tuple[SceneBundle, bytes]:
     end = min(end, max((entry.index for entry in archive.entries), default=-1) + 1)
+    # Indexed read windows overlap physical allocations. A parseable table in
+    # that borrowed tail is not evidence that it belongs to this scene.
+    following = [entry.start_lba * archive.SECTOR for entry in archive.entries if entry.index >= end]
+    scene_end = min(following) if following else archive.node.size
     for index in range(start, end):
         try:
             entry = archive.entry(index)
@@ -476,8 +480,11 @@ def find_scene_bundle(archive: ProtArchive, start: int, end: int) -> tuple[Scene
             continue
         indexed = archive.read_entry(entry, extended=False)
         for offset in [0, *range(0x800, len(indexed), 0x800)]:
+            absolute = entry.start_lba * archive.SECTOR + offset
+            if absolute >= scene_end:
+                break
             bundle = parse_scene_table(indexed, index, offset)
-            if bundle:
+            if bundle and absolute + 8 + len(bundle.descriptors) * 8 <= scene_end:
                 return bundle, archive.read_entry(entry, extended=True)
     raise ImportError(f"scene range [{start}, {end}) contains no supported MAN-bearing bundle")
 

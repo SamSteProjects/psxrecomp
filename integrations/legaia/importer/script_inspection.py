@@ -13,7 +13,7 @@ import hashlib
 import struct
 from typing import Any
 
-from .core import ImportError, decompress_lzs, find_scene_bundle
+from .core import ImportError
 from .pipeline import REFERENCE_COMMIT, _bounded_scene_range, _disc_context, import_scene
 
 MAX_RECORD_BYTES = 65536
@@ -550,17 +550,10 @@ def inspect_actor_script(disc: Any, scene: str, actor: dict) -> dict:
                                    ("source_record", "model_reference", "placement_fields")):
             raise ImportError("script actor provenance does not match the freshly imported scene")
         start, end = _bounded_scene_range(archive, mapping, scene)
-        bundle, raw = find_scene_bundle(archive, start, end)
-        candidates = [d for d in bundle.descriptors if d.type_byte == 3 and d.size > 0]
-        if len(candidates) != 1:
-            raise ImportError("script inspection requires one bounded MAN descriptor")
-        descriptor = candidates[0]
-        offset = bundle.table_offset + descriptor.data_offset
-        ceiling = min([bundle.table_offset + d.data_offset for d in bundle.descriptors
-                       if d.data_offset > descriptor.data_offset] + [len(raw)])
-        if not 0 <= offset < ceiling <= len(raw):
-            raise ImportError("MAN script compressed span exceeds its container")
-        man, consumed = decompress_lzs(raw[offset:ceiling], descriptor.size)
+        from .man_source import read_man_source
+        carrier=read_man_source(archive,start,end,scene)
+        man=carrier.payload
+        consumed=carrier.encoded_size if carrier.kind=='descriptor_man' else None
         source = expected["source_record"]
         a, length = source["byte_offset"], source["byte_length"]
         if not 0 < length <= MAX_RECORD_BYTES or a + length > len(man):
@@ -572,6 +565,7 @@ def inspect_actor_script(disc: Any, scene: str, actor: dict) -> dict:
         return {"schema_version": "legaia.actor-script-inspection.v1", "read_only": True,
                 "semantic_id": identity, "actor_semantic_id": actor["semantic_id"],
                 "reference_commit": REFERENCE_COMMIT, "source_record": deepcopy(source),
+                "man_source":carrier.provenance(),
                 "record": {"record_index": source["record_index"], "byte_offset": a,
                            "byte_length": length, "script_offset": entry, "local_count": data[0],
                            "raw_hex": data.hex(), "sha256": hashlib.sha256(data).hexdigest(),

@@ -205,6 +205,7 @@ def project_metadata(
     parsed_man: Any,
     scene_models: Any,
     global_models: Any,
+    raw_man_source: Any = None,
 ) -> dict[str, Any]:
     bundle_ref = {
         "kind": "scene_asset_table",
@@ -216,6 +217,8 @@ def project_metadata(
         "compressed_bytes_consumed": compressed_consumed,
         "decoded_size": descriptor_size,
     }
+    if raw_man_source is not None:
+        bundle_ref = {**raw_man_source.provenance(), 'kind':'raw_streaming_man', 'payload_coordinate_space':'prot_entry'}
     model_assets, model_lookup = _project_model_assets(disc_digest, scene, scene_models, global_models)
     actors = []
     for actor in parsed_man.actors:
@@ -469,21 +472,15 @@ def _bounded_scene_range(archive: ProtArchive, mapping: dict[int, str], scene: s
 
 
 def _read_scene_man(archive: ProtArchive, start: int, end: int, scene: str):
+    from .man_source import read_man_source
     try:
-        bundle, entry_bytes = find_scene_bundle(archive, start, end)
-        descriptor = next(item for item in bundle.descriptors if item.type_byte == 3 and item.size > 0)
-        stream_offset = bundle.table_offset + descriptor.data_offset
-        if stream_offset >= len(entry_bytes):
-            raise ImportError(
-                f"{scene} MAN descriptor offset 0x{stream_offset:X} exceeds containing PROT entry {bundle.entry_index}"
-            )
-        man_bytes, consumed = decompress_lzs(entry_bytes[stream_offset:], descriptor.size)
-        parsed = parse_man(man_bytes, scene)
-        if not parsed.actors:
-            raise ImportError(f"{scene} MAN contains no actor placement records")
-        return bundle, descriptor, consumed, parsed
+        source=read_man_source(archive,start,end,scene)
+        if source.kind!='descriptor_man':
+            raise ImportError(f"validated streaming MAN at entry {source.entry_index} with {len(source.parsed.actors)} actors; this operation requires descriptor-based MAN serialization, which streaming scenes do not yet support")
+        return source.bundle,source.descriptor,source.encoded_size,source.parsed
     except ImportError as exc:
         raise ImportError(f"unsupported or malformed scene {scene!r}: {exc}") from exc
+
 
 
 def list_scenes(
@@ -504,11 +501,14 @@ def list_scenes(
         for scene in selected:
             try:
                 start, end = _bounded_scene_range(archive, mapping, scene)
-                bundle, _descriptor, _consumed, parsed = _read_scene_man(archive, start, end, scene)
+                from .man_source import read_man_source
+                source=read_man_source(archive,start,end,scene)
+                parsed=source.parsed
                 scenes.append({
                     "semantic_id": f"scene://{scene}", "name": scene,
                     "prot_entry_start": start, "prot_entry_end_exclusive": end,
-                    "bundle_entry": bundle.entry_index, "actor_count": len(parsed.actors),
+                    "bundle_entry": source.entry_index, "actor_count": len(parsed.actors),
+                    "man_source_kind":source.kind,
                     "placement_status": "supported", "model_resolution_status": "not_checked",
                 })
             except ImportError as exc:
@@ -526,23 +526,27 @@ def import_scene(disc: Path | str, scene: str = SUPPORTED_SCENE) -> dict[str, An
     stable_actor_id(scene, 1, 0)
     with _disc_context(disc) as (_image, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
-        bundle, descriptor, consumed, parsed = _read_scene_man(archive, start, end, scene)
-        scene_models = scene_tmd_pool(archive, start, end)
+        from .man_source import read_man_source
+        source=read_man_source(archive,start,end,scene)
+        raw=source.kind=='raw_streaming_man'
+        bundle,descriptor,consumed,parsed=source.bundle,source.descriptor,source.encoded_size,source.parsed
+        scene_models = () if raw else scene_tmd_pool(archive, start, end)
         global_models = global_special_tmd_pool(archive)
-        if not scene_models or not global_models:
+        if (not raw and not scene_models) or not global_models:
             raise ImportError(f"unsupported scene {scene!r}: model pools did not enumerate structural assets")
         return project_metadata(
             disc_digest=digest,
             scene=scene,
-            bundle_entry=bundle.entry_index,
-            table_offset=bundle.table_offset,
-            descriptor_index=descriptor.index,
-            descriptor_offset=descriptor.data_offset,
-            descriptor_size=descriptor.size,
+            bundle_entry=source.entry_index,
+            table_offset=bundle.table_offset if bundle else 0,
+            descriptor_index=descriptor.index if descriptor else 0,
+            descriptor_offset=descriptor.data_offset if descriptor else 0,
+            descriptor_size=len(source.payload),
             compressed_consumed=consumed,
             parsed_man=parsed,
             scene_models=scene_models,
             global_models=global_models,
+            raw_man_source=source if raw else None,
         )
 
 
