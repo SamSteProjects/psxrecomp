@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Per-axis contributor inspection
+
+- Previous turn made exact build attribution progress. Channel-value responses now include deterministic axis_contributors for translation/rotation, including explicit unchanged contributions. Existing validated bank composition remains the authority for conflicts; no unverified override values are exposed. Editor displays nonempty axis contributor rows alongside retail/effective values.
+- Five animation-authoring tests passed, one retail opt-in skipped, covering independent X/Y owners and returned-list isolation. Actual saved range-project browser opened frame3/object0 from the built report and verified all six axis rows name actor0011, including axes unchanged from retail. No browser errors. Private evidence: local-output/sdk-20260909/animation-inspector-contributors-check.json.
+- JS syntax/whitespace passed. Server stopped; no game launched or authored project mutation. Gameplay deferred and full SDK goal remains active.
+
+
 ### 2026-09-12 — Per-value shared animation contributors
 
 - Previous turn completed report navigation. Shared animation composition now records deterministic per-frame/object/axis contributors in addition to clip-wide owners. Reports use exact axis owners when present and explicitly retain clip scope for older audits; editor links label value versus clip contributors accordingly.

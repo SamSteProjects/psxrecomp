@@ -50,6 +50,11 @@ class AnimationAuthoringTests(unittest.TestCase):
         self.assertEqual(values["retail"]["translation"], {"x": 10, "y": 0, "z": 0})
         self.assertEqual(values["effective"]["translation"], {"x": 100, "y": 200, "z": 0})
         self.assertEqual(values["contributors"], sorted(overrides))
+        self.assertEqual(values['axis_contributors']['translation'],{'x':[actor['semantic_id']],'y':[other['semantic_id']],'z':[]})
+        self.assertEqual(values['axis_contributors']['rotation_psx'],{'x':[],'y':[],'z':[]})
+        values['axis_contributors']['translation']['x'].clear()
+        self.assertEqual(catalog.channel_values(other,asset,1,0,overrides)['axis_contributors']['translation']['x'],[actor['semantic_id']])
+
         self.assertEqual(values["effective_record_sha256"], sha(bank[8:]))
         for frame, obj in ((True, 0), (-1, 0), (2, 0), (0, True), (0, 1)):
             with self.subTest(frame=frame, obj=obj), self.assertRaises(ImportError):

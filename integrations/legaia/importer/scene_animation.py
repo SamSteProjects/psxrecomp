@@ -196,6 +196,7 @@ class SceneActorAnimationCatalog:
                 "retail": {field: dict(zip("xyz", channel[field])) for field in ("translation", "rotation_psx")}}
         result["effective"] = deepcopy(result["retail"])
         result["contributors"] = []
+        result["axis_contributors"] = {field: {axis: [] for axis in "xyz"} for field in ("translation", "rotation_psx")}
         if overrides:
             bank, _audit = self.authored_bank(overrides)
             effective = decode_animation_record(bank[start:end])["frames"][frame_index]["object_transforms"][object_index]
@@ -206,6 +207,13 @@ class SceneActorAnimationCatalog:
                                              if value["animation_id"] == clip and any(
                                                  e["frame_index"] == frame_index and e["object_index"] == object_index
                                                  for e in value["edits"]))
+            for owner in result["contributors"]:
+                for edit in overrides[owner]["edits"]:
+                    if edit["frame_index"] != frame_index or edit["object_index"] != object_index:
+                        continue
+                    for field in ("translation", "rotation_psx"):
+                        for axis in edit.get(field, {}):
+                            result["axis_contributors"][field][axis].append(owner)
         return result
 
     def authored_bank(self, overrides: dict[str, dict]) -> tuple[bytes, list[dict]]:
