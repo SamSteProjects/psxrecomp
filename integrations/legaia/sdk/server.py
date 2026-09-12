@@ -543,6 +543,18 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Draft export accepts only a draft entity_id")
                     self._json(200, self.server.export_actor_drafts(body["entity_id"]))
                     return
+                if route in ('/api/exports', '/api/exports/verify'):
+                    from .export_history import list_exports, verify_export
+                    if route == '/api/exports':
+                        if body:
+                            raise ProjectError('Export history accepts no fields')
+                        result = list_exports(self.server.project)
+                    else:
+                        if set(body) != {'id'}:
+                            raise ProjectError('Export verification requires an export id')
+                        result = verify_export(self.server.project, body['id'])
+                    self._json(200, result)
+                    return
                 if route == "/api/actor-candidate-inspection":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
                         raise ProjectError("Actor candidate inspection accepts only an imported entity_id")

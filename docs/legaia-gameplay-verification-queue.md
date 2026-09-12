@@ -11,6 +11,13 @@ exact authored inputs even after the working project changes. The export report
 lists every snapshot file's SHA256 and byte count; the original retail disc is
 still required. Older exports listed below predate input snapshot support.
 
+Use **Export history** in the editor toolbar to find this project's experimental
+exports and their saved input paths. **Verify saved files** checks the disc hash
+and, where available, every input snapshot file against the completion report.
+This does not launch the game or mark a gameplay check as passed. History lists
+exports under the current project's Builds directory; separately prepared CLI
+fixtures in this queue retain their explicit paths below.
+
 ## Ready artifact: added NPC
 
 - Artifact: `local-output/sdk-20260909/saved-draft-export-20260911/draft.bin`.

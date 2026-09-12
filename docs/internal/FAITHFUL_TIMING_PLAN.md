@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Persistent export history and integrity verification
+
+- Added project-local export history with completed/incomplete status, authored-input comparison, saved-input location and explicit on-demand disc/snapshot hash verification. Reading history never implies gameplay acceptance.
+- Four focused tests passed, including corruption and path rejection; actual browser HTTP workflow verified the saved town01 disc hash f8a75661a02acd537257029a9df9e7e79ec1703b766a942a333e63c217e04f97. Screenshot inspected at local-output/sdk-20260909/export-history-20260912.png.
+- Browser test used an isolated editor on port4406 and headless Edge, both stopped afterward. No game launched or user editor restarted. Shared physical MAN/container composition remains incomplete; broader SDK goal remains active.
+
+
 ### 2026-09-12 Deferred export input preservation
 
 - Combined export regression suite: 29 tests, 28 passed and one skipped; no game launched.
