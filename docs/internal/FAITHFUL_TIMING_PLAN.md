@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Donor pose evidence and animation inspection
+
+- Investigated the unusual framed Dolk2 donor pose. Actor0001 binds model0133, animation record34, ten objects/channels and thirty frames. Frame0 contains substantial encoded rotations; no evidence justified forcing an upright orientation. SDK transform equations match pinned reference d6e64c68ede25813d35db20980da82a1a025549b `crates/tmd/src/mesh/mod.rs::rot_zyx` (Rx, Ry, Rz) and the eight-byte channel layout documented in player_anm.rs.
+- Draft Inspector now identifies the sampled preview pose and offers Inspect donor animation for scene-bound clips. This connects the frame0 scene view to the existing full-clip viewer without changing authored appearance or disc data.
+- Browser verified the frame0 label and actual donor-animation endpoint/dialog with thirty decoded frames. JavaScript syntax passed; temporary browser/editor server stopped. Runtime correctness and semantic stance remain unverified; no game launched, full goal active.
+
+
 ### 2026-09-12 — Draft selection across comparison layers
 
 - Retail hierarchy identifies NPC drafts as Authored only. Framing a selected draft explicitly switches back to the authored scene, retains selection, and waits for matching geometry before framing. Draft Inspector exposes this as Show in authored scene.

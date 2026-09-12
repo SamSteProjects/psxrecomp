@@ -1269,6 +1269,13 @@ function renderInspector(){
     const id=npcDraftSelection;
     $('selection-summary').textContent=`${npc.name} · Authored NPC draft`;
     $('inspector').innerHTML=`<section class="component"><h3>Authored NPC draft</h3>${property('Identity',id)}${property('Retail donor',npc.donor_entity_id)}<p class="field-note">No retail placement or runtime identity exists for this draft. X/Z handles snap to the required 64-unit grid. Preview uses the retail donor assignment; shared authored assets may affect its appearance. Playable creation remains unverified.</p><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
+    const preview=activeScenePreview()?.entities.find(item=>item.entity_id===id);
+    const poseLabel={imported_scene_animation_frame0:'Imported animation · frame 0',authored_scene_animation_frame0:'Authored shared animation · frame 0',reference_party_idle:'Reference party idle · frame 0',single_object_static:'Static single-object model'}[preview?.pose_kind]??'Pose unavailable in this view';
+    const poseNote=document.createElement('p');poseNote.className='field-note';poseNote.id='draft-pose-note';poseNote.textContent=`Preview pose: ${poseLabel}. A sampled frame does not establish an idle stance or runtime playback.`;$('draft-inspector-form').before(poseNote);
+    const donor=entities().find(entity=>entity.id===npc.donor_entity_id);
+    if(donor?.components?.ModelRenderer?.asset_id&&['imported_scene_animation_frame0','authored_scene_animation_frame0'].includes(preview?.pose_kind)){
+      const inspectPose=document.createElement('button');inspectPose.id='inspect-draft-donor-animation';inspectPose.textContent='Inspect donor animation';inspectPose.onclick=()=>openModel(donor.components.ModelRenderer.asset_id,'scene-header',donor.id);poseNote.after(inspectPose);
+    }
     const nameForm=document.createElement('form');nameForm.id='draft-name-form';
     const nameLabel=document.createElement('label');nameLabel.textContent='Name ';const nameInput=document.createElement('input');nameInput.name='name';nameInput.required=true;nameInput.maxLength=120;nameInput.value=npc.name;nameLabel.append(nameInput);
     const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
