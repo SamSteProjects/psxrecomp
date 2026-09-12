@@ -242,3 +242,8 @@ vertex/normal axis audit. It identifies each changed object, vector, axis and
 source-word value. The viewer shows up to256 scalar rows per model; the complete
 build audit retains all changes. These are emitted package changes, not merely
 unsaved editor intentions.
+
+
+Click a model identity in the build report to open its authored model preview.
+The source and authored hashes must still match the report. If the shape changed
+or was cleared after the build, rebuild before using this link to inspect it.

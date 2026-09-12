@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Build report navigation to authored models
+
+- Previous goal turn made verified progress at9d2e3943 by exposing model scalar audits. Current worktree was clean before extending report navigation.
+- Model.shape report identities now link to the authored model viewer after selecting the imported source scene. Source and authored model hashes must match the report before opening; cleared or changed model replacements are rejected with a rebuild message. This prevents displaying newer edits as the packaged model. No model selection is sent through actor identity commands.
+- Actual browser check used the saved normal-only retail audit: model0009 opened as AUTHORED object-local shape. A report with a mismatching after hash was rejected and the model dialog remained closed. No page errors. Private evidence: local-output/sdk-20260909/model-normal-json-project-20260912/model-navigation-browser-check.json.
+- Node syntax and diff checks passed; browser/test server stopped. No gameplay launched. Full SDK goal remains active.
+
+
 ### 2026-09-12 — Model build report scalar detail
 
 - Previous goal turn made verified progress atb2032d26 with retail normal-only and mixed package readback. Current worktree confirmed clean before improving emitted-change review.
