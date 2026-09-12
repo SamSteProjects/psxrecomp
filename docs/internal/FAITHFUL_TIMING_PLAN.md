@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Iterative animation channel editing
+
+- Successful animation commands now reopen verified channel options at the selected frame/object, preserving editing context while refreshing authored values and shared effective evidence.
+- Added Clear selected channel contribution, preserving this actor's edits on other frame/object pairs and all other actors' contributions. Unapplied field changes must first be applied or discarded; all mutations use the existing validated command/undo path.
+- Browser opened the channel editor directly from authored asset details, applied TX117 at frame1/object0, verified the reopened editor retained frame1 and its value, then cleared only that contribution. Fresh API state retained the fixture's original frame0/object0 TX100 edit. No page errors; JavaScript syntax passed.
+- No project save or game launch. Original fixture stayed on disk unchanged; temporary editor/browser stopped. Runtime playback remains deferred and the broader goal stays active.
+
+
 ### 2026-09-12 — Authored animation discovery and preview navigation
 
 - Authored actor cards now summarize sparse animation channel edits, so animation-only changes are discoverable by name in the project-wide authored browser.

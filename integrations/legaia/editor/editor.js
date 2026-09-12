@@ -1415,7 +1415,7 @@ function renderInspector(){
 }
 
 const animationEditDialog=document.createElement('dialog');animationEditDialog.className='project-dialog';document.body.append(animationEditDialog);
-async function openAnimationChannels(entity){
+async function openAnimationChannels(entity,initialChannel=null){
   if(busy||state.project.mode!=='edit')return;
   const context=JSON.stringify([state.project.path,state.scene?.id,entity.id]);
   const current=()=>animationEditDialog.open&&state.project.mode==='edit'&&JSON.stringify([state.project.path,state.scene?.id,state.selection?.entity_id])===context;
@@ -1427,6 +1427,8 @@ async function openAnimationChannels(entity){
     const binding=result.binding,edits=result.authored?.edits??[];
     animationEditDialog.innerHTML=`<h2>Edit imported animation channels</h2><p>${escapeHTML(binding.semantic_id)}</p><p>Imported actors sharing this clip: ${escapeHTML((result.shared_actor_ids??[]).join(", "))}</p><p>Edits apply to the imported clip. Blank axes remove this actor’s contribution; other shared-clip edits still apply. Build patches the shared scene clip within its original compressed capacity. Other actors using that clip are affected. Conflicting overrides or edits that need relocation are rejected. In-game playback has not yet been verified.</p><form><label>Frame (zero based)<input name="frame" type="number" min="0" max="${binding.frame_count-1}" step="1" value="0" required></label><label>Rigid object (zero based)<input name="object" type="number" min="0" max="${binding.bone_count-1}" step="1" value="0" required></label><div class="animation-channel-fields"></div><p class="dialog-error" role="alert"></p><button type="submit">Apply channel override</button><button type="button" class="clear-animation">Clear this actor’s channel edits</button><button type="button" class="close-animation">Close</button></form>`;
     const form=animationEditDialog.querySelector('form'),fields=form.querySelector('.animation-channel-fields'),error=form.querySelector('[role="alert"]');
+    if(initialChannel&&Number.isInteger(initialChannel.frame)&&Number.isInteger(initialChannel.object)&&initialChannel.frame>=0&&initialChannel.frame<binding.frame_count&&initialChannel.object>=0&&initialChannel.object<binding.bone_count){form.elements.frame.value=initialChannel.frame;form.elements.object.value=initialChannel.object;}
+    const clearChannel=document.createElement('button');clearChannel.type='button';clearChannel.textContent='Clear selected channel contribution';clearChannel.className='clear-animation-channel';form.querySelector('.clear-animation').before(clearChannel);
     for(const group of ['translation','rotation_psx'])for(const axis of ['x','y','z']){const limits=result[group],label=document.createElement('label');label.textContent=`${group==='translation'?'Translation':'Rotation (PSX units)'} ${axis.toUpperCase()}`;const input=document.createElement('input');input.name=`${group}_${axis}`;input.type='number';input.min=limits.minimum;input.max=limits.maximum;input.step=limits.step;input.placeholder='Retail';label.append(input);fields.append(label);}
     let channelRequest=0,channelDirty=false,channelFrame=0,channelObject=0;
     const discardChannel=document.createElement('button');discardChannel.type='button';discardChannel.textContent='Discard unapplied channel changes';discardChannel.disabled=true;fields.after(discardChannel);
@@ -1436,6 +1438,7 @@ async function openAnimationChannels(entity){
       if(channelDirty){form.elements.frame.value=channelFrame;form.elements.object.value=channelObject;error.textContent='Apply or discard your channel changes before switching frames or objects.';return;}
       const request=++channelRequest,frame=Number(form.elements.frame.value),object=Number(form.elements.object.value);channelFrame=frame;channelObject=object;
       const edit=edits.find(e=>e.frame_index===frame&&e.object_index===object);
+      clearChannel.disabled=!edit;
       for(const group of ['translation','rotation_psx'])for(const axis of ['x','y','z'])form.elements[`${group}_${axis}`].value=edit?.[group]?.[axis]??'';
       retail.textContent='Loading retail channel…';
       if(!form.elements.frame.checkValidity()||!form.elements.object.checkValidity()){retail.textContent='Choose a valid frame and object.';return;}
@@ -1455,7 +1458,17 @@ async function openAnimationChannels(entity){
     editedLabel.append(editedSelect);form.prepend(editedLabel);
     form.querySelector('.close-animation').onclick=()=>animationEditDialog.close();
     form.querySelector('.clear-animation').disabled=!edits.length;
-    const apply=async command=>{if(busy||!current())return;if(!await api('/api/command',command,{dialog:animationEditDialog,success:'Animation override updated. Save project to persist.'}))error.textContent=$('status').textContent;};
+    const apply=async command=>{
+      if(busy||!current())return;
+      const channel={frame:channelFrame,object:channelObject};
+      if(!await api('/api/command',command,{dialog:animationEditDialog,success:'Animation override updated. Save project to persist.'})){error.textContent=$('status').textContent;return;}
+      const actor=selected();if(actor?.id===entity.id&&state.project.mode==='edit')await openAnimationChannels(actor,channel);
+    };
+    clearChannel.onclick=()=>{
+      if(channelDirty){error.textContent='Apply or discard unapplied channel changes before clearing the selected contribution.';return;}
+      const next=edits.filter(edit=>edit.frame_index!==channelFrame||edit.object_index!==channelObject);
+      apply(next.length?{type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:next}}:{type:'clear_animation_channels',entity_id:entity.id});
+    };
     form.querySelector('.clear-animation').onclick=()=>apply({type:'clear_animation_channels',entity_id:entity.id});
     form.onsubmit=async event=>{event.preventDefault();if(!form.reportValidity())return;if(Number(form.elements.frame.value)!==channelFrame||Number(form.elements.object.value)!==channelObject){error.textContent='Channel selection changed; discard the draft and select the channel again.';return;}const edit={frame_index:Number(form.elements.frame.value),object_index:Number(form.elements.object.value)};for(const group of ['translation','rotation_psx'])for(const axis of ['x','y','z']){const input=form.elements[`${group}_${axis}`];if(input.value!=='')(edit[group]??={})[axis]=Number(input.value);}const next=edits.filter(e=>e.frame_index!==edit.frame_index||e.object_index!==edit.object_index);if(edit.translation||edit.rotation_psx)next.push(edit);await apply(next.length?{type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:next}}:{type:'clear_animation_channels',entity_id:entity.id});};
   }catch(error){if(animationEditDialog.open)animationEditDialog.querySelector('p').textContent=String(error.message);}finally{setBusy(false);}
