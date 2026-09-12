@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (SDK landmark inspector and global source scope):** Previous turn progressed in0f25fd76. Corrected derived global asset cards to retain their declared scope instead of labeling them as the active scene. Global asset details now say Source scope. Landmark details expose destination ID/label, menu X/Y, discovery index and unknown runtime state outside the collapsed raw provenance section. Added direct Inspect destination source navigation with project/disc context guard; retained full landmark dialog access. Actual Edge map01 workflow passed:20-record category, global-worldmap-menu scope, Rim Elm96/25 inspection, and direct map01 catalog lookup, zero page errors. JS syntax passed. Editor browser/server stopped; no game launched or controlled. No source-menu authoring or runtime discovery/reachability acceptance claimed; broader SDK goal remains incomplete.
+
+
 - **2026-09-12 (SDK world-map asset database integration):** Previous turn progressed in c7b5bbe6. Global landmark menu records now enter the verified derived resource catalog with stable worldmap identities, record coordinates/offsets, executable/disc and CDNAME provenance, reference pin and explicit unobserved runtime state. Added the worldmap resource kind, browser category and asset-details link to the landmark workflow. Actual map01 browser refresh discovered20 records; category filtering, Rim Elm record0000 provenance opening and navigation to the world-map dialog passed with zero page errors. Three focused world-map decoder tests and JS syntax check passed. No imported facts or authored project state changed; no gameplay launched or controlled. Cataloging menu records does not establish runtime discovery, reachability or 3D world-map behavior. Full SDK goal remains active.
 
 
