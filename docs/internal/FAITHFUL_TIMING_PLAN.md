@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (script movement asset discovery):** Previous turn progressed in579d2537. Script resource catalog now retains bounded NPC_RUN/MOVE_TO reference metadata: exact PC/file offset, extended target context, decoded XYZ with unknown Y, parked status when applicable and unevaluated runtime effect. Counts participate in the shared relationship budget. Asset search can find these values; script-resource inspector links directly to the originating instruction. Seven focused catalog tests passed including metadata-only payload checks. Actual Dolk2 Edge refresh found14targets across9scripts; opened actor0002 script from asset search and followed MOVE_TO0x27 X9280/Z10816 to its verified source report, zero page errors. Browser/server stopped; no game launched or controlled. Story execution, opaque script paths and movement authoring remain unverified/unsupported. Broad SDK goal active.
+
+
 - **2026-09-12 (MOVE_TO teleport target locator):** Previous turn progressed in56473852. Rechecked pinned engine-vm/field/helpers.rs grid_to_world evidence and exposed existing MOVE_TO world_xz values as normalized target_position with unknown Y, teleport kind and unevaluated runtime effect. Shared script operand UI now labels teleport targets and provides Locate target, retaining raw encoded details and requiring manual/source-sampled reference height. Twenty-four focused script tests passed including low/high-bit coordinates and unchanged legacy world_xz. Actual Edge component fixture invoking production operand renderer transferred X3136/Z2560 into locator, kept Yblank and form invalid until height supplied. This fixture is UI wiring evidence, not a reached retail branch or script execution. No script byte authoring added; no game launched or controlled. Browser/server stopped; broad SDK goal active.
 
 

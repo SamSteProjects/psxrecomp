@@ -93,7 +93,7 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
     region = 0x2B + total * 3
     aliases = Counter(region + int.from_bytes(man[0x2B + 3*i:0x2E + 3*i], "little") for i in range(total))
     assets, references, transitions = [], 0, 0
-    dialogue_count = partial_count = unavailable_count = 0
+    dialogue_count = partial_count = unavailable_count = movement_count = 0
     records = [(1, actor.record_index, actor) for actor in parsed.actors]
     records += [(2, index, None) for index in range(parsed.partition_counts[2])]
     for partition, index, actor in records:
@@ -122,9 +122,18 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
                        record_alias_count=aliases[offset] if offset is not None else None)
         flags = [ref for row in report["instructions"] if (ref := _flag_reference(row)) is not None]
         destinations = [ref for row in report["instructions"] if (ref := _transition(row, record, known_scenes)) is not None]
+        movements = [{"pc": row["pc"], "byte_offset": row["byte_offset"],
+                      "mnemonic": row["mnemonic"], "extended_target": row["target_context"],
+                      "target_position": deepcopy(row["operands"]["target_position"]),
+                      "coordinate_system": row["operands"]["coordinate_system"],
+                      "parked_target": row["operands"].get("parked_target"),
+                      "runtime_effect": "not_evaluated"}
+                     for row in report["instructions"]
+                     if row["mnemonic"] in ("NPC_RUN", "MOVE_TO")]
+        movement_count += len(movements)
         references += len(flags)
         transitions += len(destinations)
-        if references + transitions > MAX_RELATIONSHIPS:
+        if references + transitions + movement_count > MAX_RELATIONSHIPS:
             raise ImportError("script catalog encoded relationship count exceeds bound")
         partial_count += report["status"] == "partial"
         unavailable_count += report["status"] == "unavailable"
@@ -143,6 +152,7 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
                        "opaque_byte_count": sum(row["length"] for row in report["opaque_regions"]),
                        "opaque_ranges": [{key: row[key] for key in ("pc", "byte_offset", "length")} for row in report["opaque_regions"]],
                        "stops": deepcopy(report["stops"]), "flag_references": flags, "transitions": destinations,
+                       "movement_targets": movements, "movement_target_count": len(movements),
                        "reference_commit": REFERENCE_COMMIT, "limitations": list(LIMITATIONS)})
         for message in report["dialogues"]:
             offset, length = message["byte_offset"], message["length"]
@@ -168,7 +178,7 @@ def _catalog(man: bytes, scene: str, source: dict, known_scenes: set[str]) -> di
               "actor_count": len(parsed.actors), "script_count": len(records), "dialogue_count": dialogue_count,
               "partition_two_script_count": parsed.partition_counts[2],
               "partial_script_count": partial_count, "unavailable_script_count": unavailable_count,
-              "flag_reference_count": references, "transition_count": transitions,
+              "flag_reference_count": references, "transition_count": transitions, "movement_target_count": movement_count,
               "asset_count": len(assets), "assets": assets, "limitations": list(LIMITATIONS)}
     validate_metadata_only(result)
     return result

@@ -33,6 +33,16 @@ def catalog(script):
 
 
 class ScriptAssetCatalogTests(unittest.TestCase):
+    def test_movement_targets_keep_source_context_without_runtime_claims(self):
+        result=catalog(bytes([0x23,0x18,0x93,0x4c,0x51,0x80,0xff,0,0,0x24]))
+        script=next(a for a in result['assets'] if a['asset_kind']=='script')
+        refs=script['movement_targets']
+        self.assertEqual([r['mnemonic'] for r in refs],['MOVE_TO','NPC_RUN'])
+        self.assertEqual(refs[0]['target_position'],{'x':3136,'y':None,'z':2560})
+        self.assertEqual(refs[1]['target_position'],{'x':128,'y':None,'z':16384})
+        self.assertTrue(all(r['runtime_effect']=='not_evaluated' for r in refs))
+        self.assertFalse(forbidden_fields(result))
+
     def test_flag_word_branches_join_evidenced_banks_without_live_values(self):
         result = catalog(b"\x4c\xa0\x03\x0a\0\x4c\xa1\xf3\x0f\0\x4c\xa2\x05\x14\0")
         refs = result["assets"][0]["flag_references"]
