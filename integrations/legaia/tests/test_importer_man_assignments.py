@@ -36,6 +36,22 @@ def fixture(*, bones=(2, 2), model_counts=None, alias=False, compressed=False, o
 
 
 class AssignmentTests(unittest.TestCase):
+    def test_raw_assignment_serializes_exact_header_span_and_rejects_wrong_source(self):
+        baseline, man = fixture()
+        raw = ManAssignmentContext("synthetic", man, man, baseline._models, baseline._anm,
+                                   {"synthetic": True}, compression="none")
+        edits = {1: {"model_index": 5, "animation_id": 2}}
+        expected, expected_audit = baseline.patch(edits)
+        result, audit, encoding = raw.serialize(edits)
+        self.assertEqual(result, expected)
+        self.assertEqual(audit, expected_audit)
+        self.assertEqual(len(result), len(man))
+        self.assertEqual(encoding["compression"], "none")
+        for stream, compression in ((man + b"x", "none"), (man, "unknown")):
+            with self.assertRaises(ImportError):
+                ManAssignmentContext("synthetic", man, stream, baseline._models, baseline._anm,
+                                     {}, compression=compression)
+
     def test_header_patch_rebases_after_table_growth(self):
         context, original = fixture()
         # An extra P0 table entry shifts every actor record by three bytes.

@@ -19,14 +19,25 @@ def prepare_streaming_scene(project, scene_id):
         raise ProjectError('Streaming imported evidence differs from the source disc')
     actors = {a['semantic_id']: a for a in document['actors']}
     edits, dialogue_edits, transition_edits, map_components = {}, {}, {}, None
+    assignments, assignment_donors = {}, {}
     for identifier, components in deepcopy(project.overrides).items():
         if identifier == scene_id:
             map_components = components
             continue
         p2 = isinstance(identifier, str) and re.fullmatch(re.escape(scene_id) + r'/scripts/man-p2/[0-9]{4}', identifier) is not None
-        allowed = {'Dialogue', 'Transitions'} if p2 else {'Transform', 'Dialogue', 'Transitions'}
+        allowed = {'Dialogue', 'Transitions'} if p2 else {'Transform', 'ActorAppearance', 'Dialogue', 'Transitions'}
         if (identifier not in actors and not p2) or not isinstance(components, dict) or not components or set(components) - allowed:
-            raise ProjectError('Streaming export currently supports actor positions, dialogue, transition entries, scenery and collision; other authored components require further serialization support')
+            raise ProjectError('Streaming export currently supports actor positions, donor appearance, dialogue, transition entries, scenery and collision; other authored components require further serialization support')
+        if 'ActorAppearance' in components:
+            appearance = components['ActorAppearance']
+            if (not isinstance(appearance, dict) or set(appearance) != {'donor_entity_id'} or
+                    not isinstance(appearance['donor_entity_id'], str) or appearance['donor_entity_id'] not in actors):
+                raise ProjectError('Streaming appearance requires a same-scene imported donor')
+            record = actors[identifier]['source_record']['record_index']
+            donor = actors[appearance['donor_entity_id']]
+            assignments[record] = dict(model_index=donor['model_reference']['model_index'],
+                                       animation_id=donor['placement_fields']['animation_id'])
+            assignment_donors[record] = appearance['donor_entity_id']
         if 'Transitions' in components:
             project._validate_transitions(identifier, components['Transitions'])
             transition_edits.update(components['Transitions']['entries'])
@@ -47,6 +58,14 @@ def prepare_streaming_scene(project, scene_id):
         if dialogue_edits:
             from importer.dialogue_authoring import load_dialogue_authoring_context
             candidate, dialogue_changes = load_dialogue_authoring_context(project.disc_path, scene).patch(dialogue_edits, original=carrier.payload)
+        appearance_changes = []
+        if assignments:
+            from importer.man_assignments import load_man_assignment_context
+            context = load_man_assignment_context(project.disc_path, scene)
+            context.patch(assignments, original=carrier.payload)
+            candidate, appearance_changes = context.patch_appended(candidate, assignments)
+            for change in appearance_changes:
+                change['donor_entity_id'] = assignment_donors[change['record_index']]
         candidate, placements = patch_man_positions(candidate, scene, edits)
         transition_changes = []
         if transition_edits:
@@ -68,7 +87,7 @@ def prepare_streaming_scene(project, scene_id):
         source_disc_sha256=disc_hash, source_prot_sha256=sha256(prot).hexdigest(),
         authored_state_key=key, imported_document_sha256=digest(document),
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
-        transition_changes=transition_changes,
+        transition_changes=transition_changes, existing_actor_appearance_changes=appearance_changes,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

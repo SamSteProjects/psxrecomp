@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming actor appearance composition
+
+- Extended initial MAN donor assignment contexts to verified raw streaming MAN and ANM sources. Existing scene donor, non-aliased record, object/channel count and decoded-animation validation remain enforced; raw serialization preserves payload length without LZS impersonation.
+- Streaming export now composes same-scene `ActorAppearance` with positions, dialogue, transitions and MAP edits. Dolk2 actor 0001 -> donor 0041 changes exactly two header bytes; private metadata evidence: `local-output/sdk-20260909/streaming-appearance-composition-20260912.json`.
+- Validation: all 14 assignment tests passed with retail checks enabled. New retail integration test composed appearance, placement, dialogue and P2 transition changes, reopened the output archive, matched the exact candidate, and preserved every byte outside the MAN payload. The fixture deliberately omits Y because MAN placement serialization supports X/Z only.
+- No game launches or live writes. Actual donor suitability and script behavior remain deferred; streaming NPC growth, animation channel and model/texture replacement export remain unfinished. Full goal active.
+
+
 ### 2026-09-12 — Streaming script catalog and P2 editor access
 
 - Connected streaming script/dialogue resources and partition-2 inspection to the typed raw MAN source. Preserved descriptor behavior and source bounds; raw record coordinates are explicitly `raw_man_payload` and carry no invented LZS offsets.

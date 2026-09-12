@@ -35,7 +35,7 @@ now display sky textures on large dome meshes. Temporary per-object and per-mode
 inspection; geometry scale/positions remain intact.
 Balden2's room geometry is visible. Runtime parity remains unverified for both.
 
-Equal-span streaming export now supports existing actor positions, bounded
+Equal-span streaming export now supports existing actor positions, verified same-scene donor appearance, bounded
 plain dialogue runs, encoded transition entries (including partition-2 owners),
 and scene MAP scenery/collision edits. Exported placement and dialogue disc
 probes are preserved in the gameplay queue. The resource catalog and P2 script

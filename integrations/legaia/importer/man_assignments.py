@@ -37,13 +37,19 @@ class ManAssignmentContext:
     Neither patch nor serialize writes to the disc, project or filesystem.
     """
     def __init__(self, scene: str, man: bytes, stream: bytes, model_counts: dict[int, int],
-                 anm: bytes, source: dict[str, Any]):
+                 anm: bytes, source: dict[str, Any], *, compression: str = "lzs"):
         if not isinstance(man, bytes) or not 0 < len(man) <= MAX_MAN_BYTES:
             raise ImportError("MAN source must be bounded immutable decoded bytes")
         parsed = parse_man(man, scene)
         if len(parsed.actors) > MAX_ACTORS:
             raise ImportError("MAN actor count exceeds assignment bound")
-        decoded, consumed = decompress_lzs(stream, len(man))
+        if compression == "none":
+            decoded, consumed = stream, len(stream)
+        elif compression == "lzs":
+            decoded, consumed = decompress_lzs(stream, len(man))
+        else:
+            raise ImportError("Unsupported MAN assignment compression")
+        self._compression = compression
         if decoded != man:
             raise ImportError("MAN encoded and decoded sources disagree")
         if (not isinstance(model_counts, dict) or len(model_counts) > 240 or
@@ -187,6 +193,11 @@ class ManAssignmentContext:
     def serialize(self, edits: dict[int, dict[str, int]]) -> tuple[bytes, list[dict], dict]:
         """Equal-span encoded replacement; reject compressed growth, no relocation."""
         changed, audit = self.patch(edits)
+        if self._compression == "none":
+            if len(changed) != len(self._stream):
+                raise ImportError("Raw MAN assignment changed its payload size")
+            return changed, audit, dict(original_encoded_size=len(self._stream), new_encoded_size=len(changed),
+                                        decoded_size=len(changed), decoded_sha256=_sha(changed), compression="none")
         encoded = compress_lzs(changed) if audit else self._stream
         if len(encoded) > len(self._stream):
             raise ImportError("edited MAN exceeds original compressed capacity; relocation is unsupported")
@@ -202,7 +213,22 @@ def load_man_assignment_context(disc: Any, scene: str) -> ManAssignmentContext:
     """Load private baseline and both banks from one identity-verified disc scope."""
     with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
-        bundle, raw = find_scene_bundle(archive, start, end)
+        try:
+            bundle, raw = find_scene_bundle(archive, start, end)
+        except ImportError:
+            from .man_source import read_man_source
+            from .core import streaming_scene_tmd_pool
+            from .scene_animation import load_scene_actor_animation_catalog
+            carrier = read_man_source(archive, start, end, scene)
+            if carrier.kind != "raw_streaming_man":
+                raise ImportError("Assignment source changed during streaming resolution")
+            anm, animation_source = load_scene_actor_animation_catalog(disc, scene).source_bank()
+            models = streaming_scene_tmd_pool(archive, start, end)
+            counts = {r.pool_index: r.object_count for r in models if r.pool_index < 0xF0}
+            source = dict(disc_sha256=digest, iso_file="PROT.DAT", prot_entry_index=carrier.entry_index,
+                          man=carrier.provenance(), anm=animation_source)
+            return ManAssignmentContext(scene, carrier.payload, carrier.payload, counts, anm, source,
+                                        compression="none")
         values = {}
         source = dict(disc_sha256=digest, iso_file="PROT.DAT", prot_entry_index=bundle.entry_index,
                       scene_table_offset=bundle.table_offset)
