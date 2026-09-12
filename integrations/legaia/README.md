@@ -253,3 +253,10 @@ The current WebGL model/scene preview uses decoded colors and textures, without
 normal-based lighting. Normal-only JSON edits can therefore package correctly
 without changing the browser image. Use the scalar build audit to verify changed
 normal words; runtime lighting acceptance remains a separate deferred check.
+
+
+Use **Preview shape file** after choosing a TMD, OBJ or JSON file to review its
+vertex/normal axis changes without applying it. Expand **Changes from retail**
+or **Changes from current authored model**; each shows up to256 scalar changes.
+Changing or discarding the file clears the report. **Apply shape** independently
+revalidates the current file and remains the action that modifies the project.

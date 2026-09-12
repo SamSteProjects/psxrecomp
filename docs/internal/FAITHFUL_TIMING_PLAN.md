@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Model file proposal Inspector workflow
+
+- Previous goal turn made verified progress at081178dd with shared model-file preparation and non-mutating HTTP proposal reports. Current worktree confirmed clean before connecting the model viewer controls.
+- Added Preview shape file beside Apply shape. It shows separate retail/current-authored scalar comparisons with object/vector/axis values, capped at256 displayed rows per section. Shared file-reading checks retain file/asset/project/dialog identity; stale responses and errors are discarded. Changing/discarding the selection clears the report. Apply remains independent and revalidates the file.
+- Actual browser model0000 JSON workflow expanded the current-authored one-axis delta, confirmed model overrides and history unchanged by preview, applied the file, and undid. No page errors. Evidence: local-output/sdk-20260909/model-json-project-20260912/preview-browser-check.json. Previous service tests establish proposed hash equality; this turn completes the visible file-review workflow.
+- Node syntax and diff checks passed. Browser/test server stopped; no gameplay launched. Broader model topology/material replacement and full SDK goal remain open.
+
+
 ### 2026-09-12 — Non-mutating model file proposal service
 
 - Previous goal turn made verified progress at886f8c08 with351-test regression and documented preview-lighting limits. Current worktree confirmed clean before continuing model authoring.

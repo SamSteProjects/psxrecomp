@@ -2326,7 +2326,7 @@ showScenePose.onclick=()=>{
   }catch(error){clearScenePose(false);const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');notify(error.message,true);draw();}
 };
 
-const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-upload">Apply shape</button><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
+const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
 async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported',inspectionEntityId=null,preparedPreview=null,returnToFile=null){
   if($('model-dialog').open&&$('shape-file').files?.length){$('model-error').textContent='Apply or discard the selected shape file before changing the model view.';$('animation-clip').value=model?.animation?.clip_id??'';return;}
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest,requestedSceneContext=sceneRequestKey();
@@ -2371,9 +2371,10 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
 let shapeDraft=null;
 const discardShape=document.createElement('button');discardShape.textContent='Discard selected shape file';discardShape.type='button';$('shape-upload').after(discardShape);
 function updateShapeDraft(){
+  $('shape-file-report').replaceChildren();
   const pending=!!$('shape-file').files?.length,shape=state.model_overrides?.[modelAssetId];
   discardShape.hidden=!pending;
-  $('shape-upload').disabled=!pending||state.project?.mode!=='edit';
+  $('shape-upload').disabled=!pending||state.project?.mode!=='edit';$('shape-file-preview').disabled=!pending||state.project?.mode!=='edit';
   $('shape-retail').disabled=pending;$('shape-authored').disabled=pending||!shape;
   $('shape-clear').disabled=pending||!shape||state.project?.mode!=='edit';$('shape-download-authored').disabled=pending||!shape;$('shape-authored-json').disabled=pending||!shape;
   $('model-export').disabled=pending;
@@ -2393,15 +2394,27 @@ async function downloadShapeSource(format,layer='imported'){
   if(busy||!modelAssetId)return;setBusy(true);
   try{const response=await fetch('/api/model-shape-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:modelAssetId,format,layer})}),data=await response.json();if(!response.ok)throw new Error(data.error);const encoded=data[format+'_base64'];if(typeof encoded!=='string'||encoded.length>(format!=='tmd'?22369624:5592408))throw new Error('Invalid model source size');const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));if(bytes.length!==data.byte_length)throw new Error('Model source length mismatch');const url=URL.createObjectURL(new Blob([bytes])),link=document.createElement('a');link.href=url;link.download=(layer==='authored'?'authored':'original')+'-model.'+format;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('shape-status').textContent=`Downloaded ${layer} ${format.toUpperCase()} · TMD SHA-256 ${data.effective_sha256}`;}catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
 };
-$('shape-upload').onclick=async()=>{
+async function readShapeFile(previewOnly=false){
   if(busy||state.project.mode!=='edit')return;const file=$('shape-file').files?.[0];if(!file||file.size<1||file.size>(/\.(obj|json)$/i.test(file.name)?16777216:4194304)){$('model-error').textContent='Choose a TMD up to 4 MiB or an OBJ/JSON up to 16 MiB.';return;}
   if(!shapeDraft||shapeDraft.file!==file||shapeDraft.asset!==modelAssetId||shapeDraft.context!==JSON.stringify([state.project.path,state.scene.id])){$('model-error').textContent='The selected shape file belongs to an earlier model context. Discard and select it again.';return;}
   const draft=shapeDraft;
-  const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);setBusy(true);let encoded;
-  try{encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('Could not read TMD'));reader.readAsDataURL(file);});}catch(error){$('model-error').textContent=error.message;return;}finally{setBusy(false);}
+  const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);
+  const currentFile=()=>shapeDraft===draft&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&$('model-dialog').open&&state.project.mode==='edit';
+  $('model-error').textContent='';setBusy(true);let encoded;
+  try{encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(new Error('Could not read model file'));reader.readAsDataURL(file);});}catch(error){if(currentFile())$('model-error').textContent=error.message;return;}finally{setBusy(false);}
   if(!encoded||shapeDraft!==draft||asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||!$('model-dialog').open)return;
-  const obj=/\.obj$/i.test(file.name),json=/\.json$/i.test(file.name);if(await api(json?'/api/model-json-replacement':obj?'/api/model-obj-replacement':'/api/model-shape-replacement',{asset_id:asset,[json?'json_base64':obj?'obj_base64':'tmd_base64']:encoded})){$('shape-file').value='';shapeDraft=null;await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}
+  const obj=/\.obj$/i.test(file.name),json=/\.json$/i.test(file.name);
+  if(previewOnly){
+    setBusy(true);$('shape-file-report').replaceChildren();
+    try{const response=await fetch('/api/model-file-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,format:json?'json':obj?'obj':'tmd',content_base64:encoded})}),report=await response.json();if(!currentFile())return;if(!response.ok||report.error)throw new Error(report.error||'Model file preview failed');if(report.asset_id!==asset)throw new Error('Model proposal identity differs from the selected asset');
+      const intro=document.createElement('p');intro.textContent='Proposed model file · project unchanged. Apply shape revalidates the file.';$('shape-file-report').append(intro);
+      for(const [label,rows] of [['Changes from retail',report.coordinate_changes],['Changes from current authored model',report.changes_from_current]]){const details=document.createElement('details'),summary=document.createElement('summary'),text=document.createElement('pre');summary.textContent=`${label}: ${rows.length} axis changes`;text.textContent=rows.slice(0,256).map(row=>`Object ${row.object_index} · ${row.kind} ${row.vector_index} · ${row.axis}: ${row.before_value} → ${row.after_value}`).join('\n');details.append(summary,text);if(rows.length>256){const note=document.createElement('p');note.textContent='Showing the first 256 axis changes.';details.append(note);}$('shape-file-report').append(details);}
+    }catch(error){if(currentFile())$('model-error').textContent=error.message;}finally{setBusy(false);}return;
+  }
+  if(await api(json?'/api/model-json-replacement':obj?'/api/model-obj-replacement':'/api/model-shape-replacement',{asset_id:asset,[json?'json_base64':obj?'obj_base64':'tmd_base64']:encoded})){$('shape-file').value='';shapeDraft=null;await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}
 };
+$('shape-upload').onclick=()=>readShapeFile();
+$('shape-file-preview').onclick=()=>readShapeFile(true);
 function modelObject(){return $('model-object').value==='all' && model?.frames?.length?{vertex_start:0,vertex_count:model.vertices.length,triangle_start:0,triangle_count:model.triangles.length}:model?.objects[Number($('model-object').value)];}
 function frameVertices(){return model?.frames?.[animationFrame]?.vertices ?? model?.vertices ?? [];}
 function configureAnimation(clipId){
