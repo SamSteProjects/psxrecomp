@@ -295,7 +295,7 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 service.preview(project, loader)
                 self.assertEqual(len(calls), 2)
 
-    def test_wrong_evidence_rejects_and_unknown_multipart_stays_a_marker(self):
+    def test_clipless_multipart_renders_but_unknown_animation_and_wrong_evidence_reject(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))
             imported = synthetic_scene()
@@ -309,6 +309,16 @@ class ScenePreviewWorkflow(unittest.TestCase):
             multi["objects"].append({"object_index": 1})
             with patch("sdk.scene_preview._disc_context", side_effect=lambda _: nullcontext()), \
                  patch("sdk.scene_preview.import_scene", return_value=deepcopy(imported)) as fresh:
+                result = service.preview(project, lambda _: deepcopy(multi))
+                self.assertTrue(result["entities"][0]["renderable"])
+                self.assertEqual(result["entities"][0]["pose_kind"], "reference_clipless_multipart_static")
+                self.assertEqual(result["assets"][0]["preview"]["vertices"], multi["vertices"])
+                self.assertEqual(result["assets"][0]["preview"]["pose_evidence"]["initial_animation_id"], 0)
+                # The same geometry with an unresolved nonzero clip must not
+                # inherit the cached clipless rendering decision.
+                imported["actors"][0]["placement_fields"]["animation_id"] = 7
+                project.import_metadata(imported)
+                fresh.return_value = deepcopy(imported)
                 result = service.preview(project, lambda _: deepcopy(multi))
                 self.assertFalse(result["entities"][0]["renderable"])
                 self.assertIn("Multipart", result["entities"][0]["reason"])

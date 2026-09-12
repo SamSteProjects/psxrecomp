@@ -348,8 +348,22 @@ class ScenePreviewService:
                     else:
                         preview = model_loader(asset)
                         if len(preview.get("objects", [])) != 1:
-                            raise RetailImportError("Multipart model has no supported placement pose")
-                        pose_kind = "single_object_static"
+                            if animation_id:
+                                raise RetailImportError("Multipart model has no supported placement pose")
+                            # Pinned field_npc.rs play catalog includes clipless multipart
+                            # actors: draw kind 5 uses one actor transform for all objects.
+                            # Do not apply this to an unresolved nonzero animation ID.
+                            from importer.animation_catalog import REFERENCE_COMMIT
+                            pose_kind = "reference_clipless_multipart_static"
+                            preview["pose_evidence"] = {
+                                "kind": pose_kind, "reference_commit": REFERENCE_COMMIT,
+                                "reference_path": "crates/web-viewer/src/field_npc.rs",
+                                "initial_animation_id": 0,
+                                "object_transform": "shared_actor_transform_raw_object_vertices",
+                                "runtime_state": "not_observed",
+                            }
+                        else:
+                            pose_kind = "single_object_static"
                     count = len(preview.get("triangles", []))
                     bytes_used = sum((len(t.get("rgba_base64", "")) + len(t.get("stp_base64", ""))) * 3 // 4 for t in preview.get("textures", []))
                     if len(assets) >= MAX_GEOMETRIES or triangle_count + count > MAX_TRIANGLES or texture_bytes + bytes_used > MAX_TEXTURE_BYTES:
