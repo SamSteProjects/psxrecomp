@@ -33,6 +33,15 @@ def catalog(script):
 
 
 class ScriptAssetCatalogTests(unittest.TestCase):
+    def test_model_selections_are_encoded_references_not_asset_links(self):
+        result=catalog(bytes([0x4c,0x50,0xf0,0,0xcc,7,0x50,0xff,0xff,0x24]))
+        script=next(a for a in result['assets'] if a['asset_kind']=='script')
+        refs=script['model_selection_references']
+        self.assertEqual([r['model_selector_signed'] for r in refs],[240,-1])
+        self.assertEqual([r['extended_target'] for r in refs],[None,7])
+        self.assertTrue(all(r['asset_binding']=='runtime_pool_bases_unresolved' for r in refs))
+        self.assertFalse(forbidden_fields(result))
+
     def test_movement_targets_keep_source_context_without_runtime_claims(self):
         result=catalog(bytes([0x23,0x18,0x93,0x4c,0x51,0x80,0xff,0,0,0x24]))
         script=next(a for a in result['assets'] if a['asset_kind']=='script')

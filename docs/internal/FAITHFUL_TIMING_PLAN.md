@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (script model-selector asset navigation):** Previous turn progressed in4d540a7d. Script catalogs now expose bounded model_selection_references with exact source PC/file offset, extended context, signed/u16 selector and unresolved pool binding. Counts participate in total relationship budget. Asset search discovers selectors; resource inspector links to their exact decoded instruction without synthesizing model asset references. Eight focused catalog tests passed. Actual Dolk2 Edge catalog found10references across10scripts; actor0002 selector241/pool flag set at0xA opened through the verified actor-script route with zero page errors. No runtime pool resolution, model assignment or branch execution is inferred. Browser/server stopped; no game launched or controlled. Broad SDK goal remains active.
+
+
 - **2026-09-12 (script model selector inspection):** Previous turn progressed in87487e0e. Inspected pinned engine-vm/field/step/menu_ctrl/nibble_5_6_7.rs and host.rs op4c_n5_sub0_set_actor_model: 0x4C50 reads signed LE16, compares signed value>=0xF0 for the pool flag, then invokes host model selection whose effective index depends on pool bases. Decoder now exposes signed/u16 selector, high-pool flag and explicit unresolved asset binding/runtime effect. Script operand UI presents these separately from raw metadata; no imported asset is guessed from selector alone. Twenty-five focused script tests passed, including threshold239/240, negative values and extended target context; JS syntax passed. Fresh retail branch and UI visual acceptance were not run for this addition. No game launched or controlled. Source metadata is progress toward appearance diagnosis, not script execution or model authoring; broad SDK goal remains active.
 
 
