@@ -260,3 +260,13 @@ vertex/normal axis changes without applying it. Expand **Changes from retail**
 or **Changes from current authored model**; each shows up to256 scalar changes.
 Changing or discarding the file clears the report. **Apply shape** independently
 revalidates the current file and remains the action that modifies the project.
+
+
+**Edit model vectors** provides direct numeric editing without an external file.
+Choose an object, Vertices or Normals, and a zero-based vector index. The editor
+shows current inspected XYZ source words and requires signed16 integer values.
+While a draft is changed, object/kind/index selection stays locked until Apply
+or Discard. Apply updates only the selected vector, preserves other authored
+vectors, and rejects an inspected model hash that is no longer current. Normal
+counts can be zero; missing vectors cannot be created here. Save persists the
+result; Undo restores the previous model. Browser lighting still ignores normals.

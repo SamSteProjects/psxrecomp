@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Direct model vector Inspector editing
+
+- Previous goal turn made verified progress atdcdcf0a4, connecting model file proposal review. Current worktree confirmed clean before adding direct model-vector editing.
+- Added set_model_vector and strict /api/model-vector route with selected asset/object/kind/index, signed16 XYZ and inspected effective hash. Preparation preserves all other current authored vectors and reuses source-bound JSON/TMD validation plus existing replacement history. Stale hashes, boolean/noninteger indices, missing vectors and invalid values reject before commands.
+- Added Edit model vectors in the model viewer. Object choices show vertex/normal counts; a changed draft locks object/kind/index selection until Apply or Discard. Empty vector tables stay unavailable. Apply refreshes authored shape; no normal lighting is invented.
+- First browser attempt exposed a missing .dialog-error element required by the shared api helper: Apply threw before sending a request. Fixed the new dialog markup and reran. Actual retail model0009/object1/normal0 workflow passed inspectedX1, draft3/Discard->1, Apply2, reopen/readback2 and Undo with no page errors. Separate service probe rejected a stale hash and four invalid edits with unchanged overrides/history. Evidence: local-output/sdk-20260909/model-normal-json-project-20260912/{vector-editor-browser-check.json,vector-edit-guards.json}.
+- Six focused model tests, Node syntax and diff checks passed. Browser/test server stopped; no gameplay launched. This completes a direct Inspector editing workflow for existing vectors; arbitrary topology/material authoring and full SDK goal remain open.
+
+
 ### 2026-09-12 — Model file proposal Inspector workflow
 
 - Previous goal turn made verified progress at081178dd with shared model-file preparation and non-mutating HTTP proposal reports. Current worktree confirmed clean before connecting the model viewer controls.

@@ -2326,7 +2326,31 @@ showScenePose.onclick=()=>{
   }catch(error){clearScenePose(false);const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');notify(error.message,true);draw();}
 };
 
-const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
+const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-vectors">Edit model vectors</button><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
+const vectorDialog=document.createElement('dialog');vectorDialog.id='model-vector-dialog';document.body.append(vectorDialog);
+$('shape-vectors').onclick=async()=>{
+  if(busy||shapeDraft||state.project.mode!=='edit')return;
+  const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);setBusy(true);
+  try{
+    const response=await fetch('/api/model-shape-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,format:'json',layer:state.model_overrides?.[asset]?'authored':'imported'})}),source=await response.json();
+    if(!response.ok||source.error)throw new Error(source.error||'Model vectors unavailable');
+    if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||!$('model-dialog').open)return;
+    const document=JSON.parse(atob(source.json_base64));
+    vectorDialog.innerHTML='<h2>Edit model vectors</h2><p>Object-local Y-down source words. Layout and materials stay fixed. Normal-based lighting is not shown by the browser.</p><form><label>Object<select name="object" aria-label="Vector object"></select></label><label>Kind<select name="kind" aria-label="Vector kind"><option value="vertices">Vertices</option><option value="normals">Normals</option></select></label><label>Index<input name="index" aria-label="Vector index" type="number" min="0" step="1" value="0" required></label><div data-xyz></div><p data-original></p><p data-error class="dialog-error" role="alert"></p><button type="submit">Apply vector</button><button type="button" data-discard>Discard vector draft</button><button type="button" data-close>Close vector editor</button></form>';
+    const form=vectorDialog.querySelector('form'),object=form.elements.object,kind=form.elements.kind,index=form.elements.index,xyz=[];
+    for(const row of document.objects){const option=window.document.createElement('option');option.value=row.object_index;option.textContent=`Object ${row.object_index} · ${row.vertices.length} vertices · ${row.normals.length} normals`;object.append(option);}
+    for(const axis of ['X','Y','Z']){const label=window.document.createElement('label'),input=window.document.createElement('input');label.textContent=axis;input.type='number';input.step='1';input.min='-32768';input.max='32767';input.required=true;input.setAttribute('aria-label','Vector '+axis);label.append(input);form.querySelector('[data-xyz]').append(label);xyz.push(input);}
+    let valid=false;
+    const load=()=>{const values=document.objects[Number(object.value)]?.[kind.value]??[];index.max=String(Math.max(0,values.length-1));const i=Number(index.value);valid=Number.isInteger(i)&&i>=0&&i<values.length;xyz.forEach((input,a)=>{input.value=valid?values[i][a]:'';input.disabled=!valid;});form.querySelector('[type=submit]').disabled=!valid;form.querySelector('[data-original]').textContent=valid?'Inspected XYZ: '+values[i].join(', '):'No vector at this index.';object.disabled=kind.disabled=index.disabled=false;};
+    object.onchange=kind.onchange=()=>{index.value='0';load();};index.oninput=load;
+    xyz.forEach(input=>input.oninput=()=>{object.disabled=kind.disabled=index.disabled=true;});
+    form.querySelector('[data-discard]').onclick=load;form.querySelector('[data-close]').onclick=()=>vectorDialog.close();
+    form.onsubmit=async event=>{event.preventDefault();if(busy||!valid||!form.reportValidity())return;if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])){form.querySelector('[data-error]').textContent='Model context changed; reopen the editor.';return;}
+      if(await api('/api/model-vector',{asset_id:asset,object_index:Number(object.value),kind:kind.value,vector_index:Number(index.value),values:xyz.map(input=>Number(input.value)),expected_sha256:source.effective_sha256},{dialog:vectorDialog,success:'Model vector updated. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}
+    };
+    load();vectorDialog.showModal();
+  }catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
+};
 async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported',inspectionEntityId=null,preparedPreview=null,returnToFile=null){
   if($('model-dialog').open&&$('shape-file').files?.length){$('model-error').textContent='Apply or discard the selected shape file before changing the model view.';$('animation-clip').value=model?.animation?.clip_id??'';return;}
   if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest,requestedSceneContext=sceneRequestKey();
@@ -2374,7 +2398,7 @@ function updateShapeDraft(){
   $('shape-file-report').replaceChildren();
   const pending=!!$('shape-file').files?.length,shape=state.model_overrides?.[modelAssetId];
   discardShape.hidden=!pending;
-  $('shape-upload').disabled=!pending||state.project?.mode!=='edit';$('shape-file-preview').disabled=!pending||state.project?.mode!=='edit';
+  $('shape-upload').disabled=!pending||state.project?.mode!=='edit';$('shape-file-preview').disabled=!pending||state.project?.mode!=='edit';$('shape-vectors').disabled=pending||state.project?.mode!=='edit';
   $('shape-retail').disabled=pending;$('shape-authored').disabled=pending||!shape;
   $('shape-clear').disabled=pending||!shape||state.project?.mode!=='edit';$('shape-download-authored').disabled=pending||!shape;$('shape-authored-json').disabled=pending||!shape;
   $('model-export').disabled=pending;

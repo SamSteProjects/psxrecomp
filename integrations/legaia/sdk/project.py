@@ -793,6 +793,30 @@ class ProjectService:
                              'comparison': 'retail_source', 'coordinate_changes': changes,
                              'changes_from_current': pending, 'project_changed': False}
 
+    def set_model_vector(self, asset_id: str, object_index: int, kind: str, vector_index: int,
+                         values: list[int], expected_sha256: str) -> None:
+        import json
+        from importer.model_json import export_shape_json, import_shape_json
+        if self.mode != 'edit':
+            raise ProjectError('Model vector editing requires Edit mode')
+        original = self._model_source(asset_id, self.active_scene)
+        effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
+                     if asset_id in self.model_overrides else original)
+        if hashlib.sha256(effective).hexdigest() != expected_sha256:
+            raise ProjectError('Model changed since vector inspection; reopen the vector editor')
+        document = json.loads(export_shape_json(effective))
+        if type(object_index) is not int or not 0 <= object_index < len(document['objects']) or kind not in ('vertices', 'normals'):
+            raise ProjectError('Choose an existing model object and vector kind')
+        vectors = document['objects'][object_index][kind]
+        if type(vector_index) is not int or not 0 <= vector_index < len(vectors):
+            raise ProjectError('Choose an existing vector in the selected object')
+        if not isinstance(values, list) or len(values) != 3 or any(type(v) is not int or not -32768 <= v <= 32767 for v in values):
+            raise ProjectError('Vector XYZ requires three signed16 integer source values')
+        vectors[vector_index] = values
+        document['source_sha256'] = hashlib.sha256(original).hexdigest()
+        replacement, _ = import_shape_json(original, document['source_sha256'], json.dumps(document).encode())
+        self.set_model_replacement(asset_id, replacement)
+
     def preview_model_file(self, asset_id: str, content: bytes, format: str = 'tmd') -> dict:
         return self._prepare_model_file(asset_id, content, format)[1]
 
