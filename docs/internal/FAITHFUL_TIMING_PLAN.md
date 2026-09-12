@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Non-mutating model file proposal service
+
+- Previous goal turn made verified progress at886f8c08 with351-test regression and documented preview-lighting limits. Current worktree confirmed clean before continuing model authoring.
+- Added shared model file preparation and preview_model_file for TMD/OBJ/JSON. JSON remains retail-bound; OBJ retains current authored normals as before. Reports contain retail differences, differences from current authored bytes and the proposed TMD hash. JSON/OBJ Apply uses the same preparation path. Added bounded /api/model-file-preview with explicit format/base64 payload validation.
+- Actual saved town01 model0000 JSON preview reported a further X+1 relative to current authored shape and left overrides, Undo/Redo stacks and authored file inventory unchanged. Apply produced the proposed hash, Undo restored the previous override. HTTP preview likewise returned the correct delta without a command. Private evidence: local-output/sdk-20260909/model-json-project-20260912/{file-preview-check.json,file-preview-http-check.json}.
+- Six focused model tests passed; diff checks passed. Test HTTP server stopped; no game launched. This is service groundwork: next connect the optional proposal report to the model file picker and retain stale-selection guards. Full SDK goal remains active.
+
+
 ### 2026-09-12 — Integrated SDK regression checkpoint
 
 - Previous goal turn made verified progress at6407ade7 with model report navigation. Current source/worktree verified before running the complete existing retail-enabled SDK suite after model JSON, proposed-file visualization and report additions.

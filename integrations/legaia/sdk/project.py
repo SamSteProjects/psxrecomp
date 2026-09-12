@@ -768,23 +768,39 @@ class ProjectService:
         replace_model_shape(self._model_source(asset_id, binding['source_scene_id']), binding['source_sha256'], content)
         return content
 
-    def set_model_json(self, asset_id: str, content: bytes) -> None:
+    def _prepare_model_file(self, asset_id: str, content: bytes, format: str) -> tuple[bytes, dict]:
+        from importer.model_authoring import replace_model_shape
         from importer.model_json import import_shape_json
-        if self.mode != 'edit':
-            raise ProjectError('Model shape authoring requires Edit mode')
-        source = self._model_source(asset_id, self.active_scene)
-        replacement, _ = import_shape_json(source, hashlib.sha256(source).hexdigest(), content)
-        self.set_model_replacement(asset_id, replacement)
-
-    def set_model_obj(self, asset_id: str, content: bytes) -> None:
         from importer.model_obj import import_shape_obj
         if self.mode != 'edit':
             raise ProjectError('Model shape authoring requires Edit mode')
-        source = self._model_source(asset_id, self.active_scene)
-        if asset_id in self.model_overrides:
-            source = self.read_model_replacement(asset_id, self.model_overrides[asset_id])
-        replacement, _ = import_shape_obj(source, hashlib.sha256(source).hexdigest(), content)
-        self.set_model_replacement(asset_id, replacement)
+        if format not in ('tmd', 'obj', 'json'):
+            raise ProjectError('Choose TMD, OBJ or JSON model file')
+        original = self._model_source(asset_id, self.active_scene)
+        digest = hashlib.sha256(original).hexdigest()
+        effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
+                     if asset_id in self.model_overrides else original)
+        if format == 'json':
+            replacement, _ = import_shape_json(original, digest, content)
+        elif format == 'obj':
+            replacement, _ = import_shape_obj(effective, hashlib.sha256(effective).hexdigest(), content)
+        else:
+            replacement, _ = replace_model_shape(original, digest, content)
+        _, changes = replace_model_shape(original, digest, replacement)
+        _, pending = replace_model_shape(effective, hashlib.sha256(effective).hexdigest(), replacement)
+        return replacement, {'asset_id': asset_id, 'source_sha256': digest,
+                             'proposed_sha256': hashlib.sha256(replacement).hexdigest(),
+                             'comparison': 'retail_source', 'coordinate_changes': changes,
+                             'changes_from_current': pending, 'project_changed': False}
+
+    def preview_model_file(self, asset_id: str, content: bytes, format: str = 'tmd') -> dict:
+        return self._prepare_model_file(asset_id, content, format)[1]
+
+    def set_model_json(self, asset_id: str, content: bytes) -> None:
+        self.set_model_replacement(asset_id, self._prepare_model_file(asset_id, content, 'json')[0])
+
+    def set_model_obj(self, asset_id: str, content: bytes) -> None:
+        self.set_model_replacement(asset_id, self._prepare_model_file(asset_id, content, 'obj')[0])
 
     def set_model_replacement(self, asset_id: str, content: bytes) -> None:
         from importer.model_authoring import replace_model_shape
