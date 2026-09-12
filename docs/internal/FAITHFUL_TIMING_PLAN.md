@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Animation clipboard request-state guards
+
+- Previous turn completed effective-copy acceptance. Clipboard buttons now visibly disable while channel values are loading or selection is invalid, matching existing verification guards.
+- Actual browser withheld the production frame1 response, loaded frame2, copied its retail values, released frame1 late and pasted. All six values still matched frame2. Loading and invalid frame999 controls remained disabled; zero mutation commands and zero page errors. Private evidence: local-output/sdk-20260909/animation-copy-request-order-check.json.
+- Initial harness teardown disposed a pending Discard refresh after assertions passed; corrected cleanup waits for routed requests. Rerun exited0. JS syntax and whitespace checks passed. No game launched; test server stopped, gameplay deferred, broader SDK goal active.
+
+
 ### 2026-09-12 — Effective animation clipboard acceptance
 
 - Previous turn made verified animation-authoring progress. Actual town01 actor0011 browser applied frame0/object0 X123, copied effective values, rejected paste into object1, pasted X123 into frame1/object0, and discarded without another command. Only the original source edit was submitted; Undo restored it. Zero browser errors. Private evidence: local-output/sdk-20260909/animation-effective-copy-check.json.
