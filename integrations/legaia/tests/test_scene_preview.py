@@ -52,6 +52,41 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 self.assertTrue(getattr(project, field))
             with self.assertRaises(ProjectError): preview_project(project, 'live')
 
+    def test_geometry_cache_eviction_and_replacement_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            imported = synthetic_scene()
+            imported['actors'][0]['placement_fields']['animation_id'] = 0
+            project.import_metadata(imported)
+            disc = Path(directory) / 'fixture.bin'
+            disc.write_bytes(b'synthetic')
+            project.disc_path = str(disc)
+            service = ScenePreviewService()
+            with patch('sdk.scene_preview._disc_context', side_effect=lambda _: nullcontext()), patch(
+                    'sdk.scene_preview.import_scene', return_value=deepcopy(imported)), patch(
+                    'sdk.scene_preview.source_key', side_effect=lambda *a, **k: current[0]), patch.object(
+                    project, 'read_model_replacement') as verify:
+                current = ['a']
+                service.preview(project, lambda *_: geometry())
+                current[0] = 'b'
+                service.preview(project, lambda *_: geometry())
+                current[0] = 'a'
+                service.preview(project, lambda *_: self.fail('cached source decoded again'))
+                current[0] = 'c'
+                service.preview(project, lambda *_: geometry())
+                self.assertEqual(list(service._cache), ['a', 'c'])
+                current[0] = 'b'
+                with self.assertRaisesRegex(ProjectError, 'decode failure'):
+                    service.preview(project, lambda *_: (_ for _ in ()).throw(ProjectError('decode failure')))
+                self.assertFalse(service._cache)
+                self.assertIsNone(service._key)
+                service.preview(project, lambda *_: geometry())
+                project.model_overrides['fixture'] = {}
+                verify.side_effect = ProjectError('replacement changed')
+                with self.assertRaisesRegex(ProjectError, 'replacement changed'):
+                    service.preview(project, lambda *_: self.fail('invalid replacement decoded'))
+                verify.assert_called_once_with('fixture', {})
+
     def test_missing_animation_catalog_keeps_static_geometry_but_not_guessed_poses(self):
         from importer.core import ImportError as RetailImportError
         with tempfile.TemporaryDirectory() as directory:
@@ -207,12 +242,14 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 project.actor_drafts.clear()
                 del project.overrides[target["semantic_id"]]["ActorAppearance"]
                 self.assertEqual(source_key(project), initial_key)
-                reverted = service.preview(project, loader, lambda *_: Catalog())
+                reverted = service.preview(project, lambda *_: self.fail('undo rebuilt geometry'),
+                                           lambda *_: self.fail('undo rebuilt poses'))
                 self.assertEqual(reverted["entities"][0]["source_actor_id"], target["semantic_id"])
                 self.assertFalse(reverted["entities"][0]["appearance_authored"])
                 self.assertEqual(project.imports[project.active_scene], imported)
                 # A fabricated resolver result cannot attach foreign provenance to geometry.
                 project.overrides[target["semantic_id"]]["ActorAppearance"] = {"donor_entity_id": donor["semantic_id"]}
+                service.clear()  # Force source decoding for the fabricated resolver check.
                 project.appearance_source_actor = lambda *args, **kwargs: {**donor, "source_record": {"forged": True}}
                 with self.assertRaisesRegex(ProjectError, "verified scene evidence"):
                     service.preview(project, loader, lambda *_: Catalog())

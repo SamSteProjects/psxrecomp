@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Bounded comparison geometry reuse
+
+- Scene previews retain at most two decoded geometry sets, allowing retail/authored comparison and appearance undo to reuse verified geometry. Each entry retains the existing geometry/triangle/texture budgets; a cache miss evicts before decoding a third set.
+- Source stamps and authored replacement checks remain ahead of cache lookup. Transform projection and response copies remain per request; failed decoding clears all retained entries.
+- Eight focused scene-preview tests passed, including appearance undo without decoding, least-recently-used eviction, replacement rejection on a cache hit, source changes, response isolation and failed regeneration. No game launched; gameplay queue remains deferred and the broader goal remains active.
+
+
 ### 2026-09-12 — Donor pose evidence and animation inspection
 
 - Investigated the unusual framed Dolk2 donor pose. Actor0001 binds model0133, animation record34, ten objects/channels and thirty frames. Frame0 contains substantial encoded rotations; no evidence justified forcing an upright orientation. SDK transform equations match pinned reference d6e64c68ede25813d35db20980da82a1a025549b `crates/tmd/src/mesh/mod.rs::rot_zyx` (Rx, Ry, Rz) and the eight-byte channel layout documented in player_anm.rs.

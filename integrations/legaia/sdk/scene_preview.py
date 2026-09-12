@@ -134,9 +134,12 @@ def sample_preview_ground(ground, x, z):
 
 
 class ScenePreviewService:
-    """One bounded geometry cache. Transform edits never invalidate asset bytes."""
+    """Two-entry geometry cache; each entry obeys the scene decoding budgets."""
 
     def __init__(self):
+        self.clear()
+
+    def _reset_active(self):
         self._key = None
         self._assets = []
         self._bindings = {}
@@ -145,12 +148,14 @@ class ScenePreviewService:
         self._environment_metadata = None
 
     def clear(self):
-        self._key = None
-        self._assets = []
-        self._bindings = {}
-        self._metrics = {}
-        self._environment = []
-        self._environment_metadata = None
+        self._cache = {}
+        self._reset_active()
+
+    def _remember_active(self):
+        self._cache[self._key] = (self._assets, self._bindings, self._metrics,
+                                  self._environment, self._environment_metadata)
+        while len(self._cache) > 2:
+            del self._cache[next(iter(self._cache))]
 
     def preview(self, project, model_loader, pose_loader_factory=None, environment_loader_factory=None, terrain_loader=None) -> dict:
         # Cached geometry must not hide missing or modified authored files.
@@ -165,8 +170,22 @@ class ScenePreviewService:
         geometry_key = source_key(project, geometry_only=True)
         if geometry_key != self._key:
             # Failed regeneration must not expose the previous scene's geometry.
-            self.clear()
-            self._build(project, geometry_key, model_loader, pose_loader_factory, environment_loader_factory, terrain_loader)
+            self._reset_active()
+            cached = self._cache.pop(geometry_key, None)
+            if cached is not None:
+                (self._assets, self._bindings, self._metrics,
+                 self._environment, self._environment_metadata) = cached
+                self._key = geometry_key
+            else:
+                # Leave room before decoding so a third full scene is never retained.
+                if len(self._cache) >= 2:
+                    del self._cache[next(iter(self._cache))]
+                try:
+                    self._build(project, geometry_key, model_loader, pose_loader_factory, environment_loader_factory, terrain_loader)
+                except Exception:
+                    self.clear()
+                    raise
+            self._remember_active()
         projected = project.state()["scene"]
         instances = []
         ground = next((asset["preview"] for asset in self._assets if asset.get("pose_kind") == "source_heightfield"), {})
