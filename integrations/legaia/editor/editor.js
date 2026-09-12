@@ -349,6 +349,7 @@ function notify(message, error=false) {
 function setBusy(value) {
   busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
+  document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||(button.dataset.animationEdit==='true'&&state.project?.mode!=='edit'));
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
   if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
@@ -1454,9 +1455,9 @@ function renderInspector(){
   if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
   const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
   const actorAnimation=components.Animation?.preview_support;
-  if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview imported scene animation';button.title='Verify and decode this actor’s imported animation association';button.onclick=()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id);$('inspect-model').after(button);}
+  if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview imported scene animation';button.disabled=busy;button.title='Verify and decode this actor’s imported animation association';button.onclick=()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id);$('inspect-model').after(button);}
   if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.dataset.animationEdit='true';button.textContent=components.Animation?.authored_channels?'Edit authored animation channels':'Author animation channels';button.disabled=busy||state.project.mode!=='edit';button.onclick=()=>openAnimationChannels(entity);$('inspect-model').after(button);}
-  if(animatedAsset && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview reference animation';button.title='Supported reference clips for this model; separate from the placement animation ID';button.onclick=()=>openModel(animatedAsset.id,animatedAsset.animation_support.clips[0].id,null,'imported',entity.id);$('inspect-model').after(button);}
+  if(animatedAsset && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview reference animation';button.disabled=busy;button.title='Supported reference clips for this model; separate from the placement animation ID';button.onclick=()=>openModel(animatedAsset.id,animatedAsset.animation_support.clips[0].id,null,'imported',entity.id);$('inspect-model').after(button);}
   if($('inspect-templates'))$('inspect-templates').onclick=showTemplates;
   $('inspector').querySelectorAll('[data-axis]').forEach(input=>input.addEventListener('change',async()=>{
     const axis=input.dataset.axis;
@@ -2113,6 +2114,7 @@ const exportClipControls=document.createElement('span');exportClipControls.inner
 $('model-export').onclick=()=>exportModel(false);
 $('model-export-clip').onclick=()=>exportModel(true);
 async function exportModel(fullClip=false){
+  if(modelSceneContext!==sceneRequestKey()){$('model-error').textContent='The scene or model source changed. Reopen the model preview before exporting.';return;}
   if(shapeDraft){$('model-error').textContent='Apply or discard the selected shape file before exporting.';return;}
   if(busy||!modelAssetId)return;const fps=Number($('clip-export-rate').value);if(fullClip&&(!model?.frames?.length||!Number.isFinite(fps)||fps<1||fps>120)){$('model-error').textContent='Load a clip and choose an export rate from 1 to 120 fps.';return;}stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
   const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame,...(clip==='authored-channels'?{representation:'authored'}:{})}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
