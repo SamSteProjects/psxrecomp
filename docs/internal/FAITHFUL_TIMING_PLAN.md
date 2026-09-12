@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (authored NPC draft scene export acceptance):** Previous turn progressed in42bb810d. Opened saved streaming-npc-review project and verified442/442 assembled preview instances. Selected the existing authored UUID00000000-0000-4000-8000-000000000003 through its hierarchy row and exported one-instance GLB from the browser. Retail representation request for the same draft correctly returned400. Independent glTF-Transform import retained the authored UUID, actor_draft kind and world translation[64,0,16320]; Khronos validation found zero errors/warnings/no truncation. Private draft-receipt.json and draft-consumer.json retained under scene-export-20260912. Zero browser page errors. This completes offline selected-export checks for actor, scenery, terrain and draft paths; external rendered appearance and actual draft spawning/script behavior remain unverified. No game launched or controlled; browser/server stopped. Broad SDK goal remains active.
+
+
 - **2026-09-12 (selected scenery and terrain export acceptance):** Previous turn progressed indac03c4f. Actual Edge selection/export workflow verified map01 decoration cell02656 and the ground surface separately. Each receipt identifies exactly one source instance and one geometry. Khronos validation found zero errors/warnings without truncation; independent glTF-Transform import recovered one root per file and matched freshly decoded full-scene bounds exactly (maximum error0 for both). No implementation changes required. Private environment-receipts.json and environment-consumer.json retain file paths/evidence under scene-export-20260912. This verifies scenery transform and terrain adapter export paths; authored NPC draft export and external rendered appearance remain separate checks. Browser/server stopped; no game launched or controlled. Broad SDK goal active.
 
 
