@@ -21,6 +21,18 @@ def covered_bytes(report, start, length):
 
 
 class ScriptInspectionTests(unittest.TestCase):
+    def test_model_selector_signed_threshold_and_extended_context(self):
+        for value in (0,239,240,255,32767,-1,-32768):
+            for prefix,context in ((bytes([0x4c]),None),(bytes([0xcc,7]),7)):
+                report=inspect_record(prefix+bytes([0x50])+struct.pack('<h',value)+bytes([0x24]),0)
+                row=report['instructions'][0];args=row['operands']
+                self.assertEqual(row['mnemonic'],'SET_ACTOR_MODEL')
+                self.assertEqual(row['target_context'],context)
+                self.assertEqual(args['model_selector_signed'],value)
+                self.assertEqual(args['model_selector_u16'],value & 65535)
+                self.assertEqual(args['high_pool_flag'],value>=240)
+                self.assertEqual(args['asset_binding'],'runtime_pool_bases_unresolved')
+
     def test_move_to_locator_coordinates_and_unknown_height(self):
         for x,z,expected in ((0,0,(64,64)),(0x80,0xff,(128,16384)),(0x18,0x93,(3136,2560))):
             report=inspect_record(bytes([0x23,x,z,0x24]),0)

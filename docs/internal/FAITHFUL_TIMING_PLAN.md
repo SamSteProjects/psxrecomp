@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (script model selector inspection):** Previous turn progressed in87487e0e. Inspected pinned engine-vm/field/step/menu_ctrl/nibble_5_6_7.rs and host.rs op4c_n5_sub0_set_actor_model: 0x4C50 reads signed LE16, compares signed value>=0xF0 for the pool flag, then invokes host model selection whose effective index depends on pool bases. Decoder now exposes signed/u16 selector, high-pool flag and explicit unresolved asset binding/runtime effect. Script operand UI presents these separately from raw metadata; no imported asset is guessed from selector alone. Twenty-five focused script tests passed, including threshold239/240, negative values and extended target context; JS syntax passed. Fresh retail branch and UI visual acceptance were not run for this addition. No game launched or controlled. Source metadata is progress toward appearance diagnosis, not script execution or model authoring; broad SDK goal remains active.
+
+
 - **2026-09-12 (script movement asset discovery):** Previous turn progressed in579d2537. Script resource catalog now retains bounded NPC_RUN/MOVE_TO reference metadata: exact PC/file offset, extended target context, decoded XYZ with unknown Y, parked status when applicable and unevaluated runtime effect. Counts participate in the shared relationship budget. Asset search can find these values; script-resource inspector links directly to the originating instruction. Seven focused catalog tests passed including metadata-only payload checks. Actual Dolk2 Edge refresh found14targets across9scripts; opened actor0002 script from asset search and followed MOVE_TO0x27 X9280/Z10816 to its verified source report, zero page errors. Browser/server stopped; no game launched or controlled. Story execution, opaque script paths and movement authoring remain unverified/unsupported. Broad SDK goal active.
 
 

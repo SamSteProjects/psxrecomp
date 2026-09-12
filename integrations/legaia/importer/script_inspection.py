@@ -441,6 +441,11 @@ def _instruction(data: bytes, pc: int) -> dict:
                               0x54: (1, "DIALOG_ADVANCE_WAIT")}[sub]
             args = {"sub_op": sub}
             need(size)
+            if sub == 0x50:
+                value = struct.unpack_from("<h", data, operand + 1)[0]
+                args.update(model_selector_signed=value, model_selector_u16=value & 0xFFFF,
+                            high_pool_flag=value >= 0xF0, asset_binding="runtime_pool_bases_unresolved",
+                            runtime_effect="not_evaluated")
             if sub == 0x51:
                 x, z, depth, move = data[operand + 1:operand + 5]
                 args.update(x_encoded=x, z_encoded=z, depth_encoded=depth, move_id=move,

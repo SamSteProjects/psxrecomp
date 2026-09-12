@@ -1043,6 +1043,9 @@ function appendScriptOperands(cell,instruction){
     summary.textContent=`${axes}. ${immediate?'Immediate assignment':`Timed movement (${operands.ticks} encoded ticks; interpolation unresolved)`}. Runtime position is not observed.`;
     cell.append(summary);
   }
+  if(instruction.mnemonic==='SET_ACTOR_MODEL'&&Number.isInteger(operands?.model_selector_signed)){
+    const summary=document.createElement('p');summary.textContent=`Model selector ${operands.model_selector_signed} (u16 ${operands.model_selector_u16}). High-pool flag ${operands.high_pool_flag?'set':'clear'}. Runtime pool bases and resolved model asset are unknown; branch execution is not observed.`;cell.append(summary);
+  }
   if(['NPC_RUN','MOVE_TO'].includes(instruction.mnemonic)&&Number.isFinite(operands?.target_position?.x)&&Number.isFinite(operands?.target_position?.z)){
     const target=operands.target_position,summary=document.createElement('p');
     summary.textContent=`${instruction.mnemonic==='MOVE_TO'?'Teleport':'Script'} target X ${target.x}, Z ${target.z}. Y is unresolved.${operands.parked_target?' Parked/off-field target.':''} Branch execution and current actor position are not observed.`;
@@ -1065,7 +1068,7 @@ function appendScriptOperands(cell,instruction){
   }
   const details=document.createElement('details'),label=document.createElement('summary'),raw=document.createElement('pre');
   label.textContent='Encoded operands';raw.textContent=typeof operands==='string'?operands:JSON.stringify(operands??{},null,2);
-  details.open=!['ACTOR_POSITION','DIALOGUE_PICKER','NPC_RUN','MOVE_TO'].includes(instruction.mnemonic);details.append(label,raw);cell.append(details);
+  details.open=!['ACTOR_POSITION','DIALOGUE_PICKER','NPC_RUN','MOVE_TO','SET_ACTOR_MODEL'].includes(instruction.mnemonic);details.append(label,raw);cell.append(details);
 }
 function appendScriptInstructions(host,report){
   host.replaceChildren();host.classList.remove('script-table-wrap');
