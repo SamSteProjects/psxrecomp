@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (selected scenery and terrain export acceptance):** Previous turn progressed indac03c4f. Actual Edge selection/export workflow verified map01 decoration cell02656 and the ground surface separately. Each receipt identifies exactly one source instance and one geometry. Khronos validation found zero errors/warnings without truncation; independent glTF-Transform import recovered one root per file and matched freshly decoded full-scene bounds exactly (maximum error0 for both). No implementation changes required. Private environment-receipts.json and environment-consumer.json retain file paths/evidence under scene-export-20260912. This verifies scenery transform and terrain adapter export paths; authored NPC draft export and external rendered appearance remain separate checks. Browser/server stopped; no game launched or controlled. Broad SDK goal active.
+
+
 - **2026-09-12 (selected scene instance GLB export):** Previous turn progressed in390b09cf. Added Export selected GLB using stable actor/draft/scenery selection, server-side instance lookup and exact geometry pruning after verified scene decoding. Preserves scene placement, authored/retail representation and selected identity in audit; missing, ambiguous or nonrenderable selections reject. Complete-scene export remains separate. Focused synthetic test confirms selected root matrix equals the same instance in full export and leaves input unchanged. Actual map01 browser exported only actor0001/onegeometry, zero page errors. Independent glTF-Transform import found one root and bounds matching freshly decoded full-scene source within0.0001units. Private selected-receipt.json retains output path/audit. No game launched or controlled; rendered consumer and gameplay acceptance remain open. Broad SDK goal active.
 
 
