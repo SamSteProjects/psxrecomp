@@ -65,3 +65,23 @@ def load_worldmap_menu(disc) -> dict:
         cdname=image.read_file(image.find('CDNAME.TXT'))
         result=resolve_menu_destinations(result,mapping,hashlib.sha256(cdname).hexdigest())
     return result
+
+
+def load_worldmap_asset_catalog(disc, scene: str) -> dict:
+    """Expose global menu records through the derived asset database."""
+    from copy import deepcopy
+    report = load_worldmap_menu(disc)
+    assets = []
+    for placement in report['placements']:
+        assets.append({**deepcopy(placement), 'asset_kind': 'worldmap', 'kind': 'worldmap',
+                       'scope': 'global-worldmap-menu',
+                       'name': f"{placement['name'] or 'Unresolved landmark'} · record {placement['record_index']:02d}",
+                       'source_record': deepcopy(report['source_record']),
+                       'destination_label_source': deepcopy(report['destination_label_source']),
+                       'reference_commit': report['reference_commit'], 'reference_path': report['reference_path'],
+                       'runtime_state': 'not_observed'})
+    result = {'schema_version': 'legaia.worldmap-asset-catalog.v1', 'assets': assets,
+              'scope': 'global-worldmap-menu', 'metadata_only': True,
+              'limitations': deepcopy(report['limitations'])}
+    validate_metadata_only(result)
+    return result
