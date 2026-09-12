@@ -172,6 +172,8 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir) -> dict:
+    if any('ScriptMovement' in components for components in project.overrides.values()):
+        raise BuildError('Script movement edits are not yet connected to playable Build; clear them before building')
     if getattr(project, 'actor_drafts', {}):
         raise BuildError('New NPC drafts are not yet connected to playable Build; remove drafts before building existing overrides')
     if not project.disc_path:

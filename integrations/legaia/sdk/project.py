@@ -491,6 +491,39 @@ class ProjectService:
                 raise ProjectError("Environment MAP changed during source verification")
             return data
 
+    def _validate_movements(self, identifier: str, value: dict) -> None:
+        import re
+        from importer.core import ImportError
+        from importer.movement_authoring import validate_movement_values
+        self._dialogue_document(identifier)
+        if (not isinstance(value, dict) or set(value) != {"entries"} or
+                not isinstance(value["entries"], dict) or not 1 <= len(value["entries"]) <= 1024):
+            raise ProjectError("ScriptMovement requires a bounded nonempty entry collection")
+        prefix = "script://" + identifier.removeprefix("scene://") + "/movement/"
+        for key, fields in value["entries"].items():
+            if not isinstance(key, str) or re.fullmatch(re.escape(prefix) + r"[0-9a-f]{4}", key) is None:
+                raise ProjectError("Movement must belong to its source owner")
+            try:
+                validate_movement_values(fields)
+            except ImportError as error:
+                raise ProjectError(str(error)) from error
+
+    def _movement_context(self, identifier: str):
+        from importer.movement_authoring import MovementAuthoringContext
+        return MovementAuthoringContext(self._dialogue_context(identifier))
+
+    def movement_options(self, identifier: str) -> dict:
+        result = self._movement_context(identifier).options(identifier)
+        authored = self.overrides.get(identifier, {}).get("ScriptMovement", {}).get("entries", {})
+        known = set()
+        for entry in result["targets"]:
+            key = entry["semantic_id"]
+            known.add(key)
+            entry["authored_values"] = deepcopy(authored.get(key, {}))
+            entry["effective_values"] = dict(entry["values"], **authored.get(key, {}))
+        result["unresolved_overrides"] = sorted(set(authored) - known)
+        return result
+
     def _validate_transitions(self, identifier: str, value: dict) -> None:
         import re
         from importer.transition_authoring import ENTRY_FIELDS
@@ -830,6 +863,32 @@ class ProjectService:
             values = encode_transition_arrival(command.get("arrival"), entry["effective_values"])
             self.command({"type": "set_transition_entry", "entity_id": identifier,
                           "transition_id": key, "values": values})
+            return
+        if command.get("type") in ("set_movement_target", "clear_movement_target"):
+            identifier, key = command.get("entity_id"), command.get("movement_id")
+            # Clear also checks owner syntax, but remains possible offline.
+            self._validate_movements(identifier, {"entries": {key: {"x": 64}}})
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            entries = deepcopy(after.get("ScriptMovement", {}).get("entries", {}))
+            if command["type"] == "set_movement_target":
+                entries[key] = deepcopy(command.get("values"))
+                self._validate_movements(identifier, {"entries": entries})
+                self._movement_context(identifier).patch(entries)
+            else:
+                entries.pop(key, None)
+            if entries:
+                after["ScriptMovement"] = {"entries": entries}
+            else:
+                after.pop("ScriptMovement", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
             return
         if command.get("type") in ("set_transition_entry", "clear_transition_entry"):
             identifier, key = command.get("entity_id"), command.get("transition_id")
@@ -1184,7 +1243,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "Environment", "AnimationChannels", "Collision"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "ScriptMovement", "Environment", "AnimationChannels", "Collision"}:
                 raise ProjectError("Unsupported authored component")
             if "Collision" in components:
                 result._validate_collision(identifier, components["Collision"])
@@ -1211,6 +1270,9 @@ class ProjectService:
             if "Transitions" in components:
                 result._validate_transitions(identifier, components["Transitions"])
                 result.overrides.setdefault(identifier, {})["Transitions"] = deepcopy(components["Transitions"])
+            if "ScriptMovement" in components:
+                result._validate_movements(identifier, components["ScriptMovement"])
+                result.overrides.setdefault(identifier, {})["ScriptMovement"] = deepcopy(components["ScriptMovement"])
         drafts = raw.get('actor_drafts', {})
         if not isinstance(drafts,dict) or len(drafts)>128:
             raise ProjectError('Invalid actor draft collection')
@@ -1287,6 +1349,9 @@ class ProjectService:
                 entries = edits.get("Transitions", {}).get("entries", {})
                 if entries:
                     changes.append(f"Transitions: {len(entries)} entries")
+                movement = edits.get("ScriptMovement", {}).get("entries", {})
+                if movement:
+                    changes.append(f"Movement: {len(movement)} targets")
                 records.append({"id": identifier, "kind": "actor", "name": "Actor " + identifier.rsplit("/", 1)[-1],
                                 "scene_id": scene_id, "source_scene": document["scene"]["name"],
                                 "changes": changes, "authored": deepcopy(edits),
@@ -1298,6 +1363,9 @@ class ProjectService:
             runs = edits.get("Dialogue", {}).get("runs", {})
             entries = edits.get("Transitions", {}).get("entries", {})
             changes = ([f"Dialogue: {len(runs)} text runs"] if runs else []) + ([f"Transitions: {len(entries)} entries"] if entries else [])
+            movement = edits.get("ScriptMovement", {}).get("entries", {})
+            if movement:
+                changes.append(f"Movement: {len(movement)} targets")
             if changes:
                 records.append({"id": identifier, "kind": "script",
                                 "name": "Partition 2 script " + str(int(identifier.rsplit("/", 1)[-1])),

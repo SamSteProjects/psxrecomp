@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Script movement project commands and persistence
+
+- Added a separate ScriptMovement component with set_movement_target / clear_movement_target commands, immutable retail/authored/effective target layers, undo/redo, offline schema validation and save/reopen. Source owner/PC membership and serializer constraints are freshly checked before applying edits; clearing remains possible offline. Actor and partition-2 authored asset summaries now include movement targets.
+- Playable Build explicitly rejects this component while composition support is pending, preventing silent omission. Editor controls, HTTP report integration, composed MAN packaging and appended-record handling remain outstanding.
+-14 focused project/movement/transition/workflow tests passed. Fresh isolated Dolk2 project changed actor0002 PC0x27 X9280->9344 while retaining imported X9280 and Z10816; Undo/Redo, save/reopen, Clear/Undo and unchanged imported metadata passed. Build returned the explicit pending-integration error without generating a package.
+- Private saved project and evidence: `local-output/sdk-20260909/movement-project-20260912/{project.legaia.json,project-check.json}`. Existing review projects and game builds were untouched; no game launched. Diff checks passed. Full SDK goal remains incomplete.
+
+
 ### 2026-09-12 — Bounded script movement authoring foundation
 
 - Added `importer/movement_authoring.py`: verified MAN owner/PC identities, immutable context, target options and atomic exact-byte X/Z patch audits for decoded MOVE_TO and NPC_RUN. Uses the existing exact retail placement-grid encoder; does not change instruction lengths, control flow, extended context, depth/move operands or Y. Unknown/conflicting stops, aliased owners, foreign IDs, nonrepresentable coordinates and mismatched baselines reject authoring.
