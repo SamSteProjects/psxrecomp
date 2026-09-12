@@ -326,6 +326,48 @@ class ProjectService:
         proposed[identifier] = value
         catalog.authored_bank(proposed)
 
+    def animation_record_source(self, identifier: str) -> tuple[bytes, dict]:
+        """Return a freshly verified private source record and its binding."""
+        from importer.pipeline import _disc_context
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        if not self.disc_path:
+            raise ProjectError('Animation source requires the project user-owned disc')
+        with _disc_context(self.disc_path):
+            options = self.animation_authoring_options(identifier)
+            binding = options['binding']
+            document = next(doc for doc in self.imports.values()
+                            if any(a['semantic_id'] == identifier for a in doc['actors']))
+            catalog = load_scene_actor_animation_catalog(self.disc_path, document['scene']['name'])
+            asset = next(a for a in document['assets']['models'] if a['semantic_id'] == binding['asset_semantic_id'])
+            source, _ = catalog.authored_animation_record(self._actor(identifier), asset, [], binding['source_record']['record_sha256'])
+            return source, deepcopy(binding)
+
+    def import_animation_record(self, identifier: str, content: bytes) -> dict:
+        """Replace this actor's clip contribution using validated source channels."""
+        from importer.animation_authoring import replace_animation_record
+        if self.mode != 'edit':
+            raise ProjectError('Animation record import requires Edit mode')
+        if not isinstance(content, bytes) or not 1 <= len(content) <= 4 * 1024 * 1024:
+            raise ProjectError('Animation record import requires at most 4 MiB of bytes')
+        source, binding = self.animation_record_source(identifier)
+        _, audit = replace_animation_record(source, binding['source_record']['record_sha256'], content)
+        edits = {}
+        for row in audit:
+            key = (row['frame_index'], row['object_index'])
+            edit = edits.setdefault(key, {'frame_index': key[0], 'object_index': key[1]})
+            field, axis = row['field'].split('.')
+            edit.setdefault(field, {})[axis] = row['after_value']
+        if edits:
+            self.command({'type': 'set_animation_channels', 'entity_id': identifier,
+                          'value': {'animation_id': binding['semantic_id'],
+                                    'source_record_sha256': binding['source_record']['record_sha256'],
+                                    'edits': list(edits.values())}})
+        else:
+            self.command({'type': 'clear_animation_channels', 'entity_id': identifier})
+        return {'animation_id': binding['semantic_id'], 'changed_axes': len(audit),
+                'changed_channels': len(edits), 'scope': 'actor_channel_contribution',
+                'shared_clip_users': 'Other contributors remain unchanged; conflicts reject the import.'}
+
     def animation_channel_values(self, identifier: str, frame_index: int, object_index: int) -> dict:
         from importer.scene_animation import load_scene_actor_animation_catalog
         options = self.animation_authoring_options(identifier)

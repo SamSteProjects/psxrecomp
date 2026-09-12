@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Project animation record import
+
+- Previous turn added a validated record serializer and repaired regressions. ProjectService now exposes a freshly verified private source record and imports equal-layout replacement channels through existing set/clear animation commands. Import replaces the selected actor's contribution only; other components/contributors survive, conflicts retain server rejection, and a retail-identical record clears that actor's contribution.
+- Actual town01 actor0011 record import changed frame2/object0 translationX200/rotationY64, retained through Undo/Redo and Save/Open, rejected opaque-bit alteration without state mutation, and passed retail-clear/Undo restoration. Private source/replacement files and workflow-check.json are under local-output/sdk-20260909/animation-record-project-20260912. Six serializer tests passed with one retail opt-in skipped; whitespace check passed.
+- HTTP download/upload and editor file controls are still pending; this service integration is not yet a complete UI workflow. No game launched. Full objective active; gameplay deferred.
+
+
 ### 2026-09-12 — Animation record replacement foundation and regression repairs
 
 - Previous turn was a verified wait. Existing full discovery process62507 reached terminal exit1:347 tests in136.836 seconds, two package-description qualification failures. Restored dialogue glyph-only/no-control-relocation and texture no-resource-relocation statements with explicit family scope. Eight affected retail-enabled build tests passed in18.350 seconds. Full-suite green has not been re-established after these repairs; retain exact distinction in status.
