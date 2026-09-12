@@ -6,12 +6,23 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from sdk.build import authored_state_key, build_report
+from sdk.build import authored_state_key, build_report, package_change_kinds
 from sdk.project import ProjectService
 from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class BuildReportTests(unittest.TestCase):
+    def test_package_content_summary_keeps_all_emitted_families(self):
+        edits=[{'scope':'shared-scene-animation-record'}, {'scope':'source-MAP-wall-bit-only'},
+               {'scope':'TMD-vertex-normal-XYZ-only'}, {'scope':'script-movement-target-only'},
+               {'scope':'shared-scene-animation-record'}]
+        expected=['animation channels','model shapes','script movement targets','source collision walls']
+        self.assertEqual(package_change_kinds(edits),expected)
+        self.assertEqual(package_change_kinds(list(reversed(edits))),expected)
+        self.assertEqual(package_change_kinds([]),[])
+        self.assertEqual(package_change_kinds([{'scope':'unknown'}]),['other audited scene data'])
+        self.assertEqual(package_change_kinds([{}]),['actor positions'])
+
     def test_snapshot_tracks_build_inputs_but_not_selection_or_templates(self):
         with tempfile.TemporaryDirectory() as raw:
             project = ProjectService(Path(raw))

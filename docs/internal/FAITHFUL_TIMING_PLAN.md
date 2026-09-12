@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Complete package content descriptions
+
+- Previous turn made verified retail/build progress. Package descriptions now enumerate unique emitted audit families rather than allowing the last family-specific label to hide mixed content. Animation-only, collision-only and mixed packages use Authored scene data. Existing internal feature IDs and single-placement labels remain compatible; unknown scopes are explicitly other audited scene data.
+- Five build-report tests passed, covering mixed animation/model/movement/collision content, deterministic order, duplicate elimination, empty baselines and unknown scope handling. Actual retail model workflow rebuilt to a separate ContentSummaryBuild directory; reopened ZIP manifest confirms model shapes in both package and feature descriptions. Earlier outputs preserved.
+- No game launched. Manual gameplay and the full SDK goal remain deferred/active respectively; this does not complete broader asset authoring.
+
+
 ### 2026-09-12 — Retail OBJ coverage and model package labeling
 
 - Previous turn made serializer progress. All119 town01 retail models passed equivalent reordered/cyclic/relative-index OBJ exact roundtrip, then a one-unit vertex X edit with exactly one audited coordinate and all other bytes unchanged. Private report: local-output/sdk-20260909/obj-equivalent-retail-20260912/report.json.

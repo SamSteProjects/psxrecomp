@@ -39,6 +39,24 @@ def authored_state_key(project) -> str:
                                 "models": getattr(project, "model_overrides", {})}).encode("utf-8"))
 
 
+def package_change_kinds(edits) -> list[str]:
+    """Describe emitted audit scopes, without inferring unexecuted game behavior."""
+    labels = {
+        'initial-man-placement-only': 'actor positions',
+        'initial-man-header-only': 'actor appearance and positions',
+        'inline-mes-glyph-run-only': 'dialogue text',
+        'TIM-image-and-palette-payload-only': 'textures',
+        'shared-MAP-transform-only': 'shared scenery transforms',
+        'instance-MAP-transform-only': 'individual decoration transforms',
+        'encoded-transition-entry-only': 'transition entries',
+        'script-movement-target-only': 'script movement targets',
+        'TMD-vertex-normal-XYZ-only': 'model shapes',
+        'source-MAP-wall-bit-only': 'source collision walls',
+        'shared-scene-animation-record': 'animation channels',
+    }
+    return sorted({labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data') for edit in edits})
+
+
 def build_report(audit) -> dict:
     """Present only audited changes that actually entered the emitted package."""
     changes = []
@@ -649,6 +667,13 @@ def _build_project(project, output_dir) -> dict:
         feature_name = 'Authored scene data'
         description = 'Private source-bound model shapes and optional authored scene data.'
         feature_description = 'Apply verified model coordinate edits and other packaged overrides; model topology and materials remain source-owned.'
+    change_kinds = package_change_kinds(audit_edits)
+    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('animation channels', 'source collision walls', 'other audited scene data')):
+        package_suffix = ' authored scene data'
+        feature_name = 'Authored scene data'
+    if change_kinds:
+        description = 'Private source-bound edits: ' + ', '.join(change_kinds) + '.'
+        feature_description = 'Apply packaged edits: ' + ', '.join(change_kinds) + '. Gameplay remains unverified.'
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix)}",
