@@ -55,12 +55,21 @@ function renderObservedNodes(query='',nodeIds=null){
 };
 
 let scenePose=null;
-let scriptTargetOverlay=null;
+let scriptTargetOverlay=null,scriptTargetHits=[],pickScriptTargets=false;
 const scriptTargetTools=document.createElement('div');scriptTargetTools.id='script-target-tools';scriptTargetTools.hidden=true;
-scriptTargetTools.innerHTML='<span role="status"></span><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
+scriptTargetTools.innerHTML='<span role="status"></span><select aria-label="Script target instruction"></select><button type="button" data-inspect>Inspect target</button><button type="button" data-pick aria-pressed="false">Pick script target</button><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
 $('viewport-wrap').before(scriptTargetTools);
 scriptTargetTools.querySelector('[data-clear]').onclick=()=>{scriptTargetOverlay=null;draw();};
 scriptTargetTools.querySelector('[data-frame]').onclick=()=>frameScriptTargets();
+scriptTargetTools.querySelector('[data-inspect]').onclick=()=>inspectScriptTarget(Number(scriptTargetTools.querySelector('select').value));
+scriptTargetTools.querySelector('[data-pick]').onclick=()=>{cancelViewportGesture();pickScriptTargets=!pickScriptTargets;draw();};
+async function inspectScriptTarget(pc){
+  const overlay=currentScriptTargets();if(busy||!overlay||!overlay.targets.some(target=>target.pc===pc))return;
+  const id=overlay.identity.replace(/^script:\/\//,'scene://');
+  const owner=id.includes('/scripts/man-p2/')?{id,name:overlay.identity,partitionTwo:true}:entities().find(entity=>entity.id===id);
+  if(!owner){notify('The source script owner is unavailable. Reopen its script report.',true);return;}
+  cancelViewportGesture();await openActorScript(owner,false,null,null,pc);
+}
 function currentScriptTargets(){
   if(scriptTargetOverlay&&scriptTargetOverlay.key!==resourceStateKey())scriptTargetOverlay=null;
   return scriptTargetOverlay;
@@ -73,12 +82,17 @@ function frameScriptTargets(){
   camera.distance=Math.max(800,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
 }
 function drawScriptTargets(){
-  const overlay=currentScriptTargets();scriptTargetTools.hidden=!overlay;if(!overlay)return;
+  scriptTargetHits=[];
+  const overlay=currentScriptTargets();scriptTargetTools.hidden=!overlay;
+  if(!overlay)pickScriptTargets=false;
+  scriptTargetTools.querySelector('[data-pick]').setAttribute('aria-pressed',String(pickScriptTargets));
+  if(!overlay)return;
   scriptTargetTools.querySelector('[role="status"]').textContent=`${overlay.identity} · ${overlay.targets.length} decoded targets · reference Y ${overlay.height} · ${overlay.partial?'partial paths':'inspected paths'} · execution unknown`;
   const labels=[],markerPoints=overlay.targets.map(target=>project(displayPosition({...target.position,y:overlay.height}))).filter(Boolean);let hiddenLabels=0;
   ctx.save();ctx.strokeStyle='#e9abff';ctx.fillStyle='#e9abff';ctx.lineWidth=2;ctx.font='11px "Segoe UI",sans-serif';
   for(const target of overlay.targets){
     const p=project(displayPosition({...target.position,y:overlay.height}));if(!p)continue;
+    const hit={pc:target.pc,x:p.x,y:p.y};scriptTargetHits.push(hit);
     ctx.strokeRect(p.x-6,p.y-6,12,12);
     const context=target.context===null||target.context===undefined?'':` · context ${target.context} unresolved`;
     const title=`${scriptOffset(target.pc)} ${target.mnemonic}${target.parked?' · parked':''}${context}`,coordinates=`X ${target.position.x} · Z ${target.position.z}`;
@@ -89,6 +103,7 @@ function drawScriptTargets(){
       if(box.y>=0&&box.y+box.h<=height&&!markerPoints.some(marker=>marker.x+8>box.x&&marker.x-8<box.x+box.w&&marker.y+8>box.y&&marker.y-8<box.y+box.h)&&!labels.some(other=>box.x<other.x+other.w&&box.x+box.w>other.x&&box.y<other.y+other.h&&box.y+box.h>other.y)){fits=true;break;}
     }
     if(!fits){hiddenLabels++;continue;}
+    hit.label={...box};
     labels.push(box);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(box.x,box.y+box.h/2);ctx.stroke();ctx.lineWidth=2;
     ctx.fillStyle='#101b20ed';ctx.fillRect(box.x,box.y,box.w,box.h);ctx.fillStyle='#e9abff';
     ctx.fillText(title,box.x+4,box.y+12);ctx.fillText(coordinates,box.x+4,box.y+27);
@@ -1135,6 +1150,8 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
     show.onclick=()=>{
       if(busy||key!==resourceStateKey()||!height.reportValidity()||!height.value.trim()||!numeric(Number(height.value)))return;
       scriptTargetOverlay={key,identity,targets,height:Number(height.value),partial:report.status==='partial'};
+      const targetSelect=scriptTargetTools.querySelector('select');targetSelect.replaceChildren();
+      for(const target of targets){const option=document.createElement('option');option.value=target.pc;option.textContent=`${scriptOffset(target.pc)} ${target.mnemonic} · X ${target.position.x}, Z ${target.position.z}`;targetSelect.append(option);}
       host.closest('dialog')?.close();frameScriptTargets();
     };
     tools.append(label,show,note);navigation.prepend(tools);
@@ -2021,7 +2038,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewp
 canvas.addEventListener('pointerdown',event=>{
   pendingEntityFrame=null;
   if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus();canvas.setPointerCapture(event.pointerId);
-  const handle=event.button===0 && entity && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
+  const handle=event.button===0 && !pickScriptTargets && entity && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
   drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,type:handle?'transform':event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:entity?position(entity):null,snapStep:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
   if(handle&&state.actor_drafts?.[entity?.id])drag.snapStep=64;
@@ -2045,6 +2062,13 @@ canvas.addEventListener('pointerup',async event=>{
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(state.actor_drafts?.[finished.entity])await api('/api/command',{type:'set_actor_draft_position',entity_id:finished.entity,position:{...state.actor_drafts[finished.entity].position,[axis]:edit.position[axis]}});else if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
   else if(!finished.moved && event.button===0){
+    if(pickScriptTargets&&currentScriptTargets()&&finished.context===resourceStateKey()){
+      const hits=scriptTargetHits.filter(hit=>Math.hypot(hit.x-p.x,hit.y-p.y)<10||(hit.label&&p.x>=hit.label.x&&p.x<=hit.label.x+hit.label.w&&p.y>=hit.label.y&&p.y<=hit.label.y+hit.label.h));
+      if(hits.length===1){scriptTargetTools.querySelector('select').value=hits[0].pc;await inspectScriptTarget(hits[0].pc);}
+      else if(hits.length>1){notify('Several script targets overlap here. Choose an instruction in the target selector.');scriptTargetTools.querySelector('select').focus();}
+      else notify('No script target at this point');
+      draw();return;
+    }
     if((event.altKey||pickRuntimeNodes)&&showObservedNodes&&state.project?.mode==='live'){
       const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation;
       if(epoch&&correlation?.available===true&&correlation.epoch_id===epoch){

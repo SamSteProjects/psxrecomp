@@ -100,3 +100,10 @@ targets and unresolved actor contexts remain explicit. Markers do not change the
 project, prove branch execution, or represent current NPC positions. Changes to
 the project/scene source invalidate the overlay. At most 256 targets are shown;
 larger reports retain individual instruction locators.
+
+Choose an instruction in the overlay toolbar and click **Inspect target** to
+reopen its verified source report at that offset. Alternatively enable **Pick
+script target** and click a marker or its label. Dragging still controls the
+camera, but actor transform handles are inactive in this picking mode. If targets
+overlap, choose the instruction explicitly from the selector. Clear removes the
+overlay and restores ordinary viewport selection.

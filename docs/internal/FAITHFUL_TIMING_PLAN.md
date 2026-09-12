@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Viewport target to source instruction navigation
+
+- Added a source-instruction selector and explicit Pick script target mode to the movement overlay. Marker or visible-label picking reopens the verified actor or partition-2 script report at that exact PC. Normal mesh selection remains the default; transform handles are disabled while explicitly picking script targets.
+- Overlapping hit candidates require an explicit selector choice; no first-match actor identity is inferred. Source invalidation clears hit regions and picking mode. Missing source owners and stale overlays cannot navigate.
+- Retail browser checks: Dolk2 actor0002 marker -> actor-script PC0x27; selector -> PC0x30; partition-2 script0007 marker -> partition-two-script PC0x36. The selected row and retained unresolved target248 were visually inspected. Overlay and instruction-dialog screenshots retained privately.
+- An isolated browser overlay fixture moved two markers to the same point: the editor refused automatic navigation and prompted selector use. A source-key invalidation fixture cleared all hits and pick mode. The complete workflow issued zero authored commands and zero page errors. JavaScript syntax and diff checks passed.
+- Evidence: `local-output/sdk-20260909/script-target-navigation-20260912/{check.cjs,browser-check.json,browser-top.png,browser-partition-two.png,source-instruction.png}`. Only the temporary editor server and browser were used; no game launch, runtime execution claim or gameplay acceptance. Full SDK work remains incomplete.
+
+
 ### 2026-09-12 — Script movement targets in the scene workspace
 
 - Added camera-only overlays from decoded MOVE_TO / NPC_RUN instructions in actor and partition-2 script views. An explicit reference Y is required; source X/Z, record PC, parked status and unresolved extended actor contexts are retained. No route or branch execution is inferred.
