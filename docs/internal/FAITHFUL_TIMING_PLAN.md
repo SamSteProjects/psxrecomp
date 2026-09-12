@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Consolidated SDK status and package qualification regression
+
+- Previous turn made verified clipboard progress. Added docs/SDK_STATUS.md as a consolidated review entry point covering offline capabilities, evidence limits, deferred gameplay and major unfinished features. Full objective remains active and offline work is not exhausted.
+- Focused retail-enabled build/report/OBJ/animation regression initially found one missing package qualification: generalized content summaries omitted scripts may override appearance. Restored that statement for initial actor appearance and removed redundant position wording from the appearance category.
+- Rerun passed all19 tests in9.634 seconds; private log local-output/sdk-20260909/recent-authoring-regression-fixed-20260912.log. No game launched. This recent subset does not replace the earlier344-test full-suite checkpoint or deferred gameplay acceptance.
+
+
 ### 2026-09-12 — Animation clipboard request-state guards
 
 - Previous turn completed effective-copy acceptance. Clipboard buttons now visibly disable while channel values are loading or selection is invalid, matching existing verification guards.

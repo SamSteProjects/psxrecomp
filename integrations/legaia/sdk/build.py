@@ -43,7 +43,7 @@ def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
         'initial-man-placement-only': 'actor positions',
-        'initial-man-header-only': 'actor appearance and positions',
+        'initial-man-header-only': 'initial actor appearance',
         'inline-mes-glyph-run-only': 'dialogue text',
         'TIM-image-and-palette-payload-only': 'textures',
         'shared-MAP-transform-only': 'shared scenery transforms',
@@ -674,6 +674,8 @@ def _build_project(project, output_dir) -> dict:
     if change_kinds:
         description = 'Private source-bound edits: ' + ', '.join(change_kinds) + '.'
         feature_description = 'Apply packaged edits: ' + ', '.join(change_kinds) + '. Gameplay remains unverified.'
+        if has_appearance:
+            feature_description += ' Initial assignments only; scripts may override appearance.'
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix)}",
