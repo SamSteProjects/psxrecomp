@@ -55,6 +55,47 @@ function renderObservedNodes(query='',nodeIds=null){
 };
 
 let scenePose=null;
+let scriptTargetOverlay=null;
+const scriptTargetTools=document.createElement('div');scriptTargetTools.id='script-target-tools';scriptTargetTools.hidden=true;
+scriptTargetTools.innerHTML='<span role="status"></span><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
+$('viewport-wrap').before(scriptTargetTools);
+scriptTargetTools.querySelector('[data-clear]').onclick=()=>{scriptTargetOverlay=null;draw();};
+scriptTargetTools.querySelector('[data-frame]').onclick=()=>frameScriptTargets();
+function currentScriptTargets(){
+  if(scriptTargetOverlay&&scriptTargetOverlay.key!==resourceStateKey())scriptTargetOverlay=null;
+  return scriptTargetOverlay;
+}
+function frameScriptTargets(){
+  const overlay=currentScriptTargets();if(!overlay||busy)return;
+  cancelViewportGesture();
+  const points=overlay.targets.map(target=>displayPosition({...target.position,y:overlay.height}));
+  const min={},max={};for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}
+  camera.distance=Math.max(800,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
+}
+function drawScriptTargets(){
+  const overlay=currentScriptTargets();scriptTargetTools.hidden=!overlay;if(!overlay)return;
+  scriptTargetTools.querySelector('[role="status"]').textContent=`${overlay.identity} · ${overlay.targets.length} decoded targets · reference Y ${overlay.height} · ${overlay.partial?'partial paths':'inspected paths'} · execution unknown`;
+  const labels=[],markerPoints=overlay.targets.map(target=>project(displayPosition({...target.position,y:overlay.height}))).filter(Boolean);let hiddenLabels=0;
+  ctx.save();ctx.strokeStyle='#e9abff';ctx.fillStyle='#e9abff';ctx.lineWidth=2;ctx.font='11px "Segoe UI",sans-serif';
+  for(const target of overlay.targets){
+    const p=project(displayPosition({...target.position,y:overlay.height}));if(!p)continue;
+    ctx.strokeRect(p.x-6,p.y-6,12,12);
+    const context=target.context===null||target.context===undefined?'':` · context ${target.context} unresolved`;
+    const title=`${scriptOffset(target.pc)} ${target.mnemonic}${target.parked?' · parked':''}${context}`,coordinates=`X ${target.position.x} · Z ${target.position.z}`;
+    const box={x:Math.max(4,Math.min(p.x+10,width-ctx.measureText(title).width-12)),y:p.y-21,w:Math.max(ctx.measureText(title).width,ctx.measureText(coordinates).width)+8,h:32};
+    let fits=false;
+    for(let attempt=0;attempt<32;attempt++){
+      box.y=p.y-21+(attempt===0?0:(attempt%2?1:-1)*Math.ceil(attempt/2)*36);
+      if(box.y>=0&&box.y+box.h<=height&&!markerPoints.some(marker=>marker.x+8>box.x&&marker.x-8<box.x+box.w&&marker.y+8>box.y&&marker.y-8<box.y+box.h)&&!labels.some(other=>box.x<other.x+other.w&&box.x+box.w>other.x&&box.y<other.y+other.h&&box.y+box.h>other.y)){fits=true;break;}
+    }
+    if(!fits){hiddenLabels++;continue;}
+    labels.push(box);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(box.x,box.y+box.h/2);ctx.stroke();ctx.lineWidth=2;
+    ctx.fillStyle='#101b20ed';ctx.fillRect(box.x,box.y,box.w,box.h);ctx.fillStyle='#e9abff';
+    ctx.fillText(title,box.x+4,box.y+12);ctx.fillText(coordinates,box.x+4,box.y+27);
+  }
+  ctx.restore();
+  if(hiddenLabels)scriptTargetTools.querySelector('[role="status"]').textContent+=` · ${hiddenLabels} labels hidden at this zoom`;
+}
 let coordinateProbe=null,locateSample=null,locateGeneration=0;
 const locateButton=document.createElement('button');locateButton.textContent='Locate coordinates';$('frame-selected').after(locateButton);
 const locateDialog=document.createElement('dialog');locateDialog.className='project-dialog';locateDialog.innerHTML='<form><h2>Locate guest coordinates</h2><p>Place a reference marker using game coordinates. This changes only the editor camera.</p><label>X <input name="x" type="number" step="any" required></label><label>Y <input name="y" type="number" step="any" required value="0"></label><label>Z <input name="z" type="number" step="any" required></label><button type="button" data-surface>Use source surface height</button><p data-surface-status role="status"></p><button type="submit">Locate</button><button type="button" data-clear>Clear marker</button><button type="button" data-close>Cancel</button></form>';document.body.append(locateDialog);
@@ -1070,7 +1111,7 @@ function appendScriptOperands(cell,instruction){
   label.textContent='Encoded operands';raw.textContent=typeof operands==='string'?operands:JSON.stringify(operands??{},null,2);
   details.open=!['ACTOR_POSITION','DIALOGUE_PICKER','NPC_RUN','MOVE_TO','SET_ACTOR_MODEL'].includes(instruction.mnemonic);details.append(label,raw);cell.append(details);
 }
-function appendScriptInstructions(host,report){
+function appendScriptInstructions(host,report,identity=report.semantic_id??report.script_id??'Inspected script'){
   host.replaceChildren();host.classList.remove('script-table-wrap');
   const messages=(report.dialogues??[]).map(message=>({pc:message.pc,mnemonic:'DIALOGUE_SEGMENT',operands:{text:message.text},
     successors:[{pc:message.pc+message.length,condition:'encoded_continuation'}]}));
@@ -1081,6 +1122,23 @@ function appendScriptInstructions(host,report){
   const status=document.createElement('p');status.className='field-note';status.setAttribute('role','status');status.textContent='Follow decoded successors or select an offset. These links do not simulate execution.';
   const predecessors=document.createElement('div');predecessors.className='script-predecessors';
   navigation.append(back,status,predecessors);host.append(navigation);
+  const targets=instructions.filter(row=>['MOVE_TO','NPC_RUN'].includes(row.mnemonic)&&
+    row.operands?.coordinate_system==='retail_field_world_units'&&numeric(row.operands?.target_position?.x)&&numeric(row.operands?.target_position?.z))
+    .map(row=>({pc:row.pc,mnemonic:row.mnemonic,position:{...row.operands.target_position},context:row.target_context,parked:!!row.operands.parked_target}));
+  if(targets.length){
+    const tools=document.createElement('div');tools.className='script-target-controls';
+    const label=document.createElement('label');label.textContent='Reference Y ';
+    const height=document.createElement('input');height.type='number';height.step='any';height.min='-1000000000';height.max='1000000000';height.required=true;height.setAttribute('aria-label','Script targets reference Y');height.placeholder='Script height is unknown';label.append(height);
+    const show=document.createElement('button');show.type='button';show.className='script-show-targets';show.textContent=`Show ${targets.length} targets in scene`;show.disabled=targets.length>256;
+    const note=document.createElement('p');note.className='field-note';note.textContent=targets.length>256?'This report exceeds the 256-marker overlay limit. Locate individual instructions instead.':'All markers use your reference Y. No movement path, current actor position or executed branch is inferred; parked targets remain included.';
+    const key=resourceStateKey();
+    show.onclick=()=>{
+      if(busy||key!==resourceStateKey()||!height.reportValidity()||!height.value.trim()||!numeric(Number(height.value)))return;
+      scriptTargetOverlay={key,identity,targets,height:Number(height.value),partial:report.status==='partial'};
+      host.closest('dialog')?.close();frameScriptTargets();
+    };
+    tools.append(label,show,note);navigation.prepend(tools);
+  }
   for(const instruction of instructions)for(const next of instruction.successors??[]){
     if(!incoming.has(next.pc))incoming.set(next.pc,new Set());incoming.get(next.pc).add(instruction.pc);
   }
@@ -1141,7 +1199,7 @@ function renderTriggerScript(result,report){
   for(const limit of result.limitations ?? []){const line=document.createElement('p');line.className='field-note';line.textContent=typeof limit==='string'?limit:JSON.stringify(limit);warnings.append(line);}
   const dialogues=$('trigger-script-dialogues');if(!report.dialogues.length)dialogues.textContent='No dialogue was decoded in these paths.';
   for(const dialogue of report.dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length ?? 'Unknown')} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text;card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);dialogues.append(card);}
-  appendScriptInstructions($('trigger-script-instructions'),report);
+  appendScriptInstructions($('trigger-script-instructions'),report,result.script_id);
   host.querySelector('.script-raw pre').textContent=JSON.stringify(result,null,2);
 }
 function drawFieldMap(){
@@ -1931,7 +1989,7 @@ function draw(){
       if(canEdit()&&sceneRepresentation==='authored'){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
-  drawEnvironmentSelection();drawCoordinateProbe();
+  drawEnvironmentSelection();drawCoordinateProbe();drawScriptTargets();
   const scenery=selectedEnvironment(),movable=movableSelection();
   if((scenery||selectedNpcDraft())&&movable&&canEdit()){
     const world=draft?.id===movable.id?draft.position:position(movable),p=project(world),length=camera.distance*.085;

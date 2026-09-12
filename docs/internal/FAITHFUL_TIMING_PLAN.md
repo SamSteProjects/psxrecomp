@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Script movement targets in the scene workspace
+
+- Added camera-only overlays from decoded MOVE_TO / NPC_RUN instructions in actor and partition-2 script views. An explicit reference Y is required; source X/Z, record PC, parked status and unresolved extended actor contexts are retained. No route or branch execution is inferred.
+- Frame/Clear controls, source-key invalidation, 256-target budget and collision-aware screen labels keep the overlay separate from authored transforms and live observations. Partial reports remain labeled partial. Labels that cannot fit remain counted as hidden; markers remain available at the current zoom.
+- Retail browser acceptance: Dolk2 actor0002's three MOVE_TO targets at PCs0x27/0x30/0x39 rendered at X/Z9280/10816,8640/11200,8384/10304. Blank Y rejected. Clear and framing passed. Partition-2 script0007 opened through the production editor function in a test harness, retaining four contexts65/75/66/248 and converting reference Y=-128 to display Y=128. Source-key invalidation fixture removed the overlay. No authored commands or browser page errors.
+- Final top-down actor/partition-2 screenshots inspected; close labels no longer overlap each other or target markers. Private evidence: `local-output/sdk-20260909/script-target-overlay-20260912/{check.cjs,browser-check.json,browser-top.png,browser-partition-two.png}`. JavaScript syntax and diff checks passed. Browser harness quoting errors were corrected before the successful checks; no game was launched.
+- Gameplay verification remains deferred. This is source-coordinate inspection, not runtime placement or execution acceptance; the full SDK goal remains incomplete.
+
+
 ### 2026-09-12 — Scene export metadata node budget
 
 - Fixed assembled GLB hierarchy budgeting so unavailable instances' metadata roots count toward the same 32,768-node cap as renderable instances and their object children. Previously an unavailable instance after a full hierarchy could exceed the cap.

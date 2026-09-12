@@ -84,3 +84,19 @@ No runtime position control writes game RAM or modifies authored transforms.
 After the scene preview finishes loading, choose **Export scene GLB** in the viewport toolbar. The export uses the selected authored or retail representation and includes temporarily hidden instances. Restore any temporary animation inspection pose first. Files are saved with unique names in the project Exports folder. Shared geometry, instance transforms and source provenance are preserved; unavailable instances remain metadata-only nodes. This is a static source-preview export, not captured gameplay, exact PSX lighting/blending, or a physically scaled scene. External rendered consumer acceptance remains pending.
 
 Use **Export selected GLB** to export one selected actor, NPC draft, scenery instance or ground surface with its scene placement retained. The selected representation still applies. Unsupported instances without geometry cannot be exported individually.
+
+
+## Compare script movement targets
+
+Select an actor and open **Inspect script and dialogue**, then expand **Instruction
+paths**. For scripts with decoded movement targets, enter a **Reference Y** and
+choose **Show targets in scene**. The viewport labels each source instruction's
+PC and X/Z; **Top (X/Z)** helps compare placement. **Frame script targets** restores
+the overview and **Clear script targets** removes the overlay.
+
+The same controls appear for supported partition-2 script reports. The reference
+height is supplied by you because these instructions do not establish Y. Parked
+targets and unresolved actor contexts remain explicit. Markers do not change the
+project, prove branch execution, or represent current NPC positions. Changes to
+the project/scene source invalidate the overlay. At most 256 targets are shown;
+larger reports retain individual instruction locators.

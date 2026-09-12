@@ -70,4 +70,9 @@
 
 .observed-nodes-list details small { display: block; margin-top: 4px; color: #a9bac4; }
 
+#script-target-tools:not([hidden]) { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 10px; border-bottom:1px solid #435064; }
+#script-target-tools span { flex:1 1 280px; font-size:11px; color:#e9abff; overflow-wrap:anywhere; }
+.script-target-controls { margin:10px 0; padding:8px; border:1px solid #435064; }
+.script-target-controls input { width:180px; margin-right:8px; }
+
 #import-dialog{max-height:90vh;overflow:auto}#catalog-scenes{display:grid;gap:6px;max-height:32vh;overflow:auto;margin:10px 0}.catalog-scene{text-align:left;white-space:normal;overflow-wrap:anywhere}#catalog-status{font-size:11px;color:var(--muted)}
