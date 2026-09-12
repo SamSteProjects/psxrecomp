@@ -149,6 +149,25 @@ class EditorServer(ThreadingHTTPServer):
                 preview["animation_support"]["clips"].append({"id": "authored-channels", "label": "Authored channel overrides"})
         return preview
 
+    def export_actor_drafts(self, entity_id: str) -> dict:
+        from uuid import uuid4
+        from .draft_build import export_draft_disc
+        project = self.project
+        if project.mode != 'edit':
+            raise ProjectError('Draft export requires Edit mode')
+        draft = project.actor_drafts.get(entity_id)
+        if draft is None or draft['scene_id'] != project.active_scene:
+            raise ProjectError('Draft export requires a draft in the active scene')
+        directory = (project.root / 'Builds' / ('experimental-drafts-' + uuid4().hex)).resolve()
+        if not directory.is_relative_to(project.root.resolve()):
+            raise ProjectError('Draft export directory escapes the project root')
+        report = export_draft_disc(project, entity_id, directory)
+        return dict(report_path=str(directory / 'report.json'),
+                    input_project_path=str(directory / 'Inputs' / 'project.legaia.json'),
+                    disc_path=report['disc']['output_path'],
+                    output_sha256=report['disc']['output_sha256'],
+                    gameplay_verified=False, experimental=True)
+
     def actor_candidate_inspection(self, entity_id: str) -> dict:
         from importer.actor_candidate_inspection import inspect_actor_candidate
         project = self.project
@@ -518,6 +537,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Choose a nonnegative animation frame index to export")
                     preview = self.server.actor_appearance_preview(body["entity_id"])
                     self._json(200, self.server.export_preview(preview, frame_index) if exporting else preview)
+                    return
+                if route == "/api/export/actor-drafts":
+                    if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
+                        raise ProjectError("Draft export accepts only a draft entity_id")
+                    self._json(200, self.server.export_actor_drafts(body["entity_id"]))
                     return
                 if route == "/api/actor-candidate-inspection":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:

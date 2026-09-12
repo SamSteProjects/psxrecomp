@@ -213,6 +213,183 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Deferred export input preservation
+
+- Combined export regression suite: 29 tests, 28 passed and one skipped; no game launched.
+- New exports retain a reopenable Inputs project, imported evidence and referenced authored model/TIM bytes, with per-file hash/readback inventory in the completion report. Live project save state and history remain unchanged.
+- Added unsaved-draft snapshot reopen/independence regression and exposed the snapshot project path in the export result. Shared physical MAN owners remain rejected until full container relocation is supported.
+
+
+### 2026-09-12 Combined asset disc fixture prepared
+
+- Exported saved draft plus model0105 shape, clip0012 channel, TIM5/raw/0 payload, cell1833 scenery and one collision edit to combined-assets-export-20260912. Session47565 exited0. Final carrier/MAN/PROT checks passed; independently rehashed disc matches8e1fd5be2cc845c06aa6293964bd0b581a06d3db5d4c6a86c54d65c9bc0f805f.
+- Added exact artifact contents and manual scope to the deferred gameplay queue. Removed an incidental test-file trailing blank line found by diff checking. No project Save or game launch.
+
+### 2026-09-12 Descriptor verification regression
+
+- Added synthetic scene-table test proving final descriptor position supersedes stale carrier offset and wrong descriptor type rejects without retaining success flags. Fixture includes the required MAN descriptor and canonical first payload offset.
+- Asset/animation/routing checks:9 passed,1 optional retail test skipped. No game interaction or output artifact created.
+
+### 2026-09-12 Model/animation/draft combination
+
+- Composed model0105's one-coordinate shape edit and clip0012 frame0/object0 translation X100 with the saved NPC draft in one private archive. Final model carrier, descriptor-relocated animation carrier and decoded MAN all verified.
+- This exercises simultaneous asset families rather than separate successful builds. No project Save, disc output or game launch. Full shared-carrier overlap support and gameplay acceptance remain open.
+
+### 2026-09-12 Retail animation plus draft acceptance
+
+- Applied actor0011's verified clip0012 frame0/object0 translation X100 through the project command and composed it with the saved draft. The final ANM carrier followed its relocated descriptor and matched exactly; MAN reopening also passed.
+- Updated documented animation export scope. No project Save, disc output or game launch. Shared clip/gameplay effects remain deferred to the manual queue.
+
+### 2026-09-12 Descriptor-relative animation verification
+
+- Animation carrier audits now bind the original scene-table offset, descriptor index/type and physical owner. Final verification reparses that descriptor to locate the stream after internal MAN growth rather than using its stale relative offset.
+- Existing asset/animation checks passed. Retail combined animation-plus-draft verification remains next; no game interaction or disc output.
+
+### 2026-09-12 Animation channel export wiring
+
+- Added existing-channel ANM patch preparation using the verified catalog and equal-span compression serializer. Draft composition now accepts validated actor AnimationChannels, includes resulting patches and requires final carrier verification.
+- Routing/export tests passed. Retail animation-plus-draft composition remains unverified; MAN growth can shift ANM within the same physical owner, requiring descriptor-relative relocation handling before that case can pass. No game launch or disc output.
+
+### 2026-09-12 Retail model shape plus draft acceptance
+
+- Applied one source-valid vertex-X increment to town01 model0105 through ProjectService.set_model_replacement, then composed the model with the saved draft. Final relocated model carrier hash and reopened MAN both passed.
+- Private content-addressed TMD created; project not saved, no disc export or game launch. Updated supported export scope. Model gameplay and shared-carrier composition remain separate outstanding work.
+
+### 2026-09-12 Model shape draft-export integration
+
+- Added source-verified model overlay preparation, reused common disc-to-archive carrier conversion, and wired model source scenes/patches/final carrier verification into draft export. Shared overlapping carriers still reject pending joint decoding/composition.
+- Model authoring and draft routing/export tests passed; module compilation passed. Retail model-plus-draft composition remains next. No project Save, disc output or game launch.
+
+### 2026-09-12 Combined scene asset archive acceptance
+
+- Ran private town01 composition with decoration cell1833 Z-256, one collision-bit toggle, TIM5/raw/0 edit and saved NPC draft simultaneously. Final relocated MAP, texture carrier and decoded MAN all verified; exactly one scenery and one collision change remained audited.
+- Updated native actor export documentation with current composition scope and model/animation gaps. No project Save, disc output or game launch. The combined archive check does not replace a future hash-identified manual fixture.
+
+### 2026-09-12 Relocated asset verifier regression
+
+- Added synthetic verification of a carrier resolved through a shifted TOC entry, plus corruption rejection. Verification flags are now cleared before checking and published only after every asset passes, avoiding retained success flags on failed revalidation.
+- Eight asset/routing/archive/export checks passed; the focused flag-recovery regression also passed after the fix. No game interaction or disc output.
+
+### 2026-09-12 Final texture carrier verification
+
+- Texture preparation now records physical owner/relative span and rejects carriers crossing physical boundaries. Single/multi-scene exports reread final relocated carrier bytes and require the authored hash; audits distinguish payload verification from MAP verification.
+- Private retail TIM5/raw/0 plus draft passed final carrier equality after MAN relocation. No disc output or game launch; shared-carrier internal relocation remains fail-closed pending composition support.
+
+### 2026-09-12 Texture replacements composed with drafts
+
+- Draft exports now route texture bindings by source scene, including texture-only scenes, and compose their source-verified archive patches before MAN growth. Texture changes remain separate in each scene audit. Shared overlapping carriers still reject.
+- Private town01 TIM5/raw/0 payload edit plus saved draft composed with one texture change and exact MAN reopening. Private content-addressed TIM file created; no project Save, disc export or game launch. Final relocated texture reread remains next.
+
+### 2026-09-12 Texture archive patch preparation
+
+- Added sdk.texture_build adapter for existing verified TIM replacement serializers. It validates imported source metadata and private payload hashes, converts disc-relative overlays to PROT-relative spans and checks original carrier bytes and archive bounds.
+- Module compilation passed. Retail texture composition and draft-path wiring remain next; no runtime interaction or output artifact created.
+
+### 2026-09-12 Scenery/collision/draft composition acceptance
+
+- Private retail fixture combined decoration cell1833 Z-256, one collision-bit toggle and the saved NPC draft. One scenery and one collision change survived final relocated MAP hash verification; MAN reopening also passed in121255936-byte archive.
+- Added equal-span patch regression for exact output, order independence, overlap, bounds and stale preimage rejection. Archive/environment/routing tests passed. No Save, disc output or game launch; combined gameplay remains deferred.
+
+### 2026-09-12 Final relocated MAP verification
+
+- Added final TOC-based MAP rereads for single- and multi-scene draft exports. Full authored MAP span hashes must match after all MAN growth; successful audits gain reopened_map_verified.
+- Retail collision-plus-draft archive passed final MAP equality. Deliberately incorrect expected MAP hash rejected. No game interaction or disc output; gameplay checks remain deferred.
+
+### 2026-09-12 MAP edits integrated with draft archive rebuilding
+
+- Single- and multi-scene draft paths now gather scene-level scenery/collision MAP patches and apply them to the original archive before MAN growth. Source archive hashes remain distinct from composed archive hashes; per-scene MAP audits are retained. Unsupported scene components still reject.
+- Private collision-bit override plus saved town01 draft composed successfully with one audited wall change and reopened MAN equality. Six routing/export/archive tests passed. Final relocated MAP reread and scenery combination acceptance remain next; no game interaction or disc output.
+
+### 2026-09-12 Shared MAP patch preparation
+
+- Added sdk.map_build.prepare_map_patch using existing source-validated scenery/collision serializers. It merges collision masks into scenery output with overlap rejection and emits one equal-span source-hashed archive patch plus separate audits.
+- Private retail collision-bit toggle produced exactly one audited wall change in an unchanged-size MAP. Archive/draft integration remains next; no Save, disc output or game launch.
+
+### 2026-09-12 Equal-span archive asset composition primitive
+
+- Reviewed existing MAP/scenery/collision serialization and added source-addressed archive span composition for use before MAN relocation. Requires exact original span hashes, bounded immutable bytes and disjoint spans; shared containers must be composed before calling.
+- Synthetic check passed exact output, deterministic request ordering and overlap rejection. MAP integration remains next; no disc output or game interaction.
+
+### 2026-09-12 Edit-only scene regression
+
+- Added routing coverage proving an edited scene without drafts receives its authored changes with no invented actor identity, and that a concurrent position change rejects the assembled result. Updated documented export scope accordingly.
+- Multi-scene routing, export and archive tests:6 passed. No runtime interaction; queued manual acceptance remains deferred.
+
+### 2026-09-12 Include edited scenes without new drafts
+
+- Draft archive composition now includes imported scenes referenced by authored overrides even when they contain no drafts. Those scenes serialize original-record edits without fabricating an appended actor; unknown scene ownership still rejects.
+- Private town01 draft plus town0c existing actor X edit passed both rebuilt MAN checks; town0c audit contains zero drafts and exactly one placement change. Routing/export tests passed. No Save, disc output or game launch.
+
+### 2026-09-12 Two-scene disc export acceptance
+
+- Exported town01 and town0c drafts through the full archive/disc pipeline into local-output/sdk-20260909/multiscene-draft-export-20260912. Session72659 exited0; both MAN rebuild checks and final PROT reopen passed. Independently rehashed disc matches dd54463f70ad4b183b7f4033352b9999dbb3421ce5b719c187d5345683e57c10.
+- Updated export documentation for current multi-scene scope and remaining explicit rejections. Project edits were in memory only; no game launch. Manual multi-scene gameplay remains deferred.
+
+### 2026-09-12 Multi-scene routing and audit semantics
+
+- Scene subreports now identify prepared MAN inputs rather than falsely retaining the untouched PROT hash as a scene rebuild result. Added cross-scene disc identity agreement and restored explicit draft-ID type validation.
+- Routing regression verifies each scene receives only its own overrides/drafts, source state remains unchanged and unrelated-scene edits reject before rebuilding. Routing/archive/export checks:5 passed. No game interaction.
+
+### 2026-09-12 Multi-scene project draft composition
+
+- Connected draft-bearing scenes to deterministic multi-owner archive rebuilding with per-scene source/override validation, shared archive equality and whole-project freshness checks. Edits outside draft-bearing scenes still reject; shared physical owners and secondary PROT headers remain unsupported. Updated export progress text to describe project-wide drafts.
+- Private town01 plus town0c drafts produced121257984 bytes with both MAN entries independently reopened exactly. No Save, disc output or game interaction. Full multi-scene disc/browser acceptance and remaining asset composition continue separately.
+
+### 2026-09-12 Multi-owner MAN archive rebuild
+
+- Added deterministic batch rebuild for distinct physical MAN owners, resolving each stable entry index against the relocated archive and independently reopening its decoded MAN. Duplicate owners reject pending shared-container composition.
+- Three archive tests pass, including two growing containers, reversed request order, relocated TOC and preserved trailing payload. Synthetic fixture was corrected to accommodate production overlapping read windows and preserved container padding. Project multi-scene wiring remains next; no game interaction.
+
+### 2026-09-12 Deferred gameplay queue and continued implementation scope
+
+- User explicitly requested all work that does not require immediate gameplay verification continue, with manual checks saved for later. Added docs/legaia-gameplay-verification-queue.md separating the hash-identified ready NPC disc from features still needing dedicated fixtures, and recording manual steps/expected results without claiming runtime acceptance.
+- Reviewed PROT rebuild and existing texture overlay interfaces for remaining container composition. No game launch, process restart or new runtime claim. Gameplay gaps do not block independent implementation.
+
+### 2026-09-12 Transition append regression acceptance
+
+- Added structural-append transition regression covering two requested entry bytes, exact relocated offset changes, unchanged surrounding content, modified-preimage rejection and immutable original source.
+- Transition importer/build/project plus draft HTTP checks:11 passed. No retail disc output or game interaction. These tests do not extend gameplay acceptance.
+
+### 2026-09-12 Transition arrival edits composed with drafts
+
+- Connected supported actor/P2 Transitions entries to draft export with exact component structure, source owner validation, retail MAN guard and rebased operand writes. The archive audit retains transition changes separately.
+- Private saved draft plus town01 P2[0] arrival-X97 produced121255936 bytes with exactly one transition change and exact reopened MAN verification. No Save, disc output or game interaction. Other override families, multi-scene builds and runtime acceptance remain open.
+
+### 2026-09-12 Transition entry rebasing prototype
+
+- Existing transition authoring edits encoded arrival X/Z/direction, not destination names. Added patch_appended to relocate those verified operand bytes by original record identity with extent/preimage/layout guards and dual-offset audit.
+- Real town01 MAN after donor11 append changed exactly one requested P2[0] entry-X byte96->97 at source offset+3. Draft archive integration remains next; no disc write or game interaction. This does not establish runtime transition acceptance.
+
+### 2026-09-12 Export progress retention and error recovery
+
+- Prevented Close/Escape from dismissing the export dialog during an active request, which otherwise hid the completed artifact paths. Completion or failure restores Close and editor controls.
+- Isolated browser with delayed400 response verified Escape retains progress, Close remains disabled while pending, the actual error appears and controls recover afterward. Browser closed and temporary server92627 stopped. No disc output or game interaction.
+
+### 2026-09-12 Real browser-to-disc draft export acceptance
+
+- Clicked the real Inspector export button in isolated Edge with no intercepted response. HTTP completed, the dialog displayed completion, and the produced report confirmed exact reopened MAN/PROT. Independently streamed SHA256 of the output matched f8a75661a02acd537257029a9df9e7e79ec1703b766a942a333e63c217e04f97, identical to the earlier CLI export.
+- Private report: actor-draft-persistence-check/Builds/experimental-drafts-1d81808d84844b5fa04eb9392b6bda28/report.json under local-output/sdk-20260909. Browser process22157 exited0; temporary server53188 stopped. No project Save or game launch. Script scheduling and gameplay remain unverified.
+
+### 2026-09-12 Draft export browser workflow acceptance
+
+- Isolated Edge editor session selected the saved draft and clicked Export experimental disc. A delayed intercepted export response verified exact authored UUID request, disabled export control, visible build progress and completed report path/hash presentation. Dialog closed normally.
+- This browser test mocked only the export response, creating no disc. Real CLI export and HTTP handler acceptance remain separate evidence above. Browser closed and temporary server75058 stopped; no game interaction or project Save.
+
+### 2026-09-12 Draft export HTTP contract acceptance
+
+- Added an actual loopback HTTP regression with only the expensive export writer mocked. Verified200 completed response and project-contained report path,400 for missing/unknown/wrong-type identities, client output-path injection and Live-mode export. Writer called once and normal last_build remains unset.
+- Test passed and its server/thread closed. This verifies routing/service guards, not a real disc write through HTTP or rendered browser interaction. No game interaction.
+
+### 2026-09-12 Draft Inspector export control
+
+- Added Export experimental disc to the draft Inspector with Edit-mode/busy gating, progress dialog, completed disc/report paths and SHA256, and explicit gameplay status. Uses the dedicated service endpoint without invoking Run. Corrected stale effective-donor preview wording to the implemented retail assignment behavior.
+- JavaScript syntax check passed. Actual HTTP/browser acceptance remains next; no game launch or export executed this turn.
+
+### 2026-09-12 Editor service draft export endpoint
+
+- Added /api/export/actor-drafts with exact draft identity input, Edit-mode/active-scene guards and a project-contained unique Builds directory. Returns completed report/disc paths and output hash, explicitly experimental; does not launch or replace normal last_build.
+- Mocked service check passed project output containment, result labels and rejection in Live mode before export. Browser control and real HTTP acceptance remain next. No game interaction or disc output in this check.
+
 ### 2026-09-12 Draft export checkpoint
 
 - Reviewed scoped worktree changes and passed git diff --check. Checkpoint includes deterministic batch appending, saved-draft archive/disc export, appearance/dialogue composition, retail donor preview bindings and focused regressions. Private disc/project outputs remain excluded.

@@ -4,6 +4,62 @@ import struct
 from .core import ImportError
 
 
+def patch_archive_spans(source: bytes, expected_sha256: str, patches: list[dict]) -> tuple[bytes, list[dict]]:
+    """Compose source-addressed equal-span assets before physical relocation."""
+    if not isinstance(source,bytes) or sha256(source).hexdigest()!=expected_sha256:
+        raise ImportError('Archive patch source hash mismatch')
+    if not isinstance(patches,list) or len(patches)>512:
+        raise ImportError('Archive patch inventory exceeds bounds')
+    spans=[]
+    for patch in patches:
+        if not isinstance(patch,dict) or set(patch)!={'offset','payload','expected_sha256'}:
+            raise ImportError('Archive patch fields are invalid')
+        offset,payload=patch['offset'],patch['payload']
+        if type(offset) is not int or not isinstance(payload,bytes) or not payload or offset<0 or offset+len(payload)>len(source):
+            raise ImportError('Archive patch exceeds source bounds')
+        if sha256(source[offset:offset+len(payload)]).hexdigest()!=patch['expected_sha256']:
+            raise ImportError('Archive patch preimage mismatch')
+        spans.append((offset,payload,patch['expected_sha256']))
+    output=bytearray(source)
+    prior_end=-1
+    audit=[]
+    for offset,payload,before in sorted(spans,key=lambda item:item[0]):
+        if offset<prior_end:
+            raise ImportError('Archive asset patches overlap; compose their shared container first')
+        prior_end=offset+len(payload)
+        output[offset:prior_end]=payload
+        audit.append(dict(offset=offset,size=len(payload),before_sha256=before,after_sha256=sha256(payload).hexdigest()))
+    return bytes(output),audit
+
+
+def rebuild_man_entries(source: bytes, expected_sha256: str, entries: list[dict],
+                        *, header_offset: int = 0) -> tuple[bytes, dict]:
+    """Rebuild distinct physical MAN owners in stable archive-index order.
+
+    Entry indices survive TOC relocation. Table offsets remain owner-relative;
+    shared physical owners require container composition before this operation.
+    """
+    if not isinstance(source,bytes) or sha256(source).hexdigest()!=expected_sha256:
+        raise ImportError('Batch PROT source hash mismatch')
+    if not isinstance(entries,list) or not 1<=len(entries)<=128:
+        raise ImportError('Batch MAN rebuild requires 1 through 128 entries')
+    owners=set()
+    for item in entries:
+        if not isinstance(item,dict) or set(item)!={'entry_index','table_offset','source_man_sha256','candidate'}:
+            raise ImportError('Batch MAN entry fields are invalid')
+        index=item['entry_index']
+        if type(index) is not int or index<0 or index in owners:
+            raise ImportError('Batch MAN entries require distinct physical owners')
+        owners.add(index)
+    result=source
+    audits=[]
+    for item in sorted(entries,key=lambda item:item['entry_index']):
+        result,audit=rebuild_man_entry(result,sha256(result).hexdigest(),**item,header_offset=header_offset)
+        audits.append(dict(entry_index=item['entry_index'],**audit))
+    return result,dict(source_sha256=expected_sha256,result_sha256=sha256(result).hexdigest(),
+                       entries=audits,build_ready=False)
+
+
 def rebuild_man_entry(source: bytes, expected_sha256: str, entry_index: int,
                       table_offset: int, source_man_sha256: str, candidate: bytes,
                       *, header_offset: int = 0) -> tuple[bytes, dict]:

@@ -283,6 +283,7 @@ function setBusy(value) {
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
   if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
+  if($('export-npc-drafts'))$('export-npc-drafts').disabled=value||!canEdit();
   document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
@@ -1137,17 +1138,41 @@ function runtimeCandidateSummary(correlation,entityId){
     return `<div class="appearance-layer"><h4>Unconfirmed runtime candidate</h4>${property('Captured node',candidate.runtime_node_id)}${property('Appearance match',layers.join(' + ')||'Not classified')}${donor&&donor!==entityId?property('Effective donor',donor):''}${property('Binding capture frame',candidate.frame)}${property('Position capture frames',candidate.position_capture_frames?`${candidate.position_capture_frames.before}–${candidate.position_capture_frames.after}`:'Unknown')}${property('Placement header matches imported X/Z',candidate.placement_header_agrees_with_import===true?'Yes':candidate.placement_header_agrees_with_import===false?'No':'Unknown')}${property('Captured placement header',`X ${format(candidate.placement_position?.x)} · Z ${format(candidate.placement_position?.z)}`)}${property('Captured world position',`X ${format(position.x)} · Y ${format(position.y)} · Z ${format(position.z)}`)}${coordinateComparisonMarkup(entityId,position)}<p class="field-note">Captured evidence only. Structural compatibility does not establish actor identity.</p></div>`;
   }).join('');
 }
+async function exportNpcDrafts(entityId){
+  if(busy||!canEdit())return;
+  const dialog=document.createElement('dialog');dialog.id='draft-export-result';dialog.className='project-dialog';
+  const title=document.createElement('h2');title.textContent='Experimental NPC disc export';
+  const message=document.createElement('p');message.textContent='Building a separate disc from all drafts in this project. This can take a minute.';
+  const details=document.createElement('pre');details.style.whiteSpace='pre-wrap';details.style.overflowWrap='anywhere';
+  let exporting=true;
+  const close=document.createElement('button');close.textContent='Close';close.disabled=true;close.onclick=()=>dialog.close();
+  dialog.addEventListener('cancel',event=>{if(exporting)event.preventDefault();});
+  dialog.append(title,message,details,close);document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
+  setBusy(true);
+  try{
+    if(liveFollow.pending)await liveFollow.pending;
+    const response=await fetch('/api/export/actor-drafts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entityId})});
+    const result=await response.json();
+    if(!response.ok||result.error)throw new Error(result.error||'Draft export failed');
+    if(!result.report_path||!result.disc_path||!result.output_sha256)throw new Error('Export service returned an incomplete report');
+    message.textContent='Export complete. NPC scheduling and gameplay remain unverified. The game has not been launched.';
+    details.textContent=`Disc: ${result.disc_path}\nReport: ${result.report_path}\nSHA-256: ${result.output_sha256}`+(result.input_project_path?`\nSaved export inputs: ${result.input_project_path}`:'');
+    notify('Experimental NPC disc exported');
+  }catch(error){message.textContent=error.message;notify(error.message,true);}
+  finally{exporting=false;close.disabled=false;setBusy(false);}
+}
 function renderInspector(){
   const npc=selectedNpcDraft();
   if(npc){
     const id=npcDraftSelection;
     $('selection-summary').textContent=`${npc.name} · Authored NPC draft`;
-    $('inspector').innerHTML=`<section class="component"><h3>Authored NPC draft</h3>${property('Identity',id)}${property('Retail donor',npc.donor_entity_id)}<p class="field-note">No retail placement or runtime identity exists for this draft. X/Z handles snap to the required 64-unit grid. Preview uses the effective donor model; playable creation remains unverified.</p><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
+    $('inspector').innerHTML=`<section class="component"><h3>Authored NPC draft</h3>${property('Identity',id)}${property('Retail donor',npc.donor_entity_id)}<p class="field-note">No retail placement or runtime identity exists for this draft. X/Z handles snap to the required 64-unit grid. Preview uses the retail donor assignment; shared authored assets may affect its appearance. Playable creation remains unverified.</p><form id="draft-inspector-form"><label>X <input name="x" type="number" min="64" max="16384" step="64" required></label><label>Z <input name="z" type="number" min="64" max="16384" step="64" required></label><button type="submit">Apply draft position</button></form><button id="frame-npc-draft">Frame draft</button><button id="delete-npc-draft">Delete draft</button></section>`;
     const form=$('draft-inspector-form');form.elements.x.value=npc.position.x;form.elements.z.value=npc.position.z;
     form.querySelectorAll('input,button').forEach(control=>control.disabled=busy||!canEdit());
     form.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}});};
     $('frame-npc-draft').onclick=()=>frame({id,components:{Transform:{imported:{position:{...npc.position,y:null}}}}});
     const inspectDraft=document.createElement('button');inspectDraft.id='inspect-npc-draft';inspectDraft.textContent='Inspect serialized candidate';inspectDraft.disabled=busy;inspectDraft.onclick=()=>openActorCandidate({id,name:npc.name,components:{Transform:{effective:{position:{...npc.position,y:null}}}}});$('inspector').querySelector('section').append(inspectDraft);
+    const exportDraft=document.createElement('button');exportDraft.id='export-npc-drafts';exportDraft.textContent='Export experimental disc';exportDraft.disabled=busy||!canEdit();exportDraft.onclick=()=>exportNpcDrafts(id);$('inspector').querySelector('section').append(exportDraft);
     $('delete-npc-draft').disabled=busy||!canEdit();$('delete-npc-draft').onclick=()=>api('/api/command',{type:'delete_actor_draft',entity_id:id});
     return;
   }

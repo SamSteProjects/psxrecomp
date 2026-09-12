@@ -132,7 +132,7 @@ or synthetic test changes that status.
 ## Saved-draft experimental export
 
 `python -m sdk.draft_build --project <project-directory> --draft <authored-actor-identity> --output <new-directory>`
-exports all saved drafts in the selected draft's scene. Set `PYTHONPATH=integrations/legaia`
+exports all saved drafts across draft-bearing scenes. Set `PYTHONPATH=integrations/legaia`
 from the repository root. The output directory must not exist. A successful export
 contains `draft.bin` and `report.json`; the report binds the authored snapshot,
 source disc, archive audit and output disc hash. A BIN without the report is an
@@ -140,7 +140,27 @@ incomplete export. The command never launches the game or updates the project's
 normal Build/Play result.
 
 Same-scene original actor X/Z, supported donor appearance assignments and bounded
-actor/P2 dialogue edits compose with drafts. Other override families and multi-scene drafts currently reject.
+actor/P2 dialogue and transition arrival edits compose with drafts. Multi-scene
+exports support distinct physical MAN owners in the primary PROT layout. Shared
+physical owners and other override families currently reject rather than being
+omitted. Supported edits in imported scenes without drafts are included without
+creating any new actors in those scenes.
+
+Supported scenery and collision edits compose into one MAP patch before archive
+growth. Scene TIM replacements also enter before relocation. The exporter then
+resolves MAP and texture carrier spans through the final TOC and checks their
+full authored hashes. A private town01 check combined decoration cell1833 Z-256,
+one wall-bit toggle, TIM5/raw/0 replacement and a saved NPC draft; final MAP,
+texture carrier and MAN checks all passed. This was an in-memory archive check,
+not a new playable disc or gameplay acceptance. Existing-layout model shape
+overrides also compose through verified carriers: a private model0105 vertex
+edit plus draft passed final model-carrier and MAN verification. Existing-channel
+animation overrides also compose: actor0011 frame0/object0 translation X100 plus
+draft passed final ANM and MAN verification. ANM verification follows its scene
+descriptor after internal growth. Shared carrier overlaps still require joint
+composition and currently reject. These are offline checks, not gameplay acceptance.
+The model0105 shape and clip0012 channel edits also passed together with a draft
+in one archive, including both final carrier checks and MAN reopening.
 Drafts retain their donor's retail initial appearance; changing that donor actor's
 appearance does not change the appended actor. Script coverage and scheduling
 remain experimental, and the report explicitly retains unverified gameplay.

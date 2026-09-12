@@ -7,10 +7,53 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.core import ImportError
-from importer.prot_rebuild import replace_physical_entry
+from importer.prot_rebuild import replace_physical_entry, rebuild_man_entries, patch_archive_spans
 
 
 class ProtRebuildTests(unittest.TestCase):
+    def test_equal_span_assets_are_source_bound_and_disjoint(self):
+        source=b'0123456789'
+        digest=sha256(source).hexdigest()
+        patches=[dict(offset=2,payload=b'AB',expected_sha256=sha256(b'23').hexdigest()),
+                 dict(offset=7,payload=b'CD',expected_sha256=sha256(b'78').hexdigest())]
+        result,audit=patch_archive_spans(source,digest,patches)
+        self.assertEqual(result,b'01AB456CD9')
+        self.assertEqual(patch_archive_spans(source,digest,patches[::-1]),(result,audit))
+        for invalid in ([patches[0],patches[0]], [dict(patches[0],offset=9)],
+                        [dict(patches[0],expected_sha256='stale')]):
+            with self.assertRaises(ImportError):
+                patch_archive_spans(source,digest,invalid)
+
+    def test_multiple_man_owners_survive_prior_growth(self):
+        import random
+        from importer.serialization import compress_lzs
+        baseline=b'original MAN'
+        stream=compress_lzs(baseline)
+        header=bytearray(56)
+        struct.pack_into('<I',header,0,6)
+        offset=56
+        payload=stream
+        for index in range(6):
+            struct.pack_into('<II',header,8+index*8,((3 if index==0 else 1)<<24)|(len(baseline) if index==0 else 3),offset)
+            offset+=len(stream) if index==0 else 3
+            if index:payload+=bytes([index])*3
+        container=(bytes(header)+payload).ljust(2048,b'\0')
+        raw=bytearray(2048)+container+container+b'Z'*(2048*8)
+        struct.pack_into('<ii',raw,4,5,1)
+        struct.pack_into('<5I',raw,16,1,2,3,4,0)
+        source=bytes(raw)
+        entries=[dict(entry_index=i,table_offset=0,source_man_sha256=sha256(baseline).hexdigest(),
+                      candidate=random.Random(i).randbytes(3000)) for i in (0,1)]
+        result,audit=rebuild_man_entries(source,sha256(source).hexdigest(),entries)
+        reverse,other=rebuild_man_entries(source,sha256(source).hexdigest(),list(reversed(entries)))
+        self.assertEqual(result,reverse)
+        self.assertEqual(audit,other)
+        self.assertTrue(all(item['reopened_man_verified'] for item in audit['entries']))
+        self.assertEqual(result[-2048:],b'Z'*2048)
+        self.assertEqual(struct.unpack_from('<5I',result,16),(1,4,7,8,0))
+        with self.assertRaisesRegex(ImportError,'distinct'):
+            rebuild_man_entries(source,sha256(source).hexdigest(),[entries[0],entries[0]])
+
     def source(self):
         raw = bytearray(2048)+bytearray(b'A'*2048+b'B'*2048+b'C'*2048)
         struct.pack_into('<ii', raw, 4, 5, 1)

@@ -24,6 +24,9 @@ class DraftExportTests(unittest.TestCase):
                 report=export_draft_disc(project,'draft',destination)
                 self.assertTrue((destination/'report.json').is_file())
                 self.assertFalse(report['gameplay_verified'])
+                self.assertTrue(report['input_snapshot']['readback_verified'])
+                restored=ProjectService.open(destination/'Inputs')
+                self.assertEqual(restored._document(),project._document())
                 with self.assertRaisesRegex(ProjectError,'new output'):
                     export_draft_disc(project,'draft',destination)
             def stale_writer(*args):
@@ -37,6 +40,33 @@ class DraftExportTests(unittest.TestCase):
                     export_draft_disc(project,'draft',destination)
                 self.assertTrue((destination/'draft.bin').exists())
                 self.assertFalse((destination/'report.json').exists())
+
+    def test_snapshot_preserves_unsaved_draft_without_saving_source(self):
+        from sdk.export_snapshot import capture_export_inputs, write_export_inputs
+        from test_project_workflow import synthetic_scene
+        with tempfile.TemporaryDirectory() as root:
+            project=ProjectService(Path(root)/'project')
+            scene=synthetic_scene()
+            project.import_metadata(scene)
+            project.save()
+            saved=(project.root/'project.legaia.json').read_bytes()
+            project.command({'type':'create_actor_draft',
+                'donor_entity_id':scene['actors'][0]['semantic_id'],
+                'position':{'x':128,'z':256},'name':'Deferred NPC'})
+            key,files=capture_export_inputs(project)
+            directory=Path(root)/'export';directory.mkdir()
+            report=write_export_inputs(directory,key,files)
+            restored=ProjectService.open(directory/'Inputs')
+            self.assertEqual(restored.actor_drafts,project.actor_drafts)
+            self.assertEqual(restored.imports,project.imports)
+            self.assertTrue(project.dirty)
+            self.assertEqual((project.root/'project.legaia.json').read_bytes(),saved)
+            self.assertEqual(report['source_authored_state_key'],authored_state_key(project))
+            project.undo()
+            self.assertFalse(project.actor_drafts)
+            self.assertTrue(ProjectService.open(directory/'Inputs').actor_drafts)
+            with self.assertRaises(FileExistsError):
+                write_export_inputs(directory,key,files)
 
 
 if __name__=='__main__':

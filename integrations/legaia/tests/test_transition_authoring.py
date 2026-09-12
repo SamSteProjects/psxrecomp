@@ -8,6 +8,23 @@ from importer.transition_authoring import patch_transition_entry, TransitionAuth
 from test_importer_dialogue_authoring import fixture, ACTOR
 
 class TransitionEntryTests(unittest.TestCase):
+    def test_appended_record_rebases_and_rejects_changed_preimage(self):
+        from hashlib import sha256
+        from importer.man_actor_structure import append_actor_donor
+        source,man=fixture(b'\x3f\x01\x02\x06town01\x03\x04\x05opaque')
+        context=TransitionAuthoringContext(source)
+        identifier=context.options(ACTOR)['transitions'][0]['semantic_id']
+        appended,_=append_actor_donor(man,sha256(man).hexdigest(),1)
+        edits={identifier:{'entry_x_encoded':99,'direction_encoded':7}}
+        result,audit=context.patch_appended(appended,edits)
+        self.assertEqual(len(audit),2)
+        self.assertEqual({i for i,(a,b) in enumerate(zip(appended,result)) if a!=b},
+                         {change['decoded_byte_offset'] for change in audit})
+        self.assertTrue(all(change['decoded_byte_offset']==change['source_decoded_byte_offset']+3 for change in audit))
+        with self.assertRaisesRegex(ImportError,'preimage'):
+            context.patch_appended(result,edits)
+        self.assertEqual(context.patch({})[0],man)
+
     def test_arrival_encoder_roundtrips_all_grid_values_and_preserves_direction_bits(self):
         from importer.transition_authoring import encode_transition_arrival, reference_entry_interpretation
         for byte in range(256):

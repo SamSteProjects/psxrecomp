@@ -94,6 +94,32 @@ class TransitionAuthoringContext:
         return dict(supported=bool(transitions), reason=reason, transitions=transitions,
                     source=self.provenance(), limitations=list(LIMITATIONS))
 
+    def patch_appended(self, candidate: bytes, edits: dict) -> tuple[bytes, list[dict]]:
+        """Rebase verified entry-coordinate bytes onto original records after append."""
+        from .man_layout import read_man_layout
+        _, changes = self.patch(edits)
+        layout = read_man_layout(candidate)
+        records = {(r['partition'],r['record_index']):r for r in layout['records']}
+        output, audit = bytearray(candidate), []
+        for change in changes:
+            owner = change['owner_id']
+            _, original, _ = self._source.verified_record(owner)
+            partition = 2 if '/scripts/man-p2/' in owner else 1
+            record = records.get((partition,int(owner.rsplit('/',1)[1])))
+            relative = change['record_relative_byte_offset']
+            if record is None or record['byte_length'] != len(original) or not 0 <= relative < len(original):
+                raise ImportError('Appended transition record differs from verified source extent')
+            offset = record['byte_offset'] + relative
+            if candidate[offset] != change['before_byte']:
+                raise ImportError('Appended transition preimage differs from source')
+            output[offset] = change['after_byte']
+            audit.append(dict(change,source_decoded_byte_offset=change['decoded_byte_offset'],
+                              decoded_byte_offset=offset,appended_man_sha256=hashlib.sha256(candidate).hexdigest()))
+        result = bytes(output)
+        if read_man_layout(result) != layout:
+            raise ImportError('Appended transition edit changed MAN layout')
+        return result,audit
+
     def patch(self, edits: dict, *, original: bytes | None = None) -> tuple[bytes, list[dict]]:
         if original is not None and original != self._man:
             raise ImportError("transition MAN source differs from the verified baseline")
