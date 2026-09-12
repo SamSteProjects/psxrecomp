@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Catalog-to-import persistence workflow
+
+- Empty review project completed browser catalog search -> Dolk2 selection -> Import -> assembled scene -> Save. Preview reported432/441, with72 actor records and no browser errors.
+- Independent ProjectService.open from saved project.legaia.json confirmed Dolk2,72 actors, retained disc path and clean state. Review artifact: local-output/sdk-20260909/catalog-import-workflow-20260912.
+- Project state exposes its existing local disc path so an empty import-path field can reuse it. User-entered nonempty paths remain intact. Added bounded scrolling for scene results/import dialog and readable field-format labels.
+- Inspected catalog-import-browser-20260912.png at1360x900: catalog and Import control are readable in one dialog. Python reopen and JavaScript syntax passed. No runtime/game launched; temporary browser/server stopped. Remaining nine Dolk2 preview entities and gameplay compatibility remain unverified, full goal active.
+
+
 ### 2026-09-12 — Verified scene discovery in the import workflow
 
 - Connected the existing bounded retail scene catalog to a new read-only /api/scene-catalog route, with strict disc/offset/prefix fields and a fixed 16-block page. Boolean offsets and out-of-range values reject before disc reading.

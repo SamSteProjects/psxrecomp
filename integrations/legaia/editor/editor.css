@@ -69,3 +69,5 @@
 .observed-nodes-list > div { padding: 8px; border-bottom: 1px solid #435064; }
 
 .observed-nodes-list details small { display: block; margin-top: 4px; color: #a9bac4; }
+
+#import-dialog{max-height:90vh;overflow:auto}#catalog-scenes{display:grid;gap:6px;max-height:32vh;overflow:auto;margin:10px 0}.catalog-scene{text-align:left;white-space:normal;overflow-wrap:anywhere}#catalog-status{font-size:11px;color:var(--muted)}

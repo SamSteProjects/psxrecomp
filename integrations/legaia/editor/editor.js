@@ -456,7 +456,7 @@ function authored(entity){return !!entity.components?.Animation?.authored_channe
 function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceChildren();d.showModal();}
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.name ?? 'Legaia project'; $('project-path-input').value=state.project?.path ?? '';showDialog('project-dialog'); };
-for(const id of ['import-button','empty-import']) $(id).onclick=()=>showDialog('import-dialog');
+for(const id of ['import-button','empty-import']) $(id).onclick=()=>{if(!$('disc-input').value)$('disc-input').value=state.project?.disc_path??'';showDialog('import-dialog');};
 $('project-form').onsubmit=async event=>{event.preventDefault();await api('/api/project/new',{name:$('project-name-input').value,path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project created.'});};
 $('open-project').onclick=async()=>{if(!$('project-path-input').reportValidity())return;await api('/api/project/open',{path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project opened.'});};
 const sceneCatalog=document.createElement('section');sceneCatalog.id='import-scene-catalog';
@@ -479,7 +479,7 @@ async function readSceneCatalog(offset=0){
     catalogOffset=offset;catalogNext=result.next_offset;
     $('catalog-status').textContent=`${result.scenes.length} placement-readable scenes · ${result.unsupported_blocks.length} unsupported blocks · scanned ${result.scanned_blocks} at offset ${offset} of ${result.total_blocks}. Models and gameplay are not verified by this scan.`;
     for(const scene of result.scenes){
-      const button=document.createElement('button');button.type='button';button.className='catalog-scene';button.textContent=`${scene.name} · ${scene.actor_count} actors · ${scene.man_source_kind}`;button.title=scene.semantic_id;
+      const button=document.createElement('button');button.type='button';button.className='catalog-scene';button.textContent=`${scene.name} · ${scene.actor_count} actors · ${scene.man_source_kind==='raw_streaming_man'?'Streaming field':scene.man_source_kind==='descriptor_man'?'Compressed field':'Source format unknown'}`;button.title=scene.semantic_id;
       button.onclick=()=>{$('scene-input').value=scene.name;$('catalog-status').textContent=`Selected ${scene.name}. Use Import scene to add it to the project.`;};$('catalog-scenes').append(button);
     }
     if(result.unsupported_blocks.length){const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Unsupported structural blocks';details.append(summary);for(const block of result.unsupported_blocks){const row=document.createElement('p');row.textContent=`${block.name}: ${block.reason}`;details.append(row);}$('catalog-scenes').append(details);}
