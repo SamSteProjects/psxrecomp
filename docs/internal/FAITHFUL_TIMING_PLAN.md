@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Shared placed-scenery handles and regression completion
+
+- Previous turn made verified implementation progress. Re-polled its existing discovery process to terminal exit 0: all 344 retail-enabled SDK tests passed in 140.705 seconds. Log: local-output/sdk-20260909/sdk-suite-recheck-20260912.log. This is SDK regression evidence, not runtime or full-goal acceptance.
+- Added explicit Inspector activation for shared placed-scenery X/Z handles, using source-qualified environment commands and signed source offsets. Activation expires when project/source identity changes; retail/live/stale previews remain guarded. Decoration handles retain individual scope.
+- Actual browser drag on Dolk2 cell01442/record133 moved X by33 units, preserved Z and368 unrelated instances, invalidated handle activation after mutation, and Undo restored the exact preview. The selected record has one visible instance, so multi-instance drag browser acceptance remains open. Private evidence: local-output/sdk-20260909/shared-scenery-handles-check.json. No page errors; JS syntax and whitespace checks passed. No game launched or project saved by this check.
+- Gameplay stays deferred; broader SDK work and full objective remain active.
+
+
 ### 2026-09-12 — SDK regression sweep and continuous top-view orbit
 
 - Previous turn was verified progress (retail/authored movement overlays). This turn removed the first-drag camera pitch snap from Top view. Real browser drags preserve top pitch on horizontal movement and change it by exactly 0.02 radians for four upward pixels, without mutation commands or page errors. Private evidence: local-output/sdk-20260909/camera-top-orbit-check.json.

@@ -124,3 +124,13 @@ coordinates; the viewport offers retail and authored effective target layers.
 Authored preview requires a complete verified movement report with no unresolved
 overrides. Y, executed branches and
 runtime actor identity remain unresolved.
+
+
+## Move placed scenery
+
+Select a placed scenery object in the authored viewport, then choose **Enable
+shared move handles** in its Inspector. Drag X or Z to edit the shared placement
+record; every use of that record receives the change. The Inspector lists related
+instances and the source reference count. Undo restores the edit. Enable the
+handles again after the project changes. Decoration handles continue to create
+individual overrides. Runtime visibility and gameplay behavior remain unverified.

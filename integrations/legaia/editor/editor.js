@@ -504,6 +504,7 @@ async function api(path, payload, {dialog,success}={}) {
 }
 function entities(){return state.scene?.entities ?? [];}
 let environmentSelection=null;
+let sharedEnvironmentMove=null;
 let npcDraftSelection=null;
 function selectedNpcDraft(){const value=state.actor_drafts?.[npcDraftSelection];return value?.scene_id===state.scene?.id?value:null;}
 function frameNpcDraft(){
@@ -520,12 +521,14 @@ function movableSelection(){
   if(npc){if(!scenePreviewCurrent()||hiddenSceneEntities().has(npcDraftSelection))return null;return {id:npcDraftSelection,components:{Transform:{effective:{position:{...npc.position,y:null}}}}};}
   const environment=selectedEnvironment();
   if(!environment)return selected();
-  if(!scenePreviewCurrent()||!environment.entity_id.includes('/decorations/')||hiddenSceneEntities().has(environment.entity_id))return null;
+  if(!scenePreviewCurrent()||hiddenSceneEntities().has(environment.entity_id))return null;
+  if(!environment.entity_id.includes('/decorations/')&&!(sharedEnvironmentMove?.id===environment.entity_id&&sharedEnvironmentMove?.key===resourceStateKey()))return null;
   return {id:environment.entity_id,components:{Transform:{effective:{position:environment.position}}}};
 }
 async function moveDecoration(identifier,axis,worldValue){
   if(sceneRepresentation!=='authored')return;
   const item=selectedEnvironment();if(!scenePreviewCurrent()||!item||item.entity_id!==identifier)return;
+  if(!item.entity_id.includes('/decorations/')){await moveSharedEnvironment(item,axis,worldValue);return;}
   const source=item.source_record,cell=(source.source_record.grid_byte_offset-0x8000)/2;
   const binding=activeScenePreview()?.environment_authoring;
   const shared=binding?.edits?.find(e=>e.record_index===source.object_record_index);
@@ -540,6 +543,21 @@ async function moveDecoration(identifier,axis,worldValue){
   if(value===inherited){delete edit.offset[axis];if(!Object.keys(edit.offset).length)delete edit.offset;}
   const remaining=instances.filter(e=>e.offset||e.rotation_psx),edits=binding?.edits??[];
   await api('/api/command',remaining.length||edits.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits,instances:remaining}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
+}
+async function moveSharedEnvironment(item,axis,worldValue){
+  if(!canEdit()||sharedEnvironmentMove?.id!==item.entity_id||sharedEnvironmentMove?.key!==resourceStateKey())return;
+  const source=item.source_record,binding=activeScenePreview()?.environment_authoring;
+  if(!source.record_offset||!source.source_record?.map_sha256||!['x','z'].includes(axis))return;
+  const edits=structuredClone(binding?.edits??[]),instances=binding?.instances??[];
+  let edit=edits.find(e=>e.record_index===source.object_record_index);
+  if(!edit){edit={record_index:source.object_record_index};edits.push(edit);}
+  const inherited=source.record_offset[axis],current=edit.offset?.[axis]??inherited;
+  const value=current+(worldValue-item.position[axis])*(axis==='z'?-1:1);
+  if(!Number.isInteger(value)||value < -32768||value > 32767){notify('Move exceeds the supported scenery offset range.',true);return;}
+  (edit.offset??={})[axis]=value;
+  if(value===inherited){delete edit.offset[axis];if(!Object.keys(edit.offset).length)delete edit.offset;}
+  const remaining=edits.filter(e=>e.offset||e.rotation_psx);
+  await api('/api/command',remaining.length||instances.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits:remaining,instances}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
 }
 function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
 function selectEnvironment(identifier){pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
@@ -1525,6 +1543,12 @@ function renderInspector(){
     $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Source and overrides</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
     $('frame-environment').onclick=frameEnvironment;
     if(source.record_offset&&source.source_record?.map_sha256){
+      if(!environment.entity_id.includes('/decorations/')){
+        const enable=document.createElement('button');enable.id='enable-shared-move';enable.textContent='Enable shared move handles';
+        enable.disabled=busy||!canEdit()||sceneRepresentation!=='authored'||!scenePreviewCurrent();
+        enable.onclick=()=>{if(!canEdit()||!scenePreviewCurrent()||selectedEnvironment()?.entity_id!==environment.entity_id)return;sharedEnvironmentMove={id:environment.entity_id,key:resourceStateKey()};enable.textContent='Shared move handles enabled';notify('X/Z handles affect every use of this placement record. Undo restores the edit.');draw();};
+        $('frame-environment').after(enable);
+      }
       const scopes=environment.entity_id.includes('/decorations/')?['shared','instance']:['shared'];
       for(const scope of scopes){
       const individual=scope==='instance',cell=(source.source_record.grid_byte_offset-0x8000)/2;
