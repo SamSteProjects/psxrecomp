@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Retail OBJ coverage and model package labeling
+
+- Previous turn made serializer progress. All119 town01 retail models passed equivalent reordered/cyclic/relative-index OBJ exact roundtrip, then a one-unit vertex X edit with exactly one audited coordinate and all other bytes unchanged. Private report: local-output/sdk-20260909/obj-equivalent-retail-20260912/report.json.
+- Actual scene model0000 OBJ project import, Undo/Redo, Save/Open and Build passed. Corrected misleading actor-placement package labeling for model shape content. Actual ZIP manifest confirms Authored scene data; stable internal feature ID remains unchanged for compatibility.
+- Existing-output protection rejected the changed manifest at the prior build path; preserved that output and built into CorrectedBuild. Corrected package SHA256467150e4cd3ca3b9b4190d1d81ee42b8f9be735116e2afe798088e42251fb3f4, one154547-byte overlay. Evidence: local-output/sdk-20260909/obj-equivalent-project-20260912/workflow-check.json. No game launched; external-tool import/render acceptance and gameplay remain pending. Full SDK objective active.
+
+
 ### 2026-09-12 — Equivalent OBJ topology interchange
 
 - Previous turn made verified workflow progress. OBJ shape imports now resolve relative indices at each face declaration and compare oriented triangle multisets, permitting face reordering and cyclic corner rotation without changing source vertex order or primitive/material bytes. Positive source indices retain their existing bounds. Triangle multiplicity and winding remain enforced.

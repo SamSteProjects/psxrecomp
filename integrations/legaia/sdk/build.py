@@ -644,6 +644,11 @@ def _build_project(project, output_dir) -> dict:
         feature_name = 'Authored scene data'
         description = 'Private fixed-width script movement targets and optional authored scene data.'
         feature_description = 'Apply verified MOVE_TO/NPC_RUN X/Z operands; execution and gameplay remain unverified.'
+    if any(c.get('scope') == 'TMD-vertex-normal-XYZ-only' for c in audit_edits):
+        package_suffix = ' authored scene data'
+        feature_name = 'Authored scene data'
+        description = 'Private source-bound model shapes and optional authored scene data.'
+        feature_description = 'Apply verified model coordinate edits and other packaged overrides; model topology and materials remain source-owned.'
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix)}",
