@@ -55,21 +55,42 @@ function renderObservedNodes(query='',nodeIds=null){
 };
 
 let scenePose=null;
-let coordinateProbe=null;
+let coordinateProbe=null,locateSample=null,locateGeneration=0;
 const locateButton=document.createElement('button');locateButton.textContent='Locate coordinates';$('frame-selected').after(locateButton);
-const locateDialog=document.createElement('dialog');locateDialog.className='project-dialog';locateDialog.innerHTML='<form><h2>Locate guest coordinates</h2><p>Place a reference marker using game coordinates. This changes only the editor camera.</p><label>X <input name="x" type="number" step="any" required></label><label>Y <input name="y" type="number" step="any" required value="0"></label><label>Z <input name="z" type="number" step="any" required></label><button type="submit">Locate</button><button type="button" data-clear>Clear marker</button><button type="button" data-close>Cancel</button></form>';document.body.append(locateDialog);
+const locateDialog=document.createElement('dialog');locateDialog.className='project-dialog';locateDialog.innerHTML='<form><h2>Locate guest coordinates</h2><p>Place a reference marker using game coordinates. This changes only the editor camera.</p><label>X <input name="x" type="number" step="any" required></label><label>Y <input name="y" type="number" step="any" required value="0"></label><label>Z <input name="z" type="number" step="any" required></label><button type="button" data-surface>Use source surface height</button><p data-surface-status role="status"></p><button type="submit">Locate</button><button type="button" data-clear>Clear marker</button><button type="button" data-close>Cancel</button></form>';document.body.append(locateDialog);
 locateButton.onclick=()=>locateDialog.showModal();
+locateDialog.addEventListener('close',()=>{locateGeneration++;locateSample=null;locateDialog.querySelector('[data-surface-status]').textContent='';});
+locateDialog.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{locateGeneration++;locateSample=null;locateDialog.querySelector('[data-surface-status]').textContent='';}));
+locateDialog.querySelector('[data-surface]').onclick=async()=>{
+  if(busy)return;
+  const button=locateDialog.querySelector('[data-surface]'),status=locateDialog.querySelector('[data-surface-status]');
+  const x=Number(locateDialog.querySelector('[name="x"]').value),z=Number(locateDialog.querySelector('[name="z"]').value);
+  if(['x','z'].some(axis=>!locateDialog.querySelector(`[name="${axis}"]`).value.trim())||![x,z].every(v=>Number.isFinite(v)&&v>=0&&v<=16384)){status.textContent='Enter X/Z from 0 through 16384 to sample the source surface.';return;}
+  const generation=++locateGeneration,key=state.scene_preview_source_key,context=JSON.stringify([state.project?.path,state.scene?.id]);
+  locateSample=null;setBusy(true);button.disabled=true;status.textContent='Sampling source terrain…';
+  try{
+    const response=await fetch('/api/terrain-point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({x,z,source_key:key})}),result=await response.json();
+    if(generation!==locateGeneration||!locateDialog.open||context!==JSON.stringify([state.project?.path,state.scene?.id])||key!==state.scene_preview_source_key)return;
+    if(!response.ok)throw new Error(result.error||'Terrain sampling failed');
+    if(result.source_key!==key||result.scene_id!==state.scene?.id||result.position?.x!==x||result.position?.z!==z)throw new Error('Terrain sample context differs from the requested point');
+    if(result.position.y===null){status.textContent='No source surface covers this point. Enter a reference Y manually.';return;}
+    if(!Number.isFinite(result.position.y))throw new Error('Invalid source height');
+    locateDialog.querySelector('[name="y"]').value=result.position.y;locateSample={x,z,y:result.position.y};
+    status.textContent=`Source surface Y ${result.position.y}; runtime elevation is unverified.`;
+  }catch(error){if(generation===locateGeneration)status.textContent=error.message;}finally{button.disabled=false;setBusy(false);}
+};
+
 locateDialog.querySelector('[data-close]').onclick=()=>locateDialog.close();
 locateDialog.querySelector('[data-clear]').onclick=()=>{coordinateProbe=null;locateDialog.close();draw();};
 locateDialog.querySelector('form').onsubmit=event=>{
   event.preventDefault();const point={};for(const axis of ['x','y','z']){const input=locateDialog.querySelector(`[name="${axis}"]`);point[axis]=Number(input.value);if(!input.value.trim()||!Number.isFinite(point[axis]))return;}
-  coordinateProbe={point,context:JSON.stringify([state.project?.path,state.scene?.id])};cancelViewportGesture();camera.target=displayPosition(point);camera.distance=1000;cameraRevision++;locateDialog.close();draw();
+  coordinateProbe={point,sampleEvidence:!!locateSample&&["x","y","z"].every(axis=>locateSample[axis]===point[axis]),context:JSON.stringify([state.project?.path,state.scene?.id])};cancelViewportGesture();camera.target=displayPosition(point);camera.distance=1000;cameraRevision++;locateDialog.close();draw();
 };
 function drawCoordinateProbe(){
   if(!coordinateProbe||coordinateProbe.context!==JSON.stringify([state.project?.path,state.scene?.id]))return;
   if(coordinateProbe.epoch&&(state.project?.mode!=='live'||acceptedEpoch(state.runtime)!==coordinateProbe.epoch||state.runtime_correlation?.available!==true||state.runtime_correlation.epoch_id!==coordinateProbe.epoch))return;
   const world=displayPosition(coordinateProbe.point),p=project(world);if(!p)return;
-  ctx.save();ctx.strokeStyle='#ffda78';ctx.fillStyle='#ffda78';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.moveTo(p.x-15,p.y);ctx.lineTo(p.x+15,p.y);ctx.moveTo(p.x,p.y-15);ctx.lineTo(p.x,p.y+15);ctx.stroke();ctx.font='12px "Segoe UI",sans-serif';const v=coordinateProbe.point;ctx.fillText(`${coordinateProbe.epoch?'Captured node':'Reference'} X ${v.x} Y ${v.y} Z ${v.z}`,p.x+18,p.y-12);ctx.restore();
+  ctx.save();ctx.strokeStyle='#ffda78';ctx.fillStyle='#ffda78';ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,9,0,Math.PI*2);ctx.moveTo(p.x-15,p.y);ctx.lineTo(p.x+15,p.y);ctx.moveTo(p.x,p.y-15);ctx.lineTo(p.x,p.y+15);ctx.stroke();ctx.font='12px "Segoe UI",sans-serif';const v=coordinateProbe.point;ctx.fillText(`${coordinateProbe.epoch?'Captured node':coordinateProbe.sampleEvidence?'Source surface':'Reference'} X ${v.x} Y ${v.y} Z ${v.z}`,p.x+18,p.y-12);ctx.restore();
 }
 
 const frameSamplesButton=document.createElement('button');frameSamplesButton.textContent='Frame live samples';frameSamplesButton.disabled=true;frameSamplesButton.title='Frame all accepted-epoch candidates for the selected actor without changing authored placement';$('frame-selected').after(frameSamplesButton);
