@@ -4,6 +4,7 @@ from pathlib import Path
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.terrain import decode_terrain
+from sdk.scene_preview import sample_preview_ground
 
 
 class TerrainTests(unittest.TestCase):
@@ -26,6 +27,33 @@ class TerrainTests(unittest.TestCase):
         self.assertEqual([v[1] for v in g['vertices']], [-64]*4)
         self.assertFalse(g['materials'][0]['textured'])
         self.assertEqual(g['triangle_uvs'], [None,None])
+
+    def test_ground_sampler_includes_outer_edges_without_extrapolation(self):
+        data = bytearray(0x12000)
+        struct.pack_into("<H", data, 0xFFFE, 0x1000)
+        data[0x7FFF] = 1
+        ground = decode_terrain(bytes(data), [0,64]+[0]*14)
+        for x, z in ((16256,16256), (16384,16256), (16256,16384),
+                     (16384,16384), (16384,16300), (16300,16384)):
+            with self.subTest(x=x, z=z):
+                sample = sample_preview_ground(ground, x, z)
+                self.assertEqual(sample['y'], -64)
+                self.assertEqual(sample['cell_index'], 16383)
+        for x, z in ((16384.001,16384), (16384,16384.001), (-0.001,0),
+                     (0,-0.001), (float('nan'),0), (0,float('inf')), (True,0)):
+            with self.subTest(x=x, z=z):
+                self.assertIsNone(sample_preview_ground(ground, x, z))
+        self.assertIsNone(sample_preview_ground(ground, 0, 0))
+        self.assertIsNone(sample_preview_ground({'cells': []}, 16384, 16384))
+
+    def test_ground_sampler_uses_source_triangle_not_bilinear_height(self):
+        ground = {'cells': [{'cell_index': 16383, 'vertex_start': 0}],
+                  'vertices': [[16256,0,16256], [16384,128,16256],
+                               [16256,256,16384], [16384,512,16384]]}
+        for x, z, height in ((16288,16288,96), (16352,16352,352),
+                             (16384,16320,320), (16320,16384,384)):
+            with self.subTest(x=x, z=z):
+                self.assertEqual(sample_preview_ground(ground, x, z)['y'], height)
 
 
 if __name__ == '__main__':

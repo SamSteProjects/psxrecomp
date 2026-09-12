@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (SDK terrain locator outer-edge sampling):** Corrected source-height sampling at X/Z16384: these coordinates belong to the final rendered quad but previously produced no sample despite being accepted by the locator endpoint. Bound-check coordinates before clamping the cell index; preserve triangle interpolation and reject outside/nonfinite/boolean inputs and missing source coverage. Twelve focused terrain/scene-preview tests passed, including decoder-produced final-cell corners, outer edges, empty cells and non-bilinear triangle interpolation. No game launched or controlled. This is source-preview correctness, not runtime elevation acceptance; the broader SDK goal remains incomplete and manual gameplay remains deferred.
+
+
 - **2026-09-12 (SDK source-surface coordinate locator):** Prior turn made progress in1a539a9a. Added Use source surface height to the shared coordinate locator, reusing the verified /api/terrain-point path. X/Z must be explicitly entered and bounded; a covered point fills Y and labels it source surface/runtime-unverified. Missing coverage keeps manual Y without inventing zero. Coordinate edits, dialog closure and scene/source changes invalidate pending samples; source-labelled markers require an unchanged sampled XYZ. Actual Edge map01 check passed: X8000/Z8000 ->Y-192 with the existing source triangle sampler; a deliberately delayed sample was ignored after X changed and manual Y123 stayed intact. Zero page errors; syntax check passed. No authored transforms, source terrain or gameplay were changed. Terrain editing, runtime elevation parity and other broad SDK work remain incomplete.
 
 

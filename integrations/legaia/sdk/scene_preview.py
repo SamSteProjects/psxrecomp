@@ -117,9 +117,11 @@ def sample_preview_ground(ground, x, z):
     import math
     if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in (x, z)):
         return None
-    col, row = math.floor(x / 128), math.floor(z / 128)
-    if not (0 <= col < 128 and 0 <= row < 128):
+    if not (0 <= x <= 16384 and 0 <= z <= 16384):
         return None
+    # The last rendered quad includes the outer edge at 128 * 128.
+    # Clamp its cell index, not the coordinate or interpolation weights.
+    col, row = min(math.floor(x / 128), 127), min(math.floor(z / 128), 127)
     cell = next((c for c in ground.get("cells", []) if c["cell_index"] == row * 128 + col), None)
     if cell is None:
         return None
