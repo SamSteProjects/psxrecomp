@@ -351,7 +351,7 @@ class ScenePreviewService:
                             raise RetailImportError("Multipart model has no supported placement pose")
                         pose_kind = "single_object_static"
                     count = len(preview.get("triangles", []))
-                    bytes_used = sum(len(t.get("rgba_base64", "")) * 3 // 4 for t in preview.get("textures", []))
+                    bytes_used = sum((len(t.get("rgba_base64", "")) + len(t.get("stp_base64", ""))) * 3 // 4 for t in preview.get("textures", []))
                     if len(assets) >= MAX_GEOMETRIES or triangle_count + count > MAX_TRIANGLES or texture_bytes + bytes_used > MAX_TEXTURE_BYTES:
                         raise RetailImportError("Scene geometry or texture preview budget exceeded")
                     preview["coordinate_system"] = "actor_local_y_down_source_units"
@@ -401,7 +401,7 @@ class ScenePreviewService:
                                 geometry = env.pose_preview(placement["semantic_id"])
                                 preview = model_loader(asset, prepared=geometry)
                                 count = len(preview.get("triangles", []))
-                                bytes_used = sum(len(t.get("rgba_base64", "")) * 3 // 4 for t in preview.get("textures", []))
+                                bytes_used = sum((len(t.get("rgba_base64", "")) + len(t.get("stp_base64", ""))) * 3 // 4 for t in preview.get("textures", []))
                                 if len(assets) >= MAX_GEOMETRIES or triangle_count + count > MAX_TRIANGLES or texture_bytes + bytes_used > MAX_TEXTURE_BYTES:
                                     raise RetailImportError("Scene geometry or texture preview budget exceeded")
                                 assets.append({"asset_id": asset_id, "geometry_key": geometry_key, "preview": preview,
@@ -421,7 +421,7 @@ class ScenePreviewService:
                 try:
                     ground = terrain_loader(project)
                     count = len(ground["triangles"])
-                    bytes_used = sum(len(t.get("rgba_base64", "")) * 3 // 4 for t in ground["textures"])
+                    bytes_used = sum((len(t.get("rgba_base64", "")) + len(t.get("stp_base64", ""))) * 3 // 4 for t in ground["textures"])
                     if len(assets) >= MAX_GEOMETRIES or triangle_count + count > MAX_TRIANGLES or texture_bytes + bytes_used > MAX_TEXTURE_BYTES:
                         raise RetailImportError("Combined terrain geometry or texture budget exceeded")
                     if count:

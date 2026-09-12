@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Preserve transparency evidence through preview transport
+
+- Renderer audit found that decoded per-texel STP masks were discarded by model_preview before reaching clients. Added stp_base64 alongside matched RGBA data, requiring one binary byte per pixel and accounting for both payloads in per-model and combined-scene budgets.
+- Materials expose decoded ABE enable, tpage ABR mode and textured-STP versus untextured-all-fragment gating. Untextured ABR0 is explicitly reference-default evidence from pinned crates/tmd/src/mesh/color.rs, not a captured draw environment.
+- Retail savepoint probe verified all four matched masks against texture dimensions and binary domain; material modes are1,0,0,0,1 with their original enable flags. Ten scene-cache/boot-underlay checks passed.
+- This completes the transport prerequisite only: current renderers still draw without PSX blend reconstruction. No visual/gameplay acceptance claim, game launch or project save. Direct server socket closed; full goal active.
+
+
 ### 2026-09-12 — Boot texture coverage for scene models
 
 - Extended verified boot UI underlay to scene texture catalogs, below scene-owned words. Authored texture replacement keeps the underlay through the existing catalog deep copy; unknown/conflicting scene upload order remains rejected.

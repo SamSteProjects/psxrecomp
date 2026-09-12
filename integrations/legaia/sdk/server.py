@@ -292,6 +292,12 @@ class EditorServer(ThreadingHTTPServer):
         preview["textures"] = []
         budget = 2 * 1024 * 1024
         for index, material in enumerate(preview.get("materials", [])):
+            material['blend'] = {
+                'enabled': bool(material.get('semi_transparent')),
+                'mode': ((material['tpage'] >> 5) & 3) if material.get('textured') else 0,
+                'texel_gate': 'stp_bit' if material.get('textured') else 'all_fragments',
+                'evidence': 'decoded_primitive_ABE_and_tpage_ABR; untextured_ABR0_reference_default',
+            }
             if not material.get("textured"):
                 preview["textures"].append({"material_index": index, "status": "untextured", "reason": "Material uses vertex colors"})
                 continue
@@ -303,13 +309,16 @@ class EditorServer(ThreadingHTTPServer):
             bounds = (min(uv[0] for uv in uvs), min(uv[1] for uv in uvs), max(uv[0] for uv in uvs), max(uv[1] for uv in uvs))
             result = associate_material(catalog, material, bounds)
             rgba = result.pop("rgba", None)
-            result.pop("stp", None)
+            stp = result.pop("stp", None)
             if rgba is not None:
-                if len(rgba) > budget:
+                if stp is None or len(stp) * 4 != len(rgba) or any(bit not in (0, 1) for bit in stp):
+                    raise ProjectError('Texture transparency mask does not match decoded pixels')
+                if len(rgba) + len(stp) > budget:
                     result = {"status": "unsupported", "reason": "Decoded texture preview byte budget exceeded"}
                 else:
-                    budget -= len(rgba)
+                    budget -= len(rgba) + len(stp)
                     result["rgba_base64"] = base64.b64encode(rgba).decode("ascii")
+                    result["stp_base64"] = base64.b64encode(stp).decode("ascii")
             result["material_index"] = index
             preview["textures"].append(result)
         return preview
