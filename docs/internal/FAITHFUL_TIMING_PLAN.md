@@ -213,6 +213,27 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Mixed descriptor/streaming relocation and MAP composition
+
+- Previous turn produced a verified streaming disc artifact. Added mixed-format archive regression: compressed owner growth relocates a later streaming owner, whose equal-span MAN patch still reopens correctly; reversing request order gives identical bytes/audit and tail sectors remain unchanged. Ten focused archive/draft regressions pass.
+- Real saved town01 NPC draft plus an in-memory dolk2 placement edit composed into 121,255,936 bytes; owners 4 and 70 both reopened successfully. Metadata audit `local-output/sdk-20260909/mixed-streaming-descriptor-project-20260912.json`.
+- Real dolk2 placement plus collision row30/column30/quadrant0 false-to-true bit (MAP offset20254, mask16) also composed and passed final MAP verification. Audit `local-output/sdk-20260909/streaming-map-composition-20260912.json`.
+- Source projects were not saved with these probe edits, no additional disc was written, and no gameplay launched. Broader streaming authoring/NPC growth remains unfinished.
+
+### 2026-09-12 Streaming placement disc export and deferred test artifact
+
+- Previous goal turn made verified project preparation progress. Exported dolk2 actor-0001 X64/Z16320 initial placement probe through the shared experimental disc/snapshot writer. Output `local-output/sdk-20260909/streaming-placement-export-20260912/draft.bin`, 466,714,416 bytes, SHA256 `834a22c50b0bc527bd8b9327246ca8c342b34ad82548501e42a3cc47c28f36de`.
+- Independent file hash, all retained input hashes, saved project override and direct output-disc MAN decoding passed. The ordinary importer rejected the modified SHA as designed; lower-level Mode2/PROT readers verified output without changing that retail-only gate. Reopened actor fields are X64/Z16320, model133, animation35.
+- Twelve focused archive/draft export regressions passed. Added precise artifact and limitations to the deferred gameplay queue. This is a boundary-placement serialization probe; scripts may move/hide it, so visibility at initial coordinates is not promised.
+- No game launched. Mixed-scene and MAP composition checks plus broader streaming authoring remain unfinished.
+
+### 2026-09-12 Streaming project preparation joins experimental export composition
+
+- Previous turn checkpointed verified writer primitives. Batch MAN preparation now distinguishes descriptor requests from structural streaming chunk requests while retaining distinct-owner checks and stable entry order.
+- Added streaming project preparation for actor X/Z and supported MAP scenery/collision components through the existing experimental export path. Other authored components and NPC additions reject explicitly; no unsupported edits are silently omitted. Fresh imported evidence and authored-state keys are verified before/after preparation.
+- Real dolk2 project override traversed `prepare_draft_archive` and produced a 121,253,888-byte logical PROT with reopened streaming MAN verification true; audit `local-output/sdk-20260909/streaming-project-preparation-20260912.json`. Seven archive/payload regressions pass.
+- No disc was written or gameplay launched. Final disc/snapshot export, composed MAP acceptance and mixed descriptor/streaming relocation coverage remain next; broad streaming authoring is not complete.
+
 ### 2026-09-12 Streaming archive writer regression checkpoint
 
 - Previous goal turn made verified retail archive-writer progress. Added a synthetic, parsed MAN-in-PROT roundtrip regression that verifies retained TOC bytes, neighboring chunks/sectors and candidate bytes, plus rejection of boolean indices, nonstructural offsets, stale preimages and payload growth.

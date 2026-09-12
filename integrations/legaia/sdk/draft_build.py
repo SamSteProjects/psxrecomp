@@ -109,6 +109,11 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     map_components=overrides.pop(draft['scene_id'],None)
     if digest(import_scene(project.disc_path,scene))!=digest(document):
         raise ProjectError('Draft donor evidence differs from the source disc')
+    if any(a.get('source_record', {}).get('scene_bundle', {}).get('kind') == 'raw_streaming_man' for a in document['actors']):
+        if not defer_rebuild:
+            raise ProjectError('Streaming NPC additions require further serialization support')
+        from .streaming_build import prepare_streaming_scene
+        return prepare_streaming_scene(project, draft['scene_id'])
     actors={a['semantic_id']:a for a in document['actors']}
     edits={}
     assignments={}

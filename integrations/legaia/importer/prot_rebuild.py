@@ -89,7 +89,9 @@ def rebuild_man_entries(source: bytes, expected_sha256: str, entries: list[dict]
         raise ImportError('Batch MAN rebuild requires 1 through 128 entries')
     owners=set()
     for item in entries:
-        if not isinstance(item,dict) or set(item)!={'entry_index','table_offset','source_man_sha256','candidate'}:
+        fields = set(item) if isinstance(item, dict) else set()
+        if fields not in ({'entry_index','table_offset','source_man_sha256','candidate'},
+                          {'entry_index','chunk_header_offset','source_man_sha256','candidate'}):
             raise ImportError('Batch MAN entry fields are invalid')
         index=item['entry_index']
         if type(index) is not int or index<0 or index in owners:
@@ -98,8 +100,9 @@ def rebuild_man_entries(source: bytes, expected_sha256: str, entries: list[dict]
     result=source
     audits=[]
     for item in sorted(entries,key=lambda item:item['entry_index']):
-        result,audit=rebuild_man_entry(result,sha256(result).hexdigest(),**item,header_offset=header_offset)
-        audits.append(dict(entry_index=item['entry_index'],**audit))
+        writer = patch_streaming_man_entry if 'chunk_header_offset' in item else rebuild_man_entry
+        result,audit=writer(result,sha256(result).hexdigest(),**item,header_offset=header_offset)
+        audits.append(dict(audit, entry_index=item['entry_index']))
     return result,dict(source_sha256=expected_sha256,result_sha256=sha256(result).hexdigest(),
                        entries=audits,build_ready=False)
 

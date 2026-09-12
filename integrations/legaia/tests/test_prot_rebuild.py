@@ -79,6 +79,26 @@ class ProtRebuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ImportError,'distinct'):
             rebuild_man_entries(source,sha256(source).hexdigest(),[entries[0],entries[0]])
 
+        # A later raw streaming owner must be looked up again after compressed
+        # growth; its original absolute byte offset is no longer correct.
+        from test_importer import synthetic_man
+        from importer.serialization import patch_man_positions
+        man = synthetic_man()
+        man += bytes((-len(man)) % 4)
+        candidate, _ = patch_man_positions(man, 'town01', {1: {'x':64}})
+        streaming = (struct.pack('<I', (3 << 24) | len(man)) + man + bytes(4)).ljust(2048, b'\0')
+        mixed_source = source[:4096] + streaming + source[6144:]
+        mixed_entries = [entries[0], dict(entry_index=1, chunk_header_offset=0,
+                                         source_man_sha256=sha256(man).hexdigest(), candidate=candidate)]
+        mixed, mixed_audit = rebuild_man_entries(mixed_source, sha256(mixed_source).hexdigest(), mixed_entries)
+        reverse, reverse_audit = rebuild_man_entries(mixed_source, sha256(mixed_source).hexdigest(), mixed_entries[::-1])
+        self.assertEqual((mixed,mixed_audit),(reverse,reverse_audit))
+        relocated_lba = struct.unpack_from('<I', mixed, 20)[0]
+        self.assertGreater(relocated_lba, 2)
+        self.assertEqual(mixed[relocated_lba*2048+4:relocated_lba*2048+4+len(candidate)], candidate)
+        self.assertTrue(all(row['reopened_man_verified'] for row in mixed_audit['entries']))
+        self.assertEqual(mixed[-2048:], mixed_source[-2048:])
+
     def source(self):
         raw = bytearray(2048)+bytearray(b'A'*2048+b'B'*2048+b'C'*2048)
         struct.pack_into('<ii', raw, 4, 5, 1)

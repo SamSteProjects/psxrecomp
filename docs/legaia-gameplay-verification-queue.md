@@ -29,6 +29,16 @@ history workflow. CLI callers may omit `--draft` for project-wide export. A
 project with no authored changes is rejected; ordinary Build remains the retail
 baseline workflow. Export completion still requires later gameplay acceptance.
 
+## Streaming placement export probe
+
+- Artifact: `local-output/sdk-20260909/streaming-placement-export-20260912/draft.bin`.
+- SHA256: `834a22c50b0bc527bd8b9327246ca8c342b34ad82548501e42a3cc47c28f36de`; 466,714,416 bytes.
+- Adjacent `report.json` and `Inputs/project.legaia.json` retain the exact export and authored inputs.
+- One dolk2 actor-0001 initial placement field changes: X16320 to X64, retaining Z16320. This is a boundary/serialization probe, not an added NPC or a known visible walkable destination. Its script can relocate or hide it.
+- Offline verification: independent disc hash, reopened PROT, directly decoded output MAN coordinates X64/Z16320, unchanged TOC, and all snapshot hashes passed. The retail-only project importer intentionally rejects this modified disc.
+- Deferred manual check: use this exact disc and an identified runtime; reach dolk2 and inspect actor/script behavior with the live observer when available. Verify scene entry and existing progression remain intact. Do not infer a runtime placement failure solely from not seeing the actor at its encoded initial position.
+- Gameplay has not run. Streaming NPC additions, model/texture replacement and other unsupported authored components remain outside this export implementation.
+
 ## Ready artifact: added NPC
 
 - Artifact: `local-output/sdk-20260909/saved-draft-export-20260911/draft.bin`.
