@@ -12,6 +12,19 @@ from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class BuildReportTests(unittest.TestCase):
+    def test_model_vectors_are_detached_and_preserve_scalar_context(self):
+        vector={'object_index':1,'kind':'normal','vector_index':0,'axis':'x',
+                'byte_offset':3332,'before_value':0,'after_value':1}
+        audit={'edits':[{'scene':'town01','semantic_id':'asset://town01/models/scene-tmd/0009',
+                         'field':'model.shape','before_sha256':'a','after_sha256':'b',
+                         'scope':'TMD-vertex-normal-XYZ-only','coordinate_changes':[vector]}],
+               'validation':{},'overlays':[]}
+        result=build_report(audit)
+        self.assertEqual(result['change_count'],1)
+        self.assertEqual(result['changes'][0]['coordinate_changes'],[vector])
+        result['changes'][0]['coordinate_changes'][0]['after_value']=99
+        self.assertEqual(vector['after_value'],1)
+
     def test_package_content_summary_keeps_all_emitted_families(self):
         edits=[{'scope':'shared-scene-animation-record'}, {'scope':'source-MAP-wall-bit-only'},
                {'scope':'TMD-vertex-normal-XYZ-only'}, {'scope':'script-movement-target-only'},

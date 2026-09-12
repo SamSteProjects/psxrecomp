@@ -235,3 +235,10 @@ conversion. Authored download keeps the retail binding and includes current
 edited vectors. Import replaces the complete shape through ordinary model
 history/persistence; missing objects/vectors and stale hashes reject. Topology,
 materials and padding remain unchanged. OBJ still edits positions only.
+
+
+Model build-report rows retain the before/after TMD hashes and an expandable
+vertex/normal axis audit. It identifies each changed object, vector, axis and
+source-word value. The viewer shows up to256 scalar rows per model; the complete
+build audit retains all changes. These are emitted package changes, not merely
+unsaved editor intentions.

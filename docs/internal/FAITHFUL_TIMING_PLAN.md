@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Model build report scalar detail
+
+- Previous goal turn made verified progress atb2032d26 with retail normal-only and mixed package readback. Current worktree confirmed clean before improving emitted-change review.
+- Build reports now copy existing model coordinate audits into each model.shape row while retaining source/effective hashes and original report change counts. Editor rows expose expandable object/vector/axis before/after details, bounded to256 displayed scalars with an explicit full-audit note for larger changes. No speculative changes or new package bytes are introduced.
+- Seven focused build-report tests passed in0.658s, including detached coordinate metadata. Reconstructed the report from the saved normal-only retail package audit and displayed it through the actual browser renderer: Object1/normal0/x0->1 was visible, with no page errors. Evidence: local-output/sdk-20260909/model-normal-json-project-20260912/{vector-build-report.json,vector-report-browser-check.json}. Existing package remains unchanged.
+- Node syntax and diff checks passed. Browser/test server stopped; no gameplay launched. Broader model editing and SDK goals remain active.
+
+
 ### 2026-09-12 — Retail normal JSON and package acceptance
 
 - Previous goal turn made verified progress at89e57301 with model JSON editor/project integration. Current worktree was clean before package validation.

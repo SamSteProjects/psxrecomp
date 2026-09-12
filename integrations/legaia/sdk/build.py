@@ -80,6 +80,8 @@ def build_report(audit) -> dict:
                             "authored_owners": list(change.get("axis_owners", change.get("authored_owners", []))),
                             "contributor_scope": "axis" if "axis_owners" in change else "clip"}
                            if change.get("scope") == "shared-scene-animation-record" else {}),
+                        **({'coordinate_changes': [dict(row) for row in change['coordinate_changes']]}
+                           if field == 'model.shape' and 'coordinate_changes' in change else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
                         "scope": change.get("scope", "initial-man-placement-only")})
