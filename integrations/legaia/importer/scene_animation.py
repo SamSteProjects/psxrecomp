@@ -70,7 +70,7 @@ class SceneActorAnimationCatalog:
             start, end = self._ranges[index]
             self._decoded[index] = decode_animation_record(self._body[start:end])
         decoded = self._decoded[index]
-        if decoded["bone_count"] != expected_asset["source_record"]["object_count"]:
+        if decoded["bone_count"] > expected_asset["source_record"]["object_count"]:
             raise ImportError("scene animation channel count does not match the actor model's object count")
         return index, decoded
 
@@ -116,15 +116,37 @@ class SceneActorAnimationCatalog:
         identity = asset["semantic_id"]
         if identity not in self._models:
             geometry = load_model_preview(self._disc, asset)
-            if len(geometry["objects"]) != decoded["bone_count"]:
-                raise ImportError("decoded scene model object count does not match animation channels")
+            if len(geometry["objects"]) != asset["source_record"]["object_count"]:
+                raise ImportError("decoded scene model object count does not match imported source")
             if (self._cached_vertices + len(geometry["vertices"]) > MAX_POSED_VERTICES or
                     self._cached_triangles + len(geometry["triangles"]) > MAX_POSED_VERTICES):
                 raise ImportError("scene model cache exceeds the bounded geometry budget")
             self._cached_vertices += len(geometry["vertices"])
             self._cached_triangles += len(geometry["triangles"])
             self._models[identity] = geometry
-        return deepcopy(self._models[identity])
+        geometry = deepcopy(self._models[identity])
+        # FUN_8001B964 count contract, pinned by field_npc_placements_disc.rs:
+        # only the leading objects tracked by this record participate in posing.
+        # Trim a request copy; another clip can track more of the cached model.
+        count = decoded["bone_count"]
+        if count > len(geometry["objects"]):
+            raise ImportError("scene animation channel count exceeds decoded model objects")
+        if count < len(geometry["objects"]):
+            objects = geometry["objects"][:count]
+            vertex_count = sum(obj["vertex_count"] for obj in objects)
+            triangle_count = sum(obj["triangle_count"] for obj in objects)
+            geometry["vertices"] = geometry["vertices"][:vertex_count]
+            for key in ("triangles", "triangle_colors", "triangle_uvs", "triangle_materials"):
+                if key in geometry:
+                    geometry[key] = geometry[key][:triangle_count]
+            geometry.setdefault("diagnostics", []).append({
+                "kind": "untracked_trailing_objects_excluded",
+                "object_indices": list(range(count, len(geometry["objects"]))),
+                "reference_commit": REFERENCE_COMMIT,
+            })
+            geometry["objects"] = objects
+            geometry["bounds"] = _bounds(geometry["vertices"])
+        return geometry
 
     def _metadata(self, actor, asset, index, decoded):
         start, end = self._ranges[index]
@@ -144,7 +166,8 @@ class SceneActorAnimationCatalog:
                        "note": "This record has no rate byte; a viewer may choose an explicit preview rate."},
             "association": {"kind": "verified_man_header_scene_anm_record_plus_one",
                             "animation_id": index + 1, "actor_source_record": deepcopy(actor["source_record"]),
-                            "active_object_indices": list(range(decoded["bone_count"]))},
+                            "active_object_indices": list(range(decoded["bone_count"])),
+                            "excluded_object_indices": list(range(decoded["bone_count"], asset["source_record"]["object_count"]))},
             "skeleton": {"semantic_id": skeleton_id, "topology": "independent_rigid_objects", "hierarchy": None,
                          "channels": [{"semantic_id": f"{skeleton_id}/channels/{i:02d}",
                                        "object_index": i, "parent_index": None} for i in range(decoded["bone_count"])]},

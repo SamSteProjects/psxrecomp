@@ -60,6 +60,26 @@ class SceneAnimationTests(unittest.TestCase):
             self.assertEqual(restored["pose"]["source_record"]["disc"]["sha256"], "f" * 64)
             load.assert_not_called()
 
+    def test_untracked_trailing_objects_are_excluded_without_truncating_cache(self):
+        catalog, actor, asset, model = fixture()
+        asset['source_record']['object_count'] = 2
+        catalog._assets[asset['semantic_id']] = deepcopy(asset)
+        model['objects'][0]['triangle_count'] = 1
+        model['objects'].append({'object_index':1, 'vertex_start':1, 'vertex_count':1, 'triangle_count':1})
+        model['vertices'].append([100,200,300])
+        model['triangles'].append([1,1,1])
+        model['triangle_materials'] = [0,1]
+        with patch('importer.scene_animation.load_model_preview', return_value=model) as load:
+            pose = catalog.pose_preview(actor,asset,1)
+            self.assertEqual(pose['vertices'], [[11,2,3]])
+            self.assertEqual(pose['triangles'], [[0,0,0]])
+            self.assertEqual(pose['triangle_materials'], [0])
+            self.assertEqual(pose['pose']['association']['excluded_object_indices'], [1])
+            full = catalog._geometry(asset, {'bone_count':2})
+            self.assertEqual(full['vertices'],model['vertices'])
+            self.assertEqual(len(full['objects']),2)
+            self.assertEqual(load.call_count,1)
+
     def test_zero_global_wrong_asset_and_tampered_source_are_rejected(self):
         catalog, actor, asset, _ = fixture()
         for fields in ({"animation_id": 0}, {"animation_id": 2}, {"animation_id": True}):

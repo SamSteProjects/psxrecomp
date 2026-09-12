@@ -38,7 +38,7 @@ class AnimationCatalogTests(unittest.TestCase):
 
     def test_deduplicated_stable_ids_exact_bindings_unknown_timing(self):
         result = self.read(fixture())
-        self.assertEqual((result["asset_count"], result["binding_count"], result["actor_count"]), (1, 2, 5))
+        self.assertEqual((result["asset_count"], result["binding_count"], result["actor_count"]), (1, 3, 5))
         self.assertEqual(result["scene_anm_record_count"], 2)
         asset = result["assets"][0]
         self.assertEqual(asset["semantic_id"], "animation://fixture/scene-anm/0000")
@@ -47,11 +47,11 @@ class AnimationCatalogTests(unittest.TestCase):
         self.assertEqual((asset["frame_count"], asset["channel_count"], asset["bone_count"]), (2, 1, 1))
         self.assertIsNone(asset["timing"]["fps"]); self.assertIsNone(asset["timing"]["wire_rate"])
         self.assertIsNone(asset["looping"])
-        self.assertEqual(asset["actor_semantic_ids"], [f"scene://fixture/actors/man-p1/{i:04d}" for i in (1, 2)])
-        self.assertEqual(asset["asset_semantic_ids"], [f"asset://fixture/models/scene-tmd/{i:04d}" for i in (1, 2)])
+        self.assertEqual(asset["actor_semantic_ids"], [f"scene://fixture/actors/man-p1/{i:04d}" for i in (1, 2, 5)])
+        self.assertEqual(asset["asset_semantic_ids"], [f"asset://fixture/models/scene-tmd/{i:04d}" for i in (1, 2, 3)])
         self.assertNotIn("preview_actor_semantic_id", asset)
-        self.assertEqual(len(result["unavailable_bindings"]), 3)
-        self.assertEqual(result["unavailable_binding_count"], 3)
+        self.assertEqual(len(result["unavailable_bindings"]), 2)
+        self.assertEqual(result["unavailable_binding_count"], 2)
         self.assertIn("Referenced initial MAN animations only", result["limitations"][0])
         self.assertEqual(canonical_json(result), canonical_json(self.read(fixture(reverse=True))))
         validate_metadata_only(result)

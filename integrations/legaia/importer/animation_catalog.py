@@ -53,6 +53,8 @@ def load_animation_asset_catalog(disc: Any, scene: str) -> dict:
             "initial_animation_id": metadata["association"]["animation_id"],
             "actor_source_record": deepcopy(metadata["association"]["actor_source_record"]),
             "association_kind": metadata["association"]["kind"],
+            "active_object_indices": deepcopy(metadata["association"]["active_object_indices"]),
+            "excluded_object_indices": deepcopy(metadata["association"]["excluded_object_indices"]),
         })
     records = [assets[key] for key in sorted(assets)]
     for asset in records:
