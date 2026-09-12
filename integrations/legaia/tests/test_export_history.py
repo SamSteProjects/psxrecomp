@@ -8,6 +8,27 @@ from sdk.export_history import list_exports, verify_export
 
 
 class ExportHistoryTests(unittest.TestCase):
+    def test_editable_copy_preserves_saved_snapshot(self):
+        from sdk.export_snapshot import capture_export_inputs,write_export_inputs
+        from sdk.export_history import copy_export_inputs
+        with tempfile.TemporaryDirectory() as root:
+            project=ProjectService(Path(root));project.save()
+            identifier='experimental-drafts-'+'b'*32
+            directory=project.root/'Builds'/identifier;directory.mkdir(parents=True)
+            key,files=capture_export_inputs(project)
+            snapshot=write_export_inputs(directory,key,files)
+            report={'schema_version':'legaia.experimental-draft-export.v1',
+                    'archive':{},'disc':{'output_sha256':'a'*64,'output_bytes':1,'reopened_prot_verified':True},
+                    'input_snapshot':snapshot}
+            (directory/'report.json').write_bytes(canonical(report))
+            original=(directory/'Inputs/project.legaia.json').read_bytes()
+            destination=copy_export_inputs(project,identifier)
+            copied=ProjectService.open(destination);copied.name='Review copy';copied.save()
+            self.assertEqual((directory/'Inputs/project.legaia.json').read_bytes(),original)
+            self.assertEqual(project.name,'Legaia project')
+            (directory/'Inputs/project.legaia.json').write_bytes(b'corrupt')
+            with self.assertRaises(ProjectError):copy_export_inputs(project,identifier)
+
     def test_completed_incomplete_and_corrupt_exports(self):
         with tempfile.TemporaryDirectory() as root:
             project=ProjectService(Path(root))

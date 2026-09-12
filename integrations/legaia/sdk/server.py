@@ -560,6 +560,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         result = verify_export(self.server.project, body['id'])
                     self._json(200, result)
                     return
+                if route == '/api/exports/open-copy':
+                    from .export_history import copy_export_inputs
+                    if set(body)!={'id'}:
+                        raise ProjectError('Open export copy requires an export id')
+                    if self.server.project.mode!='edit' or self.server.project.dirty:
+                        raise ProjectError('Save the current project in Edit mode before opening an export copy')
+                    destination=copy_export_inputs(self.server.project,body['id'])
+                    self._command('/api/project/open',{'path':str(destination)})
+                    self._json(200,self.server.state())
+                    return
                 if route == "/api/actor-candidate-inspection":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
                         raise ProjectError("Actor candidate inspection accepts only an imported entity_id")

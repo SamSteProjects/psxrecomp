@@ -9,6 +9,24 @@ from sdk.build import authored_state_key, _build_project, BuildError
 
 
 class ActorDraftTests(unittest.TestCase):
+    def test_donor_change_preserves_identity_position_and_undo(self):
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));scene=synthetic_scene()
+            second=deepcopy(scene['actors'][0]);second['semantic_id']='scene://fixture/actors/man-p1/0002'
+            scene['actors'].append(second);p.import_metadata(scene)
+            p.command({'type':'create_actor_draft','donor_entity_id':scene['actors'][0]['semantic_id'],
+                       'position':{'x':128,'z':256},'name':'Resident'})
+            identifier=next(iter(p.actor_drafts));before=deepcopy(p.actor_drafts[identifier])
+            p.command({'type':'set_actor_draft_donor','entity_id':identifier,'donor_entity_id':second['semantic_id']})
+            self.assertEqual(p.actor_drafts[identifier],{**before,'donor_entity_id':second['semantic_id']})
+            p.undo();self.assertEqual(p.actor_drafts[identifier],before)
+            p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,p.actor_drafts)
+            history=len(p.undo_stack)
+            with self.assertRaises(ValueError):
+                p.command({'type':'set_actor_draft_donor','entity_id':identifier,'donor_entity_id':'scene://other/actor'})
+            self.assertEqual(len(p.undo_stack),history)
+            self.assertEqual(p.imports[scene['scene']['semantic_id']],scene)
+
     def test_rename_duplicate_independence_and_history(self):
         with tempfile.TemporaryDirectory() as directory:
             p=ProjectService(Path(directory));scene=synthetic_scene();p.import_metadata(scene)

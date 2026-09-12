@@ -18,6 +18,11 @@ This does not launch the game or mark a gameplay check as passed. History lists
 exports under the current project's Builds directory; separately prepared CLI
 fixtures in this queue retain their explicit paths below.
 
+For exports with retained inputs, **Open editable copy** verifies and copies those
+files into a new project under ReviewCopies, then opens it. Save your current
+project and use Edit mode first. Subsequent edits affect the copy; the original
+export inputs stay available for reproducing the test.
+
 The toolbar's **Export disc** action exports supported authored changes without
 requiring an NPC draft. It uses the same experimental output, input snapshot and
 history workflow. CLI callers may omit `--draft` for project-wide export. A

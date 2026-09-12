@@ -105,3 +105,39 @@ def verify_export(project, identifier):
             raise ProjectError('Export input project is absent from inventory')
     return dict(id=identifier, disc_hash_verified=True, snapshot_files_verified=count,
                 snapshot_available=snapshot is not None, gameplay_verified=False)
+
+
+def copy_export_inputs(project, identifier):
+    """Create an editable project without modifying retained export evidence."""
+    from uuid import uuid4
+    from .project import atomic_write, ProjectService
+    directory, report = _report(project, identifier)
+    snapshot = report.get('input_snapshot')
+    if not isinstance(snapshot, dict) or not isinstance(snapshot.get('files'), list) or not 1<=len(snapshot['files'])<=4096:
+        raise ProjectError('This export has no valid input snapshot')
+    payloads = {}
+    for item in snapshot['files']:
+        if not isinstance(item, dict) or not isinstance(item.get('path'), str) or not item['path'].startswith('Inputs/'):
+            raise ProjectError('Invalid saved input path')
+        relative=item['path'][len('Inputs/'):]
+        from pathlib import PurePosixPath
+        if not relative or '\\' in relative or ':' in relative or '..' in PurePosixPath(relative).parts or relative in payloads:
+            raise ProjectError('Invalid or duplicate saved input path')
+        _verify_file(directory,item['path'],item.get('sha256'),item.get('byte_length'),64*1024*1024)
+        payload=(directory/item['path']).read_bytes()
+        if sha256(payload).hexdigest()!=item['sha256']:
+            raise ProjectError('Saved input changed during copy')
+        payloads[relative]=payload
+    if 'project.legaia.json' not in payloads:
+        raise ProjectError('Saved input project is missing')
+    destination=(project.root/'ReviewCopies'/('export-'+uuid4().hex)).resolve()
+    if not destination.is_relative_to(project.root.resolve()):
+        raise ProjectError('Editable copy escapes current project')
+    destination.mkdir(parents=True,exist_ok=False)
+    for relative,payload in payloads.items():
+        target=(destination/relative).resolve()
+        if not target.is_relative_to(destination):
+            raise ProjectError('Copied input escapes destination')
+        atomic_write(target,payload)
+    ProjectService.open(destination)
+    return destination

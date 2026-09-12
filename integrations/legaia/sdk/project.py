@@ -707,12 +707,13 @@ class ProjectService:
             self.undo_stack.append({'target':'actor_drafts','entity_id':identifier,'before':None,'after':deepcopy(draft)})
             self.redo_stack.clear()
             return
-        if command.get('type') == 'set_actor_draft_position':
+        if command.get('type') in ('set_actor_draft_position','set_actor_draft_donor'):
             identifier = command.get('entity_id')
-            if set(command) != {'type','entity_id','position'} or not isinstance(identifier,str) or identifier not in self.actor_drafts:
-                raise ProjectError('Draft position requires an existing authored identity and X/Z')
+            field='position' if command['type']=='set_actor_draft_position' else 'donor_entity_id'
+            if set(command) != {'type','entity_id',field} or not isinstance(identifier,str) or identifier not in self.actor_drafts:
+                raise ProjectError('Draft edit requires an existing authored identity and '+field)
             before = deepcopy(self.actor_drafts[identifier])
-            after = {**before, 'position': deepcopy(command['position'])}
+            after = {**before, field: deepcopy(command[field])}
             self._validate_actor_draft(identifier,after)
             if before != after:
                 self.actor_drafts[identifier] = after

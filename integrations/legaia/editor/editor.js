@@ -182,7 +182,9 @@ exportHistoryButton.onclick=async()=>{
       const check=document.createElement('button');check.textContent='Verify saved files';
       const outcome=document.createElement('p');outcome.setAttribute('role','status');outcome.textContent='File integrity not checked. Gameplay unverified.';
       check.onclick=async()=>{check.disabled=true;outcome.textContent='Checking disc and saved input hashes…';try{const verification=await request('/api/exports/verify',{id:item.id});outcome.textContent=`Disc hash verified${verification.snapshot_available?`; ${verification.snapshot_files_verified} saved input files verified`:'. No input snapshot available'}. Gameplay remains unverified.`;}catch(error){outcome.textContent=`Verification failed: ${error.message}`;}finally{check.disabled=false;}};
-      row.append(check,outcome);list.append(row);
+      row.append(check,outcome);
+      if(item.input_project_path){const openCopy=document.createElement('button');openCopy.textContent='Open editable copy';openCopy.onclick=async()=>{if(busy)return;if(await api('/api/exports/open-copy',{id:item.id})){dialog.close();notify('Opened an editable copy. Saved export inputs are preserved.');}};row.append(openCopy);}
+      list.append(row);
     }
   }catch(error){status.textContent=`Could not load exports: ${error.message}`;}
 };
@@ -311,7 +313,7 @@ function setBusy(value) {
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
   if($('export-npc-drafts'))$('export-npc-drafts').disabled=value||!canEdit();
   if($('export-project-button'))$('export-project-button').disabled=value||!canEdit();
-  document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#duplicate-npc-draft,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
+  document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#draft-donor-form select,#draft-donor-form button,#duplicate-npc-draft,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
@@ -1215,6 +1217,12 @@ function renderInspector(){
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
     duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
     for(const control of [nameInput,rename,duplicate])control.disabled=busy||!canEdit();
+    const donorForm=document.createElement('form');donorForm.id='draft-donor-form';
+    const donorLabel=document.createElement('label');donorLabel.textContent='Retail donor ';const donorSelect=document.createElement('select');donorSelect.name='donor';donorSelect.setAttribute('aria-label','Draft retail donor');
+    for(const actor of entities()){const option=document.createElement('option');option.value=actor.id;option.textContent=actor.name??actor.id;donorSelect.append(option);}donorSelect.value=npc.donor_entity_id;donorLabel.append(donorSelect);
+    const donorApply=document.createElement('button');donorApply.type='submit';donorApply.textContent='Change donor';const donorNote=document.createElement('p');donorNote.className='field-note';donorNote.textContent='Changes the retail appearance and cloned script used at export. Name, identity and position stay unchanged. Gameplay behavior needs verification.';
+    donorForm.append(donorLabel,donorApply,donorNote);nameForm.after(donorForm);donorSelect.disabled=donorApply.disabled=busy||!canEdit();
+    donorForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_donor',entity_id:id,donor_entity_id:donorSelect.value});};
     const form=$('draft-inspector-form');form.elements.x.value=npc.position.x;form.elements.z.value=npc.position.z;
     form.querySelectorAll('input,button').forEach(control=>control.disabled=busy||!canEdit());
     form.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'set_actor_draft_position',entity_id:id,position:{x:Number(form.elements.x.value),z:Number(form.elements.z.value)}});};

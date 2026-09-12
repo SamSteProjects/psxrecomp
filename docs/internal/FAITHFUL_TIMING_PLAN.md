@@ -213,6 +213,34 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Editable export copy browser acceptance
+
+- Browser opened an editable copy through Export history from a separate snapshot-only test project. Result: ReviewCopies/export-10758c5134214dd5a59b103bdab8d84f, scene town01, clean project state. Original collision-export snapshot file hashes independently rechecked unchanged.
+- Test fixture retained under local-output/sdk-20260909/export-copy-browser-20260912; it contains report/input copies only, not a copied disc. No file-integrity or gameplay claim was made for that test fixture's absent disc.
+- Temporary editor4406 and headless browser stopped; working project and game untouched. Saved-input reopening UI check is complete.
+
+
+### 2026-09-12 Open editable copies of retained export inputs
+
+- Export history now offers Open editable copy for snapshot-bearing exports. It checks saved file hashes, writes a unique ReviewCopies project, validates reopening, then uses the existing project-switch path. Original export inputs are retained unchanged.
+- Requires a saved current project in Edit mode. Invalid paths, duplicated inputs and corrupted snapshot bytes reject. Four focused history/export tests passed, including editing the copy without changing original snapshot bytes; JavaScript syntax passed.
+- Browser interaction remains to be checked. No game launched or user project switched during implementation.
+
+
+### 2026-09-12 Donor editing browser and retail candidate acceptance
+
+- Browser changed Candidate NPC donor0011 to0012 with X3008 retained; Undo restored0011. Used the separate saved-input snapshot project and did not save. Temporary editor4406 and headless browser stopped.
+- Independent retail candidate preparation selected donor record12 (509 bytes, model105, animation13), appended record53 and retained authored X3008/Z5440. Reopened MAN verification passed. Final decoded MAN SHA256 f04e20876dd1a11583ff4be9ef39d89d106989d468b3fa094d4085ce82ce6c94.
+- Candidate audit still reports incomplete script relocation, context allocation and spawn scheduling acceptance. No gameplay or working-project mutation; broader SDK objective remains active.
+
+
+### 2026-09-12 Change an authored NPC draft's retail donor
+
+- Added set_actor_draft_donor using the validated draft/history path. Same-scene donor changes preserve identity, name and position; undo/redo and project persistence remain supported. Invalid donors reject without history mutation.
+- Draft Inspector now offers a retail donor selector and explains that export clones the donor script as well as its appearance. This is persistent authoring, not a live actor change.
+- Eleven focused draft/preview/catalog tests passed and editor JavaScript syntax passed. Browser control interaction remains to be checked; no game launched or working-project save.
+
+
 ### 2026-09-12 Collision locator browser acceptance
 
 - Actual browser flow reopened collision-only saved inputs, refreshed resources, opened wall editing, selected the authored cell and located it. Terrain endpoint returned X3872/Y-128/Z3744; the dialog closed and viewport displayed the reference marker plus effective edited-cell outline.
