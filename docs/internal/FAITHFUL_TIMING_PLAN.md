@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Cross-scene authored asset navigation acceptance
+
+- Created an isolated local review project from existing two-scene and model-shape fixtures, adding a town01 draft while opening town0c. Original fixtures were not modified.
+- Browser verified draft navigation town0c -> town01 with its dedicated Inspector, and a separate authored model card navigation town0c -> town01 opening AUTHORED object-local shape with the persistent replacement. No page errors.
+- A combined automation attempted the second click before its scene request completed and timed out; the rerun waited for the completed scene preview and passed. Asset cards/details now visibly disable while busy, including newly rendered rows, instead of presenting ignored actions as available. JavaScript syntax passed.
+- No game launched; temporary browser/server closed. Runtime acceptance remains deferred, broader goal active.
+
+
 ### 2026-09-12 — Complete authored asset discovery for drafts and model shapes
 
 - Fixed Asset Browser filtering that discarded model replacement records. Added project-wide NPC draft catalog records with stable IDs, source scenes, retail donor references and isolated authored snapshots.

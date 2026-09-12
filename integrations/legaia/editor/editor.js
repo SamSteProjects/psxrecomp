@@ -347,6 +347,7 @@ function notify(message, error=false) {
 }
 function setBusy(value) {
   busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
+  document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
   if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
@@ -772,8 +773,8 @@ function renderAssets(){
   for(const record of filtered){
     const row=document.createElement('div');row.className='asset-result';
     const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
-    card.onclick=()=>activateAsset(record);
-    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.onclick=()=>['script','dialogue'].includes(record.type)?openScriptResource(record):['collision','trigger','region'].includes(record.type)?openFieldResource(record):showAssetDetails(record);row.append(card,info);list.append(row);
+    card.disabled=busy;card.onclick=()=>activateAsset(record);
+    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>['script','dialogue'].includes(record.type)?openScriptResource(record):['collision','trigger','region'].includes(record.type)?openFieldResource(record):showAssetDetails(record);row.append(card,info);list.append(row);
   }
   if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue','collision','trigger','region'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.';list.append(p);}
 }
