@@ -2159,3 +2159,19 @@ modelCanvas.addEventListener('pointermove',event=>{if(!modelDrag)return;modelVie
 for(const event of ['pointerup','pointercancel'])modelCanvas.addEventListener(event,()=>{modelDrag=null;});
 modelCanvas.addEventListener('wheel',event=>{event.preventDefault();modelView.zoom=Math.max(.15,Math.min(2.5,modelView.zoom*Math.exp(-event.deltaY*.001)));drawModel();},{passive:false});
 api('/api/state');
+
+const worldmapButton=document.createElement('button');worldmapButton.textContent='World-map landmarks';$('resource-refresh').after(worldmapButton);
+const worldmapDialog=document.createElement('dialog');worldmapDialog.className='project-dialog';document.body.append(worldmapDialog);
+worldmapButton.onclick=async()=>{
+  if(busy)return;setBusy(true);const context=JSON.stringify([state.project?.path,state.project?.disc_path]);
+  try{
+    const response=await fetch('/api/worldmap-menu',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),report=await response.json();
+    if(!response.ok)throw new Error(report.error);
+    if(context!==JSON.stringify([state.project?.path,state.project?.disc_path]))return;
+    if(report.schema_version!=='legaia.worldmap-menu.v1'||!Array.isArray(report.placements)||report.placements.length>64||!Array.isArray(report.names)||report.names.length!==16)throw new Error('Invalid world-map menu report');
+    worldmapDialog.innerHTML='<h2>World-map landmarks</h2><p>Source menu records. Positions are menu pixels; discovery state and destination reachability are not observed.</p><div class="script-table-wrap"><table><thead><tr><th>Landmark</th><th>Destination ID</th><th>Menu X / Y</th><th>Discovery flag index</th></tr></thead><tbody></tbody></table></div><details><summary>Names, source and limits</summary><pre></pre></details><button type="button">Close</button>';
+    const table=worldmapDialog.querySelector('tbody');
+    for(const row of report.placements){const tr=document.createElement('tr');for(const value of [row.name??`Unresolved name ${row.name_index}`,row.destination_scene_id,`${row.menu_position.x} / ${row.menu_position.y}`,row.discovery_flag_index]){const td=document.createElement('td');td.textContent=String(value);tr.append(td);}table.append(tr);}
+    worldmapDialog.querySelector('pre').textContent=JSON.stringify(report,null,2);worldmapDialog.querySelector('button').onclick=()=>worldmapDialog.close();worldmapDialog.showModal();
+  }catch(error){notify(error.message,true);}finally{setBusy(false);}
+};

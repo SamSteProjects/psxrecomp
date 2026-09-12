@@ -483,6 +483,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self.server.project.set_texture_replacement(body["asset_id"], content)
                         self._json(200, self.server.state())
                     return
+                if route == "/api/worldmap-menu":
+                    if body or not self.server.project.disc_path:
+                        raise ProjectError('World-map inspection requires the project disc and no supplied source data')
+                    from importer.worldmap_menu import load_worldmap_menu
+                    self._json(200, load_worldmap_menu(self.server.project.disc_path))
+                    return
                 if route == "/api/scene-flags":
                     if body:
                         raise ProjectError("Flag discovery uses the active scene; no client source bindings are accepted")
