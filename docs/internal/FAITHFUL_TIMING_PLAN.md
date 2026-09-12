@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Visual proposed animation file inspection
+
+- Previous goal turn made verified progress at601ed526 with a source-bound proposed-pose service. Current worktree was clean before connecting it to the editor.
+- Added Inspect file animation beside file preview/import. Verified response identity feeds the existing textured model viewer without resolving an applied clip. Proposed labels distinguish unapplied state, shape-authoring controls are hidden, and model/clip export is disabled with a handler guard to avoid silently exporting current project data. Scene inspection uses the existing isolated geometry path, proposed status, scrubbing and Restore; the channel dialog closes when entering the scene.
+- Actual browser JSON file workflow opened the proposed model, confirmed unapplied label and disabled export, inspected scene frame2 and restored. Zero authoring/import requests and zero page errors. Screenshot visually inspected: diagnostic actor0011 head offset is visible with Proposed file/not applied/frame3-of15 status. Other scene instances remain rendered; the probe is not a finished animation. Private evidence: local-output/sdk-20260909/animation-json-project-20260912/file-pose-browser-check.json and proposed-scene.png.
+- Node syntax and diff checks passed; browser and test server stopped. No game launched. Service byte/pose equality and16 focused checks from the prior turn remain the backend evidence; this turn adds browser/rendered workflow evidence. Full SDK goal and broader offline work remain active.
+
+
 ### 2026-09-12 — Proposed animation file pose service
 
 - Previous goal turn made verified progress at fe0a1db2, cancelling stale file reads. Current worktree was clean before this feature extension.

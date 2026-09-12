@@ -203,3 +203,14 @@ clear this actor's contribution, and validates composition with other shared-cli
 contributors. The Inspector shows up to 256 axis rows with a total count.
 Preview does not save or change Undo history. Import remains a separate action
 and revalidates the current file and project; a preview is not runtime acceptance.
+
+
+**Inspect file animation** opens the selected file as a proposed clip in the
+model viewer without importing it. Scrub or play its frames, or choose **Inspect
+animation in scene** to isolate the proposed pose on the selected actor. The
+scene labels it **Proposed file · not applied**; **Restore scene pose** restores
+the assembled project preview. This inspection changes no project overrides or
+history. It previews composed shared contributions on one instance; other clip
+users are not simultaneously animated. Import the file before exporting an
+applied animation. Diagnostic offsets can visibly separate rigid objects and do
+not establish a suitable animation or verified runtime cadence.
