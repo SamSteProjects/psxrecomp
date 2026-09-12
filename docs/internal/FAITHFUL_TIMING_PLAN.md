@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Boot texture coverage for scene models
+
+- Extended verified boot UI underlay to scene texture catalogs, below scene-owned words. Authored texture replacement keeps the underlay through the existing catalog deep copy; unknown/conflicting scene upload order remains rejected.
+- Fresh town01 assembled preview comparison: before56 vertex-colored materials,279 address matches,8 missing; after56 vertex-colored and287 address matches,zero missing. Exactly eight status changes, all missing -> address_match, source boot-ui/raw-0/8: model0074 material0,0021/0,0002/3,0040/1,0026/0,0041/0,0061/2,0071/0. This agrees with pinned reference scene_entry/system_ui_bundle documentation for environment use of boot-resident pages.
+- Private metadata reports: town01-textures-before-boot-20260912.json and town01-textures-after-boot-20260912.json. Twenty-three focused underlay, retail texture and texture-build tests passed. No new browser visual acceptance this turn; material address coverage does not prove transparency, current VRAM residency or gameplay fidelity.
+- No game launched or project saved; direct probe server sockets closed. Full SDK goal remains active and manual gameplay remains deferred.
+
+
 ### 2026-09-12 — Boot UI texture underlay for shared field models
 
 - Savepoint materials1/4 lacked word(960,496), with CLUT32644. Pinned reference system_ui_bundle.rs and scene/host/scene_entry.rs establish the boot-resident page and raw TOC entries0/1, including table-order overwrites and six clipped row patches.

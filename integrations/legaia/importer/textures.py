@@ -187,7 +187,9 @@ def load_scene_texture_catalog(disc: Any, scene: str = "town01") -> TextureCatal
     with _disc_context(disc) as (_, digest, mapping, archive):
         start, end = _bounded_scene_range(archive, mapping, scene)
         catalog = TextureCatalog(scene, digest)
-        catalog.diagnostics.append("Partial scene catalog: shared UI/field-character uploads, runtime CLUT animation, texture windows and conditional PCH resources are unsupported.")
+        from .system_ui import load_boot_uploads
+        catalog.boot_uploads = load_boot_uploads(archive, digest)
+        catalog.diagnostics.append("Partial scene catalog: ordered boot UI underlay is included; shared field-character uploads, runtime CLUT animation, texture windows and conditional PCH resources are not part of this scene view.")
         total = 0
 
         def add_pack(data: bytes, standalone: bool, locator: dict[str, Any]) -> None:
