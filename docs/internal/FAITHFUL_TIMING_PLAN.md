@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Copy animation channels between frames
+
+- Previous turn improved package metadata. Added dialog-local Copy retail / Copy effective channel and Paste channel into draft controls. Copies retain verified values, source frame and rigid object; same-object paste fills six axes without issuing a command. Existing Apply/history/save and draft-switch guards remain authoritative. Different-object paste rejects inferred retargeting; clipboard ends when the editor reopens.
+- Actual town01 actor0011 browser copied retail frame0/object0 to frame1, verified six submitted axes, rejected frame switching with an unapplied draft, applied through the production command and Undid the edit. Source clip has15 frames/6 objects and six imported actor users. Zero page errors. Private evidence: local-output/sdk-20260909/animation-channel-copy-check.json. Initial harness raced the Apply dialog refresh; restored via Undo and reran after waiting for command completion, which passed.
+- Five synthetic animation-authoring tests passed (one retail opt-in skipped), plus JS syntax and whitespace checks. Effective-copy and different-object rejection still need dedicated browser cases. No game launched or project saved; broader SDK goal remains active with gameplay deferred.
+
+
 ### 2026-09-12 — Complete package content descriptions
 
 - Previous turn made verified retail/build progress. Package descriptions now enumerate unique emitted audit families rather than allowing the last family-specific label to hide mixed content. Animation-only, collision-only and mixed packages use Authored scene data. Existing internal feature IDs and single-placement labels remain compatible; unknown scopes are explicitly other audited scene data.

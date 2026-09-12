@@ -147,3 +147,11 @@ Equivalent face reordering, cyclic corner order and relative vertex indices are
 accepted. Reversed winding, missing/duplicate triangles and changed vertex counts
 are rejected. Only vertex positions are imported; source materials and normals
 remain unchanged.
+
+
+In **Author animation channels**, copy a verified retail or effective channel,
+select another frame of the same rigid object, and choose **Paste channel into
+draft**. Paste fills translation and rotation axes; **Apply channel override**
+creates the project edit. Discard removes unapplied input. Clipboard contents
+last only for the current dialog and do not retarget between objects. Shared
+clip users are affected when the override is applied and built.
