@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (audio snapshot synchronization MSVC build):** Previous turn progressed in698087e5. Verified existing isolated project/build roots and preserved97f0f026... executable as audio-stats-lock-20260912/LegaiaStability-before.exe. Reconfigured to refresh embedded source identity. Initial PowerShell build failed before CL execution on duplicate Path/PATH; Git Bash retry completed MSVC Release psx-runtime parallel2 exit0. New executable SHA2563ce6d5461628e8962bb9dd6459ddc5c2a442747500500d4b361eee644f2bcd6d contains nightly-282-g698087e5. Private verification.json records binary/source/log hashes and no runtime execution. Existing compiler warnings remain in the log; no gameplay or audible-acceptance claim. No game launched or controlled. Broader SDK goal and deferred gameplay queue remain active.
+
+
 - **2026-09-12 (runtime audio statistics synchronization):** Previous turn progressed in1087d787. Release-ledger review identified two unlocked rab_get_stats copies while the host callback updates non-atomic bridge statistics. Wrapped pump diagnostics and psx_audio_out_stats snapshots with the existing SDL audio lock/unlock, matching producer synchronization. Clarified bridge threading contract to include read-only statistics. The executable output-health test compiles both production snapshot blocks and requires a held lock during copy, balanced release, and no locks on unavailable paths; passed twice as coverage expanded. No sample scheduling, DRC controller or overflow policy changed. This does not explain or fix startup overflow. Full runtime build is still pending for this source change; latest previously accepted runtime hash remains unchanged. No game launched or controlled; full SDK goal remains active.
 
 
