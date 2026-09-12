@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Post-animation regression and bounded audio review
+
+- Previous turn completed per-axis inspector implementation with browser evidence. Started full retail-enabled SDK discovery against5437a5bb; retained active process62507 was repeatedly verified live, with log advancing through script-authoring HTTP checks. Final result is pending at this checkpoint; log local-output/sdk-20260909/sdk-regression-5437a5bb.log. Do not restart based on observation timeouts.
+- Read-only audio review confirmed rab_push overflow advances out_pos and counts dropped oldest frames only after fill reaches cap-1; both main.cpp push call sites hold the audio lock, and initialization precedes device resume. These facts do not explain the earlier startup overflow observation. No audio behavior or runtime build changed without causal evidence.
+- No game launched. Full goal remains active and manual gameplay stays deferred. Regression completion and remaining offline features continue next.
+
+
 ### 2026-09-12 — Per-axis contributor inspection
 
 - Previous turn made exact build attribution progress. Channel-value responses now include deterministic axis_contributors for translation/rotation, including explicit unchanged contributions. Existing validated bank composition remains the authority for conflicts; no unverified override values are exposed. Editor displays nonempty axis contributor rows alongside retail/effective values.
