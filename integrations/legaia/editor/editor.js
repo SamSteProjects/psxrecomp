@@ -1950,11 +1950,11 @@ let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
 let modelAssetId=null, modelEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
-let modelSceneContext=null;
-const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button">Restore scene pose</button>';$('frame-selected').after(scenePoseBar);
+let modelSceneContext=null,scenePoseTick=null,scenePoseClock=null;
+const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button" data-play>Play scene preview</button> <label>Preview fps <select aria-label="Scene preview rate"><option>5</option><option selected>10</option><option>15</option><option>30</option><option>60</option></select></label> <button type="button" data-restore>Restore scene pose</button>';$('frame-selected').after(scenePoseBar);
 const showScenePose=document.createElement('button');showScenePose.type='button';showScenePose.id='show-frame-in-scene';showScenePose.textContent='Inspect animation in scene';$('animation-frame-label').after(showScenePose);
 function clearScenePose(restore=true){
-  const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;
+  stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;
   if(restore&&previous&&scenePreviewCurrent()&&sceneRenderer){const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');}
 }
 function scenePoseDocument(base,preview,entityId,frame){
@@ -1974,12 +1974,32 @@ function updateScenePoseFrame(frame){
     scenePoseBar.querySelector('input').value=frame;draw();
   }
 }
-scenePoseBar.querySelector('button').onclick=()=>{clearScenePose();draw();};
-scenePoseBar.querySelector('input').oninput=event=>{try{updateScenePoseFrame(Number(event.target.value));}catch(error){clearScenePose();notify(error.message,true);draw();}};
+scenePoseBar.querySelector('[data-restore]').onclick=()=>{clearScenePose();draw();};
+scenePoseBar.querySelector('input').oninput=event=>{stopScenePosePlayback();try{updateScenePoseFrame(Number(event.target.value));}catch(error){clearScenePose();notify(error.message,true);draw();}};
+function stopScenePosePlayback(){
+  if(scenePoseTick!==null)cancelAnimationFrame(scenePoseTick);
+  scenePoseTick=null;scenePoseClock=null;scenePoseBar.querySelector('[data-play]').textContent='Play scene preview';
+}
+scenePoseBar.querySelector('select').onchange=()=>{scenePoseClock=null;};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopScenePosePlayback();});
+scenePoseBar.querySelector('[data-play]').onclick=()=>{
+  if(scenePoseTick!==null){stopScenePosePlayback();return;}
+  const session=scenePose;if(!session)return;
+  scenePoseBar.querySelector('[data-play]').textContent='Pause scene preview';
+  const tick=time=>{
+    if(scenePose!==session||!scenePreviewCurrent()||session.key!==sceneKey||state.project?.mode!=='edit'||busy||document.hidden||!modelsEnabled||sceneRenderer.lost||$('model-dialog').open){stopScenePosePlayback();return;}
+    if(scenePoseClock===null)scenePoseClock=time;
+    const step=1000/Number(scenePoseBar.querySelector('select').value),advance=Math.floor((time-scenePoseClock)/step);
+    try{if(advance){scenePoseClock+=advance*step;updateScenePoseFrame((session.frame+advance)%session.preview.frames.length);}}
+    catch(error){stopScenePosePlayback();notify(error.message,true);return;}
+    if(scenePose===session)scenePoseTick=requestAnimationFrame(tick);else stopScenePosePlayback();
+  };
+  scenePoseTick=requestAnimationFrame(tick);
+};
 showScenePose.onclick=()=>{
   if(busy||state.project?.mode!=='edit'||!scenePreviewCurrent()||modelSceneContext!==sceneRequestKey()||!modelEntityId||!model?.frames?.length||$('shape-file').files?.length)return;
   try{
-    const isolated=scenePoseDocument(scenePreview,model,modelEntityId,animationFrame);
+    stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,model,modelEntityId,animationFrame);
     const failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
     scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:model,frame:animationFrame,name:entities().find(e=>e.id===modelEntityId)?.name??modelEntityId};
     scenePoseBar.hidden=false;scenePoseBar.querySelector('input').max=model.frames.length-1;
