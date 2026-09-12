@@ -19,15 +19,18 @@ def prepare_streaming_scene(project, scene_id):
         raise ProjectError('Streaming imported evidence differs from the source disc')
     actors = {a['semantic_id']: a for a in document['actors']}
     edits, dialogue_edits, transition_edits, map_components = {}, {}, {}, None
-    assignments, assignment_donors = {}, {}
+    assignments, assignment_donors, animations = {}, {}, {}
     for identifier, components in deepcopy(project.overrides).items():
         if identifier == scene_id:
             map_components = components
             continue
         p2 = isinstance(identifier, str) and re.fullmatch(re.escape(scene_id) + r'/scripts/man-p2/[0-9]{4}', identifier) is not None
-        allowed = {'Dialogue', 'Transitions'} if p2 else {'Transform', 'ActorAppearance', 'Dialogue', 'Transitions'}
+        allowed = {'Dialogue', 'Transitions'} if p2 else {'Transform', 'ActorAppearance', 'Dialogue', 'Transitions', 'AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components, dict) or not components or set(components) - allowed:
-            raise ProjectError('Streaming export currently supports actor positions, donor appearance, dialogue, transition entries, scenery and collision; other authored components require further serialization support')
+            raise ProjectError('Streaming export currently supports actor positions, donor appearance, dialogue, transition entries, animation channels, scenery and collision; other authored components require further serialization support')
+        if 'AnimationChannels' in components:
+            project._validate_animation_override(identifier, components['AnimationChannels'])
+            animations[identifier] = components['AnimationChannels']
         if 'ActorAppearance' in components:
             appearance = components['ActorAppearance']
             if (not isinstance(appearance, dict) or set(appearance) != {'donor_entity_id'} or
@@ -73,7 +76,11 @@ def prepare_streaming_scene(project, scene_id):
             context = load_transition_authoring_context(project.disc_path, scene)
             context.patch(transition_edits, original=carrier.payload)
             candidate, transition_changes = context.patch_appended(candidate, transition_edits)
-        patches, map_audit = [], None
+        patches, map_audit, animation_audit = [], None, None
+        if animations:
+            from .animation_build import prepare_animation_patches
+            animation_patches, animation_audit = prepare_animation_patches(project, scene_id, animations, archive)
+            patches.extend(animation_patches)
         if map_components:
             from .map_build import prepare_map_patch
             patch, map_audit = prepare_map_patch(project, scene_id, map_components, archive)
@@ -87,7 +94,7 @@ def prepare_streaming_scene(project, scene_id):
         source_disc_sha256=disc_hash, source_prot_sha256=sha256(prot).hexdigest(),
         authored_state_key=key, imported_document_sha256=digest(document),
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
-        transition_changes=transition_changes, existing_actor_appearance_changes=appearance_changes,
+        animation_changes=animation_audit, transition_changes=transition_changes, existing_actor_appearance_changes=appearance_changes,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

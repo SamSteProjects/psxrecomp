@@ -37,7 +37,7 @@ Balden2's room geometry is visible. Runtime parity remains unverified for both.
 
 Equal-span streaming export now supports existing actor positions, verified same-scene donor appearance, bounded
 plain dialogue runs, encoded transition entries (including partition-2 owners),
-and scene MAP scenery/collision edits. Exported placement and dialogue disc
+existing shared animation channels, and scene MAP scenery/collision edits. Exported placement and dialogue disc
 probes are preserved in the gameplay queue. The resource catalog and P2 script
 inspector share verified raw-MAN coordinates, without fictitious compressed
 source fields. NPC additions, model/texture replacements and payload growth in

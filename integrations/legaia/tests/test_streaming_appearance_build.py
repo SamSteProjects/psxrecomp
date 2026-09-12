@@ -12,6 +12,47 @@ from sdk.draft_build import prepare_draft_archive
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class StreamingAppearanceBuild(unittest.TestCase):
+    def test_raw_animation_and_man_changes_survive_composition(self):
+        from hashlib import sha256
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        from importer.animation import decode_animation_record
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.disc_path = os.environ["LEGAIA_DISC_BIN"]
+            project.import_metadata(import_scene(project.disc_path, "dolk2"))
+            catalog = load_scene_actor_animation_catalog(project.disc_path, "dolk2")
+            owner = "scene://dolk2/actors/man-p1/0001"
+            actor = catalog._actors[owner]
+            asset = catalog._assets[actor["model_reference"]["asset_semantic_id"]]
+            index, _ = catalog._binding(actor, asset)
+            start, end = catalog._ranges[index]
+            record = catalog._body[start:end]
+            translation = decode_animation_record(record)["frames"][0]["object_transforms"][0]["translation"][0]
+            binding = dict(animation_id=f"animation://dolk2/scene-anm/{index:04d}",
+                           source_record_sha256=sha256(record).hexdigest(),
+                           edits=[dict(frame_index=0, object_index=0, translation={"x": translation + 1 if translation < 2047 else translation - 1})])
+            project.overrides = {owner: {"AnimationChannels": binding},
+                "scene://dolk2/actors/man-p1/0041": {"ActorAppearance": {"donor_entity_id": owner}}}
+            expected, changes = catalog.authored_bank({owner: binding})
+            self.assertTrue(changes)
+            source, prepared = prepare_streaming_scene(project, "scene://dolk2")
+            output, audit = prepare_draft_archive(project)
+            carrier = audit["scenes"]["scene://dolk2"]["animation_changes"]["carriers"][0]
+            self.assertTrue(carrier["reopened_payload_verified"])
+            class MemoryImage:
+                def read_user(self, lba, offset, length, file_size): return output[offset:offset + length]
+            archive = ProtArchive(MemoryImage(), IsoNode(0, len(output), False, "PROT.DAT"))
+            bank_offset = archive.entry(carrier["map_entry_index"]).start_lba * 2048 + carrier["relative_offset"]
+            self.assertEqual(output[bank_offset:bank_offset + len(expected)], expected)
+            request = prepared["_rebuild_request"]
+            man_offset = archive.entry(request["entry_index"]).start_lba * 2048 + request["chunk_header_offset"] + 4
+            candidate = request["candidate"]
+            self.assertEqual(output[man_offset:man_offset + len(candidate)], candidate)
+            restored = bytearray(output)
+            for offset, size in ((bank_offset, len(expected)), (man_offset, len(candidate))):
+                restored[offset:offset + size] = source[offset:offset + size]
+            self.assertEqual(bytes(restored), source)
+
     def test_appearance_dialogue_transition_and_position_survive_archive_reopen(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

@@ -13,6 +13,27 @@ def prepare_animation_patches(project,scene_id,bindings,archive):
         return [],dict(changes=[],carriers=[])
     source=catalog._source
     entry=archive.entry(source['prot_entry_index'])
+    if source.get('source_kind') == 'raw_streaming_anm':
+        from importer.prot_layout import locate_physical_span
+        from importer.streaming_man import replace_streaming_payload
+        from .project import ProjectError
+        start = entry.start_lba * 2048
+        span = locate_physical_span(archive, start)
+        if span['entry_index'] != entry.index or span['offset_within_span'] != 0:
+            raise ProjectError('Streaming animation requires its unique physical owner')
+        body = archive.image.read_user(archive.node.extent_lba, start, span['byte_length'], archive.node.size)
+        offset = source['payload_offset']
+        original = body[offset:offset + source['payload_byte_length']]
+        if original != catalog._body or sha256(original).hexdigest() != source['payload_sha256']:
+            raise ProjectError('Streaming animation preimage differs from the verified bank')
+        checked, chunk_audit = replace_streaming_payload(body, sha256(body).hexdigest(),
+                                                        source['chunk_header_offset'], source['payload_sha256'], changed)
+        if chunk_audit['type_byte'] != 5:
+            raise ProjectError('Streaming animation target is not a type-5 chunk')
+        overlays = [dict(offset=archive.node.extent_lba * 2048 + start + offset,
+                         payload=checked[offset:offset + len(changed)], expected_sha256=sha256(original).hexdigest())]
+        patches, carriers = archive_overlay_patches(archive, overlays)
+        return patches, dict(changes=changes, carriers=carriers, source_kind='raw_streaming_anm')
     body=archive.read_entry(entry)
     offset=source['compressed_stream_offset']
     original=body[offset:offset+source['compressed_bytes_consumed']]

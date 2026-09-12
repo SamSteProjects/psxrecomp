@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming animation export composition
+
+- Added raw type-5 animation bank serialization to the shared archive patch path. It verifies the physical owner, complete terminated chunk chain, original bank identity, equal word-aligned payload size and unchanged structural boundaries before composing the replacement.
+- Streaming scene preparation now accepts validated `AnimationChannels` edits and passes carrier evidence through final-archive reopening. Shared-clip conflicts and original actor/record binding checks remain enforced by the existing animation authoring layer.
+- Eight focused tests passed with retail checks enabled. New Dolk2 integration coverage composes a channel translation edit with a separate actor appearance edit, independently reopens the final archive, compares both exact payloads and proves all other archive bytes unchanged. No runtime playback, timing or scene behavior claim follows from this byte-level verification.
+- No game launched. Streaming NPC growth and model/texture replacement export remain unfinished; gameplay checks remain deferred and the full goal active.
+
+
 ### 2026-09-12 — Streaming actor appearance composition
 
 - Extended initial MAN donor assignment contexts to verified raw streaming MAN and ANM sources. Existing scene donor, non-aliased record, object/channel count and decoded-animation validation remain enforced; raw serialization preserves payload length without LZS impersonation.
