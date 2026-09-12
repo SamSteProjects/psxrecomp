@@ -1,7 +1,7 @@
 import struct
 import unittest
 from importer.core import ImportError, validate_metadata_only
-from importer.worldmap_menu import decode_worldmap_menu
+from importer.worldmap_menu import decode_worldmap_menu, resolve_menu_destinations
 
 
 def fixture():
@@ -21,6 +21,15 @@ class WorldmapMenuTests(unittest.TestCase):
         self.assertEqual(row['discovery_flag_index'],39);self.assertEqual(row['destination_scene_id'],123)
         self.assertFalse(r['placements'][1]['resolved_name']);self.assertIsNone(r['placements'][1]['name'])
         self.assertEqual(r['runtime_state'],'not_observed');self.assertEqual(r,decode_worldmap_menu(data))
+    def test_destination_labels_require_exact_numeric_definitions(self):
+        report=decode_worldmap_menu(bytes(fixture()))
+        resolved=resolve_menu_destinations(report,{122:'nearby',123:'exact'},'a'*64)
+        self.assertEqual(resolved['placements'][0]['destination_source_label'],'exact')
+        self.assertIsNone(resolved['placements'][1]['destination_source_label'])
+        self.assertNotIn('destination_source_label',report['placements'][0])
+        self.assertEqual(resolved['destination_label_source']['association'],'exact_define_numeric_value')
+        validate_metadata_only(resolved)
+
     def test_bad_header_bounds_and_missing_terminator_reject(self):
         for data in (b'bad',bytes(fixture()[:0x64000])):
             with self.assertRaises(ImportError):decode_worldmap_menu(data)

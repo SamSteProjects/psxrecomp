@@ -44,10 +44,24 @@ def decode_worldmap_menu(executable: bytes) -> dict:
     return result
 
 
+def resolve_menu_destinations(report: dict, mapping: dict, cdname_sha256: str) -> dict:
+    from copy import deepcopy
+    result=deepcopy(report)
+    for row in result['placements']:
+        row['destination_source_label']=mapping.get(row['destination_scene_id'])
+    result['destination_label_source']={'iso_file':'CDNAME.TXT','sha256':cdname_sha256,
+                                      'association':'exact_define_numeric_value'}
+    result['limitations']=[note for note in result['limitations'] if not note.startswith('Destination numeric IDs')]
+    result['limitations'].append('Destination labels are exact CDNAME definitions; labels alone do not establish supported scene import, a traversable edge or gameplay reachability.')
+    return result
+
+
 def load_worldmap_menu(disc) -> dict:
-    with _disc_context(disc) as (image,digest,_,__):
+    with _disc_context(disc) as (image,digest,mapping,__):
         node=image.find('SCUS_942.54')
         if node.size>2*1024*1024:raise ImportError('Executable exceeds world-map inspection budget')
         result=decode_worldmap_menu(image.read_file(node))
         result['source_record']['disc_sha256']=digest
+        cdname=image.read_file(image.find('CDNAME.TXT'))
+        result=resolve_menu_destinations(result,mapping,hashlib.sha256(cdname).hexdigest())
     return result
