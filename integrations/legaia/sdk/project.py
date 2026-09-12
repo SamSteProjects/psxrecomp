@@ -768,6 +768,14 @@ class ProjectService:
         replace_model_shape(self._model_source(asset_id, binding['source_scene_id']), binding['source_sha256'], content)
         return content
 
+    def set_model_json(self, asset_id: str, content: bytes) -> None:
+        from importer.model_json import import_shape_json
+        if self.mode != 'edit':
+            raise ProjectError('Model shape authoring requires Edit mode')
+        source = self._model_source(asset_id, self.active_scene)
+        replacement, _ = import_shape_json(source, hashlib.sha256(source).hexdigest(), content)
+        self.set_model_replacement(asset_id, replacement)
+
     def set_model_obj(self, asset_id: str, content: bytes) -> None:
         from importer.model_obj import import_shape_obj
         if self.mode != 'edit':

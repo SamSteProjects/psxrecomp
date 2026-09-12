@@ -422,7 +422,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
                 request_limit = 6 * 1024 * 1024
-            if urlsplit(self.path).path == '/api/model-obj-replacement':
+            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement'):
                 request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
@@ -440,19 +440,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from importer.pipeline import list_scenes
                     self._json(200, list_scenes(body['disc'], offset=body['offset'], limit=16, prefix=body['prefix']))
                     return
-                if route in ('/api/model-shape-replacement', '/api/model-obj-replacement'):
+                if route in ('/api/model-shape-replacement', '/api/model-obj-replacement', '/api/model-json-replacement'):
+                    json_upload = route == '/api/model-json-replacement'
                     obj_upload = route == '/api/model-obj-replacement'
-                    payload_key = 'obj_base64' if obj_upload else 'tmd_base64'
+                    payload_key = 'json_base64' if json_upload else 'obj_base64' if obj_upload else 'tmd_base64'
                     if set(body) != {'asset_id',payload_key} or not isinstance(body['asset_id'], str):
-                        raise ProjectError('Model shape upload requires asset_id and tmd_base64 only')
+                        raise ProjectError('Model shape upload requires asset_id and the selected format payload only')
                     encoded = body[payload_key]
-                    if not isinstance(encoded, str) or len(encoded) > (22369624 if obj_upload else 5592408):
+                    if not isinstance(encoded, str) or len(encoded) > (22369624 if obj_upload or json_upload else 5592408):
                         raise ProjectError('Model shape exceeds the format size limit')
                     try:
                         payload = base64.b64decode(encoded, validate=True)
                     except ValueError as exc:
                         raise ProjectError('Model shape requires valid base64') from exc
-                    if obj_upload:
+                    if json_upload:
+                        self.server.project.set_model_json(body['asset_id'], payload)
+                    elif obj_upload:
                         self.server.project.set_model_obj(body['asset_id'], payload)
                     else:
                         self.server.project.set_model_replacement(body['asset_id'], payload)

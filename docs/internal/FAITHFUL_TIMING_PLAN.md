@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Model JSON project and editor integration
+
+- Previous goal turn made verified progress at61e8acea with a source-bound vertex/normal JSON codec and119 retail exact round trips. Connected set_model_json to existing model replacement history/persistence, a bounded JSON upload endpoint, and imported/authored source JSON downloads. Authored JSON retains the immutable retail source hash. Existing OBJ behavior remains position-only.
+- Model viewer now downloads source/authored JSON and accepts JSON with TMD/OBJ through Apply shape. Source text describes complete ordered vectors and fixed topology/materials. Request/decoded-file budgets match the existing16MiB text format path; strict format-specific payload fields remain enforced.
+- Actual town01 model0000 checks passed import, Undo/Redo, Save/Open, exact authored JSON download and stale-source rejection without changing the override. Browser authored download matched saved JSON; upload and Undo passed with no page errors. Private saved project/evidence: local-output/sdk-20260909/model-json-project-20260912. Model0000 has zero normals: this retail workflow proves vertex edits; normal-word editing is covered by the synthetic codec byte test, not a retail lighting claim.
+- Six focused model JSON/shape/OBJ tests passed; Node syntax and diff checks passed. Browser and test server stopped. No gameplay launched. Package and wider normal-bearing retail checks remain follow-ups; broader SDK goal stays active.
+
+
 ### 2026-09-12 — Readable model vertex/normal interchange foundation
 
 - Previous goal turn made verified progress at05d71b9a, completing return-to-file/import after proposed scene inspection. Current worktree was clean before moving to model authoring.

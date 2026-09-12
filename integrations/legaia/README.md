@@ -222,3 +222,16 @@ format intact. You can then import explicitly. Returning requires the same
 actor/project context and unchanged file selection; otherwise reopen authoring
 and select the file again. Ordinary imported/applied clip inspection does not
 show this action.
+
+
+## Model vertex and normal JSON
+
+The model viewer offers **Download source JSON** and **Download authored JSON**.
+Choose an edited `.json` in the shape file input and use **Apply shape**. JSON
+retains `legaia.model-shape.v1`, the retail `source_sha256`, original coordinate
+convention, and every ordered object with complete vertex/normal arrays. Values
+are signed16 source words; the tool performs no normal normalization or unit
+conversion. Authored download keeps the retail binding and includes current
+edited vectors. Import replaces the complete shape through ordinary model
+history/persistence; missing objects/vectors and stale hashes reject. Topology,
+materials and padding remain unchanged. OBJ still edits positions only.

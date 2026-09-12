@@ -25,8 +25,8 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str =
     """Private source download for editing an existing model's local shape."""
     from hashlib import sha256
     from importer.assets import load_model_source, decode_tmd
-    if format not in ('tmd', 'obj'):
-        raise ProjectError('Choose TMD or OBJ model source')
+    if format not in ('tmd', 'obj', 'json'):
+        raise ProjectError('Choose TMD, OBJ or JSON model source')
     if layer not in ('imported', 'authored'):
         raise ProjectError('Choose imported or authored model shape')
     document, key = _scene(project)
@@ -50,6 +50,15 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str =
                 filename='original-model.tmd', tmd_base64=base64.b64encode(data).decode('ascii'),
                 object_count=len(preview['objects']), coordinate_system=preview['coordinate_system'],
                 limitations=['Shape edits preserve source object layout, topology, materials and padding.'])
+    if format == 'json':
+        import json
+        from importer.model_json import export_shape_json
+        document = json.loads(export_shape_json(data))
+        document['source_sha256'] = source_hash
+        content = (json.dumps(document, sort_keys=True, indent=2) + '\n').encode('utf-8')
+        result.pop('tmd_base64')
+        result.update(json_base64=base64.b64encode(content).decode('ascii'), filename='original-model.json', byte_length=len(content))
+        result['limitations'].append('Complete ordered source vertex and normal arrays; signed16 values without unit conversion.')
     if format == 'obj':
         from importer.model_obj import export_shape_obj
         obj = export_shape_obj(data)
