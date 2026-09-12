@@ -21,6 +21,34 @@ def geometry():
 
 
 class ScenePreviewWorkflow(unittest.TestCase):
+    def test_missing_animation_catalog_keeps_static_geometry_but_not_guessed_poses(self):
+        from importer.core import ImportError as RetailImportError
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            imported = synthetic_scene()
+            imported['actors'][0]['placement_fields']['animation_id'] = 0
+            animated = deepcopy(imported['actors'][0])
+            animated['semantic_id'] = animated['semantic_id'].rsplit('/', 1)[0] + '/0002'
+            animated['placement_fields']['animation_id'] = 7
+            imported['actors'].append(animated)
+            project.import_metadata(imported)
+            disc = Path(directory) / 'fixture.bin'
+            disc.write_bytes(b'synthetic source')
+            project.disc_path = str(disc)
+            def unavailable(*_):
+                raise RetailImportError('No supported animation carrier')
+            with patch('sdk.scene_preview._disc_context', side_effect=lambda _: nullcontext()), \
+                 patch('sdk.scene_preview.import_scene', return_value=deepcopy(imported)), \
+                 patch('importer.animation.animation_capabilities', return_value={'supported':False}):
+                result = ScenePreviewService().preview(project, lambda *_: geometry(), unavailable)
+                self.assertEqual(result['metrics']['animation_error'], 'No supported animation carrier')
+                self.assertEqual(result['metrics']['renderable_count'], 1)
+                self.assertTrue(result['entities'][0]['renderable'])
+                self.assertFalse(result['entities'][1]['renderable'])
+                project.overrides[animated['semantic_id']] = {'AnimationChannels':{}}
+                with self.assertRaisesRegex(ProjectError, 'requires the verified scene animation catalog'):
+                    ScenePreviewService().preview(project, lambda *_: geometry(), unavailable)
+
     def test_environment_transforms_reuse_geometry_and_undo_restores_baseline(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

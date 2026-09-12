@@ -77,7 +77,22 @@ def _load_environment_source(disc, scene: str):
         if entry.size_sectors * archive.SECTOR != 0x12000:
             raise ImportError("scene does not have the supported full field MAP footprint")
         data = archive.read_entry(entry, extended=True)
-        bundle, raw = find_scene_bundle(archive, start, end)
+        try:
+            bundle, raw = find_scene_bundle(archive, start, end)
+        except ImportError:
+            from .man_source import read_man_source
+            carrier = read_man_source(archive, start, end, scene)
+            if carrier.kind != 'raw_streaming_man':
+                raise ImportError('environment source changed during streaming resolution')
+            result = decode_environment_placements(data, carrier.payload, scene)
+            result['source_record'] = {
+                'disc_sha256': digest, 'iso_file': 'PROT.DAT',
+                'map_entry_index': entry.index, 'map_sha256': sha256(data).hexdigest(),
+                'map_byte_length': len(data), 'man_entry_index': carrier.entry_index,
+                'man_sha256': sha256(carrier.payload).hexdigest(),
+                'man_source': carrier.provenance(),
+            }
+            return result, carrier.payload, None, b''
         candidates = [d for d in bundle.descriptors if d.type_byte == 3 and d.size > 0]
         if len(candidates) != 1:
             raise ImportError("environment requires one unambiguous scene MAN descriptor")
@@ -249,6 +264,8 @@ def load_environment_preview_catalog(disc, scene: str) -> EnvironmentPreviewCata
     with _disc_context(disc) as (_, digest, _, archive):
         metadata = load_environment_catalog(disc, scene)
         source, _, bundle, raw = _load_environment_source(disc, scene)
+        if bundle is None:
+            raise ImportError('Streaming environment mesh and animation carriers are not yet resolved')
         if source["source_record"] != metadata["source_record"]:
             raise ImportError("environment source changed during preview resolution")
         document = import_scene(disc, scene)

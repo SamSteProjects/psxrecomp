@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Streaming MAN floor heights enable dolk2 terrain
+
+- Previous turn made verified source and retail-preview progress. Connected environment placement/terrain decoding to the typed streaming MAN when no owned descriptor bundle exists; preserved existing descriptor decoding and recorded explicit raw carrier provenance. Streaming mesh/animation assembly remains unsupported rather than assuming a descriptor layout.
+- Retail dolk2 resolves MAP entry 66 and streaming MAN entry 70 (SHA256 `a623b1a0534d2e70ca6186037af19693df26cdc7874cd071a9cd2a54319c46b2`): 2,054 terrain cells, 4,108 triangles and six material records. Private output `local-output/sdk-20260909/streaming-dolk2-terrain-20260912.json` includes source hashes.
+- Fifteen focused terrain/environment/scene tests ran: fourteen passed, one skipped. Browser `/api/scene-preview` returned 200 and displayed five meshes among 73 entities (ground plus four actor instances). Inspected screenshot `local-output/sdk-20260909/streaming-dolk2-terrain-browser-20260912.png` confirms ground layout; terrain texture association remains unresolved/gray, and scenery meshes are missing.
+- No authored coordinates changed and no gameplay ran. Temporary editor and browser closed. Streaming scene-local model mapping, animation carriers, textures and export remain ongoing work.
+
+### 2026-09-12 Keep independently supported models when scene animation is unavailable
+
+- Previous goal turn was verified progress (checkpoint `937a5ab9`). Continued offline scene-preview work; the pinned streaming carrier reference and current service showed the animation-catalog factory aborted the entire scene before supported models were attempted.
+- A retail animation-source error now remains in preview metrics while independent reference poses and unanimated single-object geometry can render. Actors requiring the missing scene pose stay unresolved; authored animation channels still require a verified catalog and reject the preview otherwise. Import provenance mismatch remains fatal.
+- Six focused scene-preview tests passed, including the missing-catalog static/animated distinction and authored-channel rejection. Real dolk2 service preview now returns 72 actors with four renderable instances, two geometries and 984 triangles; unsupported terrain/environment/animation sources remain explicit. Private report: `local-output/sdk-20260909/streaming-dolk2-preview-20260912.json`. A report-print key typo was corrected; final report was written successfully.
+- This does not complete streaming model mapping or terrain support and does not establish runtime placement. No game launched; the temporary service socket was closed.
+
 ### 2026-09-12 Streaming script browser presentation and source checkpoint
 
 - Continued offline SDK implementation under the user's deferred-gameplay instruction. Browser inspection of dolk2 actor 0001 displays 34 decoded instructions and one dialogue segment from its own raw streaming MAN.

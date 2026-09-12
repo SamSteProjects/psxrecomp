@@ -249,7 +249,12 @@ class ScenePreviewService:
             fresh = import_scene(project.disc_path, document["scene"]["name"])
             if fresh != document:
                 raise ProjectError("Imported scene evidence differs from the verified retail source")
-            catalog = pose_loader_factory(project.disc_path, document["scene"]["name"]) if pose_loader_factory else None
+            catalog, animation_error = None, None
+            if pose_loader_factory:
+                try:
+                    catalog = pose_loader_factory(project.disc_path, document["scene"]["name"])
+                except RetailImportError as exc:
+                    animation_error = str(exc)
             animation_overrides = {a["semantic_id"]: project.overrides[a["semantic_id"]]["AnimationChannels"]
                                    for a in actors if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})}
             if animation_overrides and catalog is None:
@@ -305,6 +310,8 @@ class ScenePreviewService:
                         # Texture association remains owned by the server adapter.
                         preview = model_loader(asset, prepared=preview)
                         pose_kind = "authored_scene_animation_frame0" if changed_clip else "imported_scene_animation_frame0"
+                    elif animation_id and animation_error:
+                        raise RetailImportError(f"Scene animation unavailable: {animation_error}")
                     else:
                         preview = model_loader(asset)
                         if len(preview.get("objects", [])) != 1:
@@ -414,4 +421,5 @@ class ScenePreviewService:
         self._metrics.update(environment_count=len(environment),
                              environment_renderable_count=sum(e["renderable"] for e in environment),
                              environment_error=environment_error)
-        self._metrics.update(terrain_cell_count=terrain_cells, terrain_error=terrain_error)
+        self._metrics.update(terrain_cell_count=terrain_cells, terrain_error=terrain_error,
+                             animation_error=animation_error)
