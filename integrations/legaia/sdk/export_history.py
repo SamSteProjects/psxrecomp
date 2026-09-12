@@ -34,6 +34,35 @@ def _report(project, identifier):
     return directory, report
 
 
+
+def _change_summary(archive):
+    """Summarize completed audit categories without exposing private script text."""
+    scenes = archive.get('scenes')
+    records = list(scenes.values()) if isinstance(scenes, dict) else [archive]
+    categories = set()
+    fields = {'existing_actor_placement_changes': 'Actor positions',
+              'existing_actor_appearance_changes': 'Actor appearances',
+              'existing_actor_dialogue_changes': 'Dialogue', 'transition_changes': 'Transitions'}
+    nested = {'animation_changes': 'Animation channels', 'model_changes': 'Model shapes',
+              'texture_changes': 'Textures'}
+    drafts = archive.get('drafts')
+    draft_count = len(drafts) if isinstance(drafts, dict) else None
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        for field, label in fields.items():
+            if record.get(field): categories.add(label)
+        for field, label in nested.items():
+            value = record.get(field)
+            if isinstance(value, dict) and value.get('changes'): categories.add(label)
+        value = record.get('map_changes')
+        if isinstance(value, dict):
+            if value.get('environment_changes'): categories.add('Scenery')
+            if value.get('collision_changes'): categories.add('Collision')
+    if draft_count:
+        categories.add('NPC additions')
+    return dict(npc_draft_count=draft_count, categories=sorted(categories))
+
 def list_exports(project):
     root = (project.root / 'Builds').resolve()
     if not root.is_relative_to(project.root.resolve()):
@@ -48,7 +77,7 @@ def list_exports(project):
         try:
             directory, report = _report(project, path.name)
             archive = report['archive']
-            items.append(dict(id=path.name, status='completed', report_path=str(directory/'report.json'),
+            items.append(dict(id=path.name, status='completed', change_summary=_change_summary(archive), report_path=str(directory/'report.json'),
                 saved_at=datetime.fromtimestamp((directory/'report.json').stat().st_mtime,timezone.utc).isoformat(),
                 disc_path=str(directory/'draft.bin'), output_sha256=report['disc']['output_sha256'],
                 output_bytes=report['disc']['output_bytes'],

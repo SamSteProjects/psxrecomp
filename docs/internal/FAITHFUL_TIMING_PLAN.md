@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Reviewable export history summaries
+
+- Export history now presents recorded NPC draft count and audited edit categories for both per-scene streaming/multi-scene reports and legacy single-scene reports. Missing legacy counts remain unknown, not zero; private dialogue payloads and draft names are not copied into summaries.
+- Corrected empty-history guidance to include edit-only exports. Three history tests and editor JavaScript syntax check passed. The saved streaming NPC review export reports exactly one draft and the NPC additions category from its completed report.
+- No game launched. This improves later artifact selection; file integrity checks and gameplay acceptance remain separate. Full goal active.
+
+
 ### 2026-09-12 — Persistent streaming NPC review artifact
 
 - Saved isolated project `local-output/sdk-20260909/streaming-npc-review-20260912`, retaining the original model-import fixture. One donor-0001 boundary NPC at X64/Z16320; no other authored edits.
