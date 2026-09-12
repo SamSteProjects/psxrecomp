@@ -11,6 +11,34 @@ from sdk.project import ProjectService
 
 
 class AuthoredAssetCatalog(unittest.TestCase):
+    def test_draft_usage_keeps_retail_donor_when_original_appearance_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project=ProjectService(Path(directory))
+            scene=synthetic_scene()
+            donor=scene['actors'][0]
+            other=deepcopy(donor)
+            other['semantic_id']='scene://fixture/actors/man-p1/0002'
+            other['model_reference']['asset_semantic_id']='asset://fixture/model/1'
+            scene['actors'].append(other)
+            scene['assets']['models'].append({'semantic_id':'asset://fixture/model/1','source_record':{'fixture':True}})
+            project.import_metadata(scene)
+            project.command({'type':'create_actor_draft','donor_entity_id':donor['semantic_id'],
+                             'position':{'x':128,'z':256},'name':'New resident'})
+            identifier=next(iter(project.actor_drafts))
+            with patch.object(project,'appearance_source_actor',return_value=other):
+                references=project.model_references()
+            draft=next(row for row in references if row['source_id']==identifier)
+            self.assertEqual(draft['target_id'],donor['model_reference']['asset_semantic_id'])
+            self.assertEqual(draft['effective_donor_id'],donor['semantic_id'])
+            self.assertFalse(draft['imported'])
+            self.assertTrue(draft['effective'])
+            self.assertEqual(draft['runtime_binding'],'not_asserted')
+            project.undo()
+            self.assertFalse(any(row['source_id']==identifier for row in project.model_references()))
+            project.redo()
+            restored=ProjectService.open(project.save())
+            self.assertEqual(restored.model_references(),project.model_references())
+
     def test_cross_scene_history_persistence_and_snapshot_isolation(self):
         with tempfile.TemporaryDirectory() as directory:
             project = ProjectService(Path(directory))

@@ -1318,6 +1318,20 @@ class ProjectService:
                                        "imported": model_id == imported, "effective": model_id == effective,
                                        "effective_donor_id": donor["semantic_id"] if model_id == effective else None,
                                        "runtime_binding": "not_asserted"})
+            actors = {actor['semantic_id']: actor for actor in document['actors']}
+            for identifier, draft in self.actor_drafts.items():
+                if draft['scene_id'] != scene_id:
+                    continue
+                # Appended actors clone the retail donor, not its authored appearance.
+                donor = actors[draft['donor_entity_id']]
+                model_id = donor['model_reference'].get('asset_semantic_id')
+                if model_id is not None:
+                    references.append({'source_id': identifier, 'source_name': draft['name'],
+                                       'target_id': model_id, 'scene_id': scene_id,
+                                       'kind': 'draft_initial_model_assignment',
+                                       'imported': False, 'effective': True,
+                                       'effective_donor_id': donor['semantic_id'],
+                                       'runtime_binding': 'not_asserted'})
         return references
 
     def state(self) -> dict:

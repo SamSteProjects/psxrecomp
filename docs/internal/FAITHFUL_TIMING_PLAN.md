@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 NPC draft asset usage and navigation
+
+- Model assignment references now include authored NPC drafts across imported scenes. Draft references retain the retail donor independently of authored donor appearance, distinguish draft versus imported assignments, and make no runtime identity claim. Animation usage projection retains that draft identity.
+- Four focused catalog/draft lifecycle tests passed. Actual town01 model0105 browser inspection listed Candidate NPC; clicking its usage entry selected the draft Inspector at X3008 after correcting the separate draft selection path. Screenshot: local-output/sdk-20260909/draft-asset-usage-20260912.png.
+- Temporary editor port4406 and headless test browser stopped. No game launched or authored project data changed; gameplay queue remains deferred.
+
+
 ### 2026-09-12 Persistent export history and integrity verification
 
 - Added project-local export history with completed/incomplete status, authored-input comparison, saved-input location and explicit on-demand disc/snapshot hash verification. Reading history never implies gameplay acceptance.

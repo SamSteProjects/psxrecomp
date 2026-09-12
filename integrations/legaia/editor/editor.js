@@ -654,7 +654,7 @@ function initialAssetUsage(record,modelReferences){
     const effective=ref.effective&&bindings.some(binding=>binding.actor_semantic_id===ref.effective_donor_id&&binding.model_asset_semantic_id===ref.target_id);
     if(!imported&&!effective)continue;
     const previous=references.get(ref.source_id);
-    references.set(ref.source_id,{source_id:ref.source_id,scene_id:ref.scene_id,
+    references.set(ref.source_id,{source_id:ref.source_id,scene_id:ref.scene_id,source_name:ref.source_name,kind:ref.kind,
       imported:!!(imported||previous?.imported),effective:!!(effective||previous?.effective)});
   }
   return [...references.values()];
@@ -667,7 +667,7 @@ function showAssetDetails(record){
   if(['model','animation'].includes(record.type)){
     const usage=document.createElement('section');usage.innerHTML=`<h3>Used by</h3><p>${record.type==='model'?'Initial model assignments across imported scenes.':'Verified initial animation bindings and authored donor assignments.'} Scripts may change these assignments during gameplay.</p>`;
     const references=initialAssetUsage(record,state.model_references??[]);
-    for(const ref of references){const button=document.createElement('button');button.textContent=`${ref.source_id} · ${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`;button.onclick=async()=>{if(busy)return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
+    for(const ref of references){const button=document.createElement('button');button.textContent=`${ref.source_name??ref.source_id} · ${ref.kind==='draft_initial_model_assignment'?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy)return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(ref.kind==='draft_initial_model_assignment'){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
     if(!references.length){const empty=document.createElement('p');empty.textContent='No imported or effective initial actor assignments in this project.';usage.append(empty);}
     $('asset-source-data').parentElement.before(usage);
   }
