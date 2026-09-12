@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Saved streaming NPC browser review workflow
+
+- Rechecked the original Unity-like workflow requirements and exercised the saved streaming NPC project in the actual editor browser. Scene preview loaded 433/442 supported meshes; Export history displayed the matching one-draft export. Its Verify saved files button passed the disc and two snapshot file checks.
+- Visual inspection showed long private paths/hash text dominating the dialog. Moved those fields into an expandable Saved files and source hashes section, retaining the scene/edit summary and review actions in the main view. Browser check verified collapsed defaults and expansion revealing the recorded hash; JavaScript syntax check passed.
+- Inspected screenshots: `local-output/sdk-20260909/streaming-npc-history-browser-20260912.png` and `streaming-npc-history-compact-20260912.png`. Both temporary editor/browser sessions stopped; no game launched and no project mutation.
+- Remaining product frontier includes whole-scene retail/authored comparison and broader SDK acceptance gaps; saved-export review does not establish runtime behavior. Full goal active; gameplay deferred.
+
+
 ### 2026-09-12 — Reviewable export history summaries
 
 - Export history now presents recorded NPC draft count and audited edit categories for both per-scene streaming/multi-scene reports and legacy single-scene reports. Missing legacy counts remain unknown, not zero; private dialogue payloads and draft names are not copied into summaries.

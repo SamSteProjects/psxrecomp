@@ -202,7 +202,17 @@ exportHistoryButton.onclick=async()=>{
       if(item.status!=='completed'){details.textContent=`Incomplete or invalid export: ${item.error}`;list.append(row);continue;}
       const summary=item.change_summary;
       const changes=summary?`${summary.npc_draft_count===null?'NPC count not recorded':`${summary.npc_draft_count} NPC draft(s)`} · ${summary.categories.length?summary.categories.join(', '):'No categorized changes recorded'}`:'Change summary unavailable';
-      details.textContent=`${item.scene_ids.filter(Boolean).join(', ')}\n${changes}\n${item.matches_current_inputs?'Matches current authored inputs':'Different authored inputs'}\nDisc: ${item.disc_path}\nReport: ${item.report_path}\nSHA-256: ${item.output_sha256}`+(item.input_project_path?`\nSaved inputs: ${item.input_project_path}`:'\nNo saved input snapshot in this older export.');
+      details.textContent=`${item.scene_ids.filter(Boolean).join(', ')}
+${changes}
+${item.matches_current_inputs?'Matches current authored inputs':'Different authored inputs'}`;
+      const provenance=document.createElement('details'),provenanceTitle=document.createElement('summary'),paths=document.createElement('pre');
+      provenanceTitle.textContent='Saved files and source hashes';paths.style.whiteSpace='pre-wrap';paths.style.overflowWrap='anywhere';
+      paths.textContent=`Disc: ${item.disc_path}
+Report: ${item.report_path}
+SHA-256: ${item.output_sha256}`+(item.input_project_path?`
+Saved inputs: ${item.input_project_path}`:`
+No saved input snapshot in this older export.`);
+      provenance.append(provenanceTitle,paths);row.append(provenance);
       const check=document.createElement('button');check.textContent='Verify saved files';
       const outcome=document.createElement('p');outcome.setAttribute('role','status');outcome.textContent='File integrity not checked. Gameplay unverified.';
       check.onclick=async()=>{check.disabled=true;outcome.textContent='Checking disc and saved input hashes…';try{const verification=await request('/api/exports/verify',{id:item.id});outcome.textContent=`Disc hash verified${verification.snapshot_available?`; ${verification.snapshot_files_verified} saved input files verified`:'. No input snapshot available'}. Gameplay remains unverified.`;}catch(error){outcome.textContent=`Verification failed: ${error.message}`;}finally{check.disabled=false;}};
