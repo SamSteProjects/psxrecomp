@@ -213,6 +213,41 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 Collision locator browser acceptance
+
+- Actual browser flow reopened collision-only saved inputs, refreshed resources, opened wall editing, selected the authored cell and located it. Terrain endpoint returned X3872/Y-128/Z3744; the dialog closed and viewport displayed the reference marker plus effective edited-cell outline.
+- Inspected screenshot local-output/sdk-20260909/collision-terrain-locator-20260912.png. The collision overlay remains explicitly Y0; only camera/reference-marker elevation uses source terrain. No runtime height or movement claim.
+- Temporary editor4406 and headless Edge closed; no game launched or saved project edits. This completes the pending browser check for terrain-aware cell location.
+
+
+### 2026-09-12 Terrain-aware collision cell locator
+
+- Existing wall-cell locator now requests a source-key-guarded terrain sample rather than always aiming at Y0. The source preview elevation changes camera/probe display only; authored wall data and positions remain untouched. Missing terrain is explicitly labeled as a Y0 placeholder.
+- Added bounded read-only /api/terrain-point service; actual HTTP check sampled the collision fixture center X3872/Z3744 at guest Y-128. Stale source, boolean X and negative X requests rejected with400; project document unchanged. Temporary HTTP server closed, no game launched.
+- JavaScript syntax check passed. Full rendered locator interaction remains to be checked; this does not prove runtime elevation or collision acceptance.
+
+
+### 2026-09-12 Isolated collision disc and saved input acceptance
+
+- Exported a project with no drafts and exactly one town01 collision wall-bit edit. Output: local-output/sdk-20260909/collision-only-export-20260912/draft.bin, 466714416 bytes, SHA256 f77fb410addd646904208f184b2a1a174f73d9b7378f7fa54c28a25c90822c5d.
+- MAP and PROT reopening passed; independent final hash, every saved input hash and collision-only snapshot reopen passed. Eleven focused preview/export tests passed. Queue records exact bounds and later manual movement comparison.
+- No game launched, no working-project save, no extra authored NPC or model/texture/animation changes. Broader SDK goal and gameplay acceptance remain incomplete.
+
+
+### 2026-09-12 Project-wide experimental export without NPC drafts
+
+- Generalized authored archive routing to accept projects with supported edits and no drafts. The new Export disc toolbar action and /api/export/project route use the existing snapshot/report/history pipeline; CLI --draft is optional. Empty projects still reject experimental export.
+- Six focused export tests passed; HTTP coverage includes project export without a draft and rejects caller output paths. Real retail town01 preparation with zero drafts and only actor0011 X2880-to3072 emitted a 121253888-byte archive and passed reopened MAN verification. No disc/game launch or project save occurred.
+- This enables isolated asset/scene gameplay fixtures without an unrelated NPC addition. Shared physical container composition and broader runtime acceptance remain incomplete.
+
+
+### 2026-09-12 Draft-aware scene instance counts
+
+- Corrected preview metrics to count projected actors/drafts rather than internal cached donor bindings. Added draft and total instance/renderable counts; geometry-cache metrics remain separate.
+- Hierarchy totals include active-scene drafts. Mesh badge denominator now uses the same preview instance inventory as the renderer, preventing impossible loaded/total ratios during draft authoring.
+- Five scene-preview checks passed after handling legacy actor instances with no kind field. Regression covers a draft cloned from a donor with an authored appearance without counting its internal retail binding. No game launched.
+
+
 ### 2026-09-12 Frame newly authored entities after preview completion
 
 - Diagnosed duplicate framing before the new preview exists: placeholder height and absent model bounds put the camera inside scenery. Entity framing now waits for the matching project/scene/source preview, then uses its rendered position and bounds.

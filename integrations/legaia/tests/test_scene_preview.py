@@ -141,6 +141,10 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 self.assertEqual(draft_binding['geometry_key'], first['entities'][0]['geometry_key'])
                 self.assertFalse(draft_binding['appearance_authored'])
                 self.assertEqual(draft_binding['position']['x'],704)
+                self.assertEqual(draft_preview['metrics']['draft_count'],1)
+                self.assertEqual(draft_preview['metrics']['total_entity_count'],len(draft_preview['entities']))
+                self.assertEqual(draft_preview['metrics']['entity_count'],len(project.imports[project.active_scene]['actors'])+1)
+                self.assertEqual(draft_preview['metrics']['total_renderable_count'],sum(bool(e['renderable']) for e in draft_preview['entities']))
                 project.actor_drafts.clear()
                 del project.overrides[target["semantic_id"]]["ActorAppearance"]
                 self.assertEqual(source_key(project), initial_key)

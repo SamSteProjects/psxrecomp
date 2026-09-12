@@ -220,11 +220,18 @@ class ScenePreviewService:
             raise ProjectError('Scene preview including drafts exceeds entity limit')
         if source_key(project) != key:
             raise ProjectError("Scene preview source changed during transform projection")
+        actors = [instance for instance in instances if instance.get('kind') != 'environment']
+        metrics = dict(self._metrics)
+        metrics.update(entity_count=len(actors),
+                       renderable_count=sum(bool(item['renderable']) for item in actors),
+                       draft_count=sum(item.get('kind')=='actor_draft' for item in actors),
+                       total_entity_count=len(instances),
+                       total_renderable_count=sum(bool(item['renderable']) for item in instances))
         return {"schema": "legaia.scene-preview.v1", "source_key": key,
                 "scene_id": projected["id"], "coordinate_system": "editor_field_y_up_source_units",
                 "position_to_display": list(POSITION_TO_DISPLAY),
                 "environment_authoring": deepcopy(project.overrides.get(project.active_scene, {}).get("Environment")),
-                "assets": deepcopy(self._assets), "entities": instances, "metrics": dict(self._metrics),
+                "assets": deepcopy(self._assets), "entities": instances, "metrics": metrics,
                 "limits": ["Authored placement reference, not scripted runtime placement or visibility",
                            "Unknown heights use source terrain where available, otherwise a display ground plane; unknown heading uses identity",
                            "Unsupported multipart poses remain markers; no fabricated object assembly",

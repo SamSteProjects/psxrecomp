@@ -149,14 +149,14 @@ class EditorServer(ThreadingHTTPServer):
                 preview["animation_support"]["clips"].append({"id": "authored-channels", "label": "Authored channel overrides"})
         return preview
 
-    def export_actor_drafts(self, entity_id: str) -> dict:
+    def export_actor_drafts(self, entity_id: str | None = None) -> dict:
         from uuid import uuid4
         from .draft_build import export_draft_disc
         project = self.project
         if project.mode != 'edit':
             raise ProjectError('Draft export requires Edit mode')
         draft = project.actor_drafts.get(entity_id)
-        if draft is None or draft['scene_id'] != project.active_scene:
+        if entity_id is not None and (draft is None or draft['scene_id'] != project.active_scene):
             raise ProjectError('Draft export requires a draft in the active scene')
         directory = (project.root / 'Builds' / ('experimental-drafts-' + uuid4().hex)).resolve()
         if not directory.is_relative_to(project.root.resolve()):
@@ -543,6 +543,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Draft export accepts only a draft entity_id")
                     self._json(200, self.server.export_actor_drafts(body["entity_id"]))
                     return
+                if route == '/api/export/project':
+                    if body:
+                        raise ProjectError('Project export accepts no fields')
+                    self._json(200, self.server.export_actor_drafts())
+                    return
                 if route in ('/api/exports', '/api/exports/verify'):
                     from .export_history import list_exports, verify_export
                     if route == '/api/exports':
@@ -585,6 +590,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, self.server.scene_previews.preview(
                         self.server.project, lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, **kwargs), load_scene_actor_animation_catalog,
                         load_environment_preview_catalog, terrain_preview))
+                    return
+                if route == '/api/terrain-point':
+                    from .scene_preview import source_key, sample_preview_ground
+                    from .terrain_preview import terrain_preview
+                    import math
+                    if (set(body)!={'x','z','source_key'} or any(type(body[a]) not in (int,float) or not math.isfinite(body[a]) or not 0<=body[a]<=16384 for a in ('x','z'))):
+                        raise ProjectError('Terrain point requires bounded X/Z and a preview source key')
+                    key=source_key(self.server.project)
+                    if not key or body['source_key']!=key:
+                        raise ProjectError('Terrain point source changed; refresh the scene')
+                    sample=sample_preview_ground(terrain_preview(self.server.project),body['x'],body['z'])
+                    if source_key(self.server.project)!=key:
+                        raise ProjectError('Terrain source changed during sampling')
+                    self._json(200,dict(source_key=key,scene_id=self.server.project.active_scene,
+                        position=dict(x=body['x'],y=sample['y'] if sample else None,z=body['z']),
+                        sample=sample,evidence='source terrain preview; runtime elevation unverified'))
                     return
                 if route in ("/api/preview", "/api/animation-preview", "/api/export/model"):
                     project = self.server.project

@@ -17,9 +17,9 @@ from .build import authored_state_key
 from .project import atomic_write, canonical
 
 
-def prepare_draft_archive(project, draft_id: str) -> tuple[bytes, dict]:
+def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, dict]:
     """Compose draft-bearing scenes without omitting authored input."""
-    if not isinstance(draft_id,str) or draft_id not in project.actor_drafts:
+    if draft_id is not None and (not isinstance(draft_id,str) or draft_id not in project.actor_drafts):
         raise ProjectError('Select an existing NPC draft')
     scene_ids={item['scene_id'] for item in project.actor_drafts.values()}
     for binding in list(project.texture_overrides.values())+list(project.model_overrides.values()):
@@ -31,7 +31,9 @@ def prepare_draft_archive(project, draft_id: str) -> tuple[bytes, dict]:
         if len(matches)!=1:
             raise ProjectError('Draft export has edits outside its imported scenes')
         scene_ids.add(matches[0])
-    if len(scene_ids)<=1:
+    if not scene_ids:
+        raise ProjectError('Experimental export requires authored scene edits or NPC drafts')
+    if len(scene_ids)==1 and draft_id is not None:
         return _prepare_draft_scene(project,draft_id)
     input_key=authored_state_key(project)
     scoped={scene:{} for scene in scene_ids}
@@ -271,7 +273,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         container=container_audit,gameplay_verified=False)
 
 
-def export_draft_disc(project, draft_id: str, output_directory: Path) -> dict:
+def export_draft_disc(project, draft_id: str | None, output_directory: Path) -> dict:
     """Write a new experimental disc and audit; never launch or replace a build.
 
     Failed exports retain their private directory for diagnosis. Only a completed
@@ -294,8 +296,9 @@ def export_draft_disc(project, draft_id: str, output_directory: Path) -> dict:
         raise ProjectError('Project changed during draft disc export; output has no completed report')
     report=dict(schema_version='legaia.experimental-draft-export.v1',
                 archive=audit,disc=result,input_snapshot=input_snapshot,gameplay_verified=False,
-                limitations=['Experimental donor append; incomplete script and scheduling acceptance',
-                             'Not integrated with the editor Play workflow'])
+                limitations=['Experimental archive/disc rebuild; gameplay acceptance incomplete',
+                             'Not integrated with the editor Play workflow']+
+                            (['Experimental donor append; incomplete script and scheduling acceptance'] if audit.get('drafts') else []))
     atomic_write(directory/'report.json',canonical(report))
     return report
 
@@ -305,7 +308,7 @@ if __name__ == '__main__':
     from .project import ProjectService
     parser=argparse.ArgumentParser(description='Export experimental NPC drafts without launching the game')
     parser.add_argument('--project',type=Path,required=True)
-    parser.add_argument('--draft',required=True,help='Saved authored-actor UUID identity')
+    parser.add_argument('--draft',help='Optional saved authored-actor UUID; omission exports all authored scenes')
     parser.add_argument('--output',type=Path,required=True,help='New output directory')
     args=parser.parse_args()
     export_draft_disc(ProjectService.open(args.project),args.draft,args.output)

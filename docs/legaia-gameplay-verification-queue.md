@@ -18,6 +18,12 @@ This does not launch the game or mark a gameplay check as passed. History lists
 exports under the current project's Builds directory; separately prepared CLI
 fixtures in this queue retain their explicit paths below.
 
+The toolbar's **Export disc** action exports supported authored changes without
+requiring an NPC draft. It uses the same experimental output, input snapshot and
+history workflow. CLI callers may omit `--draft` for project-wide export. A
+project with no authored changes is rejected; ordinary Build remains the retail
+baseline workflow. Export completion still requires later gameplay acceptance.
+
 ## Ready artifact: added NPC
 
 - Artifact: `local-output/sdk-20260909/saved-draft-export-20260911/draft.bin`.
@@ -40,6 +46,27 @@ fixtures in this queue retain their explicit paths below.
 
 ## Features needing a dedicated manual fixture
 
+### Isolated collision fixture available (2026-09-12)
+
+- Disc: `local-output/sdk-20260909/collision-only-export-20260912/draft.bin`.
+- SHA256: `f77fb410addd646904208f184b2a1a174f73d9b7378f7fa54c28a25c90822c5d`.
+- Adjacent `report.json` and reopenable `Inputs/project.legaia.json` preserve the exact inputs.
+- Only authored edit: town01 row30/column30/quadrant0, unblocked to blocked,
+  MAP byte20254 bit16. No NPC drafts, model, texture or animation edits.
+- Locate center X3872/Z3744. Exact canonical integer bounds are
+  `3840 < X <= 3904`, `3712 <= Z < 3776`. Use the editor's coordinate locator
+  and Effective collision overlay to inspect the location before gameplay.
+- Alternatively open collision wall editing, choose the saved cell under Applied
+  wall edits, then click Locate cell in viewport. This browser flow is verified;
+  the reference marker uses sampled guest Y-128 here. The grid remains a Y0
+  overlay, not a runtime collision surface. Screenshot:
+  `local-output/sdk-20260909/collision-terrain-locator-20260912.png`.
+- Later manual check: compare approach from each accessible side against the
+  unchanged retail disc, leave/re-enter and repeat. Runtime scripts, other
+  blockers and floor tiers may affect accessibility; record those observations.
+- Final MAP/PROT reopening, independent disc hash, all snapshot-file hashes
+  and collision-only project reopen passed. No gameplay was performed.
+
 ### Combined integration fixture available (2026-09-12)
 
 `local-output/sdk-20260909/combined-assets-export-20260912/draft.bin`, with adjacent
@@ -61,7 +88,7 @@ packages must not be silently substituted.
 | --- | --- | --- |
 | Animation channels | Confirm edited pose and motion throughout playback, shared users and scene reload. | Export a minimal current authored/baseline pair with the exact clip and axes recorded. |
 | Model shape | Confirm edited mesh under animation and scene lighting, then baseline restoration. | Export a minimal model-only pair and record model identity and source/output hashes. |
-| Collision wall bits | Attempt movement across the exact edited subcell boundaries; compare baseline. | Build a single-cell fixture and show its location and intended blocked edges. |
+| Collision wall bits | Attempt movement across the exact edited subcell boundaries; compare baseline. | Isolated collision fixture above is ready; baseline is the unchanged retail disc. |
 | P2 dialogue | Trigger the edited P2 text, close it and resume normal control. | Build a minimal fixture with the owning trigger, text and expected interaction documented. |
 | Transition arrival | Traverse the exact source trigger and inspect destination arrival/facing. | Build a minimal arrival-only pair; preserve destination name and record encoded values. |
 | Combined draft edits | Check original actor edits plus added NPC behavior together. | The combined integration disc above is ready; isolated visible edits still need dedicated fixtures. |

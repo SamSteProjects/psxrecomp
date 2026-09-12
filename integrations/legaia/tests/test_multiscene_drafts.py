@@ -8,6 +8,25 @@ from sdk.draft_build import prepare_draft_archive
 
 
 class MultiSceneDrafts(unittest.TestCase):
+    def test_project_export_does_not_require_or_invent_a_draft(self):
+        project=ProjectService(Path('.'))
+        project.imports={'scene://a':{}}
+        with self.assertRaisesRegex(ProjectError,'authored scene edits'):
+            prepare_draft_archive(project)
+        project.overrides={'scene://a/actors/1':{'Transform':{'position':{'x':704}}}}
+        def prepare(view,identity,*,defer_rebuild,scene_id):
+            self.assertIsNone(identity)
+            self.assertTrue(defer_rebuild)
+            self.assertEqual(scene_id,'scene://a')
+            self.assertFalse(view.actor_drafts)
+            return b'archive',{'_rebuild_request':{'entry_index':0},'source_disc_sha256':'same'}
+        with patch('sdk.draft_build._prepare_draft_scene',side_effect=prepare), \
+             patch('sdk.draft_build.rebuild_man_entries',return_value=(b'new',{})):
+            result,audit=prepare_draft_archive(project)
+        self.assertEqual(result,b'new')
+        self.assertIsNone(audit['selected_draft_id'])
+        self.assertEqual(audit['drafts'],{})
+
     def test_edit_only_scene_is_included_and_concurrent_change_rejects(self):
         project=ProjectService(Path('.'))
         project.imports={'scene://a':{},'scene://b':{}}

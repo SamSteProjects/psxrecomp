@@ -20,8 +20,8 @@ class DraftExportHTTP(unittest.TestCase):
             server=EditorServer(('127.0.0.1',0),project)
             thread=threading.Thread(target=server.serve_forever,daemon=True)
             thread.start()
-            def post(body):
-                request=Request(f'http://127.0.0.1:{server.server_port}/api/export/actor-drafts',
+            def post(body,route='/api/export/actor-drafts'):
+                request=Request(f'http://127.0.0.1:{server.server_port}{route}',
                     data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
                 with urlopen(request,timeout=5) as response:
                     return json.load(response)
@@ -46,6 +46,15 @@ class DraftExportHTTP(unittest.TestCase):
                     error.exception.close()
                     self.assertEqual(writer.call_count,1)
                     self.assertIsNone(server.last_build)
+                    project.mode='edit'
+                    project.actor_drafts.clear()
+                    result=post({},'/api/export/project')
+                    self.assertTrue(result['experimental'])
+                    self.assertIsNone(writer.call_args.args[1])
+                    with self.assertRaises(HTTPError) as error:
+                        post({'output':'outside'},'/api/export/project')
+                    self.assertEqual(error.exception.code,400)
+                    error.exception.close()
             finally:
                 server.shutdown();server.server_close();thread.join(timeout=5)
 

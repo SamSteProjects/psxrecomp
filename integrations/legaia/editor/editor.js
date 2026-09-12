@@ -160,6 +160,7 @@ window.addEventListener('pagehide',()=>{if(liveFollow.active)stopLiveFollow('Pag
 const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build the project with supported edits or as a verified retail baseline';$('save-button').after(buildButton);
 const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';buildDialog.id='build-report-dialog';document.body.append(buildDialog);
 const buildReportButton=document.createElement('button');buildReportButton.id='build-report-button';buildReportButton.textContent='Build report';buildReportButton.title='Review the latest build';buildReportButton.hidden=true;buildButton.after(buildReportButton);buildReportButton.onclick=()=>showBuildReport();
+const exportProjectButton=document.createElement('button');exportProjectButton.id='export-project-button';exportProjectButton.textContent='Export disc';exportProjectButton.title='Export supported authored changes as a separate experimental disc';buildButton.after(exportProjectButton);exportProjectButton.onclick=()=>exportNpcDrafts();
 const exportHistoryButton=document.createElement('button');exportHistoryButton.id='export-history-button';exportHistoryButton.textContent='Export history';buildReportButton.after(exportHistoryButton);
 exportHistoryButton.onclick=async()=>{
   if(busy)return;
@@ -309,6 +310,7 @@ function setBusy(value) {
   if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
   if($('export-npc-drafts'))$('export-npc-drafts').disabled=value||!canEdit();
+  if($('export-project-button'))$('export-project-button').disabled=value||!canEdit();
   document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#duplicate-npc-draft,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || !state.history?.can_undo;
@@ -469,12 +471,13 @@ function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===state.s
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
 function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(draft)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
-  $('entity-count').textContent=entities().length+environmentEntities().length;
+  const draftCount=Object.values(state.actor_drafts??{}).filter(item=>item.scene_id===state.scene?.id).length;
+  $('entity-count').textContent=entities().length+environmentEntities().length+draftCount;
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
   const hidden=hiddenSceneEntities(),visible=ready?sceneRenderer.instances.filter(instance=>!hidden.has(instance.entity_id)).length:0;
   $('scene-models').hidden=!ready;
   modelToggle.hidden=!state.capabilities?.scene_preview;modelToggle.textContent=sceneError?'Retry models':'Models';modelToggle.title=sceneError ?? 'Show supported SDK meshes at authored placements';
-  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?(ready?'Updating scene · showing previous preview (scenery editing paused)':'Loading supported scene models…'):ready?`${count} / ${entities().length+environmentEntities().length} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
+  document.querySelector('.preview-badge span').textContent=sceneError?'Models unavailable · placement markers remain usable':scenePendingKey?(ready?'Updating scene · showing previous preview (scenery editing paused)':'Loading supported scene models…'):ready?`${count} / ${activeScenePreview()?.entities.length??0} meshes loaded · ${visible} visible`:modelsEnabled?'Placement markers · model data unavailable':'Placement markers · models hidden';
   $('coordinate-note').textContent=environmentEntities().length?'Environment: imported transforms · Actors: unknown height/facing use preview conventions':'Unknown actor heights are shown on the ground plane.';
   $('coordinate-note').title=JSON.stringify(activeScenePreview()?.limits ?? []);
 }
@@ -803,12 +806,22 @@ function openFieldResource(record){
       for(const name of ['row','column','quadrant'])form.elements[name].oninput=()=>{if(dirty()){for(const axis of ['row','column','quadrant'])form.elements[axis].value=draftCell[axis];return;}selectCell();};
       form.elements.blocked.oninput=updateDraft;discard.onclick=()=>{form.elements.blocked.checked=appliedBlocked;updateDraft();};selectCell();
       const locateCell=document.createElement('button');locateCell.type='button';locateCell.textContent='Locate cell in viewport';form.append(locateCell);
-      locateCell.onclick=()=>{
+      locateCell.onclick=async()=>{
         if(busy||resourceStateKey()!==key||state.scene.id!==scene||!form.reportValidity())return;
         if(dirty()){fieldDialog.querySelector('.dialog-error').textContent='Apply or discard the wall change before locating its cell.';return;}
-        const c=cell(),point={x:c.column*128+(c.quadrant&1)*64+32,y:0,z:c.row*128-128+(c.quadrant>>1)*64+32};
-        coordinateProbe={point,context:JSON.stringify([state.project?.path,state.scene?.id])};cancelViewportGesture();camera.target=displayPosition(point);camera.distance=1000;cameraRevision++;
-        fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();draw();
+        const c=cell(),point={x:c.column*128+(c.quadrant&1)*64+32,y:0,z:c.row*128-128+(c.quadrant>>1)*64+32},sourceKey=state.scene_preview_source_key;
+        setBusy(true);locateCell.disabled=true;
+        try{
+          const response=await fetch('/api/terrain-point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({x:point.x,z:point.z,source_key:sourceKey})});
+          const result=await response.json();if(!response.ok)throw new Error(result.error||'Terrain sampling failed');
+          if(resourceStateKey()!==key||state.scene.id!==scene||result.source_key!==state.scene_preview_source_key||result.scene_id!==scene)throw new Error('Scene changed while locating the cell');
+          if(result.position?.y!==null&&!numeric(result.position?.y))throw new Error('Terrain sample returned an invalid height');
+          point.y=result.position.y??0;
+          coordinateProbe={point,context:JSON.stringify([state.project?.path,state.scene?.id])};cancelViewportGesture();camera.target=displayPosition(point);camera.distance=1000;cameraRevision++;
+          fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();draw();
+          notify(result.position.y===null?'No source terrain at this cell; locator uses a Y=0 display placeholder.':'Cell located using source terrain elevation; runtime height remains unverified.');
+        }catch(error){fieldDialog.querySelector('.dialog-error').textContent=error.message;}
+        finally{locateCell.disabled=false;setBusy(false);}
       };
       const apply=async command=>{if(busy||state.project.mode!=='edit'||resourceStateKey()!==key||state.scene.id!==scene)return;await api('/api/command',command,{dialog:fieldDialog,success:'Source wall edits updated. Save project to persist.'});};
       const applyEdits=edits=>apply(edits.length?{type:'set_collision_walls',entity_id:scene,value:{source_sha256:snapshot.asset.source_record.containing_span_sha256,edits}}:{type:'clear_collision_walls',entity_id:scene});
@@ -1169,8 +1182,8 @@ function runtimeCandidateSummary(correlation,entityId){
 async function exportNpcDrafts(entityId){
   if(busy||!canEdit())return;
   const dialog=document.createElement('dialog');dialog.id='draft-export-result';dialog.className='project-dialog';
-  const title=document.createElement('h2');title.textContent='Experimental NPC disc export';
-  const message=document.createElement('p');message.textContent='Building a separate disc from all drafts in this project. This can take a minute.';
+  const title=document.createElement('h2');title.textContent='Experimental disc export';
+  const message=document.createElement('p');message.textContent='Building a separate disc from supported authored changes across this project. This can take a minute.';
   const details=document.createElement('pre');details.style.whiteSpace='pre-wrap';details.style.overflowWrap='anywhere';
   let exporting=true;
   const close=document.createElement('button');close.textContent='Close';close.disabled=true;close.onclick=()=>dialog.close();
@@ -1179,13 +1192,13 @@ async function exportNpcDrafts(entityId){
   setBusy(true);
   try{
     if(liveFollow.pending)await liveFollow.pending;
-    const response=await fetch('/api/export/actor-drafts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:entityId})});
+    const response=await fetch(entityId?'/api/export/actor-drafts':'/api/export/project',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId}:{})});
     const result=await response.json();
     if(!response.ok||result.error)throw new Error(result.error||'Draft export failed');
     if(!result.report_path||!result.disc_path||!result.output_sha256)throw new Error('Export service returned an incomplete report');
-    message.textContent='Export complete. NPC scheduling and gameplay remain unverified. The game has not been launched.';
+    message.textContent='Export complete. Gameplay remains unverified. The game has not been launched.';
     details.textContent=`Disc: ${result.disc_path}\nReport: ${result.report_path}\nSHA-256: ${result.output_sha256}`+(result.input_project_path?`\nSaved export inputs: ${result.input_project_path}`:'');
-    notify('Experimental NPC disc exported');
+    notify('Experimental disc exported');
   }catch(error){message.textContent=error.message;notify(error.message,true);}
   finally{exporting=false;close.disabled=false;setBusy(false);}
 }
