@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Integrated SDK regression checkpoint
+
+- Previous goal turn made verified progress at6407ade7 with model report navigation. Current source/worktree verified before running the complete existing retail-enabled SDK suite after model JSON, proposed-file visualization and report additions.
+- Full discovery passed351 tests in140.443s, terminal exit0. Log: local-output/sdk-20260909/sdk-model-json-regression-20260912.log. The original running handle25289 was retained through completion, not restarted on observation timeouts. Browser/package evidence from preceding workflow turns remains separately scoped.
+- Inspected SceneRenderer shaders: attributes are position/color/UV and fragment output multiplies decoded colors/textures, with no normal input or lighting calculation. README/status/feature matrix now explicitly state that normal-only edits can package correctly without a changed browser image; runtime lighting remains deferred. Updated integrated status for proposed-file inspection/return and model JSON/audit/navigation coverage.
+- No gameplay launched; no runtime acceptance claimed. Diff checks passed. Full SDK goal remains active with arbitrary model topology/material import, broader script/live/runtime parity and other documented requirements still open.
+
+
 ### 2026-09-12 — Build report navigation to authored models
 
 - Previous goal turn made verified progress at9d2e3943 by exposing model scalar audits. Current worktree was clean before extending report navigation.

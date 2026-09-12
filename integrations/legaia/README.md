@@ -247,3 +247,9 @@ unsaved editor intentions.
 Click a model identity in the build report to open its authored model preview.
 The source and authored hashes must still match the report. If the shape changed
 or was cleared after the build, rebuild before using this link to inspect it.
+
+
+The current WebGL model/scene preview uses decoded colors and textures, without
+normal-based lighting. Normal-only JSON edits can therefore package correctly
+without changing the browser image. Use the scalar build audit to verify changed
+normal words; runtime lighting acceptance remains a separate deferred check.
