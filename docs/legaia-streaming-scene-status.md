@@ -40,8 +40,10 @@ plain dialogue runs, encoded transition entries (including partition-2 owners),
 existing shared animation channels, existing-layout model shape replacements, texture replacements, and scene MAP scenery/collision edits. Exported placement and dialogue disc
 probes are preserved in the gameplay queue. The resource catalog and P2 script
 inspector share verified raw-MAN coordinates, without fictitious compressed
-source fields. NPC additions and payload growth in
-streaming containers still require implementation. All runtime visibility,
+source fields. Experimental streaming NPC draft append now grows the MAN chunk and physical
+archive, rebases existing edits, and verifies moved animation banks. Retail
+composition tests pass; opaque script paths and actual spawn behavior remain
+unverified. A persistent NPC review disc is still pending. All runtime visibility,
 script-driven relocation, palette state and gameplay behavior remain deferred
 to the [gameplay verification queue](legaia-gameplay-verification-queue.md).
 

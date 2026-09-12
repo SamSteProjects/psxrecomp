@@ -13,11 +13,16 @@ def prepare_streaming_scene(project, scene_id):
     key = authored_state_key(project)
     document = deepcopy(project.imports[scene_id])
     scene = document['scene']['name']
-    if project.actor_drafts:
-        raise ProjectError('Streaming export does not yet support NPC additions')
     if import_scene(project.disc_path, scene) != document:
         raise ProjectError('Streaming imported evidence differs from the source disc')
     actors = {a['semantic_id']: a for a in document['actors']}
+    requests = []
+    for identifier, draft in deepcopy(project.actor_drafts).items():
+        project._validate_actor_draft(identifier, draft)
+        if draft['scene_id'] != scene_id or draft['donor_entity_id'] not in actors:
+            raise ProjectError('Streaming NPC requires an imported donor in its source scene')
+        requests.append(dict(id=identifier, donor_record_index=actors[draft['donor_entity_id']]['source_record']['record_index'],
+                             position=draft['position']))
     edits, dialogue_edits, transition_edits, map_components = {}, {}, {}, None
     assignments, assignment_donors, animations = {}, {}, {}
     for identifier, components in deepcopy(project.overrides).items():
@@ -58,9 +63,15 @@ def prepare_streaming_scene(project, scene_id):
         if carrier.kind != 'raw_streaming_man':
             raise ProjectError('Streaming source kind changed during preparation')
         candidate, dialogue_changes = carrier.payload, []
+        actor_audit = None
+        if requests:
+            from importer.man_actor_structure import append_actor_candidates
+            candidate, actor_audit = append_actor_candidates(carrier.payload, sha256(carrier.payload).hexdigest(), requests)
         if dialogue_edits:
             from importer.dialogue_authoring import load_dialogue_authoring_context
-            candidate, dialogue_changes = load_dialogue_authoring_context(project.disc_path, scene).patch(dialogue_edits, original=carrier.payload)
+            context = load_dialogue_authoring_context(project.disc_path, scene)
+            context.patch(dialogue_edits, original=carrier.payload)
+            candidate, dialogue_changes = context.patch_appended(candidate, dialogue_edits)
         appearance_changes = []
         if assignments:
             from importer.man_assignments import load_man_assignment_context
@@ -76,6 +87,10 @@ def prepare_streaming_scene(project, scene_id):
             context = load_transition_authoring_context(project.disc_path, scene)
             context.patch(transition_edits, original=carrier.payload)
             candidate, transition_changes = context.patch_appended(candidate, transition_edits)
+        # The raw loader advances by words. Pad only after all MAN edits so
+        # record rebasing uses the original structural append result.
+        padding = (-len(candidate)) % 4
+        candidate += bytes(padding)
         patches, map_audit, animation_audit = [], None, None
         if animations:
             from .animation_build import prepare_animation_patches
@@ -105,6 +120,7 @@ def prepare_streaming_scene(project, scene_id):
         authored_state_key=key, imported_document_sha256=digest(document),
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, transition_changes=transition_changes, existing_actor_appearance_changes=appearance_changes,
+        actor_changes=actor_audit, man_padding_bytes=padding,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming project NPC draft composition
+
+- Enabled validated same-scene NPC drafts in streaming preparation, appending retail donor records before rebasing existing dialogue, appearance, placement and transition edits. Final raw MAN padding is applied only after all edits. Selected streaming drafts route through the shared multi-scene archive composer, retaining animation/model/texture/MAP verification.
+- Nine composition/export tests passed; two extended retail integration checks then passed with fresh baseline partition-count comparison and NPC+animation+appearance composition. Dolk2 becomes 73 exposed actors, with its partition-1 count increasing from 73 to 74 because one record is not an exposed actor. Existing dialogue glyph offsets rebase, transitions remain audited and the shifted animation bank verifies in the final archive.
+- No game launched. This remains experimental serialization: reached script references are handled, opaque paths and actual spawn behavior are not proven. A persistent review project/disc for later manual gameplay remains to be prepared. Full goal active.
+
+
 ### 2026-09-12 — Reopen shifted streaming animation banks
 
 - Streaming animation carrier evidence now includes structural chunk ordinal/type. Final-archive verification traverses the physical owner's complete chunk chain and validates type, payload length and hash, so an earlier grown MAN cannot leave validation at a stale byte offset.

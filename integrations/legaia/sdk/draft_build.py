@@ -34,7 +34,11 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
     if not scene_ids:
         raise ProjectError('Experimental export requires authored scene edits or NPC drafts')
     if len(scene_ids)==1 and draft_id is not None:
-        return _prepare_draft_scene(project,draft_id)
+        document = project.imports[next(iter(scene_ids))]
+        streaming = any(a.get('source_record', {}).get('scene_bundle', {}).get('kind') == 'raw_streaming_man'
+                        for a in document.get('actors', []))
+        if not streaming:
+            return _prepare_draft_scene(project,draft_id)
     input_key=authored_state_key(project)
     scoped={scene:{} for scene in scene_ids}
     for identifier,value in project.overrides.items():

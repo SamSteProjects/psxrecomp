@@ -12,6 +12,39 @@ from sdk.draft_build import prepare_draft_archive
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")
 class StreamingAppearanceBuild(unittest.TestCase):
+    def test_streaming_npc_export_rebases_existing_dialogue_and_transition(self):
+        from importer.man_layout import read_man_layout
+        with tempfile.TemporaryDirectory() as directory:
+            project = ProjectService(Path(directory))
+            project.disc_path = os.environ["LEGAIA_DISC_BIN"]
+            project.import_metadata(import_scene(project.disc_path, "dolk2"))
+            draft_id = "authored-actor://00000000-0000-4000-8000-000000000001"
+            project.actor_drafts = {draft_id: dict(scene_id="scene://dolk2", donor_entity_id="scene://dolk2/actors/man-p1/0001",
+                                                 position={"x": 64, "z": 16320}, name="Streaming NPC probe")}
+            project.overrides = {
+                "scene://dolk2/actors/man-p1/0003": {"Dialogue": {"runs": {
+                    "script://dolk2/actors/man-p1/0003/dialogue/0017/run/0018": "SDK"}}},
+                "scene://dolk2/scripts/man-p2/0000": {"Transitions": {"entries": {
+                    "script://dolk2/scripts/man-p2/0000/transition/001a": {"entry_x_encoded": 55}}}}}
+            source, prepared = prepare_streaming_scene(project, "scene://dolk2")
+            output, audit = prepare_draft_archive(project, draft_id)
+            self.assertEqual(audit["selected_draft_id"], draft_id)
+            self.assertGreater(len(output), len(source))
+            candidate = prepared["_rebuild_request"]["candidate"]
+            actors = parse_man(candidate, "dolk2").actors
+            self.assertEqual(len(actors), 73)
+            self.assertEqual((actors[-1].world_x, actors[-1].world_z), (64, 16320))
+            from importer.dialogue_authoring import load_dialogue_authoring_context
+            baseline = load_dialogue_authoring_context(project.disc_path, "dolk2")._man
+            self.assertEqual(read_man_layout(candidate)["partition_counts"][1], read_man_layout(baseline)["partition_counts"][1] + 1)
+            self.assertTrue(audit["container"]["entries"][0]["reopened_man_verified"])
+            for change in prepared["existing_actor_dialogue_changes"]:
+                at = change["decoded_byte_offset"]
+                self.assertEqual(candidate[at:at + change["byte_length"]], bytes.fromhex(change["after_hex"]))
+                self.assertGreater(at, change["source_decoded_byte_offset"])
+            self.assertTrue(prepared["transition_changes"])
+            self.assertEqual(prepared["actor_changes"]["drafts"][0]["draft_id"], draft_id)
+
     def test_streaming_texture_and_model_reopen_as_exact_changed_assets(self):
         from hashlib import sha256
         from importer.texture_authoring import load_texture_authoring_context
@@ -121,6 +154,15 @@ class StreamingAppearanceBuild(unittest.TestCase):
             wrong["streaming_binding"]["type_byte"] = 3
             with self.assertRaises(ProjectError):
                 verify_rebuilt_maps(enlarged, [wrong])
+            draft_id = "authored-actor://00000000-0000-4000-8000-000000000002"
+            project.actor_drafts = {draft_id: dict(scene_id="scene://dolk2", donor_entity_id=owner,
+                position={"x": 64, "z": 16320}, name="Animated streaming NPC probe")}
+            with_npc, combined = prepare_draft_archive(project, draft_id)
+            animation = combined["scenes"]["scene://dolk2"]["animation_changes"]
+            self.assertTrue(all(c["reopened_payload_verified"] for c in animation["carriers"]))
+            self.assertGreater(len(with_npc), len(output))
+            self.assertTrue(combined["scenes"]["scene://dolk2"]["actor_changes"]["drafts"])
+
 
 
     def test_appearance_dialogue_transition_and_position_survive_archive_reopen(self):
