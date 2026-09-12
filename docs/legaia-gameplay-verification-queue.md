@@ -176,3 +176,23 @@ of the clip may visibly change. Offline JSON round trips, browser import/Undo,
 Save/Open and a two-axis package report passed. Later manual acceptance should
 check animation playback and shared users; source cadence and visual suitability
 remain unverified. No installation or game launch was performed.
+
+
+## Model JSON serialization probes (2026-09-12)
+
+These are diagnostic serialization probes, not finished asset edits. No game
+launch or installation was performed.
+
+- Normal-only project: `local-output/sdk-20260909/model-normal-json-project-20260912`.
+  Package: `Builds/c64c73463d58702f/legaia.sdk.f29d5595fa1c-0.1.0-c64c73463d58702f.psxmod`.
+  SHA256 `1c2d835a46053f748f8473324fa220b0d9f80d0145504c919820bfbde4cb4106`.
+  Town01 model0009, object1, normal0, X changes0->1. Independent ZIP decode
+  recovered the exact replacement TMD; all other model bytes remain unchanged.
+  This tiny word change is not expected to guarantee a visible lighting change.
+  Runtime normal use, lighting and affected instances remain unverified.
+- Combined project: `local-output/sdk-20260909/model-json-project-20260912`.
+  Package: `Builds/5ebfeaccd1190c99/legaia.sdk.0f096fa3c17d-0.1.0-5ebfeaccd1190c99.psxmod`.
+  SHA256 `edbbf6d15f598358abb5b68960fa28575f8ca5a71cd9c656e8b0e45f76750c4a`.
+  Includes model0000's first-vertex X+1 and the earlier actor0011 animation probe
+  (frame2/object0 X202 and rotationY64). Both decoded package streams matched
+  their audited hashes. Keep these combined effects in mind during later checks.

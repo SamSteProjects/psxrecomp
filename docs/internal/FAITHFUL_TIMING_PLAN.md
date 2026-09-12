@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Retail normal JSON and package acceptance
+
+- Previous goal turn made verified progress at89e57301 with model JSON editor/project integration. Current worktree was clean before package validation.
+- Fresh town01 inventory found normal-bearing models0009(44),0013(8),0036(592),0042(54). Created isolated saved model-normal-json-project-20260912 with model0009 object1/normal0/X0->1 through JSON. Reopened model replacement audit contains exactly one normal scalar and all other bytes unchanged.
+- Built normal-only package SHA2561c2d835a46053f748f8473324fa220b0d9f80d0145504c919820bfbde4cb4106. Independently decompressed actual ZIP model stream and compared the exact source-member slice to the authored TMD. Combined model0000 vertex/actor0011 animation project also built; both decoded stream hashes matched audits. Combined package SHA256edbbf6d15f598358abb5b68960fa28575f8ca5a71cd9c656e8b0e45f76750c4a.
+- Evidence: local-output/sdk-20260909/model-normal-json-project-20260912/normal-package-check.json and model-json-project-20260912/{normal-inventory.json,package-readback.json,build-check.json}. Both projects/packages added to deferred gameplay queue with exact scope. No game launched; this proves serialization/composition, not runtime lighting. Goal stays active. A remaining review improvement is surfacing existing per-vector audit data in the model build report, which currently shows shape hashes only.
+
+
 ### 2026-09-12 — Model JSON project and editor integration
 
 - Previous goal turn made verified progress at61e8acea with a source-bound vertex/normal JSON codec and119 retail exact round trips. Connected set_model_json to existing model replacement history/persistence, a bounded JSON upload endpoint, and imported/authored source JSON downloads. Authored JSON retains the immutable retail source hash. Existing OBJ behavior remains position-only.

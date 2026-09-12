@@ -30,3 +30,11 @@ Use [the verification queue](legaia-gameplay-verification-queue.md) for saved in
 - Independent rendered acceptance of complete exported animations and wider scene parity.
 
 See [feature coverage](FEATURE_MATRIX.md), [release parity](legaia-release-parity.md), [architecture](ARCHITECTURE.md), and [test plan](TEST_PLAN.md). The goal remains active; this report does not claim all offline work is exhausted.
+
+
+Recent model interchange addition: source-bound complete vertex/normal JSON is
+connected to model downloads, Apply shape, Undo/Redo and Save/Open. All119 town01
+models round-tripped exactly. A retail normal-only model0009 probe preserved all
+other TMD bytes and passed independent package-member readback. Browser checks
+cover model0000 vertex upload, authored JSON download and Undo; they do not prove
+runtime normal lighting. Saved probes are listed in the gameplay queue.
