@@ -7,6 +7,19 @@ from .core import ImportError
 from .export import encode_model_glb, MAX_GLB_BYTES, _vector
 
 
+def select_scene_export_instance(scene, entity_id):
+    """Keep one verified instance and its shared geometry, without rebasing it."""
+    if not isinstance(entity_id,str) or not entity_id or len(entity_id)>512:
+        raise ImportError('Choose a valid scene instance identity')
+    matches=[entity for entity in scene['entities'] if entity.get('entity_id')==entity_id]
+    if len(matches)!=1 or not matches[0].get('renderable'):
+        raise ImportError('Selected instance is absent or has no exportable geometry')
+    assets=[asset for asset in scene['assets'] if asset.get('geometry_key')==matches[0].get('geometry_key')]
+    if len(assets)!=1:raise ImportError('Selected instance geometry is unavailable or ambiguous')
+    return {**scene,'entities':deepcopy(matches),'assets':deepcopy(assets),
+            'export_scope':'selected-instance','selected_entity_id':entity_id}
+
+
 def encode_scene_glb(scene):
     if scene.get('schema') != 'legaia.scene-preview.v1' or scene.get('coordinate_system') != 'editor_field_y_up_source_units':
         raise ImportError('Scene export requires a verified scene preview')
@@ -75,6 +88,7 @@ def encode_scene_glb(scene):
         else:unavailable.append({'entity_id':identifier,'reason':entity.get('reason')})
     audit={'schema_version':'legaia.scene-export.v1','scene_id':scene.get('scene_id'),'source_key':scene.get('source_key'),
            'representation':scene.get('representation','authored'),'project_source_key':scene.get('project_source_key'),
+           'export_scope':scene.get('export_scope','complete-scene'),'selected_entity_id':scene.get('selected_entity_id'),
            'entity_count':len(entities),'geometry_count':len(assets),'unavailable_entities':unavailable,
            'geometry_exports':audits,'limitations':scene.get('limits',[])+['Static source preview, not runtime state. Unavailable entities retain metadata nodes only.',
             'Source units retained; physical meter scale unknown. Meshes are shared across instances.']}

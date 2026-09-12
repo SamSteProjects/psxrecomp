@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-09-12 (selected scene instance GLB export):** Previous turn progressed in390b09cf. Added Export selected GLB using stable actor/draft/scenery selection, server-side instance lookup and exact geometry pruning after verified scene decoding. Preserves scene placement, authored/retail representation and selected identity in audit; missing, ambiguous or nonrenderable selections reject. Complete-scene export remains separate. Focused synthetic test confirms selected root matrix equals the same instance in full export and leaves input unchanged. Actual map01 browser exported only actor0001/onegeometry, zero page errors. Independent glTF-Transform import found one root and bounds matching freshly decoded full-scene source within0.0001units. Private selected-receipt.json retains output path/audit. No game launched or controlled; rendered consumer and gameplay acceptance remain open. Broad SDK goal active.
+
+
 - **2026-09-12 (retail/authored assembled export parity):** Previous turn progressed in4e55b0a8. Reopened the retained streaming-placement export Inputs read-only and generated retail/authored Dolk2 scene GLBs through the same preview_project representation layer used by the editor. Both contain441instances and independently validate with zero errors/warnings/no truncation. glTF-Transform consumer bounds comparison found exactly actor0001 changed: X delta-16256 (16320to64); other440instances unchanged. Source project file SHA256 stayed identical. Private GLBs/audits/input hash/comparison report retained under scene-export-20260912/placement-comparison. This verifies representation separation for a saved authored placement fixture and shared-scene export, not gameplay placement or script scheduling. Existing deferred manual fixture remains pending; no game launched or controlled. Full SDK goal remains active.
 
 

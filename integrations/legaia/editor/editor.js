@@ -130,18 +130,21 @@ for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',gro
   $('frame-all').before(button);
 }
 const sceneExportButton=document.createElement('button');sceneExportButton.id='scene-export-glb';sceneExportButton.textContent='Export scene GLB';sceneExportButton.title='Export the complete source scene, including temporarily hidden instances; static reference poses';$('frame-all').after(sceneExportButton);
-sceneExportButton.onclick=async()=>{
+const selectedExportButton=document.createElement('button');selectedExportButton.id='scene-export-selected';selectedExportButton.textContent='Export selected GLB';selectedExportButton.title='Export one selected instance at its scene position';sceneExportButton.after(selectedExportButton);
+sceneExportButton.onclick=()=>exportSceneGlb();
+selectedExportButton.onclick=()=>{const id=visibilitySelection();if(!id){notify('Select an actor or scenery instance first.',true);return;}exportSceneGlb(id);};
+async function exportSceneGlb(entityId=null){
   if(busy)return;
   if(!scenePreviewCurrent()||!state.scene_preview_source_key){notify('Wait for a current scene preview before exporting.',true);return;}
   if(scenePose||shapeDraft){notify('Restore the scene pose and finish or discard model edits before exporting.',true);return;}
-  cancelViewportGesture();const key=sceneRequestKey();setBusy(true);sceneExportButton.disabled=true;
+  cancelViewportGesture();const key=sceneRequestKey();setBusy(true);sceneExportButton.disabled=true;selectedExportButton.disabled=true;
   try{
-    const response=await fetch('/api/export/scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation,source_key:state.scene_preview_source_key})}),result=await response.json();
+    const response=await fetch('/api/export/scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation,source_key:state.scene_preview_source_key,...(entityId?{entity_id:entityId}:{})})}),result=await response.json();
     if(!response.ok||result.error)throw new Error(result.error??'Scene export failed');
     if(key!==sceneRequestKey()){notify('Scene export completed for the previous scene; reopen its project Exports folder.');return;}
-    exportDialog.innerHTML=`<div class="dialog-heading"><h2>Scene exported</h2><button type="button">Close</button></div><p>${result.audit.entity_count} instances · ${result.audit.geometry_count} shared geometries · ${result.audit.unavailable_entities.length} metadata-only instances</p><p>Complete ${escapeHTML(result.audit.representation)} scene, including temporarily hidden instances. Static reference poses and source units; runtime visibility, lighting and physical scale are unverified.</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><details><summary>Source provenance and limitations</summary><pre>${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
+    exportDialog.innerHTML=`<div class="dialog-heading"><h2>Scene exported</h2><button type="button">Close</button></div><p>${result.audit.entity_count} instances · ${result.audit.geometry_count} shared geometries · ${result.audit.unavailable_entities.length} metadata-only instances</p><p>${result.audit.export_scope==='selected-instance'?'Selected instance at its scene placement.':`Complete ${escapeHTML(result.audit.representation)} scene, including temporarily hidden instances.`} Static reference poses and source units; runtime visibility, lighting and physical scale are unverified.</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><details><summary>Source provenance and limitations</summary><pre>${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
     exportDialog.querySelector('button').onclick=()=>exportDialog.close();exportDialog.showModal();
-  }catch(error){notify(error.message,true);}finally{sceneExportButton.disabled=false;setBusy(false);}
+  }catch(error){notify(error.message,true);}finally{sceneExportButton.disabled=false;selectedExportButton.disabled=false;setBusy(false);}
 };
 const projectionSelect=document.createElement('select');projectionSelect.id='scene-projection';projectionSelect.setAttribute('aria-label','Scene projection');projectionSelect.innerHTML='<option value="perspective">Perspective</option><option value="orthographic">Orthographic</option>';$('frame-all').before(projectionSelect);
 projectionSelect.onchange=()=>{cancelViewportGesture();pendingEntityFrame=null;camera.projection=projectionSelect.value;document.querySelector('.viewport-type').textContent=projectionSelect.selectedOptions[0].textContent;cameraRevision++;draw();};
