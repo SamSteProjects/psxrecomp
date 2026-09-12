@@ -442,11 +442,12 @@ class TmdRecord:
     tmd_byte_length: int | None = None
 
 
-def parse_scene_table(data: bytes, entry_index: int, offset: int = 0) -> SceneBundle | None:
+def parse_scene_assets(data: bytes, entry_index: int, offset: int = 0) -> SceneBundle | None:
+    """Structural asset directory, including MAN-less streaming scene siblings."""
     if offset < 0 or offset + 8 > len(data):
         return None
     count = _u32(data, offset)
-    if count not in (6, 7):
+    if count not in (4, 6, 7):
         return None
     table_size = 8 + count * 8
     if offset + table_size > len(data):
@@ -462,9 +463,14 @@ def parse_scene_table(data: bytes, entry_index: int, offset: int = 0) -> SceneBu
         if (index == 0 and data_offset != table_size) or (index > 0 and data_offset > 16 * 1024 * 1024):
             return None
         descriptors.append(Descriptor(index, type_byte, size, data_offset))
-    if not any(item.type_byte == 3 and item.size > 0 for item in descriptors):
-        return None
     return SceneBundle(entry_index, offset, tuple(descriptors))
+
+
+def parse_scene_table(data: bytes, entry_index: int, offset: int = 0) -> SceneBundle | None:
+    bundle = parse_scene_assets(data, entry_index, offset)
+    if bundle is None or len(bundle.descriptors) not in (6, 7):
+        return None
+    return bundle if any(d.type_byte == 3 and d.size > 0 for d in bundle.descriptors) else None
 
 
 def find_scene_bundle(archive: ProtArchive, start: int, end: int) -> tuple[SceneBundle, bytes]:

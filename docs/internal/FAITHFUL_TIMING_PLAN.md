@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 MAN-less asset directories supply streaming terrain textures
+
+- Previous goal turn was verified implementation/browser progress. Retail dolk2 had zero catalog textures because its entry-69 four-descriptor asset directory lacks MAN; the texture importer incorrectly required a six/seven-descriptor MAN-bearing directory.
+- Split structural asset-directory parsing (four/six/seven entries) from MAN source selection (unchanged six/seven plus MAN requirement). Texture decoding now accepts the owned entry-head directory and bounds each LZS stream by the next descriptor, rejecting overlapping active resource offsets.
+- All six dolk2 terrain material queries changed from missing VRAM words to static address matches. Browser screenshot `local-output/sdk-20260909/streaming-dolk2-textured-browser-20260912.png` inspected: terrain now displays texture data, but this is not proof of runtime palette/upload-order or UV parity. Scene remains incomplete with scenery and most actor models unresolved.
+- Twenty-six focused texture/source/project tests ran: twenty-three passed, three skipped; regression confirms a four-entry asset directory is not accepted as a MAN bundle. Browser scene preview returned 200. No game launched; temporary server and browser closed.
+
 ### 2026-09-12 Streaming MAN floor heights enable dolk2 terrain
 
 - Previous turn made verified source and retail-preview progress. Connected environment placement/terrain decoding to the typed streaming MAN when no owned descriptor bundle exists; preserved existing descriptor decoding and recorded explicit raw carrier provenance. Streaming mesh/animation assembly remains unsupported rather than assuming a descriptor layout.

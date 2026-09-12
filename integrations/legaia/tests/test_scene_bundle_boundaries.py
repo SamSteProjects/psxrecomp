@@ -2,10 +2,20 @@
 import struct
 from types import SimpleNamespace
 import unittest
-from importer.core import find_scene_bundle, ImportError
+from importer.core import find_scene_bundle, ImportError, parse_scene_assets, parse_scene_table
 
 
 class SceneBundleBoundaries(unittest.TestCase):
+    def test_four_asset_directory_does_not_imply_man_source(self):
+        data = bytearray(72)
+        struct.pack_into('<I', data, 0, 4)
+        for index, kind in enumerate((1, 2, 6, 7)):
+            struct.pack_into('<II', data, 8 + index * 8, (kind << 24) | 8, 40 + index * 8)
+        self.assertEqual(len(parse_scene_assets(data, 69).descriptors), 4)
+        self.assertIsNone(parse_scene_table(data, 69))
+        struct.pack_into('<I', data, 12, 32)
+        self.assertIsNone(parse_scene_assets(data, 69))
+
     def test_borrowed_tail_rejected_but_owned_table_kept(self):
         table=bytearray(128)
         struct.pack_into('<I',table,0,6)

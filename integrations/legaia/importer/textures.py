@@ -15,7 +15,7 @@ import struct
 from typing import Any
 
 from .core import (ImportError, decompress_lzs, global_special_tmd_pool,
-                   is_scene_tmd_stream, parse_lzs_sections, parse_scene_table)
+                   is_scene_tmd_stream, parse_lzs_sections, parse_scene_assets)
 from .pipeline import (REFERENCE_COMMIT, _bounded_scene_range, _disc_context,
                        _model_source_locator)
 
@@ -225,7 +225,7 @@ def load_scene_texture_catalog(disc: Any, scene: str = "town01") -> TextureCatal
                 continue
             # Require a table at the entry head. PCH/embedded carriers need a
             # separate dispatch proof; sector scanning risks adjacent-file data.
-            bundle = parse_scene_table(indexed, index)
+            bundle = parse_scene_assets(indexed, index)
             if bundle is None:
                 continue
             for descriptor in bundle.descriptors:
@@ -233,7 +233,12 @@ def load_scene_texture_catalog(disc: Any, scene: str = "town01") -> TextureCatal
                     continue
                 raw = archive.read_entry(entry, extended=True)
                 try:
-                    decoded, _ = decompress_lzs(raw[descriptor.data_offset:], descriptor.size)
+                    ceiling = min([d.data_offset for d in bundle.descriptors
+                                   if d.data_offset > descriptor.data_offset] + [len(raw)])
+                    if (sum(d.size > 0 and d.data_offset == descriptor.data_offset for d in bundle.descriptors) != 1
+                            or not 8 + len(bundle.descriptors) * 8 <= descriptor.data_offset < ceiling <= len(raw)):
+                        raise ImportError('TIM descriptor aliases or exceeds its resource span')
+                    decoded, _ = decompress_lzs(raw[descriptor.data_offset:ceiling], descriptor.size)
                     add_pack(decoded, False, dict(locator, descriptor_index=descriptor.index,
                              compressed_stream_offset=descriptor.data_offset,
                              byte_coordinate_space="decoded_lzs_descriptor"))
