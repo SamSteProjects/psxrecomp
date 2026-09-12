@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Persistent streaming NPC review artifact
+
+- Saved isolated project `local-output/sdk-20260909/streaming-npc-review-20260912`, retaining the original model-import fixture. One donor-0001 boundary NPC at X64/Z16320; no other authored edits.
+- Completed disc export under Builds/experimental-drafts-00000000000040008000000000000003. Output 466716768 bytes, SHA256 a0e2f44dcfeec3f3ce0f6621eb6390f11001a6c362dd60427fe2f176053386bf. Output-disc MAN independently reopened with 73 exposed actors and exact final MAN hash; added record73 has authored coordinates.
+- Export history recognizes the completed output and matches saved project inputs. On-demand verifier passed disc hash and both input snapshot files. Queue now records exact artifacts, limitations and deferred gameplay checks. No game launched or controlled; full goal active.
+
+
 ### 2026-09-12 — Streaming project NPC draft composition
 
 - Enabled validated same-scene NPC drafts in streaming preparation, appending retail donor records before rebasing existing dialogue, appearance, placement and transition edits. Final raw MAN padding is applied only after all edits. Selected streaming drafts route through the shared multi-scene archive composer, retaining animation/model/texture/MAP verification.

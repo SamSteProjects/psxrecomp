@@ -43,7 +43,8 @@ inspector share verified raw-MAN coordinates, without fictitious compressed
 source fields. Experimental streaming NPC draft append now grows the MAN chunk and physical
 archive, rebases existing edits, and verifies moved animation banks. Retail
 composition tests pass; opaque script paths and actual spawn behavior remain
-unverified. A persistent NPC review disc is still pending. All runtime visibility,
+unverified. A persistent NPC review project/disc is saved in the gameplay verification queue;
+its disc hash, input snapshot and rebuilt MAN have been independently checked. All runtime visibility,
 script-driven relocation, palette state and gameplay behavior remain deferred
 to the [gameplay verification queue](legaia-gameplay-verification-queue.md).
 

@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+## Streaming NPC review project — deferred
+
+Saved project: `local-output/sdk-20260909/streaming-npc-review-20260912/project.legaia.json`.
+Export directory inside that project: `Builds/experimental-drafts-00000000000040008000000000000003`.
+
+- `draft.bin`: 466,716,768 bytes; SHA256 `a0e2f44dcfeec3f3ce0f6621eb6390f11001a6c362dd60427fe2f176053386bf`.
+- One authored Dolk2 NPC, donor `scene://dolk2/actors/man-p1/0001`, X=64/Z=16320. This is a boundary serialization probe, not a confirmed walkable or visible placement.
+- Fresh output-disc inspection found 73 actors and new record 73 at the authored coordinates. Final MAN hash agrees with the report. Export history matches current inputs; disc hash and both retained snapshot files verify.
+- Deferred manual checks: load the intended scene, determine whether the new actor initializes and is visible at that coordinate, inspect script-driven relocation/behavior, and confirm no scene-load regression. Successful serialization does not prove spawn scheduling or opaque script paths.
+- Open the saved project for review or use Export history's editable-copy action on its retained Inputs. No game has been launched for this artifact.
+
+
 The user requested on 2026-09-12 that implementation and non-gameplay validation
 continue while manual checks are saved for later. This queue does not authorize
 launching or controlling the game. A passing archive or browser check does not
