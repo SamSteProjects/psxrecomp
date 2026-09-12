@@ -213,6 +213,14 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Restore individual model vectors to retail
+
+- Previous goal turn made verified progress at3990c69b with direct vector editing. Current worktree confirmed clean before extending the Inspector workflow.
+- Vector editor now loads verified retail values alongside authored values, checking matching asset/source identity. Separate inspected/retail XYZ labels and Use retail vector fill a pending draft; Apply remains explicit. Empty tables disable the action, and draft selection locking remains intact. Existing inspected hash checks protect Apply.
+- Actual browser normal0009/object1/normal0 workflow passed authoredX1 -> retail draft0 -> Discard1 -> retail draft0 -> Apply/readback0 -> Undo. Independent service check reset the normal while preserving a separate vertexX+1 edit; Undo restored both prior edits. Evidence: local-output/sdk-20260909/model-normal-json-project-20260912/{vector-retail-reset-browser-check.json,vector-retail-reset-preservation.json}.
+- Node syntax/diff checks passed; browser/test server stopped. No gameplay launched. Goal remains active; normal lighting and broader SDK requirements remain open.
+
+
 ### 2026-09-12 — Direct model vector Inspector editing
 
 - Previous goal turn made verified progress atdcdcf0a4, connecting model file proposal review. Current worktree confirmed clean before adding direct model-vector editing.

@@ -270,3 +270,9 @@ or Discard. Apply updates only the selected vector, preserves other authored
 vectors, and rejects an inspected model hash that is no longer current. Normal
 counts can be zero; missing vectors cannot be created here. Save persists the
 result; Undo restores the previous model. Browser lighting still ignores normals.
+
+
+The vector editor shows both inspected and retail XYZ. **Use retail vector**
+copies the selected vector's source values into the draft; it does not apply
+immediately. Apply restores that vector while preserving other current authored
+vectors. Discard restores the inspected draft, and Undo reverses an applied reset.
