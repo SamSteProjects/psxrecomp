@@ -644,8 +644,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if asset is None:
                         raise ProjectError("Unknown model asset")
                     clip_id = body.get("clip_id") if route != "/api/preview" else None
-                    if (route == "/api/animation-preview" or clip_id is not None) and clip_id not in ("idle", "walk"):
-                        raise ProjectError("Choose a supported animation clip: idle or walk")
+                    if route == "/api/animation-preview" or clip_id is not None:
+                        from importer.animation import animation_capabilities
+                        clips = [clip['id'] for clip in animation_capabilities(asset)['clips']]
+                        if clip_id not in clips:
+                            raise ProjectError("Choose a supported animation clip for this model: " + ", ".join(clips))
                     if route == "/api/export/model":
                         if set(body) - {"asset_id", "clip_id", "frame_index"}:
                             raise ProjectError("Export accepts asset, clip and frame only; geometry and output paths are project-controlled")

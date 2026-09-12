@@ -6,7 +6,7 @@ crates/tmd/src/mesh/{mod,vram_posed}.rs. Retail decoder FUN_8001BE80 packs
 signed twelve-bit translations and eight-bit Euler angles. These records are
 frame-major rigid-object transforms, not the unrelated ANM keyframe VM.
 
-Only pinned global-party idle/walk associations are enabled. No anatomical
+Pinned party idle/walk and the shared savepoint/auxiliary clip associations are enabled. No anatomical
 joint names, parent hierarchy, equipment state, or scene-actor binding is
 inferred. All decoded animation/geometry output remains private disc data.
 """
@@ -28,23 +28,23 @@ MAX_FRAMES = 512
 MAX_POSED_VERTICES = 1_000_000
 _PARTY_IDS = tuple(f"asset://legaia/models/global-special/{0xF0 + slot:04x}"
                    for slot in range(3))
+_GLOBAL_IDS = tuple(f"asset://legaia/models/global-special/{0xF0 + slot:04x}" for slot in range(5))
 
 
 def animation_capabilities(asset: dict[str, Any]) -> dict[str, Any]:
     """Cheap structural advertisement; load re-verifies source against disc."""
     identity = asset.get("semantic_id") if isinstance(asset, dict) else None
     source = asset.get("source_record", {}) if isinstance(asset, dict) else {}
-    supported = (identity in _PARTY_IDS and isinstance(source, dict)
+    supported = (identity in _GLOBAL_IDS and isinstance(source, dict)
                  and asset.get("asset_kind") == "tmd_model"
                  and source.get("prot_entry_index") == 874
                  and source.get("container_section") == 0
-                 and source.get("pack_slot") == _PARTY_IDS.index(identity))
-    return {
-        "supported": supported,
-        "clips": [{"id": "idle", "label": "Field idle"},
-                  {"id": "walk", "label": "Field walk"}] if supported else [],
-        "reason": None if supported else "Only the three pinned global field-party model banks support animation preview.",
-    }
+                 and source.get("pack_slot") == _GLOBAL_IDS.index(identity))
+    slot = _GLOBAL_IDS.index(identity) if supported else None
+    clips = ([{"id": "idle", "label": "Field idle"}, {"id": "walk", "label": "Field walk"}]
+             if slot is not None and slot < 3 else [{"id": "loop", "label": "Reference savepoint loop" if slot == 3 else "Reference auxiliary clip (role unresolved)"}])
+    return {"supported": supported, "clips": clips if supported else [],
+            "reason": None if supported else "Only the five pinned global field model banks support animation preview."}
 
 
 def animation_record_ranges(data: bytes) -> tuple[tuple[int, int], ...]:
@@ -145,10 +145,10 @@ def _source(disc: Any, asset: dict[str, Any], clip_id: str):
     capabilities = animation_capabilities(asset)
     if not capabilities["supported"]:
         raise ImportError(capabilities["reason"])
-    if clip_id not in ("idle", "walk"):
-        raise ImportError("unsupported field clip: choose idle or walk")
-    slot = _PARTY_IDS.index(asset["semantic_id"])
-    record_index = slot * 7 + (1 if clip_id == "idle" else 0)
+    if clip_id not in [clip["id"] for clip in capabilities["clips"]]:
+        raise ImportError("unsupported field clip: choose " + " or ".join(clip["id"] for clip in capabilities["clips"]))
+    slot = _GLOBAL_IDS.index(asset["semantic_id"])
+    record_index = slot * 7 + (1 if clip_id == "idle" else 0) if slot < 3 else slot + 18
     with _disc_context(disc) as (_, digest, _, archive):
         # A plausible caller-supplied source locator is insufficient: compare
         # to the exact current disc record before associating its animation.
@@ -167,8 +167,9 @@ def _source(disc: Any, asset: dict[str, Any], clip_id: str):
             raise ImportError("global locomotion bank does not match pinned 23-record layout")
         start, end = ranges[record_index]
         decoded = decode_animation_record(body[start:end])
-        if decoded["bone_count"] != 10 or record.object_count != 12:
-            raise ImportError("global party animation/model channel counts do not match pinned 10/12 layout")
+        expected_bones, expected_objects = ((10, 12) if slot < 3 else (3, 3) if slot == 3 else (2, 2))
+        if decoded["bone_count"] != expected_bones or record.object_count != expected_objects:
+            raise ImportError("global animation/model channel counts do not match pinned layout")
         source = {
             "disc": {"sha256": digest, "serial": "SCUS-94254"}, "iso_file": "PROT.DAT",
             "prot_entry_index": 874, "container_section": 1,
@@ -183,7 +184,7 @@ def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idl
     """Decode the entire supported clip once for browser-side scrub/play."""
     decoded, source, slot = _source(disc, asset, clip_id)
     geometry = deepcopy(load_model_preview(disc, asset))
-    objects = geometry["objects"][:10]
+    objects = geometry["objects"][:decoded["bone_count"]]
     vertex_count = sum(obj["vertex_count"] for obj in objects)
     triangle_count = sum(obj["triangle_count"] for obj in objects)
     if decoded["frame_count"] * vertex_count > MAX_POSED_VERTICES:
@@ -192,7 +193,8 @@ def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idl
     for key in ("triangles", "triangle_colors", "triangle_uvs", "triangle_materials"):
         geometry[key] = geometry[key][:triangle_count]
     geometry["objects"] = objects
-    geometry["diagnostics"].append({"kind": "equipment_templates_excluded", "object_indices": [10, 11]})
+    if slot < 3:
+        geometry["diagnostics"].append({"kind": "equipment_templates_excluded", "object_indices": [10, 11]})
     geometry["bounds"] = _bounds(geometry["vertices"])
     frames = []
     for frame in decoded["frames"]:
@@ -204,22 +206,22 @@ def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idl
     return {
         "schema_version": "legaia.animation-preview.v1", "semantic_id": semantic_id,
         "asset_semantic_id": asset["semantic_id"], "clip_id": clip_id,
-        "label": ("Vahn", "Noa", "Gala")[slot] + " field " + clip_id,
+        "label": ("Vahn", "Noa", "Gala", "Savepoint (reference)", "Auxiliary model (role unresolved)")[slot] + " field " + clip_id,
         "reference_commit": REFERENCE_COMMIT, "source_record": source,
-        "frame_count": decoded["frame_count"], "bone_count": 10,
+        "frame_count": decoded["frame_count"], "bone_count": decoded["bone_count"],
         "header_a": decoded["header_a"], "header_flags": decoded["header_flags"],
         "coordinate_system": "retail_psx_actor_local_y_down", "geometry": geometry,
         "frames": frames, "looping": True,
         "timing": {"fps": 30, "wire_rate": None, "evidence": "reference_runtime_interpretation",
                    "source": "crates/engine-core/src/field_anim.rs:DEFAULT_TICKS_PER_FRAME",
                    "note": "Reference uses one clip frame per 30 Hz field tick; no rate byte is stored in these records."},
-        "association": {"kind": "reference_pinned_global_party_bank", "pack_slot": slot,
-                        "record_index": source["record_index"], "active_object_indices": list(range(10))},
+        "association": {"kind": "reference_pinned_global_party_bank" if slot < 3 else "reference_pinned_global_auxiliary_bank", "pack_slot": slot,
+                        "record_index": source["record_index"], "active_object_indices": list(range(decoded["bone_count"]))},
         "skeleton": {"semantic_id": skeleton_id, "topology": "independent_rigid_objects", "hierarchy": None,
                      "channels": [{"semantic_id": f"{skeleton_id}/channels/{i:02d}",
-                                   "object_index": i, "parent_index": None} for i in range(10)]},
+                                   "object_index": i, "parent_index": None} for i in range(decoded["bone_count"])]},
         "limitations": ["Analytic rigid transforms approximate GTE fixed-point rounding.",
-                        "Disc group descriptors are used; live equipment descriptor swaps are not reconstructed.",
+                        "Disc group descriptors are used; live equipment descriptor swaps are not reconstructed." if slot < 3 else "Reference association only; scripted activation, scale, visibility and auxiliary gameplay role are not reconstructed.",
                         "Scene actor animation IDs, scripted transitions and battle animation banks are unsupported.",
                         "Reference-derived clip identity and cadence have not been verified in a live runtime by this importer."],
     }

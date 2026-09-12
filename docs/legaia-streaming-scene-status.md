@@ -15,11 +15,16 @@ Animation bindings count scene-model actors with a nonzero initial animation
 ID and matching channel/object counts. Shared character poses and static models
 are separate; a binding count is not a rendered-instance count.
 
-Dolk2 has also passed an integrated browser preview: 432 of 441 entities render,
-including terrain, scenery and 63 actors. Its nine remaining actor markers use
-shared multipart models F3/F4 with no established pose association. Their model
-references are resolved; displaying unassembled object-local geometry would not
-establish the correct scene pose.
+Dolk2 now renders all 441 preview entities, including all 72 actors. The nine
+previous F3/F4 markers use exact shared-bank reference associations: record21
+(3 objects,30 frames) for the savepoint and record22 (2 objects,15 frames) for
+the auxiliary model. Retail channel counts agree with pinned reference
+`d6e64c68ede25813d35db20980da82a1a025549b`, `docs/formats/anm.md` and
+`crates/asset/src/character_pack.rs`. The shared field texture upload follows
+`field_char_textures.rs`; unmatched materials remain explicit. Full savepoint
+clip scrubbing passed browser checks. F4's gameplay role, scripted visibility,
+scale and runtime playback remain unresolved. Rendering coverage is not scene
+or gameplay parity.
 
 The current reader supports one explicit model pack and one type-5 animation
 bank in the verified streaming MAN carrier. Station's bank requires the extended

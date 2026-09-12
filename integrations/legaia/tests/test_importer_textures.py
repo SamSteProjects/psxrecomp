@@ -200,7 +200,9 @@ class FieldPartyTextureTests(unittest.TestCase):
             load_asset_texture_catalog(None, asset, scene)
         for slot in range(3):
             self.assertTrue(uses_field_party_textures({"semantic_id": f"asset://legaia/models/global-special/{0xF0+slot:04x}"}))
-        self.assertFalse(uses_field_party_textures({"semantic_id": "asset://legaia/models/global-special/00f3"}))
+        self.assertTrue(uses_field_party_textures({"semantic_id": "asset://legaia/models/global-special/00f3"}))
+        self.assertTrue(uses_field_party_textures({"semantic_id": "asset://legaia/models/global-special/00f4"}))
+        self.assertFalse(uses_field_party_textures({"semantic_id": "asset://legaia/models/global-special/00f5"}))
 
 
 @unittest.skipUnless(os.environ.get("LEGAIA_DISC_BIN"), "requires private retail disc")

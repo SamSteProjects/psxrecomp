@@ -23,7 +23,7 @@ MAX_TIM_BYTES = 2 * 1024 * 1024
 MAX_CATALOG_BYTES = 16 * 1024 * 1024
 MAX_TEXTURES = 1024
 MAX_ENTRY_BYTES = 8 * 1024 * 1024
-_FIELD_PARTY_IDS = tuple(f"asset://legaia/models/global-special/{i:04x}" for i in range(0xF0, 0xF3))
+_FIELD_PARTY_IDS = tuple(f"asset://legaia/models/global-special/{i:04x}" for i in range(0xF0, 0xF5))
 
 
 @dataclass(frozen=True)
@@ -303,7 +303,7 @@ def load_asset_texture_catalog(disc: Any, asset: dict[str, Any],
                                scene_catalog: TextureCatalog) -> TextureCatalog:
     """Select an evidenced upload scope without changing the scene catalog.
 
-    F0/F1/F2 use the independently verified shared player texture bank. Other
+    F0 through F4 use the pinned five-model field pack and its shared texture bank. Other
     assets retain the caller's scene catalog. A routing ID alone is never
     sufficient to establish the shared-bank source association.
     """

@@ -87,7 +87,7 @@ class AnimationTests(unittest.TestCase):
     def test_unsupported_association_rejects_before_disc_access(self):
         for asset in ({}, None, {"semantic_id": "asset://town01/models/scene-tmd/0088"}):
             self.assertFalse(animation_capabilities(asset)["supported"])
-            with self.assertRaisesRegex(ImportError, "Only the three"):
+            with self.assertRaisesRegex(ImportError, "Only the five"):
                 load_animation_preview("missing.bin", asset)
 
 
@@ -98,6 +98,7 @@ class RetailAnimationTests(unittest.TestCase):
         from importer.pipeline import import_scene
         cls.disc = os.environ["LEGAIA_DISC_BIN"]
         scene = import_scene(cls.disc, "town01")
+        cls.all_assets = scene["assets"]["models"]
         cls.assets = [next(a for a in scene["assets"]["models"]
                           if a["semantic_id"] == f"asset://legaia/models/global-special/{i:04x}")
                       for i in (0xF0, 0xF1, 0xF2)]
@@ -120,6 +121,25 @@ class RetailAnimationTests(unittest.TestCase):
                         self.assertEqual(len(frame["vertices"]), len(preview["geometry"]["vertices"]))
                         self.assertTrue(all(math.isfinite(c) for v in frame["vertices"] for c in v))
                         self.assertTrue(all(max(tri) < len(frame["vertices"]) for tri in preview["geometry"]["triangles"]))
+
+    def test_shared_savepoint_and_auxiliary_clips_preserve_all_objects(self):
+        for slot, bones, frames in ((3, 3, 30), (4, 2, 15)):
+            asset = next(a for a in self.all_assets if a['semantic_id'].endswith(f'/{0xF0+slot:04x}'))
+            preview = load_animation_preview(self.disc, asset, 'loop')
+            self.assertEqual(preview['source_record']['record_index'], slot + 18)
+            self.assertEqual((preview['bone_count'], preview['frame_count']), (bones, frames))
+            self.assertEqual(len(preview['geometry']['objects']), bones)
+            self.assertEqual(preview['association']['active_object_indices'], list(range(bones)))
+            self.assertFalse(any(d.get('kind') == 'equipment_templates_excluded' for d in preview['geometry']['diagnostics'] if isinstance(d, dict)))
+            for frame in preview['frames']:
+                self.assertEqual(len(frame['vertices']), len(preview['geometry']['vertices']))
+                self.assertTrue(all(math.isfinite(v) for xyz in frame['vertices'] for v in xyz))
+            changed = deepcopy(asset)
+            changed['source_record']['byte_offset'] += 4
+            with self.assertRaisesRegex(ImportError, 'provenance'):
+                load_animation_preview(self.disc, changed, 'loop')
+            with self.assertRaisesRegex(ImportError, 'choose loop'):
+                load_animation_preview(self.disc, asset, 'idle')
 
     def test_model_locator_tampering_and_unknown_clip_fail(self):
         changed = deepcopy(self.assets[0])

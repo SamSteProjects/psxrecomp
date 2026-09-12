@@ -213,6 +213,15 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Shared F3/F4 pose reconstruction
+
+- Fresh Dolk2 audit isolated all nine unrendered entities to F3/F4 (actor0061 and0062–0069). Pinned reference d6e64c68ede25813d35db20980da82a1a025549b docs/formats/anm.md and character_pack.rs identify shared bank record21/savepoint and22/auxiliary. Retail decoding confirms3 channels/30 frames and2 channels/15 frames.
+- Expanded exact global associations to five pack slots. Party10-of12 equipment-template handling remains unchanged; F3/F4 retain all3/2 objects. Shared texture routing uses the five-model loader's section2 upload described in field_char_textures.rs. Complete provenance and count checks remain required.
+- Scene preview uses the advertised default clip and labels nonparty samples reference_global_loop. HTTP animation/export validation now consults each model's supported clip list; browser found and fixed the former idle/walk-only guard.
+- Thirty-six focused animation/texture/scene tests passed with private retail input, including all original party clips, new counts and tampered provenance rejection. Browser preview returns441/441 entities,9 newly assembled poses; savepoint scrub reached frame2/30 with no page errors. F4 HTTP preview returns15 frames and matching textured material. Inspected savepoint-reference-loop-20260912.png; unmatched savepoint material remains explicit.
+- Initial direct probe omitted a loader positional argument and failed before completion; corrected probe established the baseline. No game launched or project saved. Runtime visibility/scale/timing, auxiliary semantic role and full material parity remain pending. Temporary server/browser stopped; full goal active.
+
+
 ### 2026-09-12 — Catalog-to-import persistence workflow
 
 - Empty review project completed browser catalog search -> Dolk2 selection -> Import -> assembled scene -> Save. Preview reported432/441, with72 actor records and no browser errors.

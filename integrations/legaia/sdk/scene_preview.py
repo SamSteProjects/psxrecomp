@@ -330,11 +330,11 @@ class ScenePreviewService:
                     from importer.animation import animation_capabilities
                     support = animation_capabilities(asset)
                     if support.get("supported"):
-                        preview = model_loader(asset, "idle")
+                        preview = model_loader(asset, support["clips"][0]["id"])
                         frame = preview["frames"][0]
                         preview["vertices"] = frame["vertices"] if isinstance(frame, dict) else frame
                         preview.pop("frames", None)
-                        pose_kind = "reference_party_idle"
+                        pose_kind = "reference_party_idle" if support["clips"][0]["id"] == "idle" else "reference_global_loop"
                     elif animation_id and catalog is not None:
                         clip_id = f"animation://{document['scene']['name']}/scene-anm/{animation_id - 1:04d}"
                         changed_clip = clip_id in authored_clips
