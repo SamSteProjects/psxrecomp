@@ -54,6 +54,7 @@ function renderObservedNodes(query='',nodeIds=null){
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 };
 
+let scenePose=null;
 let coordinateProbe=null;
 const locateButton=document.createElement('button');locateButton.textContent='Locate coordinates';$('frame-selected').after(locateButton);
 const locateDialog=document.createElement('dialog');locateDialog.className='project-dialog';locateDialog.innerHTML='<form><h2>Locate guest coordinates</h2><p>Place a reference marker using game coordinates. This changes only the editor camera.</p><label>X <input name="x" type="number" step="any" required></label><label>Y <input name="y" type="number" step="any" required value="0"></label><label>Z <input name="z" type="number" step="any" required></label><button type="submit">Locate</button><button type="button" data-clear>Clear marker</button><button type="button" data-close>Cancel</button></form>';document.body.append(locateDialog);
@@ -579,7 +580,7 @@ async function refreshScenePreview(){
     if(controller.signal.aborted||sceneRequestKey()!==key||state.scene?.id!==expectedScene)return;
     if(data.project_source_key!==state.scene_preview_source_key||data.representation!==sceneRepresentation||data.scene_id!==expectedScene)throw new Error('Scene preview source changed while loading; retry models.');
     if(!Array.isArray(data.position_to_display)||data.position_to_display.length!==16||!data.position_to_display.every(numeric))throw new Error('SDK did not provide a valid scene display conversion.');
-    const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
+    clearScenePose(false);const failures=sceneRenderer.load(data);if(!data.entities.some(e=>e.entity_id===environmentSelection))environmentSelection=null;scenePreview=data;sceneProjectPath=state.project?.path;sceneLoadedId=data.scene_id;sceneKey=key;sceneFailedKey=null;scenePendingKey=null;
     if(failures.length)notify(`${failures.length} model assets could not be rendered; their placement markers remain available.`,true);
     renderHierarchy();renderInspector();
     const waiting=pendingEntityFrame;pendingEntityFrame=null;
@@ -1838,6 +1839,7 @@ function drawEnvironmentSelection(){
   ctx.restore();
 }
 function draw(){
+  if(scenePose&&(!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project?.mode!=='edit'))clearScenePose();
   if(!ctx)return;ctx.clearRect(0,0,width,height);projected=[];handles=[];
   if(sceneModelsReady()){try{sceneRenderer.draw(sceneView());}catch(error){sceneError=error.message;}}
   updateSceneBadge();frameSamplesButton.disabled=observedCandidatePoints().length===0;
@@ -1948,17 +1950,54 @@ let model=null, modelDrag=null, modelRequest=0;
 let modelTextures=new Map();
 let modelAssetId=null, modelEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
+let modelSceneContext=null;
+const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button">Restore scene pose</button>';$('frame-selected').after(scenePoseBar);
+const showScenePose=document.createElement('button');showScenePose.type='button';showScenePose.id='show-frame-in-scene';showScenePose.textContent='Inspect animation in scene';$('animation-frame-label').after(showScenePose);
+function clearScenePose(restore=true){
+  const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;
+  if(restore&&previous&&scenePreviewCurrent()&&sceneRenderer){const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');}
+}
+function scenePoseDocument(base,preview,entityId,frame){
+  const target=base.entities.find(e=>e.entity_id===entityId);
+  if(!target||!Array.isArray(preview.frames?.[frame]?.vertices))throw new Error('Choose a loaded actor animation frame.');
+  const key='inspection-pose:'+entityId,geometry={...preview,vertices:preview.frames[frame].vertices};delete geometry.frames;
+  const result=structuredClone(base);result.entities.find(e=>e.entity_id===entityId).geometry_key=key;result.entities.find(e=>e.entity_id===entityId).renderable=true;
+  const used=new Set(result.entities.map(e=>e.geometry_key));result.assets=result.assets.filter(a=>used.has(a.geometry_key));
+  if(result.assets.length>=128)throw new Error('Scene has no spare geometry capacity for isolated animation inspection.');
+  result.assets.push({geometry_key:key,asset_id:preview.semantic_id,preview:geometry});
+  return {document:result,geometryKey:key};
+}
+function updateScenePoseFrame(frame){
+  if(!scenePose||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;
+  if(sceneRenderer.updateVertices(scenePose.geometryKey,scenePose.preview.frames[frame].vertices)){
+    scenePose.frame=frame;scenePoseBar.querySelector('span').textContent=`Inspection only · ${scenePose.name} · frame ${frame+1}/${scenePose.preview.frames.length}`;
+    scenePoseBar.querySelector('input').value=frame;draw();
+  }
+}
+scenePoseBar.querySelector('button').onclick=()=>{clearScenePose();draw();};
+scenePoseBar.querySelector('input').oninput=event=>{try{updateScenePoseFrame(Number(event.target.value));}catch(error){clearScenePose();notify(error.message,true);draw();}};
+showScenePose.onclick=()=>{
+  if(busy||state.project?.mode!=='edit'||!scenePreviewCurrent()||modelSceneContext!==sceneRequestKey()||!modelEntityId||!model?.frames?.length||$('shape-file').files?.length)return;
+  try{
+    const isolated=scenePoseDocument(scenePreview,model,modelEntityId,animationFrame);
+    const failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
+    scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:model,frame:animationFrame,name:entities().find(e=>e.id===modelEntityId)?.name??modelEntityId};
+    scenePoseBar.hidden=false;scenePoseBar.querySelector('input').max=model.frames.length-1;
+    $('model-dialog').close();updateScenePoseFrame(animationFrame);const actor=entities().find(e=>e.id===modelEntityId);if(actor)frame(actor);
+  }catch(error){clearScenePose(false);const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');notify(error.message,true);draw();}
+};
+
 const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ must preserve vertex and face order, triangulation and integer source coordinates; normals remain unchanged.</p><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><label>Edited TMD or OBJ<input id="shape-file" type="file" accept=".tmd,.obj"></label><button id="shape-upload">Apply shape</button><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
 async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'){
   if($('model-dialog').open&&$('shape-file').files?.length){$('model-error').textContent='Apply or discard the selected shape file before changing the model view.';$('animation-clip').value=model?.animation?.clip_id??'';return;}
-  if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest;
+  if(busy)return;stopAnimation();setBusy(true);$('model-error').textContent='';$('animation-clip').disabled=true;const request=++modelRequest,requestedSceneContext=sceneRequestKey();
   try{
     const response=await fetch(shapeLayer==='authored'?'/api/model-shape-preview':entityId?(clipId==='authored-appearance'?'/api/actor-appearance-preview':'/api/actor-animation-preview'):clipId?'/api/animation-preview':'/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entityId?{entity_id:entityId,...(clipId==='authored-channels'?{representation:'authored'}:{})}:{asset_id:assetId,...(clipId?{clip_id:clipId}:{})})});
     const data=await response.json();if(!response.ok||data.error)throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!Array.isArray(data.vertices)||!Array.isArray(data.triangles)||!Array.isArray(data.objects))throw new Error('Model service returned no decoded geometry.');
     if(request!==modelRequest)return;
     if(clipId && (!Array.isArray(data.frames) || !data.frames.length || data.frames.length*data.vertices.length>1000000 || data.frames.some(frame=>frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(frame.vertices)||frame.vertices.length!==data.vertices.length||frame.vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(numeric)))))throw new Error('Animation service returned an invalid or oversized posed vertex stream.');
-    model=data;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · ${clipId==='authored-appearance'?'Authored appearance':clipId==='authored-channels'?'Authored animation':'Imported animation'}`:assetId.split('/').slice(-2).join(' / ');
+    model=data;modelSceneContext=requestedSceneContext;modelAssetId=assetId;modelEntityId=entityId;animationFrame=0;$('model-dialog').querySelector('h2').textContent=entityId?`${entities().find(entity=>entity.id===entityId)?.name ?? entityId} · ${clipId==='authored-appearance'?'Authored appearance':clipId==='authored-channels'?'Authored animation':'Imported animation'}`:assetId.split('/').slice(-2).join(' / ');
     modelTextures=new Map();$('model-textures').replaceChildren();
     for(const texture of model.textures ?? []){
       const card=document.createElement('div');card.className='texture-card';
@@ -1975,7 +2014,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
     $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? (d.kind==='equipment_templates_excluded'?'Equipment template objects 10 and 11 are excluded from this pose.':JSON.stringify(d))).join(' · ');
-    configureAnimation(clipId);
+    configureAnimation(clipId);showScenePose.disabled=!entityId||!data.frames?.length||state.project?.mode!=='edit';
     shapeControls.hidden=!state.capabilities?.model_shape_authoring;
     $('shape-file').value='';const shape=state.model_overrides?.[assetId];
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
