@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Animation record HTTP transport
+
+- Previous turn integrated record import with project history. Added actor-bound retail source download and replacement upload routes, strict fields, validated base64, bounded6MiB JSON/4MiB decoded record, and ordinary state responses after project import. Source paths and offsets remain server-controlled; no file is written from a client path.
+- Actual town01 source download matched retained record bytes/hash; HTTP upload changed frame2/object0 X201, five malformed/base64/opaque/path requests rejected, subsequent state remained unchanged, and Undo restored the exact prior channel response. Private evidence: local-output/sdk-20260909/animation-record-project-20260912/http-check.json. Whitespace checks passed.
+- Editor file-picker/download controls and full file workflow remain pending. Server stopped; no project Save or game launch. Full SDK goal active; gameplay deferred.
+
+
 ### 2026-09-12 — Project animation record import
 
 - Previous turn added a validated record serializer and repaired regressions. ProjectService now exposes a freshly verified private source record and imports equal-layout replacement channels through existing set/clear animation commands. Import replaces the selected actor's contribution only; other components/contributors survive, conflicts retain server rejection, and a retail-identical record clears that actor's contribution.

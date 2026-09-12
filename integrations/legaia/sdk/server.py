@@ -420,7 +420,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
-            if urlsplit(self.path).path == '/api/model-shape-replacement':
+            if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement'):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path == '/api/model-obj-replacement':
                 request_limit = 24 * 1024 * 1024
@@ -561,6 +561,27 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route == '/api/animation-record-source':
+                    if set(body) != {'entity_id'} or not isinstance(body['entity_id'], str) or not body['entity_id'].strip():
+                        raise ProjectError('Animation source requires an actor identity only')
+                    payload, binding = self.server.project.animation_record_source(body['entity_id'])
+                    self._json(200, {'entity_id': body['entity_id'], 'binding': binding,
+                                     'representation': 'retail', 'byte_length': len(payload),
+                                     'record_base64': base64.b64encode(payload).decode('ascii')})
+                    return
+                if route == '/api/animation-record-replacement':
+                    if set(body) != {'entity_id', 'record_base64'} or not isinstance(body['entity_id'], str) or not body['entity_id'].strip():
+                        raise ProjectError('Animation upload requires actor identity and record_base64 only')
+                    encoded = body['record_base64']
+                    if not isinstance(encoded, str) or len(encoded) > 5592408:
+                        raise ProjectError('Animation record exceeds the 4 MiB limit')
+                    try:
+                        payload = base64.b64decode(encoded, validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Animation record requires valid base64') from exc
+                    self.server.project.import_animation_record(body['entity_id'], payload)
+                    self._json(200, self.server.state())
                     return
                 if route == "/api/animation-channel-values":
                     if set(body) != {"entity_id", "frame_index", "object_index"} or not isinstance(body.get("entity_id"), str):
