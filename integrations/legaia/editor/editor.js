@@ -110,7 +110,7 @@ for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',gro
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
 modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;scenePreview=null;sceneError=null;modelsEnabled=true;}else modelsEnabled=!modelsEnabled;modelToggle.classList.toggle('active',modelsEnabled);modelToggle.setAttribute('aria-pressed',modelsEnabled);refreshScenePreview();draw();};
 const representationSelect=document.createElement('select');representationSelect.id='scene-representation';representationSelect.setAttribute('aria-label','Scene representation');representationSelect.innerHTML='<option value="authored">Authored scene</option><option value="retail">Retail scene · comparison</option>';$('frame-all').before(representationSelect);
-representationSelect.onchange=()=>{sceneRepresentation=representationSelect.value;cancelViewportGesture();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=null;sceneAbort?.abort();scenePreview=null;sceneKey=null;scenePendingKey=null;sceneFailedKey=null;sceneError=null;sceneRenderer?.clear();renderHierarchy();renderInspector();refreshScenePreview();draw();notify(sceneRepresentation==='retail'?'Retail scene comparison. Viewport movement is disabled; the Inspector retains authored project values.':'Authored scene restored.');};
+representationSelect.onchange=()=>{sceneRepresentation=representationSelect.value;if(sceneRepresentation==='retail'){collisionLayer.value='imported';clearFieldMap();updateFieldToggle();}cancelViewportGesture();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=null;sceneAbort?.abort();scenePreview=null;sceneKey=null;scenePendingKey=null;sceneFailedKey=null;sceneError=null;sceneRenderer?.clear();renderHierarchy();renderInspector();refreshScenePreview();draw();notify(sceneRepresentation==='retail'?'Retail scene comparison. Viewport movement is disabled; the Inspector retains authored project values.':'Authored scene restored.');};
 function sceneRequestKey(){return state.scene_preview_source_key?`${state.scene_preview_source_key}|${sceneRepresentation}`:null;}
 const sceneSelect=document.createElement('select');sceneSelect.className='scene-selector';sceneSelect.setAttribute('aria-label','Active scene');$('viewport-title').after(sceneSelect);
 sceneSelect.onchange=()=>api('/api/scene',{scene_id:sceneSelect.value});
@@ -597,7 +597,7 @@ async function openSceneTransitions(){
   transitionsDialog.innerHTML='<div class="dialog-heading"><h2>Scene transitions</h2><button id="close-scene-transitions" aria-label="Close scene transitions">×</button></div><p id="transitions-summary">Verifying scene scripts…</p><div id="transitions-graph"></div><p class="dialog-error" role="alert"></p>';
   $('close-scene-transitions').onclick=()=>transitionsDialog.close();transitionsDialog.showModal();
   try{
-    const response=await fetch('/api/scene-transitions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation}),signal:controller.signal});
+    const response=await fetch('/api/scene-transitions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Transition discovery failed');
     if(controller.signal.aborted||!transitionsDialog.open)return;
     if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.edges)||result.edges.length>16384||!Array.isArray(result.nodes)||result.nodes.length>16385)throw new Error('Transition source changed or returned invalid graph bounds.');
@@ -630,7 +630,7 @@ flagsButton.onclick=async()=>{
   flagsDialog.innerHTML='<div class="dialog-heading"><h2>Flag references</h2><button aria-label="Close flag references">×</button></div><p class="flags-summary">Verifying scene scripts…</p><input type="search" aria-label="Search flag references" placeholder="Search bank, index, script or operation"><div class="flags-results"></div><p class="dialog-error" role="alert"></p>';
   flagsDialog.querySelector('button').onclick=()=>flagsDialog.close();flagsDialog.showModal();
   try{
-    const response=await fetch('/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation}),signal:controller.signal});
+    const response=await fetch('/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error??'Flag discovery failed');
     if(controller.signal.aborted||!flagsDialog.open)return;
     if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>16384)throw new Error('Flag references do not match the current scene source.');
@@ -684,7 +684,7 @@ async function refreshResources(){
   const key=resourceStateKey(),sceneId=state.scene?.id,sourceKey=state.scene_preview_source_key,controller=new AbortController();
   resourceAbort?.abort();resourceAbort=controller;resourcePendingKey=key;resourceError=null;resourceRecords=[];resourceLimitations=[];resourceKey=null;setBusy(true);renderAssets();
   try{
-    const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation}),signal:controller.signal});
+    const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
     if(controller.signal.aborted||key!==resourceStateKey())return;
     if(result.scene_id!==sceneId||result.source_key!==sourceKey||!Array.isArray(result.records)||result.records.length>4096||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','collision','trigger','region'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');

@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Comparison resource request regression repair
+
+- Found and repaired a regression introduced with the viewport switch: resource-catalog, scene-transition and scene-flag requests had unintentionally gained the scene representation field. These separate endpoints require empty request bodies. Restored their contracts without changing the comparison endpoint.
+- Entering retail comparison now clears a carried-over collision overlay and selects imported collision, avoiding silent effective-collision carryover. Coordinate locator remains an explicit guest-coordinate camera marker and does not substitute authored transforms.
+- Browser verified resource refresh, transitions and flag references in retail mode: all HTTP200 with exact empty request bodies. JavaScript syntax passed; browser and temporary editor server closed. No game launched; goal active.
+
+
 ### 2026-09-12 — Retail/authored viewport switch
 
 - Added explicit Authored scene / Retail scene comparison control. Requests and cache readiness include representation; stale responses cannot replace the selected layer. Switching cancels gestures and clears stale geometry while preserving the camera and project edits.
