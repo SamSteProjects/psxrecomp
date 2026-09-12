@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-12 — Streaming NPC physical archive growth
+
+- Connected the streaming MAN growth primitive to sector-aligned physical archive replacement and TOC relocation. Equal-span batch requests retain the existing byte-preserving path; growth requests reopen and compare the complete relocated carrier and structural chunk sequence.
+- Eight focused streaming/archive tests passed, covering unchanged-size behavior and growth with preserved later chunks and archive suffix. Real Dolk2 donor append reopened successfully: MAN +176 bytes, PROT +2048 bytes. Private audit: `local-output/sdk-20260909/streaming-npc-archive-growth-20260912.json`.
+- Project NPC export remains disabled pending draft composition and rebasing the final verification of animation banks shifted within the grown MAN carrier. No playable disc or game launch in this step. Full goal active; manual gameplay deferred.
+
+
 ### 2026-09-12 — Streaming NPC chunk-growth primitive
 
 - Added source-bound MAN chunk growth with explicit size-word rewriting and structural rebasing of every following chunk. Neighbor bytes and the opaque terminator/tail are preserved exactly. Wrong hashes, non-MAN targets, incomplete chains, unaligned sizes, shrinkage and size-budget violations reject.

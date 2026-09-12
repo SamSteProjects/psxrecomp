@@ -48,6 +48,50 @@ def patch_streaming_man_entry(source: bytes, expected_sha256: str, entry_index: 
                         reopened_man_verified=True, toc_unchanged=True, build_ready=False)
 
 
+
+def rebuild_streaming_man_entry(source: bytes, expected_sha256: str, entry_index: int,
+                                chunk_header_offset: int, source_man_sha256: str,
+                                candidate: bytes, *, header_offset: int = 0):
+    """Grow a streaming MAN carrier, relocate the archive and reopen its chunks."""
+    from .core import ProtArchive, IsoNode
+    from .prot_layout import locate_physical_span
+    from .streaming_man import grow_streaming_man, streaming_chunks
+    if not isinstance(source, bytes) or sha256(source).hexdigest() != expected_sha256:
+        raise ImportError('PROT source hash mismatch')
+    if type(entry_index) is not int:
+        raise ImportError('PROT entry index must be an integer')
+    class MemoryImage:
+        def __init__(self, data): self.data = data
+        def read_user(self, _lba, offset, length, file_size):
+            if offset < 0 or length < 0 or offset + length > min(file_size, len(self.data)):
+                raise ImportError('Logical PROT read exceeds bounds')
+            return self.data[offset:offset + length]
+    archive = ProtArchive(MemoryImage(source), IsoNode(0, len(source), False, 'PROT.DAT'))
+    if archive.header_offset != header_offset:
+        raise ImportError('PROT header location disagrees with caller')
+    entry = archive.entry(entry_index)
+    span = locate_physical_span(archive, entry.start_lba * 2048)
+    if span['entry_index'] != entry_index or span['offset_within_span'] != 0:
+        raise ImportError('Streaming MAN requires a unique physical owner')
+    container = source[span['byte_offset']:span['byte_offset'] + span['byte_length']]
+    grown, chunk_audit = grow_streaming_man(container, sha256(container).hexdigest(),
+                                          chunk_header_offset, source_man_sha256, candidate)
+    if not chunk_audit['growth_bytes']:
+        return patch_streaming_man_entry(source, expected_sha256, entry_index, chunk_header_offset,
+                                         source_man_sha256, candidate, header_offset=header_offset)
+    padded = grown + bytes(-len(grown) % 2048)
+    output, archive_audit = replace_physical_entry(source, expected_sha256, entry_index, padded,
+                                                  header_offset=header_offset)
+    reopened = ProtArchive(MemoryImage(output), IsoNode(0, len(output), False, 'PROT.DAT'))
+    target = reopened.entry(entry_index)
+    payload = output[target.start_lba * 2048:target.start_lba * 2048 + len(padded)]
+    if payload != padded or streaming_chunks(payload) != streaming_chunks(grown):
+        raise ImportError('Streaming MAN archive growth roundtrip failed')
+    chunk_audit['archive_relocation_verified'] = True
+    return output, dict(container=chunk_audit, archive=archive_audit, entry_index=entry_index,
+                        source_sha256=expected_sha256, result_sha256=sha256(output).hexdigest(),
+                        reopened_man_verified=True, toc_unchanged=False, build_ready=False)
+
 def patch_archive_spans(source: bytes, expected_sha256: str, patches: list[dict]) -> tuple[bytes, list[dict]]:
     """Compose source-addressed equal-span assets before physical relocation."""
     if not isinstance(source,bytes) or sha256(source).hexdigest()!=expected_sha256:
@@ -100,7 +144,7 @@ def rebuild_man_entries(source: bytes, expected_sha256: str, entries: list[dict]
     result=source
     audits=[]
     for item in sorted(entries,key=lambda item:item['entry_index']):
-        writer = patch_streaming_man_entry if 'chunk_header_offset' in item else rebuild_man_entry
+        writer = rebuild_streaming_man_entry if 'chunk_header_offset' in item else rebuild_man_entry
         result,audit=writer(result,sha256(result).hexdigest(),**item,header_offset=header_offset)
         audits.append(dict(audit, entry_index=item['entry_index']))
     return result,dict(source_sha256=expected_sha256,result_sha256=sha256(result).hexdigest(),

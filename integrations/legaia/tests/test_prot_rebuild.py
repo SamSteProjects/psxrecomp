@@ -29,6 +29,16 @@ class ProtRebuildTests(unittest.TestCase):
         self.assertEqual(result[2052:2052 + len(candidate)], candidate)
         self.assertTrue(audit['reopened_man_verified'])
         self.assertTrue(audit['toc_unchanged'])
+        from importer.prot_rebuild import rebuild_streaming_man_entry
+        grown_candidate = candidate + bytes(2048)
+        grown, growth = rebuild_streaming_man_entry(source, digest, 0, 0, man_hash, grown_candidate)
+        self.assertEqual(len(grown), len(source) + 2048)
+        self.assertEqual(grown[2052:2052 + len(grown_candidate)], grown_candidate)
+        self.assertEqual(grown[6144:], source[4096:])
+        self.assertEqual(grown[2052 + len(grown_candidate):6144], source[2052 + len(original):4096])
+        self.assertTrue(growth['reopened_man_verified'])
+        self.assertTrue(growth['container']['archive_relocation_verified'])
+        self.assertFalse(growth['toc_unchanged'])
         for index, offset, before, payload in [(True, 0, man_hash, candidate),
                                               (0, 4, man_hash, candidate),
                                               (0, 0, 'stale', candidate),
