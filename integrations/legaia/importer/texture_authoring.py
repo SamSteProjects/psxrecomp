@@ -300,7 +300,8 @@ class TextureAuthoringContext:
                         continue
                     source = self._source(identifier)
                     record = dict(info, semantic_id=identifier, source_record=source,
-                                  scope="TIM-image-and-palette-payload-only")
+                                  scope="TIM-image-and-palette-payload-only",
+                                  payload_changes=texture_payload_changes(original,replacement))
                     group_audit.append(record)
                     if changed is not None:
                         offset = source["byte_offset"]

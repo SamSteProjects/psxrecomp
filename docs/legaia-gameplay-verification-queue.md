@@ -254,3 +254,15 @@ equals the authored TIM; JSON effective values retain the retail source hash.
 Combined diagnostic serialization probe, not a finished texture edit or
 verified visible change. Runtime users/residency/blends remain unverified.
 No game launch or installation.
+
+
+2026-09-30 texture audit diagnostic (offline only): private project
+`local-output/sdk-20260909/texture-audit-project-20260930`, texture
+`texture://town01/5/raw/0`, palette0 entry1 word5386→5387 and pixel(1,0)
+index13→14, only TIM bytes22/544 changed. Package
+`Builds/9fa9adc820268690/legaia.sdk.9a55c316dc66-0.1.0-9fa9adc820268690.psxmod`,
+SHA-256 `f4b5ec9b4a6473219c1fe7069bb17ae7b7d4ddfac47901593461a214e33b5175`.
+Actual ZIP member matches payload audit; browser report/pixel navigation and
+stale rejection passed. This is a serialization probe, not a finished visual
+mod. No game launched or package installed. Visible materials, active palette
+and runtime residency remain deferred with the other texture probes.

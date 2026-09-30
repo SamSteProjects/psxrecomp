@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Texture payload Build report and pixel navigation
+
+Added bounded exact payload audits to texture serialization and Build reports;
+counts remain complete beyond256 details. Connected changed-pixel inspection
+with current replacement hash checks. Twelve focused tests passed with one
+retail environment-gated test skipped. Separate retail Build/actual ZIP readback
+matched palette5386→5387 and pixel(1,0)13→14 at TIM bytes22/544. Browser checks passed payload details, pixel navigation with no project writes,
+and rejection after a later pixel edit; Undo restored the prior replacement.
+Screenshot inspected; no game launched. Private diagnostic project preserved in
+local-output/sdk-20260909/texture-audit-project-20260930.
+
+
 ### 2026-09-30 — Complete texture-file proposal preview workflow
 
 Connected validated TIM/JSON proposal pixels, bounded retail/current payload

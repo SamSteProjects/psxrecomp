@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `cface314`, including indexed-texture
-JSON interchange. The dated filename is retained for
+Reviewed against committed source through `914be7fa`, plus the current
+texture payload Build-report addition. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -377,3 +377,12 @@ remain separate gates. Nine focused tests passed with one environment-gated
 retail test skipped. Separate retail service and browser checks proved preview
 leaves state/history/authored files unchanged, and Apply/Undo restores the exact
 previous texture. Screenshot inspected; game not launched.
+
+Texture Build reports now retain bounded palette-word/pixel-index/image-byte
+audits with complete change counts. Changed pixel links open the effective
+texture pixel editor only when its replacement hash matches the report;
+older reports without payload details remain readable. Synthetic report tests
+and a retail package readback verified the combined palette/pixel diagnostic
+at TIM bytes22/544. This reports emitted payload edits, not runtime residency.
+Browser checks passed report details, unchanged project state during pixel
+navigation, and stale replacement hash rejection after a later edit.

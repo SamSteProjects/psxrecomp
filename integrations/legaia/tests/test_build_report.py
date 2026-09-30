@@ -12,6 +12,22 @@ from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class BuildReportTests(unittest.TestCase):
+    def test_texture_payload_report_is_detached_with_exact_pixel_identity(self):
+        diff={'palette_words_changed':1,'pixel_indices_changed':1,'image_bytes_changed':1,
+              'total_change_count':2,'changes_truncated':False,
+              'changes':[{'kind':'palette_word','word_index':1,'before':10,'after':11},
+                         {'kind':'pixel_index','x':1,'y':0,'before':13,'after':14}]}
+        audit={'edits':[{'scene':'town01','semantic_id':'texture://town01/5/raw/0',
+                         'field':'texture.tim','before_sha256':'a','after_sha256':'b',
+                         'scope':'TIM-image-and-palette-payload-only','payload_changes':diff}],
+               'validation':{},'overlays':[]}
+        report=build_report(audit)
+        row=report['changes'][0]
+        self.assertEqual(row['payload_changes'],diff)
+        self.assertEqual((row['before'],row['after']),('a','b'))
+        row['payload_changes']['changes'][1]['after']=15
+        self.assertEqual(diff['changes'][1]['after'],14)
+
     def test_model_vectors_are_detached_and_preserve_scalar_context(self):
         vector={'object_index':1,'kind':'normal','vector_index':0,'axis':'x',
                 'byte_offset':3332,'before_value':0,'after_value':1}

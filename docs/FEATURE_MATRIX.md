@@ -367,3 +367,12 @@ remain separate gates. Nine focused tests passed with one environment-gated
 retail test skipped. Separate retail service and browser checks proved preview
 leaves state/history/authored files unchanged, and Apply/Undo restores the exact
 previous texture. Screenshot inspected; game not launched.
+
+Texture Build reports now retain bounded palette-word/pixel-index/image-byte
+audits with complete change counts. Changed pixel links open the effective
+texture pixel editor only when its replacement hash matches the report;
+older reports without payload details remain readable. Synthetic report tests
+and a retail package readback verified the combined palette/pixel diagnostic
+at TIM bytes22/544. This reports emitted payload edits, not runtime residency.
+Browser checks passed report details, unchanged project state during pixel
+navigation, and stale replacement hash rejection after a later edit.

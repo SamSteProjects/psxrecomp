@@ -1,6 +1,7 @@
 """Build private disc overlays from bounded authored MAN data and scene TIMs."""
 from __future__ import annotations
 
+from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
@@ -80,6 +81,8 @@ def build_report(audit) -> dict:
                             "authored_owners": list(change.get("axis_owners", change.get("authored_owners", []))),
                             "contributor_scope": "axis" if "axis_owners" in change else "clip"}
                            if change.get("scope") == "shared-scene-animation-record" else {}),
+                        **({'payload_changes': deepcopy(change['payload_changes'])}
+                           if field == 'texture.tim' and 'payload_changes' in change else {}),
                         **({'coordinate_changes': [dict(row) for row in change['coordinate_changes']]}
                            if field == 'model.shape' and 'coordinate_changes' in change else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
