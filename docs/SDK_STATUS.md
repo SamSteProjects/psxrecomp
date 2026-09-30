@@ -12,6 +12,15 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 - Textures: indexed scene palette-word and pixel-index editing, retail/effective JSON downloads and source-bound complete palette/pixel JSON imports are connected to texture Undo/Redo, Save/Open and Build. All96 town01 indexed textures round-tripped exactly. Source layout and other packed pixels are preserved; gameplay appearance remains unverified.
 - Output: supported edits compose into private packages or experimental disc exports. Input snapshots, hashes and reopened archive checks support later review. Package descriptions list emitted edit families; output collisions are rejected instead of silently replacing existing builds.
 
+**Scene proposal comparison (2026-09-30):** model-transform, model-file and
+texture proposals can switch between Proposed (not applied) and Current authored
+scene while retaining the proposal and camera framing. Exact layer/restore and
+unchanged project checks passed in retail browser runs for shared model0074
+(11 instances), a JSON model-file proposal, and texture29 (19 geometries,
+31 materials, 58 instances). Texture checks also verified unchanged camera and
+withdrawal on a stale scene source. These are browser checks, separate from the
+390-test Python checkpoint; game appearance and retail visibility remain deferred.
+
 ## Validation scope
 
 The retail-enabled SDK discovery run passed **390 tests in 163.243 seconds**,

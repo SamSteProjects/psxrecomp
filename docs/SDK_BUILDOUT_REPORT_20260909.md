@@ -8,11 +8,21 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `05e93405`, including model object
+Reviewed against committed source through `531ed3a3`, plus the scene proposal
+comparison update documented below, including model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Scene proposal comparison (2026-09-30):** model-transform, model-file and
+texture proposals can switch between Proposed (not applied) and Current authored
+scene while retaining the proposal and camera framing. Exact layer/restore and
+unchanged project checks passed in retail browser runs for shared model0074
+(11 instances), a JSON model-file proposal, and texture29 (19 geometries,
+31 materials, 58 instances). Texture checks also verified unchanged camera and
+withdrawal on a stale scene source. These are browser checks, separate from the
+390-test Python checkpoint; game appearance and retail visibility remain deferred.
 
 **Object-transform proposal previews:** translation, rotation and uniform scale
 can now be viewed before Apply, with proposed/current layers sharing camera

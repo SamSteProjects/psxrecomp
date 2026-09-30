@@ -1508,6 +1508,7 @@ async function previewTextureFile(){
           const returnToTextureFile=()=>{if(session!==textureSession||session.projectKey!==textureProjectKey()||loadedKey!==sceneKey||$('texture-file').files?.[0]!==file||state.project.mode!=='edit')return false;textureDialog.showModal();textureFileDialog.showModal();return true;};
           scenePose={key:sceneKey,name:'Proposed texture · not applied',returnToFile:returnToTextureFile,afterRestore:returnToTextureFile};
           scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed texture · not applied · ${posed.affected_material_count} changed materials · ${posed.affected_instances.length} instances · ${posed.unavailable_geometry_keys.length} unavailable geometries`;
+          configureSceneInspectionComparison(proposedScene);
           for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
           const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to texture file';
           textureFileDialog.close();textureDialog.close();frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:posed.affected_instances.map(entity_id=>({entity_id}))},null);draw();
@@ -2530,9 +2531,25 @@ let modelAssetId=null, modelEntityId=null, modelSceneEntityId=null, animationFra
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
 let modelSceneContext=null,modelFileReturn=null,scenePoseTick=null,scenePoseClock=null;
 const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button" data-play>Play scene preview</button> <label>Preview fps <select aria-label="Scene preview rate"><option>5</option><option selected>10</option><option>15</option><option>30</option><option>60</option></select></label> <button type="button" data-restore>Restore scene preview</button> <button type="button" data-return-file hidden>Return to animation file</button>';$('frame-selected').after(scenePoseBar);
+const sceneInspectionLayer=document.createElement('label');sceneInspectionLayer.hidden=true;sceneInspectionLayer.innerHTML='Inspection layer <select aria-label="Scene inspection layer"><option value="proposed">Proposed · not applied</option><option value="current">Current authored scene</option></select>';scenePoseBar.querySelector('[data-restore]').before(sceneInspectionLayer);
+function configureSceneInspectionComparison(proposalDocument=null){
+  sceneInspectionLayer.hidden=!proposalDocument;sceneInspectionLayer.querySelector('select').value='proposed';
+  if(scenePose){scenePose.inspectionLayer='proposed';scenePose.proposalDocument=proposalDocument?structuredClone(proposalDocument):null;scenePose.proposalLabel=scenePoseBar.querySelector('span').textContent;}
+}
+sceneInspectionLayer.querySelector('select').onchange=()=>{
+  if(busy){sceneInspectionLayer.querySelector('select').value=scenePose?.inspectionLayer??'proposed';return;}
+  if(!scenePose?.proposalDocument||!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project.mode!=='edit'){clearScenePose();notify('Scene proposal is stale. Reopen the Inspector to preview it again.',true);draw();return;}
+  try{
+    const current=sceneInspectionLayer.querySelector('select').value==='current',failures=sceneRenderer.load(structuredClone(current?scenePreview:scenePose.proposalDocument));
+    if(failures.length)throw new Error(failures.join('; '));
+    scenePose.inspectionLayer=current?'current':'proposed';
+    scenePoseBar.querySelector('span').textContent=current?'Current authored scene · proposal retained, not applied':scenePose.proposalLabel;
+    draw();
+  }catch(error){clearScenePose();notify(error.message,true);draw();}
+};
 const showScenePose=document.createElement('button');showScenePose.type='button';showScenePose.id='show-frame-in-scene';showScenePose.textContent='Inspect animation in scene';$('animation-frame-label').after(showScenePose);
 function clearScenePose(restore=true){
-  stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;
+  stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;sceneInspectionLayer.hidden=true;
   if(restore&&previous&&scenePreviewCurrent()&&sceneRenderer){const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');}
 }
 function scenePoseDocument(base,preview,entityId,frame){
@@ -2571,7 +2588,7 @@ function frameShapeProposal(report,entityId){
 }
 function sceneShapeProposalLabel(report,entityId){return report.instance_scope==='all_model_instances'?`${report.proposal_instances.length} supported instances · ${report.unavailable_instances.length} unavailable`:entityId;}
 function updateScenePoseFrame(frame){
-  if(!scenePose||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;
+  if(!scenePose?.preview?.frames||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;
   if(sceneRenderer.updateVertices(scenePose.geometryKey,scenePose.preview.frames[frame].vertices)){
     scenePose.frame=frame;scenePoseBar.querySelector('span').textContent=`Inspection only · ${scenePose.name} · frame ${frame+1}/${scenePose.preview.frames.length}`;
     scenePoseBar.querySelector('input').value=frame;draw();
@@ -2606,6 +2623,7 @@ showScenePose.onclick=()=>{
     stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,model,modelSceneEntityId,animationFrame);
     const failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
     scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:model,frame:animationFrame,returnToFile:modelFileReturn,name:(model.animation?.representation==='file_preview'?'Proposed file · not applied · ':modelEntityId?'':'Reference clip · ')+(entities().find(e=>e.id===modelSceneEntityId)?.name??modelSceneEntityId)};
+    configureSceneInspectionComparison();
     for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=false;scenePoseBar.querySelector('[data-return-file]').textContent='Return to animation file';
     scenePoseBar.hidden=false;scenePoseBar.querySelector('[data-return-file]').hidden=typeof modelFileReturn!=='function';scenePoseBar.querySelector('input').max=model.frames.length-1;
     if(model.animation?.representation==='file_preview')animationEditDialog.close();
@@ -2698,6 +2716,7 @@ async function openModelVectors(initial=null){
         const returnToVectors=()=>{if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey)return false;$('model-dialog').showModal();vectorDialog.showModal();return true;};
         scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:report.preview,returnToFile:returnToVectors,name:'Proposed shape · not applied'};
         scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed shape · not applied · ${sceneShapeProposalLabel(report,entityId)} · ${inspected.operation}`;
+        configureSceneInspectionComparison(isolated.document);
         for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
         const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to model vectors';
         vectorDialog.close();$('model-dialog').close();frameShapeProposal(report,entityId);draw();
@@ -2863,6 +2882,7 @@ async function readShapeFile(previewOnly=false){
             const returnToShapeFile=()=>{if(shapeDraft!==draft||asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey||state.project.mode!=='edit')return false;draft.sceneInspection=false;$('model-dialog').showModal();updateShapeDraft();$('shape-status').textContent=`Selected ${file.name} · not applied. Preview or Apply revalidates the file.`;return true;};
             scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:posed.preview,name:'Proposed model file · not applied',returnToFile:returnToShapeFile,afterRestore:returnToShapeFile};
             scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed model file · not applied · ${sceneShapeProposalLabel(posed,entityId)}`;
+            configureSceneInspectionComparison(isolated.document);
             for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
             const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to model file';
             draft.sceneInspection=true;$('model-dialog').close();frameShapeProposal(posed,entityId);draw();

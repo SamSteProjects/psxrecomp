@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Scene comparison and buildout report refresh
+
+Added static scene proposal/current-authored layer comparison for model object,
+model-file and texture inspections. Detached proposal copies retain inputs and
+camera; stale source withdraws inspection, busy changes reset selection, and
+animation controls remain separate. Retail browser checks passed exact layers,
+Restore/Return, preserved placements/base/project state and zero page errors:
+model0074 all11 instances, JSON model-file proposal, texture29 with19 geometries,
+31 materials and58 instances. Texture comparison also passed exact camera and
+stale-source withdrawal checks. Private evidence is scene-comparison-{model,file,
+texture}-check.json under local-output/sdk-20260909/model-scale-project-20260930.
+JSON was the only model-file comparison format rerun; prior TMD/OBJ checks remain
+separate evidence. JavaScript syntax and diff checks passed. Temporary server
+4406 stopped; no game launched. Refreshed buildout report, SDK status and feature
+matrix; current390-test Python source checkpoint remains05e93405 (unchanged Python).
+Manual gameplay, retail visibility and full SDK completion remain open.
+
+
 ### 2026-09-30 — Current390-test retail SDK regression checkpoint
 
 Previous goal turn progressed with05e93405 texture scene proposals. Ran the

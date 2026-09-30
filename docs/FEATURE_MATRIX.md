@@ -629,3 +629,13 @@ and placement. Retail texture29 changed31 materials/19 geometries/58 instances;
 Return/Restore, late-response withdrawal, unchanged project/authored-file hashes
 and TIM readback passed.23 retail-enabled focused tests passed. Runtime texture
 residency/gameplay appearance remain unverified;383-test checkpoint predates feature.
+
+
+**Scene proposal comparison (2026-09-30):** model-transform, model-file and
+texture proposals can switch between Proposed (not applied) and Current authored
+scene while retaining the proposal and camera framing. Exact layer/restore and
+unchanged project checks passed in retail browser runs for shared model0074
+(11 instances), a JSON model-file proposal, and texture29 (19 geometries,
+31 materials, 58 instances). Texture checks also verified unchanged camera and
+withdrawal on a stale scene source. These are browser checks, separate from the
+390-test Python checkpoint; game appearance and retail visibility remain deferred.
