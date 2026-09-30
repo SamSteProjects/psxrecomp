@@ -193,3 +193,16 @@ rejection, Undo/Redo, Save/Open and independent decompression of the actual ZIP
 member. Browser draft guard, Discard, Apply, readback and exact Undo passed.
 This addition follows the365-test checkpoint; gameplay shape/lighting/animation
 compatibility remains deferred. Browser lighting does not use normal vectors.
+
+
+Flag operand authoring foundation (2026-09-30): source-qualified ScriptFlags
+commands preserve separate retail/authored/effective values, support Undo/Redo,
+clear offline and Save/Open, and validate reached L/G/C flag SET/CLEAR/TEST
+operands against immutable source records. Upper operand bits and dispatch/layout
+remain unchanged; local width and context side-effect cases are unavailable.
+Fourteen focused tests passed. Retail town01 actor0002 CFLAG_SET bit2-to3 changed
+only decoded MAN byte4772; project history and reopening passed. Private project:
+local-output/sdk-20260909/flag-authoring-project-20260930. Editor Apply and Build
+composition remain pending. Build explicitly rejects ScriptFlags instead of
+silently dropping them. This is foundation work, not a completed authoring
+workflow or gameplay acceptance; the365-test checkpoint predates it.

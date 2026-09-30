@@ -8,10 +8,24 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `3fd7cc46`, plus the current
-model object quarter-turn authoring. The dated filename is retained for
+Reviewed against committed source through `f2f6e12c`, including model object
+quarter-turn authoring, plus the local flag serializer groundwork described
+below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**In progress — flag operand authoring:** local, global and context flag-bit
+serialization has focused source-preservation validation, including rebasing
+source owners after an actor append. Fourteen focused flag/movement/project tests passed on
+September 30. Source-qualified ScriptFlags project commands, authored summaries,
+Undo/Redo and Save/Open are connected. A retail town01 actor0002 CFLAG_SET
+bit2-to3 probe changed exactly one MAN byte and survived project reopening.
+Editor Apply and Build composition remain pending; Build explicitly rejects
+these overrides rather than omitting them. Special context side effects, unresolved
+local widths, system flags and branch selectors remain unsupported. The
+365-test regression checkpoint below predates this work, texture dependency
+inspection and model object rotations; their later checks are recorded
+separately. Manual gameplay verification remains deferred.
 
 **Texture-file proposal preview:** TIM/JSON files can now be inspected before
 Apply, with proposed pixels and separate retail/current payload comparisons.

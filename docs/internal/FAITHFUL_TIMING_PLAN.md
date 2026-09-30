@@ -213,6 +213,28 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+
+### 2026-09-30 — Source-qualified flag project authoring foundation
+
+Previous turn refreshed authoritative documentation. Connected validated flag-bit
+serialization to ScriptFlags project commands, Undo/Redo, clear, authored asset
+summaries and Save/Open. Eliminated repeated record parsing during target discovery.
+Fourteen focused flag/movement/project tests passed; retail town01 actor0002
+CFLAG_SET bit2-to3 changed only byte4772 and passed history/reopening checks.
+Private evidence/project retained under local-output/sdk-20260909/flag-authoring-project-20260930.
+Build explicitly rejects these overrides while output integration is pending;
+editor Apply and ordinary/experimental output composition are next. No game
+launched. Broader SDK goal remains active; gameplay is deferred.
+
+### 2026-09-30 — Buildout report freshness check
+
+Verified HEAD f2f6e12c and refreshed the buildout report's source checkpoint.
+Recorded local flag serializer groundwork as in progress, with project commands,
+editor Apply, persistence and Build still pending. Reran ten focused flag and
+movement tests successfully in 0.061 seconds. Explicitly separated later feature
+checks from the existing365-test regression checkpoint. No game launched;
+manual gameplay acceptance remains deferred and the full SDK goal remains open.
+
 ### 2026-09-30 — Exact object-local vertex/normal quarter turns
 
 Connected source-bound model object rotations through ordinary replacement

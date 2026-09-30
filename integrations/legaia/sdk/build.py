@@ -241,6 +241,8 @@ def _build_project(project, output_dir) -> dict:
         raise BuildError("Build requires the project's verified user-owned retail disc")
     if not project.imports:
         raise BuildError("Build requires at least one verified imported scene")
+    if any("ScriptFlags" in components for components in project.overrides.values()):
+        raise BuildError("ScriptFlags output integration is pending; Build cannot omit authored flag operands")
     scene_edits: dict[str, dict] = {}
     environment_edits = {}
     collision_edits = {}
