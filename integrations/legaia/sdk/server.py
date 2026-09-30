@@ -44,6 +44,16 @@ def _flag_authoring_report(project, identifier):
                 "limitations": ["Read-only inspection does not establish flag-write safety."]}
 
 
+def _wait_authoring_report(project, identifier):
+    """Unsupported authoring must not suppress the read-only script report."""
+    try:
+        return project.wait_options(identifier)
+    except (RetailImportError, ProjectError) as exc:
+        return {"supported": False, "reason": str(exc), "targets": [],
+                "unresolved_overrides": sorted(project.overrides.get(identifier, {}).get("ScriptWaits", {}).get("entries", {})),
+                "limitations": ["Read-only inspection does not establish wait-write safety."]}
+
+
 def _animation_export_choice(body):
     """Exactly one export representation, before expensive source decoding."""
     import math
@@ -249,6 +259,7 @@ class EditorServer(ThreadingHTTPServer):
             report = inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
             report["movement_authoring"] = _movement_authoring_report(project, entity_id)
             report["flag_authoring"] = _flag_authoring_report(project, entity_id)
+            report["wait_authoring"] = _wait_authoring_report(project, entity_id)
             try:
                 report["dialogue_authoring"] = project.dialogue_options(entity_id)
                 report["transition_authoring"] = _transition_authoring_report(project, entity_id)
@@ -636,6 +647,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report["transition_authoring"] = _transition_authoring_report(self.server.project, body["entity_id"])
                     report["movement_authoring"] = _movement_authoring_report(self.server.project, body["entity_id"])
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, body["entity_id"])
+                    report["wait_authoring"] = _wait_authoring_report(self.server.project, body["entity_id"])
                     self._json(200, report)
                     return
                 if route == "/api/trigger-script":
@@ -648,6 +660,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report["transition_authoring"] = _transition_authoring_report(self.server.project, identifier)
                     report["movement_authoring"] = _movement_authoring_report(self.server.project, identifier)
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, identifier)
+                    report["wait_authoring"] = _wait_authoring_report(self.server.project, identifier)
                     self._json(200, report)
                     return
                 if route == "/api/model-shape-source":
@@ -902,6 +915,13 @@ class EditorHandler(BaseHTTPRequestHandler):
             if set(body) != allowed:
                 raise ProjectError("Flag commands accept only owner/target identities and supported operand values")
             required_strings[route] = ("entity_id", "flag_id")
+        if route == "/api/command" and body.get("type") in ("set_wait_target", "clear_wait_target"):
+            allowed = {"type", "entity_id", "wait_id"}
+            if body["type"] == "set_wait_target":
+                allowed.add("values")
+            if set(body) != allowed:
+                raise ProjectError("Wait commands accept only owner/target identities and supported operand values")
+            required_strings[route] = ("entity_id", "wait_id")
         if route == "/api/command" and body.get("type") in ("set_transition_entry", "clear_transition_entry"):
             allowed = {"type", "entity_id", "transition_id"}
             if body["type"] == "set_transition_entry":

@@ -214,6 +214,20 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Wait target Inspector workflow
+
+Previous turn progressed inea80fa35. Connected wait authoring metadata to script
+inspection routes and strict HTTP command validation. Added Inspector tick layers,
+Apply/Clear/Discard, draft history guards, shared operand layout and source wait
+navigation from Build reports. Six retail-enabled focused tests passed in7.768s.
+Browser bounds/layers/draft/history/Apply/Clear/Undo passed with zero page errors;
+initial copied assertion encoding corrected. Screenshot inspected. Private wait
+project restored to saved17-tick state. Browser/server stopped; no save/game
+launch/install during browser checks. Gameplay timing, raw wait-specific retail
+probe and wider script authoring remain open. Full SDK goal active; offline work
+continues and manual gameplay stays deferred.
+
+
 ### 2026-09-30 — Wait target project history and output composition
 
 Previous turn progressed inee769088. Connected ScriptWaits to ordinary project

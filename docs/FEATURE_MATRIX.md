@@ -531,3 +531,22 @@ Earlier pending project/output notes are superseded. Inspector Apply is next;
 seconds, execution, actual timing behavior and gameplay acceptance remain
 unverified. No game launched or package installed. The365-test checkpoint
 predates this work.
+
+
+Wait target Inspector (2026-09-30): source-qualified WAIT_FRAMES forms now show
+retail, authored and effective host ticks with Apply, Clear and Discard. Targets
+remain0..32767; seconds and actual timing/execution are unresolved. Ordinary
+script Undo/Redo and Save obey pending draft guards. Actor, partition-two and
+trigger script routes expose authoring metadata without suppressing read-only
+inspection when authoring is unavailable. HTTP commands reject extra fields,
+invalid tick values and malformed identities. Build report links can open the
+source wait instruction. Six targeted retail-enabled HTTP/project/merge/serializer
+tests passed in7.768s. Browser layer/bounds/pending-draft/Discard/Apply/Clear/Undo
+checks passed and restored the saved17-tick diagnostic; zero page errors and
+screenshot inspected. Initial copied browser assertion had an encoding mismatch;
+corrected test text, no application change required. Evidence retained under
+local-output/sdk-20260909/wait-authoring-project-20260930/wait-browser-check.json
+and wait-editor.png. Earlier pending-Apply notes are superseded. Supported wait
+editing is connected through project and output; wider script/control-flow and
+runtime timing acceptance remain incomplete. Temporary browser/server stopped;
+no game launched or package installed. The365-test checkpoint predates this work.

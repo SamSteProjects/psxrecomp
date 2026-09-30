@@ -49,10 +49,10 @@
 
 .script-path-search{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.script-path-search input{flex:1;min-width:180px}.script-path-search button{font-size:11px}
 
-.transition-entry, .movement-entry, .flag-entry { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid var(--border, #48505d); margin: 10px 0; }
-.transition-entry h4, .movement-entry h4, .flag-entry h4 { flex-basis: 100%; margin: 0; }
-.transition-entry label, .movement-entry label, .flag-entry label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; }
-.transition-entry input, .movement-entry input, .flag-entry input { width: 100%; box-sizing: border-box; }
+.transition-entry, .movement-entry, .flag-entry, .wait-entry { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid var(--border, #48505d); margin: 10px 0; }
+.transition-entry h4, .movement-entry h4, .flag-entry h4, .wait-entry h4 { flex-basis: 100%; margin: 0; }
+.transition-entry label, .movement-entry label, .flag-entry label, .wait-entry label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 150px; }
+.transition-entry input, .movement-entry input, .flag-entry input, .wait-entry input { width: 100%; box-sizing: border-box; }
 .transition-unresolved { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .transition-unresolved code { overflow-wrap: anywhere; }
 
@@ -89,4 +89,4 @@
 #model-vector-dialog{width:min(760px,94vw);max-height:90vh;overflow:auto}#model-vector-dialog form>label{display:inline-block;width:calc(33.333% - 9px);margin-right:8px;vertical-align:top}#model-vector-dialog [data-xyz],#model-vector-dialog [data-offsets]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#model-vector-dialog [data-xyz]>label{margin:0}#model-vector-dialog details>label{display:inline-block;width:calc(50% - 9px);margin-right:8px;vertical-align:top}
 #model-vector-dialog label>select{display:block;width:100%;margin-top:6px}
 
-.flag-layers { flex-basis: 100%; margin: 0; }
+.flag-layers, .wait-layers { flex-basis: 100%; margin: 0; }
