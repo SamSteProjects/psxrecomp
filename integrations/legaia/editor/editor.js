@@ -1,3 +1,4 @@
+import {findDecodedPath} from '/script-paths.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -1213,6 +1214,21 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
     return true;
   }
   back.onclick=()=>{if(history.length)select(history.pop(),false);};
+  let pathStart=null;
+  const pathTools=document.createElement('details');pathTools.className='script-path-query';pathTools.innerHTML='<summary>Find a decoded instruction path</summary><p>Choose a start instruction, then select a destination. This finds one shortest route through encoded successors. Conditions are retained but not evaluated; hidden or undecoded execution remains unknown.</p><button type="button" data-path-start>Use selected instruction as path start</button><p data-path-source>No path start selected.</p><button type="button" data-path-find>Find path to selected instruction</button><p data-path-result role="status"></p><div data-path-steps></div>';
+  navigation.append(pathTools);
+  pathTools.querySelector('[data-path-start]').onclick=()=>{if(selectedPC===null)return;pathStart=selectedPC;pathTools.querySelector('[data-path-source]').textContent=`Start ${scriptOffset(pathStart)} · ${byPC.get(pathStart).mnemonic}`;pathTools.querySelector('[data-path-result]').textContent='Select a destination, then Find path.';pathTools.querySelector('[data-path-steps]').replaceChildren();};
+  pathTools.querySelector('[data-path-find]').onclick=()=>{
+    const resultHost=pathTools.querySelector('[data-path-result]'),steps=pathTools.querySelector('[data-path-steps]');steps.replaceChildren();
+    if(pathStart===null||selectedPC===null){resultHost.textContent='Select a decoded start and destination first.';return;}
+    try{
+      const result=findDecodedPath(instructions,pathStart,selectedPC);
+      if(result.status==='no_decoded_path'){resultHost.textContent=`No decoded path from ${scriptOffset(pathStart)} to ${scriptOffset(selectedPC)}. ${result.visited_count} boundaries searched; ${result.undecoded_target_count} outgoing targets are not decoded. This does not prove gameplay cannot reach the destination.`;for(const pc of result.undecoded_targets){const note=document.createElement('p');const stop=(report.stops??[]).find(item=>item.pc===pc);note.textContent=`Undecoded ${scriptOffset(pc)}${stop?.reason?' · '+stop.reason:''}`;steps.append(note);}return;}
+      resultHost.textContent=`Possible encoded path: ${result.path.length} instructions · ${result.path.length-1} edges · conditions not evaluated${result.path.length>256?' · showing first 256 instructions':''}.`;
+      for(const item of result.path.slice(0,256)){const row=document.createElement('p'),button=document.createElement('button');button.textContent=`Inspect ${scriptOffset(item.pc)} · ${byPC.get(item.pc).mnemonic}`;button.onclick=()=>select(item.pc);row.append(button);if(item.condition!==null){const condition=document.createElement('span');condition.textContent=' · via '+(typeof item.condition==='string'?item.condition:JSON.stringify(item.condition));row.append(condition);}steps.append(row);}
+    }catch(error){resultHost.textContent=error.message;}
+  };
+
   const search=document.createElement('input');search.type='search';search.setAttribute('aria-label','Search decoded script paths');search.placeholder='Text, instruction, operand or offset';search.maxLength=256;
   const previous=document.createElement('button');previous.textContent='Previous match';
   const next=document.createElement('button');next.textContent='Next match';

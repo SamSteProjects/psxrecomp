@@ -55,3 +55,12 @@ signed16 coordinate and the inspected model hash before applying one undoable
 replacement. Zero offsets submit no change. Retail service checks proved all
 vertices, preservation and exact Undo/Redo; browser checks proved Apply/readback/
 Undo and disabled zero/overflow offsets. Gameplay remains deferred.
+
+Script workspace addition: **Find a decoded instruction path** accepts a selected
+start and destination and shows one shortest encoded-successor route, with
+condition labels and clickable instruction steps. Cycles terminate; unknown
+targets are reported as boundaries. No-path results do not establish gameplay
+unreachability. Queries do not execute scripts or alter project state. Synthetic
+browser checks cover branching, cycles, same-node queries and undecoded targets;
+a retail actor-script path was checked edge-by-edge against its decoded report.
+General control-flow authoring and live execution remain incomplete.

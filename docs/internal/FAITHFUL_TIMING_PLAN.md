@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Decoded script path queries
+
+- Added a bounded editor graph service and shared instruction-panel query: selected start/destination, shortest decoded route, retained conditions, clickable steps and explicit undecoded boundaries. All actor/partition-two/trigger instruction panels use the shared workflow. Does not evaluate conditions or infer execution/unreachability.
+- Synthetic browser checks passed branch/cycle/same-node/no-path/boundary behavior and UI navigation. Retail actor-script query checked every returned edge against the decoded source report. Evidence: ignored `local-output/sdk-20260909/script-path-query-browser-check.*` and `script-path-query-retail-check.*`. Initial UI selector mismatch was corrected and rerun.
+- Node syntax and diff checks passed. Temporary editor server stopped; no game or project mutation. The full SDK goal remains incomplete.
+
+
 ### 2026-09-30 — Whole-object model vertex translation
 
 - Added source-hash-bound XYZ offsets for all vertices in a selected model object, with one ordinary model replacement command. Normals, topology, materials and other objects are preserved. Resulting signed16 overflow rejects before mutation; zero offsets are no-ops.

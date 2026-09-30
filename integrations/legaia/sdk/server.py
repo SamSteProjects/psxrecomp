@@ -403,7 +403,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 return
         files = {"/": ("index.html", "text/html"), "/editor.js": ("editor.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
-                 "/scene-renderer.js": ("scene-renderer.js", "text/javascript")}
+                 "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
+                 "/script-paths.js": ("script-paths.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})
             return
