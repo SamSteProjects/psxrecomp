@@ -15,7 +15,7 @@ LIMITATIONS=[
  'Local flag bits16..31, context SET8/CLEAR10, system selectors and flag branches remain unsupported.',
  'Opcode, extended dispatch target, upper operand bits, record lengths and branch bytes remain unchanged.',
  'Source-qualified flag indices are not universal runtime variables; story meaning, current values and execution remain unresolved.',
- 'Editor Apply remains pending; output serializes operands without proving story behavior or execution.'
+ 'Editor Apply and output serialize operands without proving story behavior or execution.'
 ]
 
 def validate_flag_values(values):

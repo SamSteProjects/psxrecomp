@@ -214,6 +214,21 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Flag operands in the script Inspector
+
+Previous turn made progress in dc4c6a1e. Added source-qualified flag authoring
+reports to actor, partition-two and trigger script inspection; strict HTTP
+commands; Inspector forms with distinct operand layers, draft Apply/Discard,
+Clear, ordinary history and special context-bit restrictions. Failed refresh
+removes authoring controls; Build report flag navigation opens the instruction.
+Six focused tests passed including retail HTTP validation/history; browser checks
+passed draft/layer/Apply/Clear/Undo restoration with zero page errors. Screenshot
+inspected; CSS shares existing operand form layout. Existing private diagnostic
+project restored to its saved bit3 state; no save/package install/game launch.
+Temporary browser/server stopped. Gameplay and wider flag semantics remain
+unverified; full SDK goal stays active with offline work remaining.
+
+
 ### 2026-09-30 — Flag operands through ordinary and experimental output
 
 Previous turn made progress in bb6f7390. Connected ScriptFlags to guarded MAN

@@ -8,20 +8,21 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `bb6f7390`, including model object
-quarter-turn authoring, plus the current flag Build integration described
+Reviewed against committed source through `dc4c6a1e`, including model object
+quarter-turn authoring, plus the current flag Inspector integration described
 below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
-**In progress — flag operand authoring:** local, global and context flag-bit
+**Supported flag operand authoring:** local, global and context flag-bit
 serialization has focused source-preservation validation, including rebasing
 source owners after an actor append. Fourteen focused flag/movement/project tests passed on
 September 30. Source-qualified ScriptFlags project commands, authored summaries,
 Undo/Redo and Save/Open are connected. A retail town01 actor0002 CFLAG_SET
 bit2-to3 probe changed exactly one MAN byte and survived project reopening.
 Ordinary Build and experimental compressed/raw-streaming exports now compose
-these operands with audited source offsets. Editor Apply remains pending.
+these operands with audited source offsets. The script Inspector now supports
+Apply, Clear and Discard with separate retail/authored/effective operands.
 Independent package and rebuilt archive readbacks passed; see the update below. Special context side effects, unresolved
 local widths, system flags and branch selectors remain unsupported. The
 365-test regression checkpoint below predates this work, texture dependency
@@ -468,3 +469,21 @@ Earlier foundation notes describing Build rejection are superseded by this
 integration. Editor Apply remains pending; story meaning, execution, runtime
 values and gameplay acceptance remain unverified. No game launched or package
 installed. The365-test checkpoint predates this addition.
+
+
+Flag operand Inspector (2026-09-30): supported source-qualified L/G/C flag
+SET/CLEAR/TEST operands now expose retail, authored and effective bit indices
+through script inspection APIs and editor forms. Apply/Clear use ordinary project
+commands; Discard retains authored state. Numeric bounds and special context
+SET8/CLEAR10 checks disable Apply; unapplied drafts block project history/save
+controls. Unsupported scripts retain read-only reports and clearable unresolved
+overrides. Failed refresh removes authoring controls. Flag Build report navigation
+opens the source instruction. Six focused retail HTTP/project/merge tests passed;
+HTTP checks include unexpected fields, invalid values and special context bits.
+Browser checks passed layers, special-bit guard, pending draft guard, Discard,
+Apply, Undo, Clear and restoration with no page errors; screenshot inspected.
+Private evidence: flag-authoring-project-20260930/flag-browser-check.json and
+flag-editor.png under local-output/sdk-20260909. Earlier pending-Apply notes are
+superseded. Supported operand editing is connected through project persistence
+and output; wider flag/control-flow authoring and gameplay acceptance remain
+incomplete. No game launched. Temporary browser/server stopped.

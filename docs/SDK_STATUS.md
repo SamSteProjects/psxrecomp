@@ -224,3 +224,21 @@ Earlier foundation notes describing Build rejection are superseded by this
 integration. Editor Apply remains pending; story meaning, execution, runtime
 values and gameplay acceptance remain unverified. No game launched or package
 installed. The365-test checkpoint predates this addition.
+
+
+Flag operand Inspector (2026-09-30): supported source-qualified L/G/C flag
+SET/CLEAR/TEST operands now expose retail, authored and effective bit indices
+through script inspection APIs and editor forms. Apply/Clear use ordinary project
+commands; Discard retains authored state. Numeric bounds and special context
+SET8/CLEAR10 checks disable Apply; unapplied drafts block project history/save
+controls. Unsupported scripts retain read-only reports and clearable unresolved
+overrides. Failed refresh removes authoring controls. Flag Build report navigation
+opens the source instruction. Six focused retail HTTP/project/merge tests passed;
+HTTP checks include unexpected fields, invalid values and special context bits.
+Browser checks passed layers, special-bit guard, pending draft guard, Discard,
+Apply, Undo, Clear and restoration with no page errors; screenshot inspected.
+Private evidence: flag-authoring-project-20260930/flag-browser-check.json and
+flag-editor.png under local-output/sdk-20260909. Earlier pending-Apply notes are
+superseded. Supported operand editing is connected through project persistence
+and output; wider flag/control-flow authoring and gameplay acceptance remain
+incomplete. No game launched. Temporary browser/server stopped.
