@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against source through `1021bff1`, including the September 30 model
-and script authoring additions. The dated filename is retained for
+Reviewed against source through `1ce5f2bd`, plus the current indexed-texture
+JSON interchange addition. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -350,3 +350,15 @@ palette preservation, stale rejection, Undo/Redo, Save/Open, Build and exact
 ZIP member readback. Browser Shift-click, range rejection, Discard, Apply and
 Undo passed after correcting fractional canvas-edge rounding. Runtime residency
 and visible/material/palette behavior remain deferred.
+
+Indexed texture interchange: retail/effective JSON downloads and source-bound
+JSON replacement now expose complete ordered CLUT words and pixel-index rows.
+Existing TIM headers, bit depth, dimensions and array counts remain fixed;
+duplicate keys, stale source hashes, unsupported formats and invalid values
+reject before replacement. Effective JSON retains the retail source hash.
+All96 indexed town01 scene textures round-tripped exactly; seven focused tests
+passed (one environment-gated retail test skipped). Separate retail/browser
+checks passed combined palette/pixel import, Undo/Redo, Save/Open, download/
+upload and actual ZIP member readback. Existing TIM upload remains available;
+file reads now reject changed texture/file contexts before submitting. No
+quantization, resizing, shared-bank authoring or runtime acceptance is claimed.

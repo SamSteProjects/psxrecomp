@@ -423,7 +423,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
                 request_limit = 6 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview'):
+            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/texture-json-replacement'):
                 request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
@@ -440,6 +440,21 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Scene catalog requires a disc path, bounded integer offset and name prefix')
                     from importer.pipeline import list_scenes
                     self._json(200, list_scenes(body['disc'], offset=body['offset'], limit=16, prefix=body['prefix']))
+                    return
+                if route == '/api/texture-json-source':
+                    if set(body) != {'asset_id','layer'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Texture JSON download requires texture identity and layer')
+                    self._json(200,self.server.project.texture_json_source(body['asset_id'],body['layer']))
+                    return
+                if route == '/api/texture-json-replacement':
+                    if set(body) != {'asset_id','json_base64'} or not isinstance(body['asset_id'],str) or not isinstance(body['json_base64'],str) or len(body['json_base64']) > 22369624:
+                        raise ProjectError('Texture JSON import requires identity and at most 16 MiB of JSON')
+                    try:
+                        content = base64.b64decode(body['json_base64'],validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Texture JSON requires valid base64') from exc
+                    self.server.project.set_texture_json(body['asset_id'],content)
+                    self._json(200,self.server.state())
                     return
                 if route == '/api/texture-pixel-source':
                     if set(body) != {'asset_id','palette_index','x','y'} or not isinstance(body['asset_id'], str):

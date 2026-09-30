@@ -763,6 +763,31 @@ class ProjectService:
         if replacement != effective:
             self.set_texture_replacement(asset_id, replacement)
 
+    def texture_json_source(self, asset_id: str, layer: str = 'imported') -> dict:
+        import base64
+        from importer.texture_json import export_texture_json
+        if layer not in ('imported','effective'):
+            raise ProjectError('Choose imported or effective texture JSON')
+        context = self._texture_context(asset_id)
+        original = context.original_tim(asset_id)
+        effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
+                     if layer == 'effective' and asset_id in self.texture_overrides else original)
+        context.validate_replacement(asset_id,effective)
+        document = json.loads(export_texture_json(effective))
+        document['source_sha256'] = hashlib.sha256(original).hexdigest()
+        content = (json.dumps(document,separators=(',',':'),sort_keys=True)+'\n').encode()
+        return {'asset_id':asset_id,'layer':layer,'source_sha256':document['source_sha256'],
+                'effective_sha256':hashlib.sha256(effective).hexdigest(),
+                'json_base64':base64.b64encode(content).decode('ascii')}
+
+    def set_texture_json(self, asset_id: str, content: bytes) -> None:
+        from importer.texture_json import import_texture_json
+        if self.mode != 'edit':
+            raise ProjectError('Texture JSON authoring requires Edit mode')
+        original = self._texture_context(asset_id).original_tim(asset_id)
+        replacement = import_texture_json(original,hashlib.sha256(original).hexdigest(),content)
+        self.set_texture_replacement(asset_id,replacement)
+
     def set_texture_replacement(self, asset_id: str, content: bytes) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")

@@ -350,3 +350,10 @@ September 30 indexed image editing: source-qualified4/8-bpp pixel palette-index
 inspection and Apply are available from bitmap Shift-click. Source hash guards,
 packed-neighbor preservation, palette preservation and ordinary texture
 history/persistence/Build checks passed. Runtime appearance remains unverified.
+
+September 30 texture JSON interchange: source-bound complete indexed palette
+and pixel arrays support retail/effective downloads and import through texture
+replacement history/persistence/Build. All96 town01 indexed scene textures
+round-trip exactly. Combined palette/pixel package and browser download/import/
+Undo checks passed. Resizing, quantization and arbitrary format/layout changes
+remain unsupported; runtime visual acceptance remains deferred.

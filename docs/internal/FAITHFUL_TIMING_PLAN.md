@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Source-bound indexed texture JSON workflow
+
+- Added complete indexed TIM palette-word/pixel-row JSON export/import with retail source hashes, exact bit-depth/dimension/count validation, duplicate-key rejection and preserved headers/layout. Effective downloads retain the retail hash. Connected bounded JSON APIs and texture retail/effective downloads, TIM/JSON upload, replacement history/persistence/Build. Captured texture/file identity before FileReader and reject stale selection/context before submission.
+- Seven focused interchange/palette/build tests passed; one retail test skipped without environment input. Separate retail check proved all96 indexed town01 textures round-trip exactly (largest JSON180577bytes). Combined palette-word/pixel probe passed Undo/Redo, Save/Open, Build and actual ZIP member equality, with only TIM bytes22/544 changed. Browser downloads matched retail/effective JSON, upload/Apply and Undo passed.
+- Evidence: ignored `local-output/sdk-20260909/texture-json-project-20260930/*check.json`, source/edit JSON and private package. Exact package/hash in gameplay queue. Node syntax/diff checks passed. Temporary server stopped; no game launched. The full352-test checkpoint predates this addition.
+
+
 ### 2026-09-30 — Indexed scene TIM pixel authoring
 
 - Added source-bound4/8-bpp image-index inspection/patching, strict integer/coordinate/index checks and complete-palette guards. Packed neighbor bits, all other image bytes, CLUT words and headers stay fixed. Connected pixel source/Apply APIs and bitmap Shift-click Inspector with retail/effective values, palette word/RGB5/STP labels, reset/Discard and ordinary texture history/Build.

@@ -242,3 +242,15 @@ Only TIM byte544 changed; the other packed nibble and all palettes/header
 bytes remain unchanged. Actual ZIP member equals authored TIM. Diagnostic
 one-pixel probe, not a finished texture edit. Affected runtime users, residency
 and actual visibility remain unverified. No game launch or installation.
+
+## Indexed texture JSON serialization probe (2026-09-30)
+
+Private project: `local-output/sdk-20260909/texture-json-project-20260930`.
+Package: `Builds/6f9cafc6ca0f8331/legaia.sdk.9a55c316dc66-0.1.0-6f9cafc6ca0f8331.psxmod`.
+SHA256 `f168c11a83dfd51f28e465585c1ec360cdf6dc591936b90cdcac25cd185a3f79`.
+Texture `texture://town01/5/raw/0`: palette0 entry1 word5386->5387, and
+pixel X1Y0 index13->14. Only TIM bytes22/544 changed. Actual ZIP member
+equals the authored TIM; JSON effective values retain the retail source hash.
+Combined diagnostic serialization probe, not a finished texture edit or
+verified visible change. Runtime users/residency/blends remain unverified.
+No game launch or installation.
