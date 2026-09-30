@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Proposed TMD/OBJ/JSON files in the scene
+
+Previous goal turn progressed with4fd4bd15 source-bound scene transform proposals.
+Extended that workflow to same-layout replacement files, retaining selected File
+and pending draft on Return/Restore and revalidating scene/file/instance before
+pose application. Shared server proposal service supports object and file paths;
+new route uses existing bounded24MiB upload transport. New model contexts clear
+retained draft metadata. Nine focused file/model/pose tests passed. Retail browser
+all three formats, isolation/matrices/state, file retention/discard and malformed
+or stale request rejection passed with zero page errors; screenshot inspected.
+43090-byte JSON proposal passed with unchanged state/authored hashes. Private
+model-file-scene-* evidence retained under model-scale-project-20260930.
+Existing transform scene browser workflow also passed against the shared service.
+Temporary browser/server stopped. No game/package installation; SDK goal active,
+gameplay acceptance deferred.
+
+
 ### 2026-09-30 — Proposed model geometry in the assembled scene
 
 Previous goal turn made progress: eb2fc137 implemented verified local transform

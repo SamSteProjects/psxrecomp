@@ -369,3 +369,10 @@ instances using their verified existing pose and scene placement. One-instance
 isolation, Return to vector inputs and exact Restore passed focused and retail
 browser checks without authored changes. Gameplay acceptance remains deferred;
 383-test checkpoint predates this addition.
+
+
+Model replacement file scene inspection (2026-09-30): TMD/OBJ/JSON proposals
+can be inspected before Apply on a verified instance and pose, with exact Restore
+and Return retaining the selected file. Retail browser/file-size/hash/state checks
+passed without authored changes. Gameplay acceptance remains deferred;383-test
+checkpoint predates this addition.

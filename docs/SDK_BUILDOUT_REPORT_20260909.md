@@ -8,7 +8,7 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `eb2fc137`, including model object
+Reviewed against committed source through `4fd4bd15`, including model object
 quarter-turn and uniform-scale authoring, flag operands/reference layers, the
 wait Inspector and instruction-to-operand navigation described below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
@@ -648,3 +648,22 @@ Private evidence: local-output/sdk-20260909/model-scale-project-20260930/
 scene-shape-browser-check.json and scene-shape-preview.png. Browser/server stopped;
 no game launched or package installed. Gameplay placement/visibility remains
 unverified. The383-test checkpoint predates this feature; full SDK remains incomplete.
+
+
+Proposed model-file scene inspection (2026-09-30): TMD, OBJ and JSON replacement
+files can now be inspected on a selected supported scene instance before Apply.
+The endpoint revalidates the file, inspected proposed TMD hash, active scene source
+key and asset/instance binding, then uses the same pose-preserving scene proposal
+service as object transforms. The selected file remains pending during inspection;
+Return to model file and Restore recover the exact scene and retain it for explicit
+Apply or Discard. New model contexts clear retained draft metadata. No proposal
+creates authored files, commands or history. Nine focused model/file/pose tests
+passed. Retail browser checks passed all three formats, one-instance isolation,
+scene matrices/base/project preservation, Return/Restore file retention, discard
+and stale hash/source/instance/base64 rejection with zero page errors. Screenshot
+inspected. A43090-byte JSON proposal passed the upload route with exact proposed
+hash and unchanged project state/authored-file hashes. Private evidence under
+local-output/sdk-20260909/model-scale-project-20260930/model-file-scene-browser-check.json,
+model-file-scene-large-check.json and model-file-scene-preview.png. Temporary
+browser/server stopped; no game or package installation. Gameplay placement and
+visibility remain unverified;383-test checkpoint predates this addition.

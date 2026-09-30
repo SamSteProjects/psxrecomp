@@ -2530,7 +2530,7 @@ function updateScenePoseFrame(frame){
   }
 }
 scenePoseBar.querySelector('[data-return-file]').onclick=()=>{if(busy)return;const returnToFile=scenePose?.returnToFile;clearScenePose();draw();if(!returnToFile?.())notify('The inspection context changed. Reopen the asset Inspector to review the proposal again.',true);};
-scenePoseBar.querySelector('[data-restore]').onclick=()=>{clearScenePose();draw();};
+scenePoseBar.querySelector('[data-restore]').onclick=()=>{const afterRestore=scenePose?.afterRestore;clearScenePose();draw();afterRestore?.();};
 scenePoseBar.querySelector('input').oninput=event=>{stopScenePosePlayback();try{updateScenePoseFrame(Number(event.target.value));}catch(error){clearScenePose();notify(error.message,true);draw();}};
 function stopScenePosePlayback(){
   if(scenePoseTick!==null)cancelAnimationFrame(scenePoseTick);
@@ -2743,7 +2743,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? (d.kind==='equipment_templates_excluded'?'Equipment template objects 10 and 11 are excluded from this pose.':JSON.stringify(d))).join(' · ');
     configureAnimation(clipId);exportClipControls.hidden=!data.frames?.length;showScenePose.disabled=!modelSceneEntityId||!data.frames?.length||state.project?.mode!=='edit';
     shapeControls.hidden=clipId==='file-preview'||!state.capabilities?.model_shape_authoring;
-    $('shape-file').value='';const shape=state.model_overrides?.[assetId];
+    $('shape-file').value='';shapeDraft=null;const shape=state.model_overrides?.[assetId];
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
     $('shape-clear').disabled=state.project.mode!=='edit'||!shape;$('shape-authored').disabled=!shape;
     $('shape-status').textContent=`Viewing ${shapeLayer==='authored'?'AUTHORED object-local shape':clipId==='authored-channels'?'AUTHORED shared animation':clipId==='authored-appearance'?'AUTHORED appearance animation':clipId?'RETAIL assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
@@ -2766,7 +2766,7 @@ function updateShapeDraft(){
 }
 $('shape-file').onchange=()=>{const file=$('shape-file').files?.[0];shapeDraft=file?{file,asset:modelAssetId,context:JSON.stringify([state.project.path,state.scene.id])}:null;updateShapeDraft();if(file)$('shape-status').textContent=`Selected ${file.name} · not applied. Apply or discard before changing model views.`;};
 discardShape.onclick=()=>{$('shape-file').value='';shapeDraft=null;updateShapeDraft();$('model-error').textContent='';$('shape-status').textContent='Selected file discarded; project unchanged.';};
-$('model-dialog').addEventListener('close',()=>{$('shape-file').value='';shapeDraft=null;});
+$('model-dialog').addEventListener('close',()=>{if(shapeDraft?.sceneInspection)return;$('shape-file').value='';shapeDraft=null;});
 $('shape-retail').onclick=()=>openModel(modelAssetId);
 $('shape-authored').onclick=()=>openModel(modelAssetId,null,null,'authored');
 $('shape-clear').onclick=async()=>{if(!busy&&!shapeDraft&&await api('/api/command',{type:'clear_model_replacement',asset_id:modelAssetId}))await openModel(modelAssetId);};
@@ -2794,6 +2794,31 @@ async function readShapeFile(previewOnly=false){
     try{const response=await fetch('/api/model-file-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,format:json?'json':obj?'obj':'tmd',content_base64:encoded})}),report=await response.json();if(!currentFile())return;if(!response.ok||report.error)throw new Error(report.error||'Model file preview failed');if(report.asset_id!==asset)throw new Error('Model proposal identity differs from the selected asset');
       const intro=document.createElement('p');intro.textContent='Proposed model file · project unchanged. Apply shape revalidates the file.';$('shape-file-report').append(intro);
       for(const [label,rows] of [['Changes from retail',report.coordinate_changes],['Changes from current authored model',report.changes_from_current]]){const details=document.createElement('details'),summary=document.createElement('summary'),text=document.createElement('pre');summary.textContent=`${label}: ${rows.length} axis changes`;text.textContent=rows.slice(0,256).map(row=>`Object ${row.object_index} · ${row.kind} ${row.vector_index} · ${row.axis}: ${row.before_value} → ${row.after_value}`).join('\n');details.append(summary,text);if(rows.length>256){const note=document.createElement('p');note.textContent='Showing the first 256 axis changes.';details.append(note);}$('shape-file-report').append(details);}
+      const instances=scenePreviewCurrent()&&sceneRepresentation==='authored'?scenePreview.entities.filter(e=>e.asset_id===asset&&e.renderable):[];
+      if(instances.length){
+        const label=document.createElement('label'),select=document.createElement('select'),inspect=document.createElement('button');label.textContent='Scene instance';select.setAttribute('aria-label','Model file scene instance');label.append(select);
+        for(const instance of instances){const option=document.createElement('option');option.value=instance.entity_id;option.textContent=instance.name??instance.entity_id;select.append(option);}
+        if(instances.some(e=>e.entity_id===environmentSelection))select.value=environmentSelection;
+        inspect.type='button';inspect.textContent='Inspect proposed model file in scene';$('shape-file-report').append(label,inspect);
+        const loadedKey=sceneKey,sceneSource=scenePreview.project_source_key;
+        inspect.onclick=async()=>{
+          if(busy||!currentFile()||!scenePreviewCurrent()||loadedKey!==sceneKey||sceneRepresentation!=='authored')return;
+          const entityId=select.value;setBusy(true);
+          try{
+            const response=await fetch('/api/model-file-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,format:json?'json':obj?'obj':'tmd',content_base64:encoded,entity_id:entityId,source_key:sceneSource,proposed_sha256:report.proposed_sha256})}),posed=await response.json();
+            if(!currentFile()||!scenePreviewCurrent()||loadedKey!==sceneKey)return;
+            if(!response.ok||posed.error)throw new Error(posed.error||'Model file scene inspection failed');
+            if(posed.entity_id!==entityId||posed.asset_id!==asset||posed.project_source_key!==sceneSource||posed.proposed_sha256!==report.proposed_sha256)throw new Error('Scene file proposal differs from inspection');
+            stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,posed.preview,entityId,null),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
+            const returnToShapeFile=()=>{if(shapeDraft!==draft||asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey||state.project.mode!=='edit')return false;draft.sceneInspection=false;$('model-dialog').showModal();updateShapeDraft();$('shape-status').textContent=`Selected ${file.name} · not applied. Preview or Apply revalidates the file.`;return true;};
+            scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:posed.preview,name:'Proposed model file · not applied',returnToFile:returnToShapeFile,afterRestore:returnToShapeFile};
+            scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed model file · not applied · ${entityId}`;
+            for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
+            const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to model file';
+            draft.sceneInspection=true;$('model-dialog').close();const target=scenePreview.entities.find(e=>e.entity_id===entityId);frame({id:entityId,components:{Transform:{imported:{position:target.position}}}});draw();
+          }catch(error){if(currentFile()){clearScenePose();$('model-error').textContent=error.message;draw();}}finally{setBusy(false);}
+        };
+      }
     }catch(error){if(currentFile())$('model-error').textContent=error.message;}finally{setBusy(false);}return;
   }
   if(await api(json?'/api/model-json-replacement':obj?'/api/model-obj-replacement':'/api/model-shape-replacement',{asset_id:asset,[json?'json_base64':obj?'obj_base64':'tmd_base64']:encoded})){$('shape-file').value='';shapeDraft=null;await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}

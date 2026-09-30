@@ -295,6 +295,23 @@ class EditorServer(ThreadingHTTPServer):
             atomic_write(output / ".gitignore", b"*\n")
         return result
 
+    def scene_shape_proposal(self, asset_id: str, entity_id: str, replacement: bytes, report: dict, key: str) -> dict:
+        from .scene_preview import source_key, preview_shape_instance
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        from importer.environment import load_environment_preview_catalog
+        from .terrain_preview import terrain_preview
+        if not key or source_key(self.project) != key:
+            raise ProjectError('Scene changed; refresh before inspecting a proposed shape')
+        scene = self.scene_previews.preview(self.project,
+            lambda asset, *args, **kwargs: self.model_preview(asset, *args, effective_shape=True, **kwargs),
+            load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
+        report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,{'asset_sha256':report['proposed_sha256']})
+        report.pop('current_preview',None)
+        report.update(entity_id=entity_id,scene_id=scene['scene_id'],project_source_key=key)
+        if source_key(self.project) != key:
+            raise ProjectError('Scene changed during shape proposal inspection')
+        return report
+
     def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None, effective_shape: bool = False, project_view=None) -> dict:
         from importer.assets import load_model_preview
         from importer.animation import animation_capabilities, load_animation_preview
@@ -447,7 +464,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
                 request_limit = 6 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/texture-json-replacement', '/api/texture-file-preview'):
+            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview'):
                 request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
@@ -520,22 +537,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/model-object-scene-preview':
                     if set(body) != {'asset_id','object_index','operation','values','expected_sha256','entity_id','source_key'} or not isinstance(body['asset_id'],str) or not isinstance(body['entity_id'],str):
                         raise ProjectError('Scene object preview requires inspected operation, instance and scene source key')
-                    from .scene_preview import source_key, preview_shape_instance
-                    from importer.scene_animation import load_scene_actor_animation_catalog
-                    from importer.environment import load_environment_preview_catalog
-                    from .terrain_preview import terrain_preview
+                    from .scene_preview import source_key
                     key = source_key(self.server.project)
                     if not key or key != body['source_key']:
                         raise ProjectError('Scene changed; refresh before inspecting a proposed shape')
                     replacement, report = self.server.project._prepare_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
-                    scene = self.server.scene_previews.preview(self.server.project,
-                        lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, **kwargs),
-                        load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
-                    report['preview'] = preview_shape_instance(scene,body['asset_id'],body['entity_id'],replacement,{'asset_sha256':report['proposed_sha256']})
-                    report.pop('current_preview',None)
-                    report.update(entity_id=body['entity_id'],scene_id=scene['scene_id'],project_source_key=key)
-                    if source_key(self.server.project) != key:
-                        raise ProjectError('Scene changed during shape proposal inspection')
+                    report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key)
                     self._json(200,report)
                     return
                 if route == '/api/model-object-preview':
@@ -572,6 +579,26 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.set_model_vector(body['asset_id'], body['object_index'], body['kind'],
                                                          body['vector_index'], body['values'], body['expected_sha256'])
                     self._json(200, self.server.state())
+                    return
+                if route == '/api/model-file-scene-preview':
+                    if set(body) != {'asset_id','format','content_base64','entity_id','source_key','proposed_sha256'} or not isinstance(body['asset_id'],str) or not isinstance(body['entity_id'],str):
+                        raise ProjectError('File scene preview requires model, file, inspected hash, instance and source key')
+                    from .scene_preview import source_key
+                    key = source_key(self.server.project)
+                    if not key or key != body['source_key']:
+                        raise ProjectError('Scene changed; refresh before inspecting a proposed file')
+                    encoded = body['content_base64']
+                    if not isinstance(encoded,str) or len(encoded) > 22369624:
+                        raise ProjectError('Model preview exceeds the 16 MiB file limit')
+                    try:
+                        payload = base64.b64decode(encoded,validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Model preview requires valid base64') from exc
+                    replacement, report = self.server.project._prepare_model_file(body['asset_id'],payload,body['format'])
+                    if report['proposed_sha256'] != body['proposed_sha256']:
+                        raise ProjectError('Proposed file differs from the inspected model hash')
+                    report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key)
+                    self._json(200,report)
                     return
                 if route == '/api/model-file-preview':
                     if set(body) != {'asset_id', 'format', 'content_base64'} or not isinstance(body['asset_id'], str):
