@@ -136,6 +136,41 @@ def patch_tim_pixel_index(content: bytes, expected_sha256: str, x: int, y: int,
     return replacement
 
 
+def texture_payload_changes(source: bytes, candidate: bytes) -> dict:
+    """Exact payload differences, with bounded detail and complete counts."""
+    import struct
+    _validate(source,candidate)
+    old,new = parse_tim(source),parse_tim(candidate)
+    details,words,pixels,image_bytes = [],0,0,0
+    if old.clut:
+        for index,(before,after) in enumerate(zip(struct.iter_unpack('<H',old.clut.data),struct.iter_unpack('<H',new.clut.data))):
+            if before == after:
+                continue
+            words += 1
+            if len(details) < 256:
+                details.append({'kind':'palette_word','word_index':index,'before':before[0],'after':after[0]})
+    for index,(before,after) in enumerate(zip(old.image.data,new.image.data)):
+        if before == after:
+            continue
+        image_bytes += 1
+        if old.bpp in (4,8):
+            mask = (1 << old.bpp)-1
+            for lane,shift in enumerate(range(0,8,old.bpp)):
+                a,b = (before >> shift)&mask,(after >> shift)&mask
+                if a == b:
+                    continue
+                pixels += 1
+                position = index*(8//old.bpp)+lane
+                if len(details) < 256:
+                    details.append({'kind':'pixel_index','x':position%old.width,'y':position//old.width,'before':a,'after':b})
+        elif len(details) < 256:
+            details.append({'kind':'image_byte','image_byte_index':index,'before':before,'after':after})
+    total = words + (pixels if old.bpp in (4,8) else image_bytes)
+    return {'palette_words_changed':words,'pixel_indices_changed':pixels if old.bpp in (4,8) else None,
+            'image_bytes_changed':image_bytes,'total_change_count':total,'changes':details,
+            'changes_truncated':total > len(details)}
+
+
 class TextureAuthoringContext:
     """Identity-bound catalog snapshot; carriers are reread per operation.
 

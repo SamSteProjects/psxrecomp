@@ -78,3 +78,6 @@
 #import-dialog{max-height:90vh;overflow:auto}#catalog-scenes{display:grid;gap:6px;max-height:32vh;overflow:auto;margin:10px 0}.catalog-scene{text-align:left;white-space:normal;overflow-wrap:anywhere}#catalog-status{font-size:11px;color:var(--muted)}
 
 .movement-layers { flex-basis:100%; margin:0; }
+
+#texture-file-dialog{width:min(860px,94vw);max-height:90vh;overflow:auto}#texture-file-dialog pre{max-height:220px;overflow:auto;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
+#texture-file-dialog .texture-bitmap-wrap{display:flex;justify-content:center}#texture-file-bitmap{width:auto;max-width:100%;height:auto;max-height:360px;object-fit:contain}

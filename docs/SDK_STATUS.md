@@ -129,3 +129,13 @@ checks passed combined palette/pixel import, Undo/Redo, Save/Open, download/
 upload and actual ZIP member readback. Existing TIM upload remains available;
 file reads now reject changed texture/file contexts before submitting. No
 quantization, resizing, shared-bank authoring or runtime acceptance is claimed.
+
+Texture-file proposal preview: selected TIM/JSON files render without applying,
+with palette-word, pixel-index and image-byte counts against both retail and
+current authored data. Details are capped at256 changes while counts remain
+complete. Return retains the file for explicit Apply. Source/layout validation
+and changed-context guards precede display; Build capacity and runtime appearance
+remain separate gates. Nine focused tests passed with one environment-gated
+retail test skipped. Separate retail service and browser checks proved preview
+leaves state/history/authored files unchanged, and Apply/Undo restores the exact
+previous texture. Screenshot inspected; game not launched.

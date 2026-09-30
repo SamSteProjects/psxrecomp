@@ -8,10 +8,15 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against source through `1ce5f2bd`, plus the current indexed-texture
-JSON interchange addition. The dated filename is retained for
+Reviewed against committed source through `cface314`, including indexed-texture
+JSON interchange. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Texture-file proposal preview:** TIM/JSON files can now be inspected before
+Apply, with proposed pixels and separate retail/current payload comparisons.
+Focused synthetic, retail service and browser checks passed without preview
+state, history or authored-file changes. Gameplay appearance remains deferred.
 
 - **Scene editor:** assembled textured field/world-map previews, hierarchy and
   picking, authored/retail comparison, orthographic views, coordinate location,
@@ -362,3 +367,13 @@ checks passed combined palette/pixel import, Undo/Redo, Save/Open, download/
 upload and actual ZIP member readback. Existing TIM upload remains available;
 file reads now reject changed texture/file contexts before submitting. No
 quantization, resizing, shared-bank authoring or runtime acceptance is claimed.
+
+Texture-file proposal preview: selected TIM/JSON files render without applying,
+with palette-word, pixel-index and image-byte counts against both retail and
+current authored data. Details are capped at256 changes while counts remain
+complete. Return retains the file for explicit Apply. Source/layout validation
+and changed-context guards precede display; Build capacity and runtime appearance
+remain separate gates. Nine focused tests passed with one environment-gated
+retail test skipped. Separate retail service and browser checks proved preview
+leaves state/history/authored files unchanged, and Apply/Undo restores the exact
+previous texture. Screenshot inspected; game not launched.

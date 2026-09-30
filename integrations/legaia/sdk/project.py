@@ -788,6 +788,33 @@ class ProjectService:
         replacement = import_texture_json(original,hashlib.sha256(original).hexdigest(),content)
         self.set_texture_replacement(asset_id,replacement)
 
+    def preview_texture_file(self, asset_id: str, content: bytes, format: str,
+                             palette_index: int = 0) -> dict:
+        import base64
+        from importer.texture_json import import_texture_json
+        from importer.texture_authoring import texture_payload_changes
+        from importer.textures import parse_tim, decode_tim
+        if self.mode != 'edit' or format not in ('tim','json'):
+            raise ProjectError('Texture file preview requires Edit mode and TIM or JSON')
+        context = self._texture_context(asset_id)
+        original = context.original_tim(asset_id)
+        candidate = import_texture_json(original,hashlib.sha256(original).hexdigest(),content) if format == 'json' else content
+        context.validate_replacement(asset_id,candidate)
+        effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
+                     if asset_id in self.texture_overrides else original)
+        context.validate_replacement(asset_id,effective)
+        pixels = decode_tim(candidate,palette_index)
+        return {'asset_id':asset_id,'input_format':format,'palette_index':palette_index,
+                'source_sha256':hashlib.sha256(original).hexdigest(),
+                'effective_sha256':hashlib.sha256(effective).hexdigest(),
+                'candidate_sha256':hashlib.sha256(candidate).hexdigest(),
+                'width':pixels['width'],'height':pixels['height'],'bpp':parse_tim(candidate).bpp,
+                'rgba_base64':base64.b64encode(pixels['rgba']).decode('ascii'),
+                'stp_base64':base64.b64encode(pixels['stp']).decode('ascii'),
+                'retail_changes':texture_payload_changes(original,candidate),
+                'current_changes':texture_payload_changes(effective,candidate),
+                'representation':'proposed_file','project_changed':False}
+
     def set_texture_replacement(self, asset_id: str, content: bytes) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")

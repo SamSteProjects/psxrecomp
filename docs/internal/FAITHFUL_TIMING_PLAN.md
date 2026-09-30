@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Complete texture-file proposal preview workflow
+
+Connected validated TIM/JSON proposal pixels, bounded retail/current payload
+comparisons and return-to-file controls. Preview creates no project/history or
+authored-file changes. Nine focused tests passed, one environment-gated test
+skipped; separate retail service and browser checks passed JSON/TIM comparisons,
+retained selection, explicit Apply and exact Undo. Visually inspected screenshot
+and bounded bitmap size. Evidence in the ignored texture-json-project-20260930
+probe directory. Updated buildout/status/matrix; no game launched.
+
+
+### 2026-09-30 — SDK buildout report freshness check
+
+Verified HEAD `cface314` and the current working tree. Updated the buildout
+report's source checkpoint to that commit and explicitly recorded uncommitted
+texture-file preview backend work as incomplete, with UI and validation pending.
+The 352-test checkpoint remains scoped to `1021bff1`; no game was launched.
+
 ### 2026-09-30 — Source-bound indexed texture JSON workflow
 
 - Added complete indexed TIM palette-word/pixel-row JSON export/import with retail source hashes, exact bit-depth/dimension/count validation, duplicate-key rejection and preserved headers/layout. Effective downloads retain the retail hash. Connected bounded JSON APIs and texture retail/effective downloads, TIM/JSON upload, replacement history/persistence/Build. Captured texture/file identity before FileReader and reject stale selection/context before submission.

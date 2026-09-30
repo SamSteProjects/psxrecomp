@@ -423,7 +423,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
                 request_limit = 6 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/texture-json-replacement'):
+            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/texture-json-replacement', '/api/texture-file-preview'):
                 request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
@@ -440,6 +440,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Scene catalog requires a disc path, bounded integer offset and name prefix')
                     from importer.pipeline import list_scenes
                     self._json(200, list_scenes(body['disc'], offset=body['offset'], limit=16, prefix=body['prefix']))
+                    return
+                if route == '/api/texture-file-preview':
+                    if set(body) != {'asset_id','format','palette_index','content_base64'} or not isinstance(body['asset_id'],str) or not isinstance(body['content_base64'],str) or len(body['content_base64']) > 22369624:
+                        raise ProjectError('Texture preview requires identity, format, palette and bounded file bytes')
+                    try:
+                        content = base64.b64decode(body['content_base64'],validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Texture preview requires valid base64') from exc
+                    self._json(200,self.server.project.preview_texture_file(body['asset_id'],content,body['format'],body['palette_index']))
                     return
                 if route == '/api/texture-json-source':
                     if set(body) != {'asset_id','layer'} or not isinstance(body['asset_id'],str):

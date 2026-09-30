@@ -357,3 +357,13 @@ replacement history/persistence/Build. All96 town01 indexed scene textures
 round-trip exactly. Combined palette/pixel package and browser download/import/
 Undo checks passed. Resizing, quantization and arbitrary format/layout changes
 remain unsupported; runtime visual acceptance remains deferred.
+
+Texture-file proposal preview: selected TIM/JSON files render without applying,
+with palette-word, pixel-index and image-byte counts against both retail and
+current authored data. Details are capped at256 changes while counts remain
+complete. Return retains the file for explicit Apply. Source/layout validation
+and changed-context guards precede display; Build capacity and runtime appearance
+remain separate gates. Nine focused tests passed with one environment-gated
+retail test skipped. Separate retail service and browser checks proved preview
+leaves state/history/authored files unchanged, and Apply/Undo restores the exact
+previous texture. Screenshot inspected; game not launched.
