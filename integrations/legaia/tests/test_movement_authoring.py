@@ -72,6 +72,38 @@ class MovementAuthoringTests(unittest.TestCase):
         with self.assertRaises(ImportError):
             patch_movement_target(b'\x23\x00\x80\x3f\0\0\x06town01\1\2\3opaque', 0, 0, {'move_id': 1})
 
+    def test_exec_move_has_selector_only_and_fixed_dispatch_width(self):
+        trailer = b'\x3f\0\0\x06town01\1\2\3opaque'
+        for header in (b'\x22', b'\xa2\x07'):
+            record = header + b'\x09' + trailer
+            for value in range(256):
+                changed, audit = patch_movement_target(record, 0, 0, {'move_id': value})
+                self.assertEqual(changed[:len(header)], header)
+                self.assertEqual(changed[len(header) + 1:], trailer)
+                self.assertEqual(inspect_record(changed, 0)['instructions'][0]['operands']['move_id'], value)
+                self.assertEqual(len(audit), int(value != 9))
+            for values in ({'x': 64}, {'z': 128}, {'move_id': 2, 'x': 64}):
+                with self.assertRaises(ImportError):
+                    patch_movement_target(record, 0, 0, values)
+        source, man = fixture(b'\x22\x09' + trailer)
+        context = MovementAuthoringContext(source)
+        target = context.options(ACTOR)['targets'][0]
+        self.assertEqual(target['values'], {'move_id': 9})
+        self.assertEqual(target['encoded_xz'], [])
+        self.assertEqual(target['operand_offsets'], {'move_id': 0})
+        result, audit = context.patch({target['semantic_id']: {'move_id': 10}})
+        from sdk.build import _merge_movement_patch, BuildError
+        expected = {target['semantic_id']: dict(target, requested_values={'move_id': 10})}
+        self.assertEqual(_merge_movement_patch(man, man, result, audit, expected, []), result)
+        with self.assertRaises(BuildError):
+            _merge_movement_patch(man, man, result, [dict(audit[0], decoded_byte_offset=audit[0]['decoded_byte_offset'] + 3)], expected, [])
+        from hashlib import sha256
+        from importer.man_actor_structure import append_actor_donor
+        appended, _ = append_actor_donor(man, sha256(man).hexdigest(), 1)
+        changed, rebased = context.patch_appended(appended, {target['semantic_id']: {'move_id': 10}})
+        self.assertEqual(len(rebased), 1)
+        self.assertEqual({i for i, (a, b) in enumerate(zip(appended, changed)) if a != b}, {rebased[0]['decoded_byte_offset']})
+
     def test_invalid_values_unknown_paths_and_wrong_pc_rejected(self):
         record=b'\x23\x00\x80\x2a'
         for values in ({},{'y':0},{'x':True},{'x':65},{'z':0},{'z':16385},{'x':float('nan')}):

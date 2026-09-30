@@ -209,3 +209,14 @@ identity, speed or reachable branch is established; it is not a finished mod.
 Manual acceptance must establish selector meaning and observe the relevant
 executed script before drawing behavior conclusions. No launch/installation
 was performed; gameplay remains deferred.
+
+## EXEC_MOVE selector serialization probe (2026-09-30)
+
+Private project: `local-output/sdk-20260909/exec-move-project-20260930`.
+Package: `Builds/568af58d0e3b08f8/legaia.sdk.ab8d8f268668-0.1.0-568af58d0e3b08f8.psxmod`.
+SHA256 `8c2e76ed649965bb1b216c987f0be003b6fd517eef398ca8fef687d4296d844c`.
+Town01 actor0003 EXEC_MOVE at PC0x12: selector9->10. Independent package
+readback found exactly MAN byte4816 changed. This is an isolated diagnostic
+serialization probe, not a finished behavior edit. Selector/table meaning,
+executed branch and resulting playback require later gameplay investigation.
+No launch/installation performed.

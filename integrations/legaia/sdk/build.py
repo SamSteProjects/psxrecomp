@@ -165,9 +165,10 @@ def _merge_movement_patch(baseline, working, patched, changes, expected, previou
     for c in changes:
         entry = expected.get(c.get("movement_id"))
         offset, field = c.get("decoded_byte_offset"), c.get("field")
-        if (entry is None or field not in ENTRY_FIELDS or type(offset) is not int or
+        offsets = entry.get("operand_offsets", ENTRY_FIELDS) if entry else {}
+        if (entry is None or field not in offsets or type(offset) is not int or
                 not 0 <= offset < len(baseline) or
-                offset != entry["decoded_byte_offset"] + ENTRY_FIELDS[field] or
+                offset != entry["decoded_byte_offset"] + offsets[field] or
                 c.get("owner_id") != entry["owner_id"] or
                 c.get("source_record_sha256") != entry["source_record_sha256"] or
                 c.get("source_decoded_man_sha256") != digest or

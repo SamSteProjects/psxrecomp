@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — EXEC_MOVE selector-only authoring workflow
+
+- Verified executing-reference opcode0x22 fixed one-byte selector, and extended source-record authoring to EXEC_MOVE. No coordinate controls/markers are invented. Source-derived operand offsets validate Build composition and source-owner append rebasing.
+- Eight focused serializer/merge/transition tests passed, with all256 ordinary/extended selector values, X/Z rejection, exact preservation and appended rebasing. Retail actor0003 PC0x12 selector9->10 passed Undo/Redo, Save/Open and Build. Independent ZIP decode proved exactly MAN byte4816 changed. Browser selector-only form, range rejection, Apply11/Undo10 passed.
+- Private project/package/hash added to gameplay queue; behavior remains unverified. Node syntax and diff checks passed. Temporary server stopped; no game launched. The full352-test checkpoint predates this addition.
+
+
 ### 2026-09-30 — Current retail-enabled SDK regression checkpoint
 
 - Revalidated checkout1021bff1; the existing Asset Browser already exposes initial/effective model and animation users with navigation. Continued with broader validation of recent serializer/project changes.

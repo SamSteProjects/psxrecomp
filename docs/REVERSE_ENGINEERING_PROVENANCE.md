@@ -270,3 +270,13 @@ The SDK edits this byte only, or composes it with the supported X/Z edits.
 Depth, dispatch context and continuation are preserved. All256 byte values
 round-trip through normal and extended headers in synthetic checks. Meanings
 for selector values and actual runtime behavior remain unverified.
+
+## EXEC_MOVE selector authoring — September 30
+
+The same pinned Andrew revision, `crates/engine-vm/src/field/step.rs`, opcode
+0x22, reads `[22, move_id]`, sets move-table state and calls `host.exec_move`;
+continuation is pc+header_size+1. Retail town01 actor0003 PC0x12 contains byte9.
+Ordinary and extended-target headers retain their context and width while only
+the selector changes. No coordinates occur in this instruction. The selector
+name denotes an encoded table operand, not a proven animation asset binding.
+Its gameplay effects and selected table content remain unverified.

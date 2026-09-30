@@ -83,3 +83,13 @@ no animation or speed meaning is assigned. Seven focused tests passed (four
 separate retail streaming tests skipped without their environment input). A
 saved town01 probe changed selector 13 to 14, and independent package ZIP
 readback found exactly one changed MAN byte. Browser Apply/Undo passed.
+
+EXEC_MOVE operand authoring: fixed-width encoded move selectors now share the
+ScriptMovement workflow with NPC_RUN. EXEC_MOVE exposes only its move-selector
+byte, with no invented X/Z or scene marker. Source-verified field offsets drive
+Build audits and appended-record rebasing. Eight focused tests passed, including
+all256 selector bytes with ordinary/extended headers and rejection of X/Z edits.
+Retail actor0003 PC0x12 selector9->10 passed Save/Open, Undo/Redo, browser
+Apply11/Undo10 and independent ZIP decode with exactly MAN byte4816 changed.
+This addition follows the352-test checkpoint and has focused checks; runtime
+move-table identity and behavior remain unverified.
