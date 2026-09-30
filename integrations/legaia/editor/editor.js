@@ -2534,16 +2534,21 @@ const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;sceneP
 const sceneInspectionLayer=document.createElement('label');sceneInspectionLayer.hidden=true;sceneInspectionLayer.innerHTML='Inspection layer <select aria-label="Scene inspection layer"><option value="proposed">Proposed · not applied</option><option value="current">Current authored scene</option></select>';scenePoseBar.querySelector('[data-restore]').before(sceneInspectionLayer);
 function configureSceneInspectionComparison(proposalDocument=null){
   sceneInspectionLayer.hidden=!proposalDocument;sceneInspectionLayer.querySelector('select').value='proposed';
+  sceneInspectionLayer.querySelector('[value=proposed]').textContent=scenePose?.preview?.frames?'Inspected animation · not applied':'Proposed · not applied';
+  for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]')])control.disabled=false;
   if(scenePose){scenePose.inspectionLayer='proposed';scenePose.proposalDocument=proposalDocument?structuredClone(proposalDocument):null;scenePose.proposalLabel=scenePoseBar.querySelector('span').textContent;}
 }
 sceneInspectionLayer.querySelector('select').onchange=()=>{
   if(busy){sceneInspectionLayer.querySelector('select').value=scenePose?.inspectionLayer??'proposed';return;}
   if(!scenePose?.proposalDocument||!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project.mode!=='edit'){clearScenePose();notify('Scene proposal is stale. Reopen the Inspector to preview it again.',true);draw();return;}
   try{
+    stopScenePosePlayback();
     const current=sceneInspectionLayer.querySelector('select').value==='current',failures=sceneRenderer.load(structuredClone(current?scenePreview:scenePose.proposalDocument));
     if(failures.length)throw new Error(failures.join('; '));
     scenePose.inspectionLayer=current?'current':'proposed';
-    scenePoseBar.querySelector('span').textContent=current?'Current authored scene · proposal retained, not applied':scenePose.proposalLabel;
+    const animated=!!scenePose.preview?.frames;if(animated)scenePoseBar.querySelector('input').value=scenePose.frame;
+    for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]')])control.disabled=current&&animated;
+    scenePoseBar.querySelector('span').textContent=current?(animated?'Current authored scene · inspected animation retained, not applied':'Current authored scene · proposal retained, not applied'):scenePose.proposalLabel;
     draw();
   }catch(error){clearScenePose();notify(error.message,true);draw();}
 };
@@ -2588,9 +2593,11 @@ function frameShapeProposal(report,entityId){
 }
 function sceneShapeProposalLabel(report,entityId){return report.instance_scope==='all_model_instances'?`${report.proposal_instances.length} supported instances · ${report.unavailable_instances.length} unavailable`:entityId;}
 function updateScenePoseFrame(frame){
-  if(!scenePose?.preview?.frames||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;
+  if(!scenePose?.preview?.frames||scenePose.inspectionLayer==='current'||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;
+  if(!Number.isInteger(frame)||frame<0||frame>=scenePose.preview.frames.length)throw new Error('Scene inspection frame is outside the loaded animation.');
   if(sceneRenderer.updateVertices(scenePose.geometryKey,scenePose.preview.frames[frame].vertices)){
-    scenePose.frame=frame;scenePoseBar.querySelector('span').textContent=`Inspection only · ${scenePose.name} · frame ${frame+1}/${scenePose.preview.frames.length}`;
+    scenePose.frame=frame;scenePose.proposalLabel=`Inspection only · ${scenePose.name} · frame ${frame+1}/${scenePose.preview.frames.length}`;scenePoseBar.querySelector('span').textContent=scenePose.proposalLabel;
+    const retained=scenePose.proposalDocument?.assets.find(asset=>asset.geometry_key===scenePose.geometryKey);if(retained)retained.preview.vertices=structuredClone(scenePose.preview.frames[frame].vertices);
     scenePoseBar.querySelector('input').value=frame;draw();
   }
 }
@@ -2605,7 +2612,7 @@ scenePoseBar.querySelector('select').onchange=()=>{scenePoseClock=null;};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopScenePosePlayback();});
 scenePoseBar.querySelector('[data-play]').onclick=()=>{
   if(scenePoseTick!==null){stopScenePosePlayback();return;}
-  const session=scenePose;if(!session)return;
+  const session=scenePose;if(busy||!session?.preview?.frames||session.inspectionLayer==='current')return;
   scenePoseBar.querySelector('[data-play]').textContent='Pause scene preview';
   const tick=time=>{
     if(scenePose!==session||!scenePreviewCurrent()||session.key!==sceneKey||state.project?.mode!=='edit'||busy||document.hidden||!modelsEnabled||sceneRenderer.lost||$('model-dialog').open){stopScenePosePlayback();return;}
@@ -2623,7 +2630,7 @@ showScenePose.onclick=()=>{
     stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,model,modelSceneEntityId,animationFrame);
     const failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
     scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:model,frame:animationFrame,returnToFile:modelFileReturn,name:(model.animation?.representation==='file_preview'?'Proposed file · not applied · ':modelEntityId?'':'Reference clip · ')+(entities().find(e=>e.id===modelSceneEntityId)?.name??modelSceneEntityId)};
-    configureSceneInspectionComparison();
+    configureSceneInspectionComparison(isolated.document);
     for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=false;scenePoseBar.querySelector('[data-return-file]').textContent='Return to animation file';
     scenePoseBar.hidden=false;scenePoseBar.querySelector('[data-return-file]').hidden=typeof modelFileReturn!=='function';scenePoseBar.querySelector('input').max=model.frames.length-1;
     if(model.animation?.representation==='file_preview')animationEditDialog.close();

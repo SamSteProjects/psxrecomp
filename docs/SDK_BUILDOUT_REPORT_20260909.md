@@ -8,12 +8,22 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `531ed3a3`, plus the scene proposal
+Reviewed against committed source through `2ecb36e9`, plus the animation scene
 comparison update documented below, including model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Animation scene comparison (2026-09-30):** supported animation inspections now
+switch between the inspected animation and Current authored scene, retaining the
+selected frame and camera. Switching layers pauses playback; the current layer
+disables scrubbing, playback and rate controls. Returning restores the inspected
+frame and slider together. A retail actor0011 JSON proposal (15 frames) passed
+exact layer/placement/base checks, playback pause, Return retaining the file,
+Restore, stale-source withdrawal and unchanged project state, with zero authoring
+requests or page errors. Screenshot inspected. This is separate browser evidence;
+retail animation timing, playback and gameplay visibility remain deferred.
 
 **Scene proposal comparison (2026-09-30):** model-transform, model-file and
 texture proposals can switch between Proposed (not applied) and Current authored

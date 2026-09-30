@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Animation scene comparison with retained frames
+
+Previous turn made progress at2ecb36e9. Added comparison for supported animation
+inspections using detached retained geometry and the immutable authored scene.
+Scrubbing/playback updates the retained inspected frame; switching layers pauses
+playback, current disables animation controls, returning resets slider and rendered
+frame together. An adversarial disabled-input dispatch exposed slider mismatch in
+the first check; fixed and complete rerun passed. Retail actor0011 JSON proposal
+(15 frames) passed exact layer/camera/placement/base checks, playback pause,
+Return preserving file, Restore, reentry controls and stale-source withdrawal.
+Zero authoring requests/page errors; project state unchanged. Private evidence:
+local-output/sdk-20260909/animation-json-project-20260912/
+animation-scene-comparison-check.json and animation-scene-comparison.png (inspected).
+JavaScript syntax and diff checks passed. Temporary server4406 and browser stopped;
+no game launched. Python unchanged:390-test source05e93405 checkpoint remains
+separate. Updated buildout/status/matrix. Gameplay and full goal remain deferred/open.
+
+
 ### 2026-09-30 — Scene comparison and buildout report refresh
 
 Added static scene proposal/current-authored layer comparison for model object,

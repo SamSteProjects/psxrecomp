@@ -639,3 +639,13 @@ unchanged project checks passed in retail browser runs for shared model0074
 31 materials, 58 instances). Texture checks also verified unchanged camera and
 withdrawal on a stale scene source. These are browser checks, separate from the
 390-test Python checkpoint; game appearance and retail visibility remain deferred.
+
+**Animation scene comparison (2026-09-30):** supported animation inspections now
+switch between the inspected animation and Current authored scene, retaining the
+selected frame and camera. Switching layers pauses playback; the current layer
+disables scrubbing, playback and rate controls. Returning restores the inspected
+frame and slider together. A retail actor0011 JSON proposal (15 frames) passed
+exact layer/placement/base checks, playback pause, Return retaining the file,
+Restore, stale-source withdrawal and unchanged project state, with zero authoring
+requests or page errors. Screenshot inspected. This is separate browser evidence;
+retail animation timing, playback and gameplay visibility remain deferred.
