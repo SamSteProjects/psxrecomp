@@ -1,6 +1,6 @@
 # Legaia SDK feature matrix
 
-Current scene-editor status (2026-09-12):
+Current scene-editor status (2026-09-30):
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
@@ -334,3 +334,8 @@ passed including private retail records for two cold-run visibility tiles.
 Inspector JavaScript syntax and browser layout checks passed. The235-row retail
 table supports filtering by table, row or tile-coordinate tokens; matching and
 empty results were checked in the browser, including the two investigated tiles.
+
+September 30 regression checkpoint: retail-enabled Python SDK discovery passed
+352 tests in 200.919 seconds at `1021bff1`, with no skips reported. Browser-only
+viewport and path-query behavior retains separate focused verification. Runtime
+acceptance remains deferred; no green suite is treated as gameplay parity.

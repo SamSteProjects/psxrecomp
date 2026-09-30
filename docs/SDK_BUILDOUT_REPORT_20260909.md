@@ -8,7 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against source through `a094bc71`, plus the September 30 wireframe addition. The dated filename is retained for
+Reviewed against source through `1021bff1`, including the September 30 model
+and script authoring additions. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -40,11 +41,13 @@ old test counts below; those sections record what was proven at that time.
   town01 models passed exact JSON round trips; a retail normal-only edit and a
   combined model/animation package passed offline readback checks.
 
-The latest complete SDK suite passed **351 tests in140.443 seconds** against
-`6407ade7` (log: `local-output/sdk-20260909/sdk-model-json-regression-20260912.log`).
-Later file-preview, direct-vector, retail-reset, camera-location and exact-vector
-navigation additions have focused service/browser checks; the351-test run must
-not be represented as a test of those later commits.
+The latest retail-enabled SDK discovery suite passed **352 tests in 200.919
+seconds** against `1021bff1`, with exit code 0 and no skips reported. Log:
+`local-output/sdk-20260909/sdk-regression-20260930.log`. This supersedes the
+September 12 checkpoint of 351 tests at `6407ade7`. The discovery suite covers
+Python SDK tests; viewport wireframe/picking, object-translation controls and
+decoded-path UI have separate focused browser checks. A green suite does not
+establish gameplay or independent rendered animation acceptance.
 
 **Gameplay is deferred at the user's request.** These later changes did not
 launch the game. Full runtime parity, normal lighting, wider scene/animation

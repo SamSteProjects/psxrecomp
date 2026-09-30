@@ -12,7 +12,17 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 
 ## Validation scope
 
-The retail-enabled SDK discovery run at6407ade7 passed **351 tests in 140.443 seconds**. Log: `local-output/sdk-20260909/sdk-model-json-regression-20260912.log`. This supersedes the earlier349-test checkpoint. Subsequent model-file preview and direct-vector/reset/location/navigation work has focused checks; this full run predates those additions. Separate browser checks cover proposed animation inspection/return/import, model JSON downloads/import/Undo, and scalar build-report navigation with stale-hash rejection. Independent package checks cover model vertices, retail normal words and animation composition. Runtime and external Blender/Unity animated playback acceptance remain separate.
+The retail-enabled SDK discovery run at `1021bff1` passed **352 tests in
+200.919 seconds**, exit code 0, with no skips reported. Log:
+`local-output/sdk-20260909/sdk-regression-20260930.log`. This supersedes the
+September 12 checkpoint. It checks the current Python SDK suite; later model
+viewport controls and script-path UI remain covered by their separate focused
+browser checks. Those checks include proposed animation inspection/return/import,
+model JSON downloads/import/Undo, vector editing/reset/location, wireframe,
+vertex picking, object translation and decoded-path navigation. Independent
+package checks cover model vertices, retail normal words, animation composition
+and NPC_RUN selector bytes. Runtime and external Blender/Unity animated playback
+acceptance remain separate.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

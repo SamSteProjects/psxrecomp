@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Current retail-enabled SDK regression checkpoint
+
+- Revalidated checkout1021bff1; the existing Asset Browser already exposes initial/effective model and animation users with navigation. Continued with broader validation of recent serializer/project changes.
+- `C:/Python314/python.exe -m unittest discover -s integrations/legaia/tests -p test_*.py` with private LEGAIA_DISC_BIN and SDK/test PYTHONPATH passed352 tests in200.919seconds, terminal exit0, no skips reported. Log: ignored `local-output/sdk-20260909/sdk-regression-20260930.log`. Monitored the same live session through completion; slower duration was not treated as failure.
+- Refreshed current SDK/buildout/matrix validation sections and exact source checkpoint. Python suite coverage remains distinct from separate viewport/script-path browser checks and deferred gameplay/consumer rendering acceptance. No game launched or goal completion claimed.
+
+
 ### 2026-09-30 — NPC_RUN encoded move-selector authoring
 
 - Verified pinned executing-reference fixed byte layout and added NPC_RUN move_id editing (0–255) through the existing ScriptMovement project, serializer, append rebasing, audited Build and Inspector controls. No selector meaning is inferred; depth remains immutable.
