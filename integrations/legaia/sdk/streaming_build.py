@@ -26,12 +26,13 @@ def prepare_streaming_scene(project, scene_id):
     edits, dialogue_edits, transition_edits, map_components = {}, {}, {}, None
     assignments, assignment_donors, animations = {}, {}, {}
     movement_edits = {}
+    flag_edits = {}
     for identifier, components in deepcopy(project.overrides).items():
         if identifier == scene_id:
             map_components = components
             continue
         p2 = isinstance(identifier, str) and re.fullmatch(re.escape(scene_id) + r'/scripts/man-p2/[0-9]{4}', identifier) is not None
-        allowed = {'Dialogue', 'Transitions', 'ScriptMovement'} if p2 else {'Transform', 'ActorAppearance', 'Dialogue', 'Transitions', 'ScriptMovement', 'AnimationChannels'}
+        allowed = {'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags'} if p2 else {'Transform', 'ActorAppearance', 'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components, dict) or not components or set(components) - allowed:
             raise ProjectError('Streaming export currently supports actor positions, donor appearance, dialogue, transition entries, animation channels, scenery and collision; other authored components require further serialization support')
         if 'AnimationChannels' in components:
@@ -50,6 +51,9 @@ def prepare_streaming_scene(project, scene_id):
         if 'ScriptMovement' in components:
             project._validate_movements(identifier, components['ScriptMovement'])
             movement_edits.update(components['ScriptMovement']['entries'])
+        if 'ScriptFlags' in components:
+            project._validate_flags(identifier,components['ScriptFlags'])
+            flag_edits.update(components['ScriptFlags']['entries'])
         if 'Transitions' in components:
             project._validate_transitions(identifier, components['Transitions'])
             transition_edits.update(components['Transitions']['entries'])
@@ -97,6 +101,12 @@ def prepare_streaming_scene(project, scene_id):
             context = load_movement_authoring_context(project.disc_path, scene)
             context.patch(movement_edits, original=carrier.payload)
             candidate, movement_changes = context.patch_appended(candidate, movement_edits)
+        flag_changes = []
+        if flag_edits:
+            from importer.flag_authoring import load_flag_authoring_context
+            context = load_flag_authoring_context(project.disc_path,scene)
+            context.patch(flag_edits,original=carrier.payload)
+            candidate,flag_changes=context.patch_appended(candidate,flag_edits)
         # The raw loader advances by words. Pad only after all MAN edits so
         # record rebasing uses the original structural append result.
         padding = (-len(candidate)) % 4
@@ -129,7 +139,7 @@ def prepare_streaming_scene(project, scene_id):
         source_disc_sha256=disc_hash, source_prot_sha256=sha256(prot).hexdigest(),
         authored_state_key=key, imported_document_sha256=digest(document),
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
-        model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, transition_changes=transition_changes, movement_changes=movement_changes, existing_actor_appearance_changes=appearance_changes,
+        model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, man_padding_bytes=padding,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,

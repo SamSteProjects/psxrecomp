@@ -293,3 +293,14 @@ Browser temporary Z rotation, vector draft guard, Discard and exact Undo passed.
 This is a serialization diagnostic, not a finished visual mod. No game launched
 or package installed. Gameplay shape/lighting and animation compatibility remain
 deferred; the browser does not calculate normal-based lighting.
+
+
+Deferred flag operand diagnostic (2026-09-30): private project
+local-output/sdk-20260909/flag-authoring-project-20260930 contains town01 actor0002
+CFLAG_SET PC0x000C bit2-to3. Package under Builds/flag-output-verified has SHA256
+adeeb217b679908845e4e9e260e31b3d22cccceb3fc0f63ab33fd502459c99bf.
+Independent ZIP/decode readback proves the single intended MAN byte4772 change.
+This is a serialization diagnostic, not a story mod or a proven visible change.
+Do not infer flag meaning or launch automatically. Gameplay/story execution and
+runtime compatibility remain deferred. Compressed NPC append readback and raw
+streaming composition passed offline; editor Apply is still pending.

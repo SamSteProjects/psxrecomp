@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `f2f6e12c`, including model object
-quarter-turn authoring, plus the local flag serializer groundwork described
+Reviewed against committed source through `bb6f7390`, including model object
+quarter-turn authoring, plus the current flag Build integration described
 below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
@@ -20,8 +20,9 @@ source owners after an actor append. Fourteen focused flag/movement/project test
 September 30. Source-qualified ScriptFlags project commands, authored summaries,
 Undo/Redo and Save/Open are connected. A retail town01 actor0002 CFLAG_SET
 bit2-to3 probe changed exactly one MAN byte and survived project reopening.
-Editor Apply and Build composition remain pending; Build explicitly rejects
-these overrides rather than omitting them. Special context side effects, unresolved
+Ordinary Build and experimental compressed/raw-streaming exports now compose
+these operands with audited source offsets. Editor Apply remains pending.
+Independent package and rebuilt archive readbacks passed; see the update below. Special context side effects, unresolved
 local widths, system flags and branch selectors remain unsupported. The
 365-test regression checkpoint below predates this work, texture dependency
 inspection and model object rotations; their later checks are recorded
@@ -449,3 +450,21 @@ rejection, Undo/Redo, Save/Open and independent decompression of the actual ZIP
 member. Browser draft guard, Discard, Apply, readback and exact Undo passed.
 This addition follows the365-test checkpoint; gameplay shape/lighting/animation
 compatibility remains deferred. Browser lighting does not use normal vectors.
+
+
+Flag output integration (2026-09-30): ordinary Build now emits source-qualified
+flag operands with independent audit checks for source/hash/owner/offset, upper
+bits, requested bit, overlaps and unaudited changes. Build reports distinguish
+flag.bit from raw operand bytes and name the source instruction. Experimental
+compressed and raw-streaming exports rebase existing owners after NPC append;
+flag changes participate in scene export audits. Thirteen selected tests passed
+with the private retail disc and no skips (27.267s); sixteen focused project,
+serializer and merge tests also passed. Retail ZIP readback changed only MAN
+byte4772. Compressed town01 append reopened bit3 at rebased byte4775; raw dolk2
+append composed bit24-to25 with dialogue and transition edits. Private package:
+local-output/sdk-20260909/flag-authoring-project-20260930/Builds/flag-output-verified,
+SHA256 adeeb217b679908845e4e9e260e31b3d22cccceb3fc0f63ab33fd502459c99bf.
+Earlier foundation notes describing Build rejection are superseded by this
+integration. Editor Apply remains pending; story meaning, execution, runtime
+values and gameplay acceptance remain unverified. No game launched or package
+installed. The365-test checkpoint predates this addition.

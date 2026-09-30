@@ -43,8 +43,7 @@ class ProjectFlagsAuthoring(unittest.TestCase):
             with patch.object(restored, '_dialogue_context', side_effect=ImportError('stale source')):
                 with self.assertRaises(ImportError):restored.command(command)
             self.assertEqual(restored.overrides,authored)
-            restored.disc_path = 'unread-disc'
-            with self.assertRaisesRegex(BuildError,'cannot omit authored flag operands'):build_project(restored)
+            with self.assertRaisesRegex(BuildError,'verified user-owned retail disc'):build_project(restored)
             self.assertFalse((Path(directory)/'Builds').exists())
             restored.command(dict(type='clear_flag_bit', entity_id=ACTOR, flag_id=key))
             self.assertEqual(restored.overrides,{})

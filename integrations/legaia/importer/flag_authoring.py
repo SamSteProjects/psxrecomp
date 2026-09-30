@@ -15,7 +15,7 @@ LIMITATIONS=[
  'Local flag bits16..31, context SET8/CLEAR10, system selectors and flag branches remain unsupported.',
  'Opcode, extended dispatch target, upper operand bits, record lengths and branch bytes remain unchanged.',
  'Source-qualified flag indices are not universal runtime variables; story meaning, current values and execution remain unresolved.',
- 'Project history and persistence are supported; editor Apply and playable composition remain pending.'
+ 'Editor Apply remains pending; output serializes operands without proving story behavior or execution.'
 ]
 
 def validate_flag_values(values):
@@ -64,7 +64,7 @@ class FlagAuthoringContext:
                 try:_target(record,entry,node['pc'],report=report)
                 except ImportError as exc:unavailable.append(dict(pc=node['pc'],mnemonic=node['mnemonic'],reason=str(exc)));continue
                 targets.append(dict(semantic_id='script://'+owner.removeprefix('scene://')+f"/flag-bit/{node['pc']:04x}",
-                  pc=node['pc'],mnemonic=node['mnemonic'],target_context=node['target_context'],values={'bit':node['operands']['bit']},
+                  pc=node['pc'],owner_id=owner,decoded_byte_offset=offset+node['pc']+(2 if node['target_context'] is not None else 1),mnemonic=node['mnemonic'],target_context=node['target_context'],values={'bit':node['operands']['bit']},
                   maximum=15 if node['mnemonic'].startswith('LFLAG_') else 31,source_record_sha256=hashlib.sha256(record).hexdigest()))
         return dict(supported=bool(targets),targets=targets,unavailable=unavailable,
           reason='Flag authoring requires no unknown/conflicting path stops' if report['stops'] else None,

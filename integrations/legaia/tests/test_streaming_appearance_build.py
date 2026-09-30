@@ -26,6 +26,14 @@ class StreamingAppearanceBuild(unittest.TestCase):
                     "script://dolk2/actors/man-p1/0003/dialogue/0017/run/0018": "SDK"}}},
                 "scene://dolk2/scripts/man-p2/0000": {"Transitions": {"entries": {
                     "script://dolk2/scripts/man-p2/0000/transition/001a": {"entry_x_encoded": 55}}}}}
+            from importer.flag_authoring import load_flag_authoring_context
+            context = load_flag_authoring_context(project.disc_path, 'dolk2')
+            target = next(target for actor in project.imports['scene://dolk2']['actors']
+                          for target in context.options(actor['semantic_id'])['targets']
+                          if target['mnemonic'] == 'CFLAG_SET' and target['values']['bit'] == 24)
+            bit = (target['values']['bit'] + 1) % 32
+            project.command(dict(type='set_flag_bit', entity_id=target['owner_id'],
+                                 flag_id=target['semantic_id'], values={'bit':bit}))
             source, prepared = prepare_streaming_scene(project, "scene://dolk2")
             output, audit = prepare_draft_archive(project, draft_id)
             self.assertEqual(audit["selected_draft_id"], draft_id)
@@ -42,6 +50,11 @@ class StreamingAppearanceBuild(unittest.TestCase):
                 at = change["decoded_byte_offset"]
                 self.assertEqual(candidate[at:at + change["byte_length"]], bytes.fromhex(change["after_hex"]))
                 self.assertGreater(at, change["source_decoded_byte_offset"])
+            self.assertEqual(len(prepared['flag_changes']),1)
+            flag = prepared['flag_changes'][0]
+            self.assertEqual(candidate[flag['decoded_byte_offset']] & 31, bit)
+            self.assertGreater(flag['decoded_byte_offset'],flag['source_decoded_byte_offset'])
+            self.assertEqual(audit['scenes']['scene://dolk2']['flag_changes'],prepared['flag_changes'])
             self.assertTrue(prepared["transition_changes"])
             self.assertEqual(prepared["actor_changes"]["drafts"][0]["draft_id"], draft_id)
 

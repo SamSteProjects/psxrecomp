@@ -214,6 +214,22 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Flag operands through ordinary and experimental output
+
+Previous turn made progress in bb6f7390. Connected ScriptFlags to guarded MAN
+Build composition, bit-level reports and package scope labels. Experimental
+compressed/raw streaming exporters preserve and rebase source owner operands
+and include flag audits. Sixteen focused checks passed; thirteen selected tests
+with retail input passed in27.267s without skips, including updated dolk2 append
+composition. Initial retail harness assumed GFLAG_SET coverage and top-level
+multiscene audit keys; corrected to observed CFLAG_SET24 and scene-scoped audit.
+Compressed readback harness corrected constructor usage to the existing memory
+image adapter, then reopened town01 bit3 at4775 after append. Actual ZIP readback
+verified single original MAN offset4772; package SHA recorded in gameplay queue.
+No game launched or package installed. Editor Apply remains next, full SDK goal
+active, runtime/story acceptance deferred.
+
+
 ### 2026-09-30 — Source-qualified flag project authoring foundation
 
 Previous turn refreshed authoritative documentation. Connected validated flag-bit

@@ -206,3 +206,21 @@ local-output/sdk-20260909/flag-authoring-project-20260930. Editor Apply and Buil
 composition remain pending. Build explicitly rejects ScriptFlags instead of
 silently dropping them. This is foundation work, not a completed authoring
 workflow or gameplay acceptance; the365-test checkpoint predates it.
+
+
+Flag output integration (2026-09-30): ordinary Build now emits source-qualified
+flag operands with independent audit checks for source/hash/owner/offset, upper
+bits, requested bit, overlaps and unaudited changes. Build reports distinguish
+flag.bit from raw operand bytes and name the source instruction. Experimental
+compressed and raw-streaming exports rebase existing owners after NPC append;
+flag changes participate in scene export audits. Thirteen selected tests passed
+with the private retail disc and no skips (27.267s); sixteen focused project,
+serializer and merge tests also passed. Retail ZIP readback changed only MAN
+byte4772. Compressed town01 append reopened bit3 at rebased byte4775; raw dolk2
+append composed bit24-to25 with dialogue and transition edits. Private package:
+local-output/sdk-20260909/flag-authoring-project-20260930/Builds/flag-output-verified,
+SHA256 adeeb217b679908845e4e9e260e31b3d22cccceb3fc0f63ab33fd502459c99bf.
+Earlier foundation notes describing Build rejection are superseded by this
+integration. Editor Apply remains pending; story meaning, execution, runtime
+values and gameplay acceptance remain unverified. No game launched or package
+installed. The365-test checkpoint predates this addition.
