@@ -85,6 +85,39 @@ class SceneFlags(unittest.TestCase):
         result["groups"][0]["source_record"].clear()
         self.assertEqual(source, before)
 
+    def test_unverified_authored_annotations_fail_closed(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from importer.core import ImportError
+        from sdk.project import ProjectError
+        from sdk.resources import _flag_edits
+        owner='scene://fixture/actors/man-p1/0001'
+        key='script://fixture/actors/man-p1/0001/flag-bit/0005'
+        project=SimpleNamespace(disc_path='synthetic',imports={'scene://fixture':{'scene':{'name':'fixture'}}},
+                                overrides={owner:{'ScriptFlags':{'entries':{key:{'bit':3}}}}},_validate_flags=Mock())
+        before=deepcopy(project.overrides)
+        with patch('importer.flag_authoring.load_flag_authoring_context',side_effect=ImportError('stale source')):
+            with self.assertRaises(ProjectError):_flag_edits(project,'scene://fixture')
+        self.assertEqual(project.overrides,before)
+
+    def test_authored_operands_do_not_regroup_or_mutate_retail(self):
+        source = catalog(b"\x2b\x02\x2b\x03")
+        before = deepcopy(source)
+        key = 'script://fixture/actors/man-p1/0001/flag-bit/0005'
+        result = build_flag_index(source, {key: {'bit':3}})
+        self.assertEqual(result['grouping_layer'],'retail')
+        self.assertEqual(result['authored_reference_count'],1)
+        self.assertEqual([g['index'] for g in result['groups']],[2,3])
+        ref=result['groups'][0]['references'][0]
+        self.assertEqual((ref['retail_index'],ref['authored_index'],ref['effective_index']),(2,3,3))
+        self.assertIsNone(ref['runtime_value'])
+        self.assertEqual(source,before)
+        result['groups'][0]['references'][0]['effective_index']=10
+        self.assertEqual(source,before)
+        from importer.core import ImportError
+        with self.assertRaises(ImportError):build_flag_index(source,{key[:-4]+'ffff':{'bit':3}})
+        with self.assertRaises(ImportError):build_flag_index(source,{key:{'bit':True}})
+
     def test_unknown_paths_do_not_supply_references(self):
         result = build_flag_index(catalog(b"\x2a\x2b\x02"))
         self.assertEqual(result["reference_count"], 0)

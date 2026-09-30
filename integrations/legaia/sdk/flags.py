@@ -35,7 +35,9 @@ def observed_node_flags(status: dict, scene_id: str) -> dict:
             "note": "Captured node flag words only; no current value or script-owner binding is asserted."}
 
 
-def build_flag_index(catalog: dict) -> dict:
+def build_flag_index(catalog: dict, authored: dict | None = None) -> dict:
+    authored = authored or {}
+    consumed = set()
     groups = {}
     for script in catalog["assets"]:
         if script["asset_kind"] != "script":
@@ -58,8 +60,26 @@ def build_flag_index(catalog: dict) -> dict:
                     "runtime_binding": "unresolved", "runtime_value": None,
                     "references": [],
                 }
-            groups[identity]["references"].append(deepcopy(reference))
+            row = deepcopy(reference)
+            supported = reference['mnemonic'] in tuple(f'{bank}_{op}' for bank in ('LFLAG','GFLAG','CFLAG') for op in ('SET','CLEAR','TEST'))
+            key = script['semantic_id'] + f"/flag-bit/{reference['pc']:04x}" if supported else None
+            row.update(retail_index=reference['index'], authored_index=None,
+                       effective_index=reference['index'], flag_operand_id=key)
+            if key in authored:
+                from importer.flag_authoring import validate_flag_values
+                from importer.core import ImportError
+                bit = validate_flag_values(authored[key])
+                if reference['mnemonic'] not in tuple(f'{bank}_{op}' for bank in ('LFLAG','GFLAG','CFLAG') for op in ('SET','CLEAR','TEST')):
+                    raise ImportError('Authored flag reference is not a supported bit instruction')
+                row.update(authored_index=bit,effective_index=bit)
+                consumed.add(key)
+            groups[identity]["references"].append(row)
+    if consumed != set(authored):
+        from importer.core import ImportError
+        raise ImportError('Authored flag operand is absent from the verified reference catalog')
     return {
+        "authored_reference_count": len(consumed),
+        "grouping_layer": "retail",
         "schema_version": "legaia.flag-references.v1", "read_only": True,
         "scene_id": "scene://" + catalog["scene"], "groups": list(groups.values()),
         "reference_count": sum(len(group["references"]) for group in groups.values()),

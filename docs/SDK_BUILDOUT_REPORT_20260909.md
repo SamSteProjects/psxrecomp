@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `dc4c6a1e`, including model object
-quarter-turn authoring, plus the current flag Inspector integration described
+Reviewed against committed source through `4e4ddae1`, including model object
+quarter-turn authoring, plus the current authored flag-reference integration described
 below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
@@ -487,3 +487,20 @@ flag-editor.png under local-output/sdk-20260909. Earlier pending-Apply notes are
 superseded. Supported operand editing is connected through project persistence
 and output; wider flag/control-flow authoring and gameplay acceptance remain
 incomplete. No game launched. Temporary browser/server stopped.
+
+
+Authored flag reference layers (2026-09-30): scene/project flag browsers now show
+retail, authored and effective operands for source-qualified flag edits. Groups
+keep their retail identity/index; matching effective indices never merge scripts,
+scenes or unresolved contexts. Search includes effective operands. Authored
+annotations pass the source serializer first; missing/stale source or unmatched
+catalog identities reject, and project-wide discovery rejects state changes
+during collection. No runtime values or execution are inferred. Twelve focused
+flag/reference/project tests passed. Retail scene/project discovery retained
+1249references with one authored operand (town01 actor0002 CFLAG_SET2-to3).
+Browser layer display, retail grouping and exact instruction navigation passed
+without page errors; screenshot inspected. Private evidence:
+local-output/sdk-20260909/flag-authoring-project-20260930/flag-reference-browser-check.json
+and flag-reference-layers.png. No edits/history were created by discovery;
+temporary browser/server stopped. Gameplay remains deferred. The365-test
+checkpoint predates this work.

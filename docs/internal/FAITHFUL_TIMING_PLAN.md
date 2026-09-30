@@ -214,6 +214,20 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Authored flag operands in reference discovery
+
+Previous turn progressed in4e4ddae1. Scene/project flag references now annotate
+validated authored/effective indices while retaining retail grouping. Effective
+search and exact instruction links expose edited relationships without claiming
+runtime variables/values. Source serializer validation fails closed; project
+collection rejects authored state changes. Twelve focused tests passed in0.676s;
+retail views retained1249references with one authored operand. Browser scene and
+project layers, retail grouping and instruction navigation passed with no page
+errors; screenshot inspected. Private evidence retained with flag-authoring
+project. No project commands/game launch/install; browser/server stopped.
+Full SDK goal active; manual gameplay deferred and offline work remains.
+
+
 ### 2026-09-30 — Flag operands in the script Inspector
 
 Previous turn made progress in dc4c6a1e. Added source-qualified flag authoring

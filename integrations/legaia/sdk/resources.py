@@ -100,6 +100,27 @@ def refresh_resource_catalog(project) -> dict:
     return project.assets.register_resources(project.active_scene, key, records, limitations)
 
 
+def _flag_edits(project, scene_id):
+    """Validate authored references against the source serializer before annotation."""
+    requested = {}
+    for owner, components in deepcopy(getattr(project, 'overrides', {})).items():
+        if not owner.startswith(scene_id + '/') or 'ScriptFlags' not in components:
+            continue
+        project._validate_flags(owner, components['ScriptFlags'])
+        for key, values in components['ScriptFlags']['entries'].items():
+            if key in requested:
+                raise ProjectError('Flag operand has multiple authored owners')
+            requested[key] = values
+    if requested:
+        from importer.flag_authoring import load_flag_authoring_context
+        try:
+            context = load_flag_authoring_context(project.disc_path, project.imports[scene_id]['scene']['name'])
+            context.patch(requested)
+        except RetailImportError as exc:
+            raise ProjectError("Authored flag operands failed source verification: " + str(exc)) from exc
+    return requested
+
+
 def scene_flag_index(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from .flags import build_flag_index
@@ -107,9 +128,10 @@ def scene_flag_index(project) -> dict:
     with _disc_context(project.disc_path):
         _verify(project, document)
         catalog = load_script_asset_catalog(project.disc_path, document["scene"]["name"])
+        index = build_flag_index(catalog, _flag_edits(project, project.active_scene))
     if key != source_key(project):
         raise ProjectError("Scene source changed during flag discovery; refresh again")
-    return {**build_flag_index(catalog), "source_key": key}
+    return {**index, "source_key": key}
 
 
 def project_flag_index(project) -> dict:
@@ -121,19 +143,22 @@ def project_flag_index(project) -> dict:
     if not project.disc_path or not project.imports or len(project.imports) > 64:
         raise ProjectError('Project flag discovery requires a disc and 1–64 imported scenes')
     key = hashlib.sha256(canonical_json(project.imports).encode("utf-8")).hexdigest()
+    authored_snapshot = deepcopy(getattr(project, "overrides", {}))
     groups, scenes = [], []
+    authored_count = 0
     coverage = dict(script_count=0,partial_script_count=0,unavailable_script_count=0)
     with _disc_context(project.disc_path):
         for scene_id, document in sorted(project.imports.items()):
             _verify(project,document)
             name = document['scene']['name']
             try:
-                index = build_flag_index(load_script_asset_catalog(project.disc_path,name))
+                index = build_flag_index(load_script_asset_catalog(project.disc_path,name), _flag_edits(project,scene_id))
             except RetailImportError as exc:
                 scenes.append(dict(scene_id=scene_id,scene_name=name,status='unavailable',reason=str(exc)))
                 continue
             if index['scene_id'] != scene_id:
                 raise ProjectError('Flag catalog identity differs from the imported scene')
+            authored_count += index['authored_reference_count']
             for group in index['groups']:
                 groups.append({**group,'scene_id':scene_id,'scene_name':name})
             if len(groups) > 32768 or sum(len(g['references']) for g in groups) > 262144:
@@ -144,13 +169,15 @@ def project_flag_index(project) -> dict:
                                reference_count=index['reference_count'],coverage=index['coverage']))
     if key != hashlib.sha256(canonical_json(project.imports).encode("utf-8")).hexdigest():
         raise ProjectError('Imported project sources changed during flag discovery')
+    if authored_snapshot != getattr(project, 'overrides', {}):
+        raise ProjectError('Authored project state changed during flag discovery')
     return dict(schema_version='legaia.project-flag-references.v1',read_only=True,
                 project_path=str(project.root),source_key=key,scene_ids=sorted(project.imports),
-                groups=groups,scenes=scenes,coverage=coverage,
+                groups=groups,scenes=scenes,coverage=coverage,authored_reference_count=authored_count,grouping_layer='retail',
                 reference_count=sum(len(g['references']) for g in groups),
                 limitations=['Encoded operands retain separate scene/script identities; matching bank/index does not prove one runtime variable.',
                              'Only imported scenes and decoded instructions are covered; unavailable and partial scripts retain their coverage limits.',
-                             'Retail operands only; no current flag values, story names, runtime writes or path execution are inferred.'])
+                             'Retail grouping with separately validated authored/effective operands; no current flag values, story names, runtime writes or path execution are inferred.'])
 
 
 def scene_transition_graph(project) -> dict:
