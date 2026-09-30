@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Shared model proposal impact preview
+
+Previous goal turn progressed with9aacbae0 proposed-file scene inspection. Added
+all supported model instances scope to transform/file proposals, grouping geometry
+by verified source pose keys and retaining unavailable instances explicitly.
+Client verifies each binding; source matrices/base/project remain unchanged.
+Camera frames affected instance bounds. Ten focused tests passed, including two
+pose groups and unavailable instances. Retail browser model0074 all11 supported
+placements used one geometry; placement/unrelated/base/state preservation and
+Return/Restore passed with zero page errors. File all-instance selector and strict
+boolean scope rejection passed on model0009. Evidence shared-shape-* and
+shared-file-scene-* under model-scale-project-20260930. Initial broad camera
+framing narrowed to affected instances and rechecked; screenshot inspected.
+Temporary browser/server stopped. No game/package install;
+full SDK active,383-test checkpoint predates feature, gameplay deferred.
+
+
 ### 2026-09-30 — Proposed TMD/OBJ/JSON files in the scene
 
 Previous goal turn progressed with4fd4bd15 source-bound scene transform proposals.

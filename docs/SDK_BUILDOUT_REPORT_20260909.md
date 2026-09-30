@@ -8,7 +8,7 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `4fd4bd15`, including model object
+Reviewed against committed source through `9aacbae0`, including model object
 quarter-turn and uniform-scale authoring, flag operands/reference layers, the
 wait Inspector and instruction-to-operand navigation described below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
@@ -667,3 +667,26 @@ local-output/sdk-20260909/model-scale-project-20260930/model-file-scene-browser-
 model-file-scene-large-check.json and model-file-scene-preview.png. Temporary
 browser/server stopped; no game or package installation. Gameplay placement and
 visibility remain unverified;383-test checkpoint predates this addition.
+
+
+Shared model proposal impact (2026-09-30): object-transform and model-file scene
+inspection now offer All supported model instances. Each instance retains its
+existing placement and pose; proposed geometries are grouped by the source scene
+geometry key rather than duplicated per placement. Nonrenderable matching instances
+are reported as unavailable and remain unchanged. Unsupported renderable pose
+bindings reject the proposal. The client verifies instance/source-geometry bindings,
+isolates proposal assets from the immutable base and frames affected instance bounds.
+Restore and Return retain the existing authoring workflow. Ten focused file/model/
+pose checks passed, including two distinct synthetic pose geometries, repeated
+placements and unavailable instances. Retail browser town01 model0074 previewed
+all11 supported placements using one geometry; placements, unrelated entities,
+base scene/project state and exact Return/Restore passed with zero page errors.
+The JSON file all-instance selector and strict boolean scope rejection also passed
+on model0009. Private evidence: local-output/sdk-20260909/model-scale-project-20260930/
+shared-shape-browser-check.json, shared-shape-preview.png and
+shared-file-scene-browser-check.json. Initial camera framing included unrelated
+scene bounds; adjusted to affected instances and rechecked. Screenshot inspected
+for proposal controls; scene occlusion and retail visibility remain approximate.
+Temporary browser/server stopped. No game or package
+installation.383-test checkpoint predates this addition; gameplay acceptance
+remains deferred and the full SDK remains incomplete.

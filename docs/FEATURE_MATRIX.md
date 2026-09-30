@@ -614,3 +614,10 @@ can be inspected before Apply on a verified instance and pose, with exact Restor
 and Return retaining the selected file. Retail browser/file-size/hash/state checks
 passed without authored changes. Gameplay acceptance remains deferred;383-test
 checkpoint predates this addition.
+
+
+Shared model proposal impact (2026-09-30): all supported scene instances can be
+previewed before Apply for transforms or replacement files, with distinct source
+poses, preserved placements and explicit unavailable counts. Retail model0074
+all11 placements, Restore/Return and unchanged state passed. Focused multi-pose
+and browser checks passed; gameplay acceptance remains deferred.

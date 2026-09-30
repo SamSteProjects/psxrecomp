@@ -2522,6 +2522,31 @@ function scenePoseDocument(base,preview,entityId,frame){
   result.assets.push({geometry_key:key,asset_id:preview.semantic_id,preview:geometry});
   return {document:result,geometryKey:key};
 }
+function sceneShapeProposalDocument(base,report,entityId){
+  if(report.instance_scope!=='all_model_instances')return scenePoseDocument(base,report.preview,entityId,null);
+  if(!Array.isArray(report.proposal_assets)||!Array.isArray(report.proposal_instances)||!report.proposal_instances.length||report.proposal_assets.length>128||report.proposal_instances.length>base.entities.length)throw new Error('Invalid shared model proposal');
+  const result=structuredClone(base),seen=new Set(),assets=new Map(report.proposal_assets.map(a=>[a.geometry_key,a]));
+  if(assets.size!==report.proposal_assets.length)throw new Error('Ambiguous proposed geometry');
+  for(const row of report.proposal_instances){
+    const target=result.entities.find(e=>e.entity_id===row.entity_id),geometry=assets.get(row.geometry_key);
+    if(seen.has(row.entity_id)||!target?.renderable||target.asset_id!==report.asset_id||target.geometry_key!==row.source_geometry_key||geometry?.source_geometry_key!==row.source_geometry_key||geometry.asset_id!==report.asset_id)throw new Error('Shared proposal instance binding differs from the scene');
+    seen.add(row.entity_id);target.geometry_key=row.geometry_key;
+  }
+  const used=new Set(result.entities.map(e=>e.geometry_key));result.assets=result.assets.filter(a=>used.has(a.geometry_key));
+  if(result.assets.length+assets.size>128)throw new Error('Shared model proposal exceeds scene geometry capacity');
+  for(const geometry of assets.values())result.assets.push(geometry);
+  return {document:result,geometryKey:report.proposal_assets[0].geometry_key};
+}
+function frameShapeProposal(report,entityId){
+  if(report.instance_scope!=='all_model_instances'){const target=scenePreview.entities.find(e=>e.entity_id===entityId);frame({id:entityId,components:{Transform:{imported:{position:target.position}}}});return;}
+  const points=report.proposal_instances.flatMap(row=>sceneRenderer.bounds(sceneView().positions,row.entity_id,hiddenSceneEntities()));
+  if(!points.length)return;
+  const min={x:Infinity,y:Infinity,z:Infinity},max={x:-Infinity,y:-Infinity,z:-Infinity};
+  for(const point of points)for(const axis of ['x','y','z']){min[axis]=Math.min(min[axis],point[axis]);max[axis]=Math.max(max[axis],point[axis]);}
+  for(const axis of ['x','y','z'])camera.target[axis]=(min[axis]+max[axis])/2;
+  camera.distance=Math.max(20,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*2.2);cameraRevision++;draw();
+}
+function sceneShapeProposalLabel(report,entityId){return report.instance_scope==='all_model_instances'?`${report.proposal_instances.length} supported instances · ${report.unavailable_instances.length} unavailable`:entityId;}
 function updateScenePoseFrame(frame){
   if(!scenePose||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;
   if(sceneRenderer.updateVertices(scenePose.geometryKey,scenePose.preview.frames[frame].vertices)){
@@ -2627,31 +2652,32 @@ async function openModelVectors(initial=null){
     if(!objectProposalCanvas){objectProposalCanvas=window.document.createElement('canvas');objectProposalCanvas.style.cssText='display:block;width:100%;height:300px;touch-action:none';objectProposalCanvas.setAttribute('aria-label','Object transform preview');}
     proposal.append(objectProposalCanvas);form.append(proposal);
     let proposalReport=null,proposalRequest=0,proposalView=null,proposalDrag=null;
-    const sceneProposal=window.document.createElement('div');sceneProposal.innerHTML='<label>Scene instance<select aria-label="Proposed shape scene instance"></select></label><button type="button">Inspect proposed shape in scene</button><p>Inspection affects one selected instance only. Applying the model changes its shared asset. Source placement and supported pose are retained; gameplay visibility remains unverified.</p>';proposal.append(sceneProposal);
+    const sceneProposal=window.document.createElement('div');sceneProposal.innerHTML='<label>Scene instance<select aria-label="Proposed shape scene instance"></select></label><button type="button">Inspect proposed shape in scene</button><p>Choose one instance or all supported instances. Applying the model changes its shared asset. Source placement and supported pose are retained; gameplay visibility remains unverified.</p>';proposal.append(sceneProposal);
     const instanceSelect=sceneProposal.querySelector('select'),inspectSceneButton=sceneProposal.querySelector('button');
     const updateProposalInstances=()=>{
       instanceSelect.replaceChildren();
       const available=scenePreviewCurrent()&&sceneRepresentation==='authored'?(scenePreview.entities??[]).filter(e=>e.asset_id===asset&&e.renderable):[];
       for(const item of available){const option=window.document.createElement('option');option.value=item.entity_id;option.textContent=item.name??item.entity_id;instanceSelect.append(option);}
+      if(available.length){const option=window.document.createElement('option');option.value='all-instances';option.textContent=`All supported model instances (${available.length})`;instanceSelect.append(option);}
       if(available.some(e=>e.entity_id===environmentSelection))instanceSelect.value=environmentSelection;
       inspectSceneButton.disabled=!available.length;sceneProposal.hidden=!available.length;
     };
     inspectSceneButton.onclick=async()=>{
       if(busy||!currentContext()||!proposalReport||!scenePreviewCurrent()||sceneRepresentation!=='authored')return;
-      const inspected=proposalReport,request=proposalRequest,loadedKey=sceneKey,entityId=instanceSelect.value;
+      const inspected=proposalReport,request=proposalRequest,loadedKey=sceneKey,allInstances=instanceSelect.value==='all-instances',entityId=allInstances?instanceSelect.options[0].value:instanceSelect.value;
       setBusy(true);
       try{
-        const response=await fetch('/api/model-object-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,object_index:inspected.object_index,operation:inspected.operation,values:inspected.values,expected_sha256:source.effective_sha256,entity_id:entityId,source_key:scenePreview.project_source_key})}),report=await response.json();
+        const response=await fetch('/api/model-object-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,object_index:inspected.object_index,operation:inspected.operation,values:inspected.values,expected_sha256:source.effective_sha256,entity_id:entityId,all_instances:allInstances,source_key:scenePreview.project_source_key})}),report=await response.json();
         if(request!==proposalRequest||proposalReport!==inspected||!currentContext()||!scenePreviewCurrent()||loadedKey!==sceneKey)return;
         if(!response.ok||report.error)throw new Error(report.error||'Scene proposal failed');
         if(report.entity_id!==entityId||report.asset_id!==asset||report.project_source_key!==scenePreview.project_source_key||report.proposed_sha256!==inspected.proposed_sha256)throw new Error('Scene proposal differs from inspected geometry');
-        stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,report.preview,entityId,null),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
+        stopScenePosePlayback();const isolated=sceneShapeProposalDocument(scenePreview,report,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
         const returnToVectors=()=>{if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey)return false;$('model-dialog').showModal();vectorDialog.showModal();return true;};
         scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:report.preview,returnToFile:returnToVectors,name:'Proposed shape · not applied'};
-        scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed shape · not applied · ${entityId} · ${inspected.operation}`;
+        scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed shape · not applied · ${sceneShapeProposalLabel(report,entityId)} · ${inspected.operation}`;
         for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
         const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to model vectors';
-        vectorDialog.close();$('model-dialog').close();const target=scenePreview.entities.find(e=>e.entity_id===entityId);frame({id:entityId,components:{Transform:{imported:{position:target.position}}}});draw();
+        vectorDialog.close();$('model-dialog').close();frameShapeProposal(report,entityId);draw();
       }catch(error){if(currentContext()){clearScenePose();form.querySelector('[data-error]').textContent=error.message;draw();}}finally{setBusy(false);}
     };
 
@@ -2798,24 +2824,25 @@ async function readShapeFile(previewOnly=false){
       if(instances.length){
         const label=document.createElement('label'),select=document.createElement('select'),inspect=document.createElement('button');label.textContent='Scene instance';select.setAttribute('aria-label','Model file scene instance');label.append(select);
         for(const instance of instances){const option=document.createElement('option');option.value=instance.entity_id;option.textContent=instance.name??instance.entity_id;select.append(option);}
+        const allOption=document.createElement('option');allOption.value='all-instances';allOption.textContent=`All supported model instances (${instances.length})`;select.append(allOption);
         if(instances.some(e=>e.entity_id===environmentSelection))select.value=environmentSelection;
         inspect.type='button';inspect.textContent='Inspect proposed model file in scene';$('shape-file-report').append(label,inspect);
         const loadedKey=sceneKey,sceneSource=scenePreview.project_source_key;
         inspect.onclick=async()=>{
           if(busy||!currentFile()||!scenePreviewCurrent()||loadedKey!==sceneKey||sceneRepresentation!=='authored')return;
-          const entityId=select.value;setBusy(true);
+          const allInstances=select.value==='all-instances',entityId=allInstances?select.options[0].value:select.value;setBusy(true);
           try{
-            const response=await fetch('/api/model-file-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,format:json?'json':obj?'obj':'tmd',content_base64:encoded,entity_id:entityId,source_key:sceneSource,proposed_sha256:report.proposed_sha256})}),posed=await response.json();
+            const response=await fetch('/api/model-file-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,format:json?'json':obj?'obj':'tmd',content_base64:encoded,entity_id:entityId,all_instances:allInstances,source_key:sceneSource,proposed_sha256:report.proposed_sha256})}),posed=await response.json();
             if(!currentFile()||!scenePreviewCurrent()||loadedKey!==sceneKey)return;
             if(!response.ok||posed.error)throw new Error(posed.error||'Model file scene inspection failed');
             if(posed.entity_id!==entityId||posed.asset_id!==asset||posed.project_source_key!==sceneSource||posed.proposed_sha256!==report.proposed_sha256)throw new Error('Scene file proposal differs from inspection');
-            stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,posed.preview,entityId,null),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
+            stopScenePosePlayback();const isolated=sceneShapeProposalDocument(scenePreview,posed,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
             const returnToShapeFile=()=>{if(shapeDraft!==draft||asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey||state.project.mode!=='edit')return false;draft.sceneInspection=false;$('model-dialog').showModal();updateShapeDraft();$('shape-status').textContent=`Selected ${file.name} · not applied. Preview or Apply revalidates the file.`;return true;};
             scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:posed.preview,name:'Proposed model file · not applied',returnToFile:returnToShapeFile,afterRestore:returnToShapeFile};
-            scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed model file · not applied · ${entityId}`;
+            scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed model file · not applied · ${sceneShapeProposalLabel(posed,entityId)}`;
             for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
             const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to model file';
-            draft.sceneInspection=true;$('model-dialog').close();const target=scenePreview.entities.find(e=>e.entity_id===entityId);frame({id:entityId,components:{Transform:{imported:{position:target.position}}}});draw();
+            draft.sceneInspection=true;$('model-dialog').close();frameShapeProposal(posed,entityId);draw();
           }catch(error){if(currentFile()){clearScenePose();$('model-error').textContent=error.message;draw();}}finally{setBusy(false);}
         };
       }

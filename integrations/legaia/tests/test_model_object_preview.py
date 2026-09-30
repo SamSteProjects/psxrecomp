@@ -51,6 +51,36 @@ class ModelObjectPreviewTests(unittest.TestCase):
         geometry['pose']={}
         with self.assertRaises(ImportError):preview_shape_instance(scene,'model','one',replacement,{})
 
+    def test_shared_scene_proposal_groups_distinct_poses_and_reports_unavailable(self):
+        from copy import deepcopy
+        from sdk.scene_preview import preview_shape_instances
+        from importer.animation import pose_vertices
+        source=test_model_rotation.ModelRotationTests().source();digest=sha256(source).hexdigest()
+        first=decode_tmd(source);second=decode_tmd(source)
+        transforms=[dict(object_index=0,translation=[3,4,5],rotation_psx=[0,0,1024])]
+        second.update(posed=True,pose={'object_transforms':transforms})
+        scene={'entities':[{'entity_id':'one','asset_id':'model','renderable':True,'geometry_key':'first'},
+                           {'entity_id':'two','asset_id':'model','renderable':True,'geometry_key':'first'},
+                           {'entity_id':'three','asset_id':'model','renderable':True,'geometry_key':'second'},
+                           {'entity_id':'missing','asset_id':'model','renderable':False,'reason':'Unknown pose'},
+                           {'entity_id':'other','asset_id':'other','renderable':True,'geometry_key':'first'}],
+               'assets':[{'geometry_key':'first','asset_id':'model','preview':first},
+                         {'geometry_key':'second','asset_id':'model','preview':second}]}
+        baseline=deepcopy(scene);replacement=translate_shape_object(source,source,digest,0,[12,-7,3])
+        report=preview_shape_instances(scene,'model',replacement,{})
+        self.assertEqual(len(report['proposal_assets']),2)
+        self.assertEqual(len(report['proposal_instances']),3)
+        self.assertEqual(report['proposal_instances'][0]['geometry_key'],report['proposal_instances'][1]['geometry_key'])
+        self.assertNotEqual(report['proposal_instances'][0]['geometry_key'],report['proposal_instances'][2]['geometry_key'])
+        local=decode_tmd(replacement)['vertices']
+        self.assertEqual(report['proposal_assets'][0]['preview']['vertices'],local)
+        self.assertEqual(report['proposal_assets'][1]['preview']['vertices'],pose_vertices(local,second['objects'],transforms))
+        self.assertEqual(report['unavailable_instances'],[{'entity_id':'missing','reason':'Unknown pose'}])
+        self.assertEqual(scene,baseline)
+        with self.assertRaises(ProjectError):preview_shape_instances(scene,'absent',replacement,{})
+        second['pose']={}
+        with self.assertRaises(ImportError):preview_shape_instances(scene,'model',replacement,{})
+
     def test_translation_rejects_stale_types_and_overflow(self):
         source=test_model_rotation.ModelRotationTests().source();digest=sha256(source).hexdigest()
         self.assertEqual(translate_shape_object(source,source,digest,0,[0,0,0]),source)

@@ -295,8 +295,8 @@ class EditorServer(ThreadingHTTPServer):
             atomic_write(output / ".gitignore", b"*\n")
         return result
 
-    def scene_shape_proposal(self, asset_id: str, entity_id: str, replacement: bytes, report: dict, key: str) -> dict:
-        from .scene_preview import source_key, preview_shape_instance
+    def scene_shape_proposal(self, asset_id: str, entity_id: str, replacement: bytes, report: dict, key: str, all_instances: bool = False) -> dict:
+        from .scene_preview import source_key, preview_shape_instance, preview_shape_instances
         from importer.scene_animation import load_scene_actor_animation_catalog
         from importer.environment import load_environment_preview_catalog
         from .terrain_preview import terrain_preview
@@ -306,6 +306,8 @@ class EditorServer(ThreadingHTTPServer):
             lambda asset, *args, **kwargs: self.model_preview(asset, *args, effective_shape=True, **kwargs),
             load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
         report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,{'asset_sha256':report['proposed_sha256']})
+        if all_instances:
+            report.update(preview_shape_instances(scene,asset_id,replacement,{'asset_sha256':report['proposed_sha256']}))
         report.pop('current_preview',None)
         report.update(entity_id=entity_id,scene_id=scene['scene_id'],project_source_key=key)
         if source_key(self.project) != key:
@@ -535,14 +537,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, self.server.state())
                     return
                 if route == '/api/model-object-scene-preview':
-                    if set(body) != {'asset_id','object_index','operation','values','expected_sha256','entity_id','source_key'} or not isinstance(body['asset_id'],str) or not isinstance(body['entity_id'],str):
+                    if set(body) - {'all_instances'} != {'asset_id','object_index','operation','values','expected_sha256','entity_id','source_key'} or type(body.get('all_instances',False)) is not bool or not isinstance(body['asset_id'],str) or not isinstance(body['entity_id'],str):
                         raise ProjectError('Scene object preview requires inspected operation, instance and scene source key')
                     from .scene_preview import source_key
                     key = source_key(self.server.project)
                     if not key or key != body['source_key']:
                         raise ProjectError('Scene changed; refresh before inspecting a proposed shape')
                     replacement, report = self.server.project._prepare_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
-                    report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key)
+                    report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key,body.get('all_instances',False))
                     self._json(200,report)
                     return
                 if route == '/api/model-object-preview':
@@ -581,7 +583,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, self.server.state())
                     return
                 if route == '/api/model-file-scene-preview':
-                    if set(body) != {'asset_id','format','content_base64','entity_id','source_key','proposed_sha256'} or not isinstance(body['asset_id'],str) or not isinstance(body['entity_id'],str):
+                    if set(body) - {'all_instances'} != {'asset_id','format','content_base64','entity_id','source_key','proposed_sha256'} or type(body.get('all_instances',False)) is not bool or not isinstance(body['asset_id'],str) or not isinstance(body['entity_id'],str):
                         raise ProjectError('File scene preview requires model, file, inspected hash, instance and source key')
                     from .scene_preview import source_key
                     key = source_key(self.server.project)
@@ -597,7 +599,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     replacement, report = self.server.project._prepare_model_file(body['asset_id'],payload,body['format'])
                     if report['proposed_sha256'] != body['proposed_sha256']:
                         raise ProjectError('Proposed file differs from the inspected model hash')
-                    report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key)
+                    report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key,body.get('all_instances',False))
                     self._json(200,report)
                     return
                 if route == '/api/model-file-preview':

@@ -487,3 +487,25 @@ def preview_shape_instance(scene: dict, asset_id: str, entity_id: str, replaceme
     preview['representation'] = 'proposed-shape'
     preview.pop('authored_shape', None)
     return preview
+
+
+def preview_shape_instances(scene: dict, asset_id: str, replacement: bytes, binding: dict) -> dict:
+    """Group matching renderable instances by their already-resolved pose geometry."""
+    instances=[];assets=[];unavailable=[];resolved={}
+    for target in scene['entities']:
+        if target.get('asset_id') != asset_id:
+            continue
+        if not target.get('renderable'):
+            unavailable.append({'entity_id':target['entity_id'],'reason':target.get('reason') or 'Source geometry is not renderable'})
+            continue
+        source_key=target.get('geometry_key')
+        if source_key not in resolved:
+            preview=preview_shape_instance(scene,asset_id,target['entity_id'],replacement,binding)
+            key='inspection-shape:'+str(len(assets))
+            resolved[source_key]=key
+            assets.append({'geometry_key':key,'source_geometry_key':source_key,'asset_id':asset_id,'preview':preview})
+        instances.append({'entity_id':target['entity_id'],'geometry_key':resolved[source_key],'source_geometry_key':source_key})
+    if not instances:
+        raise ProjectError('No matching model instances have supported scene geometry')
+    return {'proposal_assets':assets,'proposal_instances':instances,'unavailable_instances':unavailable,
+            'instance_scope':'all_model_instances'}
