@@ -160,6 +160,32 @@ def patch_tim_index_rectangle(content: bytes, expected_sha256: str, x: int, y: i
     return replacement
 
 
+def copy_tim_index_rectangle(content: bytes, expected_sha256: str, source_x: int,
+                             source_y: int, x: int, y: int, width: int, height: int) -> bytes:
+    """Copy indices from the immutable input, including overlapping rectangles."""
+    if not isinstance(content, bytes) or _sha(content) != expected_sha256:
+        raise ImportError('Texture changed since rectangle inspection; reopen the editor')
+    target = inspect_tim_pixel_index(content, x, y)
+    inspect_tim_pixel_index(content, source_x, source_y)
+    if (type(width) is not int or type(height) is not int or width < 1 or height < 1
+            or max(x, source_x) + width > target['width']
+            or max(y, source_y) + height > target['height']):
+        raise ImportError('Choose source and destination rectangles wholly inside the image')
+    tim = parse_tim(content)
+    start, stride, lanes = 32 + len(tim.clut.data), tim.image.width_words * 2, 8 // tim.bpp
+    mask, result = (1 << tim.bpp) - 1, bytearray(content)
+    for row in range(height):
+        for column in range(width):
+            source_column, target_column = source_x + column, x + column
+            value = (content[start + (source_y + row) * stride + source_column // lanes]
+                     >> ((source_column % lanes) * tim.bpp)) & mask
+            offset, shift = start + (y + row) * stride + target_column // lanes, (target_column % lanes) * tim.bpp
+            result[offset] = (result[offset] & (255 ^ (mask << shift))) | (value << shift)
+    replacement = bytes(result)
+    _validate(content, replacement)
+    return replacement
+
+
 def texture_payload_changes(source: bytes, candidate: bytes) -> dict:
     """Exact payload differences, with bounded detail and complete counts."""
     import struct

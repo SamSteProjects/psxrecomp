@@ -847,6 +847,20 @@ class ProjectService:
         if replacement != effective:
             self.set_texture_replacement(asset_id,replacement)
 
+    def copy_texture_index_rectangle(self, asset_id: str, source_x: int, source_y: int,
+                                     x: int, y: int, width: int, height: int, expected_sha256: str) -> None:
+        from importer.texture_authoring import copy_tim_index_rectangle
+        if self.mode != 'edit':
+            raise ProjectError('Texture rectangle authoring requires Edit mode')
+        context = self._texture_context(asset_id)
+        original = context.original_tim(asset_id)
+        effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
+                     if asset_id in self.texture_overrides else original)
+        context.validate_replacement(asset_id, effective)
+        replacement = copy_tim_index_rectangle(effective, expected_sha256, source_x, source_y, x, y, width, height)
+        if replacement != effective:
+            self.set_texture_replacement(asset_id, replacement)
+
     def texture_json_source(self, asset_id: str, layer: str = 'imported') -> dict:
         import base64
         from importer.texture_json import export_texture_json

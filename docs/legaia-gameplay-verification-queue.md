@@ -326,3 +326,25 @@ Builds/e7728cba624de600 has SHA256
 ZIP decoded-carrier readback, Undo/Redo, Save/Open and browser Apply/Undo passed.
 This is a geometry diagnostic, not a finished mod. Rendering, animation and
 collision compatibility remain for manual verification; no automatic launch.
+
+
+## September 30 — Indexed texture rectangle copy probe
+
+Saved private project: `local-output/sdk-20260909/texture-copy-project-20260930/`.
+Texture `texture://town01/5/raw/29`,4-bpp256×256, copied3×2 from(0,0) to(1,0)
+with overlapping source/destination. Three pixel indices/image bytes changed,
+zero palette words; all surrounding pixels and source layout unchanged. The
+copied project also retains its existing model override; this is a composed
+package, not a texture-only baseline. Save/reopen, exact Undo/Redo, no-op history
+and independent package TIM readback passed. No game launched.
+
+Package: `Builds/e11d13216555bd72/legaia.sdk.f29d5595fa1c-0.1.0-e11d13216555bd72.psxmod`.
+SHA256: `ec8bd5c42a995f0772842aab1ff7bd8ad82b78d45409bb38452ccdfd8c23b614`.
+TIM SHA256: `8ef191b30f8307f6f1129265ea89bc90948f02bf575e5009e708235e4754713c`.
+Evidence: `copy-check.json`, `copy-package-readback.json`, `expected-copy.json`.
+
+Later verification should confirm runtime consumption of the exact TIM and
+appearance of affected materials where that atlas region is used. Static
+associations do not establish runtime VRAM residency; a tiny atlas probe may
+require byte inspection rather than an obvious visual difference. Gameplay
+verification remains deferred until the user elects to perform it.

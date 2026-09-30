@@ -8,12 +8,23 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `188d1963`, plus the independent
-animation consumer review documented below, including model object
+Reviewed against committed source through `b0fb387e`, plus indexed texture
+rectangle copying documented below, including model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Indexed texture rectangle copy (2026-09-30):** copy an existing 4/8-bpp
+image region to another location in the same texture, with draft pixels and
+source/destination bounds before Apply. Overlaps read the immutable pre-copy
+indices; packed neighbors, palettes, headers and VRAM layout stay unchanged.
+Retail texture29 browser checks passed draft/no-write, bounds and stale-hash
+rejection, no-op/no-history, Apply, Undo/Redo, Discard, Save/reopen and Build.
+Independent package readback matched all pixels/palettes and the saved33312-byte
+TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
+focused tests passed with no skips. The390-test checkpoint predates this feature;
+gameplay appearance remains deferred.
 
 **Independent animation consumer review (2026-09-30):** Blender 5.2.2 rendered
 and evaluated a fresh complete Dolk2 actor0001 GLB (30 frames, ten rigid objects,

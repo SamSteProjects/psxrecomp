@@ -41,6 +41,17 @@ packed textures. A reusable offline review tool and [consumer review guide](lega
 are available. Acceptance is specific to this clip; wider clips/consumers, retail
 cadence, lighting and gameplay remain unverified. No game was launched.
 
+**Indexed texture rectangle copy (2026-09-30):** copy an existing 4/8-bpp
+image region to another location in the same texture, with draft pixels and
+source/destination bounds before Apply. Overlaps read the immutable pre-copy
+indices; packed neighbors, palettes, headers and VRAM layout stay unchanged.
+Retail texture29 browser checks passed draft/no-write, bounds and stale-hash
+rejection, no-op/no-history, Apply, Undo/Redo, Discard, Save/reopen and Build.
+Independent package readback matched all pixels/palettes and the saved33312-byte
+TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
+focused tests passed with no skips. The390-test checkpoint predates this feature;
+gameplay appearance remains deferred.
+
 ## Validation scope
 
 The retail-enabled SDK discovery run passed **390 tests in 163.243 seconds**,

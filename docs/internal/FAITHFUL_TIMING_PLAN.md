@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Overlap-safe indexed texture rectangle authoring
+
+Previous goal turn progressed atb0fb387e. Added exact-layout4/8-bpp same-image
+rectangle copying, strict source/destination bounds and effective-hash guard.
+Immutable input reads prevent overlap smearing and preserve neighboring packed
+lanes. Project replacement history, persistence and Build reuse the existing
+verified TIM pipeline. Inspector offers a source/destination draft preview,
+Apply and Discard; pending files, stale context and unavailable formats guard it.
+Initial browser setup omitted resource refresh and rejected before opening;
+corrected harness. First Apply exposed an incorrect helper name before mutation;
+fixed to existing _texture_context and restarted the owned editor service after
+terminal shutdown. Full rerun passed retail texture29 overlap, exact pixels and
+palettes, unchanged draft state, stale/bounds/types/extra-fields, no-op/history,
+Undo/Redo, Discard, Save and Build. Saved project/package independently reopened:
+33312-byte TIM matched saved override and expected pixels; original retail hash
+unchanged. Three pixel indices/image bytes changed, no palette words. Package SHA
+ec8bd5c42a995f0772842aab1ff7bd8ad82b78d45409bb38452ccdfd8c23b614.
+24 focused tests passed with retail disc/no skips; JS syntax/diff passed. Private
+copy-check.json, copy-package-readback.json, expected-copy.json and inspected
+copy-draft.png under local-output/sdk-20260909/texture-copy-project-20260930.
+Browser and temporary4406 server stopped; no game launched. Updated status,
+buildout, matrix and deferred queue.390-test checkpoint predates this feature.
+Full SDK goal remains active; gameplay deferred, broader work remains.
+
+
 ### 2026-09-30 — Independent complete animation GLB consumer review
 
 Previous turn progressed at188d1963. Added bounded standalone Blender review tool:
