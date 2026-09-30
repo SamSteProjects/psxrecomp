@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `650967c5`, plus the current
-project-wide flag discovery and regression checkpoint. The dated filename is retained for
+Reviewed against committed source through `8db7cc97`, plus the current
+scene texture dependency inspection. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -410,3 +410,16 @@ search and cross-scene instruction navigation passed with unchanged command
 history; scene navigation uses the existing saved-view dirty tracking. Discovery
 is bounded to64imported scenes,32768groups and262144references. Current runtime
 values, shared variable identity and story names remain unresolved.
+
+Scene texture dependency inspection: **Inspect scene texture uses** derives
+static image/CLUT source contributors from the current verified scene preview,
+keeps partial candidates separate from address matches, reports unresolved
+materials/unavailable instances, and offers model/instance/material search plus
+viewport Locate actions. Source keys guard navigation; inspection adds no
+project edits/history. Focused Node checks cover shared/draft instances, CLUT
+contributors, unresolved candidates, untextured exclusion, detached results and
+bounds. Retail browser checks passed actor0005 navigation for texture25, and
+texture29 fanout of31material matches/19geometries/58instances, scenery Locate,
+empty search and stale-source rejection. Screenshot inspected. This addition
+follows the365-test Python checkpoint; runtime residency/conditional visibility
+and cross-scene dependencies remain unverified.

@@ -84,3 +84,5 @@
 
 #texture-rectangle-dialog{max-height:90vh;overflow:auto}#texture-rectangle-bitmap{width:auto;max-width:100%;height:auto;max-height:260px;object-fit:contain}
 #texture-rectangle-dialog form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#texture-rectangle-dialog form>label{margin:0}#texture-rectangle-dialog form>p{grid-column:1/-1;margin:4px 0}#texture-rectangle-dialog form>button{white-space:normal}
+
+#texture-usage-dialog{width:min(900px,94vw);max-height:90vh;overflow:auto}#texture-usage-dialog input{width:100%}#texture-usage-dialog section button{margin:3px}

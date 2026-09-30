@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Scene texture usage inspection and viewport Locate
+
+Added pure dependency extraction from current verified scene-preview material
+address matches, with separate unresolved candidates/coverage counts. Connected
+texture Inspector usage search/paging and actor/draft/scenery Locate with source
+key guards. Node checks passed shared/draft/CLUT/missing/bounds/detachment cases.
+Retail browser checked texture25→actor0005; shared texture29 yielded31material
+matches across19geometries/58instances, search/scenery Locate/no project writes
+and stale-source rejection passed. Screenshot inspected. Evidence retained in
+private texture-rectangle-project-20260930 probe directory. Updated SDK docs;
+365-test checkpoint predates this UI module/served route. No game launched.
+
+
 ### 2026-09-30 — Project flag references and365-test retail checkpoint
 
 Added bounded project-wide flag discovery with fresh imported-source verification,
