@@ -82,6 +82,28 @@ def _encode_pack(original_stream: bytes, decoded: bytes) -> tuple[bytes, dict]:
     return replacement, stats
 
 
+def patch_tim_palette_word(content: bytes, expected_sha256: str, palette_index: int,
+                           entry_index: int, word: int) -> bytes:
+    """Patch one existing indexed CLUT word; all headers/image bytes stay exact."""
+    import struct
+    if not isinstance(content, bytes) or _sha(content) != expected_sha256:
+        raise ImportError('Texture changed since palette inspection; reopen the palette editor')
+    tim = parse_tim(content)
+    if tim.byte_length != len(content) or tim.bpp not in (4, 8) or tim.clut is None:
+        raise ImportError('Palette editing requires one complete indexed 4/8-bpp TIM')
+    count = 16 if tim.bpp == 4 else 256
+    if (type(palette_index) is not int or palette_index < 0 or
+            (palette_index + 1) * count * 2 > len(tim.clut.data) or
+            type(entry_index) is not int or not 0 <= entry_index < count or
+            type(word) is not int or not 0 <= word <= 65535):
+        raise ImportError('Choose an existing palette entry and unsigned16 word')
+    result = bytearray(content)
+    struct.pack_into('<H', result, 20 + (palette_index * count + entry_index) * 2, word)
+    replacement = bytes(result)
+    _validate(content, replacement)
+    return replacement
+
+
 class TextureAuthoringContext:
     """Identity-bound catalog snapshot; carriers are reread per operation.
 

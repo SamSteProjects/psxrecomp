@@ -709,6 +709,39 @@ class ProjectService:
             context.options(asset_id)
             return context
 
+    def texture_palette_source(self, asset_id: str, palette_index: int) -> dict:
+        import struct
+        from importer.textures import parse_tim
+        context = self._texture_context(asset_id)
+        original = context.original_tim(asset_id)
+        effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
+                     if asset_id in self.texture_overrides else original)
+        context.validate_replacement(asset_id, effective)
+        tim, retail = parse_tim(effective), parse_tim(original)
+        if tim.bpp not in (4, 8) or tim.clut is None:
+            raise ProjectError('Palette editing requires an indexed scene TIM')
+        count = 16 if tim.bpp == 4 else 256
+        if type(palette_index) is not int or palette_index < 0 or (palette_index + 1) * count * 2 > len(tim.clut.data):
+            raise ProjectError('Choose an existing texture palette')
+        offset = palette_index * count * 2
+        return {'asset_id': asset_id, 'palette_index': palette_index, 'entry_count': count,
+                'source_sha256': hashlib.sha256(original).hexdigest(),
+                'effective_sha256': hashlib.sha256(effective).hexdigest(),
+                'words': list(struct.unpack_from(f'<{count}H', tim.clut.data, offset)),
+                'retail_words': list(struct.unpack_from(f'<{count}H', retail.clut.data, offset))}
+
+    def set_texture_palette_word(self, asset_id: str, palette_index: int, entry_index: int,
+                                 word: int, expected_sha256: str) -> None:
+        from importer.texture_authoring import patch_tim_palette_word
+        if self.mode != 'edit':
+            raise ProjectError('Texture palette authoring requires Edit mode')
+        original = self._texture_context(asset_id).original_tim(asset_id)
+        effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
+                     if asset_id in self.texture_overrides else original)
+        replacement = patch_tim_palette_word(effective, expected_sha256, palette_index, entry_index, word)
+        if replacement != effective:
+            self.set_texture_replacement(asset_id, replacement)
+
     def set_texture_replacement(self, asset_id: str, content: bytes) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")

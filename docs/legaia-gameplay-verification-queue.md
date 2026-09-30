@@ -220,3 +220,14 @@ readback found exactly MAN byte4816 changed. This is an isolated diagnostic
 serialization probe, not a finished behavior edit. Selector/table meaning,
 executed branch and resulting playback require later gameplay investigation.
 No launch/installation performed.
+
+## Palette-entry serialization probe (2026-09-30)
+
+Private project: `local-output/sdk-20260909/palette-project-20260930`.
+Package: `Builds/424d0ff175d0abb2/legaia.sdk.ed30c97ac66f-0.1.0-424d0ff175d0abb2.psxmod`.
+SHA256 `591932a1a3acea7897f6a10334fb6459ecd511e0751859352dbbc5577e0dfbcc`.
+Texture `texture://town01/5/raw/0`, palette0 entry1, word5386->5387. Only TIM
+byte22 differs from retail; actual ZIP member equals authored TIM. This tiny
+RGB5-word probe is diagnostic, not a finished texture edit or guaranteed
+visible change. Runtime material users, residency and palette/blend behavior
+remain unverified. No game launch or installation performed.

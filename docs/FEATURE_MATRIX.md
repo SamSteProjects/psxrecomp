@@ -339,3 +339,9 @@ September 30 regression checkpoint: retail-enabled Python SDK discovery passed
 352 tests in 200.919 seconds at `1021bff1`, with no skips reported. Browser-only
 viewport and path-query behavior retains separate focused verification. Runtime
 acceptance remains deferred; no green suite is treated as gameplay parity.
+
+September 30 palette editor: existing indexed scene TIM palette words now have
+retail/effective inspection and source-bound Apply/reset/Discard within the
+editor. A one-entry retail probe passed Undo/Redo, persistence, Build, exact
+archive member readback and browser Apply/Undo. This does not establish runtime
+palette effects, shared-bank authoring or full texture residency.

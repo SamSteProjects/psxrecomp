@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Indexed scene TIM palette authoring
+
+- Added exact one-word CLUT patching for existing4/8-bpp palettes with effective-hash guards, strict integer/range/layout checks and preservation of all other TIM bytes. Connected palette source/Apply APIs and texture Inspector entry/word editor with RGB5/STP interpretation, retail reset, draft lock/Discard and ordinary replacement history/persistence/Build.
+- Four focused tests passed; one environment-gated retail build test skipped. Separate retail texture5/raw/0 palette0 entry1 word5386->5387 passed Undo/Redo, Save/Open and Build. Independent ZIP member readback matched authored TIM with only byte22 changed; stale writes rejected without a command. Browser Apply5388/readback/Undo5387, draft lock and Discard passed.
+- Evidence and package hash in gameplay queue; ignored `local-output/sdk-20260909/palette-project-20260930/*check.json` and `palette-package-readback.json`. Node syntax and diff checks passed. Temporary server stopped; no game launched. Full352-test checkpoint predates this feature.
+
+
 ### 2026-09-30 — EXEC_MOVE selector-only authoring workflow
 
 - Verified executing-reference opcode0x22 fixed one-byte selector, and extended source-record authoring to EXEC_MOVE. No coordinate controls/markers are invented. Source-derived operand offsets validate Build composition and source-owner append rebasing.

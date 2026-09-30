@@ -327,3 +327,14 @@ Retail actor0003 PC0x12 selector9->10 passed Save/Open, Undo/Redo, browser
 Apply11/Undo10 and independent ZIP decode with exactly MAN byte4816 changed.
 This addition follows the352-test checkpoint and has focused checks; runtime
 move-table identity and behavior remain unverified.
+
+Indexed scene texture palette authoring: **Edit selected palette** exposes
+retail/effective words, RGB5/STP bit interpretation, explicit Apply, retail
+reset and draft Discard. Entry changes lock while a draft is pending. Edits
+are bound to the inspected effective TIM hash and use ordinary texture
+replacement Undo/Redo, Save/Open and Build. Four focused synthetic/build tests
+passed (one retail test skipped without its environment input); a separate
+retail workflow and browser Apply/readback/Undo passed. Actual ZIP member
+readback proved the saved entry change affected only TIM byte22. Other palette
+entries, image data and headers are preserved. Shared/conditional banks and
+runtime palette/blend behavior remain outside the accepted authoring scope.

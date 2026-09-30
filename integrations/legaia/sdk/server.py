@@ -441,6 +441,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from importer.pipeline import list_scenes
                     self._json(200, list_scenes(body['disc'], offset=body['offset'], limit=16, prefix=body['prefix']))
                     return
+                if route == '/api/texture-palette-source':
+                    if set(body) != {'asset_id','palette_index'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Palette inspection requires texture identity and palette index')
+                    self._json(200, self.server.project.texture_palette_source(body['asset_id'], body['palette_index']))
+                    return
+                if route == '/api/texture-palette-word':
+                    if set(body) != {'asset_id','palette_index','entry_index','word','expected_sha256'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Palette authoring requires texture, palette/entry, word and inspected hash')
+                    self.server.project.set_texture_palette_word(body['asset_id'], body['palette_index'], body['entry_index'], body['word'], body['expected_sha256'])
+                    self._json(200, self.server.state())
+                    return
                 if route == '/api/model-object-translation':
                     if set(body) != {'asset_id','object_index','offset','expected_sha256'} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Object translation requires asset, object, XYZ offset and inspected hash')
