@@ -231,3 +231,14 @@ byte22 differs from retail; actual ZIP member equals authored TIM. This tiny
 RGB5-word probe is diagnostic, not a finished texture edit or guaranteed
 visible change. Runtime material users, residency and palette/blend behavior
 remain unverified. No game launch or installation performed.
+
+## Indexed pixel serialization probe (2026-09-30)
+
+Private project: `local-output/sdk-20260909/pixel-project-20260930`.
+Package: `Builds/8f6aa3069ff2baa3/legaia.sdk.a90ea2239c4b-0.1.0-8f6aa3069ff2baa3.psxmod`.
+SHA256 `fb310f7a53040b1393ebb068d3b1bcf5993bae17c39cf0d59fcc7af2454df1bc`.
+Texture `texture://town01/5/raw/0`, pixel X1 Y0, encoded index13->14.
+Only TIM byte544 changed; the other packed nibble and all palettes/header
+bytes remain unchanged. Actual ZIP member equals authored TIM. Diagnostic
+one-pixel probe, not a finished texture edit. Affected runtime users, residency
+and actual visibility remain unverified. No game launch or installation.

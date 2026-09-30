@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Indexed scene TIM pixel authoring
+
+- Added source-bound4/8-bpp image-index inspection/patching, strict integer/coordinate/index checks and complete-palette guards. Packed neighbor bits, all other image bytes, CLUT words and headers stay fixed. Connected pixel source/Apply APIs and bitmap Shift-click Inspector with retail/effective values, palette word/RGB5/STP labels, reset/Discard and ordinary texture history/Build.
+- Five focused tests passed; one environment-gated retail test skipped. Exhaustive index checks covered low/high nibbles, row boundaries and8-bpp pixels. Retail X1Y0 index13->14 probe passed Undo/Redo, Save/Open, Build and exact ZIP member readback (only TIM byte544 changed). Separate composition/stale checks preserved authored palettes and restored exact bytes on Undo.
+- Browser Shift-click/range/Discard/Apply15/readback/Undo14 passed after fixing fractional canvas-edge rounding; service still rejects invalid coordinates. Evidence: ignored `local-output/sdk-20260909/pixel-project-20260930/*check.json`; package/hash added to gameplay queue. Node syntax and diff checks passed. Temporary server stopped; no game launched. Full352-test checkpoint predates this feature.
+
+
 ### 2026-09-30 — Indexed scene TIM palette authoring
 
 - Added exact one-word CLUT patching for existing4/8-bpp palettes with effective-hash guards, strict integer/range/layout checks and preservation of all other TIM bytes. Connected palette source/Apply APIs and texture Inspector entry/word editor with RGB5/STP interpretation, retail reset, draft lock/Discard and ordinary replacement history/persistence/Build.

@@ -338,3 +338,15 @@ retail workflow and browser Apply/readback/Undo passed. Actual ZIP member
 readback proved the saved entry change affected only TIM byte22. Other palette
 entries, image data and headers are preserved. Shared/conditional banks and
 runtime palette/blend behavior remain outside the accepted authoring scope.
+
+Indexed texture pixel authoring: Shift-click the bitmap to inspect a pixel
+and edit its encoded palette index. Retail/effective values and the inspected
+palette colour word remain explicit. Apply/reset/Discard uses source-hash-bound
+texture replacement history, persistence and Build. Four-bpp edits preserve the
+other nibble; eight-bpp edits preserve neighboring pixels. Five focused tests
+passed (one environment-gated retail test skipped), with exhaustive index
+values at row/packed-byte boundaries. Separate retail checks passed authored
+palette preservation, stale rejection, Undo/Redo, Save/Open, Build and exact
+ZIP member readback. Browser Shift-click, range rejection, Discard, Apply and
+Undo passed after correcting fractional canvas-edge rounding. Runtime residency
+and visible/material/palette behavior remain deferred.

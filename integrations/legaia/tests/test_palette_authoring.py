@@ -19,6 +19,28 @@ class PaletteAuthoringTests(unittest.TestCase):
             self.assertEqual(decode_tim(changed,0),decode_tim(source,0))
             self.assertEqual(patch_tim_palette_word(changed,hashlib.sha256(changed).hexdigest(),1,1,1),source)
 
+    def test_pixel_indices_preserve_neighbours_palettes_and_decoded_pixels(self):
+        from importer.texture_authoring import inspect_tim_pixel_index, patch_tim_pixel_index
+        for bpp in (4,8):
+            count=1 << bpp
+            source=tim(bpp,image=block(0,0,2,2,b'\x10\x32\x54\x76\x98\xba\xdc\xfe'),palette=block(0,100,count,1,list(range(count))))
+            digest=hashlib.sha256(source).hexdigest()
+            baseline=decode_tim(source)['rgba']
+            for x,y in ((0,0),(1,0),(0,1),( (4 if bpp==4 else 2)*2-1,1)):
+                current=inspect_tim_pixel_index(source,x,y)
+                self.assertEqual(patch_tim_pixel_index(source,digest,x,y,current['palette_entry']),source)
+                for value in range(count):
+                    changed=patch_tim_pixel_index(source,digest,x,y,value)
+                    self.assertEqual(changed[:current['byte_offset']],source[:current['byte_offset']])
+                    self.assertEqual(changed[current['byte_offset']+1:],source[current['byte_offset']+1:])
+                    pixels=decode_tim(changed)['rgba'];start=(y*current['width']+x)*4
+                    self.assertEqual(pixels[:start],baseline[:start])
+                    self.assertEqual(pixels[start+4:],baseline[start+4:])
+                    self.assertEqual(inspect_tim_pixel_index(changed,x,y)['palette_entry'],value)
+            for x,y,value in ((True,0,1),(-1,0,1),(0,2,1),(0,0,True),(0,0,count)):
+                with self.assertRaises(ImportError):patch_tim_pixel_index(source,digest,x,y,value)
+            with self.assertRaises(ImportError):patch_tim_pixel_index(source,'0'*64,0,0,1)
+
     def test_invalid_binding_layout_and_fields_rejected(self):
         source=tim();digest=hashlib.sha256(source).hexdigest()
         for palette,entry,word in ((True,0,1),(1,0,1),(0,16,1),(0,True,1),(0,0,True),(0,0,-1),(0,0,65536),(0,0,1.5)):

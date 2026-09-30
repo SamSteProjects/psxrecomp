@@ -345,3 +345,8 @@ retail/effective inspection and source-bound Apply/reset/Discard within the
 editor. A one-entry retail probe passed Undo/Redo, persistence, Build, exact
 archive member readback and browser Apply/Undo. This does not establish runtime
 palette effects, shared-bank authoring or full texture residency.
+
+September 30 indexed image editing: source-qualified4/8-bpp pixel palette-index
+inspection and Apply are available from bitmap Shift-click. Source hash guards,
+packed-neighbor preservation, palette preservation and ordinary texture
+history/persistence/Build checks passed. Runtime appearance remains unverified.

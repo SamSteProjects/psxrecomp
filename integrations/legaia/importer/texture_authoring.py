@@ -104,6 +104,38 @@ def patch_tim_palette_word(content: bytes, expected_sha256: str, palette_index: 
     return replacement
 
 
+def inspect_tim_pixel_index(content: bytes, x: int, y: int) -> dict:
+    if not isinstance(content, bytes):
+        raise ImportError('Pixel inspection requires immutable TIM bytes')
+    tim = parse_tim(content)
+    if tim.byte_length != len(content) or tim.bpp not in (4, 8) or tim.clut is None or len(tim.clut.data) < (1 << tim.bpp) * 2:
+        raise ImportError('Pixel-index editing requires one complete indexed 4/8-bpp TIM')
+    if type(x) is not int or type(y) is not int or not 0 <= x < tim.width or not 0 <= y < tim.image.height:
+        raise ImportError('Choose a pixel inside the source texture')
+    per_byte = 8 // tim.bpp
+    offset = 32 + len(tim.clut.data) + y * tim.image.width_words * 2 + x // per_byte
+    shift = (x % per_byte) * tim.bpp
+    return {'x': x, 'y': y, 'width': tim.width, 'height': tim.image.height,
+            'bpp': tim.bpp, 'entry_count': 1 << tim.bpp, 'byte_offset': offset,
+            'shift': shift, 'palette_entry': (content[offset] >> shift) & ((1 << tim.bpp) - 1)}
+
+
+def patch_tim_pixel_index(content: bytes, expected_sha256: str, x: int, y: int,
+                          palette_entry: int) -> bytes:
+    if not isinstance(content, bytes) or _sha(content) != expected_sha256:
+        raise ImportError('Texture changed since pixel inspection; reopen the pixel editor')
+    pixel = inspect_tim_pixel_index(content, x, y)
+    if type(palette_entry) is not int or not 0 <= palette_entry < pixel['entry_count']:
+        raise ImportError('Pixel requires an existing encoded palette index')
+    mask = (pixel['entry_count'] - 1) << pixel['shift']
+    result = bytearray(content)
+    offset = pixel['byte_offset']
+    result[offset] = (result[offset] & (255 ^ mask)) | (palette_entry << pixel['shift'])
+    replacement = bytes(result)
+    _validate(content, replacement)
+    return replacement
+
+
 class TextureAuthoringContext:
     """Identity-bound catalog snapshot; carriers are reread per operation.
 

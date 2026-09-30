@@ -742,6 +742,27 @@ class ProjectService:
         if replacement != effective:
             self.set_texture_replacement(asset_id, replacement)
 
+    def texture_pixel_source(self, asset_id: str, palette_index: int, x: int, y: int) -> dict:
+        from importer.texture_authoring import inspect_tim_pixel_index
+        source = self.texture_palette_source(asset_id, palette_index)
+        original = self._texture_context(asset_id).original_tim(asset_id)
+        effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
+                     if asset_id in self.texture_overrides else original)
+        pixel = inspect_tim_pixel_index(effective, x, y)
+        return dict(source, pixel=pixel, retail_entry=inspect_tim_pixel_index(original, x, y)['palette_entry'])
+
+    def set_texture_pixel_index(self, asset_id: str, x: int, y: int, palette_entry: int,
+                                expected_sha256: str) -> None:
+        from importer.texture_authoring import patch_tim_pixel_index
+        if self.mode != 'edit':
+            raise ProjectError('Texture pixel authoring requires Edit mode')
+        original = self._texture_context(asset_id).original_tim(asset_id)
+        effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
+                     if asset_id in self.texture_overrides else original)
+        replacement = patch_tim_pixel_index(effective, expected_sha256, x, y, palette_entry)
+        if replacement != effective:
+            self.set_texture_replacement(asset_id, replacement)
+
     def set_texture_replacement(self, asset_id: str, content: bytes) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")
