@@ -315,3 +315,14 @@ Independent ZIP readback confirms only MAN offsets4772 and24483 changed; compres
 NPC append readback retained the wait at24486. This diagnostic is not a finished
 story mod or proven perceptible timing difference. Manual execution/timing and
 runtime compatibility are deferred; do not launch automatically.
+
+
+Deferred model scale diagnostic (2026-09-30): saved private project
+local-output/sdk-20260909/model-scale-project-20260930 scales model0009 object1
+vertices150% around the source-local origin, composing prior rotation/normal
+edits. Normals and other objects retain their pre-scale values. Package under
+Builds/e7728cba624de600 has SHA256
+9d16d794517133d474921f7e001f9dd1929cc43f51df2ff8c33aca89f09aa3cb.
+ZIP decoded-carrier readback, Undo/Redo, Save/Open and browser Apply/Undo passed.
+This is a geometry diagnostic, not a finished mod. Rendering, animation and
+collision compatibility remain for manual verification; no automatic launch.

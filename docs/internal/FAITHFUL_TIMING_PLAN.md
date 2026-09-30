@@ -214,6 +214,22 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Uniform source-local model object scaling
+
+Previous turn progressed inf08612a3. Connected percent1..1000 model object vertex
+scaling through source-bound JSON replacement, Edit service, strict HTTP and
+vector Inspector. Explicit nearest/half-away rounding, source-local origin,
+unchanged normals/topology/padding/other objects and signed16/stale/draft guards.
+Five focused tests passed (removed an imported test-class duplicate). Retail
+model0009/object1 scaling150% passed history/Save/Open and package readback.
+Initial harness assumed town01 carrier label; corrected to recorded shared
+carrier and read existing ZIP without restart. Browser125% scaling, bounds/draft
+checks, Discard, preservation and exact Undo passed with zero page errors;
+screenshot inspected. Private diagnostic/package hash recorded in gameplay queue.
+Browser/server stopped; no game/install.383-test checkpoint predates feature.
+Full SDK goal active; manual gameplay remains deferred.
+
+
 ### 2026-09-30 — Instruction layers and direct operand editor focus
 
 Previous turn progressed inbfb81be2. Added reusable instructionOperandEditors

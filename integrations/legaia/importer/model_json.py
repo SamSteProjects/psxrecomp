@@ -38,6 +38,31 @@ def rotate_shape_object(original: bytes, effective: bytes, expected_sha256: str,
     return import_shape_json(original,source_hash,json.dumps(document).encode())[0]
 
 
+def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
+                       object_index: int, percent: int) -> bytes:
+    """Positive uniform vertex scaling; nearest integer, half away from zero."""
+    if sha256(effective).hexdigest() != expected_sha256:
+        raise ImportError('Model changed since object inspection; reopen the vector editor')
+    if type(percent) is not int or not 1 <= percent <= 1000:
+        raise ImportError('Object scale requires an integer percent1..1000')
+    source_hash = sha256(original).hexdigest()
+    replace_model_shape(original,source_hash,effective)
+    document = json.loads(export_shape_json(effective))
+    if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
+        raise ImportError('Choose an existing model object')
+    obj = document['objects'][object_index]
+    if not obj['vertices']:
+        raise ImportError('The selected object has no vertices')
+    def scale(value):
+        result = ((abs(value)*percent+50)//100) * (-1 if value < 0 else 1)
+        if not -32768 <= result <= 32767:
+            raise ImportError('Object scale exceeds signed16 vertex values; nothing was applied')
+        return result
+    obj['vertices'] = [[scale(v) for v in vector] for vector in obj['vertices']]
+    document['source_sha256'] = source_hash
+    return import_shape_json(original,source_hash,json.dumps(document).encode())[0]
+
+
 def export_shape_json(source: bytes) -> bytes:
     digest = sha256(source).hexdigest()
     replace_model_shape(source, digest, source)

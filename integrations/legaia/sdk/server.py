@@ -523,6 +523,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.rotate_model_object(body['asset_id'],body['object_index'],body['axis'],body['quarter_turns'],body['expected_sha256'])
                     self._json(200,self.server.state())
                     return
+                if route == '/api/model-object-scale':
+                    if set(body) != {'asset_id','object_index','percent','expected_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Object scale requires model, object, percent and inspected hash')
+                    self.server.project.scale_model_object(body['asset_id'],body['object_index'],body['percent'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
                 if route == '/api/model-object-translation':
                     if set(body) != {'asset_id','object_index','offset','expected_sha256'} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Object translation requires asset, object, XYZ offset and inspected hash')

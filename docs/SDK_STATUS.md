@@ -335,3 +335,23 @@ local-output/sdk-20260909/wait-authoring-project-20260930/instruction-operands-b
 and instruction-flag-layers.png/instruction-wait-layers.png. Temporary browser
 and server stopped; no game launch. This JavaScript addition follows the383-test
 Python checkpoint and retains separate browser validation.
+
+
+Model object uniform scaling (2026-09-30): Scale whole object in the vector
+Inspector edits source-local vertices by an integer percent1..1000, with positive
+uniform scaling, nearest-integer rounding and halves away from zero. Normals,
+vector padding, topology/materials and other objects remain unchanged. Signed16
+overflow, stale inspected hashes, invalid percentages/objects and pending vector
+drafts reject before applying.100% is a no-op without history. Ordinary model
+replacement supplies Undo/Redo, Save/Open and Build. Five focused scale/rotation/
+JSON tests passed. Retail model0009 object1 at150% composed with its existing
+rotation/normal override; normal/other-object preservation, history, reopening
+and actual ZIP carrier decompression matched the replacement. Browser invalid/
+draft guards, Discard,125% Apply, readback and exact Undo passed, no page errors;
+screenshot inspected. Initial readback harness selected a scene-specific carrier;
+corrected to the recorded shared model carrier, without rebuilding/replacing it.
+Private project: local-output/sdk-20260909/model-scale-project-20260930; package
+under Builds/e7728cba624de600 has SHA256
+9d16d794517133d474921f7e001f9dd1929cc43f51df2ff8c33aca89f09aa3cb.
+No game or package installation. Gameplay shape/animation/collision compatibility
+remains deferred. The383-test checkpoint predates this addition.
