@@ -440,6 +440,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from importer.pipeline import list_scenes
                     self._json(200, list_scenes(body['disc'], offset=body['offset'], limit=16, prefix=body['prefix']))
                     return
+                if route == '/api/model-object-translation':
+                    if set(body) != {'asset_id','object_index','offset','expected_sha256'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Object translation requires asset, object, XYZ offset and inspected hash')
+                    self.server.project.translate_model_object(body['asset_id'], body['object_index'],
+                                                               body['offset'], body['expected_sha256'])
+                    self._json(200, self.server.state())
+                    return
                 if route == '/api/model-vector':
                     if set(body) != {'asset_id','object_index','kind','vector_index','values','expected_sha256'} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Model vector editing requires asset, object/kind/vector, XYZ and inspected hash')

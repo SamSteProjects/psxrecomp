@@ -817,6 +817,35 @@ class ProjectService:
         replacement, _ = import_shape_json(original, document['source_sha256'], json.dumps(document).encode())
         self.set_model_replacement(asset_id, replacement)
 
+    def translate_model_object(self, asset_id: str, object_index: int, offset: list[int],
+                               expected_sha256: str) -> None:
+        import json
+        from importer.model_json import export_shape_json, import_shape_json
+        if self.mode != 'edit':
+            raise ProjectError('Model object translation requires Edit mode')
+        if not isinstance(offset, list) or len(offset) != 3 or any(type(v) is not int or not -65535 <= v <= 65535 for v in offset):
+            raise ProjectError('Object offset requires three integer source-unit values within ±65535')
+        original = self._model_source(asset_id, self.active_scene)
+        effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
+                     if asset_id in self.model_overrides else original)
+        if hashlib.sha256(effective).hexdigest() != expected_sha256:
+            raise ProjectError('Model changed since object inspection; reopen the vector editor')
+        document = json.loads(export_shape_json(effective))
+        if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
+            raise ProjectError('Choose an existing model object')
+        vertices = document['objects'][object_index]['vertices']
+        if not vertices:
+            raise ProjectError('The selected object has no vertices')
+        translated = [[value + offset[axis] for axis, value in enumerate(vertex)] for vertex in vertices]
+        if any(not -32768 <= value <= 32767 for vertex in translated for value in vertex):
+            raise ProjectError('Object translation exceeds signed16 vertex coordinates; nothing was applied')
+        if offset == [0, 0, 0]:
+            return
+        document['objects'][object_index]['vertices'] = translated
+        document['source_sha256'] = hashlib.sha256(original).hexdigest()
+        replacement, _ = import_shape_json(original, document['source_sha256'], json.dumps(document).encode())
+        self.set_model_replacement(asset_id, replacement)
+
     def preview_model_file(self, asset_id: str, content: bytes, format: str = 'tmd') -> dict:
         return self._prepare_model_file(asset_id, content, format)[1]
 

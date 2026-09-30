@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Whole-object model vertex translation
+
+- Added source-hash-bound XYZ offsets for all vertices in a selected model object, with one ordinary model replacement command. Normals, topology, materials and other objects are preserved. Resulting signed16 overflow rejects before mutation; zero offsets are no-ops.
+- Connected vector Inspector offsets, count/range preview and explicit Apply. Offsets cannot submit the individual-vector form through Enter. Pending vector drafts block translation.
+- Retail service check verified every translated vertex, unchanged normals/other objects, exact Undo/Redo and invalid/overflow/stale rejection. Browser check passed Apply/readback/Undo and zero/overflow disabling. Evidence: ignored `local-output/sdk-20260909/model-object-translation-*-check.*` and `model-object-translation-check.*`. No Save or game launch.
+
+
 ### 2026-09-30 — Viewport vertex selection to Inspector
 
 - Wireframe Shift-click selects the nearest projected vertex within 10 pixels and opens its exact source vector Inspector. Shared renderer camera projection handles clipping; ties prefer the nearer vertex. Hidden vertices remain eligible and are explicitly labeled.

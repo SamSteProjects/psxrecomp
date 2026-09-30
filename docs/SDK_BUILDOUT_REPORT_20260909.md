@@ -288,3 +288,11 @@ posed/proposed animation geometry, pending shape files and Live mode cannot
 use this authoring shortcut. Retail browser checks verified the selected vector
 and no submitted edits; projection checks cover center, behind-camera and
 offscreen points.
+
+Whole-object shape authoring: the vector Inspector now offers **Translate all
+vertices in this object** with explicit integer XYZ offsets in source units.
+It preserves normals, other objects and topology; validates every resulting
+signed16 coordinate and the inspected model hash before applying one undoable
+replacement. Zero offsets submit no change. Retail service checks proved all
+vertices, preservation and exact Undo/Redo; browser checks proved Apply/readback/
+Undo and disabled zero/overflow offsets. Gameplay remains deferred.
