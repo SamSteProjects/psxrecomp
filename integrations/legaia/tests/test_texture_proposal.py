@@ -31,3 +31,27 @@ class TextureProposalTests(unittest.TestCase):
         result=texture_payload_changes(source,source[:-1]+b'\xff')
         self.assertIsNone(result['pixel_indices_changed'])
         self.assertEqual(result['image_bytes_changed'],1)
+
+
+class TextureSceneProposalTests(unittest.TestCase):
+    def test_prepared_ground_uses_candidate_catalog_without_geometry_or_source_mutation(self):
+        from copy import deepcopy
+        from types import SimpleNamespace
+        import test_importer_textures as fixtures
+        from sdk.terrain_preview import terrain_preview
+        source=fixtures.catalog(fixtures.tim())
+        candidate=fixtures.catalog(fixtures.tim(palette=fixtures.block(0,100,16,1,[0,0x3e0,0x3e0,0xfc00]+[0]*12)))
+        ground={'vertices':[[0,0,0],[1,0,0],[0,0,1]],'triangles':[[0,1,2]],
+                'materials':[fixtures.material()], 'triangle_materials':[0],
+                'triangle_uvs':[[[1,0],[1,0],[1,0]]], 'textures':[], 'source_record':{'verified':'fixture'}}
+        baseline=deepcopy(ground);source_before=deepcopy(source);candidate_before=deepcopy(candidate)
+        project=SimpleNamespace(imports={'scene://test':{'scene':{'name':'test'}}},active_scene='scene://test')
+        old=terrain_preview(project,prepared=ground,catalog=source)
+        new=terrain_preview(project,prepared=ground,catalog=candidate)
+        self.assertNotEqual(old['textures'][0]['rgba_base64'],new['textures'][0]['rgba_base64'])
+        self.assertEqual(new['textures'][0]['status'],'address_match')
+        for key in baseline:
+            if key!='textures':self.assertEqual(new[key],baseline[key])
+        self.assertEqual(ground,baseline)
+        self.assertEqual(source,source_before)
+        self.assertEqual(candidate,candidate_before)

@@ -872,8 +872,8 @@ class ProjectService:
         replacement = import_texture_json(original,hashlib.sha256(original).hexdigest(),content)
         self.set_texture_replacement(asset_id,replacement)
 
-    def preview_texture_file(self, asset_id: str, content: bytes, format: str,
-                             palette_index: int = 0) -> dict:
+    def _prepare_texture_file(self, asset_id: str, content: bytes, format: str,
+                              palette_index: int = 0) -> tuple[bytes, dict]:
         import base64
         from importer.texture_json import import_texture_json
         from importer.texture_authoring import texture_payload_changes
@@ -888,7 +888,7 @@ class ProjectService:
                      if asset_id in self.texture_overrides else original)
         context.validate_replacement(asset_id,effective)
         pixels = decode_tim(candidate,palette_index)
-        return {'asset_id':asset_id,'input_format':format,'palette_index':palette_index,
+        return candidate, {'asset_id':asset_id,'input_format':format,'palette_index':palette_index,
                 'source_sha256':hashlib.sha256(original).hexdigest(),
                 'effective_sha256':hashlib.sha256(effective).hexdigest(),
                 'candidate_sha256':hashlib.sha256(candidate).hexdigest(),
@@ -898,6 +898,10 @@ class ProjectService:
                 'retail_changes':texture_payload_changes(original,candidate),
                 'current_changes':texture_payload_changes(effective,candidate),
                 'representation':'proposed_file','project_changed':False}
+
+    def preview_texture_file(self, asset_id: str, content: bytes, format: str,
+                             palette_index: int = 0) -> dict:
+        return self._prepare_texture_file(asset_id,content,format,palette_index)[1]
 
     def set_texture_replacement(self, asset_id: str, content: bytes) -> None:
         if self.mode != "edit":

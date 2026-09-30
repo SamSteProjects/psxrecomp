@@ -314,7 +314,52 @@ class EditorServer(ThreadingHTTPServer):
             raise ProjectError('Scene changed during shape proposal inspection')
         return report
 
-    def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None, effective_shape: bool = False, project_view=None) -> dict:
+    def scene_texture_proposal(self, asset_id: str, candidate: bytes, report: dict, key: str) -> dict:
+        from copy import deepcopy
+        from .scene_preview import source_key
+        from .resources import apply_texture_overrides
+        from importer.textures import load_scene_texture_catalog, parse_tim
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        from importer.environment import load_environment_preview_catalog
+        from .terrain_preview import terrain_preview
+        if not key or source_key(self.project) != key:
+            raise ProjectError('Scene changed; refresh before inspecting a texture proposal')
+        scene = self.scene_previews.preview(self.project,
+            lambda asset, *args, **kwargs: self.model_preview(asset, *args, effective_shape=True, **kwargs),
+            load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
+        from importer.pipeline import _disc_context
+        with _disc_context(self.project.disc_path):
+            catalog=deepcopy(apply_texture_overrides(self.project,load_scene_texture_catalog(self.project.disc_path,self.project.active_scene.removeprefix('scene://'))))
+            matches=[i for i,(_,source) in enumerate(catalog.textures) if source['semantic_id']==asset_id]
+            if len(matches)!=1:
+                raise ProjectError('Texture proposal must resolve one source in the scene texture catalog')
+            index=matches[0];catalog.textures[index]=(parse_tim(candidate),catalog.textures[index][1])
+            changed=[];materials=0;unavailable=[];texture_bytes=0
+            from .scene_preview import MAX_TEXTURE_BYTES
+            for geometry in scene['assets']:
+                asset=self.project.assets.records.get(geometry['asset_id'])
+                if geometry.get('pose_kind')=='source_heightfield':
+                    proposed=terrain_preview(self.project,prepared=geometry['preview'],catalog=catalog)
+                elif asset is not None:
+                    proposed=self.model_preview(asset,prepared=geometry['preview'],texture_catalog=catalog)
+                else:
+                    unavailable.append(geometry['geometry_key']);proposed=geometry['preview']
+                texture_bytes+=sum((len(t.get('rgba_base64',''))+len(t.get('stp_base64','')))*3//4 for t in proposed.get('textures',[]))
+                if texture_bytes>MAX_TEXTURE_BYTES:
+                    raise ProjectError('Proposed scene textures exceed the scene byte budget')
+                old=geometry['preview'].get('textures',[]);new=proposed.get('textures',[])
+                if old!=new:
+                    materials+=sum(a!=b for a,b in zip(old,new))+abs(len(old)-len(new))
+                    changed.append({'geometry_key':geometry['geometry_key'],'asset_id':geometry['asset_id'],'preview':proposed})
+        keys={a['geometry_key'] for a in changed}
+        report.update(proposal_assets=changed,affected_instances=[e['entity_id'] for e in scene['entities'] if e.get('renderable') and e.get('geometry_key') in keys],
+                      affected_material_count=materials,decoded_texture_bytes=texture_bytes,unavailable_geometry_keys=unavailable,scene_id=scene['scene_id'],project_source_key=key,
+                      evidence='static_vram_address_reconstruction_not_runtime_residency')
+        if source_key(self.project)!=key:
+            raise ProjectError('Scene changed during texture proposal inspection')
+        return report
+
+    def model_preview(self, asset: dict, clip_id: str | None = None, *, prepared: dict | None = None, effective_shape: bool = False, project_view=None, texture_catalog=None) -> dict:
         from importer.assets import load_model_preview
         from importer.animation import animation_capabilities, load_animation_preview
         from importer.textures import (associate_material, load_asset_texture_catalog,
@@ -352,7 +397,7 @@ class EditorServer(ThreadingHTTPServer):
                 self.texture_catalogs.clear()
             self.texture_catalogs[key] = apply_texture_overrides(project, load_scene_texture_catalog(project.disc_path, scene))
         # The selected shared bank never replaces or merges into the scene cache.
-        catalog = load_asset_texture_catalog(project.disc_path, asset, self.texture_catalogs[key])
+        catalog = load_asset_texture_catalog(project.disc_path, asset, texture_catalog if texture_catalog is not None else self.texture_catalogs[key])
         preview["texture_scope"] = "field_party" if uses_field_party_textures(asset) else "scene"
         preview["texture_catalog"] = catalog.metadata()
         preview["textures"] = []
@@ -466,7 +511,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
                 request_limit = 6 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview'):
+            if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
@@ -483,6 +528,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Scene catalog requires a disc path, bounded integer offset and name prefix')
                     from importer.pipeline import list_scenes
                     self._json(200, list_scenes(body['disc'], offset=body['offset'], limit=16, prefix=body['prefix']))
+                    return
+                if route == '/api/texture-file-scene-preview':
+                    if set(body)!={'asset_id','format','palette_index','content_base64','candidate_sha256','source_key'} or not isinstance(body['asset_id'],str) or not isinstance(body['content_base64'],str) or len(body['content_base64'])>22369624:
+                        raise ProjectError('Texture scene proposal requires inspected file/hash, palette and source key')
+                    from .scene_preview import source_key
+                    key=source_key(self.server.project)
+                    if not key or key!=body['source_key']:
+                        raise ProjectError('Scene changed; refresh before inspecting a texture file')
+                    try:
+                        content=base64.b64decode(body['content_base64'],validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Texture scene proposal requires valid base64') from exc
+                    candidate,report=self.server.project._prepare_texture_file(body['asset_id'],content,body['format'],body['palette_index'])
+                    if report['candidate_sha256']!=body['candidate_sha256']:
+                        raise ProjectError('Texture file differs from the inspected candidate hash')
+                    self._json(200,self.server.scene_texture_proposal(body['asset_id'],candidate,report,key))
                     return
                 if route == '/api/texture-file-preview':
                     if set(body) != {'asset_id','format','palette_index','content_base64'} or not isinstance(body['asset_id'],str) or not isinstance(body['content_base64'],str) or len(body['content_base64']) > 22369624:

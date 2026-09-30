@@ -6,10 +6,12 @@ from importer.core import ImportError
 from .resources import apply_texture_overrides
 
 
-def terrain_preview(project):
+def terrain_preview(project, *, prepared=None, catalog=None):
     scene = project.imports[project.active_scene]["scene"]["name"]
-    preview = load_terrain(project.disc_path, scene)
-    catalog = apply_texture_overrides(project, load_scene_texture_catalog(project.disc_path, scene))
+    from copy import deepcopy
+    preview = deepcopy(prepared) if prepared is not None else load_terrain(project.disc_path, scene)
+    if catalog is None:
+        catalog = apply_texture_overrides(project, load_scene_texture_catalog(project.disc_path, scene))
     preview["textures"] = []
     budget = 4 * 1024 * 1024
     for index, material in enumerate(preview["materials"]):

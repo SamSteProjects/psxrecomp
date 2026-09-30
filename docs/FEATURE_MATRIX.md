@@ -621,3 +621,11 @@ previewed before Apply for transforms or replacement files, with distinct source
 poses, preserved placements and explicit unavailable counts. Retail model0074
 all11 placements, Restore/Return and unchanged state passed. Focused multi-pose
 and browser checks passed; gameplay acceptance remains deferred.
+
+
+Texture proposal scene inspection (2026-09-30): TIM/JSON proposals can be previewed
+through the static image/CLUT material decoder before Apply, retaining geometry
+and placement. Retail texture29 changed31 materials/19 geometries/58 instances;
+Return/Restore, late-response withdrawal, unchanged project/authored-file hashes
+and TIM readback passed.23 retail-enabled focused tests passed. Runtime texture
+residency/gameplay appearance remain unverified;383-test checkpoint predates feature.

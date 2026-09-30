@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Proposed texture files through scene material bindings
+
+Previous goal turn progressed withd33cf47f shared model impact preview. Added TIM/
+JSON texture scene proposals via temporary catalog and existing model/ground VRAM
+image/CLUT decoding. Geometry/pose/placement remain unchanged; scene byte budget,
+candidate hash/source guards and closed-dialog late-response withdrawal apply.
+Restore/Return retain the file.23 focused retail-enabled tests passed no skips.
+Texture29 browser proposal changed31 materials/19 geometries/58 instances with
+geometry/base/state preservation, exact Restore/Return, discard/stale rejection
+and zero page errors. Held late response after closing proposal withdrew safely.
+TIM readback matched hash/counts; all11 authored hashes unchanged. Screenshot
+inspected for proposal controls; scene occlusion remains approximate. Evidence
+texture-scene-* under model-scale-project-20260930. Temporary browser/server
+stopped; no game/install. Full SDK active, gameplay residency/appearance deferred;
+383-test checkpoint predates this feature.
+
+
 ### 2026-09-30 — Shared model proposal impact preview
 
 Previous goal turn progressed with9aacbae0 proposed-file scene inspection. Added

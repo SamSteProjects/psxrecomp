@@ -8,7 +8,7 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `9aacbae0`, including model object
+Reviewed against committed source through `d33cf47f`, including model object
 quarter-turn and uniform-scale authoring, flag operands/reference layers, the
 wait Inspector and instruction-to-operand navigation described below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
@@ -690,3 +690,28 @@ for proposal controls; scene occlusion and retail visibility remain approximate.
 Temporary browser/server stopped. No game or package
 installation.383-test checkpoint predates this addition; gameplay acceptance
 remains deferred and the full SDK remains incomplete.
+
+
+Proposed texture files in the scene (2026-09-30): validated TIM/JSON proposals can
+now be inspected before Apply across their decoded scene materials. A private
+in-memory catalog substitutes the proposed TIM alongside current authored texture
+bindings, then uses the existing static VRAM image/CLUT decoder for model and ground
+materials. Separate field-party banks retain their established scope. Geometry,
+topology, poses and placement remain source-owned; the renderer only substitutes
+texture payloads. Changed material/instance counts and unavailable geometries are
+explicit; the16MiB scene texture budget still applies. Candidate hash and scene key
+are revalidated. Closing the proposal withdraws delayed replies. Restore/Return
+recover the exact scene while retaining the selected file for explicit Apply or
+Discard.23 focused retail-enabled texture tests passed with no skips, including
+prepared-ground catalog substitution without source mutation. Retail texture29
+JSON browser probe changed31 materials across19 geometries/58 instances; vertices,
+topology, poses, matrices, base/project state, exact Restore/Return, retained file,
+discard and stale hash/source/base64 rejection passed with zero page errors.
+A held response after closing the proposal did not change the scene. TIM readback
+matched the candidate hash and same31 materials/58 instances. All11 authored-file
+hashes remained unchanged. Screenshot inspected for proposal controls; visual
+occlusion remains approximate. Evidence under local-output/sdk-20260909/model-scale-project-20260930/
+texture-scene-browser-check.json, texture-scene-tim-check.json,
+texture-scene-authored-check.json and texture-scene-proposal.png. Temporary browser/
+server stopped; no game/package installation. Runtime VRAM residency and gameplay
+appearance remain unverified;383-test checkpoint predates this addition.

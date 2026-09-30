@@ -1491,6 +1491,29 @@ async function previewTextureFile(){
     const changes=(label,diff)=>`<h3>${label}</h3><p>${diff.palette_words_changed} palette words · ${diff.pixel_indices_changed??'direct-color'} pixel indices · ${diff.image_bytes_changed} image bytes changed.</p><pre>${escapeHTML(diff.changes.map(item=>`${item.kind==='palette_word'?`Palette word ${item.word_index}`:item.kind==='pixel_index'?`Pixel (${item.x}, ${item.y})`:`Image byte ${item.image_byte_index}`}: ${item.before} → ${item.after}`).join('\n')||'No payload changes.')}</pre>${diff.changes_truncated?'<p>Detail limited to the first 256 changes; counts include all changes.</p>':''}`;
     textureFileDialog.innerHTML=`<div class="dialog-heading"><h2>Proposed texture file</h2><button id="close-texture-file" aria-label="Close proposed texture">×</button></div><p>Proposed file · not applied · ${escapeHTML(file.name)}</p><p>${result.width} × ${result.height} · ${result.bpp} bpp · palette ${result.palette_index}</p><div class="texture-bitmap-wrap"><canvas id="texture-file-bitmap" aria-label="Proposed texture pixels"></canvas></div>${changes('Compared with current authored texture',result.current_changes)}${changes('Compared with retail texture',result.retail_changes)}<details><summary>Source hashes and limits</summary><pre>${escapeHTML(JSON.stringify({retail:result.source_sha256,current:result.effective_sha256,proposed:result.candidate_sha256},null,2))}</pre><p>Layout and payload checked. Compressed-carrier capacity and gameplay appearance require Build and later verification. PSX semi-transparent blending is not reconstructed.</p></details><button id="return-texture-file">Return to selected file</button>`;
     const canvas=$('texture-file-bitmap');canvas.width=result.width;canvas.height=result.height;canvas.getContext('2d').putImageData(new ImageData(bytes,result.width,result.height),0,0);
+    if(scenePreviewCurrent()&&sceneRepresentation==='authored'){
+      const inspect=document.createElement('button');inspect.type='button';inspect.textContent='Inspect proposed texture in scene';textureFileDialog.append(inspect);
+      const loadedKey=sceneKey,sceneSource=scenePreview.project_source_key;
+      inspect.onclick=async()=>{
+        if(busy||!textureFileDialog.open||!current()||!scenePreviewCurrent()||loadedKey!==sceneKey||sceneRepresentation!=='authored')return;
+        setBusy(true);
+        try{
+          const response=await fetch('/api/texture-file-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:session.record.id,format,palette_index:session.paletteIndex,content_base64:content,candidate_sha256:result.candidate_sha256,source_key:sceneSource})}),posed=await response.json();
+          if(!textureFileDialog.open||!current()||!scenePreviewCurrent()||loadedKey!==sceneKey)return;
+          if(!response.ok||posed.error)throw new Error(posed.error||'Texture scene proposal failed');
+          if(posed.asset_id!==session.record.id||posed.candidate_sha256!==result.candidate_sha256||posed.project_source_key!==sceneSource||!Array.isArray(posed.proposal_assets)||!Array.isArray(posed.affected_instances))throw new Error('Texture scene proposal differs from file inspection');
+          const proposedScene=structuredClone(scenePreview),seen=new Set();
+          for(const row of posed.proposal_assets){const geometry=proposedScene.assets.find(a=>a.geometry_key===row.geometry_key);if(!geometry||geometry.asset_id!==row.asset_id||seen.has(row.geometry_key)||!Array.isArray(row.preview?.textures))throw new Error('Texture proposal geometry differs from scene');seen.add(row.geometry_key);geometry.preview.textures=row.preview.textures;}
+          stopScenePosePlayback();const failures=sceneRenderer.load(proposedScene);if(failures.length)throw new Error(failures.join('; '));
+          const returnToTextureFile=()=>{if(session!==textureSession||session.projectKey!==textureProjectKey()||loadedKey!==sceneKey||$('texture-file').files?.[0]!==file||state.project.mode!=='edit')return false;textureDialog.showModal();textureFileDialog.showModal();return true;};
+          scenePose={key:sceneKey,name:'Proposed texture · not applied',returnToFile:returnToTextureFile,afterRestore:returnToTextureFile};
+          scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed texture · not applied · ${posed.affected_material_count} changed materials · ${posed.affected_instances.length} instances · ${posed.unavailable_geometry_keys.length} unavailable geometries`;
+          for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
+          const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to texture file';
+          textureFileDialog.close();textureDialog.close();frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:posed.affected_instances.map(entity_id=>({entity_id}))},null);draw();
+        }catch(error){if(current()){clearScenePose();textureDialog.querySelector('.dialog-error').textContent=error.message;draw();}}finally{setBusy(false);}
+      };
+    }
     $('close-texture-file').onclick=$('return-texture-file').onclick=()=>textureFileDialog.close();textureFileDialog.showModal();
   }catch(error){if(current())textureDialog.querySelector('.dialog-error').textContent=error.message;}
   finally{setBusy(false);updateTextureActions();}
