@@ -8,12 +8,22 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `b0fb387e`, plus indexed texture
-rectangle copying documented below, including model object
+Reviewed against committed source through `93722112`, plus saved runtime node
+review documented below, including model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Saved runtime node review (2026-09-30):** the Observed nodes panel can
+export decoded metadata and reopen it later in Edit mode as a historical,
+read-only Inspector. Positions/capture frames, uncertain fields, evidence and
+unconfirmed candidate IDs are retained; raw prefixes and guard tokens are
+excluded. Saved files never set Live state/correlation or change project/camera.
+Serializer and synthetic browser download/reopen/filter/stale/file-read guards
+passed with zero authoring requests or page errors. All17 fields from the actual
+profile decoder on a synthetic prefix were accepted. See the [review guide](legaia-runtime-node-review.md).
+No real runtime capture was performed; capture/gameplay acceptance remains deferred.
 
 **Indexed texture rectangle copy (2026-09-30):** copy an existing 4/8-bpp
 image region to another location in the same texture, with draft pixels and

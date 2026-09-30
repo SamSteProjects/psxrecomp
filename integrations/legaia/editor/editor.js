@@ -1,6 +1,7 @@
 import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
 import {instructionOperandEditors} from '/script-operands.js';
+import {captureRuntimeReview,parseRuntimeReview,MAX_REVIEW_BYTES} from '/runtime-review.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -22,8 +23,28 @@ const observedLayerButton=document.createElement('button');observedLayerButton.t
 const pickRuntimeButton=document.createElement('button');pickRuntimeButton.textContent='Pick runtime node';pickRuntimeButton.setAttribute('aria-pressed','false');pickRuntimeButton.onclick=()=>{pickRuntimeNodes=!pickRuntimeNodes;pickRuntimeButton.setAttribute('aria-pressed',String(pickRuntimeNodes));if(pickRuntimeNodes){showObservedNodes=true;observedLayerButton.setAttribute('aria-pressed','true');}draw();};$('frame-selected').after(pickRuntimeButton);
 const nodesButton=document.createElement('button');nodesButton.textContent='Observed nodes';$('frame-selected').after(nodesButton);
 const nodesDialog=document.createElement('dialog');nodesDialog.className='project-dialog observed-nodes-dialog';document.body.append(nodesDialog);
+let nodeReviewRevision=0;
+function downloadRuntimeReview(review){
+  const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)+'\n'],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='runtime-nodes-historical.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function appendSavedNodeReviewPicker(){
+  const revision=nodeReviewRevision,label=document.createElement('label'),input=document.createElement('input');label.textContent='Open saved runtime node review';input.type='file';input.accept='.json';input.setAttribute('aria-label','Saved runtime node review');label.append(input);nodesDialog.append(label);
+  const error=document.createElement('p');error.className='dialog-error';error.setAttribute('role','alert');nodesDialog.append(error);
+  input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{if(file.size>MAX_REVIEW_BYTES)throw new Error('Saved review exceeds 1 MiB');const review=parseRuntimeReview(await file.text());if(revision!==nodeReviewRevision||!nodesDialog.open||input.files?.[0]!==file)return;renderSavedNodeReview(review);}catch(e){if(revision===nodeReviewRevision&&nodesDialog.open)error.textContent=e.message;}};
+}
+function renderSavedNodeReview(review){
+  nodeReviewRevision++;nodesDialog.replaceChildren();const heading=document.createElement('h2');heading.textContent='Saved runtime node review · historical';nodesDialog.append(heading);
+  const note=document.createElement('p');note.textContent=`Read only · ${review.nodes.length} nodes · ${review.scene_id} · epoch ${review.epoch_id} · exported ${review.exported_at}. Export time is not capture time. This file does not establish current Live state or confirm actor identities.`;nodesDialog.append(note);
+  const search=document.createElement('input');search.type='search';search.setAttribute('aria-label','Filter saved nodes');search.placeholder='Filter node or candidate ID';nodesDialog.append(search);
+  const list=document.createElement('div');nodesDialog.append(list);const rows=[];
+  for(const node of review.nodes){const row=document.createElement('details'),summary=document.createElement('summary'),detail=document.createElement('div');summary.textContent=`${node.runtime_node_id} · XYZ ${node.observed_position.x??'?'} / ${node.observed_position.y??'?'} / ${node.observed_position.z??'?'} · ${node.candidate_entity_ids.length} unconfirmed candidates`;const frames=document.createElement('p');frames.textContent=`Position capture frames: ${node.position_capture_frames?.before??'unknown'}–${node.position_capture_frames?.after??'unknown'} · ${node.reason??'No binding reason recorded'}`;detail.append(frames);const candidates=document.createElement('p');candidates.textContent='Unconfirmed candidate IDs: '+(node.candidate_entity_ids.join(', ')||'none');detail.append(candidates);for(const field of node.decoded_fields){const entry=document.createElement('p'),evidence=document.createElement('small'),value=field.interpreted_value;entry.textContent=`${field.property}: ${value==null?'Unknown':typeof value==='object'?JSON.stringify(value):String(value)} · raw ${field.raw_numeric_value??'unknown'} · ${field.confidence??'unknown'} · applicability ${field.applicability??'unknown'}${field.unresolved?' · unresolved':''}`;evidence.textContent=` ${field.notes??''} ${(field.evidence??[]).join(', ')}`;entry.append(evidence);detail.append(entry);}row.append(summary,detail);list.append(row);rows.push({row,text:JSON.stringify(node).toLowerCase()});}
+  search.oninput=()=>{for(const item of rows)item.row.hidden=!item.text.includes(search.value.trim().toLowerCase());};
+  const download=document.createElement('button');download.textContent='Download historical metadata';download.onclick=()=>downloadRuntimeReview(review);nodesDialog.append(download);appendSavedNodeReviewPicker();
+  const back=document.createElement('button');back.textContent='Back to observed nodes';back.onclick=()=>renderObservedNodes();nodesDialog.append(back);const close=document.createElement('button');close.textContent='Close saved review';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
+}
 nodesButton.onclick=()=>renderObservedNodes();
 function renderObservedNodes(query='',nodeIds=null){
+  nodeReviewRevision++;
   nodesDialog.replaceChildren();const heading=document.createElement('h2');heading.textContent='Observed runtime nodes';nodesDialog.append(heading);
   const note=document.createElement('p');note.textContent='Captured positions, independent of imported actor matching. Framing changes only the editor camera.';nodesDialog.append(note);
   const epoch=acceptedEpoch(state.runtime),correlation=state.runtime_correlation,context=JSON.stringify([state.project?.path,state.scene?.id]);
@@ -53,6 +74,7 @@ function renderObservedNodes(query='',nodeIds=null){
   }
   const filter=()=>{const query=search.value.trim().toLowerCase();let shown=0;for(const item of rows){item.row.hidden=!item.text.includes(query);if(!item.row.hidden)shown++;}count.textContent=`${shown} of ${nodes.length} captured nodes`;};search.oninput=filter;filter();
   if(!nodes.length){const empty=document.createElement('p');empty.textContent='No accepted actor sample. Enter Live mode and Observe actors first.';nodesDialog.append(empty);}
+  const save=document.createElement('button');save.textContent='Download captured node metadata';save.disabled=!nodes.length;save.onclick=()=>{if(busy||!current()){notify('The observation context changed. Refresh the captured list before downloading.',true);return;}try{downloadRuntimeReview(captureRuntimeReview({scene_id:state.scene.id,epoch_id:epoch,profile_id:state.runtime.observation?.profile?.profile_id??null,nodes}));}catch(error){notify(error.message,true);}};nodesDialog.append(save);appendSavedNodeReviewPicker();
   const refresh=document.createElement('button');refresh.textContent='Refresh captured list';refresh.onclick=()=>renderObservedNodes(search.value,nodeIds);nodesDialog.append(refresh);
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 };

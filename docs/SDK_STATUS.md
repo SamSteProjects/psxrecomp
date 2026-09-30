@@ -52,6 +52,16 @@ TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
 focused tests passed with no skips. The390-test checkpoint predates this feature;
 gameplay appearance remains deferred.
 
+**Saved runtime node review (2026-09-30):** the Observed nodes panel can
+export decoded metadata and reopen it later in Edit mode as a historical,
+read-only Inspector. Positions/capture frames, uncertain fields, evidence and
+unconfirmed candidate IDs are retained; raw prefixes and guard tokens are
+excluded. Saved files never set Live state/correlation or change project/camera.
+Serializer and synthetic browser download/reopen/filter/stale/file-read guards
+passed with zero authoring requests or page errors. All17 fields from the actual
+profile decoder on a synthetic prefix were accepted. See the [review guide](legaia-runtime-node-review.md).
+No real runtime capture was performed; capture/gameplay acceptance remains deferred.
+
 ## Validation scope
 
 The retail-enabled SDK discovery run passed **390 tests in 163.243 seconds**,

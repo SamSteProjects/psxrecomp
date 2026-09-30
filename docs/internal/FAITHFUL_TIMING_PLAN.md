@@ -213,6 +213,30 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Historical runtime-node metadata Inspector workflow
+
+Previous goal turn progressed at93722112. Added bounded metadata capture/parser
+module and static editor route. Observed nodes exports only selected decoded
+fields, positions/capture frames and unconfirmed candidate IDs with scene/epoch/
+profile and export-time context. Raw prefixes/guard tokens excluded. Offline
+file viewer has explicit historical/read-only labels, readable evidence entries,
+search and same-data re-export; no Frame/candidate actions or state/camera mutation.
+Context guards prevent stale downloads; panel revision/open/file guards withdraw
+late reads. Bounds include1MiB formatted download,128 nodes,64 fields, bounded
+metadata depth/text and duplicate/epoch checks. Serializer test passed redaction,
+detached roundtrip and malformed/authority/type/depth/size rejection. Actual field
+profile decoded synthetic156-byte prefix into17 accepted fields including pointer
+and uncertainty metadata. Synthetic browser rerun passed download/reopen/filter,
+stale capture, malformed/oversized file, same-data re-export and closed-read tests.
+Initial harness checked status instead of the toast; corrected and reran. Final
+historical field presentation rerun passed; screenshot inspected. Project/camera/
+service unchanged; zero authoring requests/page errors. Private evidence under
+local-output/sdk-20260909/runtime-node-review-20260930/. Temporary4406 server and
+browser stopped; no game or real runtime connected. JS syntax/diff checks passed.
+Updated buildout/status/matrix and added guide.390-test Python checkpoint remains
+separate; actual runtime capture/identity/gameplay acceptance and full goal open.
+
+
 ### 2026-09-30 — Overlap-safe indexed texture rectangle authoring
 
 Previous goal turn progressed atb0fb387e. Added exact-layout4/8-bpp same-image
