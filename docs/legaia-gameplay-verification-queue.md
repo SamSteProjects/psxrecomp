@@ -266,3 +266,16 @@ Actual ZIP member matches payload audit; browser report/pixel navigation and
 stale rejection passed. This is a serialization probe, not a finished visual
 mod. No game launched or package installed. Visible materials, active palette
 and runtime residency remain deferred with the other texture probes.
+
+
+2026-09-30 rectangle fill diagnostic (offline only): private project
+`local-output/sdk-20260909/texture-rectangle-project-20260930`, texture
+`texture://town01/5/raw/0`, fill X3…5 / Y1…2 with index14, composed with the
+previous palette word5386→5387 and pixel(1,0)13→14 probe. All pixels outside
+the rectangle and palette words were checked against the pre-fill effective
+texture; Undo/Redo, Save/Open and actual ZIP member readback passed. Package
+`Builds/c2a23ad8ef7308ca/legaia.sdk.9a55c316dc66-0.1.0-c2a23ad8ef7308ca.psxmod`,
+SHA-256 `004599994c11e8db2dec4ea969a815afc97e3d36f5883c20c56f37264b5a5142`.
+Browser draft, invalid bounds, Discard, Apply and Undo passed. This is a
+serialization diagnostic, not a finished visual mod. No game launched or
+package installed; visible materials, active palette and residency are deferred.

@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `914be7fa`, plus the current
-texture payload Build-report addition. The dated filename is retained for
+Reviewed against committed source through `4ae4fbb4`, plus the current
+indexed texture rectangle-fill addition. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -386,3 +386,14 @@ and a retail package readback verified the combined palette/pixel diagnostic
 at TIM bytes22/544. This reports emitted payload edits, not runtime residency.
 Browser checks passed report details, unchanged project state during pixel
 navigation, and stale replacement hash rejection after a later edit.
+
+Indexed texture rectangle fill: the editor previews an unapplied rectangle
+using an existing encoded palette index, validates complete image bounds and
+uses an inspected effective TIM hash. Apply creates one ordinary texture
+replacement command; no-op fills create no history entry. Four-bit packed
+neighbors, outside pixels and all palette words are preserved. Nine focused
+tests passed with one retail environment-gated test skipped. Separate retail
+checks passed stale rejection, Undo/Redo, Save/Open and actual ZIP readback;
+browser draft/no-command, edge rejection, Discard, Apply and Undo passed.
+This edits indices for every palette using the image; resizing, quantization,
+shared-bank authoring and runtime appearance remain outside verified scope.

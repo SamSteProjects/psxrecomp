@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Indexed texture rectangle fill workflow
+
+Connected source-bound4/8bpp rectangle fill through project command history,
+persistence and Build, with unapplied pixel draft preview. Nine focused tests
+passed (one environment-gated retail test skipped), including odd nibble/row
+boundaries and strict bounds/types. Separate retail checks proved no-op history,
+stale rejection, outside pixel/palette preservation, Undo/Redo, Save/Open and
+actual package member equality. Browser draft/no-command, bounds, Discard,
+Apply and Undo passed; visually inspected and compacted the field layout.
+Private texture-rectangle-project-20260930 package retained; no game launched.
+
+
 ### 2026-09-30 — Texture payload Build report and pixel navigation
 
 Added bounded exact payload audits to texture serialization and Build reports;

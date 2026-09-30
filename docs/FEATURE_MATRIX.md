@@ -376,3 +376,14 @@ and a retail package readback verified the combined palette/pixel diagnostic
 at TIM bytes22/544. This reports emitted payload edits, not runtime residency.
 Browser checks passed report details, unchanged project state during pixel
 navigation, and stale replacement hash rejection after a later edit.
+
+Indexed texture rectangle fill: the editor previews an unapplied rectangle
+using an existing encoded palette index, validates complete image bounds and
+uses an inspected effective TIM hash. Apply creates one ordinary texture
+replacement command; no-op fills create no history entry. Four-bit packed
+neighbors, outside pixels and all palette words are preserved. Nine focused
+tests passed with one retail environment-gated test skipped. Separate retail
+checks passed stale rejection, Undo/Redo, Save/Open and actual ZIP readback;
+browser draft/no-command, edge rejection, Discard, Apply and Undo passed.
+This edits indices for every palette using the image; resizing, quantization,
+shared-bank authoring and runtime appearance remain outside verified scope.

@@ -476,6 +476,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.set_texture_pixel_index(body['asset_id'], body['x'], body['y'], body['palette_entry'], body['expected_sha256'])
                     self._json(200, self.server.state())
                     return
+                if route == '/api/texture-index-rectangle':
+                    if set(body) != {'asset_id','x','y','width','height','palette_entry','expected_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Rectangle fill requires texture, image bounds, index and inspected hash')
+                    self.server.project.set_texture_index_rectangle(body['asset_id'],body['x'],body['y'],body['width'],body['height'],body['palette_entry'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
                 if route == '/api/texture-palette-source':
                     if set(body) != {'asset_id','palette_index'} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Palette inspection requires texture identity and palette index')

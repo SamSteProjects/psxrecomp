@@ -136,6 +136,30 @@ def patch_tim_pixel_index(content: bytes, expected_sha256: str, x: int, y: int,
     return replacement
 
 
+def patch_tim_index_rectangle(content: bytes, expected_sha256: str, x: int, y: int,
+                              width: int, height: int, palette_entry: int) -> bytes:
+    """Fill an existing indexed image region, preserving adjacent packed lanes."""
+    if not isinstance(content, bytes) or _sha(content) != expected_sha256:
+        raise ImportError('Texture changed since rectangle inspection; reopen the editor')
+    pixel = inspect_tim_pixel_index(content, x, y)
+    if (type(width) is not int or type(height) is not int or width < 1 or height < 1 or
+            x + width > pixel['width'] or y + height > pixel['height'] or
+            type(palette_entry) is not int or not 0 <= palette_entry < pixel['entry_count']):
+        raise ImportError('Choose a nonempty rectangle inside the image and an existing palette index')
+    tim = parse_tim(content)
+    result = bytearray(content)
+    per_byte, mask = 8 // tim.bpp, pixel['entry_count'] - 1
+    start = 32 + len(tim.clut.data)
+    for row in range(y, y + height):
+        for column in range(x, x + width):
+            offset = start + row * tim.image.width_words * 2 + column // per_byte
+            shift = (column % per_byte) * tim.bpp
+            result[offset] = (result[offset] & (255 ^ (mask << shift))) | (palette_entry << shift)
+    replacement = bytes(result)
+    _validate(content, replacement)
+    return replacement
+
+
 def texture_payload_changes(source: bytes, candidate: bytes) -> dict:
     """Exact payload differences, with bounded detail and complete counts."""
     import struct

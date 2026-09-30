@@ -81,3 +81,6 @@
 
 #texture-file-dialog{width:min(860px,94vw);max-height:90vh;overflow:auto}#texture-file-dialog pre{max-height:220px;overflow:auto;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
 #texture-file-dialog .texture-bitmap-wrap{display:flex;justify-content:center}#texture-file-bitmap{width:auto;max-width:100%;height:auto;max-height:360px;object-fit:contain}
+
+#texture-rectangle-dialog{max-height:90vh;overflow:auto}#texture-rectangle-bitmap{width:auto;max-width:100%;height:auto;max-height:260px;object-fit:contain}
+#texture-rectangle-dialog form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#texture-rectangle-dialog form>label{margin:0}#texture-rectangle-dialog form>p{grid-column:1/-1;margin:4px 0}#texture-rectangle-dialog form>button{white-space:normal}
