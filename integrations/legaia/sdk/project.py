@@ -661,6 +661,41 @@ class ProjectService:
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
 
+    def _validate_waits(self, identifier: str, value: dict) -> None:
+        import re
+        from importer.core import ImportError
+        from importer.wait_authoring import validate_wait_values
+        self._dialogue_document(identifier)
+        if (not isinstance(value, dict) or set(value) != {"entries"} or
+                not isinstance(value["entries"], dict) or not 1 <= len(value["entries"]) <= 1024):
+            raise ProjectError("ScriptWaits requires a bounded nonempty entry collection")
+        prefix = "script://" + identifier.removeprefix("scene://") + "/wait/"
+        for key, fields in value["entries"].items():
+            if not isinstance(key, str) or re.fullmatch(re.escape(prefix) + r"[0-9a-f]{4}", key) is None:
+                raise ProjectError("Wait operand must belong to its source owner")
+            try:
+                validate_wait_values(fields)
+            except ImportError as error:
+                raise ProjectError(str(error)) from error
+
+    def _wait_context(self, identifier: str):
+        from importer.wait_authoring import WaitAuthoringContext
+        return WaitAuthoringContext(self._dialogue_context(identifier))
+
+    def wait_options(self, identifier: str) -> dict:
+        from importer.wait_authoring import validate_wait_values
+        result = self._wait_context(identifier).options(identifier)
+        authored = self.overrides.get(identifier, {}).get("ScriptWaits", {}).get("entries", {})
+        known = set()
+        for entry in result["targets"]:
+            key = entry["semantic_id"]
+            known.add(key)
+            entry["authored_values"] = deepcopy(authored.get(key, {}))
+            entry["effective_values"] = dict(entry["values"], **authored.get(key, {}))
+            validate_wait_values(entry["effective_values"])
+        result["unresolved_overrides"] = sorted(set(authored) - known)
+        return result
+
     def _validate_transitions(self, identifier: str, value: dict) -> None:
         import re
         from importer.transition_authoring import ENTRY_FIELDS
@@ -1262,6 +1297,32 @@ class ProjectService:
                 self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
                 self.redo_stack.clear()
             return
+        if command.get("type") in ("set_wait_target", "clear_wait_target"):
+            identifier, key = command.get("entity_id"), command.get("wait_id")
+            # Clear also checks owner syntax, but remains possible offline.
+            self._validate_waits(identifier, {"entries": {key: {"duration_ticks": 0}}})
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            entries = deepcopy(after.get("ScriptWaits", {}).get("entries", {}))
+            if command["type"] == "set_wait_target":
+                entries[key] = deepcopy(command.get("values"))
+                self._validate_waits(identifier, {"entries": entries})
+                self._wait_context(identifier).patch(entries)
+            else:
+                entries.pop(key, None)
+            if entries:
+                after["ScriptWaits"] = {"entries": entries}
+            else:
+                after.pop("ScriptWaits", None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_transition_entry", "clear_transition_entry"):
             identifier, key = command.get("entity_id"), command.get("transition_id")
             # Clear also checks owner syntax, but remains possible offline.
@@ -1615,7 +1676,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "Environment", "AnimationChannels", "Collision"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "Environment", "AnimationChannels", "Collision"}:
                 raise ProjectError("Unsupported authored component")
             if "Collision" in components:
                 result._validate_collision(identifier, components["Collision"])
@@ -1648,6 +1709,9 @@ class ProjectService:
             if "ScriptFlags" in components:
                 result._validate_flags(identifier, components["ScriptFlags"])
                 result.overrides.setdefault(identifier, {})["ScriptFlags"] = deepcopy(components["ScriptFlags"])
+            if "ScriptWaits" in components:
+                result._validate_waits(identifier, components["ScriptWaits"])
+                result.overrides.setdefault(identifier, {})["ScriptWaits"] = deepcopy(components["ScriptWaits"])
         drafts = raw.get('actor_drafts', {})
         if not isinstance(drafts,dict) or len(drafts)>128:
             raise ProjectError('Invalid actor draft collection')
@@ -1730,6 +1794,9 @@ class ProjectService:
                 flags = edits.get("ScriptFlags", {}).get("entries", {})
                 if flags:
                     changes.append(f"Flags: {len(flags)} operands")
+                waits = edits.get("ScriptWaits", {}).get("entries", {})
+                if waits:
+                    changes.append(f"Waits: {len(waits)} targets")
                 records.append({"id": identifier, "kind": "actor", "name": "Actor " + identifier.rsplit("/", 1)[-1],
                                 "scene_id": scene_id, "source_scene": document["scene"]["name"],
                                 "changes": changes, "authored": deepcopy(edits),
@@ -1747,6 +1814,9 @@ class ProjectService:
             flags = edits.get("ScriptFlags", {}).get("entries", {})
             if flags:
                 changes.append(f"Flags: {len(flags)} operands")
+            waits = edits.get("ScriptWaits", {}).get("entries", {})
+            if waits:
+                changes.append(f"Waits: {len(waits)} targets")
             if changes:
                 records.append({"id": identifier, "kind": "script",
                                 "name": "Partition 2 script " + str(int(identifier.rsplit("/", 1)[-1])),

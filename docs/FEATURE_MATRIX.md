@@ -510,3 +510,24 @@ WAIT handler evidence was read directly with git show from the unchanged SDK pin
 d6e64c68ede25813d35db20980da82a1a025549b, step.rs opcode0x4A.
 No reference checkout mutation or game launch occurred. The365-test checkpoint
 predates this addition.
+
+
+Wait project/output integration (2026-09-30): ScriptWaits commands now preserve
+retail/authored/effective ticks, ordinary Undo/Redo, Clear, authored summaries
+and Save/Open. Ordinary Build independently checks exact two-byte spans, requested
+values, source identity and overlap/unaudited bytes. Reports expose wait.duration_ticks
+and source instruction IDs. Experimental compressed/raw-streaming exporters
+compose/rebase waits and include them in scene audits; new wait coverage in the
+raw-streaming route has not yet received a retail wait probe. Fifteen selected
+retail-enabled tests passed in27.113s without skips. A focused merge check also
+passed after adding explicit high-byte and second-byte overlap cases. Retail
+town01 actor0044 wait16-to17 composed with actor0002 flag2-to3; saved project,
+Undo/Redo, package ZIP/decompression and appended archive readbacks passed.
+The two changed decoded MAN offsets were4772 and24483; append rebased the wait
+to24486. Private project: local-output/sdk-20260909/wait-authoring-project-20260930.
+Package under Builds/89f66b995f838276 has SHA256
+148ab35c0b9146cab17359b9a870ab054c95aa98c415a7b26be199992da50971.
+Earlier pending project/output notes are superseded. Inspector Apply is next;
+seconds, execution, actual timing behavior and gameplay acceptance remain
+unverified. No game launched or package installed. The365-test checkpoint
+predates this work.

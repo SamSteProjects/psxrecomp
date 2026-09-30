@@ -52,6 +52,7 @@ def package_change_kinds(edits) -> list[str]:
         'encoded-transition-entry-only': 'transition entries',
         'script-movement-target-only': 'script movement targets',
         'script-flag-bit-only': 'script flag operands',
+        'script-wait-target-only': 'script wait targets',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'source-MAP-wall-bit-only': 'source collision walls',
         'shared-scene-animation-record': 'animation channels',
@@ -70,6 +71,9 @@ def build_report(audit) -> dict:
         elif change.get("scope") == "script-flag-bit-only":
             field = "flag.bit"
             before, after = change["before_bit"], change["after_bit"]
+        elif change.get("scope") == "script-wait-target-only":
+            field = "wait.duration_ticks"
+            before, after = change["before_ticks"], change["after_ticks"]
         elif field == "dialogue.text":
             before = bytes.fromhex(change["before_hex"]).decode("ascii")
             after = bytes.fromhex(change["after_hex"]).decode("ascii")
@@ -78,7 +82,7 @@ def build_report(audit) -> dict:
         else:
             before = change.get("before_value", change.get("before_byte"))
             after = change.get("after_value", change.get("after_byte"))
-        changes.append({"scene": change["scene"], "asset_id": change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))),
+        changes.append({"scene": change["scene"], "asset_id": change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"]))))),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         **({"frame_index": change["frame_index"], "object_index": change["object_index"],
@@ -226,6 +230,37 @@ def _merge_flag_patch(baseline, working, patched, changes, expected, previous):
     return bytes(result)
 
 
+def _merge_wait_patch(baseline, working, patched, changes, expected, previous):
+    from importer.wait_authoring import validate_wait_values
+    if not isinstance(patched, bytes) or len(patched) != len(baseline) or len(working) != len(baseline):
+        raise BuildError('Wait patch changed MAN length')
+    occupied = {i for c in previous for i in range(c['decoded_byte_offset'],c['decoded_byte_offset']+c.get('byte_length',1))}
+    audited = set()
+    result = bytearray(working)
+    for change in changes:
+        target = expected.get(change.get('wait_id'))
+        at = change.get('decoded_byte_offset')
+        if (target is None or type(at) is not int or not 0 <= at <= len(baseline)-2 or
+                at != target['decoded_byte_offset'] or change.get('byte_length') != 2 or change.get('field') != 'duration_ticks' or
+                change.get('owner_id') != target['owner_id'] or
+                change.get('source_record_sha256') != target['source_record_sha256'] or
+                change.get('source_decoded_man_sha256') != _hash(baseline) or
+                change.get('mnemonic') != 'WAIT_FRAMES' or change.get('target_context') != target['target_context'] or
+                change.get('before_hex') != baseline[at:at+2].hex() or change.get('after_hex') != patched[at:at+2].hex()):
+            raise BuildError('Wait audit disagrees with verified source bytes')
+        value = validate_wait_values(target['requested_values'])
+        if (change.get('before_ticks') != int.from_bytes(baseline[at:at+2],'little') or
+                change.get('after_ticks') != value or patched[at:at+2] != value.to_bytes(2,'little')):
+            raise BuildError('Wait patch differs from requested duration')
+        span = {at,at+1}
+        if span & (occupied | audited) or working[at:at+2] != baseline[at:at+2]:
+            raise BuildError('Wait patch overlaps another authored MAN span')
+        audited.update(span);result[at:at+2] = patched[at:at+2]
+    if any(a != b and i not in audited for i,(a,b) in enumerate(zip(baseline,patched))):
+        raise BuildError('Wait patch changed an unaudited MAN byte')
+    return bytes(result)
+
+
 def _guard_output(path: Path, boundary: Path) -> None:
     path, boundary = path.absolute(), boundary.absolute()
     if not path.is_relative_to(boundary) or not path.resolve().is_relative_to(boundary.resolve()):
@@ -309,7 +344,7 @@ def _build_project(project, output_dir) -> dict:
             project._validate_movements(identifier, components["ScriptMovement"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}, "waits": {}})
             edits["movements"][identifier] = components["ScriptMovement"]["entries"]
             components = {k: v for k, v in components.items() if k != "ScriptMovement"}
             if not components:
@@ -318,16 +353,25 @@ def _build_project(project, output_dir) -> dict:
             project._validate_flags(identifier, components["ScriptFlags"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}, "waits": {}})
             edits["flags"][identifier] = components["ScriptFlags"]["entries"]
             components = {k: v for k, v in components.items() if k != "ScriptFlags"}
+            if not components:
+                continue
+        if isinstance(components, dict) and "ScriptWaits" in components:
+            project._validate_waits(identifier, components["ScriptWaits"])
+            document = project._dialogue_document(identifier)
+            scene_id = "scene://" + document["scene"]["name"]
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}, "waits": {}})
+            edits["waits"][identifier] = components["ScriptWaits"]["entries"]
+            components = {k: v for k, v in components.items() if k != "ScriptWaits"}
             if not components:
                 continue
         if isinstance(components, dict) and "Transitions" in components:
             project._validate_transitions(identifier, components["Transitions"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}, "waits": {}})
             edits["transitions"][identifier] = components["Transitions"]["entries"]
             components = {k: v for k, v in components.items() if k != "Transitions"}
             if not components:
@@ -346,7 +390,7 @@ def _build_project(project, output_dir) -> dict:
                 validate_run_id(identifier, run)
                 if not isinstance(text, str):
                     raise BuildError("Dialogue replacement must be text")
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}, "waits": {}})
             edits["dialogues"][identifier] = dialogue["runs"]
             continue
         if identifier not in entity_lookup:
@@ -355,7 +399,7 @@ def _build_project(project, output_dir) -> dict:
         if (not isinstance(components, dict) or not components or
                 set(components) - {"Transform", "ActorAppearance", "Dialogue"}):
             raise BuildError(f"{identifier}: only authored Transform.position, ActorAppearance and bounded Dialogue runs can be built")
-        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}})
+        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}, "waits": {}})
         record = actor["source_record"]["record_index"]
         if "Transform" in components:
             transform = components["Transform"]
@@ -505,7 +549,7 @@ def _build_project(project, output_dir) -> dict:
             body = archive.read_entry(entry)
             stream_offset = bundle.table_offset + descriptor.data_offset
             original_span = body[stream_offset:stream_offset + consumed]
-            if edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"]:
+            if edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"] or edits["waits"]:
                 baseline = decompress_lzs(original_span, descriptor.size)[0]
                 changed, changes = baseline, []
             if edits["assignments"]:
@@ -527,7 +571,7 @@ def _build_project(project, output_dir) -> dict:
                 changed, changes = context.patch(assignments, original=baseline)
                 for change in changes:
                     change["donor_entity_id"] = edits["assignments"][change["record_index"]]
-            if edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"]:
+            if edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"] or edits["waits"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
@@ -607,6 +651,24 @@ def _build_project(project, output_dir) -> dict:
                                       record_index=int(change["owner_id"].rsplit("/", 1)[1]),
                                       scope="script-flag-bit-only")
                     changes.extend(flag_changes)
+                if edits["waits"]:
+                    from importer.wait_authoring import load_wait_authoring_context
+                    context = load_wait_authoring_context(project.disc_path, scene)
+                    requested, expected = {}, {}
+                    for owner, entries in edits["waits"].items():
+                        allowed = {e["semantic_id"]: e for e in context.options(owner)["targets"]}
+                        for key, values in entries.items():
+                            if key not in allowed or key in requested:
+                                raise BuildError("Wait operand is not uniquely owned by the verified source")
+                            requested[key], expected[key] = values, dict(allowed[key], requested_values=values)
+                    wait_man, wait_changes = context.patch(requested, original=baseline)
+                    changed = _merge_wait_patch(baseline, changed, wait_man,
+                                                      wait_changes, expected, changes)
+                    for change in wait_changes:
+                        change.update(semantic_id=change["owner_id"],
+                                      record_index=int(change["owner_id"].rsplit("/", 1)[1]),
+                                      scope="script-wait-target-only")
+                    changes.extend(wait_changes)
                 replacement, sizes = serialize_man_decoded(original_span, descriptor.size, changed, scene)
             else:
                 replacement, changes, sizes = serialize_man_stream(original_span, descriptor.size, scene, edits["positions"])
@@ -736,7 +798,7 @@ def _build_project(project, output_dir) -> dict:
         feature_name = 'Authored scene data'
         description = 'Private fixed-width script movement targets and optional authored scene data.'
         feature_description = 'Apply verified MOVE_TO/NPC_RUN X/Z operands; execution and gameplay remain unverified.'
-    if any(c.get('scope') == 'script-flag-bit-only' for c in audit_edits):
+    if any(c.get('scope') in ('script-flag-bit-only','script-wait-target-only') for c in audit_edits):
         package_suffix = ' authored scene data'
         feature_name = 'Authored scene data'
     if any(c.get('scope') == 'TMD-vertex-normal-XYZ-only' for c in audit_edits):

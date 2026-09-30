@@ -304,3 +304,14 @@ This is a serialization diagnostic, not a story mod or a proven visible change.
 Do not infer flag meaning or launch automatically. Gameplay/story execution and
 runtime compatibility remain deferred. Compressed NPC append readback and raw
 streaming composition passed offline; editor Apply is still pending.
+
+
+Deferred wait operand diagnostic (2026-09-30): saved private project
+local-output/sdk-20260909/wait-authoring-project-20260930 contains town01 actor0044
+WAIT_FRAMES PC0x019F16-to17 ticks plus actor0002 CFLAG_SET2-to3. Package under
+Builds/89f66b995f838276 has SHA256
+148ab35c0b9146cab17359b9a870ab054c95aa98c415a7b26be199992da50971.
+Independent ZIP readback confirms only MAN offsets4772 and24483 changed; compressed
+NPC append readback retained the wait at24486. This diagnostic is not a finished
+story mod or proven perceptible timing difference. Manual execution/timing and
+runtime compatibility are deferred; do not launch automatically.

@@ -214,6 +214,21 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Wait target project history and output composition
+
+Previous turn progressed inee769088. Connected ScriptWaits to ordinary project
+commands, separate operand layers, Undo/Redo, Clear, persistence and authored
+summaries. Build validates exact two-byte spans before composition; reports and
+package labels identify wait targets. Compressed/raw experimental preparation
+includes waits and rebases appended owners. Fifteen retail-enabled selected tests
+passed in27.113s; added and reran high-byte/second-byte overlap merge coverage.
+Retail wait16-to17 plus flag2-to3 package changed only MAN4772/24483; ZIP/decode
+readback, history/Save/Open and compressed append readback at24486 passed.
+Private evidence/project/package preserved and hash recorded in gameplay queue.
+Raw wait-specific retail probe and Inspector Apply remain pending. No game or
+install. Full SDK goal stays active; manual gameplay remains deferred.
+
+
 ### 2026-09-30 — WAIT_FRAMES source serialization groundwork
 
 Previous turn progressed in22b9c1f6. Verified current reference HEAD differs from

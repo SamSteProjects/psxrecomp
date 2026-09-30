@@ -16,7 +16,7 @@ LIMITATIONS = [
     "Targets above32767 exceed the pinned signed16 accumulator and remain unsupported.",
     "Ticks use host frame_delta; seconds, frame rate and actual execution remain unresolved.",
     "Opcode, extended context, record lengths, branch bytes and other operands remain unchanged.",
-    "Project commands, editor Apply and output integration remain pending."
+    "Project history, persistence and output are supported; editor Apply remains pending."
 ]
 
 
