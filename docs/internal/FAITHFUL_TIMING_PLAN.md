@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Exact object-local vertex/normal quarter turns
+
+Connected source-bound model object rotations through ordinary replacement
+history, persistence and Build. Signed permutations rotate vertices/normals with
+strict signed16 limits, fixed layout, source-local origin and axes. Three focused
+math/format tests passed all axes/inverse/four-turns/opaque preservation/stale
+and invalid values. Multipart model0009 object1 retail workflow preserved other
+objects, passed stale/Undo/Redo/Save/Open and independently decompressed actual
+ZIP member comparison (51scalar changes including the preexisting normal probe).
+Browser draft guard/Discard/Apply/vertex-normal readback/exact Undo passed;
+compacted dialog layout and screenshot inspected. Initial readback probe compared
+compressed bytes to TMD; corrected to decompress the carrier before extracting
+its source-bound member. Verified evidence retained under private
+model-rotation-project-20260930-verified. No game launched;365-test checkpoint
+predates this addition. Updated SDK reports and deferred gameplay queue.
+
+
 ### 2026-09-30 — Scene texture usage inspection and viewport Locate
 
 Added pure dependency extraction from current verified scene-preview material

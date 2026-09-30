@@ -494,6 +494,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.set_texture_palette_word(body['asset_id'], body['palette_index'], body['entry_index'], body['word'], body['expected_sha256'])
                     self._json(200, self.server.state())
                     return
+                if route == '/api/model-object-rotation':
+                    if set(body) != {'asset_id','object_index','axis','quarter_turns','expected_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Object rotation requires model, object, axis, quarter turns and inspected hash')
+                    self.server.project.rotate_model_object(body['asset_id'],body['object_index'],body['axis'],body['quarter_turns'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
                 if route == '/api/model-object-translation':
                     if set(body) != {'asset_id','object_index','offset','expected_sha256'} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Object translation requires asset, object, XYZ offset and inspected hash')

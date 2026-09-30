@@ -10,6 +10,34 @@ from .model_authoring import replace_model_shape
 MAX_JSON_BYTES = 16 * 1024 * 1024
 
 
+def rotate_shape_object(original: bytes, effective: bytes, expected_sha256: str,
+                        object_index: int, axis: str, quarter_turns: int) -> bytes:
+    """Exact signed permutations around an object's source-local origin."""
+    if sha256(effective).hexdigest() != expected_sha256:
+        raise ImportError('Model changed since object inspection; reopen the vector editor')
+    if axis not in ('x','y','z') or type(quarter_turns) is not int or quarter_turns not in (-1,1,2):
+        raise ImportError('Choose a source XYZ axis and −90, +90 or 180 degree turn')
+    source_hash = sha256(original).hexdigest()
+    replace_model_shape(original,source_hash,effective)
+    document = json.loads(export_shape_json(effective))
+    if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
+        raise ImportError('Choose an existing model object')
+    obj = document['objects'][object_index]
+    if not obj['vertices']:
+        raise ImportError('The selected object has no vertices')
+    def rotate(vector):
+        x,y,z = vector
+        for _ in range(quarter_turns % 4):
+            x,y,z = (x,-z,y) if axis == 'x' else (z,y,-x) if axis == 'y' else (-y,x,z)
+        if any(not -32768 <= value <= 32767 for value in (x,y,z)):
+            raise ImportError('Object rotation exceeds signed16 vector values; nothing was applied')
+        return [x,y,z]
+    for kind in ('vertices','normals'):
+        obj[kind] = [rotate(vector) for vector in obj[kind]]
+    document['source_sha256'] = source_hash
+    return import_shape_json(original,source_hash,json.dumps(document).encode())[0]
+
+
 def export_shape_json(source: bytes) -> bytes:
     digest = sha256(source).hexdigest()
     replace_model_shape(source, digest, source)

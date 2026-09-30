@@ -975,6 +975,18 @@ class ProjectService:
     def set_model_obj(self, asset_id: str, content: bytes) -> None:
         self.set_model_replacement(asset_id, self._prepare_model_file(asset_id, content, 'obj')[0])
 
+    def rotate_model_object(self, asset_id: str, object_index: int, axis: str,
+                            quarter_turns: int, expected_sha256: str) -> None:
+        from importer.model_json import rotate_shape_object
+        if self.mode != 'edit':
+            raise ProjectError('Model object rotation requires Edit mode')
+        original = self._model_source(asset_id,self.active_scene)
+        effective = (self.read_model_replacement(asset_id,self.model_overrides[asset_id])
+                     if asset_id in self.model_overrides else original)
+        replacement = rotate_shape_object(original,effective,expected_sha256,object_index,axis,quarter_turns)
+        if replacement != effective:
+            self.set_model_replacement(asset_id,replacement)
+
     def set_model_replacement(self, asset_id: str, content: bytes) -> None:
         from importer.model_authoring import replace_model_shape
         if self.mode != 'edit':

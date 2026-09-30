@@ -86,3 +86,5 @@
 #texture-rectangle-dialog form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#texture-rectangle-dialog form>label{margin:0}#texture-rectangle-dialog form>p{grid-column:1/-1;margin:4px 0}#texture-rectangle-dialog form>button{white-space:normal}
 
 #texture-usage-dialog{width:min(900px,94vw);max-height:90vh;overflow:auto}#texture-usage-dialog input{width:100%}#texture-usage-dialog section button{margin:3px}
+#model-vector-dialog{width:min(760px,94vw);max-height:90vh;overflow:auto}#model-vector-dialog form>label{display:inline-block;width:calc(33.333% - 9px);margin-right:8px;vertical-align:top}#model-vector-dialog [data-xyz],#model-vector-dialog [data-offsets]{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#model-vector-dialog [data-xyz]>label{margin:0}#model-vector-dialog details>label{display:inline-block;width:calc(50% - 9px);margin-right:8px;vertical-align:top}
+#model-vector-dialog label>select{display:block;width:100%;margin-top:6px}

@@ -279,3 +279,17 @@ SHA-256 `004599994c11e8db2dec4ea969a815afc97e3d36f5883c20c56f37264b5a5142`.
 Browser draft, invalid bounds, Discard, Apply and Undo passed. This is a
 serialization diagnostic, not a finished visual mod. No game launched or
 package installed; visible materials, active palette and residency are deferred.
+
+
+2026-09-30 object rotation diagnostic (offline only): private project
+`local-output/sdk-20260909/model-rotation-project-20260930-verified`, model
+`asset://town01/models/scene-tmd/0009`, object1 +90° around source-local X,
+vertices/normals(x,y,z)→(x,−z,y), composed with the existing normal-X probe.
+Other objects, layout/padding and vector lengths preserved; stale writes,
+Undo/Redo, Save/Open and independently decompressed ZIP TMD readback passed.
+Package `Builds/06cc352ef59b38db/legaia.sdk.f29d5595fa1c-0.1.0-06cc352ef59b38db.psxmod`,
+SHA-256 `832d626b1b75bd17f4b71304f2c45e6d95e7304839c90af63068fcf2a29e60bf`.
+Browser temporary Z rotation, vector draft guard, Discard and exact Undo passed.
+This is a serialization diagnostic, not a finished visual mod. No game launched
+or package installed. Gameplay shape/lighting and animation compatibility remain
+deferred; the browser does not calculate normal-based lighting.

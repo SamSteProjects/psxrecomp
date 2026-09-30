@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `8db7cc97`, plus the current
-scene texture dependency inspection. The dated filename is retained for
+Reviewed against committed source through `3fd7cc46`, plus the current
+model object quarter-turn authoring. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -423,3 +423,15 @@ texture29 fanout of31material matches/19geometries/58instances, scenery Locate,
 empty search and stale-source rejection. Screenshot inspected. This addition
 follows the365-test Python checkpoint; runtime residency/conditional visibility
 and cross-scene dependencies remain unverified.
+
+Model object quarter-turn authoring: rotate existing object vertices and normals
+around their source-local origin by−90°, +90° or180° on source X/Y/Z. Exact
+signed permutations preserve vector lengths, padding, topology and other objects;
+signed16 overflow and stale effective hashes reject atomically. The vector draft
+must be applied/discarded first. Three focused tests passed, including inverse/
+four-turn restoration, all axes and invalid ranges. Separate multipart retail
+checks passed object1 vertex/normal transforms, other-object preservation, stale
+rejection, Undo/Redo, Save/Open and independent decompression of the actual ZIP
+member. Browser draft guard, Discard, Apply, readback and exact Undo passed.
+This addition follows the365-test checkpoint; gameplay shape/lighting/animation
+compatibility remains deferred. Browser lighting does not use normal vectors.
