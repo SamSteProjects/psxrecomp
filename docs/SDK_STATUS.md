@@ -13,17 +13,14 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 
 ## Validation scope
 
-The retail-enabled SDK discovery run at `1021bff1` passed **352 tests in
-200.919 seconds**, exit code 0, with no skips reported. Log:
-`local-output/sdk-20260909/sdk-regression-20260930.log`. This supersedes the
-September 12 checkpoint. It checks the current Python SDK suite; later model
-viewport controls and script-path UI remain covered by their separate focused
-browser checks. Those checks include proposed animation inspection/return/import,
-model JSON downloads/import/Undo, vector editing/reset/location, wireframe,
-vertex picking, object translation and decoded-path navigation. Independent
-package checks cover model vertices, retail normal words, animation composition
-and NPC_RUN selector bytes. Runtime and external Blender/Unity animated playback
-acceptance remain separate.
+The retail-enabled SDK discovery run passed **365 tests in138.866 seconds**,
+exit code0, with no skips. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-project-flags.log`. It includes
+the recent movement-selector and texture authoring/interchange/preview/audit
+features and project-wide flag service. The movement HTTP test now selects its
+intended decoded MOVE_TO target rather than assuming the first record still
+contains coordinates; earlier EXEC_MOVE records remain selector-only. Browser
+interaction, rendering and runtime acceptance remain separate checks.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 
@@ -159,3 +156,15 @@ checks passed stale rejection, Undo/Redo, Save/Open and actual ZIP readback;
 browser draft/no-command, edge rejection, Discard, Apply and Undo passed.
 This edits indices for every palette using the image; resizing, quantization,
 shared-bank authoring and runtime appearance remain outside verified scope.
+
+Project-wide flag references: imported scenes are freshly verified and scanned
+without changing authored state or active selection. Scene/script-qualified
+operand groups remain separate even when encoded bank/index values match;
+partial/unavailable coverage stays explicit. Browser search includes scene
+names, and source-instruction links navigate to the matching scene/script.
+A three-scene town01/Dolk2/map01 retail probe found2142 references in899groups
+across230scripts (128partial). Service state stayed unchanged. Browser coverage,
+search and cross-scene instruction navigation passed with unchanged command
+history; scene navigation uses the existing saved-view dirty tracking. Discovery
+is bounded to64imported scenes,32768groups and262144references. Current runtime
+values, shared variable identity and story names remain unresolved.

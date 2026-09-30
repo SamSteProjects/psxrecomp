@@ -582,6 +582,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from importer.worldmap_menu import load_worldmap_menu
                     self._json(200, load_worldmap_menu(self.server.project.disc_path))
                     return
+                if route == '/api/project-flags':
+                    if body:
+                        raise ProjectError('Project flag discovery uses imported sources only')
+                    from .resources import project_flag_index
+                    self._json(200,project_flag_index(self.server.project))
+                    return
                 if route == "/api/scene-flags":
                     if body:
                         raise ProjectError("Flag discovery uses the active scene; no client source bindings are accepted")

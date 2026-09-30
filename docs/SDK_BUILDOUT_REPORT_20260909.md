@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `4ae4fbb4`, plus the current
-indexed texture rectangle-fill addition. The dated filename is retained for
+Reviewed against committed source through `650967c5`, plus the current
+project-wide flag discovery and regression checkpoint. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -46,13 +46,14 @@ state, history or authored-file changes. Gameplay appearance remains deferred.
   town01 models passed exact JSON round trips; a retail normal-only edit and a
   combined model/animation package passed offline readback checks.
 
-The latest retail-enabled SDK discovery suite passed **352 tests in 200.919
-seconds** against `1021bff1`, with exit code 0 and no skips reported. Log:
-`local-output/sdk-20260909/sdk-regression-20260930.log`. This supersedes the
-September 12 checkpoint of 351 tests at `6407ade7`. The discovery suite covers
-Python SDK tests; viewport wireframe/picking, object-translation controls and
-decoded-path UI have separate focused browser checks. A green suite does not
-establish gameplay or independent rendered animation acceptance.
+The latest retail-enabled SDK discovery suite passed **365 tests in138.866
+seconds**, exit code0, with no skips. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-project-flags.log`. This run
+includes EXEC_MOVE, texture palette/pixel/JSON/proposal/rectangle authoring,
+texture Build audits and project-wide flag discovery. It supersedes the352-test
+checkpoint at `1021bff1`. Viewport and editor interaction workflows retain
+separate browser checks. A green suite does not establish gameplay or external
+rendered animation acceptance.
 
 **Gameplay is deferred at the user's request.** These later changes did not
 launch the game. Full runtime parity, normal lighting, wider scene/animation
@@ -397,3 +398,15 @@ checks passed stale rejection, Undo/Redo, Save/Open and actual ZIP readback;
 browser draft/no-command, edge rejection, Discard, Apply and Undo passed.
 This edits indices for every palette using the image; resizing, quantization,
 shared-bank authoring and runtime appearance remain outside verified scope.
+
+Project-wide flag references: imported scenes are freshly verified and scanned
+without changing authored state or active selection. Scene/script-qualified
+operand groups remain separate even when encoded bank/index values match;
+partial/unavailable coverage stays explicit. Browser search includes scene
+names, and source-instruction links navigate to the matching scene/script.
+A three-scene town01/Dolk2/map01 retail probe found2142 references in899groups
+across230scripts (128partial). Service state stayed unchanged. Browser coverage,
+search and cross-scene instruction navigation passed with unchanged command
+history; scene navigation uses the existing saved-view dirty tracking. Discovery
+is bounded to64imported scenes,32768groups and262144references. Current runtime
+values, shared variable identity and story names remain unresolved.

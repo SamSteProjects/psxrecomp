@@ -112,6 +112,47 @@ def scene_flag_index(project) -> dict:
     return {**build_flag_index(catalog), "source_key": key}
 
 
+def project_flag_index(project) -> dict:
+    """Inspect imported scenes without changing selection or inventing shared banks."""
+    import hashlib
+    from importer.core import canonical_json
+    from importer.script_catalog import load_script_asset_catalog
+    from .flags import build_flag_index
+    if not project.disc_path or not project.imports or len(project.imports) > 64:
+        raise ProjectError('Project flag discovery requires a disc and 1–64 imported scenes')
+    key = hashlib.sha256(canonical_json(project.imports).encode("utf-8")).hexdigest()
+    groups, scenes = [], []
+    coverage = dict(script_count=0,partial_script_count=0,unavailable_script_count=0)
+    with _disc_context(project.disc_path):
+        for scene_id, document in sorted(project.imports.items()):
+            _verify(project,document)
+            name = document['scene']['name']
+            try:
+                index = build_flag_index(load_script_asset_catalog(project.disc_path,name))
+            except RetailImportError as exc:
+                scenes.append(dict(scene_id=scene_id,scene_name=name,status='unavailable',reason=str(exc)))
+                continue
+            if index['scene_id'] != scene_id:
+                raise ProjectError('Flag catalog identity differs from the imported scene')
+            for group in index['groups']:
+                groups.append({**group,'scene_id':scene_id,'scene_name':name})
+            if len(groups) > 32768 or sum(len(g['references']) for g in groups) > 262144:
+                raise ProjectError('Project flag references exceed the bounded discovery budget')
+            for field in coverage:
+                coverage[field] += index['coverage'][field]
+            scenes.append(dict(scene_id=scene_id,scene_name=name,status='verified',
+                               reference_count=index['reference_count'],coverage=index['coverage']))
+    if key != hashlib.sha256(canonical_json(project.imports).encode("utf-8")).hexdigest():
+        raise ProjectError('Imported project sources changed during flag discovery')
+    return dict(schema_version='legaia.project-flag-references.v1',read_only=True,
+                project_path=str(project.root),source_key=key,scene_ids=sorted(project.imports),
+                groups=groups,scenes=scenes,coverage=coverage,
+                reference_count=sum(len(g['references']) for g in groups),
+                limitations=['Encoded operands retain separate scene/script identities; matching bank/index does not prove one runtime variable.',
+                             'Only imported scenes and decoded instructions are covered; unavailable and partial scripts retain their coverage limits.',
+                             'Retail operands only; no current flag values, story names, runtime writes or path execution are inferred.'])
+
+
 def scene_transition_graph(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from .transitions import build_transition_graph

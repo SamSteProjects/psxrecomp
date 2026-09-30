@@ -487,7 +487,7 @@ function setBusy(value) {
   document.querySelectorAll('[data-animation-edit]').forEach(button=>button.disabled=value||state.project.mode!=='edit');
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
   if($('scene-transitions'))$('scene-transitions').disabled=value || !state.capabilities?.scene_transitions;
-  if($('scene-flags'))$('scene-flags').disabled=value || !state.capabilities?.scene_flags;
+  if($('scene-flags'))$('scene-flags').disabled=value || !state.capabilities?.scene_flags;if($('project-flags'))$('project-flags').disabled=value||!state.capabilities?.scene_flags;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
   updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
@@ -802,36 +802,40 @@ async function openSceneTransitions(){
   finally{if(transitionsAbort===controller){transitionsAbort=null;setBusy(false);}}
 }
 const flagsButton=document.createElement('button');flagsButton.id='scene-flags';flagsButton.textContent='Flag references';transitionsButton.after(flagsButton);
+const projectFlagsButton=document.createElement('button');projectFlagsButton.id='project-flags';projectFlagsButton.textContent='Project flag references';flagsButton.after(projectFlagsButton);projectFlagsButton.onclick=()=>openFlagReferences(true);
 const flagsDialog=document.createElement('dialog');flagsDialog.id='scene-flags-dialog';document.body.append(flagsDialog);
 let flagsAbort=null;
 flagsDialog.addEventListener('close',()=>{if(flagsAbort){flagsAbort.abort();flagsAbort=null;setBusy(false);}flagsDialog.replaceChildren();});
-flagsButton.onclick=async()=>{
+flagsButton.onclick=()=>openFlagReferences(false);
+async function openFlagReferences(projectWide=false){
   if(busy||!state.capabilities?.scene_flags)return;
   const key=resourceStateKey(),controller=new AbortController();flagsAbort=controller;setBusy(true);
   flagsDialog.innerHTML='<div class="dialog-heading"><h2>Flag references</h2><button aria-label="Close flag references">×</button></div><p class="flags-summary">Verifying scene scripts…</p><input type="search" aria-label="Search flag references" placeholder="Search bank, index, script or operation"><div class="flags-results"></div><p class="dialog-error" role="alert"></p>';
+  flagsDialog.querySelector('h2').textContent=projectWide?'Project flag references':'Flag references';flagsDialog.querySelector('.flags-summary').textContent=projectWide?'Verifying imported scene scripts…':'Verifying scene scripts…';
   flagsDialog.querySelector('button').onclick=()=>flagsDialog.close();flagsDialog.showModal();
   try{
-    const response=await fetch('/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
+    const response=await fetch(projectWide?'/api/project-flags':'/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error??'Flag discovery failed');
     if(controller.signal.aborted||!flagsDialog.open)return;
-    if(key!==resourceStateKey()||result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>16384)throw new Error('Flag references do not match the current scene source.');
+    if(key!==resourceStateKey()||(!projectWide&&(result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key))||(projectWide&&(result.project_path!==state.project?.path||JSON.stringify(result.scene_ids)!==JSON.stringify((state.scenes??[]).map(scene=>scene.id).sort())))||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>(projectWide?32768:16384))throw new Error('Flag references do not match the current scene source.');
     const summary=flagsDialog.querySelector('.flags-summary'),list=flagsDialog.querySelector('.flags-results'),search=flagsDialog.querySelector('input');
+    if(projectWide){const coverage=document.createElement('details');coverage.innerHTML='<summary>Imported scene coverage</summary>';appendResourceTable(coverage,['Scene','Status','References / reason'],result.scenes.map(scene=>[scene.scene_name,scene.status,scene.status==='verified'?String(scene.reference_count):scene.reason]),'No imported scenes.');list.before(coverage);}
     const captured=result.runtime_snapshot,snapshot=document.createElement('details');snapshot.innerHTML='<summary>Captured runtime node flags</summary>';list.before(snapshot);
-    const captureNote=document.createElement('p');captureNote.textContent=captured?.available?`Epoch boundary frame ${captured.frame} · ${captured.epoch_id}. ${captured.note}`:'No matching guarded capture. Use the Live bridge to capture this scene, then reopen this view.';snapshot.append(captureNote);
+    const captureNote=document.createElement('p');captureNote.textContent=captured?.available?`Epoch boundary frame ${captured.frame} · ${captured.epoch_id}. ${captured.note}`:projectWide?'This project-wide view contains retail source operands only. Inspect scene captures separately.':'No matching guarded capture. Use the Live bridge to capture this scene, then reopen this view.';snapshot.append(captureNote);
     if(captured?.available)appendResourceTable(snapshot,['Epoch-scoped node','Captured word','Set bit indices'],captured.nodes.map(node=>[node.id,node.value_hex,node.set_bits.join(', ')||'None']),'No supported flag fields in this capture.');
     const pager=document.createElement('div');pager.className='dialog-actions';pager.innerHTML='<button aria-label="Previous flag page">Previous</button><span role="status"></span><button aria-label="Next flag page">Next</button>';list.before(pager);
     const previous=pager.querySelector('button'),next=pager.querySelector('button:last-child'),pageStatus=pager.querySelector('span');let page=0;
     const render=()=>{
-      const query=search.value.trim().toLowerCase(),groups=result.groups.filter(group=>[group.id,group.script_name,group.bank,String(group.index),...group.references.map(ref=>ref.operation)].join(' ').toLowerCase().includes(query));
+      const query=search.value.trim().toLowerCase(),groups=result.groups.filter(group=>[group.scene_name??'',group.id,group.script_name,group.bank,String(group.index),...group.references.map(ref=>ref.operation)].join(' ').toLowerCase().includes(query));
       const pages=Math.max(1,Math.ceil(groups.length/100));page=Math.min(page,pages-1);const start=page*100,end=Math.min(start+100,groups.length);
-      summary.textContent=`${result.reference_count} encoded references · ${result.groups.length} source-qualified groups · ${result.coverage.script_count} scripts (${result.coverage.partial_script_count} partial, ${result.coverage.unavailable_script_count} unavailable). Showing ${groups.length?start+1:0}–${end} of ${groups.length} matches. Runtime values are unresolved.`;
+      summary.textContent=`${projectWide?`${result.scenes.length} imported scenes (${result.scenes.filter(scene=>scene.status==='unavailable').length} unavailable) · `:''}${result.reference_count} encoded references · ${result.groups.length} source-qualified groups · ${result.coverage.script_count} scripts (${result.coverage.partial_script_count} partial, ${result.coverage.unavailable_script_count} unavailable). Showing ${groups.length?start+1:0}–${end} of ${groups.length} matches. Runtime values are unresolved.`;
       previous.disabled=page===0;next.disabled=page+1>=pages;pageStatus.textContent=`Page ${page+1} of ${pages}`;
       list.replaceChildren();
       for(const group of groups.slice(start,end)){
         const row=document.createElement('section');row.className='resource-provenance';
-        row.innerHTML=`<h3>${escapeHTML(group.bank)} ${escapeHTML(group.index)} · ${escapeHTML(group.script_name)}</h3><p>${escapeHTML(group.scope)} · ${escapeHTML(resourceLabel(group.script_status))} · ${group.extended_target===null?'Current script context':`Unresolved extended target ${escapeHTML(group.extended_target)}`}</p><p>${group.references.map(ref=>`${escapeHTML(scriptOffset(ref.pc))}: ${escapeHTML(ref.mnemonic)} (${escapeHTML(resourceLabel(ref.status))})`).join(' · ')}</p><button>Inspect source script</button><details><summary>Source provenance and encoded operands</summary><pre></pre></details>`;
+        row.innerHTML=`<h3>${projectWide?escapeHTML(group.scene_name)+' · ':''}${escapeHTML(group.bank)} ${escapeHTML(group.index)} · ${escapeHTML(group.script_name)}</h3><p>${escapeHTML(group.scope)} · ${escapeHTML(resourceLabel(group.script_status))} · ${group.extended_target===null?'Current script context':`Unresolved extended target ${escapeHTML(group.extended_target)}`}</p><p>${group.references.map(ref=>`${escapeHTML(scriptOffset(ref.pc))}: ${escapeHTML(ref.mnemonic)} (${escapeHTML(resourceLabel(ref.status))})`).join(' · ')}</p><button>Inspect source script</button><details><summary>Source provenance and encoded operands</summary><pre></pre></details>`;
         row.querySelector('pre').textContent=JSON.stringify(group,null,2);
-        const inspect=(pc=null)=>{if(busy||key!==resourceStateKey())return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner,false,null,null,pc);};
+        const inspect=async(pc=null)=>{if(busy||key!==resourceStateKey())return;flagsDialog.close();if(projectWide&&group.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:group.scene_id}))return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner,false,null,null,pc);};
         row.querySelector('button').onclick=()=>inspect();
         const references=document.createElement('div');references.className='dialog-actions';
         for(const ref of group.references){const button=document.createElement('button');button.textContent=`Inspect ${scriptOffset(ref.pc)} · ${ref.mnemonic}`;button.onclick=()=>inspect(ref.pc);references.append(button);}
@@ -855,7 +859,7 @@ function synchronizeResources(){
   }
   updateFieldToggle();
   transitionsButton.hidden=!state.capabilities?.scene_transitions;transitionsButton.disabled=busy||!state.capabilities?.scene_transitions;
-  flagsButton.hidden=!state.capabilities?.scene_flags;flagsButton.disabled=busy||!state.capabilities?.scene_flags;
+  flagsButton.hidden=projectFlagsButton.hidden=!state.capabilities?.scene_flags;flagsButton.disabled=projectFlagsButton.disabled=busy||!state.capabilities?.scene_flags;
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
   $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue and field-map metadata.');
 }

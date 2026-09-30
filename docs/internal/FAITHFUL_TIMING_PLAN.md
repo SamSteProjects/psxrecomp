@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Project flag references and365-test retail checkpoint
+
+Added bounded project-wide flag discovery with fresh imported-source verification,
+separate source-qualified groups, explicit partial/unavailable coverage and
+cross-scene instruction navigation. Retail town01/Dolk2/map01 probe found2142
+references/899groups/230scripts (128partial), unchanged service state. Browser
+coverage/search/navigation passed, unchanged command history; scene selection
+uses existing saved-view dirty tracking. Screenshot inspected. Two new focused
+service tests cover distinct identities/unavailable scenes and stale-source
+rejection. Full retail discovery365tests passed in138.866s, no skips, log
+local-output/sdk-20260909/sdk-regression-20260930-project-flags.log.
+Initial363run had a stale first-target MOVE_TO test assumption after EXEC_MOVE
+expansion and a Windows connection abort; selecting the intended decoded target
+fixed the test. Focused appearance recheck and final full run passed. No game
+launched. Updated current SDK status/buildout checkpoint.
+
+
 ### 2026-09-30 — Indexed texture rectangle fill workflow
 
 Connected source-bound4/8bpp rectangle fill through project command history,

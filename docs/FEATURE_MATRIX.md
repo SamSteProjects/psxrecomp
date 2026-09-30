@@ -387,3 +387,15 @@ checks passed stale rejection, Undo/Redo, Save/Open and actual ZIP readback;
 browser draft/no-command, edge rejection, Discard, Apply and Undo passed.
 This edits indices for every palette using the image; resizing, quantization,
 shared-bank authoring and runtime appearance remain outside verified scope.
+
+Project-wide flag references: imported scenes are freshly verified and scanned
+without changing authored state or active selection. Scene/script-qualified
+operand groups remain separate even when encoded bank/index values match;
+partial/unavailable coverage stays explicit. Browser search includes scene
+names, and source-instruction links navigate to the matching scene/script.
+A three-scene town01/Dolk2/map01 retail probe found2142 references in899groups
+across230scripts (128partial). Service state stayed unchanged. Browser coverage,
+search and cross-scene instruction navigation passed with unchanged command
+history; scene navigation uses the existing saved-view dirty tracking. Discovery
+is bounded to64imported scenes,32768groups and262144references. Current runtime
+values, shared variable identity and story names remain unresolved.

@@ -38,10 +38,13 @@ class MovementHTTP(unittest.TestCase):
             try:
                 owner='scene://dolk2/actors/man-p1/0002'
                 report=post('/api/actor-script',{'entity_id':owner})
-                target=report['movement_authoring']['targets'][0]
+                targets=report['movement_authoring']['targets']
+                selector=next(item for item in targets if item['mnemonic']=='EXEC_MOVE')
+                self.assertEqual(set(selector['values']),{'move_id'})
+                target=next(item for item in targets if item['mnemonic']=='MOVE_TO' and item['values']['x']==9280)
                 command={'type':'set_movement_target','entity_id':owner,'movement_id':target['semantic_id'],'values':{'x':9344}}
                 post('/api/command',command)
-                changed=post('/api/actor-script',{'entity_id':owner})['movement_authoring']['targets'][0]
+                changed=next(item for item in post('/api/actor-script',{'entity_id':owner})['movement_authoring']['targets'] if item['semantic_id']==target['semantic_id'])
                 self.assertEqual(changed['values']['x'],9280);self.assertEqual(changed['effective_values']['x'],9344)
                 post('/api/undo',{});self.assertFalse(project.overrides)
                 post('/api/redo',{});self.assertTrue(project.overrides)
