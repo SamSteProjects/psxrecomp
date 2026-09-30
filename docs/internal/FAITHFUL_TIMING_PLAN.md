@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Current390-test retail SDK regression checkpoint
+
+Previous goal turn progressed with05e93405 texture scene proposals. Ran the
+existing complete SDK Python discovery suite on clean source05e93405 through
+one owned session to terminal exit0:390 tests passed in163.243s, retail disc
+supplied, no skips. No repair, interruption or restart. Node texture-usage and
+instruction-operand checks plus editor syntax passed. Private log/metadata/hash:
+sdk-regression-20260930-scene-proposals.log/.json under local-output/sdk-20260909.
+Updated current buildout/status counts and preserved historical checkpoints.
+This validates current Python regression coverage, not browser visual acceptance
+or runtime/gameplay parity. No game launched. Full SDK goal active and incomplete;
+offline feature work remains available while gameplay acceptance is deferred.
+
+
 ### 2026-09-30 — Proposed texture files through scene material bindings
 
 Previous goal turn progressed withd33cf47f shared model impact preview. Added TIM/

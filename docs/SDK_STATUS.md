@@ -14,13 +14,15 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 
 ## Validation scope
 
-The retail-enabled SDK discovery run passed **383 tests in162.551 seconds**,
-exit code0, with no skips, against source `f8f135e4`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-script-authoring.log`. This
-supersedes the365-test checkpoint and covers model object rotations, flag
-operand authoring/reference layers and wait inspection/project/HTTP/Build
-integration, together with the earlier SDK workflows. JavaScript module checks,
-browser interaction/rendering and runtime acceptance remain separate evidence.
+The retail-enabled SDK discovery run passed **390 tests in 163.243 seconds**,
+exit code 0, with no skips, against source `05e93405`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-scene-proposals.log`, with source
+revision and log hash in the corresponding JSON metadata file. This supersedes the 383-test
+checkpoint and includes the existing SDK workflows plus current model scaling,
+proposal serialization/pose grouping and prepared-ground texture checks. Texture
+usage/operand JavaScript checks and editor syntax also passed. Browser workflows
+and runtime acceptance remain separate evidence. Historical test counts and
+predates notes below describe their original checkpoints.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

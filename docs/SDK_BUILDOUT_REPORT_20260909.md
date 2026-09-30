@@ -8,17 +8,17 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `d33cf47f`, including model object
-quarter-turn and uniform-scale authoring, flag operands/reference layers, the
-wait Inspector and instruction-to-operand navigation described below. The dated filename is retained for
-existing links. This section supersedes the historical milestone inventory and
+Reviewed against committed source through `05e93405`, including model object
+translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
+and isolated/shared model and texture proposals in the assembled scene. The dated
+filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
 **Object-transform proposal previews:** translation, rotation and uniform scale
 can now be viewed before Apply, with proposed/current layers sharing camera
 framing. Preview leaves project history and authored files unchanged. The latest
-383-test suite predates instruction navigation, scaling and these previews;
-those additions have separate focused and browser checks. Gameplay acceptance
+390-test Python discovery suite covers the current services; JavaScript and
+browser checks retain their separate evidence. Gameplay acceptance
 remains deferred.
 
 **Supported flag operand authoring:** local, global and context flag-bit
@@ -32,7 +32,7 @@ these operands with audited source offsets. The script Inspector now supports
 Apply, Clear and Discard with separate retail/authored/effective operands.
 Independent package and rebuilt archive readbacks passed; see the update below. Special context side effects, unresolved
 local widths, system flags and branch selectors remain unsupported. The
-former365-test checkpoint has been superseded by the current383-test run
+earlier365/383-test checkpoints have been superseded by the current390-test run
 below. Browser checks for texture dependency inspection, model rotations and
 script operand forms remain separately recorded. Manual gameplay verification remains deferred.
 
@@ -69,15 +69,16 @@ state, history or authored-file changes. Gameplay appearance remains deferred.
   town01 models passed exact JSON round trips; a retail normal-only edit and a
   combined model/animation package passed offline readback checks.
 
-The latest retail-enabled SDK discovery suite passed **383 tests in162.551
-seconds**, exit code0, with no skips, against source `f8f135e4`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-script-authoring.log`. This run
-includes the prior authoring workflows plus model object rotations, flag operand
-project/HTTP/Build integration, authored flag-reference layers and WAIT_FRAMES
-inspection/project/HTTP/Build integration. It supersedes the365-test checkpoint.
-The JavaScript texture dependency module and browser interaction/rendering
-checks retain their separate evidence. A green suite does not establish
-gameplay, runtime timing or external rendered animation acceptance.
+The latest retail-enabled SDK discovery suite passed **390 tests in 163.243
+seconds**, exit code 0, with no skips, against source `05e93405`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-scene-proposals.log`. This run
+covers the existing SDK workflows plus current model scaling, proposal serializers,
+scene pose grouping and prepared-ground texture reconstruction checks. It
+supersedes the383-test checkpoint at `f8f135e4`. The texture dependency and
+instruction operand JavaScript checks and editor syntax check also passed.
+Browser interaction/rendering retains its separately recorded evidence. A green
+suite does not establish gameplay, runtime parity, retail visibility or external
+rendered animation acceptance. Historical test counts below remain dated evidence.
 
 **Gameplay is deferred at the user's request.** These later changes did not
 launch the game. Full runtime parity, normal lighting, wider scene/animation
@@ -715,3 +716,13 @@ texture-scene-browser-check.json, texture-scene-tim-check.json,
 texture-scene-authored-check.json and texture-scene-proposal.png. Temporary browser/
 server stopped; no game/package installation. Runtime VRAM residency and gameplay
 appearance remain unverified;383-test checkpoint predates this addition.
+
+
+Current regression checkpoint (2026-09-30): all390 Python discovery tests passed
+in163.243s against05e93405, exit0, retail disc supplied, no skips. Owned process
+continued to terminal completion without restart; no application repairs required.
+Texture usage/operand layer Node checks and editor syntax passed. Evidence:
+local-output/sdk-20260909/sdk-regression-20260930-scene-proposals.log and matching
+.json metadata/hash. This supersedes the383-test checkpoint and historical
+predates notes for current Python services. Browser workflows remain separate;
+no game launched, runtime parity/gameplay acceptance still deferred.
