@@ -41,6 +41,37 @@ class MovementAuthoringTests(unittest.TestCase):
                              {row['record_relative_byte_offset'] for row in audit})
             self.assertTrue(all(row['decoded_byte_offset']==100+row['record_relative_byte_offset'] for row in audit))
 
+    def test_npc_run_move_selector_preserves_depth_and_composes_with_coordinates(self):
+        for header in (b'\x4c\x51', b'\xcc\x07\x51'):
+            source = header + b'\x00\x80\xab\x09\x3f\0\0\x06town01\1\2\3opaque'
+            for value in range(256):
+                result, audit = patch_movement_target(source, 0, 0, {'move_id': value})
+                offset = len(header) + 3
+                self.assertEqual(result[:offset], source[:offset])
+                self.assertEqual(result[offset + 1:], source[offset + 1:])
+                self.assertEqual(inspect_record(result, 0)['instructions'][0]['operands']['move_id'], value)
+                self.assertEqual(len(audit), int(value != 9))
+        source, man = fixture(b'\x4c\x51\x00\x80\xab\x09\x3f\0\0\x06town01\1\2\3opaque')
+        context = MovementAuthoringContext(source)
+        target = context.options(ACTOR)['targets'][0]
+        self.assertEqual(target['values']['move_id'], 9)
+        values = {'x': 128, 'move_id': 10}
+        result, audit = context.patch({target['semantic_id']: values})
+        from sdk.build import _merge_movement_patch
+        expected = {target['semantic_id']: dict(target, requested_values=values)}
+        self.assertEqual(_merge_movement_patch(man, man, result, audit, expected, []), result)
+        self.assertEqual({row['field'] for row in audit}, {'x', 'move_id'})
+        from hashlib import sha256
+        from importer.man_actor_structure import append_actor_donor
+        appended, _ = append_actor_donor(man, sha256(man).hexdigest(), 1)
+        _, rebased = context.patch_appended(appended, {target['semantic_id']: values})
+        self.assertEqual([row['field'] for row in rebased], [row['field'] for row in audit])
+        for value in (True, -1, 256, 1.5):
+            with self.assertRaises(ImportError):
+                patch_movement_target(b'\x4c\x51\x00\x80\xab\x09\x3f\0\0\x06town01\1\2\3opaque', 0, 0, {'move_id': value})
+        with self.assertRaises(ImportError):
+            patch_movement_target(b'\x23\x00\x80\x3f\0\0\x06town01\1\2\3opaque', 0, 0, {'move_id': 1})
+
     def test_invalid_values_unknown_paths_and_wrong_pc_rejected(self):
         record=b'\x23\x00\x80\x2a'
         for values in ({},{'y':0},{'x':True},{'x':65},{'z':0},{'z':16385},{'x':float('nan')}):

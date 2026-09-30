@@ -1935,7 +1935,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
 function renderMovementAuthoring(){
   const authoring=scriptReport?.movement_authoring;if(!authoring)return;
   const section=document.createElement('section');section.className='movement-authoring';
-  section.innerHTML='<h3>Script movement targets</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project. Build supports descriptor MAN scenes; Export disc also supports streaming scenes and NPC drafts. Gameplay remains unverified. The instruction table shows retail coordinates; the target overlay offers retail and authored layers.</p>';
+  section.innerHTML='<h3>Script movement targets</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps and NPC_RUN encoded move selectors (0–255). Selector meanings and depth remain unresolved. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project. Build supports descriptor MAN scenes; Export disc also supports streaming scenes and NPC drafts. Gameplay remains unverified. The instruction table shows retail coordinates; the target overlay offers retail and authored layers.</p>';
   $('script-report').append(section);
   const owner=scriptEntity.id,key=resourceStateKey(),current=()=>!busy&&canEditDialogue()&&key===resourceStateKey()&&scriptEntity?.id===owner;
   const send=async(id,type,values)=>{
@@ -1952,11 +1952,11 @@ function renderMovementAuthoring(){
   for(const target of authoring.targets??[]){
     const form=document.createElement('form');form.className='movement-entry';form.dataset.movementId=target.semantic_id;
     const title=document.createElement('h4');title.textContent=`${target.mnemonic} at ${scriptOffset(target.pc)}`;
-    const layers=document.createElement('p');layers.className='movement-layers';layers.textContent=`Retail X ${target.values.x}, Z ${target.values.z} · Authored ${Object.keys(target.authored_values).length?Object.entries(target.authored_values).map(([a,v])=>`${a.toUpperCase()} ${v}`).join(', '):'none'} · Effective X ${target.effective_values.x}, Z ${target.effective_values.z}${target.target_context!==null?` · actor context ${target.target_context} unresolved`:''}`;
+    const layers=document.createElement('p');layers.className='movement-layers';layers.textContent=`Retail X ${target.values.x}, Z ${target.values.z} · Authored ${Object.keys(target.authored_values).length?Object.entries(target.authored_values).map(([a,v])=>`${a.toUpperCase()} ${v}`).join(', '):'none'} · Effective X ${target.effective_values.x}, Z ${target.effective_values.z}${target.mnemonic==='NPC_RUN'?` · Retail move selector ${target.values.move_id}, effective ${target.effective_values.move_id}`:''}${target.target_context!==null?` · actor context ${target.target_context} unresolved`:''}`;
     form.append(title,layers);const fields={};
-    for(const axis of ['x','z']){
-      const label=document.createElement('label'),input=document.createElement('input');label.textContent=`Target ${axis.toUpperCase()}`;
-      input.type='number';input.required=true;input.min='64';input.max='16384';input.step='64';input.value=scriptDrafts.get(target.semantic_id)?.[axis]??target.effective_values[axis];input.setAttribute('aria-label',`Movement ${axis.toUpperCase()} at ${scriptOffset(target.pc)}`);
+    for(const axis of (target.mnemonic==='NPC_RUN'?['x','z','move_id']:['x','z'])){
+      const label=document.createElement('label'),input=document.createElement('input');label.textContent=axis==='move_id'?'Encoded move selector':`Target ${axis.toUpperCase()}`;
+      input.type='number';input.required=true;input.min=axis==='move_id'?'0':'64';input.max=axis==='move_id'?'255':'16384';input.step=axis==='move_id'?'1':'64';input.value=scriptDrafts.get(target.semantic_id)?.[axis]??target.effective_values[axis];input.setAttribute('aria-label',`Movement ${axis.toUpperCase()} at ${scriptOffset(target.pc)}`);
       fields[axis]=input;label.append(input);form.append(label);
       input.oninput=()=>{scriptDrafts.set(target.semantic_id,Object.fromEntries(Object.entries(fields).map(([a,i])=>[a,i.value])));updateScriptActions();};
     }

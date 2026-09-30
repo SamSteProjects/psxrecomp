@@ -155,7 +155,7 @@ def _merge_transition_patch(baseline, working, patched, changes, expected, previ
 
 def _merge_movement_patch(baseline, working, patched, changes, expected, previous):
     from importer.movement_authoring import validate_movement_values
-    ENTRY_FIELDS = ('x', 'z')
+    ENTRY_FIELDS = {'x': 0, 'z': 1, 'move_id': 3}
     if not isinstance(patched, bytes) or len(patched) != len(baseline) or len(working) != len(baseline):
         raise BuildError("Movement patch changed MAN length")
     occupied = {i for c in previous for i in range(c["decoded_byte_offset"], c["decoded_byte_offset"] + c.get("byte_length", 1))}
@@ -167,7 +167,7 @@ def _merge_movement_patch(baseline, working, patched, changes, expected, previou
         offset, field = c.get("decoded_byte_offset"), c.get("field")
         if (entry is None or field not in ENTRY_FIELDS or type(offset) is not int or
                 not 0 <= offset < len(baseline) or
-                offset != entry["decoded_byte_offset"] + ENTRY_FIELDS.index(field) or
+                offset != entry["decoded_byte_offset"] + ENTRY_FIELDS[field] or
                 c.get("owner_id") != entry["owner_id"] or
                 c.get("source_record_sha256") != entry["source_record_sha256"] or
                 c.get("source_decoded_man_sha256") != digest or

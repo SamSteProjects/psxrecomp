@@ -64,3 +64,12 @@ unreachability. Queries do not execute scripts or alter project state. Synthetic
 browser checks cover branching, cycles, same-node queries and undecoded targets;
 a retail actor-script path was checked edge-by-edge against its decoded report.
 General control-flow authoring and live execution remain incomplete.
+
+Script operand authoring now includes the one-byte **NPC_RUN encoded move
+selector** (0–255), with retail/authored/effective values, Apply/Clear/Discard,
+Undo/Redo, Save/Open and existing audited Build composition. X/Z and depth stay
+unchanged when only the selector is edited. Selector behavior is unresolved;
+no animation or speed meaning is assigned. Seven focused tests passed (four
+separate retail streaming tests skipped without their environment input). A
+saved town01 probe changed selector 13 to 14, and independent package ZIP
+readback found exactly one changed MAN byte. Browser Apply/Undo passed.

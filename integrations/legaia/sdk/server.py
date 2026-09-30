@@ -815,7 +815,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             if body["type"] == "set_movement_target":
                 allowed.add("values")
             if set(body) != allowed:
-                raise ProjectError("Movement commands accept only owner/target identities and X/Z values")
+                raise ProjectError("Movement commands accept only owner/target identities and supported operand values")
             required_strings[route] = ("entity_id", "movement_id")
         if route == "/api/command" and body.get("type") in ("set_transition_entry", "clear_transition_entry"):
             allowed = {"type", "entity_id", "transition_id"}

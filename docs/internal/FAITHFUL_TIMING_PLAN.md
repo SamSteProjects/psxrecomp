@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — NPC_RUN encoded move-selector authoring
+
+- Verified pinned executing-reference fixed byte layout and added NPC_RUN move_id editing (0–255) through the existing ScriptMovement project, serializer, append rebasing, audited Build and Inspector controls. No selector meaning is inferred; depth remains immutable.
+- Seven focused movement/merge/transition tests passed; four retail streaming tests skipped without environment input. Exhaustive selector checks covered all256 bytes and extended headers. Retail actor0011 PC0x23 selector13->14 probe passed Undo/Redo, Save/Open, Build and independent ZIP decode: exactly MAN byte7951 changed. Browser Apply15/Undo14 and range rejection passed after waiting for state readiness.
+- Exact private package and hash added to gameplay queue. Diff review caught and removed an unintended transition-merger edit before final checks. Node syntax/diff checks passed. Temporary server stopped; no game launch.
+
+
 ### 2026-09-30 — Decoded script path queries
 
 - Added a bounded editor graph service and shared instruction-panel query: selected start/destination, shortest decoded route, retained conditions, clickable steps and explicit undecoded boundaries. All actor/partition-two/trigger instruction panels use the shared workflow. Does not evaluate conditions or infer execution/unreachability.

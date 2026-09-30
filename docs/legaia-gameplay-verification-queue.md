@@ -196,3 +196,16 @@ launch or installation was performed.
   Includes model0000's first-vertex X+1 and the earlier actor0011 animation probe
   (frame2/object0 X202 and rotationY64). Both decoded package streams matched
   their audited hashes. Keep these combined effects in mind during later checks.
+
+## NPC_RUN selector serialization probe (2026-09-30)
+
+Private project: `local-output/sdk-20260909/move-selector-project-20260930`.
+Package: `Builds/cfb671e4145eec59/legaia.sdk.1ab152598197-0.1.0-cfb671e4145eec59.psxmod`.
+SHA256 `4e11fb952ea4767a18b6f909c4b9edecef2865b6c78a823866984712ead6c3c3`.
+Actor0011, NPC_RUN at PC0x23, selector13->14. Independent archive decode
+confirmed exactly one MAN-byte change at7951; coordinates and depth preserved.
+This is a diagnostic byte-serialization probe. No selector behavior, animation
+identity, speed or reachable branch is established; it is not a finished mod.
+Manual acceptance must establish selector meaning and observe the relevant
+executed script before drawing behavior conclusions. No launch/installation
+was performed; gameplay remains deferred.

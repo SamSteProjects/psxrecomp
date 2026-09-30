@@ -259,3 +259,14 @@ is transition-entry-probe.json. An initial metadata-only report lookup correctly
 had no raw_hex; the probe then used the verified private MAN context instead.
 Project commands, persistence, Build composition and editor integration remain
 pending; no playable transition edit is claimed.
+
+## NPC_RUN move-selector authoring — September 30
+
+Pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b`,
+`crates/engine-vm/src/field/step/menu_ctrl/nibble_5_6_7.rs`, sub-1, reads the
+selector at operand+4 and passes it to `op4c_n5_sub1_npc_run`; continuation
+remains header+5 bytes. Retail town01 actor0011 at PC0x23 contains selector13.
+The SDK edits this byte only, or composes it with the supported X/Z edits.
+Depth, dispatch context and continuation are preserved. All256 byte values
+round-trip through normal and extended headers in synthetic checks. Meanings
+for selector values and actual runtime behavior remain unverified.

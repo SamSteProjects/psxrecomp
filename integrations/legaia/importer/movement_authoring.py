@@ -1,4 +1,4 @@
-"""Source-preserving X/Z edits for decoded MOVE_TO and NPC_RUN instructions.
+"""Source-preserving X/Z and NPC_RUN move-selector edits for decoded MOVE_TO and NPC_RUN instructions.
 
 Evidence: pinned engine-vm/field/step.rs, helpers.rs::grid_to_world and
 step/menu_ctrl/nibble_5_6_7.rs. This serializer does not execute the script,
@@ -15,9 +15,9 @@ from .serialization import encode_placement_coordinate
 
 MAX_MOVEMENT_EDITS = 1024
 LIMITATIONS = [
-    "Only reached MOVE_TO and NPC_RUN X/Z operands are editable; unknown or conflicting path stops reject authoring.",
+    "Only reached MOVE_TO/NPC_RUN X/Z and NPC_RUN encoded move selectors are editable; unknown or conflicting path stops reject authoring.",
     "X/Z must be exactly representable on the source grid: multiples of 64 from 64 through 16384.",
-    "Instruction widths, branch targets, extended actor contexts, NPC_RUN depth and move IDs remain unchanged.",
+    "Instruction widths, branch targets, extended actor contexts, NPC_RUN depth remain unchanged; move-selector meanings remain unresolved.",
     "Y and runtime actor identity are unresolved; decoded paths do not establish branch execution or current positions.",
     "Changing both low-seven-bit coordinates to 127 selects NPC_RUN's parked target convention.",
     "Playable packaging must separately validate the composed MAN, compressed capacity and runtime behavior.",
@@ -25,9 +25,17 @@ LIMITATIONS = [
 
 
 def validate_movement_values(values):
-    if not isinstance(values, dict) or not values or set(values) - {'x', 'z'}:
-        raise ImportError('Movement edits require X and/or Z; other operands are unsupported')
-    return {axis: encode_placement_coordinate(value, f'movement.{axis}') for axis, value in values.items()}
+    if not isinstance(values, dict) or not values or set(values) - {'x', 'z', 'move_id'}:
+        raise ImportError('Movement edits require X/Z or an NPC_RUN encoded move selector')
+    encoded = {}
+    for axis, value in values.items():
+        if axis == 'move_id':
+            if type(value) is not int or not 0 <= value <= 255:
+                raise ImportError('NPC_RUN move selector requires an integer byte from 0 to 255')
+            encoded[axis] = value
+        else:
+            encoded[axis] = encode_placement_coordinate(value, f'movement.{axis}')
+    return encoded
 
 
 def _coordinate_offset(node):
@@ -54,8 +62,10 @@ def patch_movement_target(record, script_offset, pc, values, *, base_offset=0):
     node, start = _target(record, script_offset, pc)
     changed, audit = bytearray(record), []
     digest = hashlib.sha256(record).hexdigest()
-    for index, axis in enumerate(('x', 'z')):
-        offset = start + index
+    if 'move_id' in encoded and node['mnemonic'] != 'NPC_RUN':
+        raise ImportError('Encoded move selector editing requires NPC_RUN')
+    for axis, relative in (('x', 0), ('z', 1), ('move_id', 3)):
+        offset = start + relative
         if axis not in encoded or encoded[axis] == record[offset]:
             continue
         changed[offset] = encoded[axis]
@@ -64,7 +74,7 @@ def patch_movement_target(record, script_offset, pc, values, *, base_offset=0):
                       'record_relative_byte_offset': offset,
                       'decoded_byte_offset': base_offset + offset,
                       'before_byte': record[offset], 'after_byte': encoded[axis],
-                      'before_coordinate': node['operands']['target_position'][axis],
+                      'before_coordinate': node['operands']['move_id'] if axis == 'move_id' else node['operands']['target_position'][axis],
                       'after_coordinate': values[axis], 'source_record_sha256': digest})
     return bytes(changed), audit
 
@@ -97,7 +107,7 @@ class MovementAuthoringContext:
                 targets.append({'semantic_id': f"script://{owner.removeprefix('scene://')}/movement/{pc:04x}",
                                 'owner_id': owner, 'pc': pc, 'mnemonic': node['mnemonic'],
                                 'target_context': node['target_context'],
-                                'values': {axis: args['target_position'][axis] for axis in ('x', 'z')},
+                                'values': {**{axis: args['target_position'][axis] for axis in ('x', 'z')}, **({'move_id': args['move_id']} if node['mnemonic'] == 'NPC_RUN' else {})},
                                 'encoded_xz': list(record[start:start + 2]),
                                 'parked_target': args.get('parked_target'),
                                 'decoded_byte_offset': offset + start,
@@ -126,7 +136,7 @@ class MovementAuthoringContext:
             if sum(row['byte_offset'] == start for row in layout['records']) != 1:
                 raise ImportError('Appended movement record is aliased')
             node, coordinate_start = _target(candidate[start:start + len(original)], entry, change['pc'])
-            relative = coordinate_start + ('x', 'z').index(change['field'])
+            relative = coordinate_start + {'x': 0, 'z': 1, 'move_id': 3}[change['field']]
             if node['mnemonic'] != change['mnemonic'] or relative != change['record_relative_byte_offset']:
                 raise ImportError('Appended movement instruction differs from source layout')
             offset = start + relative
