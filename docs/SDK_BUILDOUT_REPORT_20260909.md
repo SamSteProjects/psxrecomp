@@ -8,9 +8,9 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `f8f135e4`, including model object
-quarter-turn authoring, flag operands/reference layers and the wait Inspector
-workflow described below. The dated filename is retained for
+Reviewed against committed source through `bfb81be2`, including model object
+quarter-turn authoring, flag operands/reference layers and the wait Inspector,
+plus the current instruction-to-operand navigation described below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -565,3 +565,19 @@ and wait-editor.png. Earlier pending-Apply notes are superseded. Supported wait
 editing is connected through project and output; wider script/control-flow and
 runtime timing acceptance remain incomplete. Temporary browser/server stopped;
 no game launched or package installed. The365-test checkpoint predates this work.
+
+
+Instruction operand navigation (2026-09-30): decoded instruction rows now display
+retail/authored/effective values for verified movement, flag and wait targets,
+with Open operand editor links that focus the matching form. Encoded source
+operands and graph successors remain retail evidence. A reusable client metadata
+adapter requires exact PC/mnemonic/context/retail values and consistent effective
+layers; mismatches, duplicate PCs and oversized metadata withdraw links. It does
+not simulate execution or mutate reports. Focused Node checks passed flags,
+coordinate/selector movement, waits, bounds, ambiguity, context/value rejection
+and source detachment. Retail browser flag/wait rows and exact input focus passed
+with no project/history changes or page errors; screenshots inspected. Evidence:
+local-output/sdk-20260909/wait-authoring-project-20260930/instruction-operands-browser-check.json
+and instruction-flag-layers.png/instruction-wait-layers.png. Temporary browser
+and server stopped; no game launch. This JavaScript addition follows the383-test
+Python checkpoint and retains separate browser validation.

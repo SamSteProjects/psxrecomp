@@ -214,6 +214,20 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Instruction layers and direct operand editor focus
+
+Previous turn progressed inbfb81be2. Added reusable instructionOperandEditors
+metadata adapter and served module, with exact source PC/mnemonic/context/value
+matching and ambiguity/budget guards. Main script instruction rows show separate
+retail/authored/effective movement/flag/wait layers and focus their matching
+forms without altering encoded source or graph. Focused Node checks and syntax
+passed. Retail browser wait/flag layer and exact input focus passed; project
+state/history unchanged, zero page errors, screenshots inspected. Private
+instruction-operands-browser-check.json retained in wait-authoring project.
+Browser/server stopped; no game launch or install.383-test Python checkpoint
+predates this client addition. Full SDK goal active; gameplay deferred.
+
+
 ### 2026-09-30 — Current383-test retail SDK regression checkpoint
 
 Previous turn progressed inf8f135e4. Ran complete retail-enabled Python SDK

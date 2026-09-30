@@ -427,6 +427,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
+                 "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})

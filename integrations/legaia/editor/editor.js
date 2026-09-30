@@ -1,5 +1,6 @@
 import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
+import {instructionOperandEditors} from '/script-operands.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -1269,12 +1270,25 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
   previous.onclick=()=>stepMatch(-1);next.onclick=()=>stepMatch(1);updateMatches();
 
   const wrap=document.createElement('div');wrap.className='script-table-wrap';wrap.innerHTML='<table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table>';host.append(wrap);
-  const body=wrap.querySelector('tbody');
+  const body=wrap.querySelector('tbody'),operandEditors=instructionOperandEditors(report),operandKey=resourceStateKey();
   for(const instruction of instructions){
     const row=document.createElement('tr');row.tabIndex=-1;rows.set(instruction.pc,row);
     const offset=document.createElement('td'),jump=document.createElement('button');jump.textContent=scriptOffset(instruction.pc);jump.setAttribute('aria-label',`Select instruction ${scriptOffset(instruction.pc)}`);jump.onclick=()=>select(instruction.pc);offset.append(jump);row.append(offset);
     const mnemonic=document.createElement('td');mnemonic.textContent=instruction.mnemonic;row.append(mnemonic);
     const operands=document.createElement('td');appendScriptOperands(operands,instruction);row.append(operands);
+    const editor=operandEditors.get(instruction.pc);
+    if(editor){
+      const layers=document.createElement('p');layers.className='instruction-operand-layers';
+      const describe=values=>Object.entries(values).map(([field,value])=>`${field}: ${value}`).join(', ')||'none';
+      layers.textContent=`Retail ${describe(editor.retail)} · Authored ${describe(editor.authored)} · Effective ${describe(editor.effective)}`;operands.append(layers);
+      if(host.closest('dialog')===scriptDialog){
+        const edit=document.createElement('button');edit.type='button';edit.textContent='Open operand editor';edit.setAttribute('aria-label',`Open operand editor at ${scriptOffset(instruction.pc)}`);
+        edit.onclick=()=>{if(busy||operandKey!==resourceStateKey())return;
+          const form=[...scriptDialog.querySelectorAll(`.${editor.kind}-entry`)].find(item=>item.dataset[editor.kind+'Id']===editor.id);
+          if(!form)return;form.scrollIntoView({block:'center'});form.querySelector('input:not(:disabled)')?.focus({preventScroll:true});
+        };operands.append(edit);
+      }
+    }
     const successors=document.createElement('td');
     for(const next of instruction.successors??[]){
       const condition=next.condition?(typeof next.condition==='string'?next.condition:JSON.stringify(next.condition)):'';

@@ -557,3 +557,19 @@ passed in162.551s, exit0, no skips. Log:
 local-output/sdk-20260909/sdk-regression-20260930-script-authoring.log.
 Supersedes365-test checkpoint; browser/JavaScript and gameplay acceptance retain
 separate evidence and are not established by Python discovery success.
+
+
+Instruction operand navigation (2026-09-30): decoded instruction rows now display
+retail/authored/effective values for verified movement, flag and wait targets,
+with Open operand editor links that focus the matching form. Encoded source
+operands and graph successors remain retail evidence. A reusable client metadata
+adapter requires exact PC/mnemonic/context/retail values and consistent effective
+layers; mismatches, duplicate PCs and oversized metadata withdraw links. It does
+not simulate execution or mutate reports. Focused Node checks passed flags,
+coordinate/selector movement, waits, bounds, ambiguity, context/value rejection
+and source detachment. Retail browser flag/wait rows and exact input focus passed
+with no project/history changes or page errors; screenshots inspected. Evidence:
+local-output/sdk-20260909/wait-authoring-project-20260930/instruction-operands-browser-check.json
+and instruction-flag-layers.png/instruction-wait-layers.png. Temporary browser
+and server stopped; no game launch. This JavaScript addition follows the383-test
+Python checkpoint and retains separate browser validation.
