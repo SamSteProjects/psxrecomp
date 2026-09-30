@@ -6,6 +6,7 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 
 - Scene workspace: source-based textured scenes, hierarchy selection, inspector, orthographic/top views, coordinate locator, authored/retail layers, and actor/decorative/shared-scenery X/Z handles. Shared scenery browser checks moved three instances while preserving366 unrelated instances and verified Undo on both axes.
 - Script movement: verified MOVE_TO/NPC_RUN X/Z authoring, source/effective values, history and persistence, viewport targets with source-instruction navigation, and descriptor/streaming experimental output composition. Y, executed branches and actor identity remain unknown where evidence does not establish them.
+- Script flags and waits: source-qualified flag SET/CLEAR/TEST bit operands and WAIT_FRAMES targets have Inspector Apply/Clear/Discard, ordinary history and persistence, audited Build output and experimental append composition. Flag discovery shows separate retail/authored/effective indices with immutable retail grouping. Wait targets use host ticks0..32767; special context flags, larger wait targets and unresolved control flow remain unavailable. Story semantics, actual timing and runtime values are unverified.
 - Animation: supported rigid clips can be previewed and exported. Channel edits and same-object retail/effective copy across frames/ranges use Apply/Undo/Discard. Existing-layout raw-record and readable channel-JSON download/import support retail/effective values. Raw-record checks pass shared-conflict, clear, persistence and package readback checks. Browser checks cover late responses, invalid selections and cross-object rejection. Shared clip users are explicitly listed. Proposed files can be inspected without applying them in both the model and scene viewers, restored, and returned to the same file form for explicit import.
 - Model shapes: a diagnostic wireframe overlay displays all decoded triangle edges in the model viewer, including hidden edges. Focused WebGL and retail browser checks cover toggle, buffer reuse, vertex updates, picking and no project writes. Direct vector Inspector editing, per-vector retail reset, inspected-vertex camera location and exact-vector audit navigation are connected with focused browser checks. Existing-layout TMD, ordered-vertex OBJ and source-bound vertex/normal JSON replacements preserve source primitive/material data. Model build reports show scalar audits and navigate only to hash-matching authored previews. Normal-only edits are not visualized as lighting: the WebGL shader uses colors/textures without normal-based lighting. Equivalent oriented face order and relative indices passed exact roundtrip and isolated vertex edits on119 town01 models. A saved OBJ project passed Undo/Redo, reopen and package build.
 - Textures: indexed scene palette-word and pixel-index editing, retail/effective JSON downloads and source-bound complete palette/pixel JSON imports are connected to texture Undo/Redo, Save/Open and Build. All96 town01 indexed textures round-tripped exactly. Source layout and other packed pixels are preserved; gameplay appearance remains unverified.
@@ -13,14 +14,13 @@ The SDK is functional for supported offline authoring workflows, but the full ed
 
 ## Validation scope
 
-The retail-enabled SDK discovery run passed **365 tests in138.866 seconds**,
-exit code0, with no skips. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-project-flags.log`. It includes
-the recent movement-selector and texture authoring/interchange/preview/audit
-features and project-wide flag service. The movement HTTP test now selects its
-intended decoded MOVE_TO target rather than assuming the first record still
-contains coordinates; earlier EXEC_MOVE records remain selector-only. Browser
-interaction, rendering and runtime acceptance remain separate checks.
+The retail-enabled SDK discovery run passed **383 tests in162.551 seconds**,
+exit code0, with no skips, against source `f8f135e4`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-script-authoring.log`. This
+supersedes the365-test checkpoint and covers model object rotations, flag
+operand authoring/reference layers and wait inspection/project/HTTP/Build
+integration, together with the earlier SDK workflows. JavaScript module checks,
+browser interaction/rendering and runtime acceptance remain separate evidence.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

@@ -8,9 +8,9 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `ea80fa35`, including model object
-quarter-turn authoring, plus the current wait Inspector integration described
-below. The dated filename is retained for
+Reviewed against committed source through `f8f135e4`, including model object
+quarter-turn authoring, flag operands/reference layers and the wait Inspector
+workflow described below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -25,9 +25,9 @@ these operands with audited source offsets. The script Inspector now supports
 Apply, Clear and Discard with separate retail/authored/effective operands.
 Independent package and rebuilt archive readbacks passed; see the update below. Special context side effects, unresolved
 local widths, system flags and branch selectors remain unsupported. The
-365-test regression checkpoint below predates this work, texture dependency
-inspection and model object rotations; their later checks are recorded
-separately. Manual gameplay verification remains deferred.
+former365-test checkpoint has been superseded by the current383-test run
+below. Browser checks for texture dependency inspection, model rotations and
+script operand forms remain separately recorded. Manual gameplay verification remains deferred.
 
 **Texture-file proposal preview:** TIM/JSON files can now be inspected before
 Apply, with proposed pixels and separate retail/current payload comparisons.
@@ -62,14 +62,15 @@ state, history or authored-file changes. Gameplay appearance remains deferred.
   town01 models passed exact JSON round trips; a retail normal-only edit and a
   combined model/animation package passed offline readback checks.
 
-The latest retail-enabled SDK discovery suite passed **365 tests in138.866
-seconds**, exit code0, with no skips. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-project-flags.log`. This run
-includes EXEC_MOVE, texture palette/pixel/JSON/proposal/rectangle authoring,
-texture Build audits and project-wide flag discovery. It supersedes the352-test
-checkpoint at `1021bff1`. Viewport and editor interaction workflows retain
-separate browser checks. A green suite does not establish gameplay or external
-rendered animation acceptance.
+The latest retail-enabled SDK discovery suite passed **383 tests in162.551
+seconds**, exit code0, with no skips, against source `f8f135e4`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-script-authoring.log`. This run
+includes the prior authoring workflows plus model object rotations, flag operand
+project/HTTP/Build integration, authored flag-reference layers and WAIT_FRAMES
+inspection/project/HTTP/Build integration. It supersedes the365-test checkpoint.
+The JavaScript texture dependency module and browser interaction/rendering
+checks retain their separate evidence. A green suite does not establish
+gameplay, runtime timing or external rendered animation acceptance.
 
 **Gameplay is deferred at the user's request.** These later changes did not
 launch the game. Full runtime parity, normal lighting, wider scene/animation

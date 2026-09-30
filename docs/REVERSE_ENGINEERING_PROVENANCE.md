@@ -280,3 +280,40 @@ Ordinary and extended-target headers retain their context and width while only
 the selector changes. No coordinates occur in this instruction. The selector
 name denotes an encoded table operand, not a proven animation asset binding.
 Its gameplay effects and selected table content remain unverified.
+
+
+## Flag operand and wait target authoring — September 30
+
+Evidence was checked directly with git show at pinned Andrew revision
+`d6e64c68ede25813d35db20980da82a1a025549b`, independently of the checkout's
+advanced HEAD `574ee5f603ed3ca9bd95c796711e595d9c2ad8a8`. No pin or reference
+checkout was changed.
+
+`crates/engine-vm/src/field/step.rs` opcodes0x2B..0x33 mask ordinary flag operands
+to five low bits; upper bits do not form the selected bit index. `field/ctx.rs`
+defines the local bank as u16 at+0x62. CFLAG_SET8 additionally copies context
++0x26 to+0x5A. The extended-dispatch halt check permits CFLAG_CLEAR10 as a special
+unhalt operation, while the system script0xFB bypasses that check independently.
+SDK authoring excludes local bits16..31 and context SET8/CLEAR10 (including
+ordinary CLEAR10 conservatively), preserving opcode, upper operand bits,
+extended target, source layout and branch bytes. System selectors and flag
+branch operands remain unavailable. Identical indices across owners/contexts
+are not evidence of one runtime variable. Reference discovery retains retail
+groups and separately validated authored/effective operands without live values.
+
+The pinned opcode0x4A handler reads a u16 little-endian WAIT_FRAMES target,
+accumulates host.frame_delta into a signed16 saturating wait_accum and either
+halts at the same PC or clears the accumulator and advances by header+2.
+The SDK exposes host ticks, unknown seconds and unevaluated execution; authored
+targets0..32767 respect the reference accumulator's positive range. Larger retail
+targets remain explicitly unsupported rather than normalized. No guarantee of
+actual game duration or scheduling is inferred from this reference handler.
+
+Private retail evidence includes town01 actor0002 CFLAG_SET PC0x0C bit2-to3
+at MAN4772, and actor0044 WAIT_FRAMES PC0x019F16-to17 at MAN24483. Combined ZIP
+readback changed only these two offsets; compressed actor append rebased the
+wait to24486. Source record/MAN hashes, package hashes and diagnostic projects
+are retained under ignored local-output/sdk-20260909. These prove serialization
+and editor persistence, not story semantics, runtime behavior or gameplay
+acceptance. Browser forms keep retail/authored/effective operands separate and
+use ordinary project commands; no guest RAM mutation is involved.

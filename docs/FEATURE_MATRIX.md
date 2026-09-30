@@ -550,3 +550,10 @@ and wait-editor.png. Earlier pending-Apply notes are superseded. Supported wait
 editing is connected through project and output; wider script/control-flow and
 runtime timing acceptance remain incomplete. Temporary browser/server stopped;
 no game launched or package installed. The365-test checkpoint predates this work.
+
+
+September30 regression checkpoint at f8f135e4:383 retail-enabled Python SDK tests
+passed in162.551s, exit0, no skips. Log:
+local-output/sdk-20260909/sdk-regression-20260930-script-authoring.log.
+Supersedes365-test checkpoint; browser/JavaScript and gameplay acceptance retain
+separate evidence and are not established by Python discovery success.

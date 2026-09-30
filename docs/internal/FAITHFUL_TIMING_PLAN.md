@@ -214,6 +214,21 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — Current383-test retail SDK regression checkpoint
+
+Previous turn progressed inf8f135e4. Ran complete retail-enabled Python SDK
+discovery through one owned process/session to terminal exit0:383tests passed
+in162.551s with no skips. Authoritative log is
+local-output/sdk-20260909/sdk-regression-20260930-script-authoring.log.
+Updated report/status/matrix to supersede the365-test checkpoint, retaining
+separate JavaScript/browser/runtime acceptance boundaries. Verified flag/wait
+handler evidence directly with git show at d6e64c68 despite advanced reference
+HEAD; added encoding/special-case/accumulator provenance documentation. No code
+repairs required, game launch or package install. Test process terminal; full
+SDK objective still incomplete and active. Manual gameplay deferred; offline
+feature work continues next.
+
+
 ### 2026-09-30 — Wait target Inspector workflow
 
 Previous turn progressed inea80fa35. Connected wait authoring metadata to script
