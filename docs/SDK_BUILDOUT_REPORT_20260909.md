@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `4e4ddae1`, including model object
-quarter-turn authoring, plus the current authored flag-reference integration described
+Reviewed against committed source through `22b9c1f6`, including model object
+quarter-turn authoring, plus the current wait serializer groundwork described
 below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
@@ -504,3 +504,23 @@ local-output/sdk-20260909/flag-authoring-project-20260930/flag-reference-browser
 and flag-reference-layers.png. No edits/history were created by discovery;
 temporary browser/server stopped. Gameplay remains deferred. The365-test
 checkpoint predates this work.
+
+
+In progress — script wait authoring (2026-09-30): WAIT_FRAMES inspection now
+exposes its u16 target as duration_ticks, host_frame_delta units, signed16
+accumulator width and explicitly unknown seconds/execution. Source-qualified
+wait serialization changes only the two-byte target and preserves dispatch,
+control layout and opaque bytes; source owners rebase after actor append.
+Authored targets are restricted to0..32767 because the pinned reference uses a
+signed16 saturating accumulator; larger retail targets remain unavailable.
+Thirty-eight retail-enabled wait/inspection/catalog tests passed in2.226s.
+Retail town01 has four eligible actor waits; actor0044 PC0x019F16-to17 changed
+only decoded MAN byte24483. Dolk2 has no eligible actor waits under these source
+coverage rules. Private evidence: local-output/sdk-20260909/wait-authoring-20260930/town01-wait-check.json.
+Project commands, Inspector Apply and output composition remain pending; this is
+serializer groundwork, not a finished editor workflow or gameplay acceptance.
+Reference checkout HEAD has advanced to574ee5f603ed3ca9bd95c796711e595d9c2ad8a8;
+WAIT handler evidence was read directly with git show from the unchanged SDK pin
+d6e64c68ede25813d35db20980da82a1a025549b, step.rs opcode0x4A.
+No reference checkout mutation or game launch occurred. The365-test checkpoint
+predates this addition.

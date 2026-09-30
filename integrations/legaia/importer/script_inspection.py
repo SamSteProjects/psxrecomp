@@ -164,6 +164,11 @@ def _instruction(data: bytes, pc: int) -> dict:
                           0x39: (1, "GIVE_ITEM"), 0x3A: (3, "ADD_MONEY"), 0x3B: (2, "SET_ITEM_COUNT"),
                           0x3C: (1, "PARTY_ADD"), 0x3D: (1, "PARTY_REMOVE"),
                           0x44: (1, "SPAWN_RECORD"), 0x4A: (2, "WAIT_FRAMES")}[op]
+        if op == 0x4A:
+            need(2)
+            args = {"duration_ticks": struct.unpack_from("<H", data, operand)[0],
+                    "timing_units": "host_frame_delta_ticks", "seconds": None,
+                    "execution": "not_evaluated", "accumulator_width": "signed16"}
         if op == 0x44:
             need(1)
             # Pinned step.rs calls FUN_8003BDE0 with global_index-N0-N1.

@@ -214,6 +214,20 @@ on a fixed region -> next.
 ## 5. Status / Log (update every session)
 
 
+### 2026-09-30 — WAIT_FRAMES source serialization groundwork
+
+Previous turn progressed in22b9c1f6. Verified current reference HEAD differs from
+SDK pin; read opcode0x4A handler directly from d6e64c68 via git show, preserving
+the pin. Decoder exposes u16 ticks with no seconds/execution claim. Added strict
+wait target serializer and source-owner append rebasing with exact two-byte
+audits, known layout preservation and0..32767 accumulator limit. Thirty-eight
+retail-enabled wait/inspection/catalog checks passed in2.226s. Retail town01
+actor0044 wait16-to17 changed only MAN byte24483; four eligible actor waits,
+Dolk2 none. Private evidence saved under wait-authoring-20260930. Project/UI/Build
+integration pending; no game launch or reference mutation. Full SDK goal active,
+manual gameplay deferred. Next connect this through ordinary authoring workflow.
+
+
 ### 2026-09-30 — Authored flag operands in reference discovery
 
 Previous turn progressed in4e4ddae1. Scene/project flag references now annotate
