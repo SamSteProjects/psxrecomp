@@ -202,6 +202,16 @@ export class SceneRenderer {
     if(!picking&&view.grid)this.drawGrid(view);
   }
 
+  projectPoint(point,view){
+    if(!point||![point.x,point.y,point.z].every(finite)||!view.width||!view.height)return null;
+    const m=this.viewMatrix(view),v=[point.x,point.y,point.z,1];
+    const clip=[0,1,2,3].map(row=>v.reduce((sum,value,column)=>sum+m[column*4+row]*value,0));
+    if(clip[3]<=0)return null;
+    const ndc=clip.slice(0,3).map(value=>value/clip[3]);
+    if(ndc.some(value=>!finite(value)||Math.abs(value)>1))return null;
+    return {x:(ndc[0]+1)*view.width/2,y:(1-ndc[1])*view.height/2,depth:ndc[2]};
+  }
+
   drawWireframe(view){
     const gl=this.gl,l=this.locations;
     gl.uniform1i(l.textured,false);

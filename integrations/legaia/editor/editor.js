@@ -2394,7 +2394,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
       const statusLabel={address_match:'Matched texture',missing:'Texture not found',ambiguous:'Multiple possible textures',unsupported:'Unsupported texture',untextured:'Vertex colors'}[texture.status] ?? 'Texture unavailable';
       const label=document.createElement('span');label.textContent=`Material ${texture.material_index} · ${statusLabel}${texture.width?' · '+texture.width+'×'+texture.height:''}`;card.append(label);card.title=texture.reason ?? 'Static texture addresses; runtime residency is not confirmed'; $('model-textures').append(card);
     }
-    $('model-description').textContent=`Drag to orbit · Scroll to zoom · ${clipId==='file-preview'?'Proposed file animation · not applied':clipId?'Decoded rigid animation pose':shapeLayer==='authored'?'Authored object-local shape · Unposed':'Retail object-local geometry · Unposed'} · ${modelTextures.size?(model.texture_scope==='field_party'?'Shared party texture bank':'Static texture address matches'):'Vertex colors'} · Approximate blends; no texture-window or animated palette reconstruction`;
+    $('model-description').textContent=`Drag to orbit · Scroll to zoom · Wireframe + Shift-click to inspect an unposed vertex (includes hidden vertices) · ${clipId==='file-preview'?'Proposed file animation · not applied':clipId?'Decoded rigid animation pose':shapeLayer==='authored'?'Authored object-local shape · Unposed':'Retail object-local geometry · Unposed'} · ${modelTextures.size?(model.texture_scope==='field_party'?'Shared party texture bank':'Static texture address matches'):'Vertex colors'} · Approximate blends; no texture-window or animated palette reconstruction`;
     $('model-object').replaceChildren();
     if(model.frames?.length){const all=document.createElement('option');all.value='all';all.textContent='Animated assembly · supported objects';$('model-object').append(all);}
     for(let index=0;index<model.objects.length;index++){const object=model.objects[index],option=document.createElement('option');option.value=index;option.textContent=`Object ${object.object_index ?? index} · ${object.triangle_count} triangles`;$('model-object').append(option);}
@@ -2517,6 +2517,23 @@ function fitModelObject(){
 }
 $('model-object').onchange=fitModelObject;
 $('model-wireframe').onchange=drawModel;
+function modelRenderView(width,height){
+  const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch);
+  return {width,height,positions:new Map(),grid:false,wireframe:$('model-wireframe').checked,camera:{target:{x:modelView.center[0],y:-modelView.center[1],z:modelView.center[2]},distance:modelView.radius*4/modelView.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}};
+}
+function inspectModelVertex(event){
+  if(!event.shiftKey||!$('model-wireframe').checked||busy||shapeDraft||model?.frames?.length||state.project.mode!=='edit'||!state.capabilities?.model_shape_authoring)return;
+  const objectIndex=Number($('model-object').value),object=model.objects[objectIndex];if(!object)return;
+  const rect=modelCanvas.getBoundingClientRect(),view=modelRenderView(rect.width,rect.height),x=event.clientX-rect.left,y=event.clientY-rect.top;
+  let selected=null;
+  for(let index=0;index<object.vertex_count;index++){
+    const vertex=model.vertices[object.vertex_start+index],point=modelRenderer.projectPoint({x:vertex[0],y:-vertex[1],z:vertex[2]},view);if(!point)continue;
+    const distance=Math.hypot(point.x-x,point.y-y);
+    if(distance<=10&&(!selected||distance<selected.distance-.01||Math.abs(distance-selected.distance)<=.01&&point.depth<selected.depth))selected={index,distance,depth:point.depth};
+  }
+  if(selected)openModelVectors({object_index:objectIndex,kind:'vertex',vector_index:selected.index});
+  else $('shape-status').textContent='No projected vertex within 10 pixels. Wireframe picking includes hidden vertices; orbit to separate overlaps.';
+}
 function drawModel(){
   if(!modelRenderer||!$('model-dialog').open)return;
   const rect=modelCanvas.getBoundingClientRect(),w=rect.width,h=rect.height;if(!w||!h)return;
@@ -2530,14 +2547,14 @@ function drawModel(){
       if(failures.length)throw new Error(failures.join('; '));
       modelRenderSource=model;modelRenderObject=choice;modelRenderFrame=animationFrame;
     }else if(modelRenderFrame!==animationFrame){if(modelRenderer.updateVertices('model-view',vertices))modelRenderFrame=animationFrame;}
-    const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch);
-    modelRenderer.draw({width:w,height:h,positions:new Map(),grid:false,wireframe:$('model-wireframe').checked,camera:{target:{x:modelView.center[0],y:-modelView.center[1],z:modelView.center[2]},distance:modelView.radius*4/modelView.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
+    modelRenderer.draw(modelRenderView(w,h));
   }catch(error){$('model-error').textContent=String(error.message);}
 }
 new ResizeObserver(drawModel).observe(modelCanvas);
-modelCanvas.addEventListener('pointerdown',event=>{modelCanvas.setPointerCapture(event.pointerId);modelDrag={x:event.clientX,y:event.clientY};});
-modelCanvas.addEventListener('pointermove',event=>{if(!modelDrag)return;modelView.yaw+=(event.clientX-modelDrag.x)*.009;modelView.pitch+=(event.clientY-modelDrag.y)*.009;modelDrag={x:event.clientX,y:event.clientY};drawModel();});
-for(const event of ['pointerup','pointercancel'])modelCanvas.addEventListener(event,()=>{modelDrag=null;});
+modelCanvas.addEventListener('pointerdown',event=>{modelCanvas.setPointerCapture(event.pointerId);modelDrag={x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,moved:false};});
+modelCanvas.addEventListener('pointermove',event=>{if(!modelDrag)return;modelView.yaw+=(event.clientX-modelDrag.x)*.009;modelView.pitch+=(event.clientY-modelDrag.y)*.009;modelDrag.moved ||= Math.hypot(event.clientX-modelDrag.startX,event.clientY-modelDrag.startY)>4;modelDrag.x=event.clientX;modelDrag.y=event.clientY;drawModel();});
+modelCanvas.addEventListener('pointerup',event=>{const clicked=modelDrag&&!modelDrag.moved;modelDrag=null;if(clicked)inspectModelVertex(event);});
+modelCanvas.addEventListener('pointercancel',()=>{modelDrag=null;});
 modelCanvas.addEventListener('wheel',event=>{event.preventDefault();modelView.zoom=Math.max(.15,Math.min(2.5,modelView.zoom*Math.exp(-event.deltaY*.001)));drawModel();},{passive:false});
 api('/api/state');
 

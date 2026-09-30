@@ -38,3 +38,12 @@ models round-tripped exactly. A retail normal-only model0009 probe preserved all
 other TMD bytes and passed independent package-member readback. Browser checks
 cover model0000 vertex upload, authored JSON download and Undo; they do not prove
 runtime normal lighting. Saved probes are listed in the gameplay queue.
+
+September 30 viewport authoring connection: enable **Wireframe overlay** and
+Shift-click a projected vertex in an unposed model to open its exact object,
+index and source XYZ in the vector Inspector. Selection does not apply changes.
+Plain clicks and orbit drags do not select. Picking includes hidden vertices;
+posed/proposed animation geometry, pending shape files and Live mode cannot
+use this authoring shortcut. Retail browser checks verified the selected vector
+and no submitted edits; projection checks cover center, behind-camera and
+offscreen points.

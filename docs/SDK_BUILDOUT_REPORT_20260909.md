@@ -279,3 +279,12 @@ script opcode/CFG tools, event flags, transitions and world-map authoring are
 still incomplete. Unknown semantics remain explicit. Audio continuity,
 field/battle/world-map transitions, physical controller behavior and
 cross-scene/repeated restore performance also remain unaccepted.
+
+September 30 viewport authoring connection: enable **Wireframe overlay** and
+Shift-click a projected vertex in an unposed model to open its exact object,
+index and source XYZ in the vector Inspector. Selection does not apply changes.
+Plain clicks and orbit drags do not select. Picking includes hidden vertices;
+posed/proposed animation geometry, pending shape files and Live mode cannot
+use this authoring shortcut. Retail browser checks verified the selected vector
+and no submitted edits; projection checks cover center, behind-camera and
+offscreen points.

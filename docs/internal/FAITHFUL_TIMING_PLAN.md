@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Viewport vertex selection to Inspector
+
+- Wireframe Shift-click selects the nearest projected vertex within 10 pixels and opens its exact source vector Inspector. Shared renderer camera projection handles clipping; ties prefer the nearer vertex. Hidden vertices remain eligible and are explicitly labeled.
+- Unposed Edit-mode geometry only; pending shape files, animation poses and unsupported authoring states reject selection. Plain clicks and orbit drags do not select.
+- Retail browser check verified index and XYZ after orbit, plus zero submitted edits. Synthetic projection check verified center and rejection behind camera/offscreen. Node syntax and diff checks passed. Evidence: ignored `local-output/sdk-20260909/model-vertex-picking-browser-check.*` and `model-wireframe-renderer-check.*`. Temporary server stopped; no game launched.
+
+
 ### 2026-09-30 — Model topology inspection overlay
 
 - Added a model-view Wireframe overlay for decoded triangle edges, including hidden edges. Cached per-batch buffers are invalidated by preview vertex updates and released with meshes. Picking remains unchanged.
