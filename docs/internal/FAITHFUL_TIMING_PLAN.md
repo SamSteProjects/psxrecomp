@@ -213,6 +213,13 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Model topology inspection overlay
+
+- Added a model-view Wireframe overlay for decoded triangle edges, including hidden edges. Cached per-batch buffers are invalidated by preview vertex updates and released with meshes. Picking remains unchanged.
+- Synthetic headless-browser WebGL check verified three edges, buffer reuse, vertex updates, picking and clean GL state. Retail model0009 browser check toggled the overlay without project requests; screenshot visually inspected. Evidence: ignored `local-output/sdk-20260909/model-wireframe-*-check.*` and `model-wireframe.png`.
+- Node syntax and diff checks passed. Temporary editor server stopped. No game launch; manual gameplay remains deferred. Full SDK objective remains incomplete.
+
+
 ### 2026-09-12 — Refresh the named SDK buildout report
 
 - User asked whether the buildout MD was current. Checked docs/SDK_BUILDOUT_REPORT_20260909.md against current source a094bc71, SDK_STATUS and recent evidence. It retained a predominantly September9 inventory and obsolete remaining-work framing; it was not fully current.

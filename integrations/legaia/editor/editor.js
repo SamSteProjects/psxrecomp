@@ -2516,6 +2516,7 @@ function fitModelObject(){
   drawModel();
 }
 $('model-object').onchange=fitModelObject;
+$('model-wireframe').onchange=drawModel;
 function drawModel(){
   if(!modelRenderer||!$('model-dialog').open)return;
   const rect=modelCanvas.getBoundingClientRect(),w=rect.width,h=rect.height;if(!w||!h)return;
@@ -2530,7 +2531,7 @@ function drawModel(){
       modelRenderSource=model;modelRenderObject=choice;modelRenderFrame=animationFrame;
     }else if(modelRenderFrame!==animationFrame){if(modelRenderer.updateVertices('model-view',vertices))modelRenderFrame=animationFrame;}
     const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch);
-    modelRenderer.draw({width:w,height:h,positions:new Map(),grid:false,camera:{target:{x:modelView.center[0],y:-modelView.center[1],z:modelView.center[2]},distance:modelView.radius*4/modelView.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
+    modelRenderer.draw({width:w,height:h,positions:new Map(),grid:false,wireframe:$('model-wireframe').checked,camera:{target:{x:modelView.center[0],y:-modelView.center[1],z:modelView.center[2]},distance:modelView.radius*4/modelView.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
   }catch(error){$('model-error').textContent=String(error.message);}
 }
 new ResizeObserver(drawModel).observe(modelCanvas);

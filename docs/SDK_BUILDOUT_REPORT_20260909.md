@@ -6,9 +6,9 @@ record separates functioning features, demonstrated failures and remaining
 product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 [16-layer acceptance plan](TEST_PLAN.md) remain authoritative for scope.
 
-## Current buildout status — updated 2026-09-12
+## Current buildout status — updated 2026-09-30
 
-Reviewed against source through `a094bc71`. The dated filename is retained for
+Reviewed against source through `a094bc71`, plus the September 30 wireframe addition. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
@@ -27,6 +27,8 @@ old test counts below; those sections record what was proven at that time.
   normal JSON, file-change preview, direct vector Inspector editing, per-vector
   retail reset, and inspected-vertex camera location. Build audits show exact
   scalar changes and link to the matching model/vector with stale-hash checks.
+  A model-view wireframe overlay exposes decoded triangle edges, including
+  hidden edges; it follows preview vertex updates without authoring changes.
   Arbitrary topology/material replacement remains unsupported. Browser shaders
   do not calculate normal-based lighting.
 - **Scene content:** supported dialogue, appearance, transitions, script movement,

@@ -51,7 +51,7 @@ export class SceneRenderer {
 
   clear(){
     const gl=this.gl;
-    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.texture)gl.deleteTexture(batch.texture);}
+    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
     this.meshes.clear();this.instances=[];this.scene=null;
     if(!this.lost){gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);}
   }
@@ -124,6 +124,7 @@ export class SceneRenderer {
     for(const batch of mesh.batches){
       for(let i=0;i<batch.vertexIndices.length;i++)batch.data.set(vertices[batch.vertexIndices[i]],i*8);
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER,batch.buffer);this.gl.bufferSubData(this.gl.ARRAY_BUFFER,0,batch.data);
+      batch.wireDirty=true;
     }
     mesh.min=min;mesh.max=max;const asset=this.scene?.assets.find(item=>item.geometry_key===key);if(asset)asset.preview={...asset.preview,vertices};return true;
   }
@@ -197,7 +198,32 @@ export class SceneRenderer {
       gl.disable(gl.BLEND);gl.depthMask(true);gl.blendEquation(gl.FUNC_ADD);
     }
     gl.uniform1i(l.semi,false);gl.uniform1i(l.pass,0);
+    if(!picking&&view.wireframe)this.drawWireframe(view);
     if(!picking&&view.grid)this.drawGrid(view);
+  }
+
+  drawWireframe(view){
+    const gl=this.gl,l=this.locations;
+    gl.uniform1i(l.textured,false);
+    // A diagnostic overlay shows every decoded edge, including hidden edges.
+    gl.disable(gl.DEPTH_TEST);gl.depthMask(false);
+    try{
+      for(const instance of this.instances){
+        if(view.hiddenEntities?.has(instance.entity_id))continue;
+        gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions)));
+        for(const batch of this.meshes.get(instance.geometry_key).batches){
+          if(!batch.wireBuffer){batch.wireBuffer=gl.createBuffer();batch.wireDirty=true;}
+          if(batch.wireDirty){
+            const data=new Float32Array(batch.count*2*8);let offset=0;
+            for(let triangle=0;triangle<batch.count;triangle+=3)for(const corner of [0,1,1,2,2,0]){
+              const start=(triangle+corner)*8;data.set(batch.data.subarray(start,start+3),offset);data.set([.2,1,1,0,0],offset+3);offset+=8;
+            }
+            gl.bindBuffer(gl.ARRAY_BUFFER,batch.wireBuffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);batch.wireDirty=false;
+          }
+          this.bind(batch.wireBuffer);gl.drawArrays(gl.LINES,0,batch.count*2);
+        }
+      }
+    }finally{gl.enable(gl.DEPTH_TEST);gl.depthMask(true);}
   }
 
   drawGrid(view){
