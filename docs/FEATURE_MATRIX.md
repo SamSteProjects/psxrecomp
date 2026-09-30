@@ -593,3 +593,10 @@ under Builds/e7728cba624de600 has SHA256
 9d16d794517133d474921f7e001f9dd1929cc43f51df2ff8c33aca89f09aa3cb.
 No game or package installation. Gameplay shape/animation/collision compatibility
 remains deferred. The383-test checkpoint predates this addition.
+
+
+Object-transform previews (2026-09-30): implemented before Apply in the model
+vector Inspector for translation, rotation and scale. Source-bound proposed/current
+geometry comparison, shared framing and draft/stale-response guards passed focused
+model and retail browser checks without history or authored-file changes. Gameplay
+acceptance remains deferred; the383-test checkpoint predates this feature.

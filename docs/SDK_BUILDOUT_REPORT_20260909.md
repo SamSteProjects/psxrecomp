@@ -8,12 +8,18 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `f08612a3`, including model object
-quarter-turn authoring, flag operands/reference layers and the wait Inspector,
-including instruction-to-operand navigation, plus the current model object
-scaling described below. The dated filename is retained for
+Reviewed against committed source through `3f6a1713`, including model object
+quarter-turn and uniform-scale authoring, flag operands/reference layers, the
+wait Inspector and instruction-to-operand navigation described below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Object-transform proposal previews:** translation, rotation and uniform scale
+can now be viewed before Apply, with proposed/current layers sharing camera
+framing. Preview leaves project history and authored files unchanged. The latest
+383-test suite predates instruction navigation, scaling and these previews;
+those additions have separate focused and browser checks. Gameplay acceptance
+remains deferred.
 
 **Supported flag operand authoring:** local, global and context flag-bit
 serialization has focused source-preservation validation, including rebasing
@@ -602,3 +608,23 @@ under Builds/e7728cba624de600 has SHA256
 9d16d794517133d474921f7e001f9dd1929cc43f51df2ff8c33aca89f09aa3cb.
 No game or package installation. Gameplay shape/animation/collision compatibility
 remains deferred. The383-test checkpoint predates this addition.
+
+
+Model-object transform previews (2026-09-30): the vector Inspector has explicit
+Preview buttons for translation, quarter-turn rotation and uniform scaling, with
+an orbit/zoom canvas and Proposed/Inspected current layers under shared framing.
+The server binds previews to the inspected effective SHA and uses the same
+serializers as Apply, including a shared translation serializer. Invalid fields,
+stale hashes, overflow and vector drafts reject previews. Input changes, dialog
+close and delayed responses withdraw proposals; comparison-layer changes retain
+geometry. Seven focused model tests passed. Retail model0009 object1 previews
+matched exact Apply-operation bytes for all three transforms while project state
+and authored-file hashes stayed unchanged. Browser checks passed all transforms,
+layer comparison, draft/input guards, close/reopen and delayed-response withdrawal
+with zero page errors; scale/rotation screenshots inspected. An initial browser
+failure exposed comparison-select input events clearing the preview; fixed and
+rerun successfully. Private evidence: local-output/sdk-20260909/model-scale-project-20260930/
+object-preview-service-check.json, object-preview-browser-check.json and
+object-preview-{translation,rotation,scale}.png. Temporary server/browser stopped.
+No game launch, package installation or gameplay claim. The383-test checkpoint
+predates this addition; full SDK goal remains incomplete.

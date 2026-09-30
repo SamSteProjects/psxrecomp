@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Source-bound model-object proposal previews
+
+Implemented inline vector Inspector previews for translation, rotation and uniform
+scale, using Apply serializers and effective SHA validation. Proposed/current
+layers share framing and support orbit/zoom; input changes, close and late replies
+withdraw proposals. Fixed comparison-select input incorrectly invalidating preview.
+Seven focused tests passed; retail model0009 object1 matched exact serializer bytes
+for all transforms without project state or authored-file hash changes. Browser
+checks passed all transforms, comparison, draft/input/close guards and held-response
+withdrawal with zero page errors. Scale/rotation screenshots visually inspected.
+Private evidence under model-scale-project-20260930/object-preview-*. Temporary
+browser/server stopped, no game/install. Updated buildout/status/matrix docs.
+383-test checkpoint predates addition; full SDK goal remains active and incomplete.
+
+
+### 2026-09-30 — Buildout report freshness check
+
+Compared the report with HEAD3f6a1713 and the clean tracked worktree. Latest
+uniform model scaling was already recorded; refreshed the top source revision
+and explicitly separated planned object-transform visual previews from completed
+features.383-test checkpoint remains atf8f135e4; later instruction navigation
+and scaling retain separate focused/browser evidence. Gameplay acceptance is
+deferred. Documentation-only change; no game launched or runtime changes.
+
+
 
 ### 2026-09-30 — Uniform source-local model object scaling
 

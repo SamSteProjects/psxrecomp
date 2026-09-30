@@ -517,6 +517,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.set_texture_palette_word(body['asset_id'], body['palette_index'], body['entry_index'], body['word'], body['expected_sha256'])
                     self._json(200, self.server.state())
                     return
+                if route == '/api/model-object-preview':
+                    if set(body) != {'asset_id','object_index','operation','values','expected_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Object preview requires model, object, operation, values and inspected hash')
+                    report = self.server.project.preview_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
+                    asset = self.server.project.assets.records[body['asset_id']]
+                    for key in ('preview', 'current_preview'):
+                        report[key] = self.server.model_preview(asset, prepared=report[key])
+                    self._json(200,report)
+                    return
                 if route == '/api/model-object-rotation':
                     if set(body) != {'asset_id','object_index','axis','quarter_turns','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Object rotation requires model, object, axis, quarter turns and inspected hash')

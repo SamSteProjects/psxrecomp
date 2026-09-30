@@ -38,6 +38,29 @@ def rotate_shape_object(original: bytes, effective: bytes, expected_sha256: str,
     return import_shape_json(original,source_hash,json.dumps(document).encode())[0]
 
 
+def translate_shape_object(original: bytes, effective: bytes, expected_sha256: str,
+                           object_index: int, offset: list[int]) -> bytes:
+    """Translate a source-bound object without changing other model spans."""
+    if sha256(effective).hexdigest() != expected_sha256:
+        raise ImportError('Model changed since object inspection; reopen the vector editor')
+    if not isinstance(offset, list) or len(offset) != 3 or any(type(v) is not int or not -65535 <= v <= 65535 for v in offset):
+        raise ImportError('Object offset requires three integer source-unit values within ±65535')
+    source_hash = sha256(original).hexdigest()
+    replace_model_shape(original, source_hash, effective)
+    document = json.loads(export_shape_json(effective))
+    if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
+        raise ImportError('Choose an existing model object')
+    vertices = document['objects'][object_index]['vertices']
+    if not vertices:
+        raise ImportError('The selected object has no vertices')
+    translated = [[v + offset[a] for a, v in enumerate(vertex)] for vertex in vertices]
+    if any(not -32768 <= v <= 32767 for vertex in translated for v in vertex):
+        raise ImportError('Object translation exceeds signed16 vertex coordinates; nothing was applied')
+    document['objects'][object_index]['vertices'] = translated
+    document['source_sha256'] = source_hash
+    return import_shape_json(original, source_hash, json.dumps(document).encode())[0]
+
+
 def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
                        object_index: int, percent: int) -> bytes:
     """Positive uniform vertex scaling; nearest integer, half away from zero."""

@@ -2566,6 +2566,7 @@ showScenePose.onclick=()=>{
 
 const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Replace object-local vertex and normal coordinates in a same-layout TMD. Topology, materials and object bindings stay fixed. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-vectors">Edit model vectors</button><button id="shape-source">Download source TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
 const vectorDialog=document.createElement('dialog');vectorDialog.id='model-vector-dialog';document.body.append(vectorDialog);
+let objectProposalRenderer=null,objectProposalCanvas=null;
 async function openModelVectors(initial=null){
   if(busy||shapeDraft||state.project.mode!=='edit')return;
   const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);setBusy(true);
@@ -2621,6 +2622,57 @@ async function openModelVectors(initial=null){
     const previewScale=()=>{const obj=document.objects[Number(object.value)],percent=Number(scalePercent.value),valid=scalePercent.value!==''&&scalePercent.checkValidity(),fits=valid&&(obj?.vertices??[]).every(vector=>vector.every(value=>{const scaled=scaleVertex(value,percent);return scaled>=-32768&&scaled<=32767;}));scaling.querySelector('[data-scale-report]').textContent=object.disabled?'Apply or discard the vector draft first.':!valid?'Enter an integer percent from 1 to 1000.':!fits?'Scale exceeds signed16 vertex values; nothing will be applied.':`${obj?.vertices.length??0} vertices · ${percent}% around the source-local origin · Normals unchanged`;scaling.querySelector('[data-scale]').disabled=object.disabled||!obj?.vertices.length||!fits;};
     form.addEventListener('click',previewScale);form.addEventListener('input',previewScale);form.addEventListener('change',previewScale);scaling.ontoggle=previewScale;
     scaling.querySelector('[data-scale]').onclick=async()=>{if(busy||object.disabled)return;previewScale();if(scaling.querySelector('[data-scale]').disabled)return;if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id]))return;if(await api('/api/model-object-scale',{asset_id:asset,object_index:Number(object.value),percent:Number(scalePercent.value),expected_sha256:source.effective_sha256},{dialog:vectorDialog,success:'Model object scaled. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}};
+    const proposal=window.document.createElement('section');proposal.hidden=true;proposal.innerHTML='<h3>Object transform preview · not applied</h3><p data-proposal-status></p><label>Preview layer<select aria-label="Object preview layer"><option value="proposed">Proposed</option><option value="current">Inspected current</option></select></label><p>Drag to orbit · Scroll to zoom · Object-local Y-down coordinates. Both layers share camera framing. Preview does not change history or saved assets; Apply remains explicit.</p>';
+    if(!objectProposalCanvas){objectProposalCanvas=window.document.createElement('canvas');objectProposalCanvas.style.cssText='display:block;width:100%;height:300px;touch-action:none';objectProposalCanvas.setAttribute('aria-label','Object transform preview');}
+    proposal.append(objectProposalCanvas);form.append(proposal);
+    let proposalReport=null,proposalRequest=0,proposalView=null,proposalDrag=null;
+    const currentContext=()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled;
+    const invalidateProposal=()=>{proposalRequest++;proposalReport=null;proposal.hidden=true;};
+    const drawProposal=()=>{
+      if(!proposalReport||proposal.hidden||!currentContext()||!objectProposalRenderer)return;
+      const rect=objectProposalCanvas.getBoundingClientRect(),c=Math.cos(proposalView.yaw),s=Math.sin(proposalView.yaw),cp=Math.cos(proposalView.pitch),sp=Math.sin(proposalView.pitch);
+      objectProposalRenderer.draw({width:rect.width,height:rect.height,positions:new Map(),grid:false,wireframe:true,camera:{target:{x:proposalView.center[0],y:-proposalView.center[1],z:proposalView.center[2]},distance:proposalView.radius*4/proposalView.zoom},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
+    };
+    const loadProposal=()=>{
+      if(!proposalReport||!currentContext())return;
+      const data=proposalReport[proposal.querySelector('select').value==='current'?'current_preview':'preview'],obj=data.objects[proposalReport.object_index];
+      const preview={...data,triangles:data.triangles.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_colors:data.triangle_colors?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_uvs:data.triangle_uvs?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_materials:data.triangle_materials?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count)};
+      const failures=objectProposalRenderer.load({assets:[{geometry_key:'object-proposal',preview}],entities:[{entity_id:'object-proposal',geometry_key:'object-proposal',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});
+      if(failures.length)throw new Error(failures.join('; '));drawProposal();
+    };
+    proposal.querySelector('select').onchange=()=>{try{loadProposal();}catch(error){form.querySelector('[data-error]').textContent=error.message;invalidateProposal();}};
+    objectProposalCanvas.onpointerdown=event=>{objectProposalCanvas.setPointerCapture(event.pointerId);proposalDrag={x:event.clientX,y:event.clientY};};
+    objectProposalCanvas.onpointermove=event=>{if(!proposalDrag||!proposalView)return;proposalView.yaw+=(event.clientX-proposalDrag.x)*.009;proposalView.pitch+=(event.clientY-proposalDrag.y)*.009;proposalDrag={x:event.clientX,y:event.clientY};drawProposal();};
+    objectProposalCanvas.onpointerup=objectProposalCanvas.onpointercancel=()=>proposalDrag=null;
+    objectProposalCanvas.onwheel=event=>{event.preventDefault();if(proposalView){proposalView.zoom=Math.max(.15,Math.min(2.5,proposalView.zoom*Math.exp(-event.deltaY*.001)));drawProposal();}};
+    vectorDialog.onclose=invalidateProposal;
+    // A proposal is tied to exact inputs. No old preview remains visible after a draft changes.
+    for(const type of ['input','change'])form.addEventListener(type,event=>{if(event.target!==proposal.querySelector('select'))invalidateProposal();});
+    form.querySelector('[data-retail-vector]').addEventListener('click',invalidateProposal);
+    form.querySelector('[data-discard]').addEventListener('click',invalidateProposal);
+    for(const [container,operation,applySelector,getValues,refresh] of [
+      [translation,'translation','[data-translate]',()=>({offset:offsetValues()}),previewOffset],
+      [rotation,'rotation','[data-rotate]',()=>({axis:rotationAxis.value,quarter_turns:Number(turnControl.value)}),previewRotation],
+      [scaling,'scale','[data-scale]',()=>({percent:Number(scalePercent.value)}),previewScale]]){
+      const button=window.document.createElement('button');button.type='button';button.textContent='Preview object '+operation;container.append(button);
+      button.onclick=async()=>{
+        refresh();if(busy||!currentContext()||container.querySelector(applySelector).disabled)return;
+        const request=++proposalRequest;proposalReport=null;proposal.hidden=true;form.querySelector('[data-error]').textContent='';setBusy(true);
+        try{
+          const response=await fetch('/api/model-object-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,object_index:Number(object.value),operation,values:getValues(),expected_sha256:source.effective_sha256})}),report=await response.json();
+          if(request!==proposalRequest||!currentContext())return;
+          if(!response.ok||report.error)throw new Error(report.error||'Object preview failed');
+          if(report.asset_id!==asset||report.effective_sha256!==source.effective_sha256||report.object_index!==Number(object.value)||report.operation!==operation||report.project_changed!==false)throw new Error('Object preview context differs from inspection');
+          if(!objectProposalRenderer){const module=await import('/scene-renderer.js');if(request!==proposalRequest||!currentContext())return;objectProposalRenderer=new module.SceneRenderer(objectProposalCanvas,message=>{if(message&&vectorDialog.open)form.querySelector('[data-error]').textContent=message;});}
+          objectProposalRenderer.onStatus=message=>{if(message&&vectorDialog.open)form.querySelector('[data-error]').textContent=message;else drawProposal();};
+          const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
+          for(const data of [report.preview,report.current_preview]){const obj=data.objects[report.object_index];for(const v of data.vertices.slice(obj.vertex_start,obj.vertex_start+obj.vertex_count))for(let a=0;a<3;a++){min[a]=Math.min(min[a],v[a]);max[a]=Math.max(max[a],v[a]);}}
+          proposalView={center:min.map((v,a)=>(v+max[a])/2),radius:Math.max(1,Math.hypot(...max.map((v,a)=>v-min[a]))/2),yaw:.6,pitch:.4,zoom:1};
+          proposalReport=report;proposal.hidden=false;proposal.querySelector('select').value='proposed';proposal.querySelector('[data-proposal-status]').textContent=`Object ${report.object_index} · ${operation} · ${report.changes_from_current.length} scalar changes from inspected current · not applied`;
+          proposal.scrollIntoView({block:'nearest'});loadProposal();
+        }catch(error){if(request===proposalRequest&&currentContext()){form.querySelector('[data-error]').textContent=error.message;invalidateProposal();}}finally{setBusy(false);}
+      };
+    }
     form.querySelector('[data-discard]').onclick=()=>{load();previewOffset();previewRotation();previewScale();};form.querySelector('[data-close]').onclick=()=>vectorDialog.close();
 
     form.onsubmit=async event=>{event.preventDefault();if(busy||!valid||!form.reportValidity())return;if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])){form.querySelector('[data-error]').textContent='Model context changed; reopen the editor.';return;}
