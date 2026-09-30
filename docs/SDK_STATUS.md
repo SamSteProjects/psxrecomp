@@ -31,6 +31,16 @@ Restore, stale-source withdrawal and unchanged project state, with zero authorin
 requests or page errors. Screenshot inspected. This is separate browser evidence;
 retail animation timing, playback and gameplay visibility remain deferred.
 
+**Independent animation consumer review (2026-09-30):** Blender 5.2.2 rendered
+and evaluated a fresh complete Dolk2 actor0001 GLB (30 frames, ten rigid objects,
+three embedded textures). All61 source-decoded samples, including half-frame STEP
+holds and terminal pose, matched within0.000018 source units;24 distinct geometry
+snapshots establish motion. First/middle/last renders were visually inspected.
+The saved Blender scene reopened with all meshes, animation actions and three
+packed textures. A reusable offline review tool and [consumer review guide](legaia-glb-consumer-review.md)
+are available. Acceptance is specific to this clip; wider clips/consumers, retail
+cadence, lighting and gameplay remain unverified. No game was launched.
+
 ## Validation scope
 
 The retail-enabled SDK discovery run passed **390 tests in 163.243 seconds**,
@@ -56,7 +66,7 @@ Use [the verification queue](legaia-gameplay-verification-queue.md) for saved in
 - Confirmed runtime actor identity and complete Unity-style live scene parity.
 - Complete world-map behavior and unresolved MAPDSIP coverage.
 - Remaining release/runtime acceptance, including the latest audio-lock build and deferred lifecycle/performance checks.
-- Independent rendered acceptance of complete exported animations and wider scene parity.
+- Wider rendered animation acceptance beyond the reviewed Dolk2 clip, other consumers and broader scene parity.
 
 See [feature coverage](FEATURE_MATRIX.md), [release parity](legaia-release-parity.md), [architecture](ARCHITECTURE.md), and [test plan](TEST_PLAN.md). The goal remains active; this report does not claim all offline work is exhausted.
 

@@ -8,12 +8,22 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `2ecb36e9`, plus the animation scene
-comparison update documented below, including model object
+Reviewed against committed source through `188d1963`, plus the independent
+animation consumer review documented below, including model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Independent animation consumer review (2026-09-30):** Blender 5.2.2 rendered
+and evaluated a fresh complete Dolk2 actor0001 GLB (30 frames, ten rigid objects,
+three embedded textures). All61 source-decoded samples, including half-frame STEP
+holds and terminal pose, matched within0.000018 source units;24 distinct geometry
+snapshots establish motion. First/middle/last renders were visually inspected.
+The saved Blender scene reopened with all meshes, animation actions and three
+packed textures. A reusable offline review tool and [consumer review guide](legaia-glb-consumer-review.md)
+are available. Acceptance is specific to this clip; wider clips/consumers, retail
+cadence, lighting and gameplay remain unverified. No game was launched.
 
 **Animation scene comparison (2026-09-30):** supported animation inspections now
 switch between the inspected animation and Current authored scene, retaining the
@@ -98,7 +108,8 @@ supersedes the383-test checkpoint at `f8f135e4`. The texture dependency and
 instruction operand JavaScript checks and editor syntax check also passed.
 Browser interaction/rendering retains its separately recorded evidence. A green
 suite does not establish gameplay, runtime parity, retail visibility or external
-rendered animation acceptance. Historical test counts below remain dated evidence.
+rendered animation acceptance beyond the separately reviewed clip below. Historical
+test counts remain dated evidence.
 
 **Gameplay is deferred at the user's request.** These later changes did not
 launch the game. Full runtime parity, normal lighting, wider scene/animation

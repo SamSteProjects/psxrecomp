@@ -213,6 +213,27 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Independent complete animation GLB consumer review
+
+Previous turn progressed at188d1963. Added bounded standalone Blender review tool:
+self-contained complete SDK GLB, explicit-rate evaluation, first/middle/last
+renders, editable blend and metadata report, optional hash-bound source-pose
+comparison. Requires new output directory; no input/project mutation. Fresh
+Dolk2 actor0001/model0133 export from188d1963 matched old3a09e39ab7e58009545dad66b0c58ff8731745961ed0224ffb7cc6015e11fe67.
+Blender5.2.2 imported ten rigid objects and three textures. Initial review failed
+half-frame comparison because the harness added one to frame time. Local importer
+source established time-zero frame0 and CONSTANT conversion of glTF STEP; fixed
+the review setup, not the exporter. All61 source samples then passed with maximum
+point error0.0000170865;24 distinct geometries. Three renders inspected; saved blend
+reopened ten meshes/actions/three packed images. Existing-output rejection passed;
+two focused exporter tests and tool syntax passed. Private evidence:
+local-output/sdk-20260909/blender-clip-review-20260930/{export-audit,expected}.json,
+rendered-final/report.json, PNGs and review.blend. Outputs remain ignored. No game
+launched; Blender background sessions completed. Updated buildout/status/matrix
+and added consumer guide. One clip accepted in Blender; wider clips, Unity, retail
+cadence/lighting, scene parity and gameplay remain open. Full goal remains active.
+
+
 ### 2026-09-30 — Animation scene comparison with retained frames
 
 Previous turn made progress at2ecb36e9. Added comparison for supported animation
