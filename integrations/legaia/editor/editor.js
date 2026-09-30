@@ -2506,7 +2506,7 @@ let modelTextures=new Map();
 let modelAssetId=null, modelEntityId=null, modelSceneEntityId=null, animationFrame=0, animationTick=null, animationClock=null;
 const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
 let modelSceneContext=null,modelFileReturn=null,scenePoseTick=null,scenePoseClock=null;
-const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button" data-play>Play scene preview</button> <label>Preview fps <select aria-label="Scene preview rate"><option>5</option><option selected>10</option><option>15</option><option>30</option><option>60</option></select></label> <button type="button" data-restore>Restore scene pose</button> <button type="button" data-return-file hidden>Return to animation file</button>';$('frame-selected').after(scenePoseBar);
+const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button" data-play>Play scene preview</button> <label>Preview fps <select aria-label="Scene preview rate"><option>5</option><option selected>10</option><option>15</option><option>30</option><option>60</option></select></label> <button type="button" data-restore>Restore scene preview</button> <button type="button" data-return-file hidden>Return to animation file</button>';$('frame-selected').after(scenePoseBar);
 const showScenePose=document.createElement('button');showScenePose.type='button';showScenePose.id='show-frame-in-scene';showScenePose.textContent='Inspect animation in scene';$('animation-frame-label').after(showScenePose);
 function clearScenePose(restore=true){
   stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;
@@ -2514,8 +2514,8 @@ function clearScenePose(restore=true){
 }
 function scenePoseDocument(base,preview,entityId,frame){
   const target=base.entities.find(e=>e.entity_id===entityId);
-  if(!target||!Array.isArray(preview.frames?.[frame]?.vertices))throw new Error('Choose a loaded actor animation frame.');
-  const key='inspection-pose:'+entityId,geometry={...preview,vertices:preview.frames[frame].vertices};delete geometry.frames;
+  if(!target||!Array.isArray(frame===null?preview.vertices:preview.frames?.[frame]?.vertices))throw new Error('Choose a loaded inspection geometry.');
+  const key='inspection-pose:'+entityId,geometry={...preview,vertices:frame===null?preview.vertices:preview.frames[frame].vertices};delete geometry.frames;
   const result=structuredClone(base);result.entities.find(e=>e.entity_id===entityId).geometry_key=key;result.entities.find(e=>e.entity_id===entityId).renderable=true;
   const used=new Set(result.entities.map(e=>e.geometry_key));result.assets=result.assets.filter(a=>used.has(a.geometry_key));
   if(result.assets.length>=128)throw new Error('Scene has no spare geometry capacity for isolated animation inspection.');
@@ -2529,7 +2529,7 @@ function updateScenePoseFrame(frame){
     scenePoseBar.querySelector('input').value=frame;draw();
   }
 }
-scenePoseBar.querySelector('[data-return-file]').onclick=()=>{if(busy)return;const returnToFile=scenePose?.returnToFile;clearScenePose();draw();if(!returnToFile?.())notify('The file inspection context changed. Reopen animation authoring to select the file again.',true);};
+scenePoseBar.querySelector('[data-return-file]').onclick=()=>{if(busy)return;const returnToFile=scenePose?.returnToFile;clearScenePose();draw();if(!returnToFile?.())notify('The inspection context changed. Reopen the asset Inspector to review the proposal again.',true);};
 scenePoseBar.querySelector('[data-restore]').onclick=()=>{clearScenePose();draw();};
 scenePoseBar.querySelector('input').oninput=event=>{stopScenePosePlayback();try{updateScenePoseFrame(Number(event.target.value));}catch(error){clearScenePose();notify(error.message,true);draw();}};
 function stopScenePosePlayback(){
@@ -2558,6 +2558,7 @@ showScenePose.onclick=()=>{
     stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,model,modelSceneEntityId,animationFrame);
     const failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
     scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:model,frame:animationFrame,returnToFile:modelFileReturn,name:(model.animation?.representation==='file_preview'?'Proposed file · not applied · ':modelEntityId?'':'Reference clip · ')+(entities().find(e=>e.id===modelSceneEntityId)?.name??modelSceneEntityId)};
+    for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=false;scenePoseBar.querySelector('[data-return-file]').textContent='Return to animation file';
     scenePoseBar.hidden=false;scenePoseBar.querySelector('[data-return-file]').hidden=typeof modelFileReturn!=='function';scenePoseBar.querySelector('input').max=model.frames.length-1;
     if(model.animation?.representation==='file_preview')animationEditDialog.close();
     $('model-dialog').close();updateScenePoseFrame(animationFrame);const actor=entities().find(e=>e.id===modelSceneEntityId);if(actor)frame(actor);
@@ -2626,6 +2627,34 @@ async function openModelVectors(initial=null){
     if(!objectProposalCanvas){objectProposalCanvas=window.document.createElement('canvas');objectProposalCanvas.style.cssText='display:block;width:100%;height:300px;touch-action:none';objectProposalCanvas.setAttribute('aria-label','Object transform preview');}
     proposal.append(objectProposalCanvas);form.append(proposal);
     let proposalReport=null,proposalRequest=0,proposalView=null,proposalDrag=null;
+    const sceneProposal=window.document.createElement('div');sceneProposal.innerHTML='<label>Scene instance<select aria-label="Proposed shape scene instance"></select></label><button type="button">Inspect proposed shape in scene</button><p>Inspection affects one selected instance only. Applying the model changes its shared asset. Source placement and supported pose are retained; gameplay visibility remains unverified.</p>';proposal.append(sceneProposal);
+    const instanceSelect=sceneProposal.querySelector('select'),inspectSceneButton=sceneProposal.querySelector('button');
+    const updateProposalInstances=()=>{
+      instanceSelect.replaceChildren();
+      const available=scenePreviewCurrent()&&sceneRepresentation==='authored'?(scenePreview.entities??[]).filter(e=>e.asset_id===asset&&e.renderable):[];
+      for(const item of available){const option=window.document.createElement('option');option.value=item.entity_id;option.textContent=item.name??item.entity_id;instanceSelect.append(option);}
+      if(available.some(e=>e.entity_id===environmentSelection))instanceSelect.value=environmentSelection;
+      inspectSceneButton.disabled=!available.length;sceneProposal.hidden=!available.length;
+    };
+    inspectSceneButton.onclick=async()=>{
+      if(busy||!currentContext()||!proposalReport||!scenePreviewCurrent()||sceneRepresentation!=='authored')return;
+      const inspected=proposalReport,request=proposalRequest,loadedKey=sceneKey,entityId=instanceSelect.value;
+      setBusy(true);
+      try{
+        const response=await fetch('/api/model-object-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,object_index:inspected.object_index,operation:inspected.operation,values:inspected.values,expected_sha256:source.effective_sha256,entity_id:entityId,source_key:scenePreview.project_source_key})}),report=await response.json();
+        if(request!==proposalRequest||proposalReport!==inspected||!currentContext()||!scenePreviewCurrent()||loadedKey!==sceneKey)return;
+        if(!response.ok||report.error)throw new Error(report.error||'Scene proposal failed');
+        if(report.entity_id!==entityId||report.asset_id!==asset||report.project_source_key!==scenePreview.project_source_key||report.proposed_sha256!==inspected.proposed_sha256)throw new Error('Scene proposal differs from inspected geometry');
+        stopScenePosePlayback();const isolated=scenePoseDocument(scenePreview,report.preview,entityId,null),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
+        const returnToVectors=()=>{if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey)return false;$('model-dialog').showModal();vectorDialog.showModal();return true;};
+        scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:report.preview,returnToFile:returnToVectors,name:'Proposed shape · not applied'};
+        scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed shape · not applied · ${entityId} · ${inspected.operation}`;
+        for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
+        const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to model vectors';
+        vectorDialog.close();$('model-dialog').close();const target=scenePreview.entities.find(e=>e.entity_id===entityId);frame({id:entityId,components:{Transform:{imported:{position:target.position}}}});draw();
+      }catch(error){if(currentContext()){clearScenePose();form.querySelector('[data-error]').textContent=error.message;draw();}}finally{setBusy(false);}
+    };
+
     const currentContext=()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled;
     const invalidateProposal=()=>{proposalRequest++;proposalReport=null;proposal.hidden=true;};
     const drawProposal=()=>{
@@ -2647,7 +2676,7 @@ async function openModelVectors(initial=null){
     objectProposalCanvas.onwheel=event=>{event.preventDefault();if(proposalView){proposalView.zoom=Math.max(.15,Math.min(2.5,proposalView.zoom*Math.exp(-event.deltaY*.001)));drawProposal();}};
     vectorDialog.onclose=invalidateProposal;
     // A proposal is tied to exact inputs. No old preview remains visible after a draft changes.
-    for(const type of ['input','change'])form.addEventListener(type,event=>{if(event.target!==proposal.querySelector('select'))invalidateProposal();});
+    for(const type of ['input','change'])form.addEventListener(type,event=>{if(event.target!==proposal.querySelector('select')&&event.target!==instanceSelect)invalidateProposal();});
     form.querySelector('[data-retail-vector]').addEventListener('click',invalidateProposal);
     form.querySelector('[data-discard]').addEventListener('click',invalidateProposal);
     for(const [container,operation,applySelector,getValues,refresh] of [
@@ -2668,7 +2697,7 @@ async function openModelVectors(initial=null){
           const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
           for(const data of [report.preview,report.current_preview]){const obj=data.objects[report.object_index];for(const v of data.vertices.slice(obj.vertex_start,obj.vertex_start+obj.vertex_count))for(let a=0;a<3;a++){min[a]=Math.min(min[a],v[a]);max[a]=Math.max(max[a],v[a]);}}
           proposalView={center:min.map((v,a)=>(v+max[a])/2),radius:Math.max(1,Math.hypot(...max.map((v,a)=>v-min[a]))/2),yaw:.6,pitch:.4,zoom:1};
-          proposalReport=report;proposal.hidden=false;proposal.querySelector('select').value='proposed';proposal.querySelector('[data-proposal-status]').textContent=`Object ${report.object_index} · ${operation} · ${report.changes_from_current.length} scalar changes from inspected current · not applied`;
+          report.values=getValues();proposalReport=report;proposal.hidden=false;updateProposalInstances();proposal.querySelector('select').value='proposed';proposal.querySelector('[data-proposal-status]').textContent=`Object ${report.object_index} · ${operation} · ${report.changes_from_current.length} scalar changes from inspected current · not applied`;
           proposal.scrollIntoView({block:'nearest'});loadProposal();
         }catch(error){if(request===proposalRequest&&currentContext()){form.querySelector('[data-error]').textContent=error.message;invalidateProposal();}}finally{setBusy(false);}
       };

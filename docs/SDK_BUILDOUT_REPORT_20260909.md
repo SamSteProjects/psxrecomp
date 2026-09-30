@@ -8,7 +8,7 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `3f6a1713`, including model object
+Reviewed against committed source through `eb2fc137`, including model object
 quarter-turn and uniform-scale authoring, flag operands/reference layers, the
 wait Inspector and instruction-to-operand navigation described below. The dated filename is retained for
 existing links. This section supersedes the historical milestone inventory and
@@ -628,3 +628,23 @@ object-preview-service-check.json, object-preview-browser-check.json and
 object-preview-{translation,rotation,scale}.png. Temporary server/browser stopped.
 No game launch, package installation or gameplay claim. The383-test checkpoint
 predates this addition; full SDK goal remains incomplete.
+
+
+Scene model-object proposal inspection (2026-09-30): a validated translation,
+rotation or scale proposal can be inspected on one renderable instance in the
+authored assembled scene. The endpoint resolves the existing source-bound pose
+and applies local coordinates through its supported transforms, preserving
+instance placement and source geometry. It rejects stale scene keys, wrong
+asset/instance bindings and unsupported pose layouts. Proposed geometry is isolated
+from shared instances and marked not applied. Restore recovers the exact scene;
+Return to model vectors retains the input parameters for explicit Apply or discard.
+Animation playback controls are hidden for static shape inspection and restored
+when entering animation inspection. Ten focused model/pose tests passed. Retail
+browser verification used environment://town01/field-map/cells/05913, model0009,
+animation4/frame0; scene matrices, other instances, base scene and project state
+were preserved, with exact Return/Restore and zero page errors. Stale scene keys
+and unknown instances rejected without project changes. Screenshot inspected.
+Private evidence: local-output/sdk-20260909/model-scale-project-20260930/
+scene-shape-browser-check.json and scene-shape-preview.png. Browser/server stopped;
+no game launched or package installed. Gameplay placement/visibility remains
+unverified. The383-test checkpoint predates this feature; full SDK remains incomplete.

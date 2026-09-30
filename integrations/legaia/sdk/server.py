@@ -517,6 +517,27 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.set_texture_palette_word(body['asset_id'], body['palette_index'], body['entry_index'], body['word'], body['expected_sha256'])
                     self._json(200, self.server.state())
                     return
+                if route == '/api/model-object-scene-preview':
+                    if set(body) != {'asset_id','object_index','operation','values','expected_sha256','entity_id','source_key'} or not isinstance(body['asset_id'],str) or not isinstance(body['entity_id'],str):
+                        raise ProjectError('Scene object preview requires inspected operation, instance and scene source key')
+                    from .scene_preview import source_key, preview_shape_instance
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    key = source_key(self.server.project)
+                    if not key or key != body['source_key']:
+                        raise ProjectError('Scene changed; refresh before inspecting a proposed shape')
+                    replacement, report = self.server.project._prepare_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
+                    scene = self.server.scene_previews.preview(self.server.project,
+                        lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, **kwargs),
+                        load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
+                    report['preview'] = preview_shape_instance(scene,body['asset_id'],body['entity_id'],replacement,{'asset_sha256':report['proposed_sha256']})
+                    report.pop('current_preview',None)
+                    report.update(entity_id=body['entity_id'],scene_id=scene['scene_id'],project_source_key=key)
+                    if source_key(self.server.project) != key:
+                        raise ProjectError('Scene changed during shape proposal inspection')
+                    self._json(200,report)
+                    return
                 if route == '/api/model-object-preview':
                     if set(body) != {'asset_id','object_index','operation','values','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Object preview requires model, object, operation, values and inspected hash')

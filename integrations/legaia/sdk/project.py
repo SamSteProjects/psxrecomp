@@ -1019,8 +1019,8 @@ class ProjectService:
         if replacement != effective:
             self.set_model_replacement(asset_id, replacement)
 
-    def preview_model_object(self, asset_id: str, object_index: int, operation: str,
-                             values: dict, expected_sha256: str) -> dict:
+    def _prepare_model_object(self, asset_id: str, object_index: int, operation: str,
+                              values: dict, expected_sha256: str) -> tuple[bytes, dict]:
         from importer.model_json import translate_shape_object, rotate_shape_object, scale_shape_object
         from importer.assets import decode_tmd
         if self.mode != 'edit':
@@ -1043,7 +1043,11 @@ class ProjectService:
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
                       preview=decode_tmd(replacement), current_preview=decode_tmd(effective))
-        return report
+        return replacement, report
+
+    def preview_model_object(self, asset_id: str, object_index: int, operation: str,
+                             values: dict, expected_sha256: str) -> dict:
+        return self._prepare_model_object(asset_id, object_index, operation, values, expected_sha256)[1]
 
     def preview_model_file(self, asset_id: str, content: bytes, format: str = 'tmd') -> dict:
         return self._prepare_model_file(asset_id, content, format)[1]

@@ -600,3 +600,10 @@ vector Inspector for translation, rotation and scale. Source-bound proposed/curr
 geometry comparison, shared framing and draft/stale-response guards passed focused
 model and retail browser checks without history or authored-file changes. Gameplay
 acceptance remains deferred; the383-test checkpoint predates this feature.
+
+
+Scene shape proposal inspection (2026-09-30): implemented for supported renderable
+instances using their verified existing pose and scene placement. One-instance
+isolation, Return to vector inputs and exact Restore passed focused and retail
+browser checks without authored changes. Gameplay acceptance remains deferred;
+383-test checkpoint predates this addition.

@@ -472,3 +472,18 @@ class ScenePreviewService:
                              environment_error=environment_error)
         self._metrics.update(terrain_cell_count=terrain_cells, terrain_error=terrain_error,
                              animation_error=animation_error)
+
+
+def preview_shape_instance(scene: dict, asset_id: str, entity_id: str, replacement: bytes, binding: dict) -> dict:
+    """Apply local shape coordinates to one verified scene instance's existing pose."""
+    from importer.model_authoring import preview_model_shape
+    target = next((e for e in scene['entities'] if e['entity_id'] == entity_id), None)
+    if not target or target.get('asset_id') != asset_id or not target.get('renderable'):
+        raise ProjectError('Choose a renderable scene instance of the inspected model')
+    geometry = next((a for a in scene['assets'] if a['geometry_key'] == target.get('geometry_key') and a.get('asset_id') == asset_id), None)
+    if geometry is None:
+        raise ProjectError('Scene instance has no matching source geometry')
+    preview = preview_model_shape(geometry['preview'], replacement, binding)
+    preview['representation'] = 'proposed-shape'
+    preview.pop('authored_shape', None)
+    return preview

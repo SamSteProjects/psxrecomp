@@ -15,6 +15,7 @@ class ModelObjectPreviewTests(unittest.TestCase):
                                 _model_source=Mock(return_value=source),
                                 preview_model_file=Mock(side_effect=lambda asset,data:{'project_changed':False,'proposed_sha256':sha256(data).hexdigest()}),
                                 set_model_replacement=Mock())
+        project._prepare_model_object=lambda *args: ProjectService._prepare_model_object(project,*args)
         cases=[('translation',{'offset':[2,-3,4]},translate_shape_object(source,source,digest,0,[2,-3,4])),
                ('rotation',{'axis':'z','quarter_turns':1},rotate_shape_object(source,source,digest,0,'z',1)),
                ('scale',{'percent':125},scale_shape_object(source,source,digest,0,125))]
@@ -28,6 +29,28 @@ class ModelObjectPreviewTests(unittest.TestCase):
             with self.assertRaises(ProjectError):ProjectService.preview_model_object(project,'model',0,op,values,digest)
         with self.assertRaises(ImportError):ProjectService.preview_model_object(project,'model',0,'scale',{'percent':125},'0'*64)
         project.set_model_replacement.assert_not_called()
+    def test_scene_instance_retains_pose_and_does_not_mutate_shared_geometry(self):
+        from copy import deepcopy
+        from sdk.scene_preview import preview_shape_instance
+        from importer.animation import pose_vertices
+        source=test_model_rotation.ModelRotationTests().source();digest=sha256(source).hexdigest()
+        geometry=decode_tmd(source);transforms=[dict(object_index=0,translation=[3,4,5],rotation_psx=[0,0,1024])]
+        geometry.update(posed=True,pose={'object_transforms':transforms})
+        scene={'entities':[{'entity_id':'one','asset_id':'model','renderable':True,'geometry_key':'shared','model_to_scene':[1]*16},
+                           {'entity_id':'two','asset_id':'model','renderable':True,'geometry_key':'shared'}],
+               'assets':[{'geometry_key':'shared','asset_id':'model','preview':geometry}]}
+        baseline=deepcopy(scene);replacement=translate_shape_object(source,source,digest,0,[12,-7,3])
+        proposed=preview_shape_instance(scene,'model','one',replacement,{})
+        expected=pose_vertices(decode_tmd(replacement)['vertices'],geometry['objects'],transforms)
+        self.assertEqual(proposed['vertices'],expected)
+        self.assertEqual(scene,baseline)
+        self.assertEqual(proposed['representation'],'proposed-shape')
+        self.assertNotIn('authored_shape',proposed)
+        for asset,entity in [('other','one'),('model','missing')]:
+            with self.assertRaises(ProjectError):preview_shape_instance(scene,asset,entity,replacement,{})
+        geometry['pose']={}
+        with self.assertRaises(ImportError):preview_shape_instance(scene,'model','one',replacement,{})
+
     def test_translation_rejects_stale_types_and_overflow(self):
         source=test_model_rotation.ModelRotationTests().source();digest=sha256(source).hexdigest()
         self.assertEqual(translate_shape_object(source,source,digest,0,[0,0,0]),source)

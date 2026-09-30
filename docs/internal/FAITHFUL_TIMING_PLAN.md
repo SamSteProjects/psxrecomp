@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Proposed model geometry in the assembled scene
+
+Previous goal turn made progress: eb2fc137 implemented verified local transform
+previews. Extended that workflow into authored scene inspection on one verified
+renderable instance. Shared-source pose application retains placement matrices;
+proposal geometry remains separate from base/shared instances and project state.
+Restore and Return to model vectors preserve the offline authoring workflow.
+Ten focused tests passed, including pose application and unsupported bindings.
+Retail browser model0009/environment cell05913 animation4 frame0 retained scene
+matrices/other instances/base state, exact Return/Restore and zero page errors.
+Stale scene/unknown-instance HTTP rejections passed without state changes.
+Scene screenshot inspected. Evidence under model-scale-project-20260930/scene-shape-*.
+Temporary browser/server stopped.
+No game/package install; full SDK active, gameplay acceptance deferred.
+
+
 ### 2026-09-30 — Source-bound model-object proposal previews
 
 Implemented inline vector Inspector previews for translation, rotation and uniform
