@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {parseAssetQuery,assetSearchIndex,assetMatchesQuery} from '../editor/asset-search.js';
+const record={id:'scene://town01/actors/man-p1/0012',type:'actor',label:'Actor 12',source:'town01',sceneId:'scene://town01',data:{components:{ModelRenderer:{asset_id:'asset://town01/models/scene-tmd/0112'},RetailMetadata:{claims:[{confidence:'confirmed',notes:'speculative text is not confidence',evidence:[{source:'AndrewAltimit',kind:'parser_span'}]}],source_record:{iso_file:'PROT.DAT',prot_entry_name:'town01'}}}}};
+const before=structuredClone(record),match=q=>assetMatchesQuery(record,parseAssetQuery(q));
+for(const query of ['actor 12','name:"Actor 12" type:actor','id:scene://town01/actors/man-p1/0012','scene:town01 model:asset://town01/models/scene-tmd/0112','confidence:confirmed provenance:AndrewAltimit','-type:model -name:"Actor 13"','TYPE:ACTOR'])assert(match(query),query);
+for(const query of ['name:"Actor 1 2"','type:model','model:0113','confidence:speculative','provenance:actor','-confidence:confirmed','id:0112'])assert(!match(query),query);
+assert.equal(assetSearchIndex(record).confidence,'confirmed');assert.deepEqual(record,before);
+assert.deepEqual(parseAssetQuery(''),[]);assert.deepEqual(parseAssetQuery('"unknown:value"'),[{field:null,text:'unknown:value',exclude:false}]);assert.deepEqual(parseAssetQuery('asset://town01/models/0112'),[{field:null,text:'asset://town01/models/0112',exclude:false}]);
+assert.deepEqual(parseAssetQuery('name:"say \\"hi\\""'),[{field:'name',text:'say "hi"',exclude:false}]);
+for(const query of ['name:','"unclosed','-','unknown:value','x'.repeat(2049),Array(33).fill('word').join(' ')])assert.throws(()=>parseAssetQuery(query),undefined,query);
+assert(!assetMatchesQuery({id:'asset',data:{}},parseAssetQuery('confidence:unknown')));assert(assetMatchesQuery({id:'asset',data:{}},parseAssetQuery('-confidence:confirmed')));
+console.log('Asset field, phrase, URI, exclusion, recorded confidence, provenance, bounds and immutable-record checks passed.');

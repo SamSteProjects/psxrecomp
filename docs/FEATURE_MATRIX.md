@@ -1,42 +1,36 @@
 # Legaia SDK feature matrix
 
-Current scene-editor status (2026-09-30):
+Current scene-editor status (2026-10-01):
 
-**SDK animation and preset actions (2026-09-30):** Four more actor tools
-now consume SDK action descriptors and registered handlers: imported scene
-animation preview, Edit-only channel authoring, eligible reference animation
-preview and the preset library. The SDK supplies reference-clip eligibility as
-detached view metadata without modifying imported components. Unsupported actions
-are omitted; source/selection/busy/Edit guards remain in dispatch. Eight focused
-Python/HTTP checks and Node action eligibility checks passed. Retail-source
-browser opened all four existing tools, checked unsupported/busy guards and
-confirmed no actor changes or authoring commands, zero errors; screenshot
-inspected. Specialized tool forms and asset actions still use their existing
-adapters. This postdates the457-test checkpoint. No game launched. See
-[inspector contract](legaia-inspector-schema.md).
+**Asset browser field search (2026-10-01):** Search now supports name,
+stable ID, type, scene, model reference, recorded confidence and provenance
+filters, quoted phrases and exclusions. Unknown fields and malformed/oversized
+queries show errors without broadening results. Existing category and resource
+scope remain; recorded confidence and model matches do not establish aggregate
+certainty or runtime use. All 14 Node checks and 17 editor syntax checks passed.
+Retail-source browser verified field combinations, imported/authored model users
+against the SDK reference graph, phrases/exclusions, provenance, URI IDs, errors,
+reset and actor navigation without authoring commands or actor changes, zero
+errors. Screenshots inspected; narrow-panel controls now wrap. This postdates
+the 463-test checkpoint. No game launched. See [asset search](legaia-asset-search.md).
 
-The retail-enabled SDK discovery suite passed **457 tests in178.185 seconds**,
-exit0, no skips, against unchanged committed source
-`3c8d8f46af7063f2993d49fe74ec02e6a0005639`. This checks the committed SDK discovery suite through preset file
-transfer/source protection, combined preset
-scene projection, inspector metadata, draft repetition and project transitions,
-superseding the441-test checkpoint ate76b05fb. Exact command/source/result/log/hash
-metadata: `local-output/sdk-20260909/sdk-regression-20260930-preset-files.log/.json`.
-Log SHA256: `d5095cd0f752881ce0fcd7212c6cfa09e5361719362b62356c20906759734732`.
-All12 Node checks and10 editor/service module syntax checks passed separately on
-the same unchanged source; metadata lives in
-`local-output/sdk-20260909/node-checks-20260930-preset-files.json`.
-Browser/package/disk/rendered checks retain their independent evidence. Gameplay,
-native runtime parity and broader rendered acceptance remain deferred/open;
-passing the SDK suite does not complete the full SDK objective. No game launched.
+Latest integrated Python checkpoint: **463 tests in 264.543 seconds**, exit0,
+no skips, source `2ca0a1a4fa0044f55e9b0dc6d6c217b9e061f578`. Includes saved
+scene views and SDK animation/preset actions. All 13 Node checks and 16 editor
+syntax checks passed at that source. The later asset search above has separate
+14-Node/17-syntax and browser evidence. Browser/package/disk/rendered acceptance
+remain independent. Native runtime parity, Live identity and gameplay remain
+open; passing the SDK suite does not complete the full objective. See
+[buildout report](SDK_BUILDOUT_REPORT_20260909.md) for hashes and historical results.
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
+| Asset browser field search | FUNCTIONAL / OFFLINE. Name/ID/type/scene/model/confidence/provenance filters, phrases and exclusions with bounded strict syntax; imported/authored model users match recorded references. Node and retail browser checks passed, no actor changes or authoring commands. | Active-scene resource scope and existing category limits remain; no aggregate confidence or runtime-use inference. |
 | Actor group placement offsets | FUNCTIONAL / OFFLINE. Dedicated scene actor group selection, source/effective/proposed table, grid/bounds validation, atomic command and one-step Undo/Redo, persistence and existing Build serialization. 23 focused tests and retail browser/exact package checks passed. 3D Proposed/Current layers, Frame group, draft Return and Restore now pass 26 focused tests and exact retail browser transform/camera/no-write checks; source terrain preview height recalculated. Proposed group X/Z handles now pass relative 64-unit snap, browser pointer drags, cancellation, bounds rejection, Return and atomic Apply/Undo checks. Ctrl/Command-click imported actor group selection in the viewport/hierarchy, highlights, Frame/Clear and dialog seeding now pass real mesh/browser workflow checks. Depth-tested box selection and filtered hierarchy ranges now pass real 2x-DPI exact mesh/hidden/add/reverse/Escape/source and review-seeding checks; bounded strip readback and atomic selection merges pass Node checks. These UI checks postdate the 421-test Python checkpoint. | Mixed actor/scenery groups, Y/facing, NPC drafts and scenery groups remain separate work. Gameplay visibility/collision/script movement deferred. |
 | Actor preset file transfer | FUNCTIONAL / OFFLINE. Metadata-only JSON export/import for position, appearance and combined scopes; exact imported-source hash and fresh disc/donor checks, reviewed unique name, independent library identity, one Undo/Redo and Save/Open. Retail browser and independent project transfer/re-export passed without actor/import edits. | Same retail source scene/import required; absolute positions, existing Apply compatibility and project-only height limits remain. No spawning or runtime/gameplay guarantees. |
 | Combined actor presets | FUNCTIONAL / OFFLINE. Capture authored position axes plus a verified initial donor pair; read-only layered review, source/target/template key, atomic one-command Apply/Undo/Redo, Save/Open and normal supported serializers. Detached position+appearance scene comparison, Proposed/Current/Return/Restore and export/stale guards are connected. Fourteen focused tests and Node/browser scene checks passed, alongside prior disk, exact detached no-draft package MAN and full experimental archive readback. Postdates441 checkpoint. | Absolute axes only; source donor scene/compatibility gates remain. No instantiation, rig/retargeting or runtime script/collision/visibility guarantees. Normal Build rejects projects containing drafts; experimental archive retains them with existing gates. Gameplay deferred. |
 | Effective model-user selection | FUNCTIONAL / OFFLINE. Model Used by details select2–128 effective imported actor users within one scene and seed normal group tools. Fresh SDK usage/owner/effective-asset guards; retail-only assignments and drafts excluded. Node checks and retail exact group/cross-scene/stale rejection passed; zero errors, screenshot inspected. Asset sidebar tool/list scrolling fixed after footer obstruction. | Initial assignments only; script-driven/runtime users and mixed draft/imported groups are not inferred. No component/history authorship by selection. |
-| SDK component inspector contract | FUNCTIONAL / PARTIAL. Versioned SDK metadata drives Transform layers/number controls and ModelRenderer/Animation read-only properties, layered ActorAppearance references, RuntimeCorrelation status and RetailMetadata evidence details. Unregistered components use escaped read-only details. Bounded command adapter, authoring versus Build constraints, unknown retail Y and busy/Edit/source/selection guards. Nine focused Python tests, Node layer/detail checks and retail edit/Undo/Y diagnostics plus donor Clear/Undo/runtime/provenance checks passed. Screenshot inspected. Postdates441 checkpoint. | Six donor/model/script/candidate actions use SDK descriptors and registered handlers, with capability/condition and Edit/busy/stale guards verified by Node and retail Clear/Undo/source-script loading. Specialized forms, animation/template actions and asset inspectors retain existing adapters; migration is incomplete. No runtime writable properties or arbitrary component editing inferred. |
+| SDK component inspector contract | FUNCTIONAL / PARTIAL. Versioned SDK metadata drives Transform layers/number controls and ModelRenderer/Animation read-only properties, layered ActorAppearance references, RuntimeCorrelation status and RetailMetadata evidence details. Unregistered components use escaped read-only details. Bounded command adapter, authoring versus Build constraints, unknown retail Y and busy/Edit/source/selection guards. Nine focused Python tests, Node layer/detail checks and retail edit/Undo/Y diagnostics plus donor Clear/Undo/runtime/provenance checks passed. Screenshot inspected. Postdates441 checkpoint. | Six donor/model/script/candidate actions use SDK descriptors and registered handlers, with capability/condition and Edit/busy/stale guards verified by Node and retail Clear/Undo/source-script loading. Specialized forms and asset inspectors retain existing adapters; ten actor tools now use registered SDK actions; migration is incomplete. No runtime writable properties or arbitrary component editing inferred. |
 | Project transition references | FUNCTIONAL / READ-ONLY. Source-qualified references across1–64 imported scenes; merged stable scene identities, source coverage/unavailable reasons, layered entry operands and cross-scene source-script/destination navigation. Five focused tests and retail HTTP/browser checks passed; three town01/Dolk2 references,180 scripts,88 partial, zero page errors. Screenshot inspected. Postdates441 checkpoint. | Unknown paths and controller records, complete exits, story-state evaluation, reachability and runtime connections remain unverified. No route inference or path finding. |
 | NPC draft repetition | FUNCTIONAL / OFFLINE. Count and X/Z grid spacing, named donor-bound copies, detached scene comparison and Return, one Apply/Undo/Redo, persistence. Eleven focused Python tests, Node guards, retail browser checks, inspected screenshot and independent disk/archive reopen passed. Postdates the 441-test checkpoint. | Normal Build rejects projects containing NPC drafts. Experimental archive serialization proves exact appended placements/initial pairs/cloned script bytes; runtime spawning, scheduling, collision and visibility remain unverified. |
 | Saved actor selections | FUNCTIONAL / OFFLINE. Named project-local groups of2–128 imported actors, bounded128 selections; source-scene/hash binding, canonical membership, UUID identity, strict Create/Rename/Replace/Delete commands, Undo/Redo and Save/Open. Cross-scene Recall seeds normal group tools without game-component/history changes. Fifteen focused Python tests, Node recall checks, retail browser workflow and independent disk/input-key checks passed. Python services included in441 checkpoint; browser/disk evidence separate. | Game parenting, mixed/scenery selections and prefab instantiation are separate work; saved selections do not encode those structures. |

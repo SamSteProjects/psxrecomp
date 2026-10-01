@@ -15,6 +15,18 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Asset browser field search (2026-10-01):** Search now supports name,
+stable ID, type, scene, model reference, recorded confidence and provenance
+filters, quoted phrases and exclusions. Unknown fields and malformed/oversized
+queries show errors without broadening results. Existing category and resource
+scope remain; recorded confidence and model matches do not establish aggregate
+certainty or runtime use. All 14 Node checks and 17 editor syntax checks passed.
+Retail-source browser verified field combinations, imported/authored model users
+against the SDK reference graph, phrases/exclusions, provenance, URI IDs, errors,
+reset and actor navigation without authoring commands or actor changes, zero
+errors. Screenshots inspected; narrow-panel controls now wrap. This postdates
+the 463-test checkpoint. No game launched. See [asset search](legaia-asset-search.md).
+
 **Integrated offline checkpoint (2026-10-01):** The retail-enabled SDK
 Python discovery suite passed **463 tests in 264.543 seconds**, exit 0, no skips,
 on unchanged committed source `2ca0a1a4fa0044f55e9b0dc6d6c217b9e061f578`.

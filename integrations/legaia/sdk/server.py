@@ -520,6 +520,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/group-appearance.js": ("group-appearance.js", "text/javascript"),
                  "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
                  "/scene-views.js": ("scene-views.js", "text/javascript"),
+                 "/asset-search.js": ("asset-search.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
