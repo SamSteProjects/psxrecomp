@@ -2,25 +2,24 @@
 
 Current scene-editor status (2026-09-30):
 
-The retail-enabled SDK discovery suite passed **421 tests in 172.966 seconds**,
-exit code 0, with no skips, against unchanged committed source
-`be7a5e42686119b2290643556a9827775cfb21c7`. This supersedes the 405-test
-checkpoint at `cc41ded0` and includes model-selector authoring, authored component
-review/revert, grouped placement commands/history and detached 3D proposal views,
-along with earlier text/font/search services. Log and exact command, source,
-result and hash metadata:
-`local-output/sdk-20260909/sdk-regression-20260930-group-inspection.log/.json`.
-Log SHA256: `4256992f5d0a3e1767a60056fbb625ce5c70b292f54373b7294743d3c7f2ef98`.
-All five Node checks (font, texture usage, script operands, saved runtime review,
-actor group scene coordinates) and editor/group-module syntax passed separately.
-Browser workflows retain their independent pixel/render/navigation evidence;
-a green suite does not establish gameplay, runtime parity or broader rendered
-acceptance. Historical checkpoints below retain their dated evidence.
+The retail-enabled SDK discovery suite passed **425 tests in 172.910 seconds**,
+exit code 0, no skips, against unchanged committed source
+`55f5db15ec610db8642e1e995c29a0b4c6855730`. This supersedes the 421-test checkpoint
+at `be7a5e42`, adding atomic actor group component review/revert to all earlier
+Python services. Log and exact command, source, result and hash metadata:
+`local-output/sdk-20260909/sdk-regression-20260930-group-components.log/.json`.
+Log SHA256: `69e0a61d32f73d1b313b00b543b0199f8787519991430e17eff44e23c31be60c`.
+All six Node checks (font, texture usage, script operands, saved runtime review,
+actor group scene/selection and rectangle picking) and editor/group/renderer
+syntax passed separately against the same source. Browser workflows retain
+independent pixel/render/navigation evidence; a green suite does not establish
+gameplay, runtime parity or broader rendered acceptance. Historical checkpoints
+below retain their dated evidence. No game launched.
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
 | Actor group placement offsets | FUNCTIONAL / OFFLINE. Dedicated scene actor group selection, source/effective/proposed table, grid/bounds validation, atomic command and one-step Undo/Redo, persistence and existing Build serialization. 23 focused tests and retail browser/exact package checks passed. 3D Proposed/Current layers, Frame group, draft Return and Restore now pass 26 focused tests and exact retail browser transform/camera/no-write checks; source terrain preview height recalculated. Proposed group X/Z handles now pass relative 64-unit snap, browser pointer drags, cancellation, bounds rejection, Return and atomic Apply/Undo checks. Ctrl/Command-click imported actor group selection in the viewport/hierarchy, highlights, Frame/Clear and dialog seeding now pass real mesh/browser workflow checks. Depth-tested box selection and filtered hierarchy ranges now pass real 2x-DPI exact mesh/hidden/add/reverse/Escape/source and review-seeding checks; bounded strip readback and atomic selection merges pass Node checks. These UI checks postdate the 421-test Python checkpoint. | Mixed actor/scenery groups, Y/facing, NPC drafts and scenery groups remain separate work. Gameplay visibility/collision/script movement deferred. |
-| Authored component review | FUNCTIONAL / OFFLINE. Selected imported actor groups now support layered component review and source-bound atomic Revert with one group Undo; 15 focused tests and retail browser stale/inherited/closed-response checks passed. This addition postdates the 421-test checkpoint. Source-bound per-component Revert in Authored Assets actor/P2/scene details, detached values, normal history/persistence and stale/replay guards. 25 focused tests plus retail town01 browser and independent disk reopen passed. | Model/texture replacements, NPC drafts and templates use their dedicated workflows. This does not establish gameplay acceptance of existing edits. |
+| Authored component review | FUNCTIONAL / OFFLINE. Selected imported actor groups now support layered component review and source-bound atomic Revert with one group Undo; 15 focused tests and retail browser stale/inherited/closed-response checks passed. The 425-test checkpoint includes its Python services; browser evidence remains separate. Source-bound per-component Revert in Authored Assets actor/P2/scene details, detached values, normal history/persistence and stale/replay guards. 25 focused tests plus retail town01 browser and independent disk reopen passed. | Model/texture replacements, NPC drafts and templates use their dedicated workflows. This does not establish gameplay acceptance of existing edits. |
 | Project text search | FUNCTIONAL / OFFLINE. Imported-scene aggregate with detached views, full Dialogue/source guards, scene/text layer search and exact cross-scene edit navigation. Retail town01/Dolk2645-run workflow and late/stale guards passed without authored changes. | Unsupported/unvisited text, story reachability and gameplay remain unverified; explicit navigation changes active scene. |
 | Scene text search | FUNCTIONAL / OFFLINE. Supported dialogue/menu runs across actor and P2 owners, separate text layers, filtering,25-run pages and exact editor navigation. Retail267-run workflow and source/text/late-response guards verified without writes. | Unsupported/unvisited text, controller records, full sentences/boxes, story reachability and gameplay acceptance remain unresolved. |
 | Text glyph preview | FUNCTIONAL / OFFLINE. Source-bound retail font stencil and advances, separate retail/effective/unapplied draft canvases; retail pixel readback, invalid drafts, Discard and late-response guards verified without writes. | Full dialogue layout, controls/substitutions, runtime tint, pager behavior and gameplay acceptance remain unverified. |

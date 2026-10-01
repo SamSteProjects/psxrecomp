@@ -202,3 +202,15 @@ contains `actor-box-range-browser-check.json`, `actor-box-active.png` and
 `actor-box-selected.png`. No Save, package installation or game launch. Owned
 browsers/servers closed. UI checks postdate the 421-test Python checkpoint; the
 Python backend was unchanged. Runtime placement/visibility acceptance is deferred.
+
+## Latest integrated source checkpoint — 2026-09-30
+
+The retail-enabled SDK discovery suite passed 425 tests in 172.910s, exit0,
+no skips, against unchanged `55f5db15ec610db8642e1e995c29a0b4c6855730`.
+This includes group component review/revert and supersedes the earlier 421-test
+checkpoint and historical predates notes above. All six Node checks and editor/
+group/renderer syntax passed separately against the same source. Browser/package/
+rendered evidence and gameplay acceptance remain separate. No game launched.
+Private log/metadata: `sdk-regression-20260930-group-components.log/.json`
+under `local-output/sdk-20260909/`. Log SHA256:
+`69e0a61d32f73d1b313b00b543b0199f8787519991430e17eff44e23c31be60c`.

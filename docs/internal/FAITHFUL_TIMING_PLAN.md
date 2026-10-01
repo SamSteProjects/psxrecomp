@@ -213,6 +213,26 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Integrated425-test SDK source checkpoint
+
+- Previous goal turn progressed:55f5db15 committed actor group component review/
+  revert. Verified clean tracked tree/current source, then ran one fresh retail-
+  enabled discovery pass including the new command/history service and all prior
+  Python services. Kept tracked source unchanged through the run.
+- Same owned process61568 stayed live through bounded waits and returned terminal
+  exit0:425 tests in172.910s, no skips; wall174.201s. No restart/retry. Runner proved
+  unchanged source `55f5db15ec610db8642e1e995c29a0b4c6855730` and tracked status before/after.
+  Six Node checks and editor/group/renderer syntax passed on the same source.
+- Private runner run-group-component-regression.py and
+  sdk-regression-20260930-group-components.log/.json. Log SHA256
+  69e0a61d32f73d1b313b00b543b0199f8787519991430e17eff44e23c31be60c.
+  No game launched; source/synthetic/retail fixtures only. No owned live handle
+  remains for this run. Browser evidence remains separate from Python/Node checks.
+- Refreshed status/report/matrix and two group/component guides with425 checkpoint,
+  preserving historical evidence. Full modern SDK/runtime/gameplay acceptance
+  remains incomplete and goal active; green tests do not redefine completion.
+
+
 ### 2026-09-30 - Atomic selected actor group component review/revert
 
 - Previous turn progressed: dc43e269 committed actor box/range selection. Checked

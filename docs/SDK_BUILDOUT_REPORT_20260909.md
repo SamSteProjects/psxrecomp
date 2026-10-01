@@ -15,6 +15,17 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Integrated source checkpoint (2026-09-30):** the retail-enabled SDK discovery
+suite passed **425 Python tests in 172.910 seconds**, exit 0, no skips, against
+unchanged `55f5db15ec610db8642e1e995c29a0b4c6855730`. This includes actor group component
+review/revert and all earlier Python services, superseding the 421-test checkpoint
+and historical lower counts below. All six Node checks and editor/group/renderer
+syntax passed separately against the same source, including box/range guards.
+Browser/package/rendered checks retain their independent evidence; this run does
+not establish gameplay or runtime parity. No game launched. Private log/metadata:
+`local-output/sdk-20260909/sdk-regression-20260930-group-components.log/.json`.
+Log SHA256: `69e0a61d32f73d1b313b00b543b0199f8787519991430e17eff44e23c31be60c`.
+
 **Actor group component review/revert (2026-09-30):** selected imported actor
 groups now offer Review group components, showing each actor's authored settings
 or retail inheritance. A source-bound review includes every selected actor,
@@ -25,8 +36,8 @@ in 1.771s with no skips. Retail town01 three-actor browser review, atomic Revert
 Undo, unrelated-component preservation, stale inherited-member rejection and
 closed pending-response checks passed with zero page errors; screenshot inspected.
 A private fixture was saved during preparation; no game or package installation.
-This backend/UI addition postdates the 421-test full checkpoint; focused evidence
-is current and a new full-suite result is not claimed. See
+The 425-test source checkpoint includes this backend addition; browser evidence
+remains separate. See
 [component review guide](legaia-authored-component-review.md).
 
 **Actor box and hierarchy range selection (2026-09-30):** Box select actors
