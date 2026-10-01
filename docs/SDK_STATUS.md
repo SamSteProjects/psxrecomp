@@ -12,7 +12,7 @@ elevation explicit. Handles are disabled and GLB export requires Restore.
 actor transforms, unchanged geometry/unrelated transforms, camera comparison,
 Return/Restore and source withdrawal passed with zero authoring requests/page
 errors; screenshots inspected. Separate Return Apply/Undo and export rejection
-passed. No game launched. The 405-test checkpoint predates this addition. See
+passed. No game launched. The 421-test source checkpoint includes this addition; browser evidence remains separate. See
 [group placement guide](legaia-actor-group-offset.md).
 
 **Actor group placement offsets (2026-09-30):** the editor toolbar now
@@ -25,7 +25,7 @@ town01 browser preview/no-write/bounds/Apply/Undo/Redo/Save and closed pending
 response checks passed with zero page errors. Independent saved-project/package
 MAN readback matched the four placement bytes while retaining prior menu and
 selector edits. Screenshots inspected; no game launched or package installed.
-The 405-test full checkpoint predates this feature. See the
+The 421-test source checkpoint includes this feature; browser/package evidence remains separate. See the
 [group placement guide](legaia-actor-group-offset.md).
 
 **Authored component review (2026-09-30):** Authored Assets details now
@@ -36,7 +36,7 @@ source/project identities and replay are rejected before mutation. 25 focused
 tests passed in 1.334s with no skips. Retail town01 browser review/revert/history/
 Save and stale rejection passed; independent disk reopen retained the selector
 and three unrelated menu edits. Screenshot inspected, no page errors. No game
-launched. The 405-test full checkpoint predates this feature. See the
+launched. The 421-test source checkpoint includes this feature; browser/package evidence remains separate. See the
 [component review guide](legaia-authored-component-review.md).
 
 **Script model-selector authoring (2026-09-30):** reached SET_ACTOR_MODEL
@@ -48,8 +48,8 @@ viewport does not execute the opcode. 34 focused retail-enabled tests passed in
 35.413s with no skips, including five selector tests covering P2 ownership and
 rebased extended actor-context rejection. Node binding/editor syntax and Dolk2 browser workflows passed; screenshots
 inspected. Town01 package readback matched the exact MAN, retaining three menu
-edits; Dolk2 rebuilt PROT contained the exact candidate. The 405-test checkpoint predates
-this feature. No game launched; gameplay deferred. See the
+edits; Dolk2 rebuilt PROT contained the exact candidate. The 421-test source checkpoint
+includes this feature; browser/package evidence remains separate. No game launched; gameplay deferred. See the
 [model-selector guide](legaia-script-model-selectors.md).
 
 **Project-wide text search (2026-09-30):** the same text search panel now
@@ -200,19 +200,20 @@ No real runtime capture was performed; capture/gameplay acceptance remains defer
 
 ## Validation scope
 
-The retail-enabled SDK discovery suite passed **405 tests in165.295 seconds**,
-exit code0, with no skips, against unchanged committed source
-`cc41ded01fd8b14fee9c9795c9d780aa43a1f82e`. This supersedes the397-test checkpoint
-at `e1b88c22` and includes the renderer-newline fix, retail font decoder/preview
-service, scene text discovery and project-wide text search. Log and exact command,
-source, result and hash metadata:
-`local-output/sdk-20260909/sdk-regression-20260930-text-discovery.log/.json`.
-Log SHA256: `0d3dffe5000f63ef9a7812fd1bd5b6fb89a8b13da3ae55a9d4b7930fcabce036`.
-Font layout/source guards, texture usage, script operand/menu binding and saved
-runtime-review Node checks, plus editor syntax, passed separately. Browser
-workflows retain their recorded pixel/render/navigation evidence; a green suite
-does not establish gameplay, runtime parity or broader rendered acceptance.
-Historical checkpoints below retain their dated evidence.
+The retail-enabled SDK discovery suite passed **421 tests in 172.966 seconds**,
+exit code 0, with no skips, against unchanged committed source
+`be7a5e42686119b2290643556a9827775cfb21c7`. This supersedes the 405-test
+checkpoint at `cc41ded0` and includes model-selector authoring, authored component
+review/revert, grouped placement commands/history and detached 3D proposal views,
+along with earlier text/font/search services. Log and exact command, source,
+result and hash metadata:
+`local-output/sdk-20260909/sdk-regression-20260930-group-inspection.log/.json`.
+Log SHA256: `4256992f5d0a3e1767a60056fbb625ce5c70b292f54373b7294743d3c7f2ef98`.
+All five Node checks (font, texture usage, script operands, saved runtime review,
+actor group scene coordinates) and editor/group-module syntax passed separately.
+Browser workflows retain their independent pixel/render/navigation evidence;
+a green suite does not establish gameplay, runtime parity or broader rendered
+acceptance. Historical checkpoints below retain their dated evidence.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

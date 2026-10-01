@@ -89,3 +89,12 @@ Private evidence is under `local-output/sdk-20260909/actor-batch-project-2026093
 No game launched, no package installed. Owned browser and server closed. Gameplay
 visibility, collision and script-controlled movement remain deferred. The 405-test
 full checkpoint predates this feature; focused evidence above is current.
+
+## Integrated source checkpoint — 2026-09-30
+
+The retail-enabled discovery suite passed 421 tests in 172.966s with no skips
+against unchanged `be7a5e42686119b2290643556a9827775cfb21c7`. This includes
+this feature's Python service tests and supersedes the earlier 405-test full
+checkpoint referenced above. Five Node checks and editor/module syntax passed
+separately. Browser/package/rendered evidence and gameplay acceptance remain
+separate; no game was launched for this checkpoint.

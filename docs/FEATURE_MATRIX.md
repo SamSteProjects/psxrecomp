@@ -2,19 +2,20 @@
 
 Current scene-editor status (2026-09-30):
 
-The retail-enabled SDK discovery suite passed **405 tests in165.295 seconds**,
-exit code0, with no skips, against unchanged committed source
-`cc41ded01fd8b14fee9c9795c9d780aa43a1f82e`. This supersedes the397-test checkpoint
-at `e1b88c22` and includes the renderer-newline fix, retail font decoder/preview
-service, scene text discovery and project-wide text search. Log and exact command,
-source, result and hash metadata:
-`local-output/sdk-20260909/sdk-regression-20260930-text-discovery.log/.json`.
-Log SHA256: `0d3dffe5000f63ef9a7812fd1bd5b6fb89a8b13da3ae55a9d4b7930fcabce036`.
-Font layout/source guards, texture usage, script operand/menu binding and saved
-runtime-review Node checks, plus editor syntax, passed separately. Browser
-workflows retain their recorded pixel/render/navigation evidence; a green suite
-does not establish gameplay, runtime parity or broader rendered acceptance.
-Historical checkpoints below retain their dated evidence.
+The retail-enabled SDK discovery suite passed **421 tests in 172.966 seconds**,
+exit code 0, with no skips, against unchanged committed source
+`be7a5e42686119b2290643556a9827775cfb21c7`. This supersedes the 405-test
+checkpoint at `cc41ded0` and includes model-selector authoring, authored component
+review/revert, grouped placement commands/history and detached 3D proposal views,
+along with earlier text/font/search services. Log and exact command, source,
+result and hash metadata:
+`local-output/sdk-20260909/sdk-regression-20260930-group-inspection.log/.json`.
+Log SHA256: `4256992f5d0a3e1767a60056fbb625ce5c70b292f54373b7294743d3c7f2ef98`.
+All five Node checks (font, texture usage, script operands, saved runtime review,
+actor group scene coordinates) and editor/group-module syntax passed separately.
+Browser workflows retain their independent pixel/render/navigation evidence;
+a green suite does not establish gameplay, runtime parity or broader rendered
+acceptance. Historical checkpoints below retain their dated evidence.
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |

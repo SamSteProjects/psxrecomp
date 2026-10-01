@@ -42,3 +42,12 @@ contains `component-review-browser-check.json` and `component-review.png`.
 The owned browser closed and temporary server stopped. No game launched, no
 package installed. This feature follows the 405-test full checkpoint and has the
 focused validation above; it does not establish runtime/gameplay parity.
+
+## Integrated source checkpoint — 2026-09-30
+
+The retail-enabled discovery suite passed 421 tests in 172.966s with no skips
+against unchanged `be7a5e42686119b2290643556a9827775cfb21c7`. This includes
+this feature's Python service tests and supersedes the earlier 405-test full
+checkpoint referenced above. Five Node checks and editor/module syntax passed
+separately. Browser/package/rendered evidence and gameplay acceptance remain
+separate; no game was launched for this checkpoint.

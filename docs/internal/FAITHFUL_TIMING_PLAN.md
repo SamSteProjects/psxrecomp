@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Integrated421-test SDK checkpoint
+
+- Previous goal turn progressed: be7a5e42 committed group viewport comparison.
+  Confirmed clean tracked tree and current source, then ran one fresh retail-
+  enabled discovery pass across the integrated selector/review/group changes.
+- Same owned process17725 remained live through bounded waits and returned
+  terminal exit0:421 tests in172.966s, no skips, wall174.294s. No restart/retry.
+  Runner verified unchanged HEAD and tracked status before/after the run.
+- Source be7a5e42686119b2290643556a9827775cfb21c7; private log/metadata
+  sdk-regression-20260930-group-inspection.log/.json. Log SHA256
+  4256992f5d0a3e1767a60056fbb625ce5c70b292f54373b7294743d3c7f2ef98.
+  Five Node checks and editor/group-module syntax also passed against unchanged
+  source. No game launched; tests used source/synthetic/retail offline fixtures.
+- Updated report/status/matrix and three feature guides with the integrated
+  checkpoint, superseding405 while preserving focused/browser/package evidence.
+  Full SDK/runtime/gameplay acceptance remains incomplete and goal active.
+
 ### 2026-09-30 - Actor group 3D proposal inspection
 
 - Previous goal turn progressed: ea2042a9 committed group authoring. Tracked tree
