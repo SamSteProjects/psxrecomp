@@ -15,6 +15,22 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Integrated source checkpoint (2026-09-30):** the retail-enabled SDK discovery
+suite passed **441 Python tests in 177.315 seconds**, exit0, no skips, against
+unchanged committed source `e76b05fb1775802057e41c33a5a1e4e36301a093`. This includes
+group donor appearance and its detached scene projection, actor alignment/
+distribution, saved actor selections and all prior Python SDK services. It
+supersedes the425-test source checkpoint below. All eight Node checks (font,
+texture usage, script operands, rectangle picking, saved runtime review, actor
+group scene/selection, group appearance scene and saved actor selection recall)
+and five editor/renderer/group module syntax checks passed separately on the same
+unchanged source. Browser/package/disk/rendered evidence remains independent;
+this checkpoint does not establish deferred gameplay or native runtime parity.
+No game launched. Private exact-command/source/result/hash metadata and log:
+`local-output/sdk-20260909/sdk-regression-20260930-saved-selections.log/.json`.
+Node evidence: `local-output/sdk-20260909/node-checks-20260930-saved-selections.json`.
+Log SHA256: `d095c9718e9cb0269f99a5eeccf1f05b265051dee98984abdee197af6decbed2`.
+
 **Saved actor selections (2026-09-30):** the viewport tool row now saves named
 source-bound imported actor groups for later editing. Create, Rename, Replace
 members and Delete use project commands/Undo/Redo; Save/Open retains UUID identity,
@@ -30,7 +46,7 @@ dialog layout; final screenshot inspected. Independent retail disk reopen verifi
 saved membership/import identity and unchanged build/scene input keys. These are
 editor selections, not game parenting/prefabs. No gameplay check is required for
 selection metadata; authored game edits retain their existing deferred checks.
-This feature postdates425 full checkpoint. No game launched.
+Its Python services are included in the441-test checkpoint above. No game launched.
 
 **Actor group alignment/distribution (2026-09-30):** **Actor group placements**
 now offers Align X/Z to a selected anchor and Distribute along X/Z, alongside
@@ -46,7 +62,7 @@ zero page errors. Town01 actor0013 distribution Z changed2880 to3648 while endpo
 actors0012/0011 remained1856/5440. Independent ZIP/LZS MAN readback matched every
 expected byte, retaining donor assignments, earlier placements, three menus and
 selector240. Screenshots inspected. No game launched or package installed; the
-425-test full checkpoint predates this feature. See
+441-test full checkpoint includes its Python services. See
 [group placement guide](legaia-actor-group-offset.md). Gameplay remains deferred.
 
 **Actor group appearance scene comparison (2026-09-30):** reviewed donor
@@ -64,7 +80,7 @@ page errors; comparison screenshots inspected. Shared pose geometry may identify
 a different first source actor after deduplication; only that attribution is
 ignored when comparing unaffected geometry, retaining model/animation evidence.
 No game launched or package installed. This feature postdates the425-test full
-checkpoint. Private evidence: `local-output/sdk-20260909/group-appearance-scene-20260930/`.
+checkpoint; its Python services are now included in441. Private evidence: `local-output/sdk-20260909/group-appearance-scene-20260930/`.
 
 **Actor group donor appearance (2026-09-30):** selected imported actors now
 share a donor-backed initial model/animation assignment through Group appearance.
@@ -77,10 +93,10 @@ donors; browser discovery/preview/Apply/Undo/Redo/Save and stale last-member rej
 passed, zero page errors. Actor0001/0002 correctly had no supported pair. Screenshot
 inspected. Independent saved-project/package MAN readback matched exact donor
 assignments and retained positions, three menus and selector240. No game launched
-or package installed. This addition postdates the 425-test full checkpoint; see
+or package installed. Its Python services are included in the441-test full checkpoint; see
 [group appearance guide](legaia-actor-group-appearance.md). Gameplay is queued.
 
-**Integrated source checkpoint (2026-09-30):** the retail-enabled SDK discovery
+**Historical integrated source checkpoint (2026-09-30):** the retail-enabled SDK discovery
 suite passed **425 Python tests in 172.910 seconds**, exit 0, no skips, against
 unchanged `55f5db15ec610db8642e1e995c29a0b4c6855730`. This includes actor group component
 review/revert and all earlier Python services, superseding the 421-test checkpoint

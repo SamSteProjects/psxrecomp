@@ -267,3 +267,13 @@ including group-layout-browser-check.json, layout-noop-browser-check.json,
 group-layout-package-check.json and proposal/review PNGs. Package SHA256:
 `9469e6b0ba790f166e6f7b540887ee15cde09d60a1c6a0e749d118038724c00f`.
 No package installed or game launched. The425-test checkpoint predates this feature.
+
+## Integrated source checkpoint - 2026-09-30
+
+All441 retail-enabled SDK Python discovery tests passed in177.315s, exit0, no
+skips, on unchanged source `e76b05fb1775802057e41c33a5a1e4e36301a093`. This includes
+the Python services described above; all eight Node checks and five syntax checks
+also passed on that source. The earlier425 checkpoint predates these additions;
+441 is the current integrated result. Existing browser/package/disk evidence
+remains separate. No game launched; deferred gameplay acceptance is unchanged.
+See SDK_STATUS.md for exact source/command/log/hash metadata.

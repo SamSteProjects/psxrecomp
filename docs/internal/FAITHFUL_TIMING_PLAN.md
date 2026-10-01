@@ -213,6 +213,25 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Integrated441-test SDK checkpoint after group workflows
+
+- Previous goal turn advanced source through e76b05fb (saved actor selections).
+  Ran the integrated retail-enabled SDK discovery suite on that clean unchanged
+  commit;441 Python tests passed in177.315s, exit0, no skips (wall178.609s).
+- One owned process22236 completed normally; no retry/restart. Captured exact
+  command/source/clean-state/hash evidence privately in sdk-regression-20260930-
+  saved-selections.log/.json. Log SHA256:
+  d095c9718e9cb0269f99a5eeccf1f05b265051dee98984abdee197af6decbed2.
+- All eight Node checks and five editor/renderer/group syntax checks passed on
+  the same source; node-checks-20260930-saved-selections.json records each result.
+- Updated current buildout/status/matrix and group/selection guides to441 while
+  retaining historical425 evidence. No source code changed during or after the
+  checks. Browser/package/disk/rendered evidence remains separate; green SDK tests
+  do not establish native parity or deferred gameplay. Full objective incomplete.
+- No game/native/browser launched, package installed, remote push or temporary
+  server left running. All owned check handles terminal. Goal remains active.
+
+
 ### 2026-09-30 - Persistent source-bound named actor selections
 
 - Continued SDK offline buildout after6551297c; no runtime/core changes. Added

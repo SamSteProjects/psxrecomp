@@ -69,3 +69,13 @@ were closed. Private evidence lives under
 `local-output/sdk-20260909/saved-actor-selections-20260930/`, including
 `saved-selection-browser-check.json`, `saved-selection-disk-check.json` and
 `saved-selection-cross-scene.png`. This addition postdates425 full checkpoint.
+
+## Integrated source checkpoint - 2026-09-30
+
+All441 retail-enabled SDK Python discovery tests passed in177.315s, exit0, no
+skips, on unchanged source `e76b05fb1775802057e41c33a5a1e4e36301a093`. This includes
+the Python services described above; all eight Node checks and five syntax checks
+also passed on that source. The earlier425 checkpoint predates these additions;
+441 is the current integrated result. Existing browser/package/disk evidence
+remains separate. No game launched; deferred gameplay acceptance is unchanged.
+See SDK_STATUS.md for exact source/command/log/hash metadata.
