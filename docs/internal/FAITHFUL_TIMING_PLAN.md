@@ -213,6 +213,32 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Combined preset scene comparison
+
+Previous goal turn was progress: historical runtime comparison1598befa.
+Verified clean tracked source and implemented detached combined position/donor
+scene projection, strict reviewed endpoint and editor Proposed/Current/Return/
+Restore integration. Target/display/matrix/authored-axis and donor/owner/unchanged
+geometry checks bind the response; no authoring during inspection. The source
+review now carries the verified donor option. Preset/scene component/selection
+changes withdraw inspection. Added retained-review disposal on ordinary restore
+or stale withdrawal, keeping Return's review intact. Fourteen focused Python
+checks passed in0.758s and new preset/existing appearance Node checks passed;
+editor/review syntax and diff checks passed. Retail-source browser confirms both
+layers, no component/history writes, preserved camera, Return/one Apply/Undo,
+Restore and stale target/export guards; screenshot inspected. Initial harness
+read current rather than proposed scene and used a nonexistent top-level
+state.overrides field; corrected to actual component state. Extended cancellation
+harness needed to reuse the open template library; rerun from fresh private saved
+fixture after terminal failures, without saving transient edits. Final browser8858
+passed extended closed-read withdrawal and exact fixture restoration, zero errors.
+Focused proposed-scene screenshot inspected. Owned browsers closed and servers
+69967/44219/65032/35698 stopped. Evidence under
+local-output/sdk-20260909/actor-preset-scene-20260930/. No game launched, runtime
+attached or disc written. Report/status/matrix/guide updated; full SDK goal and
+manual runtime/gameplay acceptance remain incomplete.
+
+
 ### 2026-09-30 — Historical runtime review comparison
 
 Previous goal turn was a status check with no implementation progress. Revalidated

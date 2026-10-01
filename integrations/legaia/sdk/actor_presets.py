@@ -1,5 +1,5 @@
 """Reviewed combined position/appearance presets for existing imported actors."""
-from copy import deepcopy
+from copy import deepcopy,copy
 from .project import ProjectError,digest
 
 def state_key(project,template,entity_id):
@@ -13,7 +13,8 @@ def preview(project,template_id,entity_id):
     project._validate_template(template_id,template)
     actor=project._actor(entity_id);key=state_key(project,template,entity_id)
     donor=template['components']['ActorAppearance']['donor_entity_id']
-    if donor not in {row['donor_entity_id'] for row in project.appearance_options(entity_id)['options']}:
+    option=next((row for row in project.appearance_options(entity_id)['options'] if row['donor_entity_id']==donor),None)
+    if option is None:
         raise ProjectError('Preset donor is not a verified compatible initial pair')
     before=deepcopy(project.overrides.get(entity_id));after=deepcopy(before or {})
     after.setdefault('Transform',{}).setdefault('position',{}).update(template['components']['Transform']['position'])
@@ -25,7 +26,7 @@ def preview(project,template_id,entity_id):
                 authored_donor=(before or {}).get('ActorAppearance',{}).get('donor_entity_id'),proposed_donor=donor)
     if project.actor_templates.get(template_id)!=template or key!=state_key(project,project.actor_templates.get(template_id),entity_id):raise ProjectError('Preset or target changed during review')
     return dict(schema_version='legaia.actor-preset-review.v1',template_id=template_id,entity_id=entity_id,
-                review_key=key,before=before,after=after,layers=layers,changed=before!=after,
+                review_key=key,before=before,after=after,layers=layers,appearance=deepcopy(option),changed=before!=after,
                 build_issues=project._placement_issues(after['Transform']),
                 limitations=['Saved axes are absolute; untouched axes and unrelated components remain unchanged.',
                              'Initial donor pair only; scripts, visibility, collision and gameplay compatibility remain unverified.'])
@@ -38,3 +39,13 @@ def apply(project,command):
     project.overrides[report['entity_id']]=deepcopy(report['after'])
     project.undo_stack.append({'entity_id':report['entity_id'],'before':report['before'],'after':deepcopy(report['after'])})
     project.redo_stack.clear()
+
+def proposal_view(project,report):
+    """Verify and detach both components; inspection never authors the project."""
+    if preview(project,report['template_id'],report['entity_id'])!=report:
+        raise ProjectError('Preset or target changed since review')
+    if not any(actor['semantic_id']==report['entity_id'] for actor in project.imports.get(project.active_scene,{}).get('actors',[])):
+        raise ProjectError('Preset scene inspection requires a target in the active scene')
+    view=copy(project);view.overrides=deepcopy(project.overrides)
+    view.overrides[report['entity_id']]=deepcopy(report['after'])
+    return view

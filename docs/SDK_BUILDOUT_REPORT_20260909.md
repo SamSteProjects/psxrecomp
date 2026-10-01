@@ -27,6 +27,20 @@ requests. Project/camera/runtime state was unchanged. Screenshot inspected. This
 postdates the 441-test checkpoint; no real runtime capture or game launch occurred.
 See [saved runtime reviews](legaia-runtime-node-review.md).
 
+**Combined preset scene comparison (2026-09-30):** The combined preset
+review can now inspect proposed position and initial donor appearance together
+in the assembled scene. A freshly verified detached project projection preserves
+current overrides/history. Proposed/Current retains the camera; Return reopens
+the review for one Apply/Undo, while Restore discards the retained dialog.
+Placement/display/matrix/authored-layer and donor/owner/unrelated-geometry checks
+bind the scene response. Scene components, preset or selection changes withdraw
+it, and scene export requires restoration. Fourteen focused Python tests and Node
+preset/appearance projection checks passed. Retail-source browser comparison,
+no-preview writes, camera, Return/Apply/Undo, Restore, closed delayed-response withdrawal and stale-target rejection
+passed with zero page errors; screenshot inspected. This postdates the 441-test
+checkpoint. No game launched; gameplay remains deferred. See
+[combined actor presets](legaia-combined-actor-presets.md).
+
 **Combined actor presets (2026-09-30):** Authored templates can capture
 position axes and a verified appearance donor together. A source/target-bound
 read-only review shows imported/authored/effective/proposed positions and donor;

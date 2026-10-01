@@ -1975,7 +1975,17 @@ function renderTemplates(){
     const values=[...(template.components.Transform?Object.entries(template.components.Transform.position).map(([axis,value])=>`${axis.toUpperCase()} ${format(value)}`):[]),...(template.components.ActorAppearance?[`Appearance donor: ${template.components.ActorAppearance.donor_entity_id}`]:[])].join(' · ');
     card.innerHTML=`<strong>${escapeHTML(template.name)}</strong><p>${escapeHTML(values)}</p><p class="field-note">${escapeHTML(application.reason)}</p><details><summary>Source provenance</summary><p>${escapeHTML(template.source.scene_id)}<br>${escapeHTML(template.source.entity_id)}</p><code>${escapeHTML(template.source.disc_identity)}</code></details><div class="template-actions"><button data-apply ${canEdit() && entity && application.available?'':'disabled'}>Apply to ${escapeHTML(entity?.name ?? 'selected actor')}</button><button data-delete ${canEdit()?'':'disabled'}>Delete</button></div>`;
     card.querySelector('[data-apply]').textContent=template.scope==='authored-actor-preset-v1'?'Review combined preset':`Apply to ${entity?.name??'selected actor'}`;
-    card.querySelector('[data-apply]').onclick=()=>template.scope==='authored-actor-preset-v1'?openActorPresetReview({template,entity,getState:()=>state,canEdit,isBusy:()=>busy,setBusy,api}):command({type:'apply_actor_template',template_id:template.id,entity_id:entity.id});
+    card.querySelector('[data-apply]').onclick=()=>template.scope==='authored-actor-preset-v1'?openActorPresetReview({template,entity,getState:()=>state,canEdit,isBusy:()=>busy,setBusy,api,
+      canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
+      getScenePreview:()=>scenePreview,
+      inspectScene:(proposed,report,returnToReview,isCurrent,onDiscard)=>{
+        cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
+        templateDialog.close();scenePose={key:sceneKey,name:'Proposed combined actor preset · not applied',returnToFile:returnToReview,isCurrent,onDiscard};
+        scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent='Proposed position and appearance · not applied';configureSceneInspectionComparison(proposed);
+        for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
+        const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to combined preset';draw();
+      }
+    }):command({type:'apply_actor_template',template_id:template.id,entity_id:entity.id});
     card.querySelector('[data-delete]').onclick=()=>command({type:'delete_actor_template',template_id:template.id});
     const rename=document.createElement('details');rename.innerHTML=`<summary>Rename preset</summary><form><label>New name for ${escapeHTML(template.name)}<input required maxlength="80" value="${escapeHTML(template.name)}" ${canEdit()?'':'disabled'}></label><button type="submit" ${canEdit()?'':'disabled'}>Save name</button></form>`;
     rename.querySelector('form').onsubmit=async event=>{event.preventDefault();await command({type:'rename_actor_template',template_id:template.id,name:rename.querySelector('input').value});};
@@ -3029,8 +3039,9 @@ sceneInspectionLayer.querySelector('select').onchange=()=>{
   }catch(error){clearScenePose();notify(error.message,true);draw();}
 };
 const showScenePose=document.createElement('button');showScenePose.type='button';showScenePose.id='show-frame-in-scene';showScenePose.textContent='Inspect animation in scene';$('animation-frame-label').after(showScenePose);
-function clearScenePose(restore=true){
+function clearScenePose(restore=true,retainReview=false){
   stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;sceneInspectionLayer.hidden=true;
+  if(!retainReview)previous?.onDiscard?.();
   if(restore&&previous&&scenePreviewCurrent()&&sceneRenderer){const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');}
 }
 function scenePoseDocument(base,preview,entityId,frame){
@@ -3077,7 +3088,7 @@ function updateScenePoseFrame(frame){
     scenePoseBar.querySelector('input').value=frame;draw();
   }
 }
-scenePoseBar.querySelector('[data-return-file]').onclick=()=>{if(busy)return;const returnToFile=scenePose?.returnToFile;clearScenePose();draw();if(!returnToFile?.())notify('The inspection context changed. Reopen the asset Inspector to review the proposal again.',true);};
+scenePoseBar.querySelector('[data-return-file]').onclick=()=>{if(busy)return;const returnToFile=scenePose?.returnToFile;clearScenePose(true,true);draw();if(!returnToFile?.())notify('The inspection context changed. Reopen the asset Inspector to review the proposal again.',true);};
 scenePoseBar.querySelector('[data-restore]').onclick=()=>{const afterRestore=scenePose?.afterRestore;clearScenePose();draw();afterRestore?.();};
 scenePoseBar.querySelector('input').oninput=event=>{stopScenePosePlayback();try{updateScenePoseFrame(Number(event.target.value));}catch(error){clearScenePose();notify(error.message,true);draw();}};
 function stopScenePosePlayback(){

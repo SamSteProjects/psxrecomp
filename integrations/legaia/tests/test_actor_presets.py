@@ -2,7 +2,7 @@ from copy import deepcopy
 import unittest
 from unittest.mock import patch
 from sdk.project import ProjectService,ProjectError
-from sdk.actor_presets import preview
+from sdk.actor_presets import preview,proposal_view
 from integrations.legaia.tests import test_project_appearance as appearance_fixture
 class ActorPresets(unittest.TestCase):
     setUp=appearance_fixture.ProjectAppearanceTests.setUp
@@ -32,6 +32,21 @@ class ActorPresets(unittest.TestCase):
         self.assertEqual(p.overrides,before)
         p.mode='live'
         with self.assertRaises(ProjectError):p.command(cmd)
+    def test_scene_projection_detaches_both_components_and_rejects_stale_or_forged(self):
+        p=self.project;key=self.capture();p.command({'type':'clear_actor_appearance','entity_id':self.target});p.command({'type':'set_transform','entity_id':self.target,'position':{'x':256,'z':768}})
+        report=preview(p,key,self.target);before=deepcopy(p.overrides);history=deepcopy(p.undo_stack)
+        view=proposal_view(p,report)
+        self.assertEqual(view.overrides[self.target]['Transform']['position'],{'x':512,'z':768})
+        self.assertEqual(view.overrides[self.target]['ActorAppearance']['donor_entity_id'],self.donor)
+        view.overrides[self.target]['Transform']['position']['z']=1024
+        self.assertEqual(p.overrides,before);self.assertEqual(p.undo_stack,history)
+        forged=deepcopy(report);forged['after']['Transform']['position']['x']=64
+        with self.assertRaises(ProjectError):proposal_view(p,forged)
+        p.command({'type':'set_transform','entity_id':self.target,'position':{'z':1024}})
+        with self.assertRaises(ProjectError):proposal_view(p,report)
+        p.active_scene='scene://other'
+        with self.assertRaisesRegex(ProjectError,'active scene'):proposal_view(p,preview(p,key,self.target))
+
     def test_missing_half_and_forged_scope_rejected(self):
         p=self.project;self.assign()
         with self.assertRaises(ProjectError):p.command({'type':'create_actor_template','capture':'combined','entity_id':self.target,'name':'Missing'})

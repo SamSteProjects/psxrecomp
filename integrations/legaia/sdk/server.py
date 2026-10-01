@@ -806,6 +806,27 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .actor_presets import preview
                     self._json(200,preview(self.server.project,body['template_id'],body['entity_id']))
                     return
+                if route == '/api/actor-preset-scene':
+                    if set(body)!={'template_id','entity_id','review_key'}:
+                        raise ProjectError('Preset scene inspection requires template, target and reviewed key only')
+                    from .actor_presets import preview,proposal_view
+                    from .scene_preview import source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project=self.server.project;report=preview(project,body['template_id'],body['entity_id'])
+                    if body['review_key']!=report['review_key']:
+                        raise ProjectError('Preset or target changed since review')
+                    original_key=source_key(project);view=proposal_view(project,report)
+                    proposed=self.server.scene_previews.preview(
+                        view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),
+                        load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if source_key(project)!=original_key or preview(project,body['template_id'],body['entity_id'])!=report:
+                        raise ProjectError('Scene, preset or target changed during inspection')
+                    self._json(200,{'schema_version':'legaia.actor-preset-scene.v1','scene_id':project.active_scene,
+                                    'project_source_key':original_key,'review_key':report['review_key'],
+                                    'scene':dict(proposed,representation='authored')})
+                    return
                 if route == "/api/project-transitions":
                     if body:
                         raise ProjectError("Project transition discovery accepts no client source bindings")

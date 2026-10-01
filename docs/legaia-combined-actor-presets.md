@@ -16,6 +16,22 @@ reject both changes. An already matching target creates no history entry.
 Undo/Redo, template rename/delete and Save/Open use normal project services.
 No actor is instantiated and no imported provenance is replaced.
 
+## Preview both components in the assembled scene
+
+From the combined preset review, choose **Inspect combined preset in scene**.
+The authored scene must be loaded. A detached SDK projection resolves the
+proposed position and donor's initial model/animation together. Inspection writes
+no project overrides or history. Source terrain supplies a display height only
+when retail Y is unknown; it does not establish runtime height.
+
+**Inspection layer** switches between Proposed and Current while retaining the
+camera. **Return to combined preset** restores the authored scene and reopens the
+same review for Apply. **Restore scene preview** discards the inspection and its
+retained review. Export requires restoration. Changes to the scene components,
+preset, source or selection withdraw the comparison; delayed or closed requests
+cannot attach. Both source-qualified donor and reviewed position are checked,
+including display coordinates, matrix and unchanged owners/geometry.
+
 ## Output and verification — 2026-09-30
 
 Thirteen focused Python tests passed for combined capture, validation, read-only
@@ -38,3 +54,19 @@ Private evidence is in `local-output/sdk-20260909/component-inspector-20260930/`
 No disc installed or game launched. Script-driven movement, model replacement,
 visibility, collision and gameplay remain deferred. This feature postdates the
 441-test integrated source checkpoint.
+
+## Scene comparison validation — 2026-09-30
+
+Fourteen focused Python checks passed, including detached two-component
+projection, preserved target axes/history and forged/stale/inactive target
+rejection. Node preset and existing appearance checks passed for positions,
+display matrices, authored axes, height uncertainty, donor ownership and
+unchanged geometry. Retail-source browser comparison moved town01 actor0012
+from X2880 to X2944 with donor0005/model0112, retaining Z1856 and unknown
+retail Y. Inspection changed no component/history state. Current/Proposed
+retained the camera; Return preserved one Apply/Undo; Restore removed the review;
+closed delayed-response withdrawal, stale target and export guards passed.
+Zero page errors; final focused screenshot inspected.
+All transient fixture edits were restored without saving.
+Private evidence: `local-output/sdk-20260909/actor-preset-scene-20260930/`.
+No real runtime or gameplay acceptance is claimed.
