@@ -67,6 +67,22 @@ reset and actor navigation without authoring commands or actor changes, zero
 errors. Screenshots inspected; narrow-panel controls now wrap. This postdates
 the 463-test checkpoint. No game launched. See [asset search](legaia-asset-search.md).
 
+**Reviewed animation interpolation and raw ANM Build (2026-10-01):**
+The animation channel editor now blends a copied verified pose into the selected
+effective pose across an existing frame range. Read-only review precedes one
+Undo/Redo command; unrelated channels remain. Translation rounds to integers and
+per-axis shortest-path rotation to16-unit PSX increments, with explicit tie rules.
+Actual retail verification exposed normal Build assuming all ANM banks were
+compressed. Normal Build now reuses the source-preserving patch service for raw
+and compressed banks with preimage/carrier checks. Thirteen focused Python
+checks passed with retail input, including both normal Build layouts and existing
+streaming composition; all20 Node files and22 editor syntax checks passed.
+Retail browser passed review, stale-range rejection, Apply/Save/Undo/Redo and zero
+errors. Independent reopened package matched all114764 bank bytes, preserved
+other payloads and four drafts. Screenshots inspected; baseline restored.
+No game launched or disc installed. Gameplay remains deferred; this postdates
+integrated469. See [animation interpolation](legaia-animation-interpolation.md).
+
 **Asset navigation inspectors (2026-10-01):** Actors, imported scenes,
 actor presets and world-map landmarks now use the shared SDK read-only property
 and registered-action contract, bringing supported catalog inspector types to12.

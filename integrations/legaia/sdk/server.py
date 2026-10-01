@@ -527,6 +527,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
+                 "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),

@@ -1,3 +1,4 @@
+import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
@@ -2247,6 +2248,7 @@ const animationEditDialog=document.createElement('dialog');animationEditDialog.c
 async function openAnimationChannels(entity,initialChannel=null){
   if(busy||state.project.mode!=='edit')return;
   const context=JSON.stringify([state.project.path,state.scene?.id,entity.id]);
+  const loadedAuthoringState=JSON.stringify([state.scene_preview_source_key,state.authored_assets]);
   const current=()=>animationEditDialog.open&&state.project.mode==='edit'&&JSON.stringify([state.project.path,state.scene?.id,state.selection?.entity_id])===context;
   animationEditDialog.innerHTML='<h2>Edit imported animation channels</h2><p>Verifying source…</p><button type="button">Close</button>';
   animationEditDialog.querySelector('button').onclick=()=>animationEditDialog.close();animationEditDialog.showModal();setBusy(true);
@@ -2369,6 +2371,27 @@ async function openAnimationChannels(entity,initialChannel=null){
       await apply({type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:next}});
     };
     rangeControls.append(rangeNote,applyRange);form.querySelector('.close-animation').before(rangeControls);
+    const interpolate=document.createElement('button');interpolate.type='button';interpolate.textContent='Review interpolated frame range';
+    const interpolationNote=document.createElement('p');interpolationNote.className='field-note';interpolationNote.textContent='Blend the copied pose into the selected effective pose across the target range. Translation rounds to integer units; rotation follows the shortest path on each PSX angle axis and rounds to 16 units. Half ties round upward; a half-turn follows the positive direction. This authors sampled poses, not playback timing or retargeting.';
+    const interpolationReview=document.createElement('div');interpolationReview.dataset.animationInterpolation='review';
+    const interpolationKey=()=>JSON.stringify([context,state.scene_preview_source_key,state.authored_assets,copiedChannel,verifiedChannel,channelFrame,channelObject,rangeInputs.start.value,rangeInputs.end.value,channelDirty]);
+    interpolate.onclick=()=>{
+      interpolationReview.replaceChildren();if(!current()||busy)return;
+      try{
+        if(loadedAuthoringState!==JSON.stringify([state.scene_preview_source_key,state.authored_assets]))throw new Error('Project changed since channel inspection. Reopen the animation editor.');
+        if(channelDirty)throw new Error('Apply or discard the current channel draft before interpolating.');
+        if(!copiedChannel||!verifiedChannel)throw new Error('Copy a verified channel and select the end pose first.');
+        if(copiedChannel.object!==channelObject)throw new Error('Interpolation requires the same rigid object; no retargeting is inferred.');
+        if(!rangeInputs.start.reportValidity()||!rangeInputs.end.reportValidity())return;
+        const result=interpolateAnimationRange({first:copiedChannel.values,last:verifiedChannel.effective,start:Number(rangeInputs.start.value),end:Number(rangeInputs.end.value),object:channelObject,frameCount:binding.frame_count,objectCount:binding.bone_count,edits}),key=interpolationKey();error.textContent='';
+        const summary=document.createElement('p');summary.textContent=`${result.proposed.length} proposed channels · copied ${copiedChannel.layer} frame ${copiedChannel.frame} to effective frame ${channelFrame} · project unchanged. Apply replaces this actor’s contributions in the target range; shared conflicts are checked on Apply.`;
+        const preview=document.createElement('pre');preview.textContent=result.proposed.slice(0,256).map(row=>`Frame ${row.frame_index}, object ${row.object_index} · T ${Object.values(row.translation).join(' / ')} · R ${Object.values(row.rotation_psx).join(' / ')}`).join('\n');
+        const accept=document.createElement('button');accept.type='button';accept.textContent='Apply reviewed interpolation';accept.dataset.applyInterpolation='';
+        accept.onclick=async()=>{if(!current()||busy)return;if(key!==interpolationKey()){accept.disabled=true;error.textContent='Pose, range or project changed. Review interpolation again.';return;}await apply({type:'set_animation_channels',entity_id:entity.id,value:{animation_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256,edits:result.edits}});};
+        interpolationReview.append(summary,preview,accept);if(result.proposed.length>256){const limit=document.createElement('p');limit.textContent='Showing the first 256 channels; Apply uses the complete reviewed range.';interpolationReview.append(limit);}
+      }catch(exc){error.textContent=exc.message;}
+    };
+    rangeControls.append(interpolationNote,interpolate,interpolationReview);
     clearChannel.onclick=()=>{
       if(channelDirty){error.textContent='Apply or discard unapplied channel changes before clearing the selected contribution.';return;}
       const next=edits.filter(edit=>edit.frame_index!==channelFrame||edit.object_index!==channelObject);

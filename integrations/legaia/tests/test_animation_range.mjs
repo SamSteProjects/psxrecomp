@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {interpolateAnimationRange} from '../editor/animation-range.js';
+const first={translation:{x:-3,y:0,z:2047},rotation_psx:{x:4080,y:16,z:0}},last={translation:{x:4,y:0,z:2047},rotation_psx:{x:16,y:4080,z:2048}},existing=[{frame_index:0,object_index:1,translation:{x:7}},{frame_index:9,object_index:0,rotation_psx:{z:80}}];
+const args={first,last,start:2,end:4,object:0,frameCount:10,objectCount:2,edits:existing},before=structuredClone(args),result=interpolateAnimationRange(args);
+assert.deepEqual(result.proposed.map(r=>r.translation.x),[-3,1,4]);
+assert.deepEqual(result.proposed.map(r=>r.rotation_psx.x),[4080,0,16]);
+assert.deepEqual(result.proposed.map(r=>r.rotation_psx.y),[16,0,4080]);
+assert.deepEqual(result.proposed.map(r=>r.rotation_psx.z),[0,1024,2048]);
+assert.deepEqual(result.proposed[0].translation,first.translation);assert.deepEqual(result.proposed.at(-1).rotation_psx,last.rotation_psx);assert.deepEqual(args,before);
+assert.deepEqual(result.edits.filter(r=>r.object_index===1||r.frame_index===9),existing);result.edits[0].translation.x=99;assert.deepEqual(existing,before.edits);
+for(const update of [{start:4,end:4},{start:5,end:4},{end:10},{object:2},{first:{...first,rotation_psx:{x:1,y:0,z:0}}},{last:{...last,translation:{x:2048,y:0,z:0}}},{edits:[existing[0],existing[0]]}])assert.throws(()=>interpolateAnimationRange({...args,...update}));
+const occupied=Array.from({length:4096},(_,frame_index)=>({frame_index,object_index:1,translation:{x:0}}));assert.throws(()=>interpolateAnimationRange({...args,frameCount:4096,edits:occupied}));
+console.log('Animation interpolation endpoints, signed integer ties, wrapped shortest rotation, bounds, detached data and unrelated channels passed.');

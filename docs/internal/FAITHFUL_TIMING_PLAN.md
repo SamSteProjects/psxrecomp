@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Reviewed animation interpolation and normal raw ANM Build
+
+Added copied-to-selected verified rigid-pose interpolation over existing frames:
+integer translation, shortest circular axis rotation, 16-unit rounding and
+explicit ties; read-only review, snapshot rejection, one existing command,
+Undo/Redo and Save/Open. Retail Dolk2 browser passed five-frame review, changed
+range rejection, Apply/Save/Undo/Redo, zero errors, restored baseline. Build
+verification exposed missing raw ANM handling in normal Build; now reuses shared
+animation patch preparation for raw/compressed carriers. Independent encoder and
+package readback matched full114764-byte bank, four record bytes changed and all
+other payloads unchanged; four drafts retained. 13 focused Python checks passed
+with retail input, including both bank layouts and existing streaming composition;
+20 Node files and22 syntax checks passed. Screenshots inspected; report/status/
+matrix and guide updated. No game launched, gameplay deferred; full SDK remains
+incomplete. Focused evidence postdates integrated469 checkpoint.
+
+
 ### 2026-10-01 — SDK catalog navigation inspectors
 
 Migrated actor/scene/preset/world-map Details into SDK property/action contracts;

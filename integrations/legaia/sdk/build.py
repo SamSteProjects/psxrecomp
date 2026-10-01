@@ -512,25 +512,24 @@ def _build_project(project, output_dir) -> dict:
         audit_edits.extend({**change, 'scene':project.imports[project.model_overrides[change['semantic_id']]['source_scene_id']]['scene']['name']} for change in shape_changes)
         for scene_id, bindings in sorted(animation_edits.items()):
             from importer.scene_animation import load_scene_actor_animation_catalog
-            from importer.serialization import serialize_lzs_decoded
+            from .animation_build import prepare_animation_patches
             scene = project.imports[scene_id]["scene"]["name"]
             catalog = load_scene_actor_animation_catalog(project.disc_path, scene)
             changed, changes = catalog.authored_bank(bindings)
             if not changes:
                 continue
-            source = catalog._source
-            entry = archive.entry(source["prot_entry_index"])
-            body = archive.read_entry(entry)
-            offset, consumed = source["compressed_stream_offset"], source["compressed_bytes_consumed"]
-            original = body[offset:offset + consumed]
-            replacement, sizes = serialize_lzs_decoded(original, len(catalog._body), changed, scene + " animation")
-            location = (archive.node.extent_lba + entry.start_lba) * 2048 + offset
-            if _image.read_user(0, location, len(original), (_image.size // 2352) * 2048) != original:
-                raise BuildError("Animation overlay differs from its verified disc span")
-            overlays.append({"scene": scene, "offset": location, "size": len(replacement),
-                             "file": f"assets/{scene}-animation.lzs", "payload": replacement,
-                             "sha256": _hash(replacement), "expected_sha256": _hash(original),
-                             "decoded_before_sha256": _hash(catalog._body), "decoded_after_sha256": _hash(changed), **sizes})
+            patches, metadata = prepare_animation_patches(project, scene_id, bindings, archive)
+            raw = metadata.get('source_kind') == 'raw_streaming_anm'
+            for index, patch in enumerate(patches):
+                payload = patch['payload']
+                suffix = '' if len(patches) == 1 else f'-{index}'
+                evidence = ({'bank_before_sha256': _hash(catalog._body), 'bank_after_sha256': _hash(changed),
+                             'source_kind': 'raw_streaming_anm'} if raw else
+                            {'decoded_before_sha256': _hash(catalog._body), 'decoded_after_sha256': _hash(changed), **metadata['compression']})
+                overlays.append({"scene": scene, "offset": archive.node.extent_lba * 2048 + patch['offset'],
+                                 "size": len(payload), "file": f"assets/{scene}-animation{suffix}.{'bin' if raw else 'lzs'}",
+                                 "payload": payload, "sha256": _hash(payload), "expected_sha256": patch['expected_sha256'],
+                                 'carrier': metadata['carriers'][index], **evidence})
             audit_edits.extend({**change, "scene": scene, "semantic_id": change["animation_id"]} for change in changes)
         for scene_id in sorted(set(environment_edits) | set(collision_edits)):
             binding = environment_edits.get(scene_id)

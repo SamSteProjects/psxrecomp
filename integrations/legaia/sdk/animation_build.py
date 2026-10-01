@@ -41,7 +41,7 @@ def prepare_animation_patches(project,scene_id,bindings,archive):
     body=archive.read_entry(entry)
     offset=source['compressed_stream_offset']
     original=body[offset:offset+source['compressed_bytes_consumed']]
-    replacement,_=serialize_lzs_decoded(original,len(catalog._body),changed,scene+' animation')
+    replacement,sizes=serialize_lzs_decoded(original,len(catalog._body),changed,scene+' animation')
     overlays=[dict(offset=(archive.node.extent_lba+entry.start_lba)*2048+offset,
                    payload=replacement,expected_sha256=sha256(original).hexdigest())]
     patches,carriers=archive_overlay_patches(archive,overlays)
@@ -53,4 +53,4 @@ def prepare_animation_patches(project,scene_id,bindings,archive):
             raise ProjectError('Animation descriptor and carrier have different physical owners')
         carrier['descriptor_binding']=dict(table_offset=table['offset_within_span'],
             index=source['descriptor_index'],type=source['descriptor_type'])
-    return patches,dict(changes=changes,carriers=carriers)
+    return patches,dict(changes=changes,carriers=carriers,compression=sizes)
