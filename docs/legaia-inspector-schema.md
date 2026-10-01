@@ -64,3 +64,9 @@ calls. Nine focused Python tests passed. Retail registered donor Clear/Undo and
 source-script opening through a fully loaded decoded report passed. Private
 `registered-actions-browser.json` shares the existing inspector evidence folder.
 No game launched; the441-test integrated checkpoint predates this work.
+
+The later integrated offline checkpoint on source `3c8d8f46` passed457 Python
+tests with no skips, all12 Node checks and10 module syntax checks. See the
+[current SDK status](SDK_STATUS.md) for exact source/command/log evidence.
+Feature-specific browser/disk/package checks above remain separate from deferred
+runtime and gameplay acceptance.

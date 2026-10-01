@@ -72,3 +72,9 @@ Private evidence: `local-output/sdk-20260909/actor-preset-scene-20260930/`.
 No real runtime or gameplay acceptance is claimed.
 
 Presets can also be [exported/imported as source-bound metadata files](legaia-actor-preset-files.md) for reuse in another project.
+
+The later integrated offline checkpoint on source `3c8d8f46` passed457 Python
+tests with no skips, all12 Node checks and10 module syntax checks. See the
+[current SDK status](SDK_STATUS.md) for exact source/command/log evidence.
+Feature-specific browser/disk/package checks above remain separate from deferred
+runtime and gameplay acceptance.

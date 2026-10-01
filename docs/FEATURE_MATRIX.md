@@ -2,16 +2,17 @@
 
 Current scene-editor status (2026-09-30):
 
-The retail-enabled SDK discovery suite passed **441 tests in177.315 seconds**,
+The retail-enabled SDK discovery suite passed **457 tests in178.185 seconds**,
 exit0, no skips, against unchanged committed source
-`e76b05fb1775802057e41c33a5a1e4e36301a093`. This includes group appearance/scene
-projection, actor alignment/distribution and saved actor selections, superseding
-the425-test checkpoint at55f5db15. Exact command/source/result/log/hash metadata:
-`local-output/sdk-20260909/sdk-regression-20260930-saved-selections.log/.json`.
-Log SHA256: `d095c9718e9cb0269f99a5eeccf1f05b265051dee98984abdee197af6decbed2`.
-All eight Node checks and five editor/renderer/group module syntax checks passed
-separately on the same unchanged source; metadata lives in
-`local-output/sdk-20260909/node-checks-20260930-saved-selections.json`.
+`3c8d8f46af7063f2993d49fe74ec02e6a0005639`. This checks the committed SDK discovery suite through preset file
+transfer/source protection, combined preset
+scene projection, inspector metadata, draft repetition and project transitions,
+superseding the441-test checkpoint ate76b05fb. Exact command/source/result/log/hash
+metadata: `local-output/sdk-20260909/sdk-regression-20260930-preset-files.log/.json`.
+Log SHA256: `d5095cd0f752881ce0fcd7212c6cfa09e5361719362b62356c20906759734732`.
+All12 Node checks and10 editor/service module syntax checks passed separately on
+the same unchanged source; metadata lives in
+`local-output/sdk-20260909/node-checks-20260930-preset-files.json`.
 Browser/package/disk/rendered checks retain their independent evidence. Gameplay,
 native runtime parity and broader rendered acceptance remain deferred/open;
 passing the SDK suite does not complete the full SDK objective. No game launched.

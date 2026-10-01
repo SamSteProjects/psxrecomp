@@ -213,6 +213,28 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Integrated SDK checkpoint after preset file transfer
+
+Previous turn was progress: preset files/source protection3c8d8f46. Verified
+clean tracked source and ran one retail-enabled full Python discovery without
+restarting. Owned session29434 completed exit0:457 tests in178.185s, no skips,
+wall179.448s. Source remained3c8d8f46af7063f2993d49fe74ec02e6a0005639 with unchanged
+clean tracked status throughout. Private sdk-regression-20260930-preset-files.log/
+.json records command/source/results and log SHA256
+d5095cd0f752881ce0fcd7212c6cfa09e5361719362b62356c20906759734732.
+All12 Node checks and10 module syntax checks passed on the same source;
+node-checks-20260930-preset-files.json records individual hashes/results. Initial
+syntax wrapper used default cp1252 and failed to send a Unicode arrow to Node;
+corrected wrapper to explicit UTF-8, then all checks passed. No code change was
+needed. Updated report/status/matrix and relevant feature guides to include the
+457 checkpoint, retaining441 as historical. No browser/game launched; temporary
+HTTP test servers were managed by the suite.
+This is offline source regression evidence, not native lifecycle/performance,
+real Live identity or manual gameplay acceptance. Full SDK goal remains active
+and incomplete; specialized inspector forms/action migration and broader runtime/
+mod-authoring work remain.
+
+
 ### 2026-09-30 — Portable actor preset metadata files
 
 Previous turn was progress: combined preset scene comparisonf4a2d5c1. Verified

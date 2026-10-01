@@ -33,3 +33,9 @@ unchanged draft/override state, strict request rejection and zero page errors
 passed. Screenshot inspected. Private evidence:
 `local-output/sdk-20260909/project-transitions-20260930/`.
 This feature postdates the441-test integrated checkpoint; no game was launched.
+
+The later integrated offline checkpoint on source `3c8d8f46` passed457 Python
+tests with no skips, all12 Node checks and10 module syntax checks. See the
+[current SDK status](SDK_STATUS.md) for exact source/command/log evidence.
+Feature-specific browser/disk/package checks above remain separate from deferred
+runtime and gameplay acceptance.

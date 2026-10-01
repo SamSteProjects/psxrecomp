@@ -41,3 +41,9 @@ no actors/imports, saved/reopened and freshly re-exported it. All transient
 browser library edits were undone; the original saved fixture was unchanged.
 Private evidence: `local-output/sdk-20260909/preset-files-20260930/`.
 No game launched or runtime attached. This work postdates the 441-test checkpoint.
+
+The later integrated offline checkpoint on source `3c8d8f46` passed457 Python
+tests with no skips, all12 Node checks and10 module syntax checks. See the
+[current SDK status](SDK_STATUS.md) for exact source/command/log evidence.
+Feature-specific browser/disk/package checks above remain separate from deferred
+runtime and gameplay acceptance.

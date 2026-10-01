@@ -27,6 +27,22 @@ requests. Project/camera/runtime state was unchanged. Screenshot inspected. This
 postdates the 441-test checkpoint; no real runtime capture or game launch occurred.
 See [saved runtime reviews](legaia-runtime-node-review.md).
 
+**Integrated offline checkpoint (2026-09-30):** The retail-enabled SDK
+Python discovery suite passed **457 tests in 178.185 seconds**, exit0, no skips,
+against unchanged committed source `3c8d8f46af7063f2993d49fe74ec02e6a0005639`.
+This supersedes the 441-test checkpoint and includes the later draft repetition,
+project transition discovery, SDK inspector services, combined actor preset
+review/projection and preset file transfer/source protection. All12 Node checks
+and10 module syntax checks passed separately on the same source, including the
+inspector registry, model-user selection, historical review comparison and
+combined preset scene guards. Browser, package, saved-project and rendered
+acceptance retain their independent evidence. This does not establish native
+runtime parity, real Live actor identity or deferred gameplay. No game launched.
+Private command/source/result/hash metadata and log:
+`local-output/sdk-20260909/sdk-regression-20260930-preset-files.log/.json`;
+Node/syntax metadata: `local-output/sdk-20260909/node-checks-20260930-preset-files.json`.
+Log SHA256: `d5095cd0f752881ce0fcd7212c6cfa09e5361719362b62356c20906759734732`.
+
 **Actor preset file transfer (2026-09-30):** Position, appearance and
 combined presets can export metadata-only JSON and import into a project with
 the same freshly verified source import. Name/source/donor/schema review precedes
@@ -133,7 +149,7 @@ scheduling, collision and visibility remain unverified. No disc installed or gam
 launched. See [NPC repetition guide](legaia-npc-draft-repetition.md). Private
 browser/disk/archive evidence: `local-output/sdk-20260909/draft-repeat-20260930/`.
 
-**Integrated source checkpoint (2026-09-30):** the retail-enabled SDK discovery
+**Historical integrated source checkpoint (2026-09-30, 441 tests):** the retail-enabled SDK discovery
 suite passed **441 Python tests in 177.315 seconds**, exit0, no skips, against
 unchanged committed source `e76b05fb1775802057e41c33a5a1e4e36301a093`. This includes
 group donor appearance and its detached scene projection, actor alignment/

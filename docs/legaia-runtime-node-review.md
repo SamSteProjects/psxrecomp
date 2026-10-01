@@ -73,3 +73,9 @@ were unchanged; zero authoring requests and page errors. Final screenshot
 inspected. Private evidence:
 `local-output/sdk-20260909/runtime-comparison-20260930/`.
 No real runtime sample or gameplay acceptance is claimed.
+
+The later integrated offline checkpoint on source `3c8d8f46` passed457 Python
+tests with no skips, all12 Node checks and10 module syntax checks. See the
+[current SDK status](SDK_STATUS.md) for exact source/command/log evidence.
+Feature-specific browser/disk/package checks above remain separate from deferred
+runtime and gameplay acceptance.
