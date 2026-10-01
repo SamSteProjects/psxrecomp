@@ -1,0 +1,36 @@
+# SDK inspector property contract
+
+Project state exposes `inspector_schema` with version
+`legaia.inspector-schema.v1`. The SDK owns component/property labels, paths,
+layer order, value types, authoring bounds, Build constraints and unknown states.
+Definitions are newly allocated per response and never modify imported or
+project-authored data. Current definitions cover Transform, ModelRenderer and
+Animation. Specialized appearance, scripts and asset tools retain their existing
+validated adapters; this is an incremental migration.
+
+The editor's `component-inspector.js` renders layered numeric properties and
+read-only properties from this metadata. Unknown/unregistered components display
+escaped SDK details without editable controls. Unknown values use a dash, never
+an invented zero. Imported, authored and effective values remain distinct.
+
+The Transform command adapter permits only X/Y/Z `set_transform` and
+`clear_transform`. It rejects unknown properties, nonfinite/out-of-bounds values
+and unexpected command identifiers. SDK metadata is not authority to issue
+arbitrary commands or RAM writes. Existing ProjectService validation, Undo/Redo,
+dirty state, Save/Open and Build validation remain authoritative. Controls also
+check Edit mode, busy state, selection and source context.
+
+Authoring accepts finite values between-32767 and32767; this is separate from
+representable retail X/Z placements on the64-unit grid64–16384. Retail Y remains
+unresolved. Authored Y remains a project-only preview value and must be cleared
+before Build. Tooltips and SDK Build issues preserve those distinctions.
+
+## Verification — 2026-09-30
+
+Eight focused Python tests passed, including the schema contract and existing
+project workflows. Node checks cover value layers, unknown values, read-only
+mode, escaping, bounded commands, malformed command metadata and read-only
+fallbacks. Retail browser checks passed for SDK-derived controls, X edit/Undo,
+project-only Y Build diagnostics and zero page errors. Private evidence:
+`local-output/sdk-20260909/component-inspector-20260930/`.
+This feature postdates the441-test checkpoint. No game launched.

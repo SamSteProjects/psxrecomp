@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — SDK-driven inspector property contract
+
+Added fresh versioned SDK component/property definitions and common editor
+renderers for Transform, ModelRenderer and Animation, preserving distinct layers,
+unknown Y, authoring bounds versus Build encoding and validated project commands.
+Added escaped read-only unknown-component fallback and busy/Edit/source/selection
+guards; specialized panels remain partially migrated. Eight focused Python tests
+and Node metadata/command/fallback checks passed. Retail browser X edit/Undo and
+project-only Y Build issues passed, zero errors. Initial harness used the wrong
+Undo ID; corrected it, then fixed busy-state coverage for metadata controls and
+Repeat draft. Retook screenshot after scene loading settled. No game launched;
+private evidence excluded. Updated status/matrix/architecture/contract guide.
+
+
 ### 2026-09-30 — Project-wide source-qualified transitions
 
 Added batched verified transition discovery for all imported scenes, source/state

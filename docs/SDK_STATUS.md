@@ -3,6 +3,20 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**SDK-driven component inspector (2026-09-30):** Project state now exposes
+a versioned property contract for Transform, ModelRenderer and Animation.
+The editor consumes it for layered number controls and read-only properties;
+unregistered components receive escaped read-only SDK details. Transform commands
+use a bounded registry adapter and ordinary ProjectService validation/history.
+SDK authoring limits remain distinct from retail Build encoding, with unresolved
+retail Y and project-only authored height explicit. Busy/Edit/selection/source
+checks guard controls. Eight focused Python tests and Node renderer/command/
+fallback checks passed. Retail browser X edit/Undo and project-only Y Build
+issues passed, zero page errors. Specialized appearance/script/asset panels still
+use their existing adapters; migration to the common contract is incomplete.
+This feature postdates the441-test checkpoint. No game launched. See
+[inspector property contract](legaia-inspector-schema.md).
+
 **Project-wide transitions (2026-09-30):** Project transitions now merges
 source-qualified decoded scene-change references across1–64 imported scenes,
 with separate source coverage, unavailable reasons and imported destinations.

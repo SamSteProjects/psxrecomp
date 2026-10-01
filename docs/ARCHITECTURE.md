@@ -398,3 +398,15 @@ identity negotiation. Owned launch readiness invokes that preparation before
 the user enters a field. Initial missing witnesses are collection setup, not
 scene evidence; subsequent observation retains all currentness and hash checks.
 Late attachment and post-restore observation still require actual re-execution.
+
+
+## SDK inspector property contract — 2026-09-30
+
+`inspector_schema.py` owns versioned component property metadata exposed through
+ProjectService state. `component-inspector.js` consumes it for layered Transform
+controls and read-only ModelRenderer/Animation properties, with an escaped
+read-only fallback for unregistered components. Command adapters whitelist
+supported project commands; metadata does not authorize runtime writes.
+Existing SDK validation/history/serialization remain authoritative. Specialized
+appearance/script/asset adapters have not all migrated. See
+[the property contract](legaia-inspector-schema.md).
