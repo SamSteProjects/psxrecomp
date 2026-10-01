@@ -1,3 +1,4 @@
+import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
@@ -1964,6 +1965,7 @@ function renderTemplates(){
   const axes=Object.entries(position).map(([axis,value])=>`${axis.toUpperCase()} ${format(value)}`).join(' · ');
   templateDialog.innerHTML=`<div class="dialog-heading"><h2>Authored actor templates</h2><button type="button" id="close-templates" aria-label="Close">×</button></div><p>Capture authored position axes, a donor pair, or both together, then apply the preset to an existing imported actor.</p><p class="field-note">Appearance presets require a compatible actor in the donor scene and are reverified when applied. No native actor spawning. Height stays project-only; Build requires representable X/Z values.</p><form id="create-template-form"><label>Template name<input id="template-name" required maxlength="80" placeholder="For example, courtyard position" ${canEdit() && (axes||appearance)?'':'disabled'}></label><p class="field-note">${entity?`Selected: ${escapeHTML(entity.name)} · ${axes?escapeHTML(axes):appearance?`Appearance donor: ${escapeHTML(appearance.donor_entity_id)}`:'Author a position or appearance override to capture a template.'}`:'Select an imported actor to capture or apply a template.'}</p><button type="submit" ${canEdit() && axes?'':'disabled'}>Capture authored position</button><button type="button" id="capture-appearance-template" ${canEditAppearance() && appearance?'':'disabled'}>Capture authored appearance</button><button type="button" id="capture-combined-template" ${canEditAppearance() && appearance && axes?'':'disabled'}>Capture position and appearance</button></form><div id="template-list" class="template-list"></div><p class="field-note">Template changes use Undo / Redo. Save the project to keep the library.</p>`;
   $('close-templates').onclick=()=>templateDialog.close();
+  appendPresetImport({container:templateDialog,getState:()=>state,canEdit,isBusy:()=>busy,setBusy,api});
   const errorMessage=document.createElement('p');errorMessage.className='dialog-error';errorMessage.setAttribute('role','alert');templateDialog.append(errorMessage);
   const command=async body=>{const result=await api('/api/command',body);if(!result)errorMessage.textContent=$('status').textContent;return result;};
   $('create-template-form').onsubmit=async event=>{event.preventDefault();await command({type:'create_actor_template',entity_id:entity.id,name:$('template-name').value});};
@@ -1990,6 +1992,7 @@ function renderTemplates(){
     const rename=document.createElement('details');rename.innerHTML=`<summary>Rename preset</summary><form><label>New name for ${escapeHTML(template.name)}<input required maxlength="80" value="${escapeHTML(template.name)}" ${canEdit()?'':'disabled'}></label><button type="submit" ${canEdit()?'':'disabled'}>Save name</button></form>`;
     rename.querySelector('form').onsubmit=async event=>{event.preventDefault();await command({type:'rename_actor_template',template_id:template.id,name:rename.querySelector('input').value});};
     card.append(rename);
+    card.append(presetExportButton({template,getState:()=>state,isBusy:()=>busy,setBusy,onError:message=>{if(templateDialog.open)errorMessage.textContent=message;}}));
     $('template-list').append(card);
   }
   if(!templates.length)$('template-list').innerHTML='<p class="field-note">No authored actor templates yet.</p>';

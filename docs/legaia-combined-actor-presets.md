@@ -70,3 +70,5 @@ Zero page errors; final focused screenshot inspected.
 All transient fixture edits were restored without saving.
 Private evidence: `local-output/sdk-20260909/actor-preset-scene-20260930/`.
 No real runtime or gameplay acceptance is claimed.
+
+Presets can also be [exported/imported as source-bound metadata files](legaia-actor-preset-files.md) for reuse in another project.

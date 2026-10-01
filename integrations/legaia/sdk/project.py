@@ -243,6 +243,8 @@ class ProjectService:
         # Reimport cannot silently reinterpret existing authored edits.
         previous = self.imports.get(scene_id)
         if previous and digest(previous) != digest(document):
+            if any(template['source']['scene_id']==scene_id for template in self.actor_templates.values()):
+                raise ProjectError('Imported evidence changed under actor presets; resolve the preset library before reimport')
             draft_history = [entry.get(field) for entry in self.undo_stack+self.redo_stack
                              if entry.get('target')=='actor_drafts' for field in ('before','after')]
             if any(draft and draft.get('scene_id')==scene_id
@@ -1756,6 +1758,10 @@ class ProjectService:
                     self.overrides[identifier] = after
                 self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
                 self.redo_stack.clear()
+            return
+        if command.get('type')=='import_actor_template':
+            from .template_files import apply
+            apply(self,command)
             return
         if command.get("type") in ("create_actor_template", "apply_actor_template", "delete_actor_template", "rename_actor_template"):
             self._template_command(command)

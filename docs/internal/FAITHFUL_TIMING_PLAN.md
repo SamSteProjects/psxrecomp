@@ -213,6 +213,32 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Portable actor preset metadata files
+
+Previous turn was progress: combined preset scene comparisonf4a2d5c1. Verified
+clean tracked source. Implemented bounded strict UTF-8 preset JSON export,
+fresh imported-disc/donor/source-hash review, independent deterministic import
+identity and atomic library command/history. Editor file selection/name review,
+metadata export, import and closed-response guards are connected. No actor
+components change during transfer. Found and closed an existing saved-library
+reimport gap: changed scene evidence now rejects underneath actor presets even
+after history is cleared by reopening. Four new focused file tests plus existing
+preset/appearance/project checks passed18 in0.776s; syntax/diff checks passed.
+Retail-source browser37416/35876 passed metadata export, no-preview writes,
+duplicate-name rejection, new identity, one command/Undo/Redo, no actor changes,
+size rejection and closed-response withdrawal, zero page errors; final readable
+review screenshot inspected. Initial harness did not select an actor before
+opening its Inspector; corrected. First independent transfer probe ran before
+browser export existed; reran after actual export and it passed cross-project
+import/new identity, unchanged actors/imports, Save/reopen and fresh re-export.
+Original browser library restored without saving. Evidence under
+local-output/sdk-20260909/preset-files-20260930/. Owned browsers closed and
+servers90332/46531 stopped. No game/runtime launched or disc written.
+Final19-test focused run including existing HTTP template validation passed in
+1.324s. Report/status/matrix/guide updated. Full SDK goal and deferred gameplay/
+runtime parity remain incomplete.
+
+
 ### 2026-09-30 — Combined preset scene comparison
 
 Previous goal turn was progress: historical runtime comparison1598befa.

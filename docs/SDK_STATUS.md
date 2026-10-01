@@ -15,6 +15,18 @@ requests. Project/camera/runtime state was unchanged. Screenshot inspected. This
 postdates the 441-test checkpoint; no real runtime capture or game launch occurred.
 See [saved runtime reviews](legaia-runtime-node-review.md).
 
+**Actor preset file transfer (2026-09-30):** Position, appearance and
+combined presets can export metadata-only JSON and import into a project with
+the same freshly verified source import. Name/source/donor/schema review precedes
+one independent library entry and Undo/Redo; actors remain unchanged. Duplicate
+names, changed sources, stale reviews, extra/payload fields and bounded JSON
+reject. Saved preset libraries now block changed-source reimport after reopen.
+Nineteen focused Python/HTTP checks and retail-source browser export/review/import/history,
+no-preview writes, size/closed-response rejection passed, zero errors; screenshot
+inspected. Independent cross-project retail Save/reopen/re-export passed with
+preserved components/hash and no actor/import edits. This postdates the 441-test
+checkpoint. No game launched. See [preset files](legaia-actor-preset-files.md).
+
 **Combined preset scene comparison (2026-09-30):** The combined preset
 review can now inspect proposed position and initial donor appearance together
 in the assembled scene. A freshly verified detached project projection preserves

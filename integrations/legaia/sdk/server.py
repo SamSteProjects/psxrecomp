@@ -515,6 +515,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
+                 "/preset-files.js": ("preset-files.js", "text/javascript"),
                  "/actor-preset-review.js": ("actor-preset-review.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
@@ -800,6 +801,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Project text discovery uses imported scenes only')
                     from .resources import project_text_index
                     self._json(200, project_text_index(self.server.project))
+                    return
+                if route == '/api/actor-preset-file':
+                    if set(body)!={'template_id'}:raise ProjectError('Preset export requires a template identity only')
+                    from .template_files import export_file
+                    self._json(200,export_file(self.server.project,body['template_id']))
+                    return
+                if route == '/api/actor-preset-import-review':
+                    if set(body)!={'content','name'}:raise ProjectError('Preset import review requires file content and name only')
+                    from .template_files import review
+                    self._json(200,review(self.server.project,body['content'],body['name']))
                     return
                 if route == '/api/actor-preset-review':
                     if set(body)!={'template_id','entity_id'}:raise ProjectError('Preset review requires a template and existing target only')
