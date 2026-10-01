@@ -2309,6 +2309,7 @@ function updateScriptActions(){
   $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;
   $('script-save').disabled=busy||pending||!state.project?.dirty;
   $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':projectSaveStatus();
+  for(const button of scriptDialog.querySelectorAll('[data-text-file]'))button.disabled=busy||pending||!canEditDialogue();
   for(const form of scriptDialog.querySelectorAll('.dialogue-run'))updateDialogueRun(form);
   for(const form of scriptDialog.querySelectorAll('.transition-entry'))form.updateState();
   for(const form of scriptDialog.querySelectorAll('.movement-entry,.flag-entry,.wait-entry'))form.updateState();
@@ -2342,6 +2343,46 @@ async function dialogueCommand(run,type,text){
   if(await api('/api/command',command)){scriptDrafts.delete(run.semantic_id);await openActorScript(scriptEntity,true,run.semantic_id);}
   else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;
 }
+async function downloadTextJSON(report,owner,key){
+  if(busy||scriptDrafts.size||report!==scriptReport||key!==resourceStateKey())return;
+  setBusy(true);
+  try{
+    const response=await fetch('/api/text-json-source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:owner})}),data=await response.json();
+    if(!response.ok)throw new Error(data.error);
+    if(!scriptDialog.open||report!==scriptReport||key!==resourceStateKey())return;
+    const text=JSON.stringify(data,null,2)+'\n';if(new TextEncoder().encode(text).length>1024*1024)throw new Error('Text JSON exceeds 1 MiB.');
+    const url=URL.createObjectURL(new Blob([text],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='source-bound-text-runs.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    notify('Downloaded current text overrides. Edit only text; null inherits retail.');
+  }catch(error){notify(error.message,true);}finally{setBusy(false);}
+}
+function openTextJSON(report,owner,key){
+  if(busy||scriptDrafts.size||report!==scriptReport||key!==resourceStateKey())return;
+  const dialog=document.createElement('dialog');dialog.className='project-dialog';dialog.id='text-json-dialog';
+  dialog.innerHTML='<h2>Inspect text JSON</h2><p>Source-bound dialogue and menu label runs. Edit only text; null inherits retail. Inspect before Apply. Applying all file changes creates one Undo step.</p><label>Text JSON file <input type="file" accept=".json,application/json" aria-label="Text JSON file"></label><p data-file-status role="status">Choose a current exported file.</p><div data-file-changes></div><p class="dialog-error" role="alert"></p><button type="button" data-file-apply disabled>Apply text file</button><button type="button" data-file-close>Close</button>';
+  document.body.append(dialog);let revision=0,encoded=null;
+  const input=dialog.querySelector('input'),apply=dialog.querySelector('[data-file-apply]'),status=dialog.querySelector('[data-file-status]'),changes=dialog.querySelector('[data-file-changes]'),error=dialog.querySelector('.dialog-error');
+  const current=()=>dialog.open&&scriptDialog.open&&report===scriptReport&&owner===scriptEntity?.id&&key===resourceStateKey()&&canEditDialogue()&&!scriptDrafts.size;
+  dialog.addEventListener('close',()=>{revision++;dialog.remove();});dialog.querySelector('[data-file-close]').onclick=()=>dialog.close();
+  input.onchange=async()=>{
+    const ticket=++revision,file=input.files?.[0];encoded=null;apply.disabled=true;changes.replaceChildren();error.textContent='';status.textContent='';
+    if(!file||!current())return;if(file.size>1024*1024){error.textContent='Text JSON exceeds 1 MiB.';return;}
+    input.disabled=true;setBusy(true);
+    try{
+      const bytes=new Uint8Array(await file.arrayBuffer());if(ticket!==revision||!current())return;
+      let binary='';for(let n=0;n<bytes.length;n+=8192)binary+=String.fromCharCode(...bytes.subarray(n,n+8192));const candidate=btoa(binary);
+      const response=await fetch('/api/text-json-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:owner,json_base64:candidate})}),result=await response.json();
+      if(ticket!==revision||!current())return;if(!response.ok)throw new Error(result.error);
+      if(result.owner_id!==owner||!Array.isArray(result.changes)||result.changes.length>1024||result.change_count!==result.changes.length)throw new Error('Invalid text preview report.');
+      status.textContent=`${result.change_count} proposed text override changes · not applied`;
+      for(const change of result.changes){const row=document.createElement('article');row.className='script-dialogue-card';const title=document.createElement('code'),body=document.createElement('pre');title.textContent=change.run_id;row.style.minWidth='0';title.style.display='block';title.style.overflowWrap='anywhere';title.style.whiteSpace='normal';body.style.whiteSpace='pre-wrap';body.style.overflowWrap='anywhere';body.textContent=`Authored before: ${change.before===null?'inherit retail':JSON.stringify(change.before)}\nAuthored proposed: ${change.after===null?'inherit retail':JSON.stringify(change.after)}\nEffective proposed: ${JSON.stringify(change.effective)}`;row.append(title,body);changes.append(row);}
+      encoded=candidate;apply.disabled=!result.change_count;
+    }catch(exc){if(ticket===revision&&current())error.textContent=exc.message;}finally{input.disabled=false;setBusy(false);}
+  };
+  apply.onclick=async()=>{if(busy||!current()||!encoded||apply.disabled)return;
+    if(await api('/api/text-json-import',{entity_id:owner,json_base64:encoded})){dialog.close();await openActorScript(scriptEntity,true);}else error.textContent=$('status').textContent;
+  };
+  dialog.showModal();
+}
 function renderDialogueAuthoring(){
   const authoring=scriptReport?.dialogue_authoring;
   if(!state.capabilities?.actor_dialogue_authoring||!authoring){updateScriptActions();return;}
@@ -2351,6 +2392,10 @@ function renderDialogueAuthoring(){
   const evidence=document.createElement('details');evidence.className='dialogue-authoring-evidence';evidence.innerHTML='<summary>Text authoring source and limits</summary><pre class="diagnostic-detail"></pre>';evidence.querySelector('pre').textContent=JSON.stringify({source:authoring.source,limitations:authoring.limitations,unresolved_overrides:authoring.unresolved_overrides},null,2);note.after(evidence);
   if(authoring.unresolved_overrides?.length){const warning=document.createElement('div');warning.className='unresolved-dialogue';const text=document.createElement('p');text.className='dialog-error';text.textContent=`${authoring.unresolved_overrides.length} stored text overrides could not be resolved. They can be cleared without changing the imported record.`;warning.append(text);for(const identifier of authoring.unresolved_overrides){const row=document.createElement('div'),label=document.createElement('code'),button=document.createElement('button');label.textContent=identifier;button.textContent='Clear unresolved override';button.dataset.clearUnresolved=identifier;button.onclick=()=>dialogueCommand({semantic_id:identifier},'clear_dialogue_text');row.append(label,button);warning.append(row);}evidence.after(warning);}
   if(!authoring.supported){updateScriptActions();return;}
+  const files=document.createElement('div');files.className='dialog-actions';
+  const download=document.createElement('button'),inspect=document.createElement('button'),owner=scriptEntity.id,key=resourceStateKey();
+  download.textContent='Download text JSON';inspect.textContent='Inspect text JSON file';download.dataset.textFile=inspect.dataset.textFile='true';
+  download.onclick=()=>downloadTextJSON(scriptReport,owner,key);inspect.onclick=()=>openTextJSON(scriptReport,owner,key);files.append(download,inspect);evidence.after(files);
   for(const run of authoring.runs ?? []){
     const parent=[...$('script-dialogue').querySelectorAll('.script-dialogue-card')].find(card=>card.dataset.dialogueId===run.dialogue_id) ?? $('script-dialogue');
     const form=document.createElement('form');form.className='dialogue-run';form.run=run;

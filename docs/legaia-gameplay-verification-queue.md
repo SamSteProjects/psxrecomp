@@ -366,3 +366,20 @@ play. The artifact is a serialization review probe. Later gameplay acceptance
 requires an evidenced reachable menu in the intended story state, then visual
 label/font/wrapping inspection and confirmation that all choices retain their
 original behavior. No game launch or manual verification is requested now.
+
+
+## Text-file multi-label source probe — 2026-09-30, deferred
+
+Saved project: `local-output/sdk-20260909/text-json-project-20260930/project.legaia.json`.
+Package inside that project:
+`Builds/0010e9bffbcfadef/legaia.sdk.b344e5758277-0.1.0-0010e9bffbcfadef.psxmod`;
+SHA256 `86a89fd5deff5ce9bbf113fce26c864085481604831bfd9b32a731db8c975bd4`.
+
+Text JSON atomically added two source-menu label overrides to the earlier
+actor0001 override. Browser preview/no-write, Apply/Undo/Redo/Save and reopened
+package readback passed. Three authored glyph runs match expected MAN exactly.
+`browser-check.json`, `late-read-check.json`, `package-readback.json` and
+`text-file-preview-final.png` retain offline evidence. This source menu's story
+reachability remains unproven; it is not a claimed normal-gameplay checkpoint.
+Later visible label/font/selection verification still requires an evidenced
+reachable menu. No game launch or immediate manual check is requested.

@@ -509,7 +509,7 @@ class EditorHandler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path == "/api/texture-replacement" else 32768
+            request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/text-json-preview", "/api/text-json-import") else 32768
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
@@ -913,6 +913,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
                         raise ProjectError("Actor candidate inspection accepts only an imported entity_id")
                     self._json(200, self.server.actor_candidate_inspection(body["entity_id"]))
+                    return
+                if route == "/api/text-json-source":
+                    if set(body) != {"entity_id"}:
+                        raise ProjectError("Text JSON export accepts only entity_id")
+                    self._json(200, self.server.project.dialogue_json_source(body["entity_id"]))
+                    return
+                if route in ("/api/text-json-preview", "/api/text-json-import"):
+                    if set(body) != {"entity_id", "json_base64"} or not isinstance(body["json_base64"], str) or len(body["json_base64"]) > 1398104:
+                        raise ProjectError("Text JSON accepts only owner and bounded base64 file")
+                    try:
+                        content = base64.b64decode(body["json_base64"], validate=True)
+                    except ValueError as exc:
+                        raise ProjectError("Text JSON requires valid base64") from exc
+                    project = self.server.project
+                    result = (project.preview_dialogue_json if route.endswith("preview") else project.import_dialogue_json)(body["entity_id"], content)
+                    self._json(200, self.server.state() if route.endswith("import") else result)
                     return
                 if route == "/api/actor-script":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:

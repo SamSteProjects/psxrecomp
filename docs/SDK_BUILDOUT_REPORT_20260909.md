@@ -15,6 +15,20 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Source-bound text JSON workflow (2026-09-30):** the script Inspector
+exports supported dialogue/menu runs and previews external JSON before Apply.
+Only each run's `text` is editable; null inherits retail. The file retains the
+complete supported collection, verified MAN identity and current text-override
+binding. All changes validate before one Undo entry; unrelated components stay
+unchanged. Six focused text/project tests and editor/operand JavaScript checks
+passed. Retail browser export/no-op/preview/immutable-field/stale-import,
+two-run Apply/Undo/Redo/Save, oversized-file and closed pending-read guards
+passed. Independent saved-project/package readback matched all three authored
+label runs, including the prior override. Final preview screenshot and layout
+bounds inspected. This follows the392-test checkpoint and has separate evidence.
+See the [text-file guide](legaia-text-json-authoring.md). No game was launched;
+menu reachability and display/selection remain deferred.
+
 **Menu instruction-to-label navigation (2026-09-30):** decoded picker
 choices now show separate retail/authored/effective glyph-run text and links to
 the exact label forms. Owner, option, PCs, targets, capacity and source tokens

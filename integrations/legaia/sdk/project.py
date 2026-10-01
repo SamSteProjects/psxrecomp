@@ -745,6 +745,103 @@ class ProjectService:
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
 
+    def _dialogue_json_document(self, identifier: str, context) -> dict:
+        options = context.options(identifier)
+        authored = self.overrides.get(identifier, {}).get("Dialogue", {}).get("runs", {})
+        known = {run["semantic_id"] for run in options["runs"]}
+        if not options["supported"] or set(authored) - known:
+            raise ProjectError("Text JSON requires supported runs and no unresolved text overrides")
+        document = dict(schema="legaia.text-runs.v1", owner_id=identifier,
+                        decoded_man_sha256=context.provenance()["decoded_man_sha256"],
+                        authored_state_sha256=digest(authored), runs=[
+                            dict(run_id=run["semantic_id"], byte_length=run["byte_length"],
+                                 retail_text=run["text"], text=authored.get(run["semantic_id"]))
+                            for run in options["runs"]])
+        if len(canonical(document)) > 1024 * 1024:
+            raise ProjectError("Text JSON exceeds the 1 MiB file bound")
+        return document
+
+    def dialogue_json_source(self, identifier: str) -> dict:
+        return self._dialogue_json_document(identifier, self._dialogue_context(identifier))
+
+    def _prepare_dialogue_json(self, identifier: str, content: bytes):
+        if self.mode != "edit":
+            raise ProjectError("Text JSON import requires Edit mode")
+        if not isinstance(content, bytes) or not 0 < len(content) <= 1024 * 1024:
+            raise ProjectError("Text JSON requires a nonempty file of at most 1 MiB")
+        def unique(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ProjectError("Text JSON contains duplicate object keys")
+                result[key] = value
+            return result
+        def finite(_):
+            raise ProjectError("Text JSON requires finite values")
+        try:
+            document = json.loads(content.decode("utf-8"), object_pairs_hook=unique, parse_constant=finite)
+        except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+            raise ProjectError("Text JSON is not bounded UTF-8 JSON") from exc
+        context = self._dialogue_context(identifier)
+        expected = self._dialogue_json_document(identifier, context)
+        if not isinstance(document, dict) or set(document) != set(expected):
+            raise ProjectError("Text JSON has unknown or missing fields")
+        if any(document[key] != expected[key] for key in expected if key != "runs"):
+            raise ProjectError("Text JSON source or authored-state binding is stale or belongs to another owner")
+        items = document["runs"]
+        if not isinstance(items, list) or len(items) != len(expected["runs"]):
+            raise ProjectError("Text JSON must retain the complete supported run collection")
+        source = {run["run_id"]: run for run in expected["runs"]}
+        requested, seen, changes = {}, set(), []
+        from importer.dialogue_authoring import validate_dialogue_text
+        for item in items:
+            if not isinstance(item, dict) or set(item) != {"run_id", "byte_length", "retail_text", "text"}:
+                raise ProjectError("Text JSON run has unknown or missing fields")
+            run_id = item["run_id"]
+            if not isinstance(run_id, str) or run_id not in source or run_id in seen:
+                raise ProjectError("Text JSON run is duplicated or not supported by this owner")
+            seen.add(run_id)
+            original = source[run_id]
+            if type(item["byte_length"]) is not int or not isinstance(item["retail_text"], str):
+                raise ProjectError("Text JSON immutable run metadata requires exact scalar types")
+            if digest({key:value for key,value in item.items() if key != "text"}) != digest({key:value for key,value in original.items() if key != "text"}):
+                raise ProjectError("Text JSON changed immutable run identity, capacity or retail text")
+            text = item["text"]
+            if text is not None:
+                validate_dialogue_text(text)
+                if len(text) > original["byte_length"]:
+                    raise ProjectError("Text JSON replacement exceeds its source run capacity")
+                requested[run_id] = text
+            if text != original["text"]:
+                changes.append(dict(run_id=run_id, before=original["text"], after=text,
+                                    retail=original["retail_text"],
+                                    effective=original["retail_text"] if text is None else text.ljust(original["byte_length"])))
+        context.patch(requested)
+        return requested, dict(owner_id=identifier, change_count=len(changes), changes=changes,
+                               candidate_sha256=hashlib.sha256(content).hexdigest(),
+                               scope="equal-span-text-runs", gameplay="not_verified")
+
+    def preview_dialogue_json(self, identifier: str, content: bytes) -> dict:
+        return self._prepare_dialogue_json(identifier, content)[1]
+
+    def import_dialogue_json(self, identifier: str, content: bytes) -> dict:
+        requested, report = self._prepare_dialogue_json(identifier, content)
+        before = deepcopy(self.overrides.get(identifier))
+        after = deepcopy(before or {})
+        if requested:
+            after["Dialogue"] = {"runs": requested}
+        else:
+            after.pop("Dialogue", None)
+        after = after or None
+        if before != after:
+            if after is None:
+                self.overrides.pop(identifier, None)
+            else:
+                self.overrides[identifier] = after
+            self.undo_stack.append(dict(entity_id=identifier, before=before, after=deepcopy(after)))
+            self.redo_stack.clear()
+        return report
+
     def _validate_texture_binding(self, binding: dict) -> None:
         if (not isinstance(binding, dict) or set(binding) != {"asset_sha256", "byte_length", "format", "source_scene_id"}
                 or binding["format"] != "tim" or type(binding["byte_length"]) is not int

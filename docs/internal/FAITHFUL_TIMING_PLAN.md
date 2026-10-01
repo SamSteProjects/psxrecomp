@@ -213,6 +213,28 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — SDK source-bound text JSON authoring
+
+- Previous goal turn committed menu label navigation (`e57a24e3`), concrete
+  progress. Continued external text-file workflow without gameplay verification.
+- Added source/owner/current text-state bound complete-run JSON export, pure
+  preview and atomic import using one history entry; null inherits retail.
+  Only text changes are permitted, with bounded/duplicate/unknown-field checks
+  and existing equal-span glyph serializer. Other components remain unchanged.
+- Connected download/file preview/Apply UI with draft gating, no-op disable,
+  1MiB limit and close/stale guards. File input disables during inspection.
+- Six focused text/project tests passed, plus operand Node checks and syntax.
+  Retail30-run download, no-op/preview, altered metadata/stale rejection,
+  two-run Apply/Undo/Redo/Save passed. Oversize/closed read sent no requests.
+- Private text-json project reopened; package SHA256
+  `86a89fd5deff5ce9bbf113fce26c864085481604831bfd9b32a731db8c975bd4`
+  independently decoded to exactly expected MAN with three authored labels,
+  including the prior override. Final preview wrapping/bounds/screenshot checked.
+- Updated buildout/status/matrix/guide and deferred queue.392-test full suite
+  predates this addition. No game launch or menu reachability/selection claim.
+  Temporary browser/server stopped; full SDK objective remains active.
+
+
 ### 2026-09-30 — SDK menu instruction-to-label workflow
 
 - Previous goal turn committed menu authoring (`87211ba1`), concrete progress.

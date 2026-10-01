@@ -703,3 +703,13 @@ browser checks found30 links, preserved an unapplied draft and unchanged
 project/camera/service, and rejected stale source or withdrawn report navigation.
 No authoring requests or page errors; screenshot inspected. This follows the
 392-test checkpoint and retains separate JavaScript/browser evidence.
+
+2026-09-30 source-bound text files: connected script/dialogue workspace exports
+complete supported run snapshots (including menu labels), previews proposed
+changes, and applies atomically through one history entry. Immutable metadata,
+MAN/owner/current text-state binding, 1MiB file limit and equal-span serializer
+checks guard imports. Null clears a run override; other components survive.
+Six focused project/text tests, Node operand checks and syntax passed. Retail
+browser download/no-op/preview/rejection/Apply/Undo/Redo/Save/late-read checks
+and independent package readback passed. See [text JSON guide](legaia-text-json-authoring.md).
+Full392-test checkpoint predates this addition; no gameplay acceptance.
