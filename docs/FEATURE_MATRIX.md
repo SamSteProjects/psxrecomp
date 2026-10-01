@@ -721,3 +721,12 @@ Six focused project/text tests, Node operand checks and syntax passed. Retail
 browser download/no-op/preview/rejection/Apply/Undo/Redo/Save/late-read checks
 and independent package readback passed. See [text JSON guide](legaia-text-json-authoring.md).
 Full392-test checkpoint predates this addition; no gameplay acceptance.
+
+2026-09-30 renderer newline fix: plain-glyph authoring excludes pipe0x7C, a
+font-renderer newline despite the MES Glyph event. Source bytes split editable
+runs and are preserved; all write paths reject introducing them. Legacy project
+readback preserves prior files/overrides and exposes an invalid effective value;
+Clear/Undo or supported replacement resolves the edit.58 focused retail-enabled
+tests (29.566s, no skips), Node/syntax and retail browser rejection/legacy review
+passed. Synthetic spans establish byte preservation; town01 scan found no
+reached newline glyphs. This follows397-test checkpoint; gameplay deferred.

@@ -16,7 +16,7 @@ inherits retail text. Apply or discard drafts before project actions. Existing
 Undo/Redo, Save/Open, authored-asset navigation and Build use the same Dialogue
 component as ordinary text; menu run IDs distinguish option ownership.
 
-Only contiguous one-byte printable glyph runs are writable. Caret, controls,
+Only contiguous one-byte printable glyph runs are writable. Caret, pipe (the renderer newline), controls,
 substitutions, escaped/wide glyphs, longer text, jump entries and continuation
 editing are unsupported. Controls split labels into separate editable runs.
 Source-qualified IDs are reverified on edit and Build; aliased records and
@@ -69,3 +69,25 @@ Fresh regression update:397 retail-enabled Python discovery tests passed in
 164.669s, with no skips, against unchanged source`e1b88c22` on2026-09-30.
 This supersedes the older392-test checkpoint noted above and includes the menu
 and text-file services. Browser/package/gameplay evidence remains separate.
+
+
+Renderer-control correction (2026-09-30): byte0x7C (`|`) is not a writable
+plain glyph. Pinned font code/docs establish that it changes lines, although MES
+surfaces Glyph(0x7C). Source pipe bytes split run boundaries and stay untouched.
+New replacements containing pipe are rejected in forms, API, files and Build.
+Older saved projects retain their original bytes and overrides when opened;
+legacy pipe edits are shown as invalid/unavailable and can be cleared or replaced.
+No automatic migration or source-text rewrite occurs. Existing file snapshots
+whose run boundaries changed must be freshly exported before import.
+
+58 focused retail-enabled tests passed in29.566s with no skips. Synthetic
+message/menu edits preserve all source newline bytes; retail form/command/file
+rejection leaves project state unchanged. A private legacy project reopened
+unchanged, Build failed before output creation, and the Inspector retained the
+edit with Apply disabled, Clear available, and Undo restoring the clean saved
+state. The screenshot was inspected. Town01's52 actors had no reached newline
+glyphs in this scan, so this is not proof of preservation across retail maps.
+Private evidence: `text-json-project-20260930/newline-browser-check.json`,
+`legacy-newline-project-20260930/legacy-review.json` and
+`legacy-newline-project-20260930/legacy-browser-check.json`, under
+`local-output/sdk-20260909/`. The397-test checkpoint predates this fix.

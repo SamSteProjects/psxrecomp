@@ -36,6 +36,24 @@ def fixture(script=b"\x1fHello\0", alias=False):
 
 
 class DialogueAuthoringTests(unittest.TestCase):
+    def test_renderer_newlines_split_editable_runs_and_are_preserved(self):
+        # MES yields Glyph(0x7C), but the font renderer uses it as newline.
+        for script in (b"\x1fHello|World\0",
+                       b"\x1fQ\0\x27\x12\0\x10\0\x1fYes|No\0\x1fEnd\0\x4c\xff"):
+            context,original=fixture(script)
+            runs=context.options(ACTOR)['runs']
+            self.assertTrue(runs)
+            self.assertTrue(all('|' not in run['text'] for run in runs))
+            self.assertEqual([run['text'] for run in runs],['Hello','World'] if script[1:2]==b'H' else ['Yes','No','End'])
+            changed,audit=context.patch({runs[0]['semantic_id']:'OK'})
+            self.assertEqual(len(changed),len(original))
+            self.assertEqual([i for i,b in enumerate(original) if b==0x7c],[i for i,b in enumerate(changed) if b==0x7c])
+            offset=runs[0]['decoded_byte_offset'];size=runs[0]['byte_length']
+            self.assertEqual(changed[:offset],original[:offset]);self.assertEqual(changed[offset+size:],original[offset+size:])
+            with self.assertRaisesRegex(ImportError,'renderer newline'):
+                context.patch({runs[0]['semantic_id']:'|'})
+            self.assertEqual(context.patch({}), (original,[]))
+
     def test_menu_labels_preserve_targets_controls_and_append_offsets(self):
         for count in (2, 3, 4):
             for continuation in (b"", b"\x24", b"\x4c\xff"):
@@ -225,7 +243,7 @@ class DialogueAuthoringTests(unittest.TestCase):
     def test_invalid_text_ids_capacity_and_late_failure_are_transactional(self):
         context, original = fixture()
         run = context.options(ACTOR)["runs"][0]
-        for text in (None, True, {}, "a\nb", "^", "\x1f", "\x7f", "caf\u00e9", "a" * 4097):
+        for text in (None, True, {}, "a\nb", "^", "|", "\x1f", "\x7f", "caf\u00e9", "a" * 4097):
             with self.subTest(text_type=type(text).__name__), self.assertRaises(ImportError):
                 validate_dialogue_text(text)
         self.assertEqual(validate_dialogue_text(""), "")

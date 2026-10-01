@@ -15,6 +15,30 @@ from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class ProjectDialogue(unittest.TestCase):
+    def test_legacy_renderer_newline_opens_without_silent_edits_and_can_clear(self):
+        from test_importer_dialogue_authoring import fixture,ACTOR
+        context,_=fixture()
+        run=context.options(ACTOR)['runs'][0]['semantic_id']
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene())
+            p.overrides={ACTOR:{'Dialogue':{'runs':{run:'a|b'}}}}
+            saved=p.save();original=saved.read_bytes();restored=ProjectService.open(saved)
+            self.assertEqual(restored.overrides,p.overrides);self.assertEqual(saved.read_bytes(),original)
+            with patch.object(restored,'_dialogue_context',return_value=context):
+                option=restored.dialogue_options(ACTOR)['runs'][0]
+                self.assertIsNone(option['effective_text']);self.assertIn('renderer newline',option['validation_error'])
+                with self.assertRaisesRegex(ImportError,'renderer newline'):
+                    restored.command(dict(type='set_dialogue_text',entity_id=ACTOR,run_id=run,text='a|b'))
+                self.assertEqual(restored.overrides,p.overrides)
+                from sdk.project import canonical
+                document=restored.dialogue_json_source(ACTOR);document['runs'][0]['text']=None
+                self.assertEqual(restored.preview_dialogue_json(ACTOR,canonical(document))['change_count'],1)
+                restored.import_dialogue_json(ACTOR,canonical(document));self.assertEqual(restored.overrides,{})
+                restored.undo();self.assertEqual(restored.overrides,p.overrides)
+            restored.command(dict(type='clear_dialogue_text',entity_id=ACTOR,run_id=run))
+            self.assertEqual(restored.overrides,{})
+            restored.undo();self.assertEqual(restored.overrides,p.overrides)
+
     def test_menu_label_commands_use_verified_spans_history_and_persistence(self):
         from test_importer_dialogue_authoring import fixture, literals
         from importer.dialogue_authoring import DialogueAuthoringContext

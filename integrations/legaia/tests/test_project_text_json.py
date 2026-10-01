@@ -43,7 +43,7 @@ class TextJSONTests(unittest.TestCase):
                     lambda d:d.update(authored_state_sha256='0'*64),lambda d:d.update(extra=True),
                     lambda d:d['runs'].clear(),lambda d:d['runs'].append(deepcopy(d['runs'][0])),
                     lambda d:d['runs'][0].update(byte_length=True),lambda d:d['runs'][0].update(retail_text='Wrong'),
-                    lambda d:d['runs'][0].update(text='Longer'),lambda d:d['runs'][0].update(text='^'),
+                    lambda d:d['runs'][0].update(text='Longer'),lambda d:d['runs'][0].update(text='^'),lambda d:d['runs'][0].update(text='|'),
                     lambda d:d['runs'][0].update(text=3),lambda d:d['runs'][0].update(run_id='bad')]
                 for mutate in mutations:
                     document=deepcopy(source);mutate(document)

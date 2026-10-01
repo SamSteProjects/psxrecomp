@@ -40,7 +40,7 @@ export function menuLabelEditors(report){
   for(const row of rows){if(!row||!pc(row.pc))continue;if(source.has(row.pc)){ambiguousPC.add(row.pc);source.delete(row.pc);}else if(!ambiguousPC.has(row.pc))source.set(row.pc,row);}
   const result=new Map(),seen=new Set(),ambiguous=new Set();
   const hex=value=>value.toString(16).padStart(4,'0');
-  const plain=value=>typeof value==='string'&&/^[\x20-\x7e]*$/.test(value)&&!value.includes('^');
+  const plain=value=>typeof value==='string'&&/^[\x20-\x7e]*$/.test(value)&&!value.includes('^')&&!value.includes('|');
   for(const run of authoring.runs){
     if(run?.kind!=='menu_label'||run.actor_id!==owner||!pc(run.menu_pc)||!pc(run.pc))continue;
     const row=source.get(run.menu_pc),options=row?.operands?.options,count=row?.operands?.option_count;

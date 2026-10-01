@@ -29,7 +29,7 @@ const original=JSON.stringify(menuReport),labels=menuLabelEditors(menuReport);
 assert.equal(labels.get('8:0')[0].effective,'OK ');labels.get('8:0')[0].retail='changed';assert.equal(JSON.stringify(menuReport),original);
 for(const update of [{actor_id:'scene://other/actors/man-p1/0001'},{menu_pc:9},{pc:13},{pc:15},{option_index:1},{option_count:4},
  {entry_pc:10},{relative_jump:12},{encoded_target:23},{semantic_id:prefix+'/menu/0008/option/0/run/000f'},
- {byte_length:2},{max_length:4},{text:'^es'},{text:'No!'},{authored_text:'Long'},{effective_text:'Yes'}]){
+ {byte_length:2},{max_length:4},{text:'^es'},{text:'Y|s'},{text:'No!'},{authored_text:'Long'},{authored_text:'|',effective_text:'|  '},{effective_text:'Yes'}]){
  assert.equal(menuLabelEditors({...menuReport,dialogue_authoring:{...menuReport.dialogue_authoring,runs:[{...label,...update}]}}).size,0);
 }
 assert.equal(menuLabelEditors({...menuReport,semantic_id:'script://other/actors/man-p1/0001'}).size,0);

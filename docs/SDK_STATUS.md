@@ -52,6 +52,21 @@ TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
 focused tests passed with no skips. This feature is included in the current392-test source checkpoint; browser
 and package evidence remain separate. Gameplay appearance remains deferred.
 
+**Renderer newline preservation fix (2026-09-30):** the plain-glyph
+writer now excludes byte0x7C (`|`), which the pinned font renderer uses as a
+newline even though MES emits it as a Glyph event. Source newline bytes split
+editable runs and remain unchanged; form/API/text-file/Build writes reject new
+pipe characters. Legacy saved projects open without rewriting their files;
+invalid pipe edits have an unavailable effective value and can be cleared or
+replaced. Clear/Undo and file-based null clearing retain normal history.
+58 focused retail-enabled tests passed in29.566s with no skips, plus Node binding
+checks and editor syntax. Retail browser rejection and legacy Inspector/Clear/
+Undo passed with no page errors; legacy Build rejection created no output.
+Synthetic dialogue/menu checks prove newline-byte preservation. The town01
+52-actor read-only scan found no reached newline glyphs and no offered run
+containing pipe; it is not wider retail preservation evidence. This fix follows
+the397-test source checkpoint. No game launched; layout/gameplay remain deferred.
+
 **Source-bound text JSON workflow (2026-09-30):** the script Inspector
 exports supported dialogue/menu runs and previews external JSON before Apply.
 Only each run's `text` is editable; null inherits retail. The file retains the

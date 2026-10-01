@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Preserve renderer newline controls in SDK text authoring
+
+- Previous goal turn committed fresh397-test checkpoint (`91445f83`), concrete
+  validation progress and evidence for the next fix. Implemented pinned renderer
+  newline0x7C protection without changing MES event classification or runtime.
+- New pipe characters rejected by writer/commands/JSON/forms. Existing newline
+  bytes split plain runs, and shape comparison retains them. Project reader alone
+  can preserve legacy pipe edits for review; effective value is invalid, writes
+  remain blocked, and Clear/Undo/file-null clearing or supported replacement works.
+  No saved files or source bytes are automatically rewritten.
+-58 focused retail-enabled tests passed in29.566s, no skips; updated operand/menu
+  Node checks and syntax pass. Follow-up7 project/text tests passed after adding
+  file-null legacy-clear assertions. Synthetic ordinary/menu fixtures establish
+  control-byte preservation. Town01 scan of52 actors had0 reached newline glyphs;
+  that read-only result does not establish other maps' source preservation.
+- Retail browser form/command/file rejection left service state unchanged, no
+  page errors. Private legacy project reopened byte-identical; Build rejected
+  before creating outputs. Inspector retained invalid edit, disabled Apply,
+  permitted Clear, and Undo restored the clean saved state; screenshot inspected.
+- Evidence under private text-json/legacy-newline projects and
+  `renderer-newline-source-check.json`. Updated report/status/matrix/guides and
+  provenance.397-test source checkpoint predates this fix. All owned browsers/
+  servers terminal/stopped; no game launch. Full SDK goal remains active.
+
+
 ### 2026-09-30 — Fresh397-test SDK checkpoint and next text-control evidence
 
 - Previous goal turn committed atomic text files (`e1b88c22`), concrete progress.

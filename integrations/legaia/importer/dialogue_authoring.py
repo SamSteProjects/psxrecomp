@@ -5,6 +5,7 @@ pipeline.REFERENCE_COMMIT: crates/mes/src/lib.rs byte walker (0x5E is a two-byte
 spacing alias), engine-core/src/dialog.rs inline MAN segments, and
 asset/src/man_section.rs / engine-core/src/man_field_scripts/records.rs bounds.
 Menu label/jump layout also follows crates/mes/src/picker.rs at the same pin.
+Font renderer newline 0x7C follows crates/font/src/lib.rs and docs/formats/dialog-font.md.
 No text relocation, control editing, story execution or font layout is inferred.
 """
 from __future__ import annotations
@@ -27,7 +28,7 @@ MAX_TEXT_LENGTH = 4096
 MAX_EDIT_RUNS = 1024
 MAX_EDIT_BYTES = 65536
 LIMITATIONS = [
-    "Only evidenced contiguous one-byte printable ASCII glyph runs are editable; caret, controls and substitutions are excluded.",
+    "Only evidenced contiguous one-byte printable ASCII glyph runs are editable; caret, renderer newline (pipe), controls and substitutions are excluded.",
     "Shorter replacements are right-padded with spaces to preserve every byte offset; longer replacements are rejected.",
     "Ordinary dialogue requires no instruction stops; menu labels require decoded nonconflicting picker spans. Aliased records are unsupported.",
     "Menu labels preserve jump entries, continuation bytes, token controls and every record offset; pager execution remains unresolved.",
@@ -41,12 +42,12 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def validate_dialogue_text(text: Any) -> str:
-    """Validate authored project text without requiring proprietary source data."""
+def validate_dialogue_text(text: Any, *, allow_renderer_newline: bool = False) -> str:
+    """Validate text; the legacy reader flag never enables serializer writes."""
     if not isinstance(text, str) or len(text) > MAX_TEXT_LENGTH:
         raise ImportError("dialogue text must be a string of at most 4096 characters")
-    if any(not 0x20 <= ord(c) <= 0x7E or c == "^" for c in text):
-        raise ImportError("dialogue text requires printable ASCII excluding caret (^); control bytes and non-ASCII are unsupported")
+    if any(not 0x20 <= ord(c) <= 0x7E or c == "^" or (c == "|" and not allow_renderer_newline) for c in text):
+        raise ImportError("dialogue text requires printable ASCII excluding caret (^) and renderer newline (|); control bytes and non-ASCII are unsupported")
     return text
 
 
@@ -62,7 +63,7 @@ def validate_run_id(actor_id: Any, run_id: Any) -> str:
 
 def _plain_glyph(token: dict) -> bool:
     return (token["kind"] == "glyph" and token["length"] == 1 and
-            0x20 <= token["value"] <= 0x7E and token["value"] != 0x5E)
+            0x20 <= token["value"] <= 0x7E and token["value"] not in (0x5E, 0x7C))
 
 
 def _shape(report: dict) -> dict:

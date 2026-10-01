@@ -2320,9 +2320,9 @@ function updateScriptActions(){
 function updateDialogueRun(form){
   const run=form.run,input=form.querySelector('textarea'),text=input.value,capacity=run.max_length;
   const validCapacity=Number.isInteger(capacity)&&capacity>=0&&capacity<=4096;
-  const characters=/^[\x20-\x7e]*$/.test(text)&&!text.includes('^');
+  const characters=/^[\x20-\x7e]*$/.test(text)&&!text.includes('^')&&!text.includes('|');
   const valid=validCapacity&&characters&&text.length<=capacity;
-  const error=!validCapacity?'The source capacity is unavailable.':!characters?'Use printable ASCII only. Caret (^), line breaks and control characters are unsupported.':text.length>capacity?`Too long: ${text.length} bytes exceeds ${capacity} source bytes.`:'';
+  const error=!validCapacity?'The source capacity is unavailable.':!characters?'Use printable ASCII only. Caret (^), pipe (the game newline), line breaks and control characters are unsupported.':text.length>capacity?`Too long: ${text.length} bytes exceeds ${capacity} source bytes.`:'';
   input.disabled=busy||!canEditDialogue();input.setAttribute('aria-invalid',String(!valid));
   form.querySelector('.run-counter').textContent=error||`${text.length} / ${capacity} bytes · ${capacity-text.length} space padding bytes after Apply`;
   form.querySelector('.run-counter').classList.toggle('invalid',!valid);
@@ -2387,7 +2387,7 @@ function renderDialogueAuthoring(){
   const authoring=scriptReport?.dialogue_authoring;
   if(!state.capabilities?.actor_dialogue_authoring||!authoring){updateScriptActions();return;}
   const note=document.createElement('div');note.className='dialogue-authoring-note';
-  note.textContent=authoring.supported?'Supported plain-text runs can be replaced within their source byte capacity. Shorter text is padded with spaces; empty text becomes all spaces. Controls, substitutions and menu jump targets stay unchanged. Menu execution remains unresolved. Apply each draft before Save; unapplied drafts are discarded when this dialog is reopened.':authoring.reason ?? 'This actor has no supported text runs for authoring.';
+  note.textContent=authoring.supported?'Supported plain-text runs can be replaced within their source byte capacity. Shorter text is padded with spaces; empty text becomes all spaces. Controls, substitutions, renderer newline bytes (|) and menu jump targets stay unchanged. Menu execution remains unresolved. Apply each draft before Save; unapplied drafts are discarded when this dialog is reopened.':authoring.reason ?? 'This actor has no supported text runs for authoring.';
   $('script-dialogue').before(note);
   const evidence=document.createElement('details');evidence.className='dialogue-authoring-evidence';evidence.innerHTML='<summary>Text authoring source and limits</summary><pre class="diagnostic-detail"></pre>';evidence.querySelector('pre').textContent=JSON.stringify({source:authoring.source,limitations:authoring.limitations,unresolved_overrides:authoring.unresolved_overrides},null,2);note.after(evidence);
   if(authoring.unresolved_overrides?.length){const warning=document.createElement('div');warning.className='unresolved-dialogue';const text=document.createElement('p');text.className='dialog-error';text.textContent=`${authoring.unresolved_overrides.length} stored text overrides could not be resolved. They can be cleared without changing the imported record.`;warning.append(text);for(const identifier of authoring.unresolved_overrides){const row=document.createElement('div'),label=document.createElement('code'),button=document.createElement('button');label.textContent=identifier;button.textContent='Clear unresolved override';button.dataset.clearUnresolved=identifier;button.onclick=()=>dialogueCommand({semantic_id:identifier},'clear_dialogue_text');row.append(label,button);warning.append(row);}evidence.after(warning);}

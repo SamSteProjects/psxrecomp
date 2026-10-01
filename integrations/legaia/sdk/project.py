@@ -503,7 +503,7 @@ class ProjectService:
         self.selected = None
         self._live_correlation = None
 
-    def _validate_dialogue(self, identifier: str, value: dict) -> None:
+    def _validate_dialogue(self, identifier: str, value: dict, *, allow_legacy_newline=False) -> None:
         from importer.dialogue_authoring import MAX_EDIT_RUNS, validate_dialogue_text, validate_run_id
         self._dialogue_document(identifier)
         if (not isinstance(value, dict) or set(value) != {"runs"} or
@@ -511,7 +511,7 @@ class ProjectService:
             raise ProjectError("Dialogue requires a bounded nonempty text-run collection")
         for run_id, text in value["runs"].items():
             validate_run_id(identifier, run_id)
-            validate_dialogue_text(text)
+            validate_dialogue_text(text, allow_renderer_newline=allow_legacy_newline)
 
     def _dialogue_document(self, identifier: str) -> dict:
         """Resolve the imported scene; actual P2 membership is verified on edit/build."""
@@ -739,7 +739,10 @@ class ProjectService:
             replacement = authored.get(run_id)
             run["authored_text"] = replacement
             run["effective_text"] = run["text"] if replacement is None else replacement.ljust(run["max_length"])
-            if replacement is not None and len(replacement) > run["max_length"]:
+            if replacement is not None and "|" in replacement:
+                run["effective_text"] = None
+                run["validation_error"] = "Saved replacement contains renderer newline (|); clear it or replace it with supported glyphs"
+            elif replacement is not None and len(replacement) > run["max_length"]:
                 run["effective_text"] = None
                 run["validation_error"] = "Saved replacement exceeds the verified source run capacity"
         result["unresolved_overrides"] = sorted(set(authored) - known)
@@ -1837,7 +1840,7 @@ class ProjectService:
                 result.overrides.setdefault(identifier, {})["ActorAppearance"] = deepcopy(components["ActorAppearance"])
             if "Dialogue" in components:
                 # Offline opening checks syntax; actual source capacities are verified on edit/build.
-                result._validate_dialogue(identifier, components["Dialogue"])
+                result._validate_dialogue(identifier, components["Dialogue"], allow_legacy_newline=True)
                 result.overrides.setdefault(identifier, {})["Dialogue"] = deepcopy(components["Dialogue"])
             if "Transitions" in components:
                 result._validate_transitions(identifier, components["Transitions"])

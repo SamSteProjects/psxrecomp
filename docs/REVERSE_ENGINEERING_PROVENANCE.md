@@ -329,3 +329,18 @@ plain-glyph validation. It preserves branch/control bytes and compares graph,
 token and record boundaries after editing. Static labels do not establish
 pager continuation execution, runtime choices, font layout or story reachability.
 See [menu-label authoring](legaia-menu-label-authoring.md) for current evidence.
+
+
+### Renderer newline authoring boundary (2026-09-30)
+
+At pin`d6e64c68ede25813d35db20980da82a1a025549b`,
+`crates/font/src/lib.rs` defines `NEWLINE=0x7C`; Font::layout resets X and
+advances Y by LINE_HEIGHT for that byte, and wrapping retains existing newlines.
+`docs/formats/dialog-font.md` attributes the newline to the retail renderer
+(FUN_80036888/FUN_80036044). MES decoding independently surfaces it as Glyph.
+The SDK preserves MES classification while excluding it from editable plain-glyph
+spans and new authored strings. This distinguishes source bytecode decoding from
+renderer controls; it does not simulate layout or prove current gameplay.
+Legacy project loading may retain an old pipe edit for review/clear, but the
+serializer always uses strict validation.58 focused tests and separate retail
+browser rejection/legacy review passed; the397-test checkpoint predates the fix.
