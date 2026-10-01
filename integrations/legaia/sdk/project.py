@@ -1299,6 +1299,10 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'apply_actor_preset_batch':
+            from .preset_batch import apply
+            apply(self, command)
+            return
         from .scene_views import COMMANDS as view_commands, command as view_command
         if isinstance(command.get('type'), str) and command.get('type') in view_commands:
             view_command(self, command)

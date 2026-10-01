@@ -137,3 +137,8 @@
 #asset-search-help,#resource-status{grid-column:1 / -1}
 #asset-search-help{font-size:10px;overflow-wrap:anywhere}
 #asset-search-help p{line-height:1.5;color:var(--muted)}
+
+#preset-batch-dialog{width:min(1000px,calc(100vw - 30px));max-height:90vh;overflow:auto}
+#preset-batch-dialog table{width:100%;table-layout:fixed;font-size:11px}
+#preset-batch-dialog td,#preset-batch-dialog th{overflow-wrap:anywhere;text-align:left;padding:6px;vertical-align:top}
+#preset-batch-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere}

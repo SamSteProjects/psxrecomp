@@ -1,3 +1,4 @@
+import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
@@ -130,7 +131,7 @@ function renderObservedNodes(query='',nodeIds=null){
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 };
 
-let scenePose=null,savedActorSelections=null,savedSceneViews=null;
+let scenePose=null,savedActorSelections=null,savedSceneViews=null,groupPresetTool=null;
 let scriptTargetOverlay=null,scriptTargetHits=[],pickScriptTargets=false;
 const scriptTargetTools=document.createElement('div');scriptTargetTools.id='script-target-tools';scriptTargetTools.hidden=true;
 scriptTargetTools.innerHTML='<span role="status"></span><select aria-label="Script target instruction"></select><button type="button" data-inspect>Inspect target</button><button type="button" data-pick aria-pressed="false">Pick script target</button><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
@@ -576,7 +577,7 @@ function setBusy(value) {
   if($('project-text'))$('project-text').disabled=value||!state.capabilities?.scene_text_search;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
-  savedActorSelections?.synchronize();savedSceneViews?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
+  savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -749,7 +750,7 @@ function updateActorGroupSelection(){
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
   actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;actorGroupTools.querySelector('[data-review-components]').disabled=busy||actorGroupSelection.length<2;const appearanceButton=document.querySelector('[data-group-appearance]');if(appearanceButton)appearanceButton.disabled=busy||!canEdit()||actorGroupSelection.length<2||!!actorGroupInspection||!!scenePose;
   actorGroupTools.querySelector('[data-frame-selection]').disabled=busy||!actorGroupSelection.length||!scenePreviewCurrent();
-  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();savedSceneViews?.synchronize();
+  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
 }
 function toggleActorSelection(id){
   if(busy||!canEdit()||actorGroupInspection)return;
@@ -845,6 +846,7 @@ $('diagnostics-button').onclick=()=>{
   if(scenePreview||sceneError){const details=document.createElement('details');details.className='scene-preview-evidence';details.innerHTML='<summary>Scene model evidence and limits</summary><pre></pre>';details.querySelector('pre').textContent=JSON.stringify({source_key:sceneKey,error:sceneError,metrics:scenePreview?.metrics,limits:scenePreview?.limits,entities:scenePreview?.entities},null,2);$('diagnostics').append(details);}
   $('diagnostics-dialog').showModal();
 };
+groupPresetTool=mountPresetBatch({after:actorGroupTools,getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit:()=>canEdit()&&!actorGroupInspection&&!scenePose&&!shapeDraft,setBusy,api});
 savedSceneViews=mountSceneViews({
   after:$('actor-box-select'),getState:()=>state,isBusy:()=>busy,canEdit,
   getDisplay:()=>({camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers}}),
@@ -884,7 +886,7 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
-  updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneViews?.synchronize();
+  updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(['transform','group-transform'].includes(drag?.type)&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';

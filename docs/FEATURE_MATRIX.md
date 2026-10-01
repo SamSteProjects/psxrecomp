@@ -2,6 +2,22 @@
 
 Current scene-editor status (2026-10-01):
 
+**Actor group presets (2026-10-01):** Position, appearance and combined
+presets now review all 2–128 selected imported actors before one atomic Apply /
+Undo/Redo command. Fresh source/target/donor compatibility, canonical membership,
+stale-key rejection and no-op groups reuse existing commands on a detached
+staging view. Absolute axes and possible overlaps are explicit; unrelated data
+and unknown Y remain preserved. Eleven focused Python tests, all 15 Node checks
+and 18 editor syntax checks passed. Retail browser group review/Apply/Save/Undo/
+Redo passed without preview writes or page errors; screenshot inspected.
+Independent Save/Open retained all four NPC drafts. A detached no-draft normal
+Build package matched the complete 45338-byte town01 MAN with exactly target 0012
+X changed from 3008 to 2944 at offset 8498. Package SHA256:
+`a59e32eaf00f07971a0f36eb83ff10529eea908d34dd98404f07042bc6cf6567`.
+Normal Build still rejects drafts; no game launched or disc installed. This
+postdates the 463-test checkpoint; gameplay remains deferred. See
+[group presets](legaia-actor-group-presets.md).
+
 **Asset browser field search (2026-10-01):** Search now supports name,
 stable ID, type, scene, model reference, recorded confidence and provenance
 filters, quoted phrases and exclusions. Unknown fields and malformed/oversized
@@ -25,6 +41,7 @@ open; passing the SDK suite does not complete the full objective. See
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
+| Actor group presets | FUNCTIONAL / OFFLINE. Position/appearance/combined preset review across2–128 active-scene imported actors, all-target source/compatibility validation, one atomic Apply/Undo/Redo and Save/Open. Focused tests, Node checks, retail browser and exact full MAN package readback passed. | Absolute saved axes may overlap targets; no instantiation or runtime/visibility/collision guarantees. Normal Build rejects projects containing drafts; gameplay deferred. |
 | Asset browser field search | FUNCTIONAL / OFFLINE. Name/ID/type/scene/model/confidence/provenance filters, phrases and exclusions with bounded strict syntax; imported/authored model users match recorded references. Node and retail browser checks passed, no actor changes or authoring commands. | Active-scene resource scope and existing category limits remain; no aggregate confidence or runtime-use inference. |
 | Actor group placement offsets | FUNCTIONAL / OFFLINE. Dedicated scene actor group selection, source/effective/proposed table, grid/bounds validation, atomic command and one-step Undo/Redo, persistence and existing Build serialization. 23 focused tests and retail browser/exact package checks passed. 3D Proposed/Current layers, Frame group, draft Return and Restore now pass 26 focused tests and exact retail browser transform/camera/no-write checks; source terrain preview height recalculated. Proposed group X/Z handles now pass relative 64-unit snap, browser pointer drags, cancellation, bounds rejection, Return and atomic Apply/Undo checks. Ctrl/Command-click imported actor group selection in the viewport/hierarchy, highlights, Frame/Clear and dialog seeding now pass real mesh/browser workflow checks. Depth-tested box selection and filtered hierarchy ranges now pass real 2x-DPI exact mesh/hidden/add/reverse/Escape/source and review-seeding checks; bounded strip readback and atomic selection merges pass Node checks. These UI checks postdate the 421-test Python checkpoint. | Mixed actor/scenery groups, Y/facing, NPC drafts and scenery groups remain separate work. Gameplay visibility/collision/script movement deferred. |
 | Actor preset file transfer | FUNCTIONAL / OFFLINE. Metadata-only JSON export/import for position, appearance and combined scopes; exact imported-source hash and fresh disc/donor checks, reviewed unique name, independent library identity, one Undo/Redo and Save/Open. Retail browser and independent project transfer/re-export passed without actor/import edits. | Same retail source scene/import required; absolute positions, existing Apply compatibility and project-only height limits remain. No spawning or runtime/gameplay guarantees. |

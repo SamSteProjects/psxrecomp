@@ -15,6 +15,22 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Actor group presets (2026-10-01):** Position, appearance and combined
+presets now review all 2–128 selected imported actors before one atomic Apply /
+Undo/Redo command. Fresh source/target/donor compatibility, canonical membership,
+stale-key rejection and no-op groups reuse existing commands on a detached
+staging view. Absolute axes and possible overlaps are explicit; unrelated data
+and unknown Y remain preserved. Eleven focused Python tests, all 15 Node checks
+and 18 editor syntax checks passed. Retail browser group review/Apply/Save/Undo/
+Redo passed without preview writes or page errors; screenshot inspected.
+Independent Save/Open retained all four NPC drafts. A detached no-draft normal
+Build package matched the complete 45338-byte town01 MAN with exactly target 0012
+X changed from 3008 to 2944 at offset 8498. Package SHA256:
+`a59e32eaf00f07971a0f36eb83ff10529eea908d34dd98404f07042bc6cf6567`.
+Normal Build still rejects drafts; no game launched or disc installed. This
+postdates the 463-test checkpoint; gameplay remains deferred. See
+[group presets](legaia-actor-group-presets.md).
+
 **Asset browser field search (2026-10-01):** Search now supports name,
 stable ID, type, scene, model reference, recorded confidence and provenance
 filters, quoted phrases and exclusions. Unknown fields and malformed/oversized

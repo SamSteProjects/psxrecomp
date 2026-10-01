@@ -151,6 +151,7 @@ class EditorServer(ThreadingHTTPServer):
         except (RetailImportError, OSError):
             state['project_text_state_key'] = None
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_preset_batch"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
@@ -521,6 +522,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
                  "/scene-views.js": ("scene-views.js", "text/javascript"),
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
+                 "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
@@ -820,6 +822,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'content','name'}:raise ProjectError('Preset import review requires file content and name only')
                     from .template_files import review
                     self._json(200,review(self.server.project,body['content'],body['name']))
+                    return
+                if route == '/api/actor-preset-batch':
+                    if set(body) != {'template_id', 'actor_ids'}:
+                        raise ProjectError('Group preset review requires preset and actor IDs only')
+                    from .preset_batch import review
+                    self._json(200, review(self.server.project, body['template_id'], body['actor_ids']))
                     return
                 if route == '/api/actor-preset-review':
                     if set(body)!={'template_id','entity_id'}:raise ProjectError('Preset review requires a template and existing target only')
