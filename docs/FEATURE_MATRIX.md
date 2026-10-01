@@ -680,3 +680,11 @@ Serializer and synthetic browser download/reopen/filter/stale/file-read guards
 passed with zero authoring requests or page errors. All17 fields from the actual
 profile decoder on a synthetic prefix were accepted. See the [review guide](legaia-runtime-node-review.md).
 No real runtime capture was performed; capture/gameplay acceptance remains deferred.
+
+
+Current regression checkpoint (2026-09-30):392 retail-enabled Python tests passed
+in159.893s, no skips, source1eafc313; supersedes390 at05e93405. Texture usage,
+script operand and runtime-review JavaScript checks and editor syntax passed.
+Private log/metadata: sdk-regression-20260930-runtime-review.log/.json under
+local-output/sdk-20260909. This covers accumulated SDK services and new rectangle
+copy preservation/rejection; browser and gameplay acceptance remain separate.

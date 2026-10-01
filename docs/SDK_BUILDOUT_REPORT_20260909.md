@@ -8,8 +8,8 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `93722112`, plus saved runtime node
-review documented below, including model object
+Reviewed against committed source through `1eafc313`, including saved runtime node
+review, indexed texture rectangle copying and model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
@@ -33,8 +33,8 @@ Retail texture29 browser checks passed draft/no-write, bounds and stale-hash
 rejection, no-op/no-history, Apply, Undo/Redo, Discard, Save/reopen and Build.
 Independent package readback matched all pixels/palettes and the saved33312-byte
 TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
-focused tests passed with no skips. The390-test checkpoint predates this feature;
-gameplay appearance remains deferred.
+focused tests passed with no skips. This feature is included in the current392-test source checkpoint; browser
+and package evidence remain separate. Gameplay appearance remains deferred.
 
 **Independent animation consumer review (2026-09-30):** Blender 5.2.2 rendered
 and evaluated a fresh complete Dolk2 actor0001 GLB (30 frames, ten rigid objects,
@@ -68,7 +68,7 @@ withdrawal on a stale scene source. These are browser checks, separate from the
 **Object-transform proposal previews:** translation, rotation and uniform scale
 can now be viewed before Apply, with proposed/current layers sharing camera
 framing. Preview leaves project history and authored files unchanged. The latest
-390-test Python discovery suite covers the current services; JavaScript and
+392-test Python discovery suite covers the current services; JavaScript and
 browser checks retain their separate evidence. Gameplay acceptance
 remains deferred.
 
@@ -83,7 +83,7 @@ these operands with audited source offsets. The script Inspector now supports
 Apply, Clear and Discard with separate retail/authored/effective operands.
 Independent package and rebuilt archive readbacks passed; see the update below. Special context side effects, unresolved
 local widths, system flags and branch selectors remain unsupported. The
-earlier365/383-test checkpoints have been superseded by the current390-test run
+earlier365/383/390-test checkpoints have been superseded by the current392-test run
 below. Browser checks for texture dependency inspection, model rotations and
 script operand forms remain separately recorded. Manual gameplay verification remains deferred.
 
@@ -120,13 +120,13 @@ state, history or authored-file changes. Gameplay appearance remains deferred.
   town01 models passed exact JSON round trips; a retail normal-only edit and a
   combined model/animation package passed offline readback checks.
 
-The latest retail-enabled SDK discovery suite passed **390 tests in 163.243
-seconds**, exit code 0, with no skips, against source `05e93405`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-scene-proposals.log`. This run
-covers the existing SDK workflows plus current model scaling, proposal serializers,
-scene pose grouping and prepared-ground texture reconstruction checks. It
-supersedes the383-test checkpoint at `f8f135e4`. The texture dependency and
-instruction operand JavaScript checks and editor syntax check also passed.
+The latest retail-enabled SDK discovery suite passed **392 tests in 159.893
+seconds**, exit code 0, with no skips, against source `1eafc313`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-runtime-review.log`. This run
+includes the existing SDK services and the new packed-index rectangle-copy
+preservation/rejection tests. It supersedes the390-test checkpoint at `05e93405`.
+Texture dependency, instruction operand and historical runtime-review JavaScript
+checks and editor syntax also passed.
 Browser interaction/rendering retains its separately recorded evidence. A green
 suite does not establish gameplay, runtime parity, retail visibility or external
 rendered animation acceptance beyond the separately reviewed clip below. Historical

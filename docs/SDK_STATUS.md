@@ -49,8 +49,8 @@ Retail texture29 browser checks passed draft/no-write, bounds and stale-hash
 rejection, no-op/no-history, Apply, Undo/Redo, Discard, Save/reopen and Build.
 Independent package readback matched all pixels/palettes and the saved33312-byte
 TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
-focused tests passed with no skips. The390-test checkpoint predates this feature;
-gameplay appearance remains deferred.
+focused tests passed with no skips. This feature is included in the current392-test source checkpoint; browser
+and package evidence remain separate. Gameplay appearance remains deferred.
 
 **Saved runtime node review (2026-09-30):** the Observed nodes panel can
 export decoded metadata and reopen it later in Edit mode as a historical,
@@ -64,15 +64,14 @@ No real runtime capture was performed; capture/gameplay acceptance remains defer
 
 ## Validation scope
 
-The retail-enabled SDK discovery run passed **390 tests in 163.243 seconds**,
-exit code 0, with no skips, against source `05e93405`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-scene-proposals.log`, with source
-revision and log hash in the corresponding JSON metadata file. This supersedes the 383-test
-checkpoint and includes the existing SDK workflows plus current model scaling,
-proposal serialization/pose grouping and prepared-ground texture checks. Texture
-usage/operand JavaScript checks and editor syntax also passed. Browser workflows
-and runtime acceptance remain separate evidence. Historical test counts and
-predates notes below describe their original checkpoints.
+The retail-enabled SDK discovery run passed **392 tests in 159.893 seconds**,
+exit code 0, with no skips, against source `1eafc313`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-runtime-review.log`; corresponding
+JSON records source identity, command, result and log hash. This supersedes the
+390-test checkpoint and includes existing SDK services plus packed-index rectangle
+copy preservation/rejection. Texture usage, operand and runtime-review JavaScript
+checks and editor syntax also passed. Browser workflows and runtime acceptance
+remain separate evidence; historical counts below describe earlier checkpoints.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

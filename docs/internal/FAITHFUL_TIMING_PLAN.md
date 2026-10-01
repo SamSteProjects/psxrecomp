@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Current392-test retail SDK regression checkpoint
+
+Previous goal turn progressed at1eafc313 with historical node review. Kept clean
+source throughout one owned discovery run, following session29480 to terminal
+exit0:392 tests passed in159.893s with user-owned retail disc and no skips.
+Texture usage, script operand and runtime-review JS helper tests and editor syntax
+passed independently. Log and metadata retain exact source revision/command/hash:
+local-output/sdk-20260909/sdk-regression-20260930-runtime-review.log/.json.
+Supersedes390 at05e93405; includes new rectangle-copy preservation/rejection tests.
+No game launched; historical review remains synthetic/browser evidence and game
+acceptance deferred. Refreshed buildout/status/matrix with precise scope.
+Read-only next-frontier research: dialogue picker labels are decoded separately
+from dialogue runs, and known unresolved menu control flow intentionally blocks
+the existing writer. A future label authoring adapter must prove interval and
+branch-byte preservation, rather than relax generic dialogue stop guards. No
+source changes during regression. Full goal remains active and incomplete.
+
+
 ### 2026-09-30 — Historical runtime-node metadata Inspector workflow
 
 Previous goal turn progressed at93722112. Added bounded metadata capture/parser
