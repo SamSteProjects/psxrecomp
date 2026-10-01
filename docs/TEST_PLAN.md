@@ -5,6 +5,15 @@ The current buildout uses focused synthetic checks, retail import probes and
 local browser validation. Larger automation follows connected product features.
 See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current results.
 
+## Latest integrated offline result — 2026-10-01
+
+Source `2ca0a1a4fa0044f55e9b0dc6d6c217b9e061f578`: retail-enabled discovery
+passed 463 Python tests in 264.543 seconds with no skips; 13 Node tests and
+16 editor-module syntax checks also passed. Commands, source hashes, input
+provenance and logs remain private under `local-output/sdk-20260909/`.
+This confirms implemented offline checks, not completion of every acceptance
+layer below. Native runtime, Live identity and gameplay remain separate gates.
+
 ## Fixtures and execution policy
 
 P0 protects memory, provenance, source bytes and basic boot; P1 covers primary

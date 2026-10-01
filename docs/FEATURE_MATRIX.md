@@ -785,3 +785,14 @@ display coordinates. Fourteen focused Python/HTTP checks, Node validation/syntax
 and retail-source browser recall/history passed; no gameplay or live-identity
 claim. Postdates the integrated 457-test checkpoint. See
 [saved scene views](legaia-saved-scene-views.md).
+
+### Integrated offline source checkpoint — 2026-10-01
+
+Retail-enabled Python discovery: **463 tests**, 264.543 seconds, exit 0, no
+skips; source `2ca0a1a4fa0044f55e9b0dc6d6c217b9e061f578` unchanged throughout.
+All 13 Node checks and all 16 editor-module syntax checks passed on that source.
+Includes SDK animation/preset actions and saved scene views; supersedes the
+457-test checkpoint. This covers offline services and UI guards, with separate
+browser/package/rendered evidence. Native runtime and gameplay remain deferred.
+Private evidence: `local-output/sdk-20260909/sdk-regression-20261001-scene-views.log/.json`
+and `node-checks-20261001-scene-views.json`. No game launched.

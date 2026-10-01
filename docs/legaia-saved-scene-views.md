@@ -22,6 +22,6 @@ application; stale view reviews reject.
 Validation on 2026-10-01: 14 focused Python/HTTP checks, Node source/display
 validation and module syntax passed. Retail-source headless browser checked
 camera/representation/layer recall, cross-scene navigation, metadata CRUD/history
-and unchanged actor data with no page errors. No game was launched. These checks
-postdate the integrated 457-test checkpoint; gameplay verification remains
-separate and deferred.
+and unchanged actor data with no page errors. No game was launched. Its Python services and Node guard checks are included in the integrated
+463-test checkpoint on source `2ca0a1a4`; browser evidence remains separate.
+Gameplay verification remains deferred.

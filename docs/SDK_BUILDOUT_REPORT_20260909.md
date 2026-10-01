@@ -15,6 +15,20 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Integrated offline checkpoint (2026-10-01):** The retail-enabled SDK
+Python discovery suite passed **463 tests in 264.543 seconds**, exit 0, no skips,
+on unchanged committed source `2ca0a1a4fa0044f55e9b0dc6d6c217b9e061f578`.
+This supersedes the 457-test checkpoint and includes the later SDK animation/preset
+inspector actions and saved scene views. All **13 Node checks** and **16 editor
+module syntax checks** passed separately on the same source. The disc SHA-256
+was independently verified against the recorded retail source. Browser, package,
+saved-project and rendered acceptance retain their separate evidence; this suite
+does not establish native runtime parity, Live actor identity or deferred gameplay.
+No game was launched. Private command/source/result metadata and log:
+`local-output/sdk-20260909/sdk-regression-20261001-scene-views.log/.json`;
+Node/syntax hashes/results: `local-output/sdk-20260909/node-checks-20261001-scene-views.json`.
+Log SHA-256: `5509fa89b90dd8f040c80c33bc7f75cb02cd7cf0e38ac100361772f009d16111`.
+
 **Saved scene views (2026-10-01):** Named project-local camera bookmarks
 retain projection, target/orbit/distance, authored/retail representation and scene
 layers, bound to the imported scene hash. Recall supports cross-scene navigation
@@ -54,7 +68,7 @@ inspected. Specialized tool forms and asset actions still use their existing
 adapters. This postdates the457-test checkpoint. No game launched. See
 [inspector contract](legaia-inspector-schema.md).
 
-**Integrated offline checkpoint (2026-09-30):** The retail-enabled SDK
+**Historical integrated offline checkpoint (2026-09-30, 457 tests):** The retail-enabled SDK
 Python discovery suite passed **457 tests in 178.185 seconds**, exit0, no skips,
 against unchanged committed source `3c8d8f46af7063f2993d49fe74ec02e6a0005639`.
 This supersedes the 441-test checkpoint and includes the later draft repetition,
