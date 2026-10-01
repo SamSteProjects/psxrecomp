@@ -1299,6 +1299,10 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'import_script_operand_bundle':
+            from .script_operand_bundle import apply
+            apply(self,command)
+            return
         if command.get('type') == 'import_script_operands':
             from .script_operand_files import apply
             apply(self,command)

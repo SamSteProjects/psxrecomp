@@ -525,6 +525,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
+                 "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
@@ -825,6 +826,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'content','name'}:raise ProjectError('Preset import review requires file content and name only')
                     from .template_files import review
                     self._json(200,review(self.server.project,body['content'],body['name']))
+                    return
+                if route == '/api/script-operand-bundle-export':
+                    if body:raise ProjectError('Operand bundle export takes no fields')
+                    from .script_operand_bundle import export_file
+                    self._json(200,export_file(self.server.project))
+                    return
+                if route == '/api/script-operand-bundle-review':
+                    if set(body)!={'content'}:raise ProjectError('Operand bundle review requires file only')
+                    from .script_operand_bundle import review
+                    self._json(200,review(self.server.project,body['content']))
                     return
                 if route == '/api/script-operand-export':
                     if set(body)!={'entity_id'}:raise ProjectError('Operand export requires script owner only')

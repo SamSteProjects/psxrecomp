@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Scene script operand bundle authoring
+
+Added bounded source-bound scene bundles using existing verified operand
+contexts, staged multi-owner review, shared serialized-byte conflict checks and
+one atomic authored command. Connected export/review/Apply in asset tools with
+stale/closed response guards and readable owner tables. Five focused Python
+checks, 19 Node files and 21 editor syntax checks passed. Retail browser proved
+two-owner/four-entry read-only review, one Apply, Save/Undo/Redo and invalid,
+stale and closed rejection, zero errors. Reopened package retained four drafts;
+detached no-draft Build changed exactly MAN offsets 4808/4811/4816/28557 and no
+other content payloads. Screenshot inspected, baseline restored. Updated SDK
+report/status/matrix and bundle guide. Focused evidence postdates integrated469;
+full SDK goal remains active/incomplete, gameplay deferred. No game launched.
+
+
 - **2026-10-01 (advanced operand files and readable review):** Previous goal turn committed source-bound script file workflow199ad725, concrete progress. Verified current clean HEAD before extending coverage on isolated copied retail project. First advanced browser77943 exposed frontend stale-submit gap: backend correctly400-rejected after same-owner change, but UI still dispatched. Added owner-authored snapshot binding and Node guard; replay63387 passed mixed-three-family atomic Apply, real P2 asset→script navigation/Apply/Save/Undo/Redo, stale-withdraw/no request and closed pending response, baseline restored, zero errors. Replaced primary rawJSON preview with readable operand/instruction/authored-before/proposed table and collapsed complete source details; final browser47480 replay passed and screenshot inspected. All18Node/20syntax passed on final source. Independent Save/Open preserved4drafts; detached no-draft full45338-byte MAN proofs: actorflag/model/move only4808/4811/4816, P2 flag only28557, all other payloads unchanged. Independent raw opcode and P2 counts/table offsets used; packages f54beb07d39295ddad40d897ea29113ad1c7cd7b7c52084e31e866a2cfa5a867 and fee5c9d3ba1d876d93995f0916ad79f974d399919c8466d836bf4bd823778d92. Owned servers26708/92494/65790 stopped after terminal browsers; initial dirty stale test discarded by reopening saved private baseline. No game launched/controlled/disc installed. Reports/guide updated;469integrated checkpoint predates current changes. Goal incomplete, gameplay deferred.
 
 - **2026-10-01 (source-bound script operand JSON workflow):** Prior goal turn established integrated469checkpoint bc5c8f79, verified progress. Added export/review and atomic import for authored movement/flag/wait/model-selector/transition entries using existing validated commands and serializers,64KiB/256entry strict metadata/source/owner bounds, untouched component preservation, stale/no-op and oneUndo/Redo, Save/Open. Connected Edit script-inspector download/file review/Apply forms; no instructions/dialogue/runtime state transferred. Nineteen focused Python tests and all18Node/20syntax passed. Retail browser19780 exited0: modelselector240→239 export/review/no writes/Apply/Save/Undo/Redo/wrong-owner rejection, zero errors; screenshot inspected, baseline restored. Independent reopen preserved4drafts; detached no-draft package entire45338-byte MAN exact with only offset4811 changed, other payloads unchanged, SHA e440d265be2a20a7008801e89c60eb1de8adc586ef3cac470e6ad22dc4aad53e. Readback probe corrected decompress tuple handling, manifest.toml allowance and record-relative PC (not script-entry-relative) before final successful proof; no production serializer change needed. Owned server50591 stopped; browser closed. Reports/matrix/guide updated.469checkpoint predates new feature. Normal Build still rejects drafts; gameplay deferred, no game launched/controlled or disc installed, goal incomplete.

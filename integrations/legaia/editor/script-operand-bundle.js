@@ -1,0 +1,29 @@
+import {decodeOperandReview,appendOperandReview} from './script-operand-files.js';
+export function decodeOperandBundleReview(value,file,scene){
+  if(file?.schema_version!=='legaia.script-operand-bundle.v1'||value?.schema_version!=='legaia.script-operand-bundle-review.v1'||value.scene_id!==scene||file.scene_id!==scene||value.source_import_sha256!==file.source_import_sha256||!/^[0-9a-f]{64}$/.test(value.review_key)||!Array.isArray(file.owners)||file.owners.length>128||!Array.isArray(value.owners)||value.owner_count!==file.owners.length||value.owners.length!==file.owners.length)throw new Error('Operand bundle review differs from source file');
+  const owners=file.owners.slice().sort((a,b)=>a.owner_id.localeCompare(b.owner_id));
+  if(new Set(owners.map(row=>row.owner_id)).size!==owners.length)throw new Error('Duplicate bundle owner');
+  const decoded=value.owners.map((report,index)=>{const row=owners[index];return decodeOperandReview(report,{schema_version:'legaia.script-operand-file.v1',scene_id:scene,source_import_sha256:file.source_import_sha256,...row},row.owner_id,scene);});
+  if(decoded.reduce((count,row)=>count+row.entries.length,0)>256||value.change_count!==decoded.reduce((count,row)=>count+row.change_count,0))throw new Error('Operand bundle count differs from owner reviews');
+  return structuredClone(value);
+}
+export function mountScriptOperandBundle({after,getState,context,canEdit,busy,setBusy,api,onError}){
+  const button=document.createElement('button');button.id='script-operand-bundles';button.textContent='Script operand bundles…';button.disabled=!canEdit()||!getState()?.capabilities?.script_operand_files;after.append(button);
+  button.onclick=()=>{if(busy()||!canEdit()||!getState()?.capabilities?.script_operand_files)return;
+    const key=context(),scene=getState().scene.id,dialog=document.createElement('dialog'),controller=new AbortController();dialog.id='script-operand-bundle-dialog';dialog.className='project-dialog';
+    dialog.innerHTML='<h2>Scene script operand bundle</h2><p>Review authored numeric operands for their original actors and scripts in this scene. All owners apply in one Undo command; other entries and components remain unchanged. Shared serialized byte conflicts reject the whole bundle.</p><button data-download>Download scene operand bundle</button><label>Operand bundle JSON<input type="file" accept=".json,application/json"></label><div data-review></div><p role="alert" class="dialog-error"></p><button data-apply disabled>Apply reviewed bundle</button><button data-close>Close</button>';document.body.append(dialog);
+    const current=()=>dialog.open&&key===context()&&canEdit()&&!controller.signal.aborted,input=dialog.querySelector('input'),apply=dialog.querySelector('[data-apply]'),error=dialog.querySelector('[role="alert"]');let report=null,content=null,ticket=0;
+    dialog.querySelector('[data-download]').onclick=async()=>{if(busy()||!current())return;setBusy(true);try{
+      const response=await fetch('/api/script-operand-bundle-export',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw new Error(value.error??'Bundle export failed');if(!current())return;if(value.schema_version!=='legaia.script-operand-bundle.v1'||value.scene_id!==scene||!Array.isArray(value.owners)||value.owners.length>128)throw new Error('Bundle export returned different source');
+      const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='scene-script-operands.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch(exc){if(exc.name!=='AbortError'&&current())error.textContent=exc.message;}finally{setBusy(false);}};
+    input.onchange=async()=>{const request=++ticket;report=null;content=null;apply.disabled=true;error.textContent='';dialog.querySelector('[data-review]').replaceChildren();const file=input.files[0];if(!file)return;if(file.size>65536){error.textContent='Bundle exceeds 64 KiB';return;}input.disabled=true;setBusy(true);
+      try{const candidate=await file.text();if(!current()||request!==ticket)return;const parsed=JSON.parse(candidate),response=await fetch('/api/script-operand-bundle-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:candidate}),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)throw new Error(value.error??'Bundle review failed');if(!current()||request!==ticket)return;report=decodeOperandBundleReview(value,parsed,scene);content=candidate;
+        const host=dialog.querySelector('[data-review]'),summary=document.createElement('p');summary.textContent=report.owner_count+' owners · '+report.change_count+' changed entries · one Undo command';host.append(summary);
+        for(const owner of report.owners){const section=document.createElement('section'),heading=document.createElement('h3');heading.textContent=getState().scene.entities.find(row=>row.id===owner.owner_id)?.name??owner.owner_id;section.append(heading);appendOperandReview(section,owner);host.append(section);}apply.disabled=!report.change_count;
+      }catch(exc){if(exc.name!=='AbortError'&&current())error.textContent=exc.message;}finally{setBusy(false);input.disabled=false;}
+    };
+    apply.onclick=async()=>{if(busy()||!current()||!report?.change_count||!content)return;const accepted=report;apply.disabled=true;if(await api('/api/command',{type:'import_script_operand_bundle',content,review_key:accepted.review_key}))dialog.close();else{report=null;content=null;error.textContent='Bundle or project changed. Inspect the file again.';}};
+    dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{ticket++;controller.abort();dialog.remove();});dialog.showModal();
+  };
+}

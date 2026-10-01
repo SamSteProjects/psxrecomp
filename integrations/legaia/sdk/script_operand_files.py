@@ -13,7 +13,7 @@ KINDS={
     'Transitions':('set_transition_entry','transition_id'),
 }
 
-def parse(content):
+def parse_json(content):
     if not isinstance(content,str):raise ProjectError('Operand file must be UTF-8 JSON')
     try:
         if len(content.encode('utf-8'))>MAX_BYTES:raise ProjectError('Operand file exceeds 64 KiB')
@@ -26,6 +26,10 @@ def parse(content):
         def constant(_):raise ProjectError('Nonfinite operand file value')
         value=json.loads(content,object_pairs_hook=pairs,parse_constant=constant)
     except (ValueError,RecursionError,UnicodeError) as exc:raise ProjectError('Invalid operand JSON') from exc
+    return value
+
+def parse(content):
+    value=parse_json(content)
     if not isinstance(value,dict) or set(value)!={'schema_version','scene_id','source_import_sha256','owner_id','components'} or value['schema_version']!=SCHEMA:
         raise ProjectError('Unsupported operand file fields or schema')
     if not isinstance(value['source_import_sha256'],str) or len(value['source_import_sha256'])!=64 or any(c not in '0123456789abcdef' for c in value['source_import_sha256']):

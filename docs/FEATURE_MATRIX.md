@@ -67,6 +67,19 @@ reset and actor navigation without authoring commands or actor changes, zero
 errors. Screenshots inspected; narrow-panel controls now wrap. This postdates
 the 463-test checkpoint. No game launched. See [asset search](legaia-asset-search.md).
 
+**Scene script operand bundles (2026-10-01):** The asset tools now export
+and review authored numeric operands across actors and partition-two script
+owners in the active scene. All owners stage before one atomic Apply/Undo/Redo;
+actual shared-byte conflicts, invalid owners and changed review contexts reject.
+Five focused Python checks, all 19 Node test files and 21 editor syntax checks
+passed. Retail browser verified two owners/four entries, export, read-only review,
+Save/Undo/Redo, invalid/stale/closed guards and zero page errors. Independent
+reopen retained four drafts; detached no-draft normal builds changed only MAN
+bytes 4808/4811/4816/28557, with all other content payloads unchanged. Screenshot
+inspected and baseline restored. No game launched or disc installed; gameplay
+remains deferred. This postdates the integrated 469-test checkpoint. See
+[scene operand bundles](legaia-script-operand-bundles.md).
+
 **Script file review refinement (2026-10-01):** File controls now bind to
 the script owner's authored-state snapshot. An owner edit observed during review
 withdraws Apply in the UI; the server's existing stale-key rejection remains.
