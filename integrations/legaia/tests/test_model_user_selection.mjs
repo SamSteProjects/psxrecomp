@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '../editor/model-user-selection.js';
+const scene='scene://fixture',model='asset://model',ids=[scene+'/actors/0001',scene+'/actors/0002'];
+const refs=ids.map(source_id=>({source_id,scene_id:scene,target_id:model,kind:'initial_model_assignment',effective:true}));
+const state={project:{path:'project'},scenes:[{id:scene}],model_references:[...refs,{...refs[0],source_id:scene+'/actors/0003',effective:false},{...refs[0],source_id:'authored-actor://draft',kind:'draft_initial_model_assignment'}],scene:{id:scene,entities:ids.map(id=>({id,components:{ActorAppearance:{effective:{asset_id:model}}}}))}};
+assert.deepEqual(effectiveModelUsers(state,model,scene),ids);assert.deepEqual(validateModelUserSelection(state,model,scene,ids),ids);
+const context=modelUsageContext(state);const changed=structuredClone(state);changed.model_references[0].effective=false;assert.notEqual(modelUsageContext(changed),context);assert.throws(()=>validateModelUserSelection(changed,model,scene,ids));
+const mismatch=structuredClone(state);mismatch.scene.entities[0].components.ActorAppearance.effective.asset_id='other';assert.throws(()=>validateModelUserSelection(mismatch,model,scene,ids));
+const duplicate=structuredClone(state);duplicate.model_references.push(refs[0]);assert.throws(()=>effectiveModelUsers(duplicate,model,scene));
+assert.throws(()=>effectiveModelUsers(state,model,'missing'));assert.throws(()=>validateModelUserSelection(state,model,scene,[ids[1],ids[0]]));
+const detached=validateModelUserSelection(state,model,scene,ids);detached.pop();assert.equal(ids.length,2);
+console.log('Effective initial-model groups exclude retail-only/drafts, bind active source owners and reject changed/ambiguous usage.');

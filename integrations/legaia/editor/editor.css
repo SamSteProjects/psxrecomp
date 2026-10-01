@@ -120,3 +120,8 @@
 #actor-selection-sets-dialog{width:min(740px,calc(100vw - 35px));max-height:90vh;overflow:auto}#actor-selection-sets-dialog .dialog-actions{justify-content:flex-start;flex-wrap:wrap}#actor-selection-sets-dialog [data-members]{max-height:24vh;overflow:auto;overflow-wrap:anywhere}
 
 #draft-repeat-dialog{width:min(760px,calc(100vw - 35px));max-height:90vh;overflow:auto}#draft-repeat-dialog .dialog-actions{justify-content:flex-start;flex-wrap:wrap}#draft-repeat-dialog table{width:100%;font-size:12px}#draft-repeat-dialog td{overflow-wrap:anywhere}
+
+/* Keep tools and asset rows reachable as the library toolbar grows. */
+.asset-panel>.panel-heading{flex:0 0 40px}
+.asset-panel>.asset-tools{flex:0 1 auto;min-height:0;overflow:auto}
+.asset-panel>.asset-list{flex:1 0 96px;min-height:96px}

@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Effective model users to viewport group tools
+
+Extended existing Used by navigation with scene-qualified effective imported
+actor group selection, fresh usage/context and active owner/effective model
+checks, draft/retail-only exclusions and framing. Selection authors no component
+or history entry. Node checks passed. Retail exact model0112 group0005/0011/0012,
+Dolk2-to-town01 navigation and externally changed usage rejection passed, zero
+errors; screenshot inspected. Initial extended browser79349 failed because the
+footer intercepted Details clicks. Fixed sidebar flex scrolling/reserved asset
+list space; subsequent extended browser passed. Stale probe's external command
+and Undo are separately documented from tool authorship. Status/matrix/guide
+updated. Owned server34874 stopped with Ctrl+C terminal1; browsers73748/79349
+and final run terminal. No game launched; private evidence excluded.
+
+
 ### 2026-09-30 — Registered component tool actions
 
 Moved six donor/model/script/candidate action descriptions into SDK metadata and

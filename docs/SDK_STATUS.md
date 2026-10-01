@@ -3,6 +3,18 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Select effective model users (2026-09-30):** Model asset details now offer
+scene-qualified selection of2–128 effective imported actor users for the existing
+viewport/group tools. Retail-only assignments and NPC drafts remain separate.
+Fresh SDK references, scene owners and effective assets are checked before
+selection; changed or ambiguous usage rejects. No component/history command is
+issued by selection. Node checks and retail browser exact membership for model0112
+(actors0005/0011/0012), Dolk2-to-town01 navigation and stale-review rejection
+passed, zero page errors. Screenshot inspected. A footer obstruction found during
+the cross-scene check was fixed by reserving asset-list space and scrolling the
+library tools. These are initial assignments; runtime script replacements remain
+unobserved. No game launched. See [model-user selection](legaia-model-user-selection.md).
+
 **SDK-driven component inspector (2026-09-30):** Project state now exposes
 a versioned property contract for Transform, ModelRenderer, Animation,
 ActorAppearance, RuntimeCorrelation and RetailMetadata. The editor consumes it

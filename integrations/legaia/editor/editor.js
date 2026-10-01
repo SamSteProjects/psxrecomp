@@ -1,3 +1,4 @@
+import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
@@ -1137,9 +1138,37 @@ function showAssetDetails(record){
   }
   if(['model','animation'].includes(record.type)){
     const usage=document.createElement('section');usage.innerHTML=`<h3>Used by</h3><p>${record.type==='model'?'Initial model assignments across imported scenes.':'Verified initial animation bindings and authored donor assignments.'} Scripts may change these assignments during gameplay.</p>`;
-    const references=initialAssetUsage(record,state.model_references??[]);
-    for(const ref of references){const button=document.createElement('button');button.textContent=`${ref.source_name??ref.source_id} · ${ref.kind==='draft_initial_model_assignment'?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy)return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(ref.kind==='draft_initial_model_assignment'){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
+    const references=initialAssetUsage(record,state.model_references??[]),usageContext=modelUsageContext(state);
+    for(const ref of references){const button=document.createElement('button');button.textContent=`${ref.source_name??ref.source_id} · ${ref.kind==='draft_initial_model_assignment'?'NPC draft':`${ref.imported?'Imported':''}${ref.imported&&ref.effective?' + ':''}${ref.effective?'Effective':''}`}`;button.title=ref.source_id;button.onclick=async()=>{if(busy||usageContext!==modelUsageContext(state))return;assetDetails.close();if(ref.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:ref.scene_id}))return;if(ref.kind==='draft_initial_model_assignment'){selectNpcDraft(ref.source_id);frameNpcDraft();}else if(await api('/api/selection',{entity_id:ref.source_id}))frame(selected());};usage.append(button);}
     if(!references.length){const empty=document.createElement('p');empty.textContent='No imported or effective initial actor assignments in this project.';usage.append(empty);}
+    if(record.type==='model'){
+      const groups=(state.scenes??[]).map(scene=>({scene,ids:effectiveModelUsers(state,record.id,scene.id)})).filter(row=>row.ids.length>=2&&row.ids.length<=128);
+      if(groups.length){
+        const controls=document.createElement('div');controls.className='dialog-actions';
+        const choice=document.createElement('select');choice.setAttribute('aria-label','Scene of effective model users');
+        for(const group of groups){const option=document.createElement('option');option.value=group.scene.id;option.textContent=`${group.scene.name} · ${group.ids.length} effective actors`;choice.append(option);}
+        const selectGroup=document.createElement('button');selectGroup.textContent='Select effective actor users';selectGroup.dataset.selectModelUsers='true';selectGroup.disabled=busy||!canEdit();
+        selectGroup.onclick=async()=>{
+          if(busy||!canEdit()||scenePose||actorGroupInspection||shapeDraft)return;
+          try{
+            const sceneId=choice.value,expected=groups.find(group=>group.scene.id===sceneId)?.ids;
+            if(!expected||usageContext!==modelUsageContext(state))throw new Error('Model usage changed; reopen the asset details');
+            const response=await fetch('/api/state'),fresh=await response.json();if(!response.ok||fresh.project?.mode!=='edit'||usageContext!==modelUsageContext(fresh))throw new Error('Model usage changed; refresh the project and reopen the asset');
+            assetDetails.close();
+            if(sceneId!==state.scene.id&&!await api('/api/scene',{scene_id:sceneId}))return;
+            validateModelUserSelection(state,record.id,sceneId,expected);
+            if(!await api('/api/selection',{entity_id:expected[0]}))return;
+            if(!canEdit()||usageContext!==modelUsageContext(state))throw new Error('Model usage changed during selection');
+            const ids=validateModelUserSelection(state,record.id,sceneId,expected);
+            actorGroupSelection=mergeActorGroupSelection([],ids,entities().map(entity=>entity.id));actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=ids[0];cancelViewportGesture();renderHierarchy();frameActorGroupSelection();draw();
+            notify(`Selected ${ids.length} effective actor users. Scripts may replace initial assignments.`);
+          }catch(error){notify(error.message,true);}
+        };
+        controls.append(choice,selectGroup);usage.append(controls);
+        const note=document.createElement('p');note.className='field-note';note.textContent='Selects effective initial model users in one imported scene for existing group tools. Retail-only users and authored NPC drafts remain separate. No component is authored.';usage.append(note);
+      }
+    }
+
     $('asset-source-data').parentElement.before(usage);
   }
   if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}

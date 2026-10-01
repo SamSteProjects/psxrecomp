@@ -514,6 +514,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
+                 "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
