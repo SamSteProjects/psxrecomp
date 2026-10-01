@@ -500,6 +500,7 @@ function notify(message, error=false) {
 }
 function setBusy(value) {
   busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
+  document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
   document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||(button.dataset.animationEdit==='true'&&state.project?.mode!=='edit'));
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
@@ -1009,6 +1010,27 @@ function showAssetDetails(record){
     $('asset-source-data').parentElement.before(usage);
   }
   if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
+  if(record.authoredRecord?.component_reviews?.length){
+    const section=document.createElement('section'),title=document.createElement('h3'),note=document.createElement('p');
+    title.textContent='Review authored components';note.textContent='Revert removes every authored setting in the chosen component. Imported data stays available; other components stay authored. Undo restores the removed settings. Shared animation and scenery changes can affect other instances.';
+    section.append(title,note);
+    const projectPath=state.project?.path;
+    for(const review of record.authoredRecord.component_reviews){
+      const details=document.createElement('details'),summary=document.createElement('summary'),data=document.createElement('pre'),button=document.createElement('button');
+      summary.textContent=review.component;data.className='diagnostic-detail';data.textContent=JSON.stringify(review.authored,null,2);
+      button.type='button';button.dataset.revertComponent=review.component;button.textContent=`Revert ${review.component} component`;button.disabled=busy||!canEdit();
+      button.onclick=async()=>{
+        if(busy||!canEdit()||!assetDetails.open||projectPath!==state.project?.path)return;
+        if(await api('/api/command',{type:'revert_authored_component',entity_id:record.authoredRecord.id,component:review.component,review_key:review.review_key},{success:`${review.component} reverted. Undo can restore it.`})){
+          if(!assetDetails.open||projectPath!==state.project?.path)return;
+          assetDetails.close();const current=assetRecords().find(item=>item.authoredRecord?.id===record.authoredRecord.id);
+          if(current)showAssetDetails(current);
+        }
+      };
+      details.append(summary,data,button);section.append(details);
+    }
+    $('asset-authored-data').before(section);
+  }
   if(isAuthored&&record.type==='actor'&&record.authored?.AnimationChannels){
     const actions=document.createElement('div');actions.className='dialog-actions';
     for(const [label,preview] of [['Edit animation channels',false],['Preview authored animation',true]]){

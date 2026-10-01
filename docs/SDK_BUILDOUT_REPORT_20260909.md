@@ -15,6 +15,17 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Authored component review (2026-09-30):** Authored Assets details now
+show component-level review and source-bound Revert actions for actors, P2
+scripts and scenes. Removing one component preserves the others and imported
+evidence; Undo/Redo and Save/Open retain normal behavior. Stale reviewed values,
+source/project identities and replay are rejected before mutation. 25 focused
+tests passed in 1.334s with no skips. Retail town01 browser review/revert/history/
+Save and stale rejection passed; independent disk reopen retained the selector
+and three unrelated menu edits. Screenshot inspected, no page errors. No game
+launched. The 405-test full checkpoint predates this feature. See the
+[component review guide](legaia-authored-component-review.md).
+
 **Script model-selector authoring (2026-09-30):** reached SET_ACTOR_MODEL
 signed16 operands now use source-qualified commands, separate retail/authored/
 effective layers, draft dispatch display, exact instruction-field navigation,

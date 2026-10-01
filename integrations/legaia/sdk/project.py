@@ -92,6 +92,9 @@ class AssetDatabase:
 
 class ProjectService:
     FORMAT = "legaia.project.v1"
+    REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "Dialogue", "Transitions",
+                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors",
+                                  "Environment", "AnimationChannels", "Collision"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
         self.root = root.resolve()
@@ -1284,6 +1287,26 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'revert_authored_component':
+            if set(command) != {'type', 'entity_id', 'component', 'review_key'}:
+                raise ProjectError('Component revert accepts only owner, component and review identity')
+            identifier, component, key = command['entity_id'], command['component'], command['review_key']
+            if (not isinstance(identifier, str) or not isinstance(component, str) or
+                    component not in self.REVIEW_COMPONENTS or not isinstance(key, str)):
+                raise ProjectError('Choose a supported authored component and review identity')
+            reviews = {row['component']: row for row in self.component_reviews(identifier)}
+            if component not in reviews or reviews[component]['review_key'] != key:
+                raise ProjectError('Authored component changed since review; reopen its asset details')
+            before = deepcopy(self.overrides[identifier])
+            after = deepcopy(before)
+            del after[component]
+            if after:
+                self.overrides[identifier] = after
+            else:
+                del self.overrides[identifier]
+            self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': after or None})
+            self.redo_stack.clear()
+            return
         if command.get('type') in ('rename_actor_draft', 'duplicate_actor_draft'):
             identifier=command.get('entity_id')
             if set(command)!={'type','entity_id','name'} or not isinstance(identifier,str) or identifier not in self.actor_drafts:
@@ -1974,6 +1997,18 @@ class ProjectService:
         result._mark_saved()
         return result
 
+    def component_reviews(self, identifier: str, *, source_digest: str | None = None) -> list[dict]:
+        """Detached authored settings with a source-bound identity for component removal."""
+        document = self.imports.get(identifier)
+        if document is None:
+            document = self._dialogue_document(identifier)
+        source_digest = source_digest or digest(document)
+        return [{'component': component, 'authored': deepcopy(value),
+                 'review_key': digest({'project_root': str(self.root), 'source_document_sha256': source_digest,
+                                      'owner_id': identifier, 'component': component, 'authored': value})}
+                for component, value in sorted(self.overrides.get(identifier, {}).items())
+                if component in self.REVIEW_COMPONENTS]
+
     def authored_assets(self) -> list[dict]:
         """Project-wide authored references, independent of derived resource caches."""
         records = []
@@ -2075,6 +2110,14 @@ class ProjectService:
             records.append({"id": identifier, "kind": "template", "name": template["name"],
                             "scene_id": scene_id, "source_scene": self.imports.get(scene_id, {}).get("scene", {}).get("name", scene_id),
                             "changes": ["Appearance template" if template["scope"] == "authored-appearance-v1" else "Position template"], "authored": deepcopy(template)})
+        source_digests = {}
+        for record in records:
+            if record['id'] not in self.overrides:
+                continue
+            scene_id = record['scene_id']
+            if scene_id not in source_digests:
+                source_digests[scene_id] = digest(self.imports[scene_id])
+            record['component_reviews'] = self.component_reviews(record['id'], source_digest=source_digests[scene_id])
         return records
 
     def model_references(self) -> list[dict]:

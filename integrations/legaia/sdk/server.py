@@ -1075,6 +1075,10 @@ class EditorHandler(BaseHTTPRequestHandler):
         # Reject malformed field types before they reach filesystem/importer services.
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
+        if route == "/api/command" and body.get("type") == "revert_authored_component":
+            if set(body) != {"type", "entity_id", "component", "review_key"}:
+                raise ProjectError("Component revert accepts only owner, component and review identity")
+            required_strings[route] = ("entity_id", "component", "review_key")
         if route == "/api/command" and body.get("type") == "clear_texture_replacement":
             if set(body) != {"type", "asset_id"}:
                 raise ProjectError("Texture clear accepts only an asset identity")

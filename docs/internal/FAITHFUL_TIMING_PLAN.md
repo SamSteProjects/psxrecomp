@@ -213,6 +213,26 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Authored component review and reversible removal
+
+- Previous goal turn progressed: c0c66224 committed selector authoring and source
+  guards; tracked tree clean at start. Continued offline product buildout.
+- Added source/project/owner/value-bound component review identities and strict
+  revert command; removes only chosen authored component through normal history.
+  Authored Assets actor/P2/scene details expose review and Revert, with shared
+  instance implications and Undo. Unsupported values remain clearable offline.
+- 25 focused tests in 1.334s, no skips; five new component lifecycle/stale/HTTP
+  tests. Editor syntax and diff checks passed. Retail town01 browser preserved
+  model selector and three unrelated menu edits through Transform revert,
+  Undo/Redo and Save. Independent disk reopen confirmed saved removal. External
+  change caused stale UI rejection with unchanged authoritative state. Zero page
+  errors; screenshot inspected. Browser closed; owned server49213 stopped exit1.
+- Private evidence in component-review-project-20260930; no retail/game changes,
+  package installation or game launch. Initial fixture command omitted Python
+  path and failed before writing; corrected environment succeeded once.
+- Updated status/buildout/matrix and usage guide. 405 full checkpoint predates
+  this feature; broader SDK goal remains active, gameplay deferred.
+
 ### 2026-09-30 - Source-qualified script model-selector authoring
 
 - Final review strengthened appended selector guards: encoded actor context
