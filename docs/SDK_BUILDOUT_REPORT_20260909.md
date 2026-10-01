@@ -8,12 +8,26 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Reviewed against committed source through `1eafc313`, including saved runtime node
+Current buildout includes menu-label authoring, saved runtime node
 review, indexed texture rectangle copying and model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Menu-label authoring (2026-09-30):** source-qualified plain-glyph runs
+inside decoded two-, three- and four-option pickers now use the existing
+Dialogue component and Apply/Clear/Discard, Undo/Redo, Save/Open and Build paths.
+The Inspector identifies picker PC, option number, source capacity and encoded
+choice target. Equal-span edits preserve jump entries, continuation bytes,
+control/substitution tokens and record boundaries. Ordinary dialogue retains its
+no-stop gate; conflicting or aliased menu spans remain unavailable. 54 focused
+retail-enabled dialogue/script/resource tests passed in29.896s with no skips,
+plus editor syntax and a retail browser workflow. A saved town01 actor0001
+label package independently decoded to exactly the expected MAN. This follows
+the392-test checkpoint; that full-suite run predates menu authoring. Menu story
+reachability, glyph layout and runtime selection are unverified. See the
+[menu-label guide](legaia-menu-label-authoring.md). No game was launched.
 
 **Saved runtime node review (2026-09-30):** the Observed nodes panel can
 export decoded metadata and reopen it later in Edit mode as a historical,

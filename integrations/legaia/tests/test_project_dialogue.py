@@ -15,6 +15,38 @@ from integrations.legaia.tests.test_project_workflow import synthetic_scene
 
 
 class ProjectDialogue(unittest.TestCase):
+    def test_menu_label_commands_use_verified_spans_history_and_persistence(self):
+        from test_importer_dialogue_authoring import fixture, literals
+        from importer.dialogue_authoring import DialogueAuthoringContext
+        script=b"\x1fQ\0\x27\x0d\0\x0b\0\x1fYes\0\x1fNo\0\x4c\xff"
+        for partition in (1,2):
+            context,original=fixture(script)
+            identifier="scene://fixture/actors/man-p1/0001"
+            if partition==2:
+                identifier="scene://fixture/scripts/man-p2/0000"
+                region=0x2b+12
+                section=int.from_bytes(original[0x28:0x2b],'little')
+                record=bytes(4)+script
+                man=bytearray(original[:region+section]+record+original[region+section:])
+                man[0x34:0x37]=section.to_bytes(3,'little')
+                man[0x28:0x2b]=(section+len(record)).to_bytes(3,'little')
+                original=bytes(man)
+                context=DialogueAuthoringContext('fixture',original,literals(original),{})
+            run=context.options(identifier)['runs'][0]
+            with tempfile.TemporaryDirectory() as directory:
+                project=ProjectService(Path(directory));project.import_metadata(synthetic_scene())
+                with patch.object(project,'_dialogue_context',return_value=context):
+                    project.command(dict(type='set_dialogue_text',entity_id=identifier,run_id=run['semantic_id'],text='OK'))
+                    self.assertEqual(project.dialogue_options(identifier)['runs'][0]['effective_text'],'OK ')
+                authored=deepcopy(project.overrides)
+                project.undo();self.assertEqual(project.overrides,{})
+                project.redo();self.assertEqual(project.overrides,authored)
+                restored=ProjectService.open(project.save())
+                self.assertEqual(restored.overrides,authored)
+                restored.command(dict(type='clear_dialogue_text',entity_id=identifier,run_id=run['semantic_id']))
+                self.assertEqual(restored.overrides,{})
+                restored.undo();self.assertEqual(restored.overrides,authored)
+
     def test_partition_two_command_history_and_offline_persistence(self):
         with tempfile.TemporaryDirectory() as raw:
             p = ProjectService(Path(raw)); p.import_metadata(synthetic_scene())

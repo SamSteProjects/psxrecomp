@@ -2331,7 +2331,7 @@ function renderDialogueAuthoring(){
   const authoring=scriptReport?.dialogue_authoring;
   if(!state.capabilities?.actor_dialogue_authoring||!authoring){updateScriptActions();return;}
   const note=document.createElement('div');note.className='dialogue-authoring-note';
-  note.textContent=authoring.supported?'Supported plain-text runs can be replaced within their source byte capacity. Shorter text is padded with spaces; empty text becomes all spaces. Controls and substitutions stay unchanged. Apply each draft before Save; unapplied drafts are discarded when this dialog is reopened.':authoring.reason ?? 'This actor has no supported text runs for authoring.';
+  note.textContent=authoring.supported?'Supported plain-text runs can be replaced within their source byte capacity. Shorter text is padded with spaces; empty text becomes all spaces. Controls, substitutions and menu jump targets stay unchanged. Menu execution remains unresolved. Apply each draft before Save; unapplied drafts are discarded when this dialog is reopened.':authoring.reason ?? 'This actor has no supported text runs for authoring.';
   $('script-dialogue').before(note);
   const evidence=document.createElement('details');evidence.className='dialogue-authoring-evidence';evidence.innerHTML='<summary>Text authoring source and limits</summary><pre class="diagnostic-detail"></pre>';evidence.querySelector('pre').textContent=JSON.stringify({source:authoring.source,limitations:authoring.limitations,unresolved_overrides:authoring.unresolved_overrides},null,2);note.after(evidence);
   if(authoring.unresolved_overrides?.length){const warning=document.createElement('div');warning.className='unresolved-dialogue';const text=document.createElement('p');text.className='dialog-error';text.textContent=`${authoring.unresolved_overrides.length} stored text overrides could not be resolved. They can be cleared without changing the imported record.`;warning.append(text);for(const identifier of authoring.unresolved_overrides){const row=document.createElement('div'),label=document.createElement('code'),button=document.createElement('button');label.textContent=identifier;button.textContent='Clear unresolved override';button.dataset.clearUnresolved=identifier;button.onclick=()=>dialogueCommand({semantic_id:identifier},'clear_dialogue_text');row.append(label,button);warning.append(row);}evidence.after(warning);}
@@ -2339,7 +2339,7 @@ function renderDialogueAuthoring(){
   for(const run of authoring.runs ?? []){
     const parent=[...$('script-dialogue').querySelectorAll('.script-dialogue-card')].find(card=>card.dataset.dialogueId===run.dialogue_id) ?? $('script-dialogue');
     const form=document.createElement('form');form.className='dialogue-run';form.run=run;
-    form.innerHTML=`<h4>Text run ${escapeHTML(scriptOffset(run.pc))} <small>${escapeHTML(run.max_length)} source bytes</small></h4><div class="run-layer"><span>Imported</span><pre class="run-imported"></pre></div><label class="run-layer"><span>Authored replacement</span><textarea rows="2" spellcheck="false" aria-label="Authored text at ${escapeHTML(scriptOffset(run.pc))}" placeholder="No override. Empty text applied here becomes spaces."></textarea></label><div class="run-counter" role="status"></div><div class="run-actions"><button type="submit" class="run-apply accent">Apply text</button><button type="button" class="run-clear">Clear override</button><button type="button" class="run-discard" hidden>Discard draft</button></div><div class="run-layer"><span>Effective after Apply</span><pre class="run-effective"></pre></div><p class="run-effective-note field-note"></p>`;
+    form.innerHTML=`<h4>${run.kind==='menu_label'?`Menu option ${escapeHTML(run.option_index+1)} of ${escapeHTML(run.option_count)} · picker ${escapeHTML(scriptOffset(run.menu_pc))} · label run`:'Text run'} ${escapeHTML(scriptOffset(run.pc))} <small>${escapeHTML(run.max_length)} source bytes</small></h4><div class="run-layer"><span>Imported</span><pre class="run-imported"></pre></div><label class="run-layer"><span>Authored replacement</span><textarea rows="2" spellcheck="false" aria-label="Authored text at ${escapeHTML(scriptOffset(run.pc))}" placeholder="No override. Empty text applied here becomes spaces."></textarea></label><div class="run-counter" role="status"></div><div class="run-actions"><button type="submit" class="run-apply accent">Apply text</button><button type="button" class="run-clear">Clear override</button><button type="button" class="run-discard" hidden>Discard draft</button></div><div class="run-layer"><span>Effective after Apply</span><pre class="run-effective"></pre></div><p class="run-effective-note field-note"></p>`;
     form.querySelector('.run-imported').textContent=run.text ?? '';
     const input=form.querySelector('textarea');input.dataset.runInput=run.semantic_id;input.value=scriptDrafts.has(run.semantic_id)?scriptDrafts.get(run.semantic_id):run.authored_text ?? '';
     form.querySelector('.run-effective').textContent=run.effective_text ?? 'Unavailable';
@@ -2348,6 +2348,11 @@ function renderDialogueAuthoring(){
     form.onsubmit=event=>{event.preventDefault();if(!form.querySelector('.run-apply').disabled)dialogueCommand(run,'set_dialogue_text',input.value);};
     form.querySelector('.run-clear').onclick=()=>dialogueCommand(run,'clear_dialogue_text');
     form.querySelector('.run-discard').onclick=()=>{scriptDrafts.delete(run.semantic_id);input.value=run.authored_text ?? '';updateScriptActions();};
+    if(run.kind==='menu_label'){
+      const target=document.createElement('p');target.className='field-note';
+      target.textContent=`Encoded choice target ${scriptOffset(run.encoded_target)} · jump entry ${scriptOffset(run.entry_pc)} · relative jump ${run.relative_jump}. Jump table and continuation stay unchanged; runtime choice and pager execution are unverified.`;
+      form.prepend(target);
+    }
     parent.append(form);
   }
   updateScriptActions();

@@ -213,6 +213,29 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — SDK menu-label authoring, gameplay deferred
+
+- Previous goal turn supplied the392-test checkpoint; the intervening SDK report
+  question was read-only status, not feature progress. Continued with the next
+  available offline feature. Full SDK objective remains active and incomplete.
+- Verified pinned MES picker layout, then connected equal-span menu glyph runs
+  to existing Dialogue commands, Inspector option/target metadata, persistence,
+  history and Build. Ordinary dialogue stop gate remains unchanged; controls,
+  branch entries and unresolved pager execution are not authored or simulated.
+- 54 focused retail-enabled dialogue/script/resource tests passed in29.896s,
+  no skips. JavaScript syntax passed. Retail browser draft/bounds/Apply/Clear/
+  Discard/Undo/Redo/Save and fresh reopen passed; final screenshot inspected.
+- Private saved menu-label project package SHA256
+  `acf25ce12a487fb23aa4128f242fb19842d8bb0ba0f2cb5db21a339ca87bcec4`.
+  Independent package readback equals expected MAN exactly; targets/controls and
+  outside bytes unchanged. Initial synthetic check caught unmasked encoded_hex
+  mirror, corrected without weakening boundary checks. Prior actor0001 negative
+  assertion now verifies only menu spans are offered, ordinary dialogue blocked.
+- Updated buildout/status/matrix/provenance/guide and deferred gameplay queue.
+  Source-menu reachability is unverified.392-test discovery checkpoint predates
+  this addition. No game/runtime launch, upstream mutation or asset staging.
+
+
 ### 2026-09-30 — Current392-test retail SDK regression checkpoint
 
 Previous goal turn progressed at1eafc313 with historical node review. Kept clean

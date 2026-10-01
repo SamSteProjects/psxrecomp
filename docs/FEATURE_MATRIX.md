@@ -4,6 +4,7 @@ Current scene-editor status (2026-09-30):
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
+| Field menu label authoring | FUNCTIONAL / OFFLINE. Existing Dialogue commands edit source-qualified, contiguous plain-glyph runs in reached two/three/four-choice pickers, with option/target/capacity Inspector metadata, history, persistence and audited Build. 54 focused retail-enabled tests, retail browser Apply/Clear/Discard/Undo/Redo/Save/reopen and independent package readback passed. Jump tables, controls and byte offsets are unchanged. | Pager execution, menu reachability, glyph layout and gameplay selection remain unverified. Ordinary dialogue stop checks remain in place; world-map menu authoring is separate and unavailable. |
 | Authored NPC drafts | Stable UUIDs and donor references; create/edit/delete commands, undo/redo, Save/Open, dirty/build identity tracking. Browser-verified creation, management, hierarchy, donor-model rendering, framing, picking, main Inspector, X/Z gizmos with Undo/cancellation and serialized-candidate inspection. Same-scene batch drafts and existing actor X/Z edits compose into a verified logical archive prototype. | Descriptor and supported streaming MAN drafts now compose with supported actor/dialogue/transition/animation/model/texture and MAP overrides in experimental disc exports, with saved input snapshots and reopened archive verification. Complete script/scheduling and gameplay acceptance remain pending; see legaia-gameplay-verification-queue.md. |
 | Scene discovery in import dialog | Verified local-disc catalog with name prefix, 16-block paging, placement counts and source carrier kind. Unsupported structural blocks keep their reasons. Browser Dolk selection and two disjoint catalog pages verified. Empty-project Dolk2 import, Save and independent disk reopen retained72 actors and the source path. Later shared-model fixes brought the browser preview to441/441 entities. | Placement discovery does not prove full model import, rendering or gameplay compatibility. |
 | Authored asset discovery | Project-wide NPC drafts, actor edits, model and texture replacements, scene edits, scripts and templates are cataloged independently of resource refresh. Draft navigation opens its dedicated Inspector; catalog undo/save/reopen checks and saved-review browser navigation passed. | Broader cross-scene browser acceptance and unsupported asset families. |
@@ -281,7 +282,7 @@ inventing a post-menu fallthrough. Compared with the prior decoder, town01 adds
 113 dialogue IDs and withdraws17 from P2[20] when a newly reached boundary
 conflict invalidates that graph: net522 dialogue segments/613 script-dialogue
 assets,1183 flag references,60 partial scripts. Choice successors use existing
-instruction navigation; pager uncertainty continues to prevent menu authoring.
+instruction navigation; at this checkpoint pager uncertainty prevented menu authoring. The September30 equal-span label writer preserves those unresolved controls without claiming execution.
 The new successor links await browser acceptance.
 
 
@@ -688,3 +689,8 @@ script operand and runtime-review JavaScript checks and editor syntax passed.
 Private log/metadata: sdk-regression-20260930-runtime-review.log/.json under
 local-output/sdk-20260909. This covers accumulated SDK services and new rectangle
 copy preservation/rejection; browser and gameplay acceptance remain separate.
+
+2026-09-30 menu-label authoring: see [the guide](legaia-menu-label-authoring.md).
+This addition follows the392-test source checkpoint and has54 focused retail-enabled
+tests plus separate browser/package readback evidence. No new full-suite claim
+or gameplay acceptance.

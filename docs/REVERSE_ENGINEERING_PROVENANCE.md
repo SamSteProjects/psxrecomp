@@ -317,3 +317,15 @@ are retained under ignored local-output/sdk-20260909. These prove serialization
 and editor persistence, not story semantics, runtime behavior or gameplay
 acceptance. Browser forms keep retail/authored/effective operands separate and
 use ordinary project commands; no guest RAM mutation is involved.
+
+
+### Equal-span field menu labels (2026-09-30)
+
+Pinned `d6e64c68ede25813d35db20980da82a1a025549b`:
+`crates/mes/src/picker.rs` establishes masked0x27/28/29 openings, signed
+entry-relative jump tables, immediate/continuation label starts and MES spans.
+The SDK label writer uses those decoded spans and existing MAN ownership and
+plain-glyph validation. It preserves branch/control bytes and compares graph,
+token and record boundaries after editing. Static labels do not establish
+pager continuation execution, runtime choices, font layout or story reachability.
+See [menu-label authoring](legaia-menu-label-authoring.md) for current evidence.

@@ -117,6 +117,7 @@ def _instruction(data: bytes, pc: int) -> dict:
             label = decode_inline_message(data, cursor)
             options.append({"index": index, "label": label["text"],
                             "label_pc": cursor, "label_length": label["length"],
+                            "label_tokens": label["tokens"], "label_terminator": label["terminator"],
                             "entry_pc": entry, "relative_jump": delta,
                             "encoded_target": entry + delta})
             cursor += label["length"]

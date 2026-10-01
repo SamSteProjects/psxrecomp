@@ -36,6 +36,56 @@ def fixture(script=b"\x1fHello\0", alias=False):
 
 
 class DialogueAuthoringTests(unittest.TestCase):
+    def test_menu_labels_preserve_targets_controls_and_append_offsets(self):
+        for count in (2, 3, 4):
+            for continuation in (b"", b"\x24", b"\x4c\xff"):
+                for high in (0, 0x80):
+                    script = bytearray(b"\x1fPrompt\0" + bytes([0x25 + count + high]) + bytes(count*2) + continuation)
+                    menu = 8
+                    for _ in range(count):
+                        script.extend(b"\x1fYes\x5e\x2dNo\xc1\0End\0")
+                    target = 5 + len(script)
+                    script.extend(b"\x4c\xff")
+                    for index in range(count):
+                        entry = 5 + menu + 1 + index*2
+                        struct.pack_into('<h', script, menu + 1 + index*2, target - entry)
+                    context, original = fixture(bytes(script))
+                    options = context.options(ACTOR)
+                    self.assertTrue(options['supported'], options['reason'])
+                    runs = options['runs']
+                    self.assertEqual(len(runs), count*3)
+                    self.assertTrue(all(r['kind']=='menu_label' for r in runs))
+                    self.assertEqual([r['text'] for r in runs[:3]], ['Yes', 'No', 'End'])
+                    self.assertEqual(runs[0]['encoded_target'], target)
+                    self.assertEqual(runs[-1]['option_index'], count-1)
+                    changed, audit = context.patch({runs[0]['semantic_id']:'OK', runs[-1]['semantic_id']:''})
+                    allowed = {i for a in audit for i in range(a['decoded_byte_offset'], a['decoded_byte_offset']+a['byte_length'])}
+                    self.assertTrue(all(a==b or i in allowed for i,(a,b) in enumerate(zip(original,changed))))
+                    self.assertEqual(parse_man(changed), parse_man(original))
+                    self.assertEqual(context.patch({r['semantic_id']:r['text'] for r in runs}), (original, []))
+                    from importer.man_actor_structure import append_actor_donor
+                    from hashlib import sha256
+                    appended,_ = append_actor_donor(original,sha256(original).hexdigest(),1)
+                    composed,relocated = context.patch_appended(appended,{runs[0]['semantic_id']:'OK'})
+                    offset=relocated[0]['decoded_byte_offset']
+                    self.assertEqual(composed[offset:offset+3],b'OK ')
+                    self.assertEqual(composed[:offset],appended[:offset])
+                    self.assertEqual(composed[offset+3:],appended[offset+3:])
+                    with self.assertRaises(ImportError):
+                        context.patch({runs[0]['semantic_id']:'Overlong'})
+                    with self.assertRaises(ImportError):
+                        context.patch({runs[0]['semantic_id'].replace('/option/0','/option/4'):'No'})
+
+    def test_menu_conflicts_and_malformed_labels_are_not_authorable(self):
+        # Target into a label, truncated label and aliased actor remain blocked.
+        for script in (b"\x1fQ\0\x27\x06\0\x04\0\x1fYes\0\x1fNo\0",
+                       b"\x1fQ\0\x27\x10\0\x20\0\x1fYes\0\x1fNo"):
+            context,_=fixture(script)
+            self.assertFalse(context.options(ACTOR)['supported'])
+            self.assertEqual(context.options(ACTOR)['runs'],[])
+        context,_=fixture(b"\x1fQ\0\x27\x10\0\x20\0\x1fYes\0\x1fNo\0",alias=True)
+        self.assertFalse(context.options(ACTOR)['supported'])
+
     def test_raw_source_keeps_equal_span_validation_without_fake_compression(self):
         compressed, man = fixture()
         raw = DialogueAuthoringContext('fixture', man, man, {'compression':'none'}, compression='none')
@@ -235,7 +285,9 @@ class RetailDialogueAuthoringTests(unittest.TestCase):
             self.assertEqual(changed[27176:], original[27176:])
             self.assertEqual(audit[0]["padding_bytes"], 9)
             self.assertEqual(context.patch({run["semantic_id"]: run["text"]}), (original, []))
-            self.assertFalse(context.options("scene://town01/actors/man-p1/0001")["supported"])
+            menu_runs = context.options("scene://town01/actors/man-p1/0001")["runs"]
+            self.assertTrue(menu_runs)
+            self.assertTrue(all(r.get("kind") == "menu_label" for r in menu_runs))
 
 
 if __name__ == "__main__":

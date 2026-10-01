@@ -348,3 +348,21 @@ appearance of affected materials where that atlas region is used. Static
 associations do not establish runtime VRAM residency; a tiny atlas probe may
 require byte inspection rather than an obvious visual difference. Gameplay
 verification remains deferred until the user elects to perform it.
+
+
+## Field menu label source probe — 2026-09-30, deferred
+
+Saved project: `local-output/sdk-20260909/menu-label-project-20260930/project.legaia.json`.
+Package: `Builds/d91ec96d0b439b7e/legaia.sdk.59e13c627546-0.1.0-d91ec96d0b439b7e.psxmod`
+inside that project; SHA256 `acf25ce12a487fb23aa4128f242fb19842d8bb0ba0f2cb5db21a339ca87bcec4`.
+
+Town01 actor0001 picker0x6B, option0 plain run0x75 has a six-byte source span;
+replacement `SDK` retains three spaces. Source jump entry/target and every
+outside byte are unchanged. Saved-project reopen, retail browser workflow and
+independent package ZIP/LZS readback passed (`package-readback.json`).
+
+This actor's source menu is not established as reachable during ordinary
+play. The artifact is a serialization review probe. Later gameplay acceptance
+requires an evidenced reachable menu in the intended story state, then visual
+label/font/wrapping inspection and confirmation that all choices retain their
+original behavior. No game launch or manual verification is requested now.

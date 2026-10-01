@@ -594,7 +594,7 @@ def _build_project(project, output_dir) -> dict:
                     changed = _merge_dialogue_patch(baseline, changed, dialogue_changed, dialogue_changes,
                                                    expected_runs, changes)
                     for change in dialogue_changes:
-                        change.update(field="dialogue.text", scope="inline-mes-glyph-run-only",
+                        change.update(field="dialogue.text", scope=("menu-label-glyph-run-only" if change.get("kind") == "menu_label" else "inline-mes-glyph-run-only"),
                                       semantic_id=expected_runs[change["run_id"]]["actor_id"])
                     changes.extend(dialogue_changes)
                 if edits["transitions"]:

@@ -4,6 +4,7 @@ Independent adapter over script_inspection's proven MES intervals. Evidence at
 pipeline.REFERENCE_COMMIT: crates/mes/src/lib.rs byte walker (0x5E is a two-byte
 spacing alias), engine-core/src/dialog.rs inline MAN segments, and
 asset/src/man_section.rs / engine-core/src/man_field_scripts/records.rs bounds.
+Menu label/jump layout also follows crates/mes/src/picker.rs at the same pin.
 No text relocation, control editing, story execution or font layout is inferred.
 """
 from __future__ import annotations
@@ -28,7 +29,8 @@ MAX_EDIT_BYTES = 65536
 LIMITATIONS = [
     "Only evidenced contiguous one-byte printable ASCII glyph runs are editable; caret, controls and substitutions are excluded.",
     "Shorter replacements are right-padded with spaces to preserve every byte offset; longer replacements are rejected.",
-    "Records with unknown instruction stops, conflicting decode boundaries or aliased source records are unsupported.",
+    "Ordinary dialogue requires no instruction stops; menu labels require decoded nonconflicting picker spans. Aliased records are unsupported.",
+    "Menu labels preserve jump entries, continuation bytes, token controls and every record offset; pager execution remains unresolved.",
     "Unvisited tail bytes remain unchanged; static paths do not prove current dialogue reachability or full script behavior.",
     "Glyph width, line wrapping, dialogue boxes and current story state are not simulated.",
     "Playable packaging separately requires the edited MAN to fit the original compressed capacity.",
@@ -53,7 +55,7 @@ def validate_run_id(actor_id: Any, run_id: Any) -> str:
     if not isinstance(actor_id, str) or re.fullmatch(r"scene://[A-Za-z0-9_-]+/(?:actors/man-p1|scripts/man-p2)/[0-9]{4}", actor_id) is None:
         raise ImportError("dialogue authoring requires a partition-1 actor or partition-2 script identifier")
     prefix = "script://" + actor_id.removeprefix("scene://")
-    if not isinstance(run_id, str) or re.fullmatch(re.escape(prefix) + r"/dialogue/[0-9a-f]{4}/run/[0-9a-f]{4}", run_id) is None:
+    if not isinstance(run_id, str) or re.fullmatch(re.escape(prefix) + r"/(?:dialogue/[0-9a-f]{4}|menu/[0-9a-f]{4}/option/[0-3])/run/[0-9a-f]{4}", run_id) is None:
         raise ImportError("dialogue run identifier must belong to the actor and contain fixed hexadecimal PCs")
     return run_id
 
@@ -73,6 +75,19 @@ def _shape(report: dict) -> dict:
             if _plain_glyph(token):
                 for key in ("value", "text", "raw_hex"):
                     token.pop(key, None)
+    for instruction in result["instructions"]:
+        if instruction["mnemonic"] != "DIALOGUE_PICKER":
+            continue
+        raw = bytearray.fromhex(instruction["raw_hex"])
+        for option in instruction["operands"]["options"]:
+            option.pop("label")
+            for token in option["label_tokens"]:
+                if _plain_glyph(token):
+                    raw[token["pc"] - instruction["pc"]] = 0x20
+                    for key in ("value", "text", "raw_hex"):
+                        token.pop(key, None)
+        instruction["raw_hex"] = raw.hex()
+        instruction["operands"]["encoded_hex"] = raw[1:].hex()
     return result
 
 
@@ -172,10 +187,33 @@ class DialogueAuthoringContext:
                     raise ImportError("dialogue edits require a non-aliased actor record outside MAN sections")
                 report = self._inspect(actor_id, self._man)
                 status = report["status"]
-                if report["stops"]:
-                    raise ImportError("dialogue edits require no unknown or conflicting instruction stops in the inspected actor graph")
                 self._reports[actor_id] = report
-                for dialogue in report["dialogues"]:
+                segments = []
+                # Keep the ordinary dialogue stop gate. Label spans are local,
+                # fully decoded parts of reached pickers, not inferred pages.
+                if not report["stops"]:
+                    segments.extend((dialogue, {}) for dialogue in report["dialogues"])
+                else:
+                    reason = "Ordinary dialogue edits require no unknown or conflicting instruction stops; only supported menu labels are offered"
+                for row in report["instructions"]:
+                    if row["mnemonic"] != "DIALOGUE_PICKER":
+                        continue
+                    for option in row["operands"]["options"]:
+                        label_id = ("script://" + actor_id.removeprefix("scene://") +
+                                    f"/menu/{row['pc']:04x}/option/{option['index']}")
+                        tokens = deepcopy(option["label_tokens"])
+                        for token in tokens:
+                            token["byte_offset"] = actor.byte_offset + token["pc"]
+                        segments.append((dict(semantic_id=label_id, pc=option["label_pc"],
+                                              text=option["label"], tokens=tokens),
+                                         dict(kind="menu_label", menu_pc=row["pc"],
+                                              option_index=option["index"],
+                                              option_count=row["operands"]["option_count"],
+                                              entry_pc=option["entry_pc"],
+                                              relative_jump=option["relative_jump"],
+                                              encoded_target=option["encoded_target"],
+                                              runtime_choice="not_observed")))
+                for dialogue, metadata in segments:
                     group = []
                     def finish():
                         if not group:
@@ -188,7 +226,7 @@ class DialogueAuthoringContext:
                                    dialogue_pc=dialogue["pc"], decoded_byte_offset=group[0]["byte_offset"],
                                    byte_length=len(group), max_length=len(group), text=text,
                                    dialogue_text=dialogue["text"], padding="right_spaces",
-                                   source_text_sha256=_sha(text.encode("ascii")))
+                                   source_text_sha256=_sha(text.encode("ascii")), **metadata)
                         self._runs[identifier] = run
                         runs.append(run)
                         group.clear()
@@ -246,7 +284,7 @@ class DialogueAuthoringContext:
             validate_dialogue_text(text)
             if not isinstance(identifier, str):
                 raise ImportError("dialogue edit requires a structural run identifier")
-            actor_id = "scene://" + identifier.removeprefix("script://").split("/dialogue/", 1)[0]
+            actor_id = "scene://" + re.split(r"/(?:dialogue|menu)/", identifier.removeprefix("script://"), maxsplit=1)[0]
             validate_run_id(actor_id, identifier)
             options = self.options(actor_id)
             run = self._runs.get(identifier)
@@ -271,6 +309,9 @@ class DialogueAuthoringContext:
                               decoded_byte_offset=offset, byte_length=size, before_hex=before.hex(),
                               after_hex=replacement.hex(), padding_bytes=size - text_length,
                               source_decoded_man_sha256=_sha(self._man), scope="equal-span-plain-MES-glyphs"))
+            if run.get("kind") == "menu_label":
+                audit[-1].update(kind="menu_label", menu_pc=run["menu_pc"],
+                                 option_index=run["option_index"], encoded_target=run["encoded_target"])
         changed = bytes(result)
         for actor_id in changed_actors:
             if _shape(self._reports[actor_id]) != _shape(self._inspect(actor_id, changed)):
