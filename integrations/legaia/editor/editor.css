@@ -112,3 +112,7 @@
 .text-search-run{border-top:1px solid var(--border);padding:12px 0;overflow-wrap:anywhere}
 .text-search-run small{display:block;color:var(--muted);margin-top:8px}
 .text-search-run pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 8px}
+
+#actor-group-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 12px; font-size: 11px; color: #8bd7e8; border-bottom: 1px solid var(--line); }
+#actor-group-selection span { flex: 1; }
+.entity-row.group-selected { box-shadow: inset 3px 0 #8bd7e8; background: #253940; }

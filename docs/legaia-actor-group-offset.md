@@ -124,3 +124,39 @@ Private evidence: `local-output/sdk-20260909/actor-group-gizmo-20260930/`
 contains `group-gizmo-browser-check.json` and `group-gizmo-proposed.png`.
 Owned browsers/servers closed. These JavaScript/browser checks postdate the
 421-test Python checkpoint; the backend was unchanged.
+
+## Select actors in the viewport or hierarchy — 2026-09-30
+
+Ctrl-click (Command-click on platforms providing Meta) toggles an imported actor
+in the active scene into a group. The first toggle includes the focused imported
+actor, if eligible. Cyan highlights distinguish group membership from the focused
+actor shown in the Inspector. Selection is bounded to 128 actors; NPC drafts,
+scenery and runtime nodes keep their separate tools. In the viewport, selection
+uses the frontmost visible mesh; occluded actors can be selected in the hierarchy.
+
+The selection bar offers **Frame actor group**, **Review group offset** and
+**Clear group**. Review seeds the existing checkbox dialog; dialog membership may
+then be edited separately. It uses the same proposal inspection, relative X/Z
+handles and atomic Apply/Undo workflow described above. Selecting a group makes
+no project or selection-service requests, creates no history and is not saved.
+Normal entity selection or Clear removes the group. Hierarchy search preserves
+membership. Source/project/scene changes and leaving Edit withdraw it. While any
+group is selected, single-actor handles are suppressed; a one-actor group cannot
+open the group review. Shift-drag remains viewport pan.
+
+Node checks cover primary seeding, toggles/removal, ineligible members, stale IDs,
+128-actor bounds and detached inputs. Retail town01 browser checks exercised
+hierarchy Ctrl-click on actor0011/0012 and an actual Ctrl-click on visible actor0016
+mesh pixels, with no selection/authoring requests or authoritative state change.
+Filtering retained membership; framing and cyan highlights were inspected.
+Review retained both actors, real +64 X dragging remained unapplied until one
+command, and Undo restored authored settings and dirty status. Clear/plain-click
+checks passed. Injected client mode/source changes cleared selection; actual
+Live was disabled because no runtime was checked. No Live/runtime parity claim.
+Zero page errors; no Save, package installation or game launch.
+
+Private evidence: `local-output/sdk-20260909/actor-multiselect-20260930/`
+contains `actor-multiselect-browser-check.json` and `actor-multiselect.png`.
+Owned browser/server processes closed. These UI checks postdate the 421-test
+Python checkpoint; the Python backend was unchanged. Rectangle/range and mixed
+actor/scenery selection remain future work.

@@ -15,6 +15,20 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Viewport/hierarchy actor group selection (2026-09-30):** Ctrl/Command-click
+now toggles imported actors into a bounded 128-actor group, with cyan scene and
+hierarchy highlights, Frame actor group, Clear group and Review group offset.
+Review seeds the existing placement dialog; normal clicks retain focused-actor
+inspection. Group selection is transient and sends no selection or authoring
+requests. Single-actor handles are suppressed while any group is selected.
+Node membership/bounds/immutability checks and real town01 hierarchy/visible-mesh
+Ctrl-click, filtering, framing, seeded review, +64 X proposal drag, atomic Apply
+and project-restoring Undo passed. Client source/mode guards were checked with
+injected state changes; actual Live remains unavailable without a checked runtime.
+Screenshot inspected; no game launched or project saved. These UI checks are
+separate from the earlier 421-test Python checkpoint. See
+[group placement guide](legaia-actor-group-offset.md).
+
 **Actor group proposal drag handles (2026-09-30):** Proposed mode now offers
 X/Z handles for the selected actor group, snapping relative movement to 64 units.
 Release revalidates the whole proposal without authoring; Return shows the updated

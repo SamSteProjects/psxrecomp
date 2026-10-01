@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeActorPlacementScene,offsetActorPlacementProposal} from '../editor/actor-placement-batch.js';
+import {decodeActorPlacementScene,offsetActorPlacementProposal,toggleActorGroupSelection} from '../editor/actor-placement-batch.js';
 const proposal={scene_id:'scene://fixture',review_key:'review',targets:[
   {entity_id:'a',proposed:{x:128,y:null,z:256}},
   {entity_id:'b',proposed:{x:512,y:12,z:1024}}]};
@@ -19,3 +19,14 @@ assert.deepEqual(grouped,initial);
 for(const [axis,amount] of [['y',64],['x',32],['x',NaN],['x',true],['x',20000],['x',-128]])assert.throws(()=>offsetActorPlacementProposal(grouped,axis,amount));
 assert.equal(offsetActorPlacementProposal(grouped,'z',64).delta.z,64);
 console.log('Relative 64-unit group proposal offsets, source/target bounds, atomic rejection and immutable review data passed.');
+
+const eligible=['a','b','c'];
+assert.deepEqual(toggleActorGroupSelection([],'b',eligible,'a'),['a','b']);
+assert.deepEqual(toggleActorGroupSelection(['b','a'],'a',eligible),['b']);
+assert.deepEqual(toggleActorGroupSelection(['removed','a'],'c',eligible),['a','c']);
+assert.deepEqual(toggleActorGroupSelection([],'a',eligible,'a'),[]);
+const selected=['a'];assert.deepEqual(toggleActorGroupSelection(selected,'c',eligible),['a','c']);assert.deepEqual(selected,['a']);
+assert.throws(()=>toggleActorGroupSelection(selected,'scenery',eligible));
+const many=Array.from({length:129},(_,i)=>String(i));assert.throws(()=>toggleActorGroupSelection(many.slice(0,128),many[128],many));
+assert.equal(toggleActorGroupSelection(many.slice(0,128),many[0],many).length,127);
+console.log('Imported actor group membership, primary seeding, toggle/removal, detached bounded selections and ineligible rejection passed.');

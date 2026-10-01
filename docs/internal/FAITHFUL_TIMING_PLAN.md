@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Viewport and hierarchy imported actor group selection
+
+- Previous goal turn progressed: 6e92ecd8 committed proposal drag handles and
+  refreshed reports. Confirmed branch/HEAD/clean tracked tree; continued offline
+  Unity-like editor work with bounded Ctrl/Command-click actor selection,
+  cyan highlights, Frame/Clear and placement-dialog seeding. No backend change.
+- Node membership/128-bound/immutability tests, syntax and diff checks passed.
+  Real town01 hierarchy0011/0012 and visible-mesh0016 Ctrl-click, unchanged
+  project/no selection requests, filtering, Frame, seeded review, +64 X drag,
+  one-command Apply and project-restoring Undo passed; zero page errors.
+  Screenshot inspected. Added one-member suppression of single-actor handles
+  and hidden preselection markers during proposal inspection; rechecked final UI.
+- Initial browser92464 finished exit1 solely because it tried the correctly
+  disabled Live button without a checked runtime. Corrected harness to assert
+  disabled state and separately inject client mode/source changes for withdrawal
+  checks. No live runtime validation claimed; no game/Save/install. Private
+  actor-multiselect-20260930 evidence. Final check61315 terminal exit0; owned
+  server93201 stopped exit1. Earlier owned server42516 also terminal exit1.
+  Owned temporary browsers/servers closed.
+- Updated report/status/matrix/group guide. Current JavaScript/browser checks
+  are separate from the prior421-test Python checkpoint. Full SDK/runtime/manual
+  acceptance remains incomplete and goal active; broader mixed/range selection
+  remains future work.
+
+
 ### 2026-09-30 - Actor group proposal handles and buildout report refresh
 
 - Continued offline SDK work from b387dfa4: relative 64-unit Proposed group X/Z

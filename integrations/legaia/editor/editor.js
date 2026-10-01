@@ -3,14 +3,14 @@ import {findDecodedPath} from '/script-paths.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {captureRuntimeReview,parseRuntimeReview,MAX_REVIEW_BYTES} from '/runtime-review.js';
-import {mountActorPlacementBatch} from '/actor-placement-batch.js';
+import {mountActorPlacementBatch,toggleActorGroupSelection} from '/actor-placement-batch.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
-let actorGroupInspection=null;
+let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null;
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
 const transformTools=document.createElement('div');transformTools.className='transform-tools';
 transformTools.innerHTML='<label><input id="transform-snap" type="checkbox"> Snap moves</label><label>Step <select id="transform-snap-step" aria-label="Transform snap step"><option value="16">16 units</option><option value="64" selected>64 units</option><option value="256">256 units</option><option value="1024">1024 units</option></select></label><span id="transform-drag-status" role="status">X/Z moves · snap aligns to scene origin</span>';
@@ -501,7 +501,7 @@ function notify(message, error=false) {
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{$('toast').hidden=true;},error?8500:3200);
 }
 function setBusy(value) {
-  busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;updateActorGroupSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
@@ -545,7 +545,7 @@ async function api(path, payload, {dialog,success}={}) {
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
-    if(path==='/api/selection'){pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;}state=data; render();
+    if(path==='/api/selection'){pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();}state=data; render();
     $('connection-dot').classList.add('connected');
     if(dialog) dialog.close();
     if(success) notify(success);
@@ -572,11 +572,11 @@ function frameNpcDraft(){
   if(sceneRepresentation==='retail'){representationSelect.value='authored';representationSelect.onchange();selectNpcDraft(id);}
   frame({id,components:{Transform:{imported:{position:{...value.position,y:null}}}}});
 }
-function selectNpcDraft(id){pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
+function selectNpcDraft(id){clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
-  if(actorGroupInspection)return null;
+  if(actorGroupInspection||actorGroupSelection.length)return null;
   if(sceneRepresentation!=="authored")return null;
   const npc=selectedNpcDraft();
   if(npc){if(!scenePreviewCurrent()||hiddenSceneEntities().has(npcDraftSelection))return null;return {id:npcDraftSelection,components:{Transform:{effective:{position:{...npc.position,y:null}}}}};}
@@ -621,7 +621,7 @@ async function moveSharedEnvironment(item,axis,worldValue){
   await api('/api/command',remaining.length||instances.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits:remaining,instances}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
 }
 function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
-function selectEnvironment(identifier){pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function selectEnvironment(identifier){clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
 function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
 function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
@@ -686,7 +686,35 @@ $('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
 const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-button';draftsButton.textContent='NPC drafts';draftsButton.onclick=()=>openNpcDrafts();$('save-button').after(draftsButton);
-const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:entities,isBusy:()=>busy,canEdit,setBusy,api,notify,after:draftsButton,
+const actorGroupTools=document.createElement('div');actorGroupTools.id='actor-group-selection';actorGroupTools.hidden=true;
+actorGroupTools.innerHTML='<span role="status"></span><button type="button" data-frame-selection>Frame actor group</button><button type="button" data-review-selection>Review group offset</button><button type="button" data-clear-selection>Clear group</button>';
+transformTools.after(actorGroupTools);
+function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;updateActorGroupSelection();}
+function updateActorGroupSelection(){
+  if(actorGroupSelection.length&&(!canEdit()||actorGroupSelectionKey!==resourceStateKey()||actorGroupSelection.some(id=>!entities().some(e=>e.id===id)))){actorGroupSelection=[];actorGroupSelectionKey=null;}
+  actorGroupTools.hidden=!actorGroupSelection.length||!!actorGroupInspection;
+  actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
+  actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;
+  actorGroupTools.querySelector('[data-frame-selection]').disabled=busy||!actorGroupSelection.length||!scenePreviewCurrent();
+  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;
+}
+function toggleActorSelection(id){
+  if(busy||!canEdit()||actorGroupInspection)return;
+  updateActorGroupSelection();
+  try{actorGroupSelection=toggleActorGroupSelection(actorGroupSelection,id,entities().map(e=>e.id),selected()?.id);actorGroupSelectionKey=resourceStateKey();cancelViewportGesture();updateActorGroupSelection();renderHierarchy();draw();}
+  catch(error){notify(error.message,true);}
+}
+function frameActorGroupSelection(){
+  if(busy||!scenePreviewCurrent()||!actorGroupSelection.length)return;
+  pendingEntityFrame=null;cancelViewportGesture();
+  const points=entities().filter(e=>actorGroupSelection.includes(e.id)).map(position),min={},max={};
+  for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}
+  camera.distance=Math.max(300,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
+}
+actorGroupTools.querySelector('[data-frame-selection]').onclick=frameActorGroupSelection;
+actorGroupTools.querySelector('[data-review-selection]').onclick=()=>{if(!busy&&actorGroupSelection.length>=2)document.getElementById('actor-batch-button').click();};
+actorGroupTools.querySelector('[data-clear-selection]').onclick=()=>{if(busy)return;clearActorGroupSelection();renderHierarchy();draw();};
+const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:entities,isBusy:()=>busy,canEdit,setBusy,api,notify,after:draftsButton,getSelection:()=>actorGroupSelection,
   canInspectScene:()=>scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft,
   onSceneInspection:(inspection,layer)=>{cancelViewportGesture();actorGroupInspection=inspection?{...inspection,layer,key:resourceStateKey()}:null;draw();},
   frameGroup:inspection=>{
@@ -719,7 +747,7 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
-  actorBatchTool.synchronize();
+  updateActorGroupSelection();actorBatchTool.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(['transform','group-transform'].includes(drag?.type)&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';
@@ -794,13 +822,13 @@ async function refreshScenePreview(){
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();draw();}}
 }
 function renderHierarchy(){
-  const list=$('hierarchy');list.replaceChildren();
+  const list=$('hierarchy');list.setAttribute('aria-multiselectable','true');list.replaceChildren();
   const filter=$('entity-search').value.toLowerCase();
   for(const entity of entities().filter(e=>`${e.name} ${e.id} ${authoredComponentLabels(e).join(" ")}`.toLowerCase().includes(filter))){
     const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.title=entity.id;
     row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
     const badge=row.querySelector('.authored-dot');if(badge){const labels=authoredComponentLabels(entity);badge.title=labels.length?`Authored: ${labels.join(', ')}`:'Authored override';badge.setAttribute('aria-label',badge.title);}
-    row.onclick=()=>{environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
+    row.classList.toggle('group-selected',actorGroupSelection.includes(entity.id));row.setAttribute('aria-selected',String(actorGroupSelection.length?actorGroupSelection.includes(entity.id):row.classList.contains('selected')));row.onclick=event=>{if(event.ctrlKey||event.metaKey){toggleActorSelection(entity.id);return;}environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
   }
   const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
   const npcDrafts=Object.entries(state.actor_drafts??{}).filter(([id,item])=>item.scene_id===state.scene?.id&&`${item.name} ${id}`.toLowerCase().includes(filter));
@@ -2651,6 +2679,7 @@ function drawEnvironmentSelection(){
   ctx.restore();
 }
 function draw(){
+  updateActorGroupSelection();
   if(actorGroupInspection&&(!scenePreviewCurrent()||actorGroupInspection.key!==resourceStateKey()||sceneRepresentation!=='authored'||scenePose||shapeDraft))actorBatchTool.restore();
   if(scenePose&&(!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project?.mode!=='edit'))clearScenePose();
   if(!ctx)return;ctx.clearRect(0,0,width,height);projected=[];handles=[];
@@ -2666,16 +2695,17 @@ function draw(){
   for(const {entity,world,p} of items){
     if(!sceneLayers.actors||hiddenSceneEntities().has(entity.id))continue;
     const active=!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
-    if(rendered&&!active)continue;
+    const grouped=!actorGroupInspection&&actorGroupSelection.includes(entity.id);if(rendered&&!active&&!grouped)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();
     ctx.beginPath();ctx.moveTo(p.x,p.y-radius);ctx.lineTo(p.x+radius,p.y);ctx.lineTo(p.x,p.y+radius);ctx.lineTo(p.x-radius,p.y);ctx.closePath();ctx.fillStyle=active?'#c9edce':sceneRepresentation==='authored'&&authored(entity)?'#d2ae70':'#759d8d';ctx.fill();ctx.strokeStyle=active?'#f1fff0':'#a8c6b6';ctx.lineWidth=active?1.5:1;ctx.stroke();
+    if(grouped){ctx.strokeStyle='#8bd7e8';ctx.lineWidth=2;ctx.strokeRect(p.x-8,p.y-8,16,16);}
     if(active){
       ctx.font='11px "Segoe UI", sans-serif';ctx.fillStyle='#c8ddd1';ctx.fillText(entity.name ?? entity.id,p.x+12,p.y-10);
       if(sceneRepresentation==='authored'&&(Object.keys(entity.components?.Transform?.authored?.position??{}).length||draft?.id===entity.id)){
         const original=displayPosition(entity.components?.Transform?.imported?.position),q=project(original);
         if(q&&Math.hypot(q.x-p.x,q.y-p.y)>3){ctx.save();ctx.setLineDash([4,4]);line(original,world,'#d6ad6c',1.5);ctx.setLineDash([]);ctx.strokeStyle='#d6ad6c';ctx.strokeRect(q.x-4,q.y-4,8,8);ctx.fillStyle='#e7c188';ctx.fillText('Imported',q.x+8,q.y+14);ctx.restore();}
       }
-      if(canEdit()&&sceneRepresentation==='authored'&&!actorGroupInspection){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
+      if(canEdit()&&sceneRepresentation==='authored'&&!actorGroupInspection&&!actorGroupSelection.length){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
   drawEnvironmentSelection();drawCoordinateProbe();drawScriptTargets();
@@ -2730,8 +2760,8 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewp
 canvas.addEventListener('pointerdown',event=>{
   pendingEntityFrame=null;
   if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus();canvas.setPointerCapture(event.pointerId);
-  const handle=event.button===0 && !pickScriptTargets && (entity||groupProposalCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
-  drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,type:handle?(handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.group?actorGroupInspection.proposal:null,snapStep:handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
+  const handle=event.button===0 && !event.ctrlKey && !event.metaKey && !pickScriptTargets && (entity||groupProposalCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
+  drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,extendSelection:event.ctrlKey||event.metaKey,type:handle?(handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.group?actorGroupInspection.proposal:null,snapStep:handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
   if(handle&&state.actor_drafts?.[entity?.id])drag.snapStep=64;
   canvas.classList.add('dragging');
@@ -2776,7 +2806,9 @@ canvas.addEventListener('pointerup',async event=>{
     let hit=null;
     if(sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}
     if(!hit)hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;
-    if(hit){if(state.actor_drafts?.[hit])selectNpcDraft(hit);else if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}}
+    if(finished.extendSelection){if(hit)toggleActorSelection(hit);}
+    else if(hit){if(state.actor_drafts?.[hit])selectNpcDraft(hit);else if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}}
+    else if(actorGroupSelection.length){clearActorGroupSelection();renderHierarchy();}
   }
   draw();
 });

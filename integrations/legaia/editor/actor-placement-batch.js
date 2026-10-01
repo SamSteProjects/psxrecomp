@@ -18,6 +18,15 @@ export function decodeActorPlacementScene(result,proposal,sourceKey){
   return positions;
 }
 
+export function toggleActorGroupSelection(ids,id,eligible,primary=null){
+  const allowed=new Set(eligible),next=new Set(ids.filter(value=>allowed.has(value)));
+  if(!allowed.has(id))throw new Error('Group selection supports imported actors in the active scene');
+  if(!next.size&&allowed.has(primary))next.add(primary);
+  if(next.has(id))next.delete(id);else next.add(id);
+  if(next.size>128)throw new Error('Actor group selection is limited to 128 actors');
+  return [...next].sort();
+}
+
 export function offsetActorPlacementProposal(proposal,axis,amount){
   if(!['x','z'].includes(axis)||!Number.isInteger(amount)||amount%64||!Array.isArray(proposal?.targets)||proposal.targets.length<2||proposal.targets.length>128)throw new Error('Group drag requires a 64-unit X/Z offset');
   const delta={...proposal.delta,[axis]:(proposal.delta?.[axis]??0)+amount};
@@ -25,7 +34,7 @@ export function offsetActorPlacementProposal(proposal,axis,amount){
   return {actor_ids:proposal.targets.map(row=>row.entity_id).sort(),delta};
 }
 
-export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,setBusy,api,after,canInspectScene,onSceneInspection,frameGroup,notify}){
+export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,setBusy,api,after,canInspectScene,onSceneInspection,frameGroup,notify,getSelection=()=>[]}){
   const button=document.createElement('button');button.id='actor-batch-button';button.textContent='Actor group offset';after.after(button);
   const dialog=document.createElement('dialog');dialog.id='actor-batch-dialog';document.body.append(dialog);
   const bar=document.createElement('div');bar.id='actor-batch-scene-bar';bar.hidden=true;
@@ -65,7 +74,7 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
   }
   button.onclick=()=>{
     if(isBusy()||!canEdit())return;
-    clearInspection();selected=new Set();preview=null;context=contextKey();generation++;
+    clearInspection();selected=new Set(getSelection().filter(id=>getEntities().some(entity=>entity.id===id)));preview=null;context=contextKey();generation++;
     dialog.innerHTML='<div class="dialog-heading"><h2>Offset actor placements</h2><button type="button" data-close-batch aria-label="Close actor group">×</button></div><p>Select imported actors in this scene. Offset their effective X/Z placements together. Proposed coordinates must fit the exact retail 64-unit grid, from 64 through 16384. Source height, facing, scripts and scheduling stay unchanged.</p><form><label>Find actors<input name="search" type="search" aria-label="Find group actors"></label><div class="batch-actors"></div><p class="batch-count" role="status"></p><div class="dialog-actions"><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="0" required></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required></label></div><div class="dialog-actions"><button type="submit" data-preview-batch>Preview group offset</button><button type="button" data-apply-batch disabled>Apply group offset</button></div><p class="dialog-error" role="alert"></p><div class="batch-result"></div></form>';
     dialog.querySelector('[data-close-batch]').onclick=()=>dialog.close();
     dialog.querySelector('[name="search"]').oninput=renderActors;
