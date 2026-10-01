@@ -145,3 +145,32 @@ The subsequent integrated offline checkpoint on source `d948b2a0` passed
 469 Python tests in176.301s with no skips,17Node checks and19editor module syntax
 checks. It includes the asset inspector migration; browser workflow evidence
 above remains separate from native runtime and gameplay acceptance.
+
+
+## Catalog navigation inspectors — 2026-10-01
+
+**Asset navigation inspectors (2026-10-01):** Actors, imported scenes,
+actor presets and world-map landmarks now use the shared SDK read-only property
+and registered-action contract, bringing supported catalog inspector types to12.
+Navigation retains original source and authored provenance; landmarks expose
+menu coordinates and discovery indices without claiming live state or gameplay
+reachability. Source/catalog/schema/capability, busy and closed guards apply.
+Fixed bare `scene://` searches being misread as `scene:` filters; explicit field
+filters remain supported. Eleven focused Python checks, all19 Node test files
+and21 editor syntax checks passed. Retail browser verified all four new panels,
+actor selection, cross-scene navigation, preset library and landmark menu/source
+catalog navigation, zero author commands/errors and unchanged authored state.
+Screenshot inspected. Private evidence:
+`local-output/sdk-20260909/navigation-inspectors-20261001/`.
+No game launched. These checks postdate the integrated469 checkpoint; gameplay
+and the full SDK objective remain incomplete.
+
+Actor, scene and preset actions use the existing selection, scene and library
+adapters. The world-map inspector has two explicitly registered actions:
+landmark menu inspection and, when a destination source label exists, source
+catalog inspection. Metadata contains no executable commands. Missing capability
+or unknown action/type suppresses controls; changed record or contract snapshots
+withdraw navigation. The previous bespoke landmark properties/buttons and
+redundant authored-open buttons for these types are removed. Card shortcuts
+remain. Specialized edit forms, full project settings and live actor identity
+are still separate work; this does not add runtime writes or serializers.

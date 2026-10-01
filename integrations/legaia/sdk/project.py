@@ -2541,5 +2541,5 @@ class ProjectService:
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
                                 "Build supports representable X/Z placements; authored height and facing cannot yet be serialized."],
-                "capabilities": {"edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True,
+                "capabilities": {"project_navigation": True, "edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True,
                                  "live_mode": False, "build": False, "model_preview": False}}

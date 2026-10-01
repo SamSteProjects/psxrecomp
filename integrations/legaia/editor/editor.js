@@ -1217,20 +1217,13 @@ function showAssetDetails(record){
     const context=resourceStateKey(),snapshot=JSON.stringify(record),contract=JSON.stringify([state.inspector_schema,state.capabilities]);
     const current=()=>assetDetails.open&&context===resourceStateKey()&&contract===JSON.stringify([state.inspector_schema,state.capabilities])&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
     mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,
-      activate:async item=>{if(!current())return;assetDetails.close();await activateAsset(item);},onError:error=>notify(error.message,true)});
+      activate:async (item,action)=>{if(!current())return;assetDetails.close();if(action==='inspect-landmark-destination'){const label=item.data?.destination_source_label;if(!label)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}else await activateAsset(item);},onError:error=>notify(error.message,true)});
     $('asset-source-data').parentElement.before(section);
     $('asset-source-data').parentElement.open=false;
     // These record types use the SDK inspector tool rather than a duplicate authored button.
     const old=$('open-authored-asset');if(old)old.remove();
   }
 
-  if(record.type==='worldmap'){
-    const data=record.data,context=JSON.stringify([state.project?.path,state.project?.disc_path]),section=document.createElement('section');
-    section.innerHTML=`<h3>Landmark source record</h3>${property('Destination source',`${data.destination_scene_id}${data.destination_source_label?' · '+data.destination_source_label:''}`)}${property('Menu X / Y',`${data.menu_position.x} / ${data.menu_position.y}`)}${property('Discovery flag index',data.discovery_flag_index)}<p>Menu pixels, not scene coordinates. Current discovery state and gameplay reachability are unobserved.</p>`;
-    if(data.destination_source_label){const inspect=document.createElement('button');inspect.textContent='Inspect destination source';inspect.onclick=()=>{if(busy||context!==JSON.stringify([state.project?.path,state.project?.disc_path]))return;assetDetails.close();$('import-button').click();$('catalog-prefix').value=data.destination_source_label;clearSceneCatalog();$('catalog-search').click();};section.append(inspect);}
-    const open=document.createElement('button');open.textContent='Open world-map landmarks';open.onclick=()=>{if(busy||context!==JSON.stringify([state.project?.path,state.project?.disc_path]))return;assetDetails.close();worldmapButton.click();};section.append(open);
-    $('asset-source-data').parentElement.before(section);$('asset-source-data').parentElement.open=false;
-  }
   if(['model','animation'].includes(record.type)){
     const usage=document.createElement('section');usage.innerHTML=`<h3>Used by</h3><p>${record.type==='model'?'Initial model assignments across imported scenes.':'Verified initial animation bindings and authored donor assignments.'} Scripts may change these assignments during gameplay.</p>`;
     const references=initialAssetUsage(record,state.model_references??[]),usageContext=modelUsageContext(state);
@@ -1307,6 +1300,7 @@ function showAssetDetails(record){
 }
 async function activateAsset(record){
   if(busy)return;
+  if(record.type==='worldmap'){worldmapButton.click();return;}
   if(record.type==='template'){showTemplates();return;}
   if(record.authoredRecord&&['actor','texture','script','model'].includes(record.type)&&record.sceneId!==state.scene?.id){
     if(!record.sceneId){notify('This authored item does not identify an imported source scene.',true);return;}

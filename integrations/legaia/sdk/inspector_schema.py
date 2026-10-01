@@ -44,6 +44,10 @@ def inspector_schema():
 
     # Asset inspector groups describe SDK catalog records, not entity components.
     tools = {
+        'actor': ('AssetActor', 'Actor record', 'project_navigation', 'select-asset-actor', 'Select actor in scene'),
+        'scene': ('AssetScene', 'Imported scene', 'project_navigation', 'open-asset-scene', 'Open imported scene'),
+        'template': ('AssetTemplate', 'Actor preset', 'authored_transform_templates', 'open-asset-template', 'Open preset library'),
+        'worldmap': ('AssetWorldmap', 'World-map landmark', 'worldmap_source_navigation', 'open-asset-worldmap', 'Open world-map landmarks'),
         'model': ('AssetModel', 'Model asset', 'model_preview', 'inspect-asset-model', 'Inspect model'),
         'texture': ('AssetTexture', 'Texture asset', 'texture_preview', 'inspect-asset-texture', 'Inspect texture'),
         'animation': ('AssetAnimation', 'Animation resource', 'animation_preview', 'inspect-asset-animation', 'Inspect animation bindings'),
@@ -66,4 +70,13 @@ def inspector_schema():
             'notes': ['Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
+    worldmap=schema['components']['AssetWorldmap']
+    worldmap['properties'] += [
+        {'id':'destination','label':'Destination source','path':['data','destination_source_label'],'fallback_paths':[['data','destination_scene_id']],'type':'string','state':'read-only-retail'},
+        {'id':'menu_x','label':'Menu X','path':['data','menu_position','x'],'type':'integer','state':'read-only-retail'},
+        {'id':'menu_y','label':'Menu Y','path':['data','menu_position','y'],'type':'integer','state':'read-only-retail'},
+        {'id':'discovery_flag','label':'Discovery flag index','path':['data','discovery_flag_index'],'type':'integer','state':'read-only-retail'},
+    ]
+    worldmap['notes']=['Menu pixels, not scene coordinates. Current discovery state and gameplay reachability are unobserved.']
+    worldmap['actions'].append({'id':'inspect-landmark-destination','label':'Inspect destination source','capability':'worldmap_source_navigation','when':['data','destination_source_label']})
     return schema

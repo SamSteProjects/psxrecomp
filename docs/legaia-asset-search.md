@@ -35,3 +35,11 @@ syntax, stable-ID URI searches, reset and actor navigation with no authoring
 commands or actor changes and zero page errors. Screenshots were inspected;
 narrow asset controls now wrap inside the panel. This feature postdates the
 463-test integrated Python checkpoint. No game launched.
+
+
+URI correction — 2026-10-01: a pasted `scene://town01/actors/man-p1/0004`
+now remains a literal stable-ID search, even though `scene` is a registered
+filter name. Excluded URI tokens behave the same way. Explicit
+`scene:scene://town01` and `id:scene://...` remain field filters. The actual retail
+actor/scene Details workflow exposed the failure and passed after the parser
+correction; focused URI/exclusion/field checks passed.

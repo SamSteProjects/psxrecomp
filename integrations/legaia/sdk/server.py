@@ -153,6 +153,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["actor_preset_batch"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
+        state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["script_operand_files"] = bool(self.project.disc_path and self.project.active_scene)

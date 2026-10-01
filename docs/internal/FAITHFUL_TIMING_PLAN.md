@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — SDK catalog navigation inspectors
+
+Migrated actor/scene/preset/world-map Details into SDK property/action contracts;
+12 catalog types now share explicit registered handlers and snapshot guards.
+Retained existing scene/selection/library/catalog adapters and proprietary-source
+separation. Actual browser exposed bare scene:// URI search misclassification;
+fixed URI-versus-filter parsing and retained explicit field/exclusion semantics.
+11 focused Python checks, 19 Node files and 21 syntax checks passed. Final retail
+browser passed four new panels, actor/cross-scene/preset/landmark navigation,
+busy/closed guards, zero author commands/errors, exact unchanged authored state;
+screenshot inspected. Updated report/status/matrix/inspector/search guides.
+No game launched or retail output installed. Full SDK goal remains incomplete;
+gameplay is deferred. Focused evidence postdates integrated469 checkpoint.
+
+
 ### 2026-10-01 — Scene script operand bundle authoring
 
 Added bounded source-bound scene bundles using existing verified operand
