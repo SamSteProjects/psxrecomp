@@ -1,5 +1,8 @@
 const escape=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const at=(value,path)=>path.reduce((item,key)=>item?.[key],value);
+const propertyValue=(value,p)=>[p.path,...(p.fallback_paths??[])].map(path=>at(value,path)).find(item=>item!==null&&item!==undefined)??p.empty_label??'—';
+const propertyRow=(p,value)=>`<div class="property"><span>${escape(p.label)}</span><code>${escape(propertyValue(value,p))}</code></div>`;
+const notes=definition=>(definition.notes??[]).map(note=>`<p class="field-note">${escape(note)}</p>`).join('');
 export function componentDefinition(schema,id){
   if(schema?.schema_version!=='legaia.inspector-schema.v1'||schema.live_writes!==false)throw new Error('Unsupported inspector schema');
   const definition=schema.components?.[id];
@@ -8,7 +11,11 @@ export function componentDefinition(schema,id){
 }
 export function renderComponentProperties(schema,id,component,editable=false){
   const definition=componentDefinition(schema,id);
-  if(definition.layout==='read-only-properties')return definition.properties.map(p=>`<div class="property"><span>${escape(p.label)}</span><code>${escape(at(component,p.path))}</code></div>`).join('');
+  if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(p,component)).join('')+notes(definition);
+  if(definition.layout==='layered-properties'){
+    if(!Array.isArray(definition.layers)||definition.layers.length>8||new Set(definition.layers.map(row=>row.id)).size!==definition.layers.length)throw new Error('Invalid property layers');
+    return definition.layers.map(layer=>`<div class="appearance-layer" data-property-layer="${escape(layer.id)}"><h4>${escape(layer.label)}</h4>${definition.properties.filter(p=>p.layers?.includes(layer.id)).map(p=>propertyRow(p,component[layer.id])).join('')}</div>`).join('')+notes(definition);
+  }
   if(definition.layout!=='layered-number'||JSON.stringify(definition.layers)!==JSON.stringify(['imported','authored','effective']))throw new Error('Unsupported property layout');
   let html='<div class="transform-table"><span></span><span class="column-title">Imported</span><span class="column-title">Authored</span><span class="column-title">Effective</span>';
   for(const p of definition.properties){
@@ -32,4 +39,9 @@ export function propertyCommand(schema,componentId,propertyId,entityId,text){
 export function renderUnregisteredComponents(schema,components,handled){
   if(schema?.unknown_component_policy!=='read-only-details')throw new Error('Unsupported component fallback');
   return Object.entries(components).filter(([id])=>!handled.includes(id)).map(([id,value])=>`<section class="component"><h3>${escape(schema.components?.[id]?.label??id)} <small>Read only · no registered editor</small></h3><p class="field-note">Properties are displayed as supplied by the SDK. No authoring or runtime-write capability is inferred.</p><details><summary>SDK component details</summary><pre>${escape(JSON.stringify(value,null,2))}</pre></details></section>`).join('');
+}
+
+export function renderComponentDetails(schema,id,component){
+  const definition=componentDefinition(schema,id);
+  return (definition.details??[]).map(detail=>`<details><summary>${escape(detail.label)}</summary><pre>${escape(JSON.stringify(at(component,detail.path),null,2))}</pre></details>`).join('');
 }

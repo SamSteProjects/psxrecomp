@@ -213,6 +213,19 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Layered appearance/runtime/provenance inspector migration
+
+Extended SDK property contracts and common renderers to layered appearance
+references, runtime status/explicit binding confirmation and retail provenance
+summary/details. Preserved donor review/actions and candidate evidence without
+promoting live identity or implying generic writes. Nine focused Python tests
+and Node layer/fallback/false-value/details/command checks passed. Retail browser
+imported/authored/effective donor layers, Clear/Undo, explicit unconfirmed runtime
+binding and provenance details passed, zero errors. Screenshot inspected.
+Documentation updated in place. Owned browser51275 terminal0 and server11718
+stopped with Ctrl+C terminal1. No game launched; private evidence excluded.
+
+
 ### 2026-09-30 — SDK-driven inspector property contract
 
 Added fresh versioned SDK component/property definitions and common editor

@@ -16,15 +16,18 @@ filename is retained for existing links. This section supersedes the historical 
 old test counts below; those sections record what was proven at that time.
 
 **SDK-driven component inspector (2026-09-30):** Project state now exposes
-a versioned property contract for Transform, ModelRenderer and Animation.
-The editor consumes it for layered number controls and read-only properties;
+a versioned property contract for Transform, ModelRenderer, Animation,
+ActorAppearance, RuntimeCorrelation and RetailMetadata. The editor consumes it
+for layered number/reference controls, read-only properties and evidence details;
 unregistered components receive escaped read-only SDK details. Transform commands
 use a bounded registry adapter and ordinary ProjectService validation/history.
 SDK authoring limits remain distinct from retail Build encoding, with unresolved
 retail Y and project-only authored height explicit. Busy/Edit/selection/source
-checks guard controls. Eight focused Python tests and Node renderer/command/
-fallback checks passed. Retail browser X edit/Undo and project-only Y Build
-issues passed, zero page errors. Specialized appearance/script/asset panels still
+checks guard controls. Nine focused Python tests and Node renderer/command/
+fallback/layer/detail checks passed. Retail browser X edit/Undo and project-only Y Build
+issues passed, zero page errors. Retail layered appearance Clear/Undo preserved
+imported/effective pairs; runtime unconfirmed state and provenance details passed,
+zero errors, screenshot inspected. Specialized donor/script/asset actions still
 use their existing adapters; migration to the common contract is incomplete.
 This feature postdates the441-test checkpoint. No game launched. See
 [inspector property contract](legaia-inspector-schema.md).

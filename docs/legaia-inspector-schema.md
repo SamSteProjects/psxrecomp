@@ -4,8 +4,11 @@ Project state exposes `inspector_schema` with version
 `legaia.inspector-schema.v1`. The SDK owns component/property labels, paths,
 layer order, value types, authoring bounds, Build constraints and unknown states.
 Definitions are newly allocated per response and never modify imported or
-project-authored data. Current definitions cover Transform, ModelRenderer and
-Animation. Specialized appearance, scripts and asset tools retain their existing
+project-authored data. Current definitions cover Transform, ModelRenderer, Animation, ActorAppearance,
+RuntimeCorrelation and RetailMetadata. Layered reference properties retain retail,
+authored and effective values; fallback paths handle missing status/source fields
+without inventing values. Evidence details come from SDK paths. Specialized donor,
+scripts and asset tools retain their existing
 validated adapters; this is an incremental migration.
 
 The editor's `component-inspector.js` renders layered numeric properties and
@@ -27,10 +30,12 @@ before Build. Tooltips and SDK Build issues preserve those distinctions.
 
 ## Verification — 2026-09-30
 
-Eight focused Python tests passed, including the schema contract and existing
+Nine focused Python tests passed, including the schema contract and existing
 project workflows. Node checks cover value layers, unknown values, read-only
 mode, escaping, bounded commands, malformed command metadata and read-only
 fallbacks. Retail browser checks passed for SDK-derived controls, X edit/Undo,
-project-only Y Build diagnostics and zero page errors. Private evidence:
+project-only Y Build diagnostics and zero page errors. Retail appearance layers,
+Clear/Undo, explicit unconfirmed runtime binding and provenance details passed;
+screenshot inspected. Private evidence:
 `local-output/sdk-20260909/component-inspector-20260930/`.
 This feature postdates the441-test checkpoint. No game launched.
