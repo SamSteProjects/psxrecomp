@@ -155,6 +155,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
+        state["capabilities"]["script_operand_files"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_replacement"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
@@ -524,6 +525,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
+                 "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
@@ -823,6 +825,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'content','name'}:raise ProjectError('Preset import review requires file content and name only')
                     from .template_files import review
                     self._json(200,review(self.server.project,body['content'],body['name']))
+                    return
+                if route == '/api/script-operand-export':
+                    if set(body)!={'entity_id'}:raise ProjectError('Operand export requires script owner only')
+                    from .script_operand_files import export_file
+                    self._json(200,export_file(self.server.project,body['entity_id']))
+                    return
+                if route == '/api/script-operand-review':
+                    if set(body)!={'entity_id','content'}:raise ProjectError('Operand review requires script owner and file only')
+                    from .script_operand_files import review
+                    self._json(200,review(self.server.project,body['entity_id'],body['content']))
                     return
                 if route == '/api/actor-preset-batch-scene':
                     if set(body) != {'template_id', 'actor_ids', 'review_key'}:

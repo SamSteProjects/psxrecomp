@@ -67,6 +67,26 @@ reset and actor navigation without authoring commands or actor changes, zero
 errors. Screenshots inspected; narrow-panel controls now wrap. This postdates
 the 463-test checkpoint. No game launched. See [asset search](legaia-asset-search.md).
 
+**Script operand JSON workflow (2026-10-01):** The script inspector now
+exports authored movement, flag, wait, model-selector and transition operand
+metadata. A bounded source/owner-bound file review stages every entry through
+existing verified commands; one atomic Apply supports Undo/Redo and Save/Open.
+Supplied entries replace their authored fields; other entries/components remain.
+Duplicate/nonfinite/extra/oversized files, wrong source/owner and stale reviews
+reject without partial edits. No instruction bytes, dialogue, control-flow layout
+or runtime state are transferred. Nineteen focused Python checks, all 18 Node
+checks and 20 editor syntax checks passed. Retail browser verified export,
+read-only review, Apply/Save/Undo/Redo, wrong-owner rejection and restored baseline,
+zero page errors. Screenshot inspected. Independent reopen retained all four
+NPC drafts; a detached no-draft normal Build matched the complete 45338-byte MAN
+with only offset4811 changed for owner0003's selector240→239. Other content
+payloads were unchanged. Package SHA256:
+`e440d265be2a20a7008801e89c60eb1de8adc586ef3cac470e6ad22dc4aad53e`.
+Normal Build still rejects drafts. Private evidence:
+`local-output/sdk-20260909/script-operand-files-20261001/`. This postdates the
+469-test integrated checkpoint; execution/gameplay remains deferred. No game
+launched or disc installed. See [operand files](legaia-script-operand-files.md).
+
 **Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
 Python discovery passed **469 tests in 176.301 seconds**, exit 0, no skips, on
 unchanged clean committed source `d948b2a0f27e77c2b60f17b490ca7d8878389646`.
@@ -84,6 +104,7 @@ Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
+| Script operand JSON files | FUNCTIONAL / OFFLINE. Source-bound authored entries across five supported numeric operand families, reviewed all-or-nothing Apply, one Undo/Redo, Save/Open, exact MAN readback and retail browser workflow. | Same imported owner/source only; no instruction/control-flow/dialogue transfer or clearing of omitted entries. Actual execution and gameplay deferred. |
 | SDK asset inspector tools | FUNCTIONAL / PARTIAL. Eight catalog record types share SDK property/action metadata and explicit type-specific registered tool handlers. Actual Details navigation, previews/resource tools and busy/closed guards passed retail browser checks without actor writes. | Specialized editing forms and other asset kinds retain existing adapters; runtime/gameplay acceptance remains deferred. |
 | Actor group presets | FUNCTIONAL / OFFLINE. Position/appearance/combined preset review across2–128 active-scene imported actors, all-target source/compatibility validation, one atomic Apply/Undo/Redo and Save/Open. Focused tests, Node checks, retail browser and exact full MAN package readback passed. | Absolute saved axes may overlap targets; no instantiation or runtime/visibility/collision guarantees. Normal Build rejects projects containing drafts; gameplay deferred. |
 | Asset browser field search | FUNCTIONAL / OFFLINE. Name/ID/type/scene/model/confidence/provenance filters, phrases and exclusions with bounded strict syntax; imported/authored model users match recorded references. Node and retail browser checks passed, no actor changes or authoring commands. | Active-scene resource scope and existing category limits remain; no aggregate confidence or runtime-use inference. |

@@ -15,6 +15,26 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Script operand JSON workflow (2026-10-01):** The script inspector now
+exports authored movement, flag, wait, model-selector and transition operand
+metadata. A bounded source/owner-bound file review stages every entry through
+existing verified commands; one atomic Apply supports Undo/Redo and Save/Open.
+Supplied entries replace their authored fields; other entries/components remain.
+Duplicate/nonfinite/extra/oversized files, wrong source/owner and stale reviews
+reject without partial edits. No instruction bytes, dialogue, control-flow layout
+or runtime state are transferred. Nineteen focused Python checks, all 18 Node
+checks and 20 editor syntax checks passed. Retail browser verified export,
+read-only review, Apply/Save/Undo/Redo, wrong-owner rejection and restored baseline,
+zero page errors. Screenshot inspected. Independent reopen retained all four
+NPC drafts; a detached no-draft normal Build matched the complete 45338-byte MAN
+with only offset4811 changed for owner0003's selector240→239. Other content
+payloads were unchanged. Package SHA256:
+`e440d265be2a20a7008801e89c60eb1de8adc586ef3cac470e6ad22dc4aad53e`.
+Normal Build still rejects drafts. Private evidence:
+`local-output/sdk-20260909/script-operand-files-20261001/`. This postdates the
+469-test integrated checkpoint; execution/gameplay remains deferred. No game
+launched or disc installed. See [operand files](legaia-script-operand-files.md).
+
 **Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
 Python discovery passed **469 tests in 176.301 seconds**, exit 0, no skips, on
 unchanged clean committed source `d948b2a0f27e77c2b60f17b490ca7d8878389646`.

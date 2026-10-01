@@ -1,0 +1,96 @@
+"""Source-bound authored operand metadata; existing fixed-width editors remain authoritative."""
+from copy import copy,deepcopy
+import json
+from .project import ProjectError,digest
+
+SCHEMA='legaia.script-operand-file.v1'
+MAX_BYTES=65536
+KINDS={
+    'ScriptMovement':('set_movement_target','movement_id'),
+    'ScriptFlags':('set_flag_bit','flag_id'),
+    'ScriptWaits':('set_wait_target','wait_id'),
+    'ScriptModelSelectors':('set_model_selector_target','model_selector_id'),
+    'Transitions':('set_transition_entry','transition_id'),
+}
+
+def parse(content):
+    if not isinstance(content,str):raise ProjectError('Operand file must be UTF-8 JSON')
+    try:
+        if len(content.encode('utf-8'))>MAX_BYTES:raise ProjectError('Operand file exceeds 64 KiB')
+        def pairs(rows):
+            result={}
+            for key,value in rows:
+                if key in result:raise ProjectError('Duplicate operand file key')
+                result[key]=value
+            return result
+        def constant(_):raise ProjectError('Nonfinite operand file value')
+        value=json.loads(content,object_pairs_hook=pairs,parse_constant=constant)
+    except (ValueError,RecursionError,UnicodeError) as exc:raise ProjectError('Invalid operand JSON') from exc
+    if not isinstance(value,dict) or set(value)!={'schema_version','scene_id','source_import_sha256','owner_id','components'} or value['schema_version']!=SCHEMA:
+        raise ProjectError('Unsupported operand file fields or schema')
+    if not isinstance(value['source_import_sha256'],str) or len(value['source_import_sha256'])!=64 or any(c not in '0123456789abcdef' for c in value['source_import_sha256']):
+        raise ProjectError('Operand file requires an imported source hash')
+    components=value['components']
+    if not isinstance(components,dict) or not set(components)<=set(KINDS):raise ProjectError('Unsupported operand component')
+    total=0
+    for component in components.values():
+        if not isinstance(component,dict) or set(component)!={'entries'} or not isinstance(component['entries'],dict) or not component['entries']:
+            raise ProjectError('Operand component requires nonempty entries')
+        total+=len(component['entries'])
+        if any(not isinstance(key,str) or len(key)>512 or not isinstance(row,dict) for key,row in component['entries'].items()):raise ProjectError('Invalid operand entry')
+    if total>256:raise ProjectError('Operand file is limited to 256 instruction entries')
+    return value
+
+def _source(project,owner):
+    from .resources import _verify
+    document=project._dialogue_document(owner)
+    scene='scene://'+document['scene']['name']
+    if scene!=project.active_scene:raise ProjectError('Open the operand owner source scene first')
+    _verify(project,document)
+    return scene,digest(document)
+
+def review(project,owner,content):
+    from importer.pipeline import _disc_context
+    if not project.disc_path:raise ProjectError('Operand transfer requires the project user-owned disc')
+    value=parse(content)
+    if value['owner_id']!=owner:raise ProjectError('Operand file belongs to a different script owner')
+    before=deepcopy(project.overrides.get(owner));staged=copy(project)
+    staged.overrides=deepcopy(project.overrides);staged.undo_stack=[];staged.redo_stack=[];staged.mode='edit'
+    with _disc_context(project.disc_path):
+        scene,source=_source(project,owner)
+        staged._dialogue_context(owner).options(owner)
+        if value['scene_id']!=scene or value['source_import_sha256']!=source:raise ProjectError('Operand file differs from imported source')
+        rows=[]
+        for component in sorted(value['components']):
+            kind,key_field=KINDS[component]
+            for identifier,values in sorted(value['components'][component]['entries'].items()):
+                previous=deepcopy((before or {}).get(component,{}).get('entries',{}).get(identifier))
+                staged.command(dict(type=kind,entity_id=owner,**{key_field:identifier},values=values))
+                rows.append(dict(component=component,operand_id=identifier,before=previous,after=deepcopy(values),changed=previous!=values))
+        if project.overrides.get(owner)!=before:raise ProjectError('Script owner changed during review')
+    after=deepcopy(staged.overrides.get(owner))
+    report=dict(schema_version='legaia.script-operand-review.v1',owner_id=owner,scene_id=scene,source_import_sha256=source,entries=rows,change_count=sum(row['changed'] for row in rows),before=before,after=after,
+        limitations=['Each supplied entry replaces its authored operand fields. Other entries and components remain unchanged.','No instructions, dialogue, control-flow layout or runtime state are transferred. Execution and gameplay remain unverified.'])
+    report['review_key']=digest(dict(project_root=str(project.root),file=value,before=before,after=after))
+    return report
+
+def export_file(project,owner):
+    from importer.pipeline import _disc_context
+    if not project.disc_path:raise ProjectError('Operand transfer requires the project user-owned disc')
+    with _disc_context(project.disc_path):scene,source=_source(project,owner)
+    components={key:deepcopy(value) for key,value in project.overrides.get(owner,{}).items() if key in KINDS}
+    value=dict(schema_version=SCHEMA,scene_id=scene,source_import_sha256=source,owner_id=owner,components=components)
+    content=json.dumps(value,ensure_ascii=True,indent=2)+'\n'
+    review(project,owner,content)
+    return value
+
+def apply(project,command):
+    if set(command)!={'type','entity_id','content','review_key'}:raise ProjectError('Operand import requires owner, file and reviewed key only')
+    report=review(project,command['entity_id'],command['content'])
+    if command['review_key']!=report['review_key']:raise ProjectError('Operand file or owner changed since review')
+    if report['before']==report['after']:return
+    owner=report['owner_id']
+    if report['after'] is None:project.overrides.pop(owner,None)
+    else:project.overrides[owner]=deepcopy(report['after'])
+    project.undo_stack.append(dict(entity_id=owner,before=report['before'],after=deepcopy(report['after'])))
+    project.redo_stack.clear()
