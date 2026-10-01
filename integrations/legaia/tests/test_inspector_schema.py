@@ -14,6 +14,8 @@ class InspectorSchema(unittest.TestCase):
         donor=next(p for p in schema['ActorAppearance']['properties'] if p['id']=='donor_entity_id')
         self.assertEqual(donor['state'],'authored-through-donor-review');self.assertNotIn('authoring',donor)
         self.assertEqual(donor['layers'],['authored'])
+        self.assertTrue(next(a for a in schema['ActorAppearance']['actions'] if a['id']=='clear-appearance')['requires_edit'])
+        self.assertEqual(schema['Dialogue']['actions'][0]['capability'],'actor_script_preview')
         self.assertTrue(all('authoring' not in p for p in schema['RuntimeCorrelation']['properties']))
         self.assertEqual(schema['RetailMetadata']['details'][0]['path'],[])
 if __name__=='__main__':unittest.main()

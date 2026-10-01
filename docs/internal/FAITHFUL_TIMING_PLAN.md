@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Registered component tool actions
+
+Moved six donor/model/script/candidate action descriptions into SDK metadata and
+button rendering/dispatch into a registered editor handler system. Capability and
+value conditions filter presentation; unknown IDs omitted, registry Edit guards
+cannot be weakened by metadata, busy/stale/selection/eligibility checks precede
+callbacks. Specialized forms and serializers unchanged. Nine focused Python
+tests and Node action/layer/property checks passed. Corrected a test-only label
+syntax error before rerunning Node. Retail registered Clear/Undo and script
+inspection passed through its loaded decoded report; zero page errors. Private
+browser evidence retained, documentation updated. Server76447 stopped with Ctrl+C
+terminal1; both owned browser runs terminal0. No game launched.
+
+
 ### 2026-09-30 — Layered appearance/runtime/provenance inspector migration
 
 Extended SDK property contracts and common renderers to layered appearance

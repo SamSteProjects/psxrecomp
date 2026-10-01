@@ -45,3 +45,22 @@ export function renderComponentDetails(schema,id,component){
   const definition=componentDefinition(schema,id);
   return (definition.details??[]).map(detail=>`<details><summary>${escape(detail.label)}</summary><pre>${escape(JSON.stringify(at(component,detail.path),null,2))}</pre></details>`).join('');
 }
+
+export function registeredActions(schema,id,component,capabilities,registry,editable=false){
+  const definition=componentDefinition(schema,id),actions=definition.actions??[];
+  if(actions.length>16||new Set(actions.map(a=>a.id)).size!==actions.length)throw new Error('Invalid inspector actions');
+  return actions.filter(a=>Object.hasOwn(registry,a.id)&&capabilities?.[a.capability]===true&&(!a.when||at(component,a.when))).map(a=>({id:a.id,label:a.label,requiresEdit:a.requires_edit===true||registry[a.id].requiresEdit===true,disabled:(a.requires_edit===true||registry[a.id].requiresEdit===true)&&!editable}));
+}
+export function renderComponentActions(schema,id,component,capabilities,registry,editable=false){
+  return registeredActions(schema,id,component,capabilities,registry,editable).map(a=>`<button id="${escape(a.id)}" class="model-preview-button" data-inspector-action="${escape(a.id)}" data-inspector-edit="${a.requiresEdit}" ${a.disabled?'disabled':''}>${escape(a.label)}</button>`).join('');
+}
+export function bindComponentActions(root,registry,{current,editable,busy,onError}){
+  for(const button of root.querySelectorAll('[data-inspector-action]')){
+    const action=registry[button.dataset.inspectorAction];
+    if(!action||typeof action.run!=='function'){button.disabled=true;continue;}
+    button.onclick=async()=>{
+      if(busy()||!current()||(action.requiresEdit&&!editable())||(action.canRun&&!action.canRun()))return;
+      try{await action.run();}catch(error){onError(error);}
+    };
+  }
+}

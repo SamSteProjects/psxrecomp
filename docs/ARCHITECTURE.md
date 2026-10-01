@@ -411,3 +411,12 @@ supported project commands; metadata does not authorize runtime writes.
 Existing SDK validation/history/serialization remain authoritative. Specialized
 donor/script/asset action adapters have not all migrated. See
 [the property contract](legaia-inspector-schema.md).
+
+
+Inspector action metadata now resolves through an explicit editor handler
+registry for six donor/model/script/candidate tools. SDK labels, capability/value
+conditions and Edit requirements drive button presentation. Handlers retain
+independent Edit/source/selection/busy checks and existing validated workflows;
+unknown action IDs do not render. Metadata never supplies executable commands.
+Specialized forms and remaining animation/template/asset actions are separate
+migration work.

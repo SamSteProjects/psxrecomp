@@ -1,4 +1,4 @@
-import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails} from '/component-inspector.js';
+import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
@@ -509,7 +509,7 @@ function setBusy(value) {
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
-  document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||(button.dataset.animationEdit==='true'&&state.project?.mode!=='edit'));
+  document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||((button.dataset.animationEdit==='true'||button.dataset.inspectorEdit==='true')&&state.project?.mode!=='edit'));
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
   if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
@@ -2071,28 +2071,33 @@ function renderInspector(){
   const entity=selected();
   $('selection-summary').textContent=entity?entity.name ?? entity.id:'No entity selected';
   if(!entity){$('inspector').innerHTML='<div class="empty-panel">Select an entity in the scene<br>or hierarchy to inspect it.</div>';return;}
-  const components=entity.components ?? {}, transform=components.Transform ?? {}, original=transform.imported?.position ?? {}, override=transform.authored?.position ?? {}, effective=transform.effective?.position ?? original;
+  const components=entity.components ?? {}, transform=components.Transform ?? {};
+  const actorActionContext=resourceStateKey(),actorActions={
+    'choose-appearance':{requiresEdit:true,canRun:canEditAppearance,run:()=>openAppearanceOptions(entity)},
+    'clear-appearance':{requiresEdit:true,canRun:canEditAppearance,run:()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id})},
+    'preview-appearance':{run:()=>openModel(components.ActorAppearance.effective.asset_id,'authored-appearance',entity.id)},
+    'inspect-model':{run:()=>openModel(components.ModelRenderer.asset_id)},
+    'inspect-script':{run:()=>openActorScript(entity)},
+    'inspect-actor-candidate':{run:()=>openActorCandidate(entity)}
+  };
+  const componentActions=id=>renderComponentActions(state.inspector_schema,id,components[id],state.capabilities,actorActions,canEdit());
+
   let html=`<div class="entity-heading"><h2>${escapeHTML(entity.name ?? entity.id)}</h2><code>${escapeHTML(entity.id)}</code></div><section class="component"><h3>${escapeHTML(state.inspector_schema.components.Transform.label)} <small>${escapeHTML(state.inspector_schema.components.Transform.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'Transform',transform,canEdit())}${(transform.build_issues??[]).map(issue=>`<p class="script-warning">Build: ${escapeHTML(issue)}</p>`).join('')}</section>`;
   const actorPreview=scenePreviewCurrent()?activeScenePreview()?.entities.find(item=>item.entity_id===entity.id):null;
   if(actorPreview?.preview_ground_sample){html+=`<section class="component"><h3>Preview elevation <small>Derived, not authored</small></h3>${property('Guest Y',actorPreview.preview_position.y)}${property('Terrain cell',actorPreview.preview_ground_sample.cell_index)}<p class="field-note">Interpolated from the displayed source terrain. Runtime collision, ramps and script elevation may differ.</p></section>`;}
   else if(actorPreview?.preview_height_status==='unresolved_no_source_surface'){html+='<section class="component"><h3>Preview elevation <small>Unresolved</small></h3><p class="field-note">No displayed source-ground cell exists at this placement. The mesh uses the preview ground plane; this is not a measured game height. Inspect a live sample to compare runtime placement.</p></section>';}
 
 
-  if(state.capabilities?.actor_appearance && components.ActorAppearance){const appearance=components.ActorAppearance,imported=appearance.imported ?? {},effective=appearance.effective ?? imported,donor=appearance.authored?.donor_entity_id;html+=`<section class="component appearance-component"><h3>${escapeHTML(state.inspector_schema.components.ActorAppearance.label)} <small>${escapeHTML(state.inspector_schema.components.ActorAppearance.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'ActorAppearance',appearance)}<button id="choose-appearance" class="model-preview-button" data-appearance-edit ${canEditAppearance()?'':'disabled'}>Choose donor appearance…</button>${donor?`<button id="clear-appearance" class="model-preview-button" data-appearance-edit ${canEditAppearance()?'':'disabled'}>Clear appearance override</button><button id="preview-appearance" class="model-preview-button">Preview authored appearance</button>`:''}<details><summary>Appearance evidence and limits</summary><pre>${escapeHTML(JSON.stringify(appearance,null,2))}</pre></details></section>`;}
+  if(state.capabilities?.actor_appearance && components.ActorAppearance){const appearance=components.ActorAppearance;html+=`<section class="component appearance-component"><h3>${escapeHTML(state.inspector_schema.components.ActorAppearance.label)} <small>${escapeHTML(state.inspector_schema.components.ActorAppearance.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'ActorAppearance',appearance)}${componentActions('ActorAppearance')}<details><summary>Appearance evidence and limits</summary><pre>${escapeHTML(JSON.stringify(appearance,null,2))}</pre></details></section>`;}
   if(state.capabilities?.authored_transform_templates)html+='<section class="component"><h3>Authored templates <small>Position / appearance</small></h3><p class="field-note">Capture or apply saved position and appearance presets to this existing actor.</p><button id="inspect-templates">Open actor templates…</button></section>';
-  if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${renderComponentProperties(state.inspector_schema,'ModelRenderer',model)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${model.asset_id?'<button id="inspect-model" class="model-preview-button">Inspect model objects</button>':''}</section>`;}
+  if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${renderComponentProperties(state.inspector_schema,'ModelRenderer',model)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${componentActions('ModelRenderer')}</section>`;}
   if(components.Animation)html+=`<section class="component"><h3>Animation</h3>${renderComponentProperties(state.inspector_schema,'Animation',components.Animation)}<p class="field-note">${components.Animation.preview_support?.supported?'Imported association is eligible for decoding. Preview verifies the source; retail playback timing and live animation remain unknown.':escapeHTML(components.Animation.preview_support?.reason ?? 'No supported imported animation association is available for this actor.')}</p></section>`;
   if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.RuntimeCorrelation.label)} <small>${escapeHTML(state.inspector_schema.components.RuntimeCorrelation.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'RuntimeCorrelation',correlation)}${runtimeCandidateSummary(correlation,entity.id)}${renderComponentDetails(state.inspector_schema,'RuntimeCorrelation',correlation)}</section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata;html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.RetailMetadata.label)} <small>${escapeHTML(state.inspector_schema.components.RetailMetadata.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'RetailMetadata',retail)}${renderComponentDetails(state.inspector_schema,'RetailMetadata',retail)}</section>`;}
-  if(state.capabilities?.actor_script_preview)html+=`<section class="component"><h3>Script and dialogue <small>Inspect source</small></h3><p class="field-note">Inspect decoded dialogue and supported instruction paths. ${state.capabilities?.actor_dialogue_authoring?'The inspector checks whether this actor supports text edits.':'Unknown instructions stop decoding.'}</p><button id="inspect-script" class="model-preview-button">Inspect script and dialogue</button></section>`;
+  if(components.Dialogue&&state.capabilities?.actor_script_preview)html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.Dialogue.label)} <small>${escapeHTML(state.inspector_schema.components.Dialogue.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'Dialogue',components.Dialogue)}${componentActions('Dialogue')}</section>`;
   html+=renderUnregisteredComponents(state.inspector_schema,components,['Transform','ActorAppearance','ModelRenderer','Animation','RuntimeCorrelation','RetailMetadata','Dialogue']);
   $('inspector').innerHTML=html;
-  if($('choose-appearance'))$('choose-appearance').onclick=()=>openAppearanceOptions(entity);
-  if($('clear-appearance'))$('clear-appearance').onclick=()=>api('/api/command',{type:'clear_actor_appearance',entity_id:entity.id});
-  if($('preview-appearance'))$('preview-appearance').onclick=()=>openModel(components.ActorAppearance.effective.asset_id,'authored-appearance',entity.id);
-  if($('inspect-script'))$('inspect-script').onclick=()=>openActorScript(entity);
-  if($('inspect-script')&&state.capabilities?.actor_candidate_inspection){const button=document.createElement('button');button.textContent='Inspect NPC creation candidate';button.id='inspect-actor-candidate';button.disabled=busy;button.className='model-preview-button';button.onclick=()=>openActorCandidate(entity);$('inspect-script').after(button);}
-  if($('inspect-model'))$('inspect-model').onclick=()=>openModel(components.ModelRenderer.asset_id);
+  bindComponentActions($('inspector'),actorActions,{current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id,editable:canEdit,busy:()=>busy,onError:error=>notify(error.message,true)});
   const animatedAsset=(state.assets ?? []).find(asset=>asset.id===components.ModelRenderer?.asset_id && asset.animation_support?.supported);
   const actorAnimation=components.Animation?.preview_support;
   if(actorAnimation?.supported && $('inspect-model')){const button=document.createElement('button');button.className='model-preview-button';button.textContent='Preview imported scene animation';button.disabled=busy;button.title='Verify and decode this actor’s imported animation association';button.onclick=()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id);$('inspect-model').after(button);}

@@ -39,3 +39,28 @@ Clear/Undo, explicit unconfirmed runtime binding and provenance details passed;
 screenshot inspected. Private evidence:
 `local-output/sdk-20260909/component-inspector-20260930/`.
 This feature postdates the441-test checkpoint. No game launched.
+
+
+## Registered tool actions
+
+SDK component definitions now describe six actor tools: choose/clear/preview
+appearance, inspect model, inspect script/dialogue and inspect NPC candidate.
+Action descriptors contain label, required capability, optional component-value
+condition and Edit requirement. The editor renders only actions with an explicit
+registered handler and a matching current capability. Unknown IDs are omitted.
+The registered handler can require Edit even if metadata omits that requirement.
+Labels and IDs are escaped; metadata supplies no executable code or command body.
+
+Before dispatch, the registry checks busy state, source/selection context, Edit
+requirements and handler-specific eligibility. Donor editing still uses the
+source-verified donor forms and normal validated commands; script inspection still
+uses the bounded decoder. Tool forms and animation/template/asset actions have
+not all migrated. This registry does not add runtime writes or new serializer
+support.
+
+Node action checks passed for unknown IDs, capability/value conditions, escaped
+labels, stricter handler Edit requirements and blocked busy/stale/ineligible
+calls. Nine focused Python tests passed. Retail registered donor Clear/Undo and
+source-script opening through a fully loaded decoded report passed. Private
+`registered-actions-browser.json` shares the existing inspector evidence folder.
+No game launched; the441-test integrated checkpoint predates this work.

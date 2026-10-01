@@ -15,8 +15,11 @@ checks guard controls. Nine focused Python tests and Node renderer/command/
 fallback/layer/detail checks passed. Retail browser X edit/Undo and project-only Y Build
 issues passed, zero page errors. Retail layered appearance Clear/Undo preserved
 imported/effective pairs; runtime unconfirmed state and provenance details passed,
-zero errors, screenshot inspected. Specialized donor/script/asset actions still
-use their existing adapters; migration to the common contract is incomplete.
+zero errors, screenshot inspected. Six donor/model/script/candidate action buttons
+now consume SDK action metadata and registered handlers, with capability/condition
+filtering and Edit/busy/stale dispatch guards. Retail registered Clear/Undo and
+loaded source-script inspection passed. Specialized forms, animation/template
+actions and asset inspectors retain existing adapters; migration is incomplete.
 This feature postdates the441-test checkpoint. No game launched. See
 [inspector property contract](legaia-inspector-schema.md).
 
