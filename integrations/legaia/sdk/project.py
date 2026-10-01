@@ -252,7 +252,7 @@ class ProjectService:
                 raise ProjectError('Imported evidence changed under saved actor selections; resolve selections before reimport')
             affected = set(ids) | {actor["semantic_id"] for actor in previous["actors"]}
             if any(key in affected for key in self.overrides) or any(
-                    entry.get('entity_id') in affected or affected.intersection(entry.get('entity_ids', []))
+                    entry.get('entity_id') in affected or affected.intersection(entry.get('entity_ids', [])) or affected.intersection(entry.get('source_entity_ids', []))
                     for entry in self.undo_stack + self.redo_stack):
                 raise ProjectError("Imported evidence changed under authored edits or command history; create a new project or resolve edits first")
         other_ids = {actor["semantic_id"] for key, imported in self.imports.items() if key != scene_id for actor in imported["actors"]}
@@ -1415,6 +1415,10 @@ class ProjectService:
             self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': after or None})
             self.redo_stack.clear()
             return
+        if command.get('type') == 'repeat_actor_draft':
+            from .draft_repeat import apply as apply_draft_repeat
+            apply_draft_repeat(self,command)
+            return
         if command.get('type') in ('rename_actor_draft', 'duplicate_actor_draft'):
             identifier=command.get('entity_id')
             if set(command)!={'type','entity_id','name'} or not isinstance(identifier,str) or identifier not in self.actor_drafts:
@@ -1948,12 +1952,13 @@ class ProjectService:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
         entry = source.pop()
         value = deepcopy(entry[field])
-        if entry.get('target') == 'entity_overrides':
+        if entry.get('target') in ('entity_overrides','actor_draft_batch'):
+            collection = self.actor_drafts if entry['target']=='actor_draft_batch' else self.overrides
             for identifier, components in value.items():
                 if components is None:
-                    self.overrides.pop(identifier, None)
+                    collection.pop(identifier, None)
                 else:
-                    self.overrides[identifier] = components
+                    collection[identifier] = components
             target.append(entry)
             return
         if entry.get('target') == 'actor_selection_sets':

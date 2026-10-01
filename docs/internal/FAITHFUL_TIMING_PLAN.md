@@ -213,6 +213,34 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Reviewed NPC draft repetition offline completion
+
+Implemented count/X/Z spacing review, deterministic independent UUID copies,
+donor preservation, strict snapshot revalidation and one batch Undo/Redo entry.
+Connected detached scene comparison/Return/Restore to the NPC Inspector. Eleven
+focused Python tests and Node projection checks passed; retail browser verifies
+no-write preview, exact positions/donors, unchanged existing scene/assets, camera,
+Return/history/persistence, bounds and stale-source atomic rejection, zero errors.
+Screenshot inspected. Independent disk reopen and prepared PROT/MAN readback
+verified four records' exact initial pairs/positions and donor script bytes.
+Corrected readback assumptions: town01's unique physical carrier table starts at
+0 rather than its alias's8192, and partition1 has57 records but56 placements.
+Updated status/matrix/guide/deferred queue. No game/disc installation; full441
+checkpoint remains scoped to earlier committed source. Owned server61736 stopped
+with Ctrl+C (terminal1); browser71442 previously terminal0.
+
+
+### 2026-09-30 — Buildout documentation freshness check
+
+Checked the current buildout report and SDK status against the working tree and
+private NPC repetition browser evidence. Added the uncommitted repetition work
+to both current status sections and the feature matrix, retaining the exact
+441-test committed-source checkpoint and explicitly listing outstanding disk,
+archive and visual checks. No gameplay or native runtime parity claimed; no
+game launched. The report now distinguishes the latest work from integrated
+verification rather than implying the new feature was covered by that suite.
+
+
 ### 2026-09-30 - Integrated441-test SDK checkpoint after group workflows
 
 - Previous goal turn advanced source through e76b05fb (saved actor selections).

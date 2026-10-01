@@ -511,6 +511,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/text-font.js": ("text-font.js", "text/javascript"),
                  "/group-appearance.js": ("group-appearance.js", "text/javascript"),
                  "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
+                 "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
@@ -1068,6 +1069,32 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self._json(200, self.server.export_preview(preview, frame_index, clip_fps))
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
+                    return
+                if route in ('/api/draft-repeat','/api/draft-repeat-scene'):
+                    from .draft_repeat import preview as draft_repeat_preview, proposal_view
+                    fields={'entity_id','count','step','name'}
+                    if set(body)!=(fields|{'review_key'} if route.endswith('-scene') else fields):
+                        raise ProjectError('Draft repeat request has unsupported fields')
+                    project=self.server.project
+                    report=draft_repeat_preview(project,{key:body[key] for key in fields})
+                    if route=='/api/draft-repeat':
+                        self._json(200,report)
+                        return
+                    if body['review_key']!=report['review_key']:
+                        raise ProjectError('NPC drafts changed since preview; review the copies again')
+                    from .scene_preview import source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    original_key=source_key(project);view=proposal_view(project,report)
+                    proposed=self.server.scene_previews.preview(
+                        view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),
+                        load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if source_key(project)!=original_key:
+                        raise ProjectError('Scene changed during repeated draft inspection')
+                    self._json(200,{'schema_version':'legaia.draft-repeat-scene.v1','scene_id':report['scene_id'],
+                                    'project_source_key':original_key,'review_key':report['review_key'],
+                                    'scene':dict(proposed,representation='authored')})
                     return
                 if route in ("/api/actor-placement-batch-scene", "/api/actor-placement-layout-scene"):
                     is_layout = route == "/api/actor-placement-layout-scene"

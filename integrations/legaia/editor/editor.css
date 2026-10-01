@@ -118,3 +118,5 @@
 .entity-row.group-selected { box-shadow: inset 3px 0 #8bd7e8; background: #253940; }
 
 #actor-selection-sets-dialog{width:min(740px,calc(100vw - 35px));max-height:90vh;overflow:auto}#actor-selection-sets-dialog .dialog-actions{justify-content:flex-start;flex-wrap:wrap}#actor-selection-sets-dialog [data-members]{max-height:24vh;overflow:auto;overflow-wrap:anywhere}
+
+#draft-repeat-dialog{width:min(760px,calc(100vw - 35px));max-height:90vh;overflow:auto}#draft-repeat-dialog .dialog-actions{justify-content:flex-start;flex-wrap:wrap}#draft-repeat-dialog table{width:100%;font-size:12px}#draft-repeat-dialog td{overflow-wrap:anywhere}

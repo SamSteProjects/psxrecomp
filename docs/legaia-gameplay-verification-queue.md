@@ -1,5 +1,21 @@
 # Deferred gameplay verification
 
+## Repeated town01 NPC drafts — archive prototype, deferred
+
+Saved project: `local-output/sdk-20260909/draft-repeat-20260930/`.
+Prepared logical archive: `repeat-candidate.prot`, SHA256
+`b386fb186853a10e445030c3b7f3dc09d2dde1d3faa817acdc6fb6b7f711b262`.
+No output disc exists for this prototype; use the existing experimental export
+workflow later before manual testing.
+
+Independent disk/archive reopen verified the original at X2880 and three copies
+at X2944/3008/3072, all Z5440, appended records53–56 with model105/animation13
+and script bytes equal to donor0011. Browser scene comparison and history passed.
+The donor script decoder has partial coverage. Deferred checks include scene load,
+initialization, visibility, interaction, story scheduling and collision for every
+copy. Serialization does not establish these behaviors. No game launched.
+
+
 ## Streaming NPC review project — deferred
 
 Saved project: `local-output/sdk-20260909/streaming-npc-review-20260912/project.legaia.json`.

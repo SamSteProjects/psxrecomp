@@ -1,3 +1,4 @@
+import {openDraftRepeat} from '/draft-repeat.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage} from '/texture-usage.js';
@@ -1970,7 +1971,18 @@ function renderInspector(){
     nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
     duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
-    for(const control of [nameInput,rename,duplicate])control.disabled=busy||!canEdit();
+    const repeat=document.createElement('button');repeat.id='repeat-npc-draft';repeat.textContent='Repeat draft...';duplicate.after(repeat);repeat.onclick=()=>openDraftRepeat({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,
+      canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
+      getScenePreview:()=>scenePreview,
+      inspectScene:(proposed,report,returnToReview,isCurrent)=>{
+        cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
+        scenePose={key:sceneKey,name:'Proposed NPC copies - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`${report.copies.length} proposed NPC copies - not applied`;
+        configureSceneInspectionComparison(proposed);for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
+        const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to draft copies';frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:report.copies},null);draw();
+      }
+    });
+
+    for(const control of [nameInput,rename,duplicate,repeat])control.disabled=busy||!canEdit();
     const donorForm=document.createElement('form');donorForm.id='draft-donor-form';
     const donorLabel=document.createElement('label');donorLabel.textContent='Retail donor ';const donorSelect=document.createElement('select');donorSelect.name='donor';donorSelect.setAttribute('aria-label','Draft retail donor');
     for(const actor of entities()){const option=document.createElement('option');option.value=actor.id;option.textContent=actor.name??actor.id;donorSelect.append(option);}donorSelect.value=npc.donor_entity_id;donorLabel.append(donorSelect);

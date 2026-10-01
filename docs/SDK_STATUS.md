@@ -3,6 +3,24 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**NPC draft repetition (2026-09-30):** Repeat draft previews a named series
+of donor-bound NPC copies with a count and X/Z grid spacing. Proposed/Current
+scene comparison and Return retain the review; Apply adds the copies in one
+Undo/Redo entry. Eleven focused Python tests and Node projection checks passed.
+Retail-source browser checks confirmed three copies at X2944/3008/3072, Z5440,
+unchanged existing scene/assets, preserved donor pairs, no preview writes,
+retained camera, Apply/Undo/Redo, Save/reload, atomic bounds and stale-source
+rejection, and zero page errors. Screenshot inspected; independent disk reopen
+retained all four drafts. Independent experimental PROT reopen decoded the final
+MAN and verified four appended records' exact positions, initial model105 /
+animation13 and script bytes equal to donor0011. Archive SHA256:
+`b386fb186853a10e445030c3b7f3dc09d2dde1d3faa817acdc6fb6b7f711b262`.
+This feature **postdates the 441-test integrated checkpoint**. Ordinary Build
+excludes drafts; experimental export retains its existing gates. Runtime spawning,
+scheduling, collision and visibility remain unverified. No disc installed or game
+launched. See [NPC repetition guide](legaia-npc-draft-repetition.md). Private
+browser/disk/archive evidence: `local-output/sdk-20260909/draft-repeat-20260930/`.
+
 **Integrated source checkpoint (2026-09-30):** the retail-enabled SDK discovery
 suite passed **441 Python tests in 177.315 seconds**, exit0, no skips, against
 unchanged committed source `e76b05fb1775802057e41c33a5a1e4e36301a093`. This includes
