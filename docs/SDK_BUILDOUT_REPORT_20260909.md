@@ -6,7 +6,7 @@ record separates functioning features, demonstrated failures and remaining
 product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 [16-layer acceptance plan](TEST_PLAN.md) remain authoritative for scope.
 
-## Current buildout status — updated 2026-09-30
+## Current buildout status — updated 2026-10-01
 
 Current buildout includes menu-label and source-bound text-file authoring, saved runtime node
 review, indexed texture rectangle copying and model object
@@ -14,6 +14,20 @@ translation/rotation/scaling, instruction-to-operand navigation, flag/wait editi
 and isolated/shared model and texture proposals in the assembled scene. The dated
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
+
+**Saved scene views (2026-10-01):** Named project-local camera bookmarks
+retain projection, target/orbit/distance, authored/retail representation and scene
+layers, bound to the imported scene hash. Recall supports cross-scene navigation
+without actor edits or a history command; metadata create/rename/update/delete
+support Undo/Redo and Save/Open. Stale source/review, invalid cameras and changed
+source beneath saved views/history reject. Live and active proposal inspections
+disable capture/recall. Camera targets are editor display coordinates, not proof
+of retail height or runtime identity. Fourteen focused Python/HTTP checks and
+Node validation/syntax passed. Retail-source browser checked exact display
+recall, cross-scene navigation, rename/delete/Undo and unchanged actors, zero
+page errors; screenshot inspected and button wrapping corrected. This postdates
+the 457-test checkpoint. No game launched. See
+[saved scene views](legaia-saved-scene-views.md).
 
 **Historical runtime review comparison (2026-09-30):** Saved node reviews
 now support a baseline/comparison table, coordinate sample differences, status

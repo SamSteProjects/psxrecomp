@@ -776,3 +776,12 @@ Clear/Undo or supported replacement resolves the edit.58 focused retail-enabled
 tests (29.566s, no skips), Node/syntax and retail browser rejection/legacy review
 passed. Synthetic spans establish byte preservation; town01 scan found no
 reached newline glyphs. This follows397-test checkpoint; gameplay deferred.
+
+### Saved scene views — 2026-10-01
+
+Source-bound project camera bookmarks with cross-scene recall, representation and
+scene layers; metadata CRUD, Undo/Redo and Save/Open. Camera targets remain editor
+display coordinates. Fourteen focused Python/HTTP checks, Node validation/syntax
+and retail-source browser recall/history passed; no gameplay or live-identity
+claim. Postdates the integrated 457-test checkpoint. See
+[saved scene views](legaia-saved-scene-views.md).

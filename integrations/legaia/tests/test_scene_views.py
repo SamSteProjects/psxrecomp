@@ -1,0 +1,70 @@
+"""Camera metadata persistence and source safety independent of game inputs."""
+from copy import deepcopy
+from pathlib import Path
+import json
+import math
+import tempfile
+import unittest
+from sdk.project import ProjectService, ProjectError, digest
+from sdk.scene_views import review_key
+from sdk.build import authored_state_key
+from sdk.scene_preview import source_key
+import test_actor_placement_batch as fixture
+
+DISPLAY = dict(camera=dict(projection='orthographic',yaw=0,pitch=math.pi/2,distance=1000,target=dict(x=2880,y=-64,z=5440)),representation='retail',layers=dict(actors=True,scenery=True,ground=False))
+
+class SceneViewTests(unittest.TestCase):
+    def setUp(self):
+        self.directory=tempfile.TemporaryDirectory();self.addCleanup(self.directory.cleanup)
+        self.p=fixture.ActorPlacementBatchTests().project(self.directory.name);self.p.save()
+    def create(self,name='Wall',display=None):
+        p=self.p;p.command(dict(type='create_scene_view',scene_id=p.active_scene,import_sha256=digest(p.imports[p.active_scene]),name=name,display=deepcopy(DISPLAY if display is None else display)))
+        return next(row for row in p.scene_views.values() if row['name']==name.strip())
+    def cmd(self,kind,row,**fields):
+        return dict(type=kind,view_id=row['id'],review_key=review_key(self.p,row),**fields)
+    def test_metadata_history_save_open_and_no_game_input_changes(self):
+        p=self.p;inputs=(deepcopy(p.imports),deepcopy(p.overrides),authored_state_key(p),source_key(p));row=self.create(' Wall ')
+        self.assertEqual(row['display'],DISPLAY);self.assertTrue(p.dirty);self.assertIn('Saved scene views',p.unsaved_sections)
+        self.assertEqual((p.imports,p.overrides,authored_state_key(p),source_key(p)),inputs)
+        self.assertEqual(p.state()['scene_views'][0]['review_key'],review_key(p,row))
+        p.undo();self.assertFalse(p.scene_views);self.assertFalse(p.dirty);p.redo()
+        opened=ProjectService.open(p.save());self.assertEqual(opened.scene_views,p.scene_views);self.assertFalse(opened.dirty);self.assertFalse(opened.undo_stack)
+    def test_review_crud_noop_and_atomic_rejection(self):
+        p=self.p;row=self.create();stale=self.cmd('delete_scene_view',row)
+        p.command(self.cmd('rename_scene_view',row,name='Other'));row=p.scene_views[row['id']];depth=len(p.undo_stack)
+        p.command(self.cmd('rename_scene_view',row,name='Other'));self.assertEqual(len(p.undo_stack),depth)
+        with self.assertRaises(ProjectError):p.command(stale)
+        new=deepcopy(DISPLAY);new['camera']['target']['x']=3000;p.command(self.cmd('update_scene_view',row,display=new));self.assertEqual(p.scene_views[row['id']]['display'],new)
+        p.undo();self.assertEqual(p.scene_views[row['id']],row);p.redo();row=p.scene_views[row['id']]
+        p.command(self.cmd('delete_scene_view',row));self.assertFalse(p.scene_views);p.undo();self.assertEqual(p.scene_views[row['id']],row)
+    def test_invalid_camera_layers_source_names_and_live_reject(self):
+        p=self.p
+        bad=[]
+        for key,value in [('pitch',0),('pitch',float('nan')),('distance',19),('distance',float('inf')),('yaw',True),('projection','unknown'),('target',dict(x=0,y=None,z=1))]:
+            d=deepcopy(DISPLAY);d['camera'][key]=value;bad.append(d)
+        d=deepcopy(DISPLAY);d['layers']['actors']=1;bad.append(d)
+        d=deepcopy(DISPLAY);d['runtime']={};bad.append(d)
+        for d in bad:
+            with self.assertRaises(ProjectError):self.create(display=d)
+            self.assertFalse(p.scene_views);self.assertFalse(p.undo_stack)
+        for name in ['', 'x'*81]:
+            with self.assertRaises(ProjectError):self.create(name)
+        row=self.create()
+        with self.assertRaises(ProjectError):self.create('wall')
+        cmd=dict(type='create_scene_view',scene_id=p.active_scene,import_sha256='stale',name='New',display=DISPLAY)
+        with self.assertRaises(ProjectError):p.command(cmd)
+        p.mode='live'
+        with self.assertRaises(ProjectError):p.command(self.cmd('delete_scene_view',row))
+    def test_reimport_guard_survives_delete_history_and_reopen(self):
+        p=self.p;row=self.create();changed=deepcopy(p.imports[p.active_scene]);changed['actors'][0]['imported_transform']['position']['x']=192
+        with self.assertRaisesRegex(ProjectError,'scene views'):p.import_metadata(changed)
+        p.command(self.cmd('delete_scene_view',row))
+        with self.assertRaisesRegex(ProjectError,'scene views'):p.import_metadata(changed)
+        p.undo();opened=ProjectService.open(p.save())
+        with self.assertRaisesRegex(ProjectError,'scene views'):opened.import_metadata(changed)
+    def test_malformed_saved_views_and_legacy_project(self):
+        p=self.p;path=p.save();raw=json.loads(path.read_text(encoding='utf-8'));self.assertNotIn('scene_views',raw);self.assertEqual(ProjectService.open(path).scene_views,{})
+        row=self.create();p.save();raw=json.loads(path.read_text(encoding='utf-8'));raw['scene_views'][row['id']]['display']['camera']['target']['y']=None;path.write_text(json.dumps(raw),encoding='utf-8')
+        with self.assertRaises(ProjectError):ProjectService.open(path)
+
+if __name__=='__main__':unittest.main()

@@ -213,6 +213,9 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-10-01 (SDK saved scene views):** Previous status turn verified the report against clean HEAD c2d2da3f; it made no implementation change. This turn adds source-bound named camera/display bookmarks, cross-scene recall, metadata CRUD/Undo/Redo/Save/Open, source/history reimport protection and stale/closed-context guards. Recall changes no actor data or command history. Fourteen focused Python/HTTP checks and Node camera validation/syntax passed. Retail-source headless browser verified exact camera/representation/layers, cross-scene recall, rename/delete/Undo and unchanged actors with zero errors. Screenshot revealed crowded buttons; wrapping corrected and camera metadata collapsed, final screenshot inspected. Initial cross-scene harness read the hidden previous dialog before asynchronous reopen; added a visible-dialog wait and repeated successfully. Evidence stays private at local-output/sdk-20260909/scene-views-20261001/. No game launched or controlled; broad SDK goal remains active, gameplay deferred, integrated 457-test checkpoint predates this feature.
+
+
 ### 2026-09-30 — SDK animation/preset inspector action migration
 
 Previous turn was progress: full offline457 checkpoint1a48ccde. Revalidated clean

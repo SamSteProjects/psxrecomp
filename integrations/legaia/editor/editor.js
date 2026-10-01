@@ -1,3 +1,4 @@
+import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
@@ -128,7 +129,7 @@ function renderObservedNodes(query='',nodeIds=null){
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 };
 
-let scenePose=null,savedActorSelections=null;
+let scenePose=null,savedActorSelections=null,savedSceneViews=null;
 let scriptTargetOverlay=null,scriptTargetHits=[],pickScriptTargets=false;
 const scriptTargetTools=document.createElement('div');scriptTargetTools.id='script-target-tools';scriptTargetTools.hidden=true;
 scriptTargetTools.innerHTML='<span role="status"></span><select aria-label="Script target instruction"></select><button type="button" data-inspect>Inspect target</button><button type="button" data-pick aria-pressed="false">Pick script target</button><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
@@ -255,7 +256,7 @@ for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hid
   $('frame-all').before(button);
 }
 for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',ground:'Ground'})){
-  const button=document.createElement('button');button.textContent=label;button.className='active';button.setAttribute('aria-pressed','true');button.title=`Show ${label.toLowerCase()} in the scene view`;
+  const button=document.createElement('button');button.id='scene-layer-'+layer;button.textContent=label;button.className='active';button.setAttribute('aria-pressed','true');button.title=`Show ${label.toLowerCase()} in the scene view`;
   button.onclick=()=>{sceneLayers[layer]=!sceneLayers[layer];button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));cancelViewportGesture();renderHierarchy();draw();};
   $('frame-all').before(button);
 }
@@ -574,7 +575,7 @@ function setBusy(value) {
   if($('project-text'))$('project-text').disabled=value||!state.capabilities?.scene_text_search;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
-  savedActorSelections?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
+  savedActorSelections?.synchronize();savedSceneViews?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -747,7 +748,7 @@ function updateActorGroupSelection(){
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
   actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;actorGroupTools.querySelector('[data-review-components]').disabled=busy||actorGroupSelection.length<2;const appearanceButton=document.querySelector('[data-group-appearance]');if(appearanceButton)appearanceButton.disabled=busy||!canEdit()||actorGroupSelection.length<2||!!actorGroupInspection||!!scenePose;
   actorGroupTools.querySelector('[data-frame-selection]').disabled=busy||!actorGroupSelection.length||!scenePreviewCurrent();
-  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();
+  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();savedSceneViews?.synchronize();
 }
 function toggleActorSelection(id){
   if(busy||!canEdit()||actorGroupInspection)return;
@@ -843,6 +844,23 @@ $('diagnostics-button').onclick=()=>{
   if(scenePreview||sceneError){const details=document.createElement('details');details.className='scene-preview-evidence';details.innerHTML='<summary>Scene model evidence and limits</summary><pre></pre>';details.querySelector('pre').textContent=JSON.stringify({source_key:sceneKey,error:sceneError,metrics:scenePreview?.metrics,limits:scenePreview?.limits,entities:scenePreview?.entities},null,2);$('diagnostics').append(details);}
   $('diagnostics-dialog').showModal();
 };
+savedSceneViews=mountSceneViews({
+  after:$('actor-box-select'),getState:()=>state,isBusy:()=>busy,canEdit,
+  getDisplay:()=>({camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers}}),
+  canRecall:()=>canEdit()&&!scenePose&&!actorGroupInspection&&!shapeDraft,api,
+  recall:async(value,projectPath,current)=>{
+    const check=()=>{if(!current()||state.project.path!==projectPath||!canEdit()||scenePose||actorGroupInspection||shapeDraft||!state.scene_views?.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved view context changed. Review it again.');};
+    if(!await api('/api/state',undefined))return false;check();
+    if(value.scene_id!==state.scene.id&&!await api('/api/scene',{scene_id:value.scene_id}))return false;
+    check();const display=decodeSavedSceneView(value,state);
+    cancelViewportGesture();pendingEntityFrame=null;coordinateProbe=null;
+    if(sceneRepresentation!==display.representation){representationSelect.value=display.representation;representationSelect.onchange();}
+    Object.assign(camera,display.camera);projectionSelect.value=camera.projection;document.querySelector('.viewport-type').textContent=camera.projection==='orthographic'?'Orthographic':'Perspective';
+    Object.assign(sceneLayers,display.layers);
+    for(const layer of ['actors','scenery','ground']){const button=$('scene-layer-'+layer);if(button){button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));}}
+    cameraRevision++;renderHierarchy();draw();return true;
+  }
+});
 savedActorSelections=mountActorSelectionSets({after:$('actor-box-select'),getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit,
   canRecall:()=>canEdit()&&!scenePose&&!actorGroupInspection&&!shapeDraft,api,
   recall:async(value,projectPath)=>{
@@ -865,7 +883,7 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
-  updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();
+  updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneViews?.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(['transform','group-transform'].includes(drag?.type)&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';

@@ -104,6 +104,7 @@ class ProjectService:
         self.overrides: dict[str, dict] = {}
         self.actor_templates: dict[str, dict] = {}
         self.actor_selection_sets: dict[str, dict] = {}
+        self.scene_views: dict[str, dict] = {}
         self.actor_drafts: dict[str, dict] = {}
         self.texture_overrides: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
@@ -162,6 +163,7 @@ class ProjectService:
                             for key, value in sorted(self.imports.items())],
                 "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
                 "actor_templates": deepcopy(self.actor_templates),
+                **({"scene_views": deepcopy(self.scene_views)} if self.scene_views else {}),
                 **({"actor_selection_sets": deepcopy(self.actor_selection_sets)} if self.actor_selection_sets else {}),
                 **({"actor_drafts": deepcopy(self.actor_drafts)} if self.actor_drafts else {}),
                 **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
@@ -204,7 +206,7 @@ class ProjectService:
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Actor and dialogue edits", "actor_templates": "Actor presets",
                   "texture_overrides": "Texture replacements", "model_overrides": "Model shapes",
-                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections"}
+                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_views": "Saved scene views"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -213,7 +215,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "model_overrides", "actor_drafts", "actor_selection_sets")}
+                                "authored", "actor_templates", "texture_overrides", "model_overrides", "actor_drafts", "actor_selection_sets", "scene_views")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -252,6 +254,8 @@ class ProjectService:
                 raise ProjectError('Imported evidence changed under NPC drafts or their history; resolve drafts before reimport')
             if any(value['scene_id'] == scene_id for value in self.actor_selection_sets.values()):
                 raise ProjectError('Imported evidence changed under saved actor selections; resolve selections before reimport')
+            if any(value['scene_id'] == scene_id for value in self.scene_views.values()) or any(entry.get('target') == 'scene_views' and entry.get('scene_id') == scene_id for entry in self.undo_stack + self.redo_stack):
+                raise ProjectError('Imported evidence changed under saved scene views or their history; resolve views before reimport')
             affected = set(ids) | {actor["semantic_id"] for actor in previous["actors"]}
             if any(key in affected for key in self.overrides) or any(
                     entry.get('entity_id') in affected or affected.intersection(entry.get('entity_ids', [])) or affected.intersection(entry.get('source_entity_ids', []))
@@ -1295,6 +1299,10 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        from .scene_views import COMMANDS as view_commands, command as view_command
+        if isinstance(command.get('type'), str) and command.get('type') in view_commands:
+            view_command(self, command)
+            return
         from .selection_sets import COMMANDS as selection_commands, command as selection_command
         if isinstance(command.get('type'), str) and command.get('type') in selection_commands:
             selection_command(self, command)
@@ -1972,7 +1980,9 @@ class ProjectService:
                     collection[identifier] = components
             target.append(entry)
             return
-        if entry.get('target') == 'actor_selection_sets':
+        if entry.get('target') == 'scene_views':
+            collection, identifier = self.scene_views, entry['view_id']
+        elif entry.get('target') == 'actor_selection_sets':
             collection, identifier = self.actor_selection_sets, entry['selection_set_id']
         elif entry.get('target') == 'actor_drafts':
             collection, identifier = self.actor_drafts, entry['entity_id']
@@ -2120,6 +2130,18 @@ class ProjectService:
                 raise ProjectError('Duplicate saved selection name in scene')
             selection_names.add(name)
         result.actor_selection_sets = deepcopy(selection_sets)
+        from .scene_views import validate as validate_view
+        views = raw.get('scene_views', {})
+        if not isinstance(views, dict) or len(views) > 128:
+            raise ProjectError('Invalid saved scene view collection')
+        view_names = set()
+        for identifier, value in views.items():
+            validate_view(result, identifier, value)
+            name = (value['scene_id'], value['name'].casefold())
+            if name in view_names:
+                raise ProjectError('Duplicate saved scene view name in scene')
+            view_names.add(name)
+        result.scene_views = deepcopy(views)
         textures = raw.get("texture_overrides", {})
         if not isinstance(textures, dict) or len(textures) > 128:
             raise ProjectError("Invalid texture replacement collection")
@@ -2452,6 +2474,7 @@ class ProjectService:
         return references
 
     def state(self) -> dict:
+        from .scene_views import review_key as view_review_key
         from .selection_sets import review_key as selection_review_key
         from .inspector_schema import inspector_schema
         document = self.imports.get(self.active_scene)
@@ -2489,6 +2512,8 @@ class ProjectService:
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,
+                "scene_view_source_key": digest(document) if document else None,
+                "scene_views": [{**deepcopy(value), "review_key": view_review_key(self, value)} for value in sorted(self.scene_views.values(), key=lambda item: (item["scene_id"], item["name"].casefold(), item["id"]))],
                 "actor_selection_source_key": digest(document) if document else None,
                 "actor_selection_sets": [{**deepcopy(value), 'review_key': selection_review_key(self, value)}
                                          for value in sorted(self.actor_selection_sets.values(), key=lambda item: (item['scene_id'], item['name'].casefold(), item['id']))],
@@ -2504,5 +2529,5 @@ class ProjectService:
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
                                 "Build supports representable X/Z placements; authored height and facing cannot yet be serialized."],
-                "capabilities": {"edit_transform": True, "authored_transform_templates": True,
+                "capabilities": {"edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True,
                                  "live_mode": False, "build": False, "model_preview": False}}

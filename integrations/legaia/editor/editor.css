@@ -128,3 +128,5 @@
 
 .runtime-comparison-table {width:100%;table-layout:fixed;border-collapse:collapse;}
 .runtime-comparison-table th,.runtime-comparison-table td {text-align:left;vertical-align:top;padding:6px;overflow-wrap:anywhere;border-bottom:1px solid #ffffff18;}
+
+#scene-views-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}
