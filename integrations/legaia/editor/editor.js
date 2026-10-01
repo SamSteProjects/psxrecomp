@@ -1,3 +1,4 @@
+import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
@@ -1203,10 +1204,22 @@ function initialAssetUsage(record,modelReferences){
   return [...references.values()];
 }
 function showAssetDetails(record){
-  const isAuthored=!!record.authoredRecord;
-  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${property('Stable ID',record.id)}${property('Record type',record.type)}${property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
+  const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
+  assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
+  if(inspectorId){
+    const section=document.createElement('section');section.dataset.assetInspector=record.type;
+    const context=resourceStateKey(),snapshot=JSON.stringify(record),contract=JSON.stringify([state.inspector_schema,state.capabilities]);
+    const current=()=>assetDetails.open&&context===resourceStateKey()&&contract===JSON.stringify([state.inspector_schema,state.capabilities])&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
+    mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,
+      activate:async item=>{if(!current())return;assetDetails.close();await activateAsset(item);},onError:error=>notify(error.message,true)});
+    $('asset-source-data').parentElement.before(section);
+    $('asset-source-data').parentElement.open=false;
+    // These record types use the SDK inspector tool rather than a duplicate authored button.
+    const old=$('open-authored-asset');if(old)old.remove();
+  }
+
   if(record.type==='worldmap'){
     const data=record.data,context=JSON.stringify([state.project?.path,state.project?.disc_path]),section=document.createElement('section');
     section.innerHTML=`<h3>Landmark source record</h3>${property('Destination source',`${data.destination_scene_id}${data.destination_source_label?' · '+data.destination_source_label:''}`)}${property('Menu X / Y',`${data.menu_position.x} / ${data.menu_position.y}`)}${property('Discovery flag index',data.discovery_flag_index)}<p>Menu pixels, not scene coordinates. Current discovery state and gameplay reachability are unobserved.</p>`;
@@ -1249,7 +1262,7 @@ function showAssetDetails(record){
 
     $('asset-source-data').parentElement.before(usage);
   }
-  if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
+  if(isAuthored){$('asset-authored-data').textContent=JSON.stringify(record.authored,null,2);if($('open-authored-asset'))$('open-authored-asset').onclick=()=>{assetDetails.close();activateAsset(record);};}
   if(record.authoredRecord?.component_reviews?.length){
     const section=document.createElement('section'),title=document.createElement('h3'),note=document.createElement('p');
     title.textContent='Review authored components';note.textContent='Revert removes every authored setting in the chosen component. Imported data stays available; other components stay authored. Undo restores the removed settings. Shared animation and scenery changes can affect other instances.';
@@ -1321,7 +1334,7 @@ function renderAssets(){
     const row=document.createElement('div');row.className='asset-result';
     const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
     card.disabled=busy;card.onclick=()=>activateAsset(record);
-    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>['script','dialogue'].includes(record.type)?openScriptResource(record):['collision','trigger','region'].includes(record.type)?openFieldResource(record):showAssetDetails(record);row.append(card,info);list.append(row);
+    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
   }
   if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=searchError??(category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue','collision','trigger','region'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.');list.append(p);}
 }

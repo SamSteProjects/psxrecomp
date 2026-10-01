@@ -100,3 +100,43 @@ registered buttons, and submitted zero authoring commands. Components were
 unchanged; zero page errors. Final action-section screenshot inspected. Private
 evidence: `local-output/sdk-20260909/inspector-animation-actions-20260930/`.
 This postdates the457-test integrated checkpoint. No game/runtime launched.
+
+## Asset catalog inspector migration — 2026-10-01
+
+`asset_inspectors` maps eight catalog record types to SDK-owned inspector
+contracts. AssetModel, AssetTexture, AssetAnimation, AssetScript, AssetDialogue,
+AssetCollision, AssetTrigger and AssetRegion are tool groups for existing catalog
+records. They are not retail entity components and are not persisted as such.
+Their stable ID, type and source properties use the common read-only renderer.
+An explicit asset-type registry whitelists five tool handlers. Unknown IDs,
+wrong-type handlers and missing capabilities produce no action. Metadata supplies
+no command body or executable code.
+
+The asset browser's Details button opens a consistent inspector; its primary
+card retains the direct workspace shortcut. Registered actions open the existing
+source-verified model, texture, animation binding, script/dialogue or field-map
+tool. Imported and authored source/details remain separate; duplicate authored
+opening controls for migrated types are removed. Generic source details remain
+available for unmigrated types. Source/catalog/schema/capability snapshots,
+closed-dialog and busy guards prevent dispatch through an obsolete inspector.
+Cross-scene authored navigation and tool-specific edit checks remain in existing
+adapters. This does not add new serializers or writable runtime properties.
+
+**SDK asset inspector tools (2026-10-01):** Asset Details now uses the
+same SDK property/action contract as actor inspectors for eight catalog types:
+models, textures, animations, scripts, dialogue, collision, triggers and regions.
+SDK metadata supplies labels, read-only stable identity/source properties and
+capability-bound tools; explicit type-specific handlers open the existing
+verified workspaces. Details is now a consistent entry point, while asset-card
+shortcuts remain. Changed source/catalog record/schema/capability, busy state and
+closed dialogs block dispatch. Duplicate authored-open buttons are removed for
+these types; authored details and source provenance remain separate. These are
+inspector tool groups, not invented or persisted entity components. Eleven
+focused Python checks, all 17 Node checks and 19 editor syntax checks passed.
+Retail browser opened all eight Details panels through actual browser buttons,
+loaded model/texture previews and opened the resource tools; busy/closed guards,
+unchanged actors, zero author commands and zero page errors passed. Screenshot
+inspected. Evidence: `local-output/sdk-20260909/asset-inspector-20261001/`.
+This postdates the integrated 463-test checkpoint. Specialized editing forms,
+other asset types, runtime identity and gameplay still need further work.
+No game launched.

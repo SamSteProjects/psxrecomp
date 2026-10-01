@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {assetInspectorDefinition,assetInspectorRegistry} from '../editor/asset-inspector.js';
+import {registeredActions,bindComponentActions} from '../editor/component-inspector.js';
+const schema={schema_version:'legaia.inspector-schema.v1',live_writes:false,asset_inspectors:{model:'AssetModel'},components:{AssetModel:{layout:'read-only-properties',properties:[],actions:[{id:'inspect-asset-model',label:'Inspect model',capability:'model_preview'},{id:'inspect-asset-texture',label:'Wrong type',capability:'texture_preview'},{id:'write-ram',label:'Unknown',capability:'model_preview'}]}}};
+const record={id:'asset://scene/models/1',type:'model'};let calls=0,current=true,busy=false;
+assert.equal(assetInspectorDefinition(schema,record),'AssetModel');
+assert.equal(assetInspectorDefinition(schema,{type:'unknown'}),null);
+assert.throws(()=>assetInspectorDefinition({...schema,asset_inspectors:{model:'Transform'}},record));
+const registry=assetInspectorRegistry(record,item=>{assert.equal(item,record);calls++;});
+const actions=registeredActions(schema,'AssetModel',record,{model_preview:true,texture_preview:true},registry,false);
+assert.deepEqual(actions.map(row=>row.id),['inspect-asset-model']);assert.equal(actions[0].disabled,false);
+assert.equal(registeredActions(schema,'AssetModel',record,{model_preview:false},registry,false).length,0);
+const button={dataset:{inspectorAction:'inspect-asset-model'}};
+bindComponentActions({querySelectorAll:()=>[button]},registry,{current:()=>current,editable:()=>false,busy:()=>busy,onError:e=>{throw e;}});
+await button.onclick();assert.equal(calls,1);current=false;await button.onclick();assert.equal(calls,1);current=true;busy=true;await button.onclick();assert.equal(calls,1);
+for(const type of ['texture','animation','script','dialogue','collision','trigger','region'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
+assert.equal(Object.keys(assetInspectorRegistry({type:'actor'},()=>{})).length,0);
+console.log('Asset inspector descriptor/type registry, capability filtering and stale/busy read-only dispatch passed.');

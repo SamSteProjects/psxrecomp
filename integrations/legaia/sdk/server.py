@@ -524,6 +524,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
+                 "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),

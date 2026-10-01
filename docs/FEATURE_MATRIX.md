@@ -2,6 +2,25 @@
 
 Current scene-editor status (2026-10-01):
 
+**SDK asset inspector tools (2026-10-01):** Asset Details now uses the
+same SDK property/action contract as actor inspectors for eight catalog types:
+models, textures, animations, scripts, dialogue, collision, triggers and regions.
+SDK metadata supplies labels, read-only stable identity/source properties and
+capability-bound tools; explicit type-specific handlers open the existing
+verified workspaces. Details is now a consistent entry point, while asset-card
+shortcuts remain. Changed source/catalog record/schema/capability, busy state and
+closed dialogs block dispatch. Duplicate authored-open buttons are removed for
+these types; authored details and source provenance remain separate. These are
+inspector tool groups, not invented or persisted entity components. Eleven
+focused Python checks, all 17 Node checks and 19 editor syntax checks passed.
+Retail browser opened all eight Details panels through actual browser buttons,
+loaded model/texture previews and opened the resource tools; busy/closed guards,
+unchanged actors, zero author commands and zero page errors passed. Screenshot
+inspected. Evidence: `local-output/sdk-20260909/asset-inspector-20261001/`.
+This postdates the integrated 463-test checkpoint. Specialized editing forms,
+other asset types, runtime identity and gameplay still need further work.
+No game launched.
+
 **Group preset scene inspection (2026-10-01):** The extension adds read-only Current/Proposed comparison in the assembled
 3D scene for position, appearance and combined group presets. Return retains the
 review for atomic Apply; Restore, changed selection and a closed pending request
@@ -59,6 +78,7 @@ open; passing the SDK suite does not complete the full objective. See
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
+| SDK asset inspector tools | FUNCTIONAL / PARTIAL. Eight catalog record types share SDK property/action metadata and explicit type-specific registered tool handlers. Actual Details navigation, previews/resource tools and busy/closed guards passed retail browser checks without actor writes. | Specialized editing forms and other asset kinds retain existing adapters; runtime/gameplay acceptance remains deferred. |
 | Actor group presets | FUNCTIONAL / OFFLINE. Position/appearance/combined preset review across2–128 active-scene imported actors, all-target source/compatibility validation, one atomic Apply/Undo/Redo and Save/Open. Focused tests, Node checks, retail browser and exact full MAN package readback passed. | Absolute saved axes may overlap targets; no instantiation or runtime/visibility/collision guarantees. Normal Build rejects projects containing drafts; gameplay deferred. |
 | Asset browser field search | FUNCTIONAL / OFFLINE. Name/ID/type/scene/model/confidence/provenance filters, phrases and exclusions with bounded strict syntax; imported/authored model users match recorded references. Node and retail browser checks passed, no actor changes or authoring commands. | Active-scene resource scope and existing category limits remain; no aggregate confidence or runtime-use inference. |
 | Actor group placement offsets | FUNCTIONAL / OFFLINE. Dedicated scene actor group selection, source/effective/proposed table, grid/bounds validation, atomic command and one-step Undo/Redo, persistence and existing Build serialization. 23 focused tests and retail browser/exact package checks passed. 3D Proposed/Current layers, Frame group, draft Return and Restore now pass 26 focused tests and exact retail browser transform/camera/no-write checks; source terrain preview height recalculated. Proposed group X/Z handles now pass relative 64-unit snap, browser pointer drags, cancellation, bounds rejection, Return and atomic Apply/Undo checks. Ctrl/Command-click imported actor group selection in the viewport/hierarchy, highlights, Frame/Clear and dialog seeding now pass real mesh/browser workflow checks. Depth-tested box selection and filtered hierarchy ranges now pass real 2x-DPI exact mesh/hidden/add/reverse/Escape/source and review-seeding checks; bounded strip readback and atomic selection merges pass Node checks. These UI checks postdate the 421-test Python checkpoint. | Mixed actor/scenery groups, Y/facing, NPC drafts and scenery groups remain separate work. Gameplay visibility/collision/script movement deferred. |

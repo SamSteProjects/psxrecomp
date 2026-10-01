@@ -3,6 +3,25 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**SDK asset inspector tools (2026-10-01):** Asset Details now uses the
+same SDK property/action contract as actor inspectors for eight catalog types:
+models, textures, animations, scripts, dialogue, collision, triggers and regions.
+SDK metadata supplies labels, read-only stable identity/source properties and
+capability-bound tools; explicit type-specific handlers open the existing
+verified workspaces. Details is now a consistent entry point, while asset-card
+shortcuts remain. Changed source/catalog record/schema/capability, busy state and
+closed dialogs block dispatch. Duplicate authored-open buttons are removed for
+these types; authored details and source provenance remain separate. These are
+inspector tool groups, not invented or persisted entity components. Eleven
+focused Python checks, all 17 Node checks and 19 editor syntax checks passed.
+Retail browser opened all eight Details panels through actual browser buttons,
+loaded model/texture previews and opened the resource tools; busy/closed guards,
+unchanged actors, zero author commands and zero page errors passed. Screenshot
+inspected. Evidence: `local-output/sdk-20260909/asset-inspector-20261001/`.
+This postdates the integrated 463-test checkpoint. Specialized editing forms,
+other asset types, runtime identity and gameplay still need further work.
+No game launched.
+
 **Group preset scene inspection (2026-10-01):** The extension adds read-only Current/Proposed comparison in the assembled
 3D scene for position, appearance and combined group presets. Return retains the
 review for atomic Apply; Restore, changed selection and a closed pending request

@@ -1,7 +1,7 @@
 """Editor property contracts; authoring validation still belongs to ProjectService."""
 
 def inspector_schema():
-    return {'schema_version':'legaia.inspector-schema.v1','components':{
+    schema = {'schema_version':'legaia.inspector-schema.v1','components':{
         'Transform':{'label':'Transform','units':'Scene units','layout':'layered-number',
             'layers':['imported','authored','effective'],
             'properties':[{'id':axis,'label':axis.upper(),'path':['position',axis],
@@ -41,3 +41,29 @@ def inspector_schema():
             'properties':[{'id':'imported_id','label':'Imported ID','path':['imported_id'],'type':'integer','state':'read-only-retail'}],
             'notes':['Timing, live animation state and retargeting are not inferred from an imported association.']}
     },'unknown_component_policy':'read-only-details','live_writes':False}
+
+    # Asset inspector groups describe SDK catalog records, not entity components.
+    tools = {
+        'model': ('AssetModel', 'Model asset', 'model_preview', 'inspect-asset-model', 'Inspect model'),
+        'texture': ('AssetTexture', 'Texture asset', 'texture_preview', 'inspect-asset-texture', 'Inspect texture'),
+        'animation': ('AssetAnimation', 'Animation resource', 'animation_preview', 'inspect-asset-animation', 'Inspect animation bindings'),
+        'script': ('AssetScript', 'Script resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect script'),
+        'dialogue': ('AssetDialogue', 'Dialogue resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect dialogue'),
+        'collision': ('AssetCollision', 'Collision resource', 'field_map_preview', 'inspect-asset-field', 'Inspect collision'),
+        'trigger': ('AssetTrigger', 'Trigger resource', 'field_map_preview', 'inspect-asset-field', 'Inspect trigger'),
+        'region': ('AssetRegion', 'Region resource', 'field_map_preview', 'inspect-asset-field', 'Inspect region'),
+    }
+    schema['asset_inspectors'] = {}
+    for kind, (identifier, label, capability, action, action_label) in tools.items():
+        schema['asset_inspectors'][kind] = identifier
+        schema['components'][identifier] = {
+            'label': label, 'layout': 'read-only-properties',
+            'properties': [
+                {'id': 'id', 'label': 'Stable ID', 'path': ['id'], 'type': 'asset-reference', 'state': 'derived'},
+                {'id': 'type', 'label': 'Record type', 'path': ['type'], 'type': 'string', 'state': 'derived'},
+                {'id': 'source', 'label': 'Source', 'path': ['source'], 'type': 'string', 'state': 'read-only-retail'},
+            ],
+            'notes': ['Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
+            'actions': [{'id': action, 'label': action_label, 'capability': capability}],
+        }
+    return schema
