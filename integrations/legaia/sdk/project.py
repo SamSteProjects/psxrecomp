@@ -748,6 +748,19 @@ class ProjectService:
         result["unresolved_overrides"] = sorted(set(authored) - known)
         return result
 
+    def dialogue_font(self, identifier: str) -> dict:
+        from importer.dialogue_font import load_dialogue_font
+        from importer.pipeline import _disc_context
+        if not self.disc_path:
+            raise ProjectError("Glyph preview requires the project retail disc")
+        with _disc_context(self.disc_path):
+            context = self._dialogue_context(identifier)
+            if not context.options(identifier)["supported"]:
+                raise ProjectError("Glyph preview requires supported source text runs")
+            result = load_dialogue_font(self.disc_path)
+            result.update(owner_id=identifier, decoded_man_sha256=context.provenance()["decoded_man_sha256"])
+            return result
+
     def _dialogue_json_document(self, identifier: str, context) -> dict:
         options = context.options(identifier)
         authored = self.overrides.get(identifier, {}).get("Dialogue", {}).get("runs", {})

@@ -344,3 +344,13 @@ renderer controls; it does not simulate layout or prove current gameplay.
 Legacy project loading may retain an old pipe edit for review/clear, but the
 serializer always uses strict validation.58 focused tests and separate retail
 browser rejection/legacy review passed; the397-test checkpoint predates the fix.
+
+## Retail glyph preview - 2026-09-30
+
+The independent font importer uses the unchanged pin, `crates/font/src/lib.rs`
+and `docs/formats/dialog-font.md`, checked through `git show`. Retail page,
+CLUT, width table, hashes and limits are recorded in the
+[glyph preview guide](legaia-text-glyph-preview.md). Stencil normalization and
+advances are reference evidence plus retail extraction; layout and runtime tint
+are not live evidence. Browser canvas readback and visual inspection passed.
+No reference implementation or retail pixels are bundled.

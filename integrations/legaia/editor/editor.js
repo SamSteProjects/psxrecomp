@@ -1,5 +1,6 @@
 import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
+import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {captureRuntimeReview,parseRuntimeReview,MAX_REVIEW_BYTES} from '/runtime-review.js';
 const $ = (id) => document.getElementById(id);
@@ -2329,6 +2330,7 @@ function updateDialogueRun(form){
   form.querySelector('.run-apply').disabled=busy||!canEditDialogue()||!valid||text===run.authored_text;
   form.querySelector('.run-clear').disabled=busy||!canEditDialogue()||run.authored_text===null||run.authored_text===undefined;
   form.querySelector('.run-discard').hidden=!scriptDrafts.has(run.semantic_id);form.querySelector('.run-discard').disabled=busy;
+  if(form.updateGlyphs)form.updateGlyphs();
 }
 async function scriptProjectAction(route){
   if(busy||scriptDrafts.size)return;
@@ -2342,6 +2344,31 @@ async function dialogueCommand(run,type,text){
   scriptDialog.querySelector('.dialog-error').textContent='';
   if(await api('/api/command',command)){scriptDrafts.delete(run.semantic_id);await openActorScript(scriptEntity,true,run.semantic_id);}
   else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;
+}
+async function loadTextGlyphPreviews(report,owner,key){
+  const note=document.createElement('p');note.className='field-note';note.dataset.glyphStatus='true';note.textContent='Loading verified retail glyph stencil…';
+  scriptDialog.querySelector('.dialogue-authoring-evidence').after(note);
+  const current=()=>scriptDialog.open&&report===scriptReport&&owner===scriptEntity?.id&&key===resourceStateKey();
+  try{
+    const response=await fetch('/api/text-font',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:owner})}),data=await response.json();
+    if(!current())return;if(!response.ok)throw new Error(data.error);
+    const font=decodeTextFont(data,owner,report.dialogue_authoring.source.decoded_man_sha256),atlas=document.createElement('canvas');atlas.width=224;atlas.height=210;atlas.getContext('2d').putImageData(new ImageData(font.rgba,224,210),0,0);
+    note.textContent='Source glyph stencil and advances · white fill/dark shadow. Each run starts at zero; controls, substitutions, line wrapping, boxes and runtime tint are not simulated.';
+    const evidence=document.createElement('details');evidence.className='glyph-evidence';const summary=document.createElement('summary'),raw=document.createElement('pre');summary.textContent='Font source and preview limits';raw.className='diagnostic-detail';raw.textContent=JSON.stringify({source:data.source,limitations:data.limitations},null,2);evidence.append(summary,raw);note.after(evidence);
+    for(const form of scriptDialog.querySelectorAll('.dialogue-run')){
+      const run=form.run,group=document.createElement('section');group.className='run-glyph-preview';
+      const paint=(label,text)=>{
+        const row=document.createElement('div'),name=document.createElement('small'),canvas=document.createElement('canvas'),metrics=document.createElement('small');row.className='glyph-layer';name.textContent=label;row.append(name,canvas,metrics);
+        const update=value=>{
+          try{const layout=layoutGlyphRun(font,value);canvas.hidden=false;canvas.width=layout.canvas_width;canvas.height=15;const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;for(const glyph of layout.glyphs)ctx.drawImage(atlas,glyph.atlas_x,glyph.atlas_y,14,15,glyph.x,0,14,15);canvas.style.width=(canvas.width*2)+'px';canvas.style.height='30px';metrics.textContent=`${layout.advance} source pixels advance${layout.truncated?' · preview truncated':''}`;canvas.dataset.advance=layout.advance;}
+          catch{canvas.width=1;canvas.height=15;canvas.hidden=true;delete canvas.dataset.advance;metrics.textContent='Unsupported or unavailable text · no glyph preview';}
+        };update(text);group.append(row);return {row,update};
+      };
+      paint('Retail glyph run',run.text);paint('Effective glyph run',run.effective_text);
+      const draft=paint('Draft after Apply · not applied',null);draft.row.hidden=true;form.append(group);
+      form.updateGlyphs=()=>{if(!current()){group.remove();delete form.updateGlyphs;return;}const pending=scriptDrafts.has(run.semantic_id);draft.row.hidden=!pending;if(pending){const text=form.querySelector('textarea').value;draft.update(text.length<=run.max_length?text.padEnd(run.max_length,' '):null);}};form.updateGlyphs();
+    }
+  }catch(error){if(current())note.textContent='Glyph preview unavailable: '+error.message;}
 }
 async function downloadTextJSON(report,owner,key){
   if(busy||scriptDrafts.size||report!==scriptReport||key!==resourceStateKey())return;
@@ -2416,6 +2443,7 @@ function renderDialogueAuthoring(){
     parent.append(form);
   }
   updateScriptActions();
+  if(state.capabilities?.text_font_preview)loadTextGlyphPreviews(scriptReport,owner,key);
 }
 
 function frame(entity){

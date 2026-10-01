@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {decodeTextFont,layoutGlyphRun} from '../editor/text-font.js';
+const rgba=Buffer.alloc(188160),data={schema:'legaia.dialogue-font.v1',owner_id:'owner',decoded_man_sha256:'hash',representation:'source-glyph-stencil',atlas_width:224,atlas_height:210,glyph_width:14,glyph_height:15,columns:16,first_byte:32,inter_glyph_pad:1,widths:Array(256).fill(5),rgba_base64:rgba.toString('base64')};
+const font=decodeTextFont(data,'owner','hash');font.widths[32]=3;assert.equal(data.widths[32],5);
+const result=layoutGlyphRun(font,'A B');assert.equal(result.advance,16);assert.equal(result.glyphs.length,2);assert.equal(result.glyphs[1].x,10);assert.deepEqual(result.glyphs[0],{code:65,x:0,atlas_x:14,atlas_y:30});
+assert.equal(layoutGlyphRun(font,'').canvas_width,1);assert.equal(layoutGlyphRun(font,' '.repeat(10)).advance,40);
+assert.equal(layoutGlyphRun(font,'A'.repeat(129)).truncated,true);assert.equal(layoutGlyphRun(font,'A'.repeat(4096)).glyphs.length,128);
+for(const text of ['^','|','A\nB','é','A'.repeat(4097),null])assert.throws(()=>layoutGlyphRun(font,text));
+for(const change of [{owner_id:'other'},{decoded_man_sha256:'old'},{atlas_width:256},{rgba_base64:''},{widths:Array(256).fill(-1)},{representation:'gameplay'}])assert.throws(()=>decodeTextFont({...data,...change},'owner','hash'));
+const wide={widths:Array(256).fill(255)};assert.equal(layoutGlyphRun(wide,'A'.repeat(128)).canvas_width,4096);assert.equal(layoutGlyphRun(wide,'A'.repeat(128)).advance,32768);
+console.log('Font identity/shape/bounds, detached data, glyph coordinates, advances, controls and clipping passed.');

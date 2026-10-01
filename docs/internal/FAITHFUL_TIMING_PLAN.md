@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Retail font preview connected to text Inspector
+
+- Previous goal turn progressed by updating the buildout report with in-progress
+  glyph work and correcting a stale checkpoint reference.
+- Independent bounded retail font decoder, source-qualified read-only service
+  and retail/effective/padded draft canvases implemented. No runtime core changes.
+- Nine focused Python tests in0.721s, Node font checks and editor syntax passed.
+  Retail browser all30 menu forms, exact pixels/advances, invalid drafts, Discard,
+  held response after close/reopen and request rejection passed with unchanged
+  state, zero authoring requests/page errors. Screenshot visually inspected.
+- Private evidence: text-json-project-20260930/font-browser-check.json and
+  font-preview.png. Docs record hashes and limits;397 checkpoint predates this.
+  Browser closed and server37339 stopped (exit1). Full goal active; gameplay
+  deferred. Controls, pager, wrapping and tint unverified. No game launched.
+
+
 ### 2026-09-30 — Preserve renderer newline controls in SDK text authoring
 
 - Previous goal turn committed fresh397-test checkpoint (`91445f83`), concrete

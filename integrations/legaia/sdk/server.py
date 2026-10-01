@@ -123,6 +123,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["text_font_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
@@ -488,6 +489,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 self._json(200, self.server.state())
                 return
         files = {"/": ("index.html", "text/html"), "/editor.js": ("editor.js", "text/javascript"),
+                 "/text-font.js": ("text-font.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
@@ -913,6 +915,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
                         raise ProjectError("Actor candidate inspection accepts only an imported entity_id")
                     self._json(200, self.server.actor_candidate_inspection(body["entity_id"]))
+                    return
+                if route == "/api/text-font":
+                    if set(body) != {"entity_id"}:
+                        raise ProjectError("Text font preview accepts only entity_id")
+                    self._json(200, self.server.project.dialogue_font(body["entity_id"]))
                     return
                 if route == "/api/text-json-source":
                     if set(body) != {"entity_id"}:

@@ -2,6 +2,18 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+
+**Retail glyph preview (2026-09-30):** supported dialogue/menu forms show
+Retail, Effective and padded unapplied Draft glyph stencils and source advances.
+Nine focused Python tests, JavaScript font checks and editor syntax passed.
+Retail browser pixel/advance readback, invalid drafts, Discard, held-response
+close/reopen and malformed request rejection passed with unchanged project
+state, zero authoring requests and page errors. Screenshot inspected. Controls,
+substitutions, boxes, wrapping, pager behavior and runtime tint are not simulated.
+This follows the397-test checkpoint; gameplay remains deferred. See the
+[glyph preview guide](legaia-text-glyph-preview.md).
+
+
 ## Ready for offline review
 
 - Scene workspace: source-based textured scenes, hierarchy selection, inspector, orthographic/top views, coordinate locator, authored/retail layers, and actor/decorative/shared-scenery X/Z handles. Shared scenery browser checks moved three instances while preserving366 unrelated instances and verified Undo on both axes.

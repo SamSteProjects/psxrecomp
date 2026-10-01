@@ -15,6 +15,16 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Retail glyph preview (2026-09-30):** supported dialogue/menu forms show
+Retail, Effective and padded unapplied Draft glyph stencils and source advances.
+Nine focused Python tests, JavaScript font checks and editor syntax passed.
+Retail browser pixel/advance readback, invalid drafts, Discard, held-response
+close/reopen and malformed request rejection passed with unchanged project
+state, zero authoring requests and page errors. Screenshot inspected. Controls,
+substitutions, boxes, wrapping, pager behavior and runtime tint are not simulated.
+This follows the397-test checkpoint; gameplay remains deferred. See the
+[glyph preview guide](legaia-text-glyph-preview.md).
+
 **Renderer newline preservation fix (2026-09-30):** the plain-glyph
 writer now excludes byte0x7C (`|`), which the pinned font renderer uses as a
 newline even though MES emits it as a Glyph event. Source newline bytes split
@@ -86,7 +96,7 @@ Retail texture29 browser checks passed draft/no-write, bounds and stale-hash
 rejection, no-op/no-history, Apply, Undo/Redo, Discard, Save/reopen and Build.
 Independent package readback matched all pixels/palettes and the saved33312-byte
 TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
-focused tests passed with no skips. This feature is included in the current392-test source checkpoint; browser
+focused tests passed with no skips. This feature is included in the current397-test source checkpoint; browser
 and package evidence remain separate. Gameplay appearance remains deferred.
 
 **Independent animation consumer review (2026-09-30):** Blender 5.2.2 rendered

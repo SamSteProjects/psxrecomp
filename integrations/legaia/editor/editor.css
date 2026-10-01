@@ -90,3 +90,10 @@
 #model-vector-dialog label>select{display:block;width:100%;margin-top:6px}
 
 .flag-layers, .wait-layers { flex-basis: 100%; margin: 0; }
+
+.run-glyph-preview{border-top:1px solid var(--line);margin-top:10px;padding-top:5px;max-width:100%}
+.glyph-layer{overflow:auto;max-width:100%;padding:5px 0}
+.glyph-layer small{display:block;color:var(--muted);font-size:10px;margin:3px 0}
+.glyph-layer canvas{display:block;image-rendering:pixelated;background:#10181b}
+.glyph-layer[hidden]{display:none}
+.glyph-evidence summary{font-size:11px;color:var(--muted)}
