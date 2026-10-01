@@ -15,6 +15,18 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Historical runtime review comparison (2026-09-30):** Saved node reviews
+now support a baseline/comparison table, coordinate sample differences, status
+and text filters, complete decoded evidence, return navigation and metadata
+export. Declared scene/epoch/profile mismatches reject; matching node keys remain
+unconfirmed because v1 has no process or object-lifetime identity. Missing axes
+and numeric overflow retain unknown deltas; file-only keys do not imply spawning
+or removal. Node checks and synthetic browser comparison/filter/download/return,
+context rejection and closed-read withdrawal passed, zero page errors or authoring
+requests. Project/camera/runtime state was unchanged. Screenshot inspected. This
+postdates the 441-test checkpoint; no real runtime capture or game launch occurred.
+See [saved runtime reviews](legaia-runtime-node-review.md).
+
 **Combined actor presets (2026-09-30):** Authored templates can capture
 position axes and a verified appearance donor together. A source/target-bound
 read-only review shows imported/authored/effective/proposed positions and donor;

@@ -125,3 +125,6 @@
 .asset-panel>.panel-heading{flex:0 0 40px}
 .asset-panel>.asset-tools{flex:0 1 auto;min-height:0;overflow:auto}
 .asset-panel>.asset-list{flex:1 0 96px;min-height:96px}
+
+.runtime-comparison-table {width:100%;table-layout:fixed;border-collapse:collapse;}
+.runtime-comparison-table th,.runtime-comparison-table td {text-align:left;vertical-align:top;padding:6px;overflow-wrap:anywhere;border-bottom:1px solid #ffffff18;}

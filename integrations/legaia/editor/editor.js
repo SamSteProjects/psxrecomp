@@ -8,7 +8,7 @@ import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
-import {captureRuntimeReview,parseRuntimeReview,MAX_REVIEW_BYTES} from '/runtime-review.js';
+import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,MAX_REVIEW_BYTES} from '/runtime-review.js';
 import {mountActorPlacementBatch,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '/actor-placement-batch.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -33,8 +33,8 @@ const pickRuntimeButton=document.createElement('button');pickRuntimeButton.textC
 const nodesButton=document.createElement('button');nodesButton.textContent='Observed nodes';$('frame-selected').after(nodesButton);
 const nodesDialog=document.createElement('dialog');nodesDialog.className='project-dialog observed-nodes-dialog';document.body.append(nodesDialog);
 let nodeReviewRevision=0;
-function downloadRuntimeReview(review){
-  const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)+'\n'],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='runtime-nodes-historical.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+function downloadRuntimeReview(review,filename='runtime-nodes-historical.json'){
+  const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)+'\n'],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function appendSavedNodeReviewPicker(){
   const revision=nodeReviewRevision,label=document.createElement('label'),input=document.createElement('input');label.textContent='Open saved runtime node review';input.type='file';input.accept='.json';input.setAttribute('aria-label','Saved runtime node review');label.append(input);nodesDialog.append(label);
@@ -48,8 +48,47 @@ function renderSavedNodeReview(review){
   const list=document.createElement('div');nodesDialog.append(list);const rows=[];
   for(const node of review.nodes){const row=document.createElement('details'),summary=document.createElement('summary'),detail=document.createElement('div');summary.textContent=`${node.runtime_node_id} · XYZ ${node.observed_position.x??'?'} / ${node.observed_position.y??'?'} / ${node.observed_position.z??'?'} · ${node.candidate_entity_ids.length} unconfirmed candidates`;const frames=document.createElement('p');frames.textContent=`Position capture frames: ${node.position_capture_frames?.before??'unknown'}–${node.position_capture_frames?.after??'unknown'} · ${node.reason??'No binding reason recorded'}`;detail.append(frames);const candidates=document.createElement('p');candidates.textContent='Unconfirmed candidate IDs: '+(node.candidate_entity_ids.join(', ')||'none');detail.append(candidates);for(const field of node.decoded_fields){const entry=document.createElement('p'),evidence=document.createElement('small'),value=field.interpreted_value;entry.textContent=`${field.property}: ${value==null?'Unknown':typeof value==='object'?JSON.stringify(value):String(value)} · raw ${field.raw_numeric_value??'unknown'} · ${field.confidence??'unknown'} · applicability ${field.applicability??'unknown'}${field.unresolved?' · unresolved':''}`;evidence.textContent=` ${field.notes??''} ${(field.evidence??[]).join(', ')}`;entry.append(evidence);detail.append(entry);}row.append(summary,detail);list.append(row);rows.push({row,text:JSON.stringify(node).toLowerCase()});}
   search.oninput=()=>{for(const item of rows)item.row.hidden=!item.text.includes(search.value.trim().toLowerCase());};
-  const download=document.createElement('button');download.textContent='Download historical metadata';download.onclick=()=>downloadRuntimeReview(review);nodesDialog.append(download);appendSavedNodeReviewPicker();
+  const download=document.createElement('button');download.textContent='Download historical metadata';download.onclick=()=>downloadRuntimeReview(review);nodesDialog.append(download);appendRuntimeComparisonPicker(review);appendSavedNodeReviewPicker();
   const back=document.createElement('button');back.textContent='Back to observed nodes';back.onclick=()=>renderObservedNodes();nodesDialog.append(back);const close=document.createElement('button');close.textContent='Close saved review';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
+}
+function appendRuntimeComparisonPicker(baseline){
+  const revision=nodeReviewRevision,label=document.createElement('label'),input=document.createElement('input');
+  label.textContent='Compare another saved review with this baseline';input.type='file';input.accept='.json';input.setAttribute('aria-label','Compare saved runtime review');label.append(input);nodesDialog.append(label);
+  const error=document.createElement('p');error.className='dialog-error';error.setAttribute('role','alert');nodesDialog.append(error);
+  input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{
+    if(file.size>MAX_REVIEW_BYTES)throw new Error('Saved review exceeds 1 MiB');
+    const comparison=compareRuntimeReviews(baseline,parseRuntimeReview(await file.text()));
+    if(revision!==nodeReviewRevision||!nodesDialog.open||input.files?.[0]!==file)return;
+    renderRuntimeComparison(comparison);
+  }catch(e){if(revision===nodeReviewRevision&&nodesDialog.open&&input.files?.[0]===file)error.textContent=e.message;}};
+}
+function renderRuntimeComparison(comparison){
+  nodeReviewRevision++;nodesDialog.replaceChildren();
+  const heading=document.createElement('h2');heading.textContent='Saved runtime comparison · historical';nodesDialog.append(heading);
+  for(const text of comparison.limitations){const note=document.createElement('p');note.textContent=text;nodesDialog.append(note);}
+  const context=document.createElement('p');context.textContent=`${comparison.before.scene_id} · epoch ${comparison.before.epoch_id} · profile ${comparison.before.profile_id??'unknown'} · baseline exported ${comparison.before.exported_at} · comparison exported ${comparison.after.exported_at}`;nodesDialog.append(context);
+  const search=document.createElement('input');search.type='search';search.placeholder='Filter node, candidate or field';search.setAttribute('aria-label','Filter runtime comparison');nodesDialog.append(search);
+  const filter=document.createElement('select');filter.setAttribute('aria-label','Runtime comparison status');
+  for(const [value,label] of [['all','All keys'],['paired_changed','Changed samples'],['paired_unchanged','Unchanged samples'],['before_only','Baseline file only'],['after_only','Comparison file only']]){const option=document.createElement('option');option.value=value;option.textContent=label;filter.append(option);}nodesDialog.append(filter);
+  const count=document.createElement('p');count.setAttribute('role','status');nodesDialog.append(count);const rows=[];
+  for(const item of comparison.rows){const row=document.createElement('details'),summary=document.createElement('summary');
+    summary.textContent=`${item.runtime_node_id} · ${item.status.replaceAll('_',' ')} · identity unconfirmed`;row.append(summary);
+    if(item.position_delta){const delta=document.createElement('p');delta.textContent=`Coordinate sample difference (comparison minus baseline): X ${item.position_delta.x??'unknown'} / Y ${item.position_delta.y??'unknown'} / Z ${item.position_delta.z??'unknown'}`;row.append(delta);}
+    const table=document.createElement('table'),header=document.createElement('tr');table.className='runtime-comparison-table';
+    for(const text of ['Captured value','Baseline','Comparison']){const cell=document.createElement('th');cell.textContent=text;header.append(cell);}table.append(header);
+    const values=[...['x','y','z'].map(axis=>[axis.toUpperCase(),node=>node.observed_position[axis]??'unknown']),['Position frames',node=>node.position_capture_frames?`${node.position_capture_frames.before}–${node.position_capture_frames.after}`:'unknown'],['Unconfirmed candidates',node=>node.candidate_entity_ids.join(', ')||'none'],['Binding reason',node=>node.reason??'unknown']];
+    for(const [label,get] of values){const tr=document.createElement('tr');for(const text of [label,item.before?get(item.before):'Key absent',item.after?get(item.after):'Key absent']){const td=document.createElement('td');td.textContent=String(text);tr.append(td);}table.append(tr);}row.append(table);
+    const fields=document.createElement('p');fields.textContent='Changed decoded field metadata: '+(item.changed_fields.map(field=>field.property).join(', ')||'none');row.append(fields);
+    for(const field of item.changed_fields){const detail=document.createElement('details'),title=document.createElement('summary');title.textContent=field.property+' · changed metadata';detail.append(title);for(const [label,value] of [['Baseline',field.before],['Comparison',field.after]]){const text=document.createElement('pre');text.textContent=label+': '+(value?JSON.stringify(value,null,2):'Field absent');detail.append(text);}row.append(detail);}
+    // Preserve all original evidence without overwhelming the comparison table.
+    const full=document.createElement('details'),title=document.createElement('summary');title.textContent='Full captured metadata';full.append(title);
+    for(const [label,node] of [['Baseline',item.before],['Comparison',item.after]]){const detail=document.createElement('pre');detail.textContent=label+': '+(node?JSON.stringify(node,null,2):'Key absent from this file');full.append(detail);}row.append(full);
+    nodesDialog.append(row);rows.push({row,item,text:JSON.stringify(item).toLowerCase()});
+  }
+  const update=()=>{let visible=0;for(const {row,item,text} of rows){row.hidden=(filter.value!=='all'&&filter.value!==item.status)||!text.includes(search.value.trim().toLowerCase());if(!row.hidden)visible++;}count.textContent=`${visible} of ${rows.length} declared node keys`;};search.oninput=filter.onchange=update;update();
+  const download=document.createElement('button');download.textContent='Download historical comparison';download.onclick=()=>downloadRuntimeReview(comparison,'runtime-node-comparison-historical.json');nodesDialog.append(download);
+  for(const [label,review] of [['Return to baseline review',comparison.before],['Open comparison review',comparison.after]]){const button=document.createElement('button');button.textContent=label;button.onclick=()=>renderSavedNodeReview(review);nodesDialog.append(button);}
+  const close=document.createElement('button');close.textContent='Close comparison';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);
 }
 nodesButton.onclick=()=>renderObservedNodes();
 function renderObservedNodes(query='',nodeIds=null){

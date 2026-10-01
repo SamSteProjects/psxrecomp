@@ -45,3 +45,24 @@ export function parseRuntimeReview(text){
   if(typeof text!=='string'||new TextEncoder().encode(text).length>MAX_REVIEW_BYTES)throw new Error('Runtime review exceeds 1 MiB');
   return validateRuntimeReview(JSON.parse(text));
 }
+
+// Pair declared keys only: v1 contains no process identity or object-lifetime proof.
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+export function compareRuntimeReviews(beforeInput,afterInput){
+  const before=validateRuntimeReview(beforeInput),after=validateRuntimeReview(afterInput);
+  if(['scene_id','epoch_id','profile_id'].some(key=>before[key]!==after[key]))throw new Error('Reviews must have the same declared scene, epoch and profile. Cross-context node keys cannot be paired.');
+  const beforeNodes=new Map(before.nodes.map(node=>[node.runtime_node_id,node])),afterNodes=new Map(after.nodes.map(node=>[node.runtime_node_id,node]));
+  const rows=[...new Set([...beforeNodes.keys(),...afterNodes.keys()])].sort().map(runtime_node_id=>{
+    const a=beforeNodes.get(runtime_node_id)??null,b=afterNodes.get(runtime_node_id)??null;
+    if(!a||!b)return {runtime_node_id,status:a?'before_only':'after_only',identity_confirmed:false,before:a,after:b,position_delta:null,changed_fields:[]};
+    const fieldsA=new Map(a.decoded_fields.map(field=>[field.property,field])),fieldsB=new Map(b.decoded_fields.map(field=>[field.property,field]));
+    const changed_fields=[...new Set([...fieldsA.keys(),...fieldsB.keys()])].sort().filter(property=>!equal(fieldsA.get(property)??null,fieldsB.get(property)??null)).map(property=>({property,before:fieldsA.get(property)??null,after:fieldsB.get(property)??null}));
+    const position_delta=Object.fromEntries(['x','y','z'].map(axis=>{const x=a.observed_position[axis],y=b.observed_position[axis],delta=x===null||y===null?null:y-x;return [axis,delta!==null&&Number.isFinite(delta)?delta:null];}));
+    const changed=changed_fields.length>0||!equal(a.observed_position,b.observed_position)||!equal(a.position_capture_frames,b.position_capture_frames)||!equal([...a.candidate_entity_ids].sort(),[...b.candidate_entity_ids].sort())||a.reason!==b.reason;
+    return {runtime_node_id,status:changed?'paired_changed':'paired_unchanged',identity_confirmed:false,before:a,after:b,position_delta,changed_fields};
+  });
+  return {schema_version:'legaia.runtime-node-comparison.v1',historical:true,read_only:true,identity_confirmed:false,
+    limitations:['Pairs are matching declared node keys, not confirmed actors or object lifetimes.','The saved format has no process or executable identity; matching epochs do not prove the same session.','Before/after describe file order, not capture chronology. Export time is not capture time.','File-only keys do not establish spawning or removal. Null deltas mean missing coordinates or numeric overflow.'],
+    before,after,rows};
+}

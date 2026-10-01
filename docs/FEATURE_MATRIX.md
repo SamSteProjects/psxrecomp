@@ -699,6 +699,18 @@ TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
 focused tests passed with no skips. The390-test checkpoint predates this feature;
 gameplay appearance remains deferred.
 
+**Historical runtime review comparison (2026-09-30):** Saved node reviews
+now support a baseline/comparison table, coordinate sample differences, status
+and text filters, complete decoded evidence, return navigation and metadata
+export. Declared scene/epoch/profile mismatches reject; matching node keys remain
+unconfirmed because v1 has no process or object-lifetime identity. Missing axes
+and numeric overflow retain unknown deltas; file-only keys do not imply spawning
+or removal. Node checks and synthetic browser comparison/filter/download/return,
+context rejection and closed-read withdrawal passed, zero page errors or authoring
+requests. Project/camera/runtime state was unchanged. Screenshot inspected. This
+postdates the 441-test checkpoint; no real runtime capture or game launch occurred.
+See [saved runtime reviews](legaia-runtime-node-review.md).
+
 **Saved runtime node review (2026-09-30):** the Observed nodes panel can
 export decoded metadata and reopen it later in Edit mode as a historical,
 read-only Inspector. Positions/capture frames, uncertain fields, evidence and

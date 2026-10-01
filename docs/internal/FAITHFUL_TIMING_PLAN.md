@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Historical runtime review comparison
+
+Previous goal turn was a status check with no implementation progress. Revalidated
+clean tracked HEAD520b2171 and continued offline inspector work. Added detached
+same-declared-context comparison, coordinate/field differences, file-only keys,
+filters, return navigation and historical report export. Matching keys remain
+unconfirmed; no process/object-lifetime identity exists in the v1 input format.
+Null and overflow differences stay unknown; no chronology or spawning inference.
+Node review/comparison checks and editor syntax passed. Synthetic actual-editor
+browser workflow passed mismatch rejection, comparison/filter/download/return,
+closed-read withdrawal and unchanged project/camera/runtime, no POST requests or
+page errors. Final screenshot inspected. Evidence is private under
+local-output/sdk-20260909/runtime-comparison-20260930/. Owned browsers closed;
+servers40496/94098/77456 stopped. No game launched, runtime attached or disc written.
+Updated report/status/matrix and saved-review guide. Full goal remains incomplete;
+real captures, runtime identity and gameplay verification remain deferred.
+
+
 ### 2026-09-30 — Combined authored position/appearance presets
 
 Added source-qualified combined template scope, capture/Save/Open, strict fresh

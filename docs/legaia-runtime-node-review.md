@@ -44,3 +44,32 @@ viewer screenshot was inspected.
 Private evidence: `local-output/sdk-20260909/runtime-node-review-20260930/`.
 No real runtime observation or game launch occurred. Real capture acceptance,
 runtime actor identity and gameplay/lifecycle verification remain deferred.
+
+## Compare two saved reviews
+
+Open a saved review, then choose **Compare another saved review with this
+baseline**. Both files must declare the same scene, epoch and profile (including
+an unknown profile). The table shows each matching node key's coordinates,
+capture frames, candidate IDs and binding reason. Coordinate differences are
+comparison minus baseline. Missing coordinates and overflow remain unknown.
+Filter by changed/unchanged samples or keys present in only one file; text search
+also covers decoded fields and evidence. Expand changed fields or full metadata
+to retain confidence, applicability, unresolved interpretations and source notes.
+Return to either review, or download `legaia.runtime-node-comparison.v1` metadata.
+Comparison downloads are reports, not input review files.
+
+Matching declared keys do not confirm the same actor, allocation or process.
+The v1 input format has no process/executable identity; matching epochs alone
+cannot prove a common session. Baseline/comparison describe file selection order,
+not chronological capture order. Export timestamps are not capture timestamps.
+File-only keys do not establish spawning or removal. Comparison has no camera,
+project, authoring, attachment or Live-state authority.
+
+Node checks cover context rejection, detached evidence, null/overflow axes,
+changed field metadata, file-only keys and semantic object-key ordering.
+Synthetic browser checks passed comparison/filter/download/return, mismatched
+context and closed pending-read withdrawal. Project, camera and runtime state
+were unchanged; zero authoring requests and page errors. Final screenshot
+inspected. Private evidence:
+`local-output/sdk-20260909/runtime-comparison-20260930/`.
+No real runtime sample or gameplay acceptance is claimed.
