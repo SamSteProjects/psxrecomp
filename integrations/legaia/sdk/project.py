@@ -730,7 +730,11 @@ class ProjectService:
         return result
 
     def dialogue_options(self, identifier: str) -> dict:
-        result = deepcopy(self._dialogue_context(identifier).options(identifier))
+        return self._dialogue_options(self._dialogue_context(identifier), identifier)
+
+    def _dialogue_options(self, context, identifier: str) -> dict:
+        """Annotate one verified snapshot consistently for inspection/discovery."""
+        result = deepcopy(context.options(identifier))
         authored = self.overrides.get(identifier, {}).get("Dialogue", {}).get("runs", {})
         known = set()
         for run in result["runs"]:

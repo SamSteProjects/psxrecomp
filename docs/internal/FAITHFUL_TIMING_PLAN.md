@@ -213,6 +213,25 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Scene text discovery connected to source-bound editors
+
+- Previous turn was progress: committed retail glyph Inspector preview ab10d017.
+- Added supported-run discovery over cataloged actor/P2 owners, private text
+  layers, filtering,25-run pages and exact source field navigation. Reused one
+  verified decoder context and shared text-layer annotation. No unknown-byte scan.
+- Scene geometry keys exclude Dialogue: added separate text-state hash checked
+  during discovery and browser navigation/refresh. Closed requests abort safely.
+- Nine focused Python tests in0.712s and editor syntax passed. Retail browser267
+  runs/91 scripts/60 partial/eight P2 runs; three prior overrides, disjoint pages,
+  layer/empty filtering, exact actor/P2 fields, stale text-state and malformed
+  requests passed without writes/errors. Held-response close/reopen passed.
+  Search screenshot visually inspected.397 full checkpoint predates feature.
+- Private evidence: text-json-project-20260930/scene-text-index.json,
+  text-search-browser-check.json, text-search-late-check.json and text-search.png.
+  Owned browser closed and server13689 stopped (exit1). No game launched;
+  manual verification deferred. Full goal remains active.
+
+
 ### 2026-09-30 - Retail font preview connected to text Inspector
 
 - Previous goal turn progressed by updating the buildout report with in-progress

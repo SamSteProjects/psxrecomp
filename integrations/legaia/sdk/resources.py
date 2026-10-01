@@ -121,6 +121,63 @@ def _flag_edits(project, scene_id):
     return requested
 
 
+def scene_text_state_key(project) -> str:
+    from .project import digest
+    return digest({owner: deepcopy(parts['Dialogue']) for owner, parts in project.overrides.items()
+                   if owner.startswith((project.active_scene or '') + '/') and 'Dialogue' in parts})
+
+
+def scene_text_index(project) -> dict:
+    """Private, bounded supported text discovery; never scan unknown bytes."""
+    from importer.script_catalog import load_script_asset_catalog
+    from importer.dialogue_authoring import load_dialogue_authoring_context
+    document, key = _scene(project)
+    text_key = scene_text_state_key(project)
+    owners, rows, unavailable = [], [], []
+    total_bytes = 0
+    with _disc_context(project.disc_path):
+        _verify(project, document)
+        catalog = load_script_asset_catalog(project.disc_path, document['scene']['name'])
+        context = load_dialogue_authoring_context(project.disc_path, document['scene']['name'])
+        scripts = [item for item in catalog['assets'] if item['asset_kind'] == 'script']
+        if len(scripts) > 1024:
+            raise ProjectError('Text discovery exceeds the script budget')
+        for script in scripts:
+            owner = script.get('owner_semantic_id') or script['actor_semantic_id']
+            if owner in owners:
+                raise ProjectError('Text discovery has duplicate script owners')
+            owners.append(owner)
+            try:
+                options = project._dialogue_options(context, owner)
+            except RetailImportError as exc:
+                unavailable.append(dict(owner_id=owner, reason=str(exc)))
+                continue
+            if not options['supported'] or options.get('reason') or options['unresolved_overrides']:
+                unavailable.append(dict(owner_id=owner, reason=options.get('reason') or 'No supported plain-glyph runs',
+                                        unresolved_overrides=options['unresolved_overrides']))
+            for run in options['runs']:
+                total_bytes += run['max_length']
+                if len(rows) >= 8192 or total_bytes > 1024 * 1024:
+                    raise ProjectError('Text discovery exceeds the run/text budget')
+                rows.append(dict(id=run['semantic_id'], owner_id=owner,
+                                 script_name=script['name'], partition=script['source_record']['partition'],
+                                 script_status=script['status'], pc=run['pc'],
+                                 kind=run.get('kind', 'dialogue'), capacity=run['max_length'],
+                                 retail_text=run['text'], authored_text=run['authored_text'],
+                                 effective_text=run['effective_text'], validation_error=run.get('validation_error'),
+                                 menu_pc=run.get('menu_pc'), option_index=run.get('option_index')))
+    if key != source_key(project) or text_key != scene_text_state_key(project):
+        raise ProjectError('Scene source changed during text discovery; refresh again')
+    return dict(schema='legaia.scene-text.v1', read_only=True, scene_id=project.active_scene,
+                source_key=key, text_state_key=text_key, runs=rows, coverage=dict(script_count=len(owners),
+                partial_script_count=catalog['partial_script_count'], unavailable_script_count=catalog['unavailable_script_count']),
+                restrictions=unavailable, limitations=[
+                    'Only source-qualified editable plain-glyph runs are searched; unknown/unvisited bytes and unsupported dialogue are excluded.',
+                    'Partial scripts may offer decoded menu labels while ordinary dialogue remains unavailable.',
+                    'Runs are separate source spans, not complete sentences or dialogue boxes; runtime reachability and story state are not evaluated.',
+                    'This private response contains retail text; no source payload is added to the metadata-only Asset Database.'])
+
+
 def scene_flag_index(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from .flags import build_flag_index

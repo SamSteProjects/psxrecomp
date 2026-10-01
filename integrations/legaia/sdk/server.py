@@ -124,6 +124,9 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["text_font_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["scene_text_search"] = bool(self.project.disc_path and self.project.active_scene)
+        from .resources import scene_text_state_key
+        state['scene_text_state_key'] = scene_text_state_key(self.project)
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
@@ -761,6 +764,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     result = scene_flag_index(self.server.project)
                     result["runtime_snapshot"] = observed_node_flags(self.server.live_status, result["scene_id"])
                     self._json(200, result)
+                    return
+                if route == '/api/scene-text':
+                    if body:
+                        raise ProjectError('Text discovery uses the active scene only')
+                    from .resources import scene_text_index
+                    self._json(200, scene_text_index(self.server.project))
                     return
                 if route == "/api/scene-transitions":
                     if body:

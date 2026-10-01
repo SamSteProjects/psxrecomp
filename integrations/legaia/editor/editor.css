@@ -97,3 +97,6 @@
 .glyph-layer canvas{display:block;image-rendering:pixelated;background:#10181b}
 .glyph-layer[hidden]{display:none}
 .glyph-evidence summary{font-size:11px;color:var(--muted)}
+.text-search-run{border-top:1px solid var(--border);padding:12px 0;overflow-wrap:anywhere}
+.text-search-run small{display:block;color:var(--muted);margin-top:8px}
+.text-search-run pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 8px}

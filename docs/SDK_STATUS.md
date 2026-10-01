@@ -3,6 +3,17 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Scene text search (2026-09-30):** source-qualified dialogue/menu runs
+are searchable by text, owner and retail/effective/authored layers, with pages
+and exact actor/partition-two edit-field navigation. Retail town01 discovery
+found267 supported runs across91 scripts (60 partial), including eight P2 runs.
+Nine focused Python tests and editor syntax passed. Browser filtering, paging,
+field navigation, stale text-state and closed pending-response guards passed
+with unchanged project state, zero authoring requests and page errors. Screenshot
+inspected. Unknown/unvisited bytes and unsupported dialogue remain excluded;
+coverage is explicit. This follows the397-test checkpoint; gameplay deferred.
+See the [scene text search guide](legaia-scene-text-search.md).
+
 **Retail glyph preview (2026-09-30):** supported dialogue/menu forms show
 Retail, Effective and padded unapplied Draft glyph stencils and source advances.
 Nine focused Python tests, JavaScript font checks and editor syntax passed.

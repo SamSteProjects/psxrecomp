@@ -15,6 +15,17 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Scene text search (2026-09-30):** source-qualified dialogue/menu runs
+are searchable by text, owner and retail/effective/authored layers, with pages
+and exact actor/partition-two edit-field navigation. Retail town01 discovery
+found267 supported runs across91 scripts (60 partial), including eight P2 runs.
+Nine focused Python tests and editor syntax passed. Browser filtering, paging,
+field navigation, stale text-state and closed pending-response guards passed
+with unchanged project state, zero authoring requests and page errors. Screenshot
+inspected. Unknown/unvisited bytes and unsupported dialogue remain excluded;
+coverage is explicit. This follows the397-test checkpoint; gameplay deferred.
+See the [scene text search guide](legaia-scene-text-search.md).
+
 **Retail glyph preview (2026-09-30):** supported dialogue/menu forms show
 Retail, Effective and padded unapplied Draft glyph stencils and source advances.
 Nine focused Python tests, JavaScript font checks and editor syntax passed.
