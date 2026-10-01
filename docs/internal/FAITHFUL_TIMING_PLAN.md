@@ -213,6 +213,26 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Actor group proposal handles and buildout report refresh
+
+- Continued offline SDK work from b387dfa4: relative 64-unit Proposed group X/Z
+  handles, temporary movement, source/context/review guards, read-only release
+  validation, whole-group rejection and Escape restoration. Return refreshes
+  offsets/table; Apply remains atomic.
+- Node offset/bounds/immutability, syntax and diff checks passed. Actual town01
+  actor0011/0012 pointer drags accepted +256 X/+64 Z without authored writes.
+  Escape, bounds rejection, Current no handles, Return, one-command Apply and
+  project-restoring Undo passed; zero page errors. Final screenshot inspected.
+  Private evidence: actor-group-gizmo-20260930.
+- Initial harness expected a bounds message for non-grid20000; corrected probe
+  to20480. Refreshed table/success toast and checked final UI. Browser85095 exit0;
+  owned server15264 stopped exit1; earlier owned processes terminal. No game,
+  Save or installation. Backend unchanged; current UI checks are separate from
+  the earlier421-test Python checkpoint.
+- User asked whether buildout MD was current. Added missing handles to report,
+  status/matrix/guide. Full SDK/runtime/gameplay acceptance remains incomplete.
+
+
 ### 2026-09-30 - Integrated421-test SDK checkpoint
 
 - Previous goal turn progressed: be7a5e42 committed group viewport comparison.

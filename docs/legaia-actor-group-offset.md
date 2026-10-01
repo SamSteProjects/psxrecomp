@@ -35,8 +35,8 @@ and reference markers. The source scene meshes and authored project stay intact.
 the same camera; **Frame group** frames both sets of placement points.
 **Return to group** restores current positions and retains the selection,
 offsets and reviewed table for Apply. **Restore scene** discards the inspection.
-Neither comparison nor Restore sends authoring commands. Transform handles are
-disabled during inspection; scene GLB export requires Restore first.
+Neither comparison nor Restore sends authoring commands. Single-entity transform handles are
+disabled during inspection; proposed group handles are described below; scene GLB export requires Restore first.
 
 Proposed positions use a detached scene-service view and the same source terrain
 interpolation as the normal viewport. Missing surfaces keep the explicit
@@ -98,3 +98,29 @@ this feature's Python service tests and supersedes the earlier 405-test full
 checkpoint referenced above. Five Node checks and editor/module syntax passed
 separately. Browser/package/rendered evidence and gameplay acceptance remain
 separate; no game was launched for this checkpoint.
+
+## Drag the proposed group — 2026-09-30
+
+In Proposed mode, drag **Group X** or **Group Z** at the group center. Movement
+snaps relative to the gesture start in 64-unit increments. Selected actors move
+together temporarily; accepted preview heights stay held until release. Release
+validates every actor and recalculates source terrain preview heights through the
+detached scene service. It does not author the project. Escape cancels temporary
+movement; a bounds or validation failure preserves the accepted proposal.
+Current authored mode has no group handles. Source/context/review guards remain.
+
+Return to group shows updated offsets and the Retail/Authored/Effective/Proposed
+table. Review then Apply for one command and one Undo entry. Runtime positions
+and elevation remain unverified.
+
+Node offset, immutability and bounds checks, editor/module syntax and diff checks
+passed. Actual headless retail town01 actor0011/0012 pointer drags accepted +256 X
+and +64 Z without authored writes. Escape restored the prior proposal; a 20480-unit
+bounds move was rejected. Current mode hid handles; Return retained offsets.
+Apply sent one command; Undo restored authored assets and dirty status. Zero page
+errors. Final screenshot inspected. No Save, installation or game launch.
+
+Private evidence: `local-output/sdk-20260909/actor-group-gizmo-20260930/`
+contains `group-gizmo-browser-check.json` and `group-gizmo-proposed.png`.
+Owned browsers/servers closed. These JavaScript/browser checks postdate the
+421-test Python checkpoint; the backend was unchanged.

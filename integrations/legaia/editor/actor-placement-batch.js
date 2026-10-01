@@ -18,7 +18,14 @@ export function decodeActorPlacementScene(result,proposal,sourceKey){
   return positions;
 }
 
-export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,setBusy,api,after,canInspectScene,onSceneInspection,frameGroup}){
+export function offsetActorPlacementProposal(proposal,axis,amount){
+  if(!['x','z'].includes(axis)||!Number.isInteger(amount)||amount%64||!Array.isArray(proposal?.targets)||proposal.targets.length<2||proposal.targets.length>128)throw new Error('Group drag requires a 64-unit X/Z offset');
+  const delta={...proposal.delta,[axis]:(proposal.delta?.[axis]??0)+amount};
+  if(!Number.isInteger(delta[axis])||Math.abs(delta[axis])>16320||proposal.targets.some(row=>!Number.isFinite(row.proposed?.[axis])||row.proposed[axis]+amount<64||row.proposed[axis]+amount>16384||(row.proposed[axis]+amount)%64))throw new Error('Group drag exceeds a reviewed actor placement boundary');
+  return {actor_ids:proposal.targets.map(row=>row.entity_id).sort(),delta};
+}
+
+export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,setBusy,api,after,canInspectScene,onSceneInspection,frameGroup,notify}){
   const button=document.createElement('button');button.id='actor-batch-button';button.textContent='Actor group offset';after.after(button);
   const dialog=document.createElement('dialog');dialog.id='actor-batch-dialog';document.body.append(dialog);
   const bar=document.createElement('div');bar.id='actor-batch-scene-bar';bar.hidden=true;
@@ -38,6 +45,13 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
     dialog.querySelector('[data-apply-batch]').disabled=busy||!canEdit()||!valid||!preview||(!delta.x&&!delta.z);
     dialog.querySelector('[data-inspect-batch]').disabled=busy||!canEdit()||!preview||!canInspectScene();
     dialog.querySelector('.batch-count').textContent=`${selected.size} actors selected · one Undo step`;
+  }
+  function renderPreviewTable(report){
+    dialog.querySelector('.batch-result').replaceChildren();
+    const table=document.createElement('table'),head=document.createElement('tr');
+    for(const text of ['Actor','Retail X/Z','Authored X/Z','Effective X/Z','Proposed X/Z']){const th=document.createElement('th');th.textContent=text;head.append(th);}table.append(head);
+    for(const row of report.targets){const tr=document.createElement('tr');for(const value of [getEntities().find(e=>e.id===row.entity_id)?.name??row.entity_id,...['retail','authored','effective','proposed'].map(layer=>`${row[layer]?.x??'inherit'} / ${row[layer]?.z??'inherit'}`)]){const td=document.createElement('td');td.textContent=value;tr.append(td);}table.append(tr);}
+    dialog.querySelector('.batch-result').append(table);
   }
   function renderActors(){
     const query=dialog.querySelector('[name="search"]').value.toLowerCase(),list=dialog.querySelector('.batch-actors');list.replaceChildren();
@@ -69,10 +83,7 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
           report.targets.some((row,index)=>row.entity_id!==request.actor_ids[index])||
           typeof report.review_key!=='string'||!/^[0-9a-f]{64}$/.test(report.review_key))throw new Error('Invalid or stale group placement preview');
         preview=report;
-        const table=document.createElement('table'),head=document.createElement('tr');
-        for(const text of ['Actor','Retail X/Z','Authored X/Z','Effective X/Z','Proposed X/Z']){const th=document.createElement('th');th.textContent=text;head.append(th);}table.append(head);
-        for(const row of report.targets){const tr=document.createElement('tr');for(const value of [getEntities().find(e=>e.id===row.entity_id)?.name??row.entity_id,...['retail','authored','effective','proposed'].map(layer=>`${row[layer]?.x??'inherit'} / ${row[layer]?.z??'inherit'}`)]){const td=document.createElement('td');td.textContent=value;tr.append(td);}table.append(tr);}
-        dialog.querySelector('.batch-result').append(table);
+        renderPreviewTable(report);
       }catch(error){if(error.name!=='AbortError'&&dialog.open&&token===generation)dialog.querySelector('.dialog-error').textContent=error.message;}
       finally{if(controller===active){controller=null;setBusy(false);}update();}
     };
@@ -104,5 +115,23 @@ export function mountActorPlacementBatch({getState,getEntities,isBusy,canEdit,se
   bar.querySelector('[data-frame-group]').onclick=()=>{if(inspection&&!isBusy())frameGroup(inspection);};
   bar.querySelector('[data-return-group]').onclick=()=>{if(!inspection||isBusy())return;clearInspection();dialog.showModal();update();};
   bar.querySelector('[data-restore-group]').onclick=()=>{if(isBusy())return;clearInspection();preview=null;selected.clear();};
-  return {synchronize(){button.disabled=isBusy()||!canEdit()||getEntities().length<2;bar.querySelectorAll('button,select').forEach(item=>item.disabled=isBusy());if((dialog.open||inspection)&&(context!==contextKey()||!canEdit())){if(dialog.open)dialog.close();else{clearInspection();preview=null;selected.clear();}}update();},restore(){clearInspection();preview=null;}};
+  return {synchronize(){button.disabled=isBusy()||!canEdit()||getEntities().length<2;bar.querySelectorAll('button,select').forEach(item=>item.disabled=isBusy());if((dialog.open||inspection)&&(context!==contextKey()||!canEdit())){if(dialog.open)dialog.close();else{clearInspection();preview=null;selected.clear();}}update();},restore(){clearInspection();preview=null;},
+    async moveProposal(axis,amount,reviewKey){
+      if(isBusy()||!canEdit()||!inspection||inspection.proposal.review_key!==reviewKey||bar.querySelector('select').value!=='proposed'||context!==contextKey()||!amount)return;
+      const prior=inspection,token=++generation,binding=context;let request;
+      try{request=offsetActorPlacementProposal(prior.proposal,axis,amount);}catch(error){notify(error.message,true);onSceneInspection(prior,'proposed');return;}
+      const active=new AbortController();controller=active;setBusy(true);bar.querySelector('span').textContent='Validating group drag · no authored changes';
+      try{
+        const post=async(url,body)=>{const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:active.signal});const result=await response.json();if(!response.ok||result.error)throw new Error(result.error||'Group drag validation failed');return result;};
+        const proposal=await post('/api/actor-placement-batch',request);
+        if(proposal.scene_id!==prior.proposal.scene_id||JSON.stringify(proposal.delta)!==JSON.stringify(request.delta)||proposal.targets?.length!==request.actor_ids.length||proposal.targets.some((row,index)=>row.entity_id!==request.actor_ids[index]))throw new Error('Invalid group drag preview');
+        const result=await post('/api/actor-placement-batch-scene',{...request,review_key:proposal.review_key});
+        if(token!==generation||contextKey()!==binding||inspection!==prior||!canInspectScene())return;
+        const positions=decodeActorPlacementScene(result,proposal,getState().scene_preview_source_key);
+        preview=proposal;inspection={positions,proposal};for(const axis of ['x','z'])dialog.querySelector(`[name="${axis}"]`).value=request.delta[axis];
+        renderPreviewTable(proposal);
+        bar.querySelector('span').textContent=`${positions.size} actor proposal · not applied · source elevation preview`;notify('Group proposal updated. Return to group to review and Apply.');onSceneInspection(inspection,'proposed');
+      }catch(error){if(error.name!=='AbortError'&&token===generation&&inspection===prior){bar.querySelector('span').textContent='Group move rejected · prior proposal restored';notify(error.message,true);onSceneInspection(prior,'proposed');}}
+      finally{if(controller===active){controller=null;setBusy(false);}update();}
+    }};
 }

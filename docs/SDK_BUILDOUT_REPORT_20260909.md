@@ -15,11 +15,24 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Actor group proposal drag handles (2026-09-30):** Proposed mode now offers
+X/Z handles for the selected actor group, snapping relative movement to 64 units.
+Release revalidates the whole proposal without authoring; Return shows the updated
+offsets/table, and Apply remains one atomic command. Escape restores the prior
+proposal, bounds failures reject the whole move, and Current authored mode has
+no group handles. Node offset/immutability/bounds checks and actual retail town01
+browser pointer drags (+256 X, +64 Z), cancellation, no-write preview, Return,
+one-command Apply and project-restoring Undo passed with zero page errors.
+Screenshot inspected. This UI addition was checked separately after the 421-test
+Python checkpoint; no new full-suite result is claimed. No game launched. See
+[group placement guide](legaia-actor-group-offset.md).
+
 **Actor group 3D proposal comparison (2026-09-30):** reviewed group offsets
 now inspect in the assembled viewport, with Proposed/Current authored layers,
 Frame group, Return retaining the draft and Restore. Only proposed transforms
 change; source terrain preview heights are recalculated, with unknown runtime
-elevation explicit. Handles are disabled and GLB export requires Restore.
+elevation explicit. Single-entity handles are disabled; group handles are described
+above. GLB export requires Restore.
 26 focused tests in 1.301s/no skips and Node guards passed. Retail town01 exact
 actor transforms, unchanged geometry/unrelated transforms, camera comparison,
 Return/Restore and source withdrawal passed with zero authoring requests/page
