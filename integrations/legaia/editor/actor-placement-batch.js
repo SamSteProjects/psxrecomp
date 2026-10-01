@@ -18,6 +18,19 @@ export function decodeActorPlacementScene(result,proposal,sourceKey){
   return positions;
 }
 
+export function mergeActorGroupSelection(ids,members,eligible,add=false){
+  const allowed=new Set(eligible);
+  if(members.some(id=>!allowed.has(id)))throw new Error('Group selection supports imported actors in the active scene');
+  const next=new Set(add?ids.filter(id=>allowed.has(id)):[]);for(const id of members)next.add(id);
+  if(next.size>128)throw new Error('Actor group selection is limited to 128 actors');
+  return [...next].sort();
+}
+export function actorGroupRange(anchor,target,visible){
+  const end=visible.indexOf(target);if(end<0)throw new Error('Range target is outside the visible actor list');
+  const start=Math.max(0,visible.indexOf(anchor));
+  return visible.indexOf(anchor)<0?[target]:visible.slice(Math.min(start,end),Math.max(start,end)+1);
+}
+
 export function toggleActorGroupSelection(ids,id,eligible,primary=null){
   const allowed=new Set(eligible),next=new Set(ids.filter(value=>allowed.has(value)));
   if(!allowed.has(id))throw new Error('Group selection supports imported actors in the active scene');

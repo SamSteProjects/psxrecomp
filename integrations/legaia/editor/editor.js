@@ -3,14 +3,14 @@ import {findDecodedPath} from '/script-paths.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {captureRuntimeReview,parseRuntimeReview,MAX_REVIEW_BYTES} from '/runtime-review.js';
-import {mountActorPlacementBatch,toggleActorGroupSelection} from '/actor-placement-batch.js';
+import {mountActorPlacementBatch,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '/actor-placement-batch.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
-let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null;
+let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null,actorGroupRangeAnchor=null,actorBoxMode=false;
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
 const transformTools=document.createElement('div');transformTools.className='transform-tools';
 transformTools.innerHTML='<label><input id="transform-snap" type="checkbox"> Snap moves</label><label>Step <select id="transform-snap-step" aria-label="Transform snap step"><option value="16">16 units</option><option value="64" selected>64 units</option><option value="256">256 units</option><option value="1024">1024 units</option></select></label><span id="transform-drag-status" role="status">X/Z moves · snap aligns to scene origin</span>';
@@ -545,7 +545,7 @@ async function api(path, payload, {dialog,success}={}) {
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
-    if(path==='/api/selection'){pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();}state=data; render();
+    if(path==='/api/selection'){pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();actorGroupRangeAnchor=payload?.entity_id??null;}state=data; render();
     $('connection-dot').classList.add('connected');
     if(dialog) dialog.close();
     if(success) notify(success);
@@ -686,12 +686,16 @@ $('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
 const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-button';draftsButton.textContent='NPC drafts';draftsButton.onclick=()=>openNpcDrafts();$('save-button').after(draftsButton);
+const actorBoxButton=document.createElement('button');actorBoxButton.id='actor-box-select';actorBoxButton.textContent='Box select actors';actorBoxButton.title='Drag over visible actor meshes; Ctrl/Command adds to the group. Shift-drag pans.';actorBoxButton.setAttribute('aria-pressed','false');
+actorBoxButton.onclick=()=>{if(actorBoxButton.disabled)return;cancelViewportGesture();actorBoxMode=!actorBoxMode;actorBoxButton.classList.toggle('active',actorBoxMode);actorBoxButton.setAttribute('aria-pressed',String(actorBoxMode));draw();};transformTools.prepend(actorBoxButton);
 const actorGroupTools=document.createElement('div');actorGroupTools.id='actor-group-selection';actorGroupTools.hidden=true;
 actorGroupTools.innerHTML='<span role="status"></span><button type="button" data-frame-selection>Frame actor group</button><button type="button" data-review-selection>Review group offset</button><button type="button" data-clear-selection>Clear group</button>';
 transformTools.after(actorGroupTools);
-function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;updateActorGroupSelection();}
+function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;updateActorGroupSelection();}
 function updateActorGroupSelection(){
-  if(actorGroupSelection.length&&(!canEdit()||actorGroupSelectionKey!==resourceStateKey()||actorGroupSelection.some(id=>!entities().some(e=>e.id===id)))){actorGroupSelection=[];actorGroupSelectionKey=null;}
+  if(actorGroupSelection.length&&(!canEdit()||actorGroupSelectionKey!==resourceStateKey()||actorGroupSelection.some(id=>!entities().some(e=>e.id===id)))){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;}
+  actorBoxButton.disabled=busy||!canEdit()||!!actorGroupInspection||!!scenePose||!!shapeDraft||!scenePreviewCurrent()||pickScriptTargets||pickRuntimeNodes;
+  if(actorBoxButton.disabled&&actorBoxMode){actorBoxMode=false;actorBoxButton.setAttribute('aria-pressed','false');actorBoxButton.classList.remove('active');}
   actorGroupTools.hidden=!actorGroupSelection.length||!!actorGroupInspection;
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
   actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;
@@ -701,7 +705,19 @@ function updateActorGroupSelection(){
 function toggleActorSelection(id){
   if(busy||!canEdit()||actorGroupInspection)return;
   updateActorGroupSelection();
-  try{actorGroupSelection=toggleActorGroupSelection(actorGroupSelection,id,entities().map(e=>e.id),selected()?.id);actorGroupSelectionKey=resourceStateKey();cancelViewportGesture();updateActorGroupSelection();renderHierarchy();draw();}
+  try{actorGroupSelection=toggleActorGroupSelection(actorGroupSelection,id,entities().map(e=>e.id),selected()?.id);actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=id;cancelViewportGesture();updateActorGroupSelection();renderHierarchy();draw();}
+  catch(error){notify(error.message,true);}
+}
+function setActorGroupMembers(members,add=false){
+  if(busy||!canEdit()||actorGroupInspection)return;
+  const eligible=entities().map(e=>e.id),base=actorGroupSelection.length?actorGroupSelection:selected()?[selected().id]:[];
+  actorGroupSelection=mergeActorGroupSelection(base,members,eligible,add);actorGroupSelectionKey=resourceStateKey();cancelViewportGesture();updateActorGroupSelection();renderHierarchy();draw();
+}
+function selectActorRange(id,add=false){
+  if(busy||!canEdit()||actorGroupInspection)return;
+  const eligible=new Set(entities().map(e=>e.id)),visible=[...$('hierarchy').querySelectorAll('.entity-row')].map(row=>row.title).filter(id=>eligible.has(id));
+  const anchor=actorGroupRangeAnchor??selected()?.id??id;
+  try{setActorGroupMembers(actorGroupRange(anchor,id,visible),add);actorGroupRangeAnchor=visible.includes(anchor)?anchor:id;}
   catch(error){notify(error.message,true);}
 }
 function frameActorGroupSelection(){
@@ -828,7 +844,7 @@ function renderHierarchy(){
     const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.title=entity.id;
     row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
     const badge=row.querySelector('.authored-dot');if(badge){const labels=authoredComponentLabels(entity);badge.title=labels.length?`Authored: ${labels.join(', ')}`:'Authored override';badge.setAttribute('aria-label',badge.title);}
-    row.classList.toggle('group-selected',actorGroupSelection.includes(entity.id));row.setAttribute('aria-selected',String(actorGroupSelection.length?actorGroupSelection.includes(entity.id):row.classList.contains('selected')));row.onclick=event=>{if(event.ctrlKey||event.metaKey){toggleActorSelection(entity.id);return;}environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
+    row.classList.toggle('group-selected',actorGroupSelection.includes(entity.id));row.setAttribute('aria-selected',String(actorGroupSelection.length?actorGroupSelection.includes(entity.id):row.classList.contains('selected')));row.onclick=event=>{if(event.shiftKey){selectActorRange(entity.id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleActorSelection(entity.id);return;}environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
   }
   const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
   const npcDrafts=Object.entries(state.actor_drafts??{}).filter(([id,item])=>item.scene_id===state.scene?.id&&`${item.name} ${id}`.toLowerCase().includes(filter));
@@ -2735,6 +2751,7 @@ function draw(){
     }
   }
   drawRuntimeNodeLayer();drawObservedCandidates();
+  if(drag?.type==='actor-box'&&drag.moved){ctx.save();ctx.fillStyle='#8bd7e820';ctx.strokeStyle='#8bd7e8';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.fillRect(drag.start.x,drag.start.y,drag.last.x-drag.start.x,drag.last.y-drag.start.y);ctx.strokeRect(drag.start.x,drag.start.y,drag.last.x-drag.start.x,drag.last.y-drag.start.y);ctx.restore();}
 }
 function resize(){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;width=rect.width;height=rect.height;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();}
 new ResizeObserver(resize).observe(canvas);
@@ -2760,8 +2777,9 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewp
 canvas.addEventListener('pointerdown',event=>{
   pendingEntityFrame=null;
   if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus();canvas.setPointerCapture(event.pointerId);
-  const handle=event.button===0 && !event.ctrlKey && !event.metaKey && !pickScriptTargets && (entity||groupProposalCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
-  drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,extendSelection:event.ctrlKey||event.metaKey,type:handle?(handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.group?actorGroupInspection.proposal:null,snapStep:handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
+  const box=actorBoxMode&&!actorBoxButton.disabled&&event.button===0&&!event.shiftKey&&!event.altKey;
+  const handle=!box && event.button===0 && !event.ctrlKey && !event.metaKey && !pickScriptTargets && (entity||groupProposalCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
+  drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,extendSelection:event.ctrlKey||event.metaKey,cameraRevision,representation:sceneRepresentation,type:box?'actor-box':handle?(handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.group?actorGroupInspection.proposal:null,snapStep:handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
   if(handle&&state.actor_drafts?.[entity?.id])drag.snapStep=64;
   canvas.classList.add('dragging');
@@ -2771,6 +2789,7 @@ canvas.addEventListener('pointermove',event=>{
   if(Math.hypot(p.x-drag.start.x,p.y-drag.start.y)>3)drag.moved=true;
   if(drag.moved){
     if(['transform','group-transform'].includes(drag.type)){const point=groundAt(p.x,p.y,drag.original.y);if(point&&drag.ground){const axis=drag.handle.axis;draft={id:drag.entity,group:drag.type==='group-transform',groupAmount:snappedTransformCoordinate(point[axis]-drag.ground[axis],64),position:{...drag.original,[axis]:drag.type==='group-transform'?drag.original[axis]+snappedTransformCoordinate(point[axis]-drag.ground[axis],64):snappedTransformCoordinate(drag.original[axis]+point[axis]-drag.ground[axis],drag.snapStep)}};}}
+    else if(drag.type==='actor-box'){drag.last=p;}
     else if(drag.type==='orbit'){camera.yaw-=dx*.006;camera.pitch=Math.max(.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
     else {const b=basis(),scale=camera.distance/Math.max(1,Math.min(width,height)*.9);camera.target.x-=dx*scale*b.right.x;camera.target.z-=dx*scale*b.right.z;camera.target.x-=dy*scale*Math.sin(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));camera.target.z-=dy*scale*Math.cos(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));cameraRevision++;}
     if(draft&&['transform','group-transform'].includes(drag.type))$('transform-drag-status').textContent=drag.type==='group-transform'?`Group ${drag.handle.axis.toUpperCase()} offset ${format(draft.groupAmount)} · Snap 64 · Release to validate; preview height held while dragging`:`${drag.handle.axis.toUpperCase()} ${format(draft.position[drag.handle.axis])} · ${drag.snapStep>1?`Snap ${drag.snapStep} units`:'Free move'} · Release to apply`;
@@ -2782,7 +2801,13 @@ canvas.addEventListener('pointerup',async event=>{
   if(!drag||event.pointerId!==drag.pointerId)return;
   if(['transform','group-transform'].includes(drag.type)&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
-  if(finished.type==='group-transform'&&edit){const axis=finished.handle.axis;await actorBatchTool.moveProposal(axis,edit.groupAmount,finished.proposal.review_key);}
+  if(finished.type==='actor-box'){
+    if(finished.moved&&!busy&&canEdit()&&!actorGroupInspection&&finished.context===resourceStateKey()&&finished.cameraRevision===cameraRevision&&finished.representation===sceneRepresentation&&scenePreviewCurrent()){
+      try{const eligible=new Set(entities().map(e=>e.id)),hidden=hiddenSceneEntities(),hits=sceneModelsReady()?sceneRenderer.pickRegion(finished.start,p,sceneView()).filter(id=>eligible.has(id)):[...projected].filter(item=>eligible.has(item.id)&&!hidden.has(item.id)&&item.x>=Math.min(finished.start.x,p.x)&&item.x<=Math.max(finished.start.x,p.x)&&item.y>=Math.min(finished.start.y,p.y)&&item.y<=Math.max(finished.start.y,p.y)).map(item=>item.id);setActorGroupMembers(hits,finished.extendSelection);notify(`${hits.length} actor${hits.length===1?'':'s'} in box · ${sceneModelsReady()?'visible mesh pixels':'placement markers; occlusion unknown'}`);}
+      catch(error){notify(error.message,true);}
+    }
+  }
+  else if(finished.type==='group-transform'&&edit){const axis=finished.handle.axis;await actorBatchTool.moveProposal(axis,edit.groupAmount,finished.proposal.review_key);}
   else if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(state.actor_drafts?.[finished.entity])await api('/api/command',{type:'set_actor_draft_position',entity_id:finished.entity,position:{...state.actor_drafts[finished.entity].position,[axis]:edit.position[axis]}});else if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
   else if(!finished.moved && event.button===0){
     if(pickScriptTargets&&currentScriptTargets()&&finished.context===resourceStateKey()){

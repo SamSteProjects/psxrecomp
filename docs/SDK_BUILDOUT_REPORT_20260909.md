@@ -15,6 +15,20 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Actor box and hierarchy range selection (2026-09-30):** Box select actors
+now draws a marquee and gathers visible mesh IDs from one depth-tested render,
+read in bounded strips. Shift-click selects a range in the filtered hierarchy;
+Ctrl/Command adds boxes or ranges to the existing group. Replace/add operations
+retain the 128-actor bound. Escape preserves selection; source/camera changes
+reject a pending box, and proposal inspection disables these selection tools.
+Node range/merge and rectangle/high-DPI/strip/restoration checks passed. Actual
+2x-DPI town01 browser ranges, exact mesh ID boxes, hidden actor exclusion,
+reverse/add/empty boxes, Escape, source withdrawal and exact placement-review
+seeding passed without selection-service or authoring requests/page errors.
+Screenshots inspected; no Save or game launch. These UI checks are separate
+from the earlier 421-test Python checkpoint. See
+[group placement guide](legaia-actor-group-offset.md).
+
 **Viewport/hierarchy actor group selection (2026-09-30):** Ctrl/Command-click
 now toggles imported actors into a bounded 128-actor group, with cyan scene and
 hierarchy highlights, Frame actor group, Clear group and Review group offset.

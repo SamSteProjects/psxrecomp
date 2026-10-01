@@ -158,5 +158,47 @@ Zero page errors; no Save, package installation or game launch.
 Private evidence: `local-output/sdk-20260909/actor-multiselect-20260930/`
 contains `actor-multiselect-browser-check.json` and `actor-multiselect.png`.
 Owned browser/server processes closed. These UI checks postdate the 421-test
-Python checkpoint; the Python backend was unchanged. Rectangle/range and mixed
-actor/scenery selection remain future work.
+Python checkpoint; the Python backend was unchanged. Box/range selection is described below; mixed actor/scenery selection remains
+future work.
+
+## Box and range selection — 2026-09-30
+
+Choose **Box select actors**, then drag a rectangle in the viewport. Releasing
+replaces group membership with imported actors whose visible mesh pixels fall
+inside the box. Ctrl/Command-drag adds them to the group. Reverse dragging works;
+an empty box clears the group. Escape, blur or pointer cancellation preserves
+prior membership. Shift-drag still pans; switch Box select off to resume orbit.
+Source/project/scene, camera and representation guards reject stale gestures.
+
+Mesh selection reads the existing depth-tested ID render in strips of at most
+64 rows, preserving hidden/layer filters and restoring the displayed render even
+on read failure. Transparent/depth behavior follows the existing viewport picking
+approximation, not retail ordering tables. If meshes are unavailable but a current
+placement preview exists, marker positions are used and occlusion is explicitly
+unknown. This fallback has not been browser-verified by the evidence below.
+
+In the hierarchy, Shift-click selects the inclusive range from the last focused
+or toggled actor in the filtered actor list. Ctrl/Command-Shift-click adds that
+range. An anchor excluded by the filter starts a new range at the clicked actor.
+Ranges can include hidden actors explicitly through the hierarchy. Scenery and
+NPC draft rows are not members. A selection exceeding 128 actors is rejected
+atomically. Membership stays transient and project provenance is unchanged.
+Proposal inspection disables box and range selection; Restore re-enables them.
+
+Node checks passed for reversed/filtered ranges, replace/add merges, stale IDs,
+128-member rejection, rectangle reversal/clamping/zero-area/high-DPI conversion,
+64-row readback strips, ID deduplication and restoration after read failure.
+Actual browser checks at 2x DPI (2106x1458 pick surface) used town01 source meshes.
+Independent full ID-pixel readback found nine visible imported actors in the
+focused scene; hiding actor0011 excluded it. Actual box drags matched exact IDs,
+including reverse and additive boxes. Empty box cleared membership and Escape
+preserved it. Forward/reversed/filtered/additive ranges passed. Review seeded the
+exact selected IDs and proposal inspection blocked selection. Injected source
+withdrawal rejected the pending box. Authoritative state was unchanged, with zero
+selection-service/authoring requests and page errors. Screenshots inspected.
+
+Private evidence: `local-output/sdk-20260909/actor-box-range-20260930/`
+contains `actor-box-range-browser-check.json`, `actor-box-active.png` and
+`actor-box-selected.png`. No Save, package installation or game launch. Owned
+browsers/servers closed. UI checks postdate the 421-test Python checkpoint; the
+Python backend was unchanged. Runtime placement/visibility acceptance is deferred.

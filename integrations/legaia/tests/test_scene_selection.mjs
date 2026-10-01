@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {selectionPixelBounds,SceneRenderer} from '../editor/scene-renderer.js';
+const view={width:100,height:80};
+assert.deepEqual(selectionPixelBounds({x:10,y:20},{x:50,y:60},view,200,160),{x:20,y:40,width:80,height:80});
+assert.deepEqual(selectionPixelBounds({x:50,y:60},{x:10,y:20},view,200,160),{x:20,y:40,width:80,height:80});
+assert.deepEqual(selectionPixelBounds({x:-10,y:-20},{x:110,y:90},view,200,160),{x:0,y:0,width:200,height:160});
+assert.equal(selectionPixelBounds({x:-20,y:0},{x:-5,y:20},view,200,160),null);
+assert.equal(selectionPixelBounds({x:10,y:20},{x:10,y:20},view,200,160),null);
+assert.equal(selectionPixelBounds({x:10.1,y:20.1},{x:10.1,y:20.1},view,200,160),null);
+assert.throws(()=>selectionPixelBounds({x:NaN,y:0},{x:50,y:60},view,200,160));
+assert.throws(()=>selectionPixelBounds({x:0,y:0},{x:50,y:60},{width:0,height:80},200,160));
+let draws=[],reads=[];
+const renderer={lost:false,canvas:{width:100,height:140},instances:[{entity_id:'actor-b'},{entity_id:'scenery'},{entity_id:'actor-a'}],draw:(_,picking)=>draws.push(!!picking),gl:{RGBA:1,UNSIGNED_BYTE:2,readPixels:(x,y,w,h,format,type,pixels)=>{reads.push({x,y,w,h});pixels.set([1,0,0,255,3,0,0,255,1,0,0,255,250,0,0,255]);}}};
+assert.deepEqual(SceneRenderer.prototype.pickRegion.call(renderer,{x:0,y:0},{x:100,y:140},{width:100,height:140}),['actor-a','actor-b']);
+assert.deepEqual(reads.map(r=>r.h),[64,64,12]);assert.deepEqual(draws,[true,false]);
+renderer.gl.readPixels=()=>{throw new Error('read failed');};draws=[];
+assert.throws(()=>SceneRenderer.prototype.pickRegion.call(renderer,{x:0,y:0},{x:100,y:140},{width:100,height:140}),/read failed/);assert.deepEqual(draws,[true,false]);
+console.log('Selection rectangle reversal/clamping/high-DPI conversion, bounded strip reads, ID deduplication and render restoration passed.');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeActorPlacementScene,offsetActorPlacementProposal,toggleActorGroupSelection} from '../editor/actor-placement-batch.js';
+import {decodeActorPlacementScene,offsetActorPlacementProposal,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '../editor/actor-placement-batch.js';
 const proposal={scene_id:'scene://fixture',review_key:'review',targets:[
   {entity_id:'a',proposed:{x:128,y:null,z:256}},
   {entity_id:'b',proposed:{x:512,y:12,z:1024}}]};
@@ -30,3 +30,13 @@ assert.throws(()=>toggleActorGroupSelection(selected,'scenery',eligible));
 const many=Array.from({length:129},(_,i)=>String(i));assert.throws(()=>toggleActorGroupSelection(many.slice(0,128),many[128],many));
 assert.equal(toggleActorGroupSelection(many.slice(0,128),many[0],many).length,127);
 console.log('Imported actor group membership, primary seeding, toggle/removal, detached bounded selections and ineligible rejection passed.');
+
+assert.deepEqual(actorGroupRange('b','d',['a','b','c','d']),['b','c','d']);
+assert.deepEqual(actorGroupRange('d','b',['a','b','c','d']),['b','c','d']);
+assert.deepEqual(actorGroupRange('hidden','d',['b','d']),['d']);
+assert.throws(()=>actorGroupRange('b','hidden',['b','d']));
+assert.deepEqual(mergeActorGroupSelection(['a'],['b','c'],eligible),['b','c']);
+assert.deepEqual(mergeActorGroupSelection(['stale','a'],['b','c'],eligible,true),['a','b','c']);
+assert.throws(()=>mergeActorGroupSelection(['a'],['unknown'],eligible));
+assert.throws(()=>mergeActorGroupSelection(['a'],many,many));
+console.log('Filtered/reversed actor ranges and atomic replace/add bounded selection merges passed.');

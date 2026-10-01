@@ -10,6 +10,15 @@ export function transformPoint(matrix,point){
           z:matrix[8]*point.x+matrix[9]*point.y+matrix[10]*point.z+matrix[11]};
 }
 
+export function selectionPixelBounds(a,b,view,pixelWidth,pixelHeight){
+  if(![a?.x,a?.y,b?.x,b?.y,view?.width,view?.height,pixelWidth,pixelHeight].every(finite)||view.width<=0||view.height<=0||!Number.isInteger(pixelWidth)||!Number.isInteger(pixelHeight)||pixelWidth<=0||pixelHeight<=0)throw new Error('Invalid selection rectangle');
+  if(a.x===b.x||a.y===b.y)return null;
+  const clamp=(v,max)=>Math.max(0,Math.min(max,v));
+  const left=Math.floor(clamp(Math.min(a.x,b.x),view.width)*pixelWidth/view.width),right=Math.ceil(clamp(Math.max(a.x,b.x),view.width)*pixelWidth/view.width);
+  const top=Math.floor(clamp(Math.min(a.y,b.y),view.height)*pixelHeight/view.height),bottom=Math.ceil(clamp(Math.max(a.y,b.y),view.height)*pixelHeight/view.height);
+  return right>left&&bottom>top?{x:left,y:pixelHeight-bottom,width:right-left,height:bottom-top}:null;
+}
+
 export class SceneRenderer {
   constructor(canvas,onStatus=()=>{}){
     this.canvas=canvas;this.onStatus=onStatus;this.meshes=new Map();this.instances=[];this.scene=null;this.lost=false;
@@ -262,6 +271,23 @@ export class SceneRenderer {
       this.pickTarget=target;
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER,this.pickTarget.framebuffer);
+  }
+
+  pickRegion(a,b,view){
+    if(this.lost||!this.instances.length)return [];
+    const rect=selectionPixelBounds(a,b,view,this.canvas.width,this.canvas.height);if(!rect)return [];
+    const ids=new Set(),gl=this.gl;
+    try{
+      this.draw(view,true);
+      // Read strips from one depth-tested ID pass rather than allocate a full
+      // high-DPI viewport image or repeatedly render one pick per actor.
+      for(let row=0;row<rect.height;row+=64){
+        const rows=Math.min(64,rect.height-row),pixels=new Uint8Array(rect.width*rows*4);
+        gl.readPixels(rect.x,rect.y+row,rect.width,rows,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+        for(let i=0;i<pixels.length;i+=4){const id=this.instances[(pixels[i]|pixels[i+1]<<8|pixels[i+2]<<16)-1]?.entity_id;if(id)ids.add(id);}
+      }
+      return [...ids].sort();
+    }finally{this.draw(view);}
   }
 
   pick(x,y,view){

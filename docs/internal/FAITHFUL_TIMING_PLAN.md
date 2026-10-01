@@ -213,6 +213,28 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Actor box selection and filtered hierarchy ranges
+
+- Previous turn progressed: 6c59bc56 committed viewport/hierarchy Ctrl-click
+  groups. Confirmed clean tracked tree/current HEAD; continued offline central
+  editor work with depth-tested box picking, 64-row GPU read strips, marquee,
+  filtered Shift ranges, additive merges, 128-member bounds and gesture guards.
+- Node range/merge and rectangle/high-DPI/strip/error-restoration checks, syntax
+  and diff checks passed. Actual town01 2x-DPI browser box IDs matched independent
+  pixel readback; hidden0011 excluded. Reverse/add/empty boxes, Escape, filtered/
+  reverse/add ranges, source withdrawal and exact review seeding passed. Proposal
+  inspection blocked selection. Zero authoring/selection requests or page errors;
+  unchanged authoritative state. Final screenshots inspected; no Save/game/install.
+- First browser65652 terminal exit1: harness retained a viewport rectangle after
+  the group bar resized the canvas. Corrected harness to reread current bounds.
+  Final focused-scene/check process45548 terminal exit0, owned server90612 stopped
+  exit1; earlier server47792 terminal exit1. All owned browsers/servers closed.
+  Marker-only occlusion fallback unverified; runtime picking parity not claimed.
+- Updated report/status/matrix/group guide. Backend unchanged; current UI evidence
+  remains separate from earlier421-test Python checkpoint. Full SDK/runtime/manual
+  acceptance remains incomplete and goal active; mixed groups remain future work.
+
+
 ### 2026-09-30 - Viewport and hierarchy imported actor group selection
 
 - Previous goal turn progressed: 6e92ecd8 committed proposal drag handles and
