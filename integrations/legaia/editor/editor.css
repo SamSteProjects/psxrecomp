@@ -142,3 +142,6 @@
 #preset-batch-dialog table{width:100%;table-layout:fixed;font-size:11px}
 #preset-batch-dialog td,#preset-batch-dialog th{overflow-wrap:anywhere;text-align:left;padding:6px;vertical-align:top}
 #preset-batch-dialog pre{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.operand-review-table {width:100%;border-collapse:collapse;margin:1rem 0;font-size:.8rem;table-layout:fixed;}
+.operand-review-table th,.operand-review-table td {text-align:left;vertical-align:top;padding:.55rem .35rem;border-bottom:1px solid var(--border, #334b4b);overflow-wrap:anywhere;}

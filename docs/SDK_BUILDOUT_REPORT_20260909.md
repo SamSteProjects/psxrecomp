@@ -15,6 +15,23 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Script file review refinement (2026-10-01):** File controls now bind to
+the script owner's authored-state snapshot. An owner edit observed during review
+withdraws Apply in the UI; the server's existing stale-key rejection remains.
+Reviews show a readable operand/instruction/current/proposed table, with complete
+source-bound details collapsed. All 18 Node checks and 20 editor syntax checks
+passed. Final retail browser checked one-command flag/model-selector/move imports,
+actual partition-two asset-to-script navigation, P2 Apply/Save/Undo/Redo, stale
+review withdrawal and a closed pending response, zero page errors. Baseline
+restored; screenshot inspected. Independent Save/Open retained four drafts.
+Detached no-draft builds matched the complete 45338-byte MAN: mixed actor edits
+changed only4808/4811/4816; the P2 flag changed only28557. Raw record-table/opcode
+checks established offsets independently; every other content payload was
+unchanged. Private evidence:
+`local-output/sdk-20260909/script-operand-files-advanced-20261001/`.
+No game launched or disc installed. Gameplay remains deferred; these checks
+postdate the integrated469-test checkpoint.
+
 **Script operand JSON workflow (2026-10-01):** The script inspector now
 exports authored movement, flag, wait, model-selector and transition operand
 metadata. A bounded source/owner-bound file review stages every entry through

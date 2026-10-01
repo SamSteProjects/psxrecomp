@@ -1,4 +1,4 @@
-import {mountScriptOperandFiles} from '/script-operand-files.js';
+import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
@@ -2501,8 +2501,8 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     scriptReport=report;
     scriptDialog.querySelector('[data-operand-files]')?.remove();
     if(state.capabilities?.script_operand_files&&canEditDialogue()){
-      const owner=scriptEntity.id,key=resourceStateKey(),accepted=report;
-      mountScriptOperandFiles($('script-report'),{owner,scene:state.scene.id,current:()=>scriptDialog.open&&key===resourceStateKey()&&scriptEntity?.id===owner&&scriptReport===accepted&&canEditDialogue(),busy:()=>busy,setBusy,api,reopen:()=>openActorScript(scriptEntity,true),onError:error=>notify(error.message,true)});
+      const owner=scriptEntity.id,key=resourceStateKey(),accepted=report,ownerContext=operandOwnerContext(state,owner);
+      mountScriptOperandFiles($('script-report'),{owner,scene:state.scene.id,current:()=>scriptDialog.open&&key===resourceStateKey()&&scriptEntity?.id===owner&&scriptReport===accepted&&operandOwnerContext(state,owner)===ownerContext&&canEditDialogue(),busy:()=>busy,setBusy,api,reopen:()=>openActorScript(scriptEntity,true),onError:error=>notify(error.message,true)});
     }
     renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();renderFlagAuthoring();renderWaitAuthoring();renderModelSelectorAuthoring();updateScriptActions();
     scriptDialog.scrollTop=scroll;
