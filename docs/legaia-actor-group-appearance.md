@@ -15,6 +15,24 @@ Transforms, dialogue and other components. Save/Open and existing Build consumer
 use normal ActorAppearance overrides. Reapplying an already identical group is a
 no-op. Group component review can revert appearance independently afterward.
 
+With the authored scene's models loaded, choose **Inspect group appearance in
+scene** after Preview. The proposed source initial pair appears at each selected
+owner's unchanged position. **Inspection layer** switches between Proposed and
+Current without moving the camera. **Return to group appearance** restores the
+current scene and retains the selected donor/report for Apply. **Restore scene
+preview** discards the comparison. Export requires restoration first. A changed
+scene/source, group or placement withdraws inspection; this is a static source
+pose comparison, not runtime animation playback.
+
+`/api/actor-appearance-batch-scene` accepts actor IDs, a nonnull donor and the
+review key only. It recomputes the report before resolving a detached project
+view through the ordinary scene service. No overrides, history or files are
+written. The client binds every selected owner to the reviewed donor, checks
+unchanged placements/transforms and checks unrelated geometry/texture content.
+Shared initial-pose deduplication can change first-source actor attribution;
+that metadata is excluded from unrelated geometry equality while animation and
+model evidence remain checked. Unavailable models remain explicitly counted.
+
 `/api/actor-appearance-batch` accepts actor IDs and a nullable donor ID only.
 Discovery verifies one imported scene against the user-owned disc, loads its
 assignment context once and intersects supported donor records. Chosen donors
@@ -55,3 +73,25 @@ installed or game launched; gameplay remains in the deferred queue. Private
 `20146bacf0784539e79cf6a531cbd154ff921016895d8fe47ebd8e4b27b76be6`.
 Owned browsers/servers closed. This backend/UI feature postdates the425-test full
 source checkpoint; focused/browser/package evidence above is current.
+
+## Scene comparison evidence - 2026-09-30
+
+Seventeen focused retail-enabled tests passed in7.010s, no skips, including
+detached projection, stale/discovery rejection and strict scene endpoint fields.
+Node checks cover source/review/donor identity, exact placement, unrelated content,
+missing/duplicate owners and geometry, detached return values and shared pose
+attribution versus changed animation evidence. Editor/module syntax passed.
+
+In a separate private saved-project copy, actor0011/0012 were compared with
+actor0011's initial pair (model0105/animation13), while their current assignment
+was actor0005 (model0112/animation57). Both proposed geometries changed; every
+position/model-to-scene transform and unrelated geometry/texture payload remained
+unchanged. Camera was unchanged across Proposed/Current. Preview performed no
+commands; Return retained the report for one Apply, then Undo restored authored
+assets and dirty status. Restore, export rejection, a real authored source change
+withdrawing comparison and closing a held response all passed. Zero page errors;
+Proposed/Current screenshots inspected. Browser and server closed. No game launch
+or package install. Evidence lives privately in
+`local-output/sdk-20260909/group-appearance-scene-20260930/`, including
+`group-appearance-scene-browser-check.json`, `proposed-group-appearance.png` and
+`current-group-appearance.png`. The425-test full checkpoint predates this feature.

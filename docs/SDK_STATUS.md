@@ -3,6 +3,23 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Actor group appearance scene comparison (2026-09-30):** reviewed donor
+assignments now offer **Inspect group appearance in scene** before Apply.
+A detached SDK projection resolves the verified initial model/animation pair at
+both actors' existing placements. Proposed/Current switches preserve the camera;
+Return retains the donor review, Restore discards the comparison, and export
+requires restoration. Source or placement/group changes withdraw the comparison;
+closed delayed responses cannot attach. Seventeen focused retail-enabled Python
+tests passed in 7.010s, no skips; the new Node projection checks passed. Town01
+actor0011/0012 browser comparison verified changed geometry, unchanged positions,
+transforms and unrelated geometry/texture content, no inspection writes, retained
+Return/Apply/Undo, Restore, source withdrawal and delayed-response discard. Zero
+page errors; comparison screenshots inspected. Shared pose geometry may identify
+a different first source actor after deduplication; only that attribution is
+ignored when comparing unaffected geometry, retaining model/animation evidence.
+No game launched or package installed. This feature postdates the425-test full
+checkpoint. Private evidence: `local-output/sdk-20260909/group-appearance-scene-20260930/`.
+
 **Actor group donor appearance (2026-09-30):** selected imported actors now
 share a donor-backed initial model/animation assignment through Group appearance.
 Discovery intersects freshly verified compatible pairs across every actor; source,

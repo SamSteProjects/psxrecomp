@@ -33,6 +33,19 @@ class GroupAppearanceTests(unittest.TestCase):
         p.undo();self.assertEqual(p.overrides,before);p.redo();self.assertEqual(p.imports,source)
         p.command(self.command());self.assertEqual(len(p.undo_stack),1)
 
+    def test_scene_projection_is_detached_and_rejects_stale_or_discovery_report(self):
+        from sdk.scene_preview import actor_appearance_proposal_view
+        p=self.p;p.overrides[self.ids[0]]={'Transform':{'position':{'x':150}}}
+        before=deepcopy(p.overrides);source=deepcopy(p.imports)
+        report=p.actor_appearance_batch(self.ids,self.ids[1]);view=actor_appearance_proposal_view(p,report)
+        self.assertEqual(view.overrides[self.ids[0]]['Transform'],before[self.ids[0]]['Transform'])
+        for identifier in self.ids:self.assertEqual(view.overrides[identifier]['ActorAppearance'],{'donor_entity_id':self.ids[1]})
+        view.overrides[self.ids[0]]['Transform']['position']['x']=200
+        self.assertEqual(p.overrides,before);self.assertEqual(p.imports,source);self.assertFalse(p.undo_stack)
+        with self.assertRaises(ProjectError):actor_appearance_proposal_view(p,p.actor_appearance_batch(self.ids))
+        p.overrides[self.ids[1]]={'ActorAppearance':{'donor_entity_id':self.ids[0]}}
+        with self.assertRaises(ProjectError):actor_appearance_proposal_view(p,report)
+
     def test_last_member_stale_rejects_whole_group_and_replay(self):
         p=self.p;cmd=self.command();p.overrides[self.ids[1]]={'ActorAppearance':{'donor_entity_id':self.ids[0]}};before=deepcopy(p.overrides)
         with self.assertRaises(ProjectError):p.command(cmd)
@@ -66,7 +79,7 @@ class GroupAppearanceTests(unittest.TestCase):
             with urlopen(Request(f'http://127.0.0.1:{server.server_port}'+route,data=json.dumps(body).encode(),headers={'Content-Type':'application/json'}),timeout=30) as response:return json.load(response)
         try:
             report=post('/api/actor-appearance-batch',{'actor_ids':self.ids,'donor_entity_id':None});self.assertEqual(len(report['options']),1)
-            for route,body in [('/api/actor-appearance-batch',{'actor_ids':self.ids,'donor_entity_id':None,'path':'other'}),('/api/command',{**self.command(),'bytes':'00'}),('/api/command',{**self.command(),'review_key':None})]:
+            for route,body in [('/api/actor-appearance-batch',{'actor_ids':self.ids,'donor_entity_id':None,'path':'other'}),('/api/actor-appearance-batch-scene',{'actor_ids':self.ids,'donor_entity_id':self.ids[1],'review_key':'stale'}),('/api/actor-appearance-batch-scene',{'actor_ids':self.ids,'donor_entity_id':None,'review_key':report['review_key']}),('/api/actor-appearance-batch-scene',{'actor_ids':self.ids,'donor_entity_id':self.ids[1],'review_key':report['review_key'],'path':'other'}),('/api/command',{**self.command(),'bytes':'00'}),('/api/command',{**self.command(),'review_key':None})]:
                 with self.assertRaises(HTTPError) as error:post(route,body)
                 self.assertEqual(error.exception.code,400);error.exception.close();self.assertFalse(p.overrides)
             post('/api/command',self.command());self.assertEqual(len(p.undo_stack),1);post('/api/undo',{});self.assertFalse(p.overrides)

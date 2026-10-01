@@ -46,6 +46,21 @@ def actor_placement_proposal_view(project, report):
                 view.overrides.setdefault(row['entity_id'], {}).setdefault('Transform', {}).setdefault('position', {})[axis] = row['proposed'][axis]
     return view
 
+def actor_appearance_proposal_view(project, report):
+    """Resolve a reviewed initial donor pair without authoring the real project."""
+    donor = report.get('donor_entity_id')
+    if not isinstance(donor, str):
+        raise ProjectError('Choose a reviewed donor before scene inspection')
+    verified = project.actor_appearance_batch([row['entity_id'] for row in report['targets']], donor)
+    if verified != report:
+        raise ProjectError('Actor group appearance changed since review')
+    view = copy(project)
+    view.overrides = deepcopy(project.overrides)
+    for row in verified['targets']:
+        view.overrides.setdefault(row['entity_id'], {})['ActorAppearance'] = deepcopy(row['proposed'])
+    return view
+
+
 def source_key(project, *, geometry_only=False) -> str | None:
     document = project.imports.get(project.active_scene)
     if not project.disc_path or not document:

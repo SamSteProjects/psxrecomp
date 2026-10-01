@@ -1094,6 +1094,31 @@ class EditorHandler(BaseHTTPRequestHandler):
                                                     ('entity_id', 'position', 'preview_position', 'display_position', 'preview_height_status')}
                                                    for entity in proposed['entities'] if entity['entity_id'] in targets]})
                     return
+                if route == "/api/actor-appearance-batch-scene":
+                    if set(body) != {'actor_ids', 'donor_entity_id', 'review_key'}:
+                        raise ProjectError('Group appearance scene inspection requires actors, donor and review identity only')
+                    if not isinstance(body['donor_entity_id'], str) or not isinstance(body['review_key'], str):
+                        raise ProjectError('Choose a reviewed donor before scene inspection')
+                    from .scene_preview import actor_appearance_proposal_view, source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project = self.server.project
+                    report = project.actor_appearance_batch(body['actor_ids'], body['donor_entity_id'])
+                    if body['review_key'] != report['review_key']:
+                        raise ProjectError('Actor group appearance changed since review')
+                    original_key = source_key(project)
+                    view = actor_appearance_proposal_view(project, report)
+                    proposed = self.server.scene_previews.preview(
+                        view, lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, project_view=view, **kwargs),
+                        load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
+                    if source_key(project) != original_key:
+                        raise ProjectError('Scene changed during group appearance inspection')
+                    self._json(200, {'schema_version': 'legaia.actor-appearance-scene.v1',
+                                     'scene_id': report['scene_id'], 'project_source_key': original_key,
+                                     'review_key': report['review_key'],
+                                     'scene': dict(proposed, representation='authored')})
+                    return
                 if route == "/api/actor-appearance-batch":
                     if set(body) != {"actor_ids", "donor_entity_id"}:
                         raise ProjectError("Group appearance preview accepts actor identities and donor only")

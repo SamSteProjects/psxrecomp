@@ -213,6 +213,25 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Unapplied selected group appearance scene comparison
+
+- Continued the authorized offline SDK buildout; no generic timing/runtime change.
+- Added a strict reviewed scene endpoint and detached donor assignment projection,
+  using existing source model/animation pose resolution at unchanged placements.
+- Connected Proposed/Current comparison, retained Return, Restore, export guard
+  and source/group/placement withdrawal. Closed delayed responses are discarded.
+- Seventeen focused retail-enabled Python tests passed in7.010s, no skips. Node
+  binding/content guards and syntax/diff checks passed. Retail browser proved
+  changed selected geometry, exact positions/transforms, unaffected geometry and
+  textures, no preview writes, retained Return/one Apply/Undo, Restore, real source
+  withdrawal and closed held-response rejection. Zero page errors; screenshots
+  inspected. Initial browser rejection exposed shared-pose attribution metadata;
+  equality now ignores only first-source actor attribution, preserving pose data.
+- Updated buildout/status/matrix and group guide. Feature postdates425 checkpoint;
+  no gameplay parity claim. Temporary browsers/server closed. No game launched,
+  package installed or remote push. Private group-appearance-scene-20260930 evidence.
+
+
 ### 2026-09-30 - Atomic selected actor group donor appearance
 
 - Previous turn progressed: c2ce5948 recorded425-test checkpoint. Verified clean
