@@ -63,3 +63,9 @@ checks include mismatched owner/PC/option/target/token data, duplicate ambiguity
 collection bounds, separate control-delimited runs and partition-two identity.
 Evidence: `navigation-browser-check.json` and `menu-label-navigation.png` in the
 private project directory. These checks do not simulate or execute choices.
+
+
+Fresh regression update:397 retail-enabled Python discovery tests passed in
+164.669s, with no skips, against unchanged source`e1b88c22` on2026-09-30.
+This supersedes the older392-test checkpoint noted above and includes the menu
+and text-file services. Browser/package/gameplay evidence remains separate.

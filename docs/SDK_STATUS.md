@@ -62,7 +62,7 @@ passed. Retail browser export/no-op/preview/immutable-field/stale-import,
 two-run Apply/Undo/Redo/Save, oversized-file and closed pending-read guards
 passed. Independent saved-project/package readback matched all three authored
 label runs, including the prior override. Final preview screenshot and layout
-bounds inspected. This follows the392-test checkpoint and has separate evidence.
+bounds inspected. The current397-test source checkpoint includes this workflow; browser/package evidence remains separate.
 See the [text-file guide](legaia-text-json-authoring.md). No game was launched;
 menu reachability and display/selection remain deferred.
 
@@ -86,8 +86,7 @@ control/substitution tokens and record boundaries. Ordinary dialogue retains its
 no-stop gate; conflicting or aliased menu spans remain unavailable. 54 focused
 retail-enabled dialogue/script/resource tests passed in29.896s with no skips,
 plus editor syntax and a retail browser workflow. A saved town01 actor0001
-label package independently decoded to exactly the expected MAN. This follows
-the392-test checkpoint; that full-suite run predates menu authoring. Menu story
+label package independently decoded to exactly the expected MAN. This is included in the current397-test source checkpoint; browser/package evidence remains separate. Menu story
 reachability, glyph layout and runtime selection are unverified. See the
 [menu-label guide](legaia-menu-label-authoring.md). No game was launched.
 
@@ -103,14 +102,16 @@ No real runtime capture was performed; capture/gameplay acceptance remains defer
 
 ## Validation scope
 
-The retail-enabled SDK discovery run passed **392 tests in 159.893 seconds**,
-exit code 0, with no skips, against source `1eafc313`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-runtime-review.log`; corresponding
-JSON records source identity, command, result and log hash. This supersedes the
-390-test checkpoint and includes existing SDK services plus packed-index rectangle
-copy preservation/rejection. Texture usage, operand and runtime-review JavaScript
-checks and editor syntax also passed. Browser workflows and runtime acceptance
-remain separate evidence; historical counts below describe earlier checkpoints.
+The retail-enabled SDK discovery run passed **397 tests in164.669 seconds**,
+exit code0, with no skips, against unchanged source
+`e1b88c22f67cad6b81f29f7d9179e267d95456a8`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-text-files.log`; corresponding
+JSON records exact command/source/result and log hash. This supersedes the392-test
+checkpoint and includes accumulated services, menu span/command preservation and
+atomic text files. Texture usage, operand/menu binding, historical runtime-review
+JavaScript checks and editor syntax also passed. Browser workflows and runtime
+acceptance remain separate evidence; historical counts below describe earlier
+checkpoints.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 

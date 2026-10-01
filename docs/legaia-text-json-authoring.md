@@ -51,3 +51,9 @@ package readback matched the expected MAN exactly. Package SHA256:
 The current392-test full-suite checkpoint predates this workflow. No game was
 launched. Source-menu reachability, font/layout and selection behavior remain
 unverified; this file workflow does not execute script or pager controls.
+
+
+Fresh regression update:397 retail-enabled Python discovery tests passed in
+164.669s, with no skips, against unchanged source`e1b88c22` on2026-09-30.
+This supersedes the older392-test checkpoint noted above and includes the menu
+and text-file services. Browser/package/gameplay evidence remains separate.

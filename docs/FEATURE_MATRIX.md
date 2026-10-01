@@ -2,6 +2,14 @@
 
 Current scene-editor status (2026-09-30):
 
+Current regression:397 retail-enabled Python discovery tests passed in164.669s,
+no skips, source`e1b88c22`; source remained clean/unchanged throughout. This
+supersedes392 at1eafc313 and includes menu and atomic text-file services. Texture
+usage, operand/menu binding, runtime-review Node checks and editor syntax passed.
+Private log/metadata: `local-output/sdk-20260909/sdk-regression-20260930-text-files.log/.json`.
+Browser/gameplay acceptance remains separate. Historical entries below retain
+their dated source checkpoints.
+
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
 | Field menu label authoring | FUNCTIONAL / OFFLINE. Existing Dialogue commands edit source-qualified, contiguous plain-glyph runs in reached two/three/four-choice pickers, with option/target/capacity Inspector metadata, history, persistence and audited Build. 54 focused retail-enabled tests, retail browser Apply/Clear/Discard/Undo/Redo/Save/reopen and independent package readback passed. Jump tables, controls and byte offsets are unchanged. | Pager execution, menu reachability, glyph layout and gameplay selection remain unverified. Ordinary dialogue stop checks remain in place; world-map menu authoring is separate and unavailable. |
@@ -683,7 +691,7 @@ profile decoder on a synthetic prefix were accepted. See the [review guide](lega
 No real runtime capture was performed; capture/gameplay acceptance remains deferred.
 
 
-Current regression checkpoint (2026-09-30):392 retail-enabled Python tests passed
+Historical regression checkpoint (2026-09-30):392 retail-enabled Python tests passed
 in159.893s, no skips, source1eafc313; supersedes390 at05e93405. Texture usage,
 script operand and runtime-review JavaScript checks and editor syntax passed.
 Private log/metadata: sdk-regression-20260930-runtime-review.log/.json under

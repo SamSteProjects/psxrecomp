@@ -8,7 +8,7 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-09-30
 
-Current buildout includes menu-label authoring, saved runtime node
+Current buildout includes menu-label and source-bound text-file authoring, saved runtime node
 review, indexed texture rectangle copying and model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,
 and isolated/shared model and texture proposals in the assembled scene. The dated
@@ -25,7 +25,7 @@ passed. Retail browser export/no-op/preview/immutable-field/stale-import,
 two-run Apply/Undo/Redo/Save, oversized-file and closed pending-read guards
 passed. Independent saved-project/package readback matched all three authored
 label runs, including the prior override. Final preview screenshot and layout
-bounds inspected. This follows the392-test checkpoint and has separate evidence.
+bounds inspected. The current397-test source checkpoint includes this workflow; browser/package evidence remains separate.
 See the [text-file guide](legaia-text-json-authoring.md). No game was launched;
 menu reachability and display/selection remain deferred.
 
@@ -49,8 +49,7 @@ control/substitution tokens and record boundaries. Ordinary dialogue retains its
 no-stop gate; conflicting or aliased menu spans remain unavailable. 54 focused
 retail-enabled dialogue/script/resource tests passed in29.896s with no skips,
 plus editor syntax and a retail browser workflow. A saved town01 actor0001
-label package independently decoded to exactly the expected MAN. This follows
-the392-test checkpoint; that full-suite run predates menu authoring. Menu story
+label package independently decoded to exactly the expected MAN. This is included in the current397-test source checkpoint; browser/package evidence remains separate. Menu story
 reachability, glyph layout and runtime selection are unverified. See the
 [menu-label guide](legaia-menu-label-authoring.md). No game was launched.
 
@@ -159,13 +158,15 @@ state, history or authored-file changes. Gameplay appearance remains deferred.
   town01 models passed exact JSON round trips; a retail normal-only edit and a
   combined model/animation package passed offline readback checks.
 
-The latest retail-enabled SDK discovery suite passed **392 tests in 159.893
-seconds**, exit code 0, with no skips, against source `1eafc313`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-runtime-review.log`. This run
-includes the existing SDK services and the new packed-index rectangle-copy
-preservation/rejection tests. It supersedes the390-test checkpoint at `05e93405`.
-Texture dependency, instruction operand and historical runtime-review JavaScript
-checks and editor syntax also passed.
+The latest retail-enabled SDK discovery suite passed **397 tests in 164.669
+seconds**, exit code0, with no skips, against unchanged committed source
+`e1b88c22f67cad6b81f29f7d9179e267d95456a8`. Log:
+`local-output/sdk-20260909/sdk-regression-20260930-text-files.log`; corresponding
+JSON records command/source/result and SHA256. This includes the accumulated SDK
+services plus menu-label preservation/rejection, partition-one/two command
+history and atomic text-file checks. It supersedes the392-test checkpoint at
+`1eafc313`. Texture usage, instruction operand/menu binding, historical runtime
+review JavaScript checks and editor syntax also passed.
 Browser interaction/rendering retains its separately recorded evidence. A green
 suite does not establish gameplay, runtime parity, retail visibility or external
 rendered animation acceptance beyond the separately reviewed clip below. Historical

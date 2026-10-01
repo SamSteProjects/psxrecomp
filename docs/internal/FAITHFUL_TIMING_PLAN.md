@@ -213,6 +213,29 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Fresh397-test SDK checkpoint and next text-control evidence
+
+- Previous goal turn committed atomic text files (`e1b88c22`), concrete progress.
+  Ran one fresh complete retail-enabled SDK discovery against exact clean source
+  `e1b88c22f67cad6b81f29f7d9179e267d95456a8`;397 tests in164.669s, exit0,
+  no skips. Source/HEAD remained unchanged during the run. Owned exec64666
+  finished normally; observation waits did not trigger a restart.
+- Private `sdk-regression-20260930-text-files.log/.json` preserves command, source,
+  count/time/result and log SHA256
+  `e9553638d2dd9ffcbbd362c889011a19966965e07fc6fd4ef80106c40205cee3`.
+  Texture usage, operand/menu binding, runtime-review Node checks and syntax pass.
+- Updated current buildout/status/matrix and menu/text guides to supersede392;
+  historical counts remain dated. This checkpoint covers current services, not
+  complete SDK/runtime/gameplay acceptance. No game launched.
+- Read-only next-feature research found pinned `crates/font/src/lib.rs`
+  `NEWLINE=0x7C`, layout/wrap treat it as a line break, and
+  `docs/formats/dialog-font.md` attributes it to the runtime font renderer.
+  MES event decoding still surfaces that byte as Glyph. The current plain-text
+  adapter allows pipe, so renderer-aware glyph/control boundaries need the next
+  bounded implementation check. No decoder/writer change was made during this
+  checkpoint. Full SDK goal remains active; gameplay stays deferred.
+
+
 ### 2026-09-30 — SDK source-bound text JSON authoring
 
 - Previous goal turn committed menu label navigation (`e57a24e3`), concrete
