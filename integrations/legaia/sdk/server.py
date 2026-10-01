@@ -509,6 +509,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 return
         files = {"/": ("index.html", "text/html"), "/editor.js": ("editor.js", "text/javascript"),
                  "/text-font.js": ("text-font.js", "text/javascript"),
+                 "/group-appearance.js": ("group-appearance.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
@@ -1093,6 +1094,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                                                     ('entity_id', 'position', 'preview_position', 'display_position', 'preview_height_status')}
                                                    for entity in proposed['entities'] if entity['entity_id'] in targets]})
                     return
+                if route == "/api/actor-appearance-batch":
+                    if set(body) != {"actor_ids", "donor_entity_id"}:
+                        raise ProjectError("Group appearance preview accepts actor identities and donor only")
+                    self._json(200, self.server.project.actor_appearance_batch(body['actor_ids'], body['donor_entity_id']))
+                    return
                 if route == "/api/actor-component-batch":
                     if set(body) != {"actor_ids", "component"}:
                         raise ProjectError("Group component review accepts actor identities and component only")
@@ -1117,6 +1123,10 @@ class EditorHandler(BaseHTTPRequestHandler):
             if set(body) != {"type", "scene_id", "actor_ids", "delta", "review_key"}:
                 raise ProjectError("Actor group offset requires scene, actors, delta and reviewed identity only")
             required_strings[route] = ("scene_id", "review_key")
+        if route == "/api/command" and body.get("type") == "set_actor_group_appearance":
+            if set(body) != {"type", "scene_id", "actor_ids", "donor_entity_id", "review_key"}:
+                raise ProjectError("Group appearance accepts scene, actors, donor and reviewed identity only")
+            required_strings[route] = ("scene_id", "donor_entity_id", "review_key")
         if route == "/api/command" and body.get("type") == "revert_actor_group_component":
             if set(body) != {"type", "scene_id", "actor_ids", "component", "review_key"}:
                 raise ProjectError("Group component revert accepts scene, actors, component and review identity only")

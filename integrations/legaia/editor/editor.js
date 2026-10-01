@@ -1,3 +1,4 @@
+import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
@@ -698,7 +699,7 @@ function updateActorGroupSelection(){
   if(actorBoxButton.disabled&&actorBoxMode){actorBoxMode=false;actorBoxButton.setAttribute('aria-pressed','false');actorBoxButton.classList.remove('active');}
   actorGroupTools.hidden=!actorGroupSelection.length||!!actorGroupInspection;
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
-  actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;actorGroupTools.querySelector('[data-review-components]').disabled=busy||actorGroupSelection.length<2;
+  actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;actorGroupTools.querySelector('[data-review-components]').disabled=busy||actorGroupSelection.length<2;const appearanceButton=document.querySelector('[data-group-appearance]');if(appearanceButton)appearanceButton.disabled=busy||!canEdit()||actorGroupSelection.length<2||!!actorGroupInspection;
   actorGroupTools.querySelector('[data-frame-selection]').disabled=busy||!actorGroupSelection.length||!scenePreviewCurrent();
   actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;
 }
@@ -758,6 +759,7 @@ actorGroupTools.querySelector('[data-review-components]').onclick=()=>{
   };
   groupComponentDialog.showModal();if(components.length)select.onchange();else{select.disabled=true;note.textContent+=' This group has no supported authored components.';}
 };
+mountGroupAppearance({after:actorGroupTools.querySelector('[data-review-components]'),getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit,setBusy,api});
 const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:entities,isBusy:()=>busy,canEdit,setBusy,api,notify,after:draftsButton,getSelection:()=>actorGroupSelection,
   canInspectScene:()=>scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft,
   onSceneInspection:(inspection,layer)=>{cancelViewportGesture();actorGroupInspection=inspection?{...inspection,layer,key:resourceStateKey()}:null;draw();},

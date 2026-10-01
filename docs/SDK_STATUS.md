@@ -3,6 +3,20 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Actor group donor appearance (2026-09-30):** selected imported actors now
+share a donor-backed initial model/animation assignment through Group appearance.
+Discovery intersects freshly verified compatible pairs across every actor; source,
+object-count and initial-animation restrictions remain explicit. Preview separates
+Retail/Authored/Effective/Proposed data without writes. Apply revalidates the whole
+group before one command/Undo entry, preserving other components. Sixteen focused
+retail-enabled tests passed in 7.005s, no skips. Town01 actor0011/0012 had12 common
+donors; browser discovery/preview/Apply/Undo/Redo/Save and stale last-member rejection
+passed, zero page errors. Actor0001/0002 correctly had no supported pair. Screenshot
+inspected. Independent saved-project/package MAN readback matched exact donor
+assignments and retained positions, three menus and selector240. No game launched
+or package installed. This addition postdates the 425-test full checkpoint; see
+[group appearance guide](legaia-actor-group-appearance.md). Gameplay is queued.
+
 **Integrated source checkpoint (2026-09-30):** the retail-enabled SDK discovery
 suite passed **425 Python tests in 172.910 seconds**, exit 0, no skips, against
 unchanged `55f5db15ec610db8642e1e995c29a0b4c6855730`. This includes actor group component

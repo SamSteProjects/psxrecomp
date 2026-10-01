@@ -213,6 +213,29 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Atomic selected actor group donor appearance
+
+- Previous turn progressed: c2ce5948 recorded425-test checkpoint. Verified clean
+  tracked tree/current HEAD; continued offline group authoring with common verified
+  initial donor pairs, source-bound layered preview and atomic Apply/Undo/history.
+  Reuses existing assignment restrictions and Build serializer; no invented rigs.
+- Retail probe:0011/0012 share12 donors;0001/0002 correctly unsupported due initial
+  animation. Sixteen focused retail-enabled tests passed in7.005s/no skips, including
+  six new group tests. Initial synthetic patch ordering captured a fake disc helper
+  in a lazily imported module and caused two retail errors; corrected isolation,
+  fresh process passed. No product failure. Editor/module syntax/diff checks passed.
+- Browser42751 terminal exit0: retail common/unsupported donor discovery, no-write
+  preview, one Apply, Undo/Redo/Save, last-member stale rejection and zero page
+  errors. Screenshot inspected. Server97700 stopped terminal exit1; all owned
+  browsers/servers closed. Private group-appearance-20260930 retained saved edits.
+- Independent saved-project/package MAN readback exact, preserving positions,
+  three menu runs and selector240. Package SHA256
+  20146bacf0784539e79cf6a531cbd154ff921016895d8fe47ebd8e4b27b76be6.
+  No installation/game. Added deferred gameplay queue artifact and updated guide/
+  status/report/matrix. Current feature postdates425 full suite; broader SDK/runtime
+  acceptance incomplete and goal active.
+
+
 ### 2026-09-30 - Integrated425-test SDK source checkpoint
 
 - Previous goal turn progressed:55f5db15 committed actor group component review/

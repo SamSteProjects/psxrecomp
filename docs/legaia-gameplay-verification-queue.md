@@ -408,3 +408,16 @@ existing three menu edits and actor0003 selector240. Offline exact MAN readback
 is verified. Later gameplay must establish actor reachability/visibility,
 collision and whether scripts override the initial placements. No package has
 been installed and no game launch is authorized for this offline pass.
+
+## Town01 actor group appearance — deferred 2026-09-30
+
+Saved private project: `local-output/sdk-20260909/group-appearance-20260930/project.legaia.json`.
+Built package: `local-output/sdk-20260909/group-appearance-20260930/Builds/5b08a0ee13d82bd9/legaia.sdk.0f096fa3c17d-0.1.0-5b08a0ee13d82bd9.psxmod`.
+SHA256: `20146bacf0784539e79cf6a531cbd154ff921016895d8fe47ebd8e4b27b76be6`.
+
+Actors0011/0012 use donor0005's verified initial model0112/animation57. Package
+MAN readback matched the exact expected source, preserving existing position,
+menu and selector edits. Deferred manual checks: confirm both intended actors
+initialize/render/animate with the donor pair and that scene movement/transitions
+and script behavior remain usable. No game launched or package installed for
+this artifact. Browser/package checks do not close these gameplay items.

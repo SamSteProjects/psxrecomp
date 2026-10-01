@@ -1315,6 +1315,29 @@ class ProjectService:
                                     'before': before, 'after': deepcopy(after)})
             self.redo_stack.clear()
             return
+        if command.get('type') == 'set_actor_group_appearance':
+            if set(command) != {'type', 'scene_id', 'actor_ids', 'donor_entity_id', 'review_key'}:
+                raise ProjectError('Group appearance accepts scene, actors, donor and reviewed identity only')
+            if not isinstance(command['donor_entity_id'], str) or not command['donor_entity_id']:
+                raise ProjectError('Choose a compatible group appearance donor')
+            report = self.actor_appearance_batch(command['actor_ids'], command['donor_entity_id'])
+            if command['scene_id'] != report['scene_id'] or command['review_key'] != report['review_key']:
+                raise ProjectError('Group appearance changed since review; preview it again')
+            before, after = {}, {}
+            for row in report['targets']:
+                identifier = row['entity_id']
+                old = deepcopy(self.overrides.get(identifier))
+                value = deepcopy(old or {})
+                value['ActorAppearance'] = deepcopy(row['proposed'])
+                if old != value:
+                    before[identifier], after[identifier] = old, value
+            if not before:
+                return
+            self.overrides.update(after)
+            self.undo_stack.append({'target': 'entity_overrides', 'entity_ids': sorted(before),
+                                    'before': before, 'after': deepcopy(after)})
+            self.redo_stack.clear()
+            return
         if command.get('type') == 'revert_actor_group_component':
             if set(command) != {'type', 'scene_id', 'actor_ids', 'component', 'review_key'}:
                 raise ProjectError('Group component revert accepts scene, actors, component and review identity only')
@@ -2099,6 +2122,58 @@ class ProjectService:
                 'limitations': ['Only imported active-scene actor X/Z placement offsets are supported.',
                                 'Proposed coordinates must fit the exact retail 64-unit placement grid.',
                                 'Source Y, scripts, scheduling and runtime behavior are not inferred.']}
+
+    def actor_appearance_batch(self, actor_ids: list[str], donor_entity_id: str | None = None) -> dict:
+        """Intersect verified initial donor pairs for all selected imported actors."""
+        from importer.man_assignments import load_man_assignment_context
+        from importer.pipeline import _disc_context, import_scene
+        component = self.actor_component_batch(actor_ids, 'ActorAppearance')
+        document = self.imports[self.active_scene]
+        if not self.disc_path:
+            raise ProjectError("Group appearance requires the project's user-owned disc")
+        if donor_entity_id is not None and not isinstance(donor_entity_id, str):
+            raise ProjectError('Group appearance donor must be an imported actor identity')
+        records = {a['source_record']['record_index']: a for a in document['actors']}
+        actors = {a['semantic_id']: a for a in document['actors']}
+        with _disc_context(self.disc_path):
+            if digest(import_scene(self.disc_path, document['scene']['name'])) != digest(document):
+                raise ProjectError('Group appearance source differs from freshly verified imported evidence')
+            context = load_man_assignment_context(self.disc_path, document['scene']['name'])
+            common, support_rows = None, []
+            for identifier in sorted(actor_ids):
+                support = context.options(actors[identifier]['source_record']['record_index'])
+                donors = {records[index]['semantic_id'] for pair in support['pairs'] for index in pair['donor_records']}
+                support_rows.append({'entity_id': identifier, 'supported': support['supported'], 'reason': support['reason']})
+                common = donors if common is None else common & donors
+            options = []
+            for donor_id in sorted(common or []):
+                try:
+                    for identifier in actor_ids:
+                        self._appearance_binding(identifier, {'donor_entity_id': donor_id})
+                except ProjectError:
+                    continue
+                donor = actors[donor_id]
+                options.append({'donor_entity_id': donor_id, 'asset_id': donor['model_reference']['asset_semantic_id'],
+                                'animation_id': donor['placement_fields']['animation_id'],
+                                'label': f"Actor {donor['source_record']['record_index']:04d} · shared initial pair"})
+            if donor_entity_id is not None and not any(o['donor_entity_id'] == donor_entity_id for o in options):
+                raise ProjectError('Donor is not a verified compatible initial pair for every group actor')
+            source = context.provenance()
+        def pair(actor):
+            return {'asset_id': actor['model_reference']['asset_semantic_id'],
+                    'animation_id': actor['placement_fields']['animation_id']} if actor else None
+        targets = [{**row, 'retail': pair(actors[row['entity_id']]),
+                    'effective': pair(actors.get((row['authored'] or {}).get('donor_entity_id', row['entity_id']))),
+                    'proposed': {'donor_entity_id': donor_entity_id} if donor_entity_id else None}
+                   for row in component['targets']]
+        key = digest({'component_review': component['review_key'], 'donor_entity_id': donor_entity_id,
+                      'options': options, 'source': source})
+        return {'schema_version': 'legaia.actor-appearance-batch.v1', 'scene_id': self.active_scene,
+                'donor_entity_id': donor_entity_id, 'options': options, 'targets': targets,
+                'support': support_rows, 'source': source, 'review_key': key,
+                'changed_count': sum(row['proposed'] is not None and row['authored'] != row['proposed'] for row in targets),
+                'limitations': ['Initial model/animation pairs only; object count and source assignment must agree.',
+                                'Script scheduling, runtime model pools and gameplay compatibility remain unverified.']}
 
     def actor_component_batch(self, actor_ids: list[str], component: str) -> dict:
         """Read-only review binds the chosen component on every selected actor."""
