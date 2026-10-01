@@ -7,12 +7,20 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
-Source `2ca0a1a4fa0044f55e9b0dc6d6c217b9e061f578`: retail-enabled discovery
-passed 463 Python tests in 264.543 seconds with no skips; 13 Node tests and
-16 editor-module syntax checks also passed. Commands, source hashes, input
-provenance and logs remain private under `local-output/sdk-20260909/`.
-This confirms implemented offline checks, not completion of every acceptance
-layer below. Native runtime, Live identity and gameplay remain separate gates.
+**Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
+Python discovery passed **469 tests in 176.301 seconds**, exit 0, no skips, on
+unchanged clean committed source `d948b2a0f27e77c2b60f17b490ca7d8878389646`.
+All **17 Node checks** and **19 editor module syntax checks** passed on that
+source. This supersedes the 463-test checkpoint and includes asset field search,
+atomic group preset Apply, detached group scene inspection and SDK asset inspector
+tools. The user-owned disc SHA256 and 466714416-byte length were independently
+verified. Existing browser, package and saved-project evidence remains separate;
+this does not prove native runtime parity, Live actor identity, gameplay or all
+16 acceptance layers. No game launched. Private command/source/result metadata:
+`local-output/sdk-20260909/sdk-regression-20261001-asset-inspectors.log/.json`;
+Node/syntax file hashes and results:
+`local-output/sdk-20260909/node-checks-20261001-asset-inspectors.json`.
+Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 
 ## Fixtures and execution policy
 

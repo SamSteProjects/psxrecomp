@@ -140,3 +140,8 @@ inspected. Evidence: `local-output/sdk-20260909/asset-inspector-20261001/`.
 This postdates the integrated 463-test checkpoint. Specialized editing forms,
 other asset types, runtime identity and gameplay still need further work.
 No game launched.
+
+The subsequent integrated offline checkpoint on source `d948b2a0` passed
+469 Python tests in176.301s with no skips,17Node checks and19editor module syntax
+checks. It includes the asset inspector migration; browser workflow evidence
+above remains separate from native runtime and gameplay acceptance.

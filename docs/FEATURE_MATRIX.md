@@ -67,14 +67,20 @@ reset and actor navigation without authoring commands or actor changes, zero
 errors. Screenshots inspected; narrow-panel controls now wrap. This postdates
 the 463-test checkpoint. No game launched. See [asset search](legaia-asset-search.md).
 
-Latest integrated Python checkpoint: **463 tests in 264.543 seconds**, exit0,
-no skips, source `2ca0a1a4fa0044f55e9b0dc6d6c217b9e061f578`. Includes saved
-scene views and SDK animation/preset actions. All 13 Node checks and 16 editor
-syntax checks passed at that source. The later asset search above has separate
-14-Node/17-syntax and browser evidence. Browser/package/disk/rendered acceptance
-remain independent. Native runtime parity, Live identity and gameplay remain
-open; passing the SDK suite does not complete the full objective. See
-[buildout report](SDK_BUILDOUT_REPORT_20260909.md) for hashes and historical results.
+**Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
+Python discovery passed **469 tests in 176.301 seconds**, exit 0, no skips, on
+unchanged clean committed source `d948b2a0f27e77c2b60f17b490ca7d8878389646`.
+All **17 Node checks** and **19 editor module syntax checks** passed on that
+source. This supersedes the 463-test checkpoint and includes asset field search,
+atomic group preset Apply, detached group scene inspection and SDK asset inspector
+tools. The user-owned disc SHA256 and 466714416-byte length were independently
+verified. Existing browser, package and saved-project evidence remains separate;
+this does not prove native runtime parity, Live actor identity, gameplay or all
+16 acceptance layers. No game launched. Private command/source/result metadata:
+`local-output/sdk-20260909/sdk-regression-20261001-asset-inspectors.log/.json`;
+Node/syntax file hashes and results:
+`local-output/sdk-20260909/node-checks-20261001-asset-inspectors.json`.
+Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
