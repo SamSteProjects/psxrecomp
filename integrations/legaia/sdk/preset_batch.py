@@ -28,10 +28,15 @@ def review(project,template_id,actor_ids):
             if template['scope']=='authored-actor-preset-v1':
                 from .actor_presets import preview
                 command['review_key']=preview(staged,template_id,identifier)['review_key']
+            appearance=None
+            if 'ActorAppearance' in template['components']:
+                donor=template['components']['ActorAppearance']['donor_entity_id']
+                appearance=next((row for row in staged.appearance_options(identifier)['options'] if row['donor_entity_id']==donor),None)
+                if appearance is None:raise ProjectError('Preset donor is unavailable for a group target')
             staged.command(command)
             after=deepcopy(staged.overrides.get(identifier));imported=deepcopy(allowed[identifier]['imported_transform']['position'])
             authored=deepcopy((before or {}).get('Transform',{}).get('position',{}));proposed=deepcopy((after or {}).get('Transform',{}).get('position',{}))
-            targets.append(dict(entity_id=identifier,before=before,after=after,changed=before!=after,
+            targets.append(dict(entity_id=identifier,before=before,after=after,changed=before!=after,appearance=deepcopy(appearance),
                 imported_position=imported,authored_position=authored,effective_position={**imported,**authored},proposed_position={**imported,**proposed},
                 authored_donor=(before or {}).get('ActorAppearance',{}).get('donor_entity_id'),proposed_donor=(after or {}).get('ActorAppearance',{}).get('donor_entity_id'),
                 build_issues=project._placement_issues((after or {}).get('Transform',{}))))
@@ -55,3 +60,14 @@ def apply(project,command):
     if 'ActorAppearance' in template['components']:sources.append(template['components']['ActorAppearance']['donor_entity_id'])
     project.undo_stack.append(dict(target='entity_overrides',entity_ids=sorted(after),source_entity_ids=sorted(set(sources)),before=before,after=after))
     project.redo_stack.clear()
+
+
+def proposal_view(project,report):
+    """Freshly verify all targets, then detach component changes for scene rendering."""
+    if review(project,report['template_id'],[row['entity_id'] for row in report['targets']])!=report:
+        raise ProjectError('Preset or group changed since review')
+    view=copy(project);view.overrides=deepcopy(project.overrides)
+    for row in report['targets']:
+        if row['after'] is None:view.overrides.pop(row['entity_id'],None)
+        else:view.overrides[row['entity_id']]=deepcopy(row['after'])
+    return view

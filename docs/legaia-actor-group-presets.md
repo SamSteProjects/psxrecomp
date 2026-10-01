@@ -12,6 +12,13 @@ inspectable. Saved position axes are absolute for every actor, so applying share
 X/Z axes can overlap a group. Untouched axes and unrelated components stay as
 before. Appearance scope changes initial donor pairs only.
 
+After review, **Inspect group preset in scene** opens a read-only assembled
+scene comparison. Switch between **Current** and **Proposed**, then **Return to
+group preset** to retain the reviewed Apply action. **Restore** discards the
+inspection. Closing a pending request or changing group membership also discards
+it. The camera remains fixed, and marker coordinates follow the active layer.
+Unknown guest Y stays unknown; preview does not write actor components.
+
 **Apply reviewed preset to group** re-verifies the group and reviewed key and
 commits one atomic Undo/Redo entry. Save/Open uses the existing authored override
 format. An already matching group creates no history entry. Changed membership,
@@ -32,3 +39,21 @@ Package SHA256: `a59e32eaf00f07971a0f36eb83ff10529eea908d34dd98404f07042bc6cf656
 Normal Build still rejects projects containing NPC drafts. Private evidence is
 under `local-output/sdk-20260909/preset-batch-20261001/`. No game launched or disc
 installed. These additions postdate the integrated 463-test checkpoint.
+
+**Group preset scene inspection (2026-10-01):** The extension adds read-only Current/Proposed comparison in the assembled
+3D scene for position, appearance and combined group presets. Return retains the
+review for atomic Apply; Restore, changed selection and a closed pending request
+discard it. Preview preserves the camera and unknown guest Y, and writes no
+actor components. Markers and framing now use the active proposal's display
+coordinates, matching its rendered meshes. Twelve focused Python checks, all 16 Node checks and 18 editor module syntax
+checks passed. The final scene screenshot was inspected. All three scopes also passed the production
+decoder against freshly verified retail-source scene responses. The retail browser
+checked two changed actors, Current/Proposed/Return, Restore, late-response and
+selection guards, Apply/Save/Undo/Redo, matching marker coordinates and unchanged
+camera, with zero page errors. Independent normal Build readback matched the
+entire 45338-byte MAN with only five expected donor/position bytes changed; all
+other package payloads were preserved. Normal Build proof used a detached view
+without drafts; projects containing drafts remain rejected. Private evidence:
+`local-output/sdk-20260909/preset-batch-scene-20261001/`. These changes postdate
+the integrated 463-test checkpoint. Gameplay and
+runtime parity remain pending; no game was launched.

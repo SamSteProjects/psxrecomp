@@ -677,6 +677,10 @@ function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase(
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
 function position(entity){
+  if(scenePose?.proposalDocument&&scenePose.inspectionLayer==='proposed'&&scenePose.key===sceneKey&&scenePreviewCurrent()){
+    const displayed=scenePose.proposalDocument.entities.find(item=>item.entity_id===entity.id)?.display_position;
+    if(displayed&&['x','y','z'].every(axis=>numeric(displayed[axis])))return {...displayed};
+  }
   if(actorGroupInspection?.layer==='proposed'&&actorGroupInspection.key===resourceStateKey()&&scenePreviewCurrent()){
     const proposed=groupProposalPosition(entity.id);if(proposed)return proposed;
   }
@@ -846,7 +850,18 @@ $('diagnostics-button').onclick=()=>{
   if(scenePreview||sceneError){const details=document.createElement('details');details.className='scene-preview-evidence';details.innerHTML='<summary>Scene model evidence and limits</summary><pre></pre>';details.querySelector('pre').textContent=JSON.stringify({source_key:sceneKey,error:sceneError,metrics:scenePreview?.metrics,limits:scenePreview?.limits,entities:scenePreview?.entities},null,2);$('diagnostics').append(details);}
   $('diagnostics-dialog').showModal();
 };
-groupPresetTool=mountPresetBatch({after:actorGroupTools,getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit:()=>canEdit()&&!actorGroupInspection&&!scenePose&&!shapeDraft,setBusy,api});
+groupPresetTool=mountPresetBatch({after:actorGroupTools,getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit,
+  canAuthor:()=>canEdit()&&!actorGroupInspection&&!scenePose&&!shapeDraft,setBusy,api,
+  canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!actorGroupInspection&&!shapeDraft,
+  getScenePreview:()=>scenePreview,
+  inspectScene:(proposed,report,returnToReview,isCurrent,onDiscard)=>{
+    cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
+    scenePose={key:sceneKey,name:'Proposed actor group preset · not applied',returnToFile:returnToReview,isCurrent,onDiscard};
+    scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent='Proposed group preset · not applied';configureSceneInspectionComparison(proposed);
+    for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
+    const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to group preset';draw();
+  }
+});
 savedSceneViews=mountSceneViews({
   after:$('actor-box-select'),getState:()=>state,isBusy:()=>busy,canEdit,
   getDisplay:()=>({camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers}}),

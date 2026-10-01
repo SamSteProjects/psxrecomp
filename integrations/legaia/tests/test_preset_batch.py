@@ -51,6 +51,17 @@ class PresetBatchTests(unittest.TestCase):
         with patch('sdk.resources._verify',side_effect=ProjectError('Changed retail source')):
             with self.assertRaisesRegex(ProjectError,'Changed retail'):self.run_review(key)
         self.assertEqual(p.overrides,before)
+    def test_scene_projection_detaches_group_and_rejects_forged_or_stale_reports(self):
+        from sdk.preset_batch import proposal_view
+        self.source_patches();p=self.project;key=self.capture();report=self.run_review(key);before=deepcopy(p.overrides);history=deepcopy(p.undo_stack)
+        view=proposal_view(p,report);self.assertEqual(view.overrides[self.donor],report['targets'][1]['after'])
+        view.overrides[self.donor]['Transform']['position']['x']=1024
+        self.assertEqual(p.overrides,before);self.assertEqual(p.undo_stack,history)
+        forged=deepcopy(report);forged['targets'][1]['after']['Transform']['position']['x']=64
+        with self.assertRaises(ProjectError):proposal_view(p,forged)
+        p.command(dict(type='set_transform',entity_id=self.donor,position={'z':1024}))
+        with self.assertRaises(ProjectError):proposal_view(p,report)
+
     def test_extra_command_fields_and_unavailable_disc_reject(self):
         self.source_patches();p=self.project;key=self.capture('position');report=self.run_review(key)
         with self.assertRaises(ProjectError):p.command(dict(type='apply_actor_preset_batch',template_id=key,actor_ids=[self.target,self.donor],review_key=report['review_key'],bytes='00'))

@@ -823,6 +823,27 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .template_files import review
                     self._json(200,review(self.server.project,body['content'],body['name']))
                     return
+                if route == '/api/actor-preset-batch-scene':
+                    if set(body) != {'template_id', 'actor_ids', 'review_key'}:
+                        raise ProjectError('Group preset scene inspection requires preset, actors and reviewed key only')
+                    from .preset_batch import review, proposal_view
+                    from .scene_preview import source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project=self.server.project;report=review(project,body['template_id'],body['actor_ids'])
+                    if body['review_key']!=report['review_key']:
+                        raise ProjectError('Preset or group changed since review')
+                    original_key=source_key(project);view=proposal_view(project,report)
+                    proposed=self.server.scene_previews.preview(
+                        view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),
+                        load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if source_key(project)!=original_key or review(project,body['template_id'],body['actor_ids'])!=report:
+                        raise ProjectError('Scene, preset or group changed during inspection')
+                    self._json(200,{'schema_version':'legaia.actor-preset-batch-scene.v1','scene_id':project.active_scene,
+                                    'project_source_key':original_key,'review_key':report['review_key'],
+                                    'scene':dict(proposed,representation='authored')})
+                    return
                 if route == '/api/actor-preset-batch':
                     if set(body) != {'template_id', 'actor_ids'}:
                         raise ProjectError('Group preset review requires preset and actor IDs only')

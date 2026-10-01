@@ -15,6 +15,24 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Group preset scene inspection (2026-10-01):** The extension adds read-only Current/Proposed comparison in the assembled
+3D scene for position, appearance and combined group presets. Return retains the
+review for atomic Apply; Restore, changed selection and a closed pending request
+discard it. Preview preserves the camera and unknown guest Y, and writes no
+actor components. Markers and framing now use the active proposal's display
+coordinates, matching its rendered meshes. Twelve focused Python checks, all 16 Node checks and 18 editor module syntax
+checks passed. The final scene screenshot was inspected. All three scopes also passed the production
+decoder against freshly verified retail-source scene responses. The retail browser
+checked two changed actors, Current/Proposed/Return, Restore, late-response and
+selection guards, Apply/Save/Undo/Redo, matching marker coordinates and unchanged
+camera, with zero page errors. Independent normal Build readback matched the
+entire 45338-byte MAN with only five expected donor/position bytes changed; all
+other package payloads were preserved. Normal Build proof used a detached view
+without drafts; projects containing drafts remain rejected. Private evidence:
+`local-output/sdk-20260909/preset-batch-scene-20261001/`. These changes postdate
+the integrated 463-test checkpoint. Gameplay and
+runtime parity remain pending; no game was launched.
+
 **Actor group presets (2026-10-01):** Position, appearance and combined
 presets now review all 2–128 selected imported actors before one atomic Apply /
 Undo/Redo command. Fresh source/target/donor compatibility, canonical membership,
