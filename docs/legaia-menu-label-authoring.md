@@ -3,7 +3,12 @@
 Open an actor's **Script and dialogue** Inspector, or a supported partition-two
 script through the resource catalog. Editable labels appear as **Menu option N
 of M**, with picker offset, label-run offset, source byte capacity and encoded
-choice target. Read-only instruction inspection remains available separately.
+choice target. In **Instruction paths**, each supported picker choice lists separate retail,
+authored and effective text for its label runs. Use **Open label editor** to
+focus the exact run without discarding an existing draft. A label containing
+controls may have multiple run links. Links require matching owner, option,
+source PC/target and glyph tokens; stale source or withdrawn reports cannot
+navigate. Read-only instruction inspection remains available separately.
 
 Enter printable ASCII and use **Apply text**. Shorter text is padded with spaces;
 empty text becomes spaces. **Discard draft** restores the form. **Clear override**
@@ -49,3 +54,12 @@ This is source serialization evidence for a decoded menu. It does not establish
 that actor0001's menu is reachable in ordinary gameplay. Runtime menu selection,
 font/wrapping and story reachability remain deferred; no game was launched.
 The392-test full-suite checkpoint at `1eafc313` predates this addition.
+
+Instruction-to-label navigation was separately browser verified on the saved
+retail project: all30 supported links present, exact textarea focused, an
+unapplied draft retained, source/report withdrawal guarded, and project/camera/
+service unchanged with no authoring requests or page errors. Pure JavaScript
+checks include mismatched owner/PC/option/target/token data, duplicate ambiguity,
+collection bounds, separate control-delimited runs and partition-two identity.
+Evidence: `navigation-browser-check.json` and `menu-label-navigation.png` in the
+private project directory. These checks do not simulate or execute choices.

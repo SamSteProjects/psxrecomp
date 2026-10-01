@@ -1,6 +1,6 @@
 import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
-import {instructionOperandEditors} from '/script-operands.js';
+import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {captureRuntimeReview,parseRuntimeReview,MAX_REVIEW_BYTES} from '/runtime-review.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1166,7 +1166,7 @@ async function openTriggerScript(record){
   }catch(error){if(error.name!=='AbortError'&&request===triggerScriptRequest&&triggerScriptDialog.open){$('trigger-script-report').replaceChildren();triggerScriptDialog.querySelector('.dialog-error').textContent=error.message;}}
   finally{if(triggerScriptAbort===controller){triggerScriptAbort=null;setBusy(false);}}
 }
-function appendScriptOperands(cell,instruction){
+function appendScriptOperands(cell,instruction,menuEditors=new Map(),focusMenuRun=null){
   const operands=instruction.operands;
   if(instruction.mnemonic==='DIALOGUE_SEGMENT'){const text=document.createElement('p');text.textContent=operands?.text??'';cell.append(text);return;}
   if(instruction.target_context!==null&&instruction.target_context!==undefined){
@@ -1199,7 +1199,17 @@ function appendScriptOperands(cell,instruction){
   }
   if(instruction.mnemonic==='DIALOGUE_PICKER'&&Array.isArray(operands?.options)){
     const options=document.createElement('ol');
-    for(const option of operands.options){const item=document.createElement('li');item.textContent=`${option.label} — encoded target ${scriptOffset(option.encoded_target)}`;options.append(item);}
+    for(const option of operands.options){
+      const item=document.createElement('li');item.textContent=`${option.label} — encoded target ${scriptOffset(option.encoded_target)}`;
+      for(const run of menuEditors.get(`${instruction.pc}:${option.index}`)??[]){
+        const layers=document.createElement('p');layers.className='instruction-operand-layers';
+        layers.textContent=`Label run ${scriptOffset(run.pc)} · Retail ${JSON.stringify(run.retail)} · Authored ${run.authored===null?'none':JSON.stringify(run.authored)} · Effective ${JSON.stringify(run.effective)}`;
+        item.append(layers);
+        if(focusMenuRun){const edit=document.createElement('button');edit.type='button';edit.textContent='Open label editor';edit.dataset.menuRun=run.id;
+          edit.setAttribute('aria-label',`Open menu option ${option.index+1} label editor at ${scriptOffset(run.pc)}`);edit.onclick=()=>focusMenuRun(run.id);item.append(edit);}
+      }
+      options.append(item);
+    }
     const note=document.createElement('p');note.className='field-note';note.textContent='Runtime choice and pager continuation are unresolved. Decoded choice paths can be inspected through the successor links.';
     cell.append(options,note);
   }
@@ -1292,12 +1302,17 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
   previous.onclick=()=>stepMatch(-1);next.onclick=()=>stepMatch(1);updateMatches();
 
   const wrap=document.createElement('div');wrap.className='script-table-wrap';wrap.innerHTML='<table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table>';host.append(wrap);
-  const body=wrap.querySelector('tbody'),operandEditors=instructionOperandEditors(report),operandKey=resourceStateKey();
+  const body=wrap.querySelector('tbody'),operandEditors=instructionOperandEditors(report),menuEditors=menuLabelEditors(report),operandKey=resourceStateKey();
+  const focusMenuRun=host.closest('dialog')===scriptDialog?id=>{
+    if(busy||!scriptDialog.open||report!==scriptReport||operandKey!==resourceStateKey())return;
+    const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===id);
+    if(!input)return;input.closest('form').scrollIntoView({block:'center'});input.focus({preventScroll:true});
+  }:null;
   for(const instruction of instructions){
     const row=document.createElement('tr');row.tabIndex=-1;rows.set(instruction.pc,row);
     const offset=document.createElement('td'),jump=document.createElement('button');jump.textContent=scriptOffset(instruction.pc);jump.setAttribute('aria-label',`Select instruction ${scriptOffset(instruction.pc)}`);jump.onclick=()=>select(instruction.pc);offset.append(jump);row.append(offset);
     const mnemonic=document.createElement('td');mnemonic.textContent=instruction.mnemonic;row.append(mnemonic);
-    const operands=document.createElement('td');appendScriptOperands(operands,instruction);row.append(operands);
+    const operands=document.createElement('td');appendScriptOperands(operands,instruction,menuEditors,focusMenuRun);row.append(operands);
     const editor=operandEditors.get(instruction.pc);
     if(editor){
       const layers=document.createElement('p');layers.className='instruction-operand-layers';

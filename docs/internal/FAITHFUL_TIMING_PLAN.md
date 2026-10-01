@@ -213,6 +213,25 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — SDK menu instruction-to-label workflow
+
+- Previous goal turn committed menu authoring (`87211ba1`), concrete progress.
+  Continued the connected script Inspector workflow while gameplay stays deferred.
+- Added bounded pure menu-label binding against owner/option/PC/target/token
+  spans and distinct retail/authored/effective layers. Decoded choices link to
+  exact text forms without discarding drafts. Stale source/report links withdraw.
+- Existing operand Node checks plus new label bounds/ambiguity/multiple-run/P2
+  checks and editor syntax pass. Retail browser found all30 actor0001 links,
+  focused the exact textarea, retained a draft and left project/camera/service
+  unchanged, with zero authoring requests or page errors. Screenshot inspected.
+- First browser check raced initial scene framing; harness was corrected to
+  wait for the current scene preview, then passed twice. No app camera mutation
+  was needed. Evidence under private menu-label project, ignored by Git.
+- Updated report/status/matrix/guide. No new Python/full-suite claim, no game
+  launch, and no runtime choice/reachability claim. Temporary browser/server
+  stopped after checks; full SDK goal remains active and incomplete.
+
+
 ### 2026-09-30 — SDK menu-label authoring, gameplay deferred
 
 - Previous goal turn supplied the392-test checkpoint; the intervening SDK report

@@ -15,6 +15,17 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Menu instruction-to-label navigation (2026-09-30):** decoded picker
+choices now show separate retail/authored/effective glyph-run text and links to
+the exact label forms. Owner, option, PCs, targets, capacity and source tokens
+must match before a link is created. Duplicate or mismatched metadata is rejected.
+The retail actor0001 browser exposed all30 supported label links, focused the
+exact field and retained an unapplied draft. Stale source and withdrawn report
+navigation were rejected; project/camera/service remained unchanged, with zero
+authoring requests or page errors. Pure JavaScript checks cover multiple runs,
+partition-two owners, detachment, bounds and ambiguity. Screenshot inspected.
+This is separate browser/JavaScript evidence; gameplay remains deferred.
+
 **Menu-label authoring (2026-09-30):** source-qualified plain-glyph runs
 inside decoded two-, three- and four-option pickers now use the existing
 Dialogue component and Apply/Clear/Discard, Undo/Redo, Save/Open and Build paths.

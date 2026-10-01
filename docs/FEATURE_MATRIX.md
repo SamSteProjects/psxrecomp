@@ -694,3 +694,12 @@ copy preservation/rejection; browser and gameplay acceptance remain separate.
 This addition follows the392-test source checkpoint and has54 focused retail-enabled
 tests plus separate browser/package readback evidence. No new full-suite claim
 or gameplay acceptance.
+
+2026-09-30 field menu navigation: source-bound retail/authored/effective label
+runs appear beside decoded picker choices, with exact-form links. Pure JS
+checks reject owner/PC/option/target/token mismatches, duplicates and excessive
+collections; multiple runs and partition-two identities are supported. Retail
+browser checks found30 links, preserved an unapplied draft and unchanged
+project/camera/service, and rejected stale source or withdrawn report navigation.
+No authoring requests or page errors; screenshot inspected. This follows the
+392-test checkpoint and retains separate JavaScript/browser evidence.
