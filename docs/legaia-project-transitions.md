@@ -1,0 +1,35 @@
+# Project transition references
+
+Choose **Project transitions** in the Asset Database tool area to inspect decoded
+scene-change references from all imported scenes. Scene transitions still limits
+the view to the current scene. Discovery verifies retail source evidence, batches
+disc access and does not refresh resources, change selection or author values.
+
+Each row retains source scene, owner script, instruction offset, partition,
+coverage, source provenance and encoded destination. Entry operands show retail
+values and separate authored/effective values where overridden. Unknown names
+remain unresolved; matching destination IDs merge scene nodes without collapsing
+independent source instructions. An unavailable scene remains listed with its
+reason. Project sources/authored state are checked again before returning data.
+
+**Inspect source script** opens its imported source scene and the instruction in
+the normal script inspector. **Open imported destination** is enabled only when
+the destination already belongs to the project. Navigation uses ordinary scene
+selection; it does not write an actor or transition component. Close aborts
+pending discovery; stale context blocks retained row actions.
+
+## Limits and evidence
+
+The service accepts no client source bindings and is bounded to1–64 imported
+scenes,16,384 references and16,448 nodes. Only supported decoded paths are
+covered. Edges have reachability `not_evaluated`: no gameplay route, story flag
+condition, complete exit inventory or runtime transition is inferred. Source
+inspection uses existing bounded authoring rules separately.
+
+Five focused Python tests passed. Retail HTTP/browser checks across town01 and
+Dolk2 returned three references to map01 from180 scripts,88 partial and zero
+unavailable scripts. Cross-scene source navigation, no authoring commands,
+unchanged draft/override state, strict request rejection and zero page errors
+passed. Screenshot inspected. Private evidence:
+`local-output/sdk-20260909/project-transitions-20260930/`.
+This feature postdates the441-test integrated checkpoint; no game was launched.

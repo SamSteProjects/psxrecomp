@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Project-wide source-qualified transitions
+
+Added batched verified transition discovery for all imported scenes, source/state
+digest, stable node merge, independent source edges, bounded counts and explicit
+unavailable coverage. API rejects client bindings; editor shares scene graph
+presentation with cross-scene source-script navigation and imported destinations.
+No route/reachability inference. Five focused tests passed. Retail HTTP/browser
+checks found3 references,180 scripts,88 partial, zero unavailable in town01/Dolk2;
+source-script navigation, no authoring writes, strict request rejection and zero
+page errors passed. Screenshot inspected, status/matrix/guide updated. No game
+launched. Initial python -m sdk.server invocation returned0 because the module
+exposes main without a module entrypoint; explicitly invoked main once instead.
+Owned server40908 stopped with Ctrl+C; browsers closed in finally. Full441-test
+checkpoint remains scoped to earlier source.
+
+
 ### 2026-09-30 — Reviewed NPC draft repetition offline completion
 
 Implemented count/X/Z spacing review, deterministic independent UUID copies,

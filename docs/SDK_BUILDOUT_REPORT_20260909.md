@@ -15,6 +15,20 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Project-wide transitions (2026-09-30):** Project transitions now merges
+source-qualified decoded scene-change references across1–64 imported scenes,
+with separate source coverage, unavailable reasons and imported destinations.
+Inspect source script navigates across scenes to its instruction; imported
+destinations retain the existing scene navigation. Imported/authored/effective
+entry operands remain separate. Five focused tests passed, including self-edge,
+merged identity, unavailable source, no-write and stale-state checks. Retail
+HTTP/browser discovery found3 references across town01/Dolk2,180 scripts,
+88 partial,0 unavailable; cross-scene source navigation and strict request shape
+passed with zero page errors. Screenshot inspected. This feature postdates the
+441-test checkpoint. These references do not establish reachable gameplay routes,
+complete exits or runtime scene connections. No game launched. See
+[project transition guide](legaia-project-transitions.md).
+
 **NPC draft repetition (2026-09-30):** Repeat draft previews a named series
 of donor-bound NPC copies with a count and X/Z grid spacing. Proposed/Current
 scene comparison and Return retain the review; Apply adds the copies in one

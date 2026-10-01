@@ -404,3 +404,51 @@ def apply_texture_overrides(project, catalog):
                        for tim, source in result.textures]
     result.diagnostics.append(f"Effective preview applies {len(replacements)} project-authored TIM replacements; source locators remain retail provenance.")
     return result
+
+
+def project_transition_state_key(project):
+    from .project import digest
+    return digest({'root':str(project.root),'disc':project.disc_path,
+                   'imports':project.imports,'overrides':project.overrides})
+
+
+def project_transition_graph(project):
+    """Source-qualified decoded references across imported scenes; no route inference."""
+    from importer.script_catalog import load_script_asset_catalog
+    from .transitions import build_transition_graph
+    if not project.disc_path or not 1<=len(project.imports)<=64:
+        raise ProjectError('Project transition discovery requires a disc and1–64 imported scenes')
+    key=project_transition_state_key(project)
+    documents=deepcopy(project.imports);overrides=deepcopy(project.overrides)
+    nodes={};edges=[];scenes=[]
+    coverage=dict(script_count=0,partial_script_count=0,unavailable_script_count=0)
+    with _disc_context(project.disc_path):
+        for scene_id,document in sorted(documents.items()):
+            _verify(project,document)
+            name=document['scene']['name']
+            nodes.setdefault(scene_id,dict(id=scene_id,name=name,imported=True,roles=[],in_scene_index=True))
+            try:
+                catalog=load_script_asset_catalog(project.disc_path,name)
+                graph=build_transition_graph(catalog,documents,overrides)
+            except RetailImportError as exc:
+                scenes.append(dict(scene_id=scene_id,scene_name=name,status='unavailable',reason=str(exc)))
+                continue
+            if graph['scene_id']!=scene_id:raise ProjectError('Transition catalog differs from imported scene identity')
+            for node in graph['nodes']:
+                merged=nodes.setdefault(node['id'],deepcopy(node))
+                for role in node['roles']:
+                    if role not in merged['roles']:merged['roles'].append(role)
+            edges.extend(graph['edges'])
+            if len(edges)>16384 or len(nodes)>16448:
+                raise ProjectError('Project transition graph exceeds discovery bounds')
+            for field in coverage:coverage[field]+=graph['coverage'][field]
+            scenes.append(dict(scene_id=scene_id,scene_name=name,status='verified',reference_count=len(graph['edges']),coverage=graph['coverage']))
+    if key!=project_transition_state_key(project):
+        raise ProjectError('Project sources or authored state changed during transition discovery')
+    if len({edge['id'] for edge in edges})!=len(edges):raise ProjectError('Transition source identities are ambiguous')
+    return dict(schema_version='legaia.project-transitions.v1',read_only=True,
+                project_path=str(project.root),source_key=key,scene_ids=sorted(documents),
+                nodes=[nodes[id] for id in sorted(nodes)],edges=edges,scenes=scenes,coverage=coverage,
+                limitations=['Edges are decoded source instructions, not verified routes or runtime scene connections.',
+                             'Only imported scenes and supported script paths are covered; partial and unavailable sources remain explicit.',
+                             'Imported, authored and effective entry operands remain separate; no story-state evaluation or path finding.'])

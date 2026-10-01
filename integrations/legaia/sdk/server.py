@@ -136,8 +136,9 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["text_font_preview"] = bool(self.project.disc_path)
         state["capabilities"]["scene_text_search"] = bool(self.project.disc_path and self.project.active_scene)
-        from .resources import scene_text_state_key, project_text_state_key
+        from .resources import scene_text_state_key, project_text_state_key, project_transition_state_key
         state['scene_text_state_key'] = scene_text_state_key(self.project)
+        state['project_transition_state_key'] = project_transition_state_key(self.project)
         try:
             state['project_text_state_key'] = project_text_state_key(self.project)
         except (RetailImportError, OSError):
@@ -796,6 +797,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Project text discovery uses imported scenes only')
                     from .resources import project_text_index
                     self._json(200, project_text_index(self.server.project))
+                    return
+                if route == "/api/project-transitions":
+                    if body:
+                        raise ProjectError("Project transition discovery accepts no client source bindings")
+                    from .resources import project_transition_graph
+                    self._json(200,project_transition_graph(self.server.project))
                     return
                 if route == "/api/scene-transitions":
                     if body:
