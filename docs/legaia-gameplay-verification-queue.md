@@ -1,5 +1,20 @@
 # Deferred gameplay verification
 
+## Combined town01 position/appearance preset — deferred
+
+Private saved project: `local-output/sdk-20260909/component-inspector-20260930/`.
+Actor0012 combines X2944, retained Z1856 and donor0005 initial appearance.
+Detached no-draft package SHA256:
+`a59e32eaf00f07971a0f36eb83ff10529eea908d34dd98404f07042bc6cf6567`.
+Full logical experimental archive retaining four drafts SHA256:
+`2f9437b5a0eda2ed4ae9eaf8bf810a6f2f9c0936942e1caae8c3c0a818e43381`.
+Disk and independent MAN/archive readbacks passed. The saved project still has
+all four drafts; normal Build rejects that input, and the logical archive is
+not an output disc. Deferred checks include actor initialization/placement,
+appearance, interaction, script relocation and visibility/collision. No game
+launched or artifact installed.
+
+
 ## Repeated town01 NPC drafts — archive prototype, deferred
 
 Saved project: `local-output/sdk-20260909/draft-repeat-20260930/`.

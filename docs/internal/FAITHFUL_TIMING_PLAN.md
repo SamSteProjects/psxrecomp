@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — Combined authored position/appearance presets
+
+Added source-qualified combined template scope, capture/Save/Open, strict fresh
+compatible-donor review and atomic Apply of both components with one Undo entry.
+Connected Capture both and layered review dialog in the template library.
+Thirteen focused tests passed (removed accidentally imported test class from
+new module discovery; initial18 count included duplicates). Retail browser93020
+passed capture/review/Apply/Undo/Redo/Save/reload/stale rejection, zero errors;
+screenshot inspected. Independent saved disk and exact package MAN checks passed.
+Initial normal Build correctly rejected the four-draft fixture. Used a detached
+no-draft view for ordinary package verification, preserving original drafts;
+full experimental archive independently reopened with all drafts/preset edits.
+Clarified documentation's earlier ambiguous ordinary-Build exclusion wording to
+state the existing rejection gate. No disc installed/game launched. Owned
+server86218 stopped with Ctrl+C terminal1. Documentation and deferred queue updated.
+
+
 ### 2026-09-30 — Effective model users to viewport group tools
 
 Extended existing Used by navigation with scene-qualified effective imported

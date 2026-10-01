@@ -515,6 +515,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
+                 "/actor-preset-review.js": ("actor-preset-review.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
@@ -799,6 +800,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Project text discovery uses imported scenes only')
                     from .resources import project_text_index
                     self._json(200, project_text_index(self.server.project))
+                    return
+                if route == '/api/actor-preset-review':
+                    if set(body)!={'template_id','entity_id'}:raise ProjectError('Preset review requires a template and existing target only')
+                    from .actor_presets import preview
+                    self._json(200,preview(self.server.project,body['template_id'],body['entity_id']))
                     return
                 if route == "/api/project-transitions":
                     if body:

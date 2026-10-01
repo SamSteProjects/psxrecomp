@@ -39,7 +39,7 @@ def preview(project, request):
             'review_key':review,'copies':copies,
             'limitations':['Project-local drafts inherit only the original retail donor binding.',
                            'Script scheduling, collision, visibility and runtime spawning remain unverified.',
-                           'Ordinary Build excludes NPC drafts; experimental export retains its existing gates.']}
+                           'Normal Build rejects projects containing NPC drafts; experimental export retains its existing gates.']}
 
 def proposal_view(project, report):
     if preview(project,report['request'])!=report:

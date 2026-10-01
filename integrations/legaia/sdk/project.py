@@ -1813,7 +1813,7 @@ class ProjectService:
             raise ProjectError("Invalid authored template identity") from exc
         if not isinstance(template, dict) or set(template) != {"id", "name", "scope", "source", "components"}:
             raise ProjectError("Invalid authored transform template")
-        if template["id"] != identifier or template["scope"] not in ("authored-position-v1", "authored-appearance-v1"):
+        if template["id"] != identifier or template["scope"] not in ("authored-position-v1", "authored-appearance-v1", "authored-actor-preset-v1"):
             raise ProjectError("Unsupported authored template scope")
         name = template["name"]
         if not isinstance(name, str) or name != name.strip() or not 1 <= len(name) <= 80:
@@ -1825,14 +1825,15 @@ class ProjectService:
         if source["disc_identity"] != disc:
             raise ProjectError("Template belongs to a different imported disc")
         components = template["components"]
-        if template["scope"] == "authored-appearance-v1":
-            if not isinstance(components, dict) or set(components) != {"ActorAppearance"}:
+        if template["scope"] in ("authored-appearance-v1","authored-actor-preset-v1"):
+            expected={"ActorAppearance","Transform"} if template["scope"]=="authored-actor-preset-v1" else {"ActorAppearance"}
+            if not isinstance(components, dict) or set(components) != expected:
                 raise ProjectError("Appearance templates require one donor pair")
             document, _, _ = self._appearance_binding(source["entity_id"], components["ActorAppearance"])
             if document["scene"]["semantic_id"] != source["scene_id"]:
                 raise ProjectError("Appearance template source scene does not match its actor")
-            return
-        if not isinstance(components, dict) or set(components) != {"Transform"} or not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
+            if template["scope"]=="authored-appearance-v1":return
+        if not isinstance(components, dict) or set(components) != ({"Transform","ActorAppearance"} if template["scope"]=="authored-actor-preset-v1" else {"Transform"}) or not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
             raise ProjectError("Templates support authored position only")
         self._validate_position(components["Transform"]["position"])
 
@@ -1845,12 +1846,12 @@ class ProjectService:
             return {**result, "reason": "Select an imported actor to apply this preset"}
         try:
             self._actor(entity_id)
-            if template["scope"] == "authored-appearance-v1":
+            if template["scope"] in ("authored-appearance-v1","authored-actor-preset-v1"):
                 self._appearance_binding(entity_id, template["components"]["ActorAppearance"])
         except ProjectError as exc:
             return {**result, "reason": str(exc)}
         return {**result, "available": True, "reason":
-                "Appearance source and compatibility will be verified on Apply" if template["scope"] == "authored-appearance-v1"
+                "Appearance source and compatibility will be verified on Apply" if template["scope"] in ("authored-appearance-v1","authored-actor-preset-v1")
                 else "Applies the saved absolute position axes; other axes stay unchanged"}
 
     def _template_command(self, command: dict) -> None:
@@ -1866,20 +1867,20 @@ class ProjectService:
             if any(value["name"].casefold() == name.strip().casefold() for value in self.actor_templates.values()):
                 raise ProjectError("An authored template already uses that name")
             capture = command.get("capture", "position")
-            if capture not in ("position", "appearance"):
-                raise ProjectError("Template capture must be position or appearance")
+            if capture not in ("position", "appearance", "combined"):
+                raise ProjectError("Template capture must be position, appearance or combined")
             position = self.overrides.get(entity_id, {}).get("Transform", {}).get("position", {})
             appearance = self.overrides.get(entity_id, {}).get("ActorAppearance")
-            if capture == "appearance" and not appearance:
+            if capture in ("appearance","combined") and not appearance:
                 raise ProjectError("Author an appearance override before creating an appearance template")
-            if capture == "position" and not position:
+            if capture in ("position","combined") and not position:
                 raise ProjectError("Author one or more position axes before creating a template")
             scene_id, document = next((key, value) for key, value in self.imports.items()
                                       if any(actor["semantic_id"] == entity_id for actor in value["actors"]))
             identifier = "template://" + str(uuid.uuid4())
-            template = {"id": identifier, "name": name.strip(), "scope": "authored-appearance-v1" if capture == "appearance" else "authored-position-v1",
+            template = {"id": identifier, "name": name.strip(), "scope": "authored-actor-preset-v1" if capture=="combined" else "authored-appearance-v1" if capture == "appearance" else "authored-position-v1",
                         "source": {"disc_identity": document["source"]["disc_identity"], "scene_id": scene_id, "entity_id": entity_id},
-                        "components": {"ActorAppearance": deepcopy(appearance)} if capture == "appearance" else {"Transform": {"position": deepcopy(position)}}}
+                        "components": {"Transform":{"position":deepcopy(position)},"ActorAppearance":deepcopy(appearance)} if capture=="combined" else {"ActorAppearance": deepcopy(appearance)} if capture == "appearance" else {"Transform": {"position": deepcopy(position)}}}
             self._validate_template(identifier, template)
             self.actor_templates[identifier] = template
             self.undo_stack.append({"target": "actor_templates", "template_id": identifier, "entity_id": entity_id,
@@ -1910,6 +1911,10 @@ class ProjectService:
             self.redo_stack.clear()
             return
         if kind == "apply_actor_template":
+            if template["scope"]=="authored-actor-preset-v1":
+                from .actor_presets import apply as apply_actor_preset
+                apply_actor_preset(self,command)
+                return
             if template["scope"] == "authored-appearance-v1":
                 self.command({"type": "set_actor_appearance", "entity_id": command.get("entity_id"),
                               "donor_entity_id": template["components"]["ActorAppearance"]["donor_entity_id"]})

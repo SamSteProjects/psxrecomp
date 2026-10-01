@@ -15,6 +15,22 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Combined actor presets (2026-09-30):** Authored templates can capture
+position axes and a verified appearance donor together. A source/target-bound
+read-only review shows imported/authored/effective/proposed positions and donor;
+Apply updates both components atomically in one Undo/Redo entry, retaining other
+axes/components. Thirteen focused tests and retail browser capture/review/history/
+Save/reload/stale rejection passed; screenshot inspected, zero page errors.
+Independent disk reopen retained the preset and target edits. A detached no-draft
+Build view matched every expected MAN byte, retaining earlier menus, selector,
+placements and appearances; package SHA256:
+`a59e32eaf00f07971a0f36eb83ff10529eea908d34dd98404f07042bc6cf6567`.
+Normal Build rejects projects containing NPC drafts. Full experimental archive
+readback also retained all four drafts and preset edits, SHA256:
+`2f9437b5a0eda2ed4ae9eaf8bf810a6f2f9c0936942e1caae8c3c0a818e43381`.
+No disc installed or game launched. Gameplay remains deferred; this feature
+postdates the441-test checkpoint. See [combined actor presets](legaia-combined-actor-presets.md).
+
 **Select effective model users (2026-09-30):** Model asset details now offer
 scene-qualified selection of2–128 effective imported actor users for the existing
 viewport/group tools. Retail-only assignments and NPC drafts remain separate.
@@ -73,8 +89,8 @@ retained all four drafts. Independent experimental PROT reopen decoded the final
 MAN and verified four appended records' exact positions, initial model105 /
 animation13 and script bytes equal to donor0011. Archive SHA256:
 `b386fb186853a10e445030c3b7f3dc09d2dde1d3faa817acdc6fb6b7f711b262`.
-This feature **postdates the 441-test integrated checkpoint**. Ordinary Build
-excludes drafts; experimental export retains its existing gates. Runtime spawning,
+This feature **postdates the 441-test integrated checkpoint**. Normal Build
+rejects projects containing NPC drafts; experimental export retains its existing gates. Runtime spawning,
 scheduling, collision and visibility remain unverified. No disc installed or game
 launched. See [NPC repetition guide](legaia-npc-draft-repetition.md). Private
 browser/disk/archive evidence: `local-output/sdk-20260909/draft-repeat-20260930/`.

@@ -22,7 +22,7 @@ then be renamed, moved, given another donor or deleted independently.
 
 ## Build and runtime boundaries
 
-Ordinary Build excludes NPC drafts. Experimental export uses the existing donor,
+Normal Build rejects projects containing NPC drafts. Experimental export uses the existing donor,
 MAN append, script-reference and archive checks. Repetition adds no new spawn or
 scheduling semantics. Copied source scripts can retain story-specific behavior;
 partial decoder coverage, runtime initialization, visibility and collision remain
