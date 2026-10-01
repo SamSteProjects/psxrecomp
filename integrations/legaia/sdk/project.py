@@ -247,7 +247,9 @@ class ProjectService:
                    for draft in list(self.actor_drafts.values())+draft_history):
                 raise ProjectError('Imported evidence changed under NPC drafts or their history; resolve drafts before reimport')
             affected = set(ids) | {actor["semantic_id"] for actor in previous["actors"]}
-            if any(key in affected for key in self.overrides) or any(entry["entity_id"] in affected for entry in self.undo_stack + self.redo_stack):
+            if any(key in affected for key in self.overrides) or any(
+                    entry.get('entity_id') in affected or affected.intersection(entry.get('entity_ids', []))
+                    for entry in self.undo_stack + self.redo_stack):
                 raise ProjectError("Imported evidence changed under authored edits or command history; create a new project or resolve edits first")
         other_ids = {actor["semantic_id"] for key, imported in self.imports.items() if key != scene_id for actor in imported["actors"]}
         if other_ids.intersection(ids):
@@ -1287,6 +1289,32 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'offset_actor_placements':
+            if set(command) != {'type', 'scene_id', 'actor_ids', 'delta', 'review_key'}:
+                raise ProjectError('Actor group offset requires scene, actors, delta and reviewed identity only')
+            report = self.actor_placement_batch(command['actor_ids'], command['delta'])
+            if command['scene_id'] != report['scene_id'] or command['review_key'] != report['review_key']:
+                raise ProjectError('Actor placement group changed since preview; preview it again')
+            before, after = {}, {}
+            for row in report['targets']:
+                identifier = row['entity_id']
+                before[identifier] = deepcopy(self.overrides.get(identifier))
+                value = deepcopy(before[identifier] or {})
+                for axis, delta in command['delta'].items():
+                    if delta:
+                        value.setdefault('Transform', {}).setdefault('position', {})[axis] = row['proposed'][axis]
+                after[identifier] = value or None
+            if before == after:
+                return
+            for identifier, value in after.items():
+                if value is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = value
+            self.undo_stack.append({'target': 'entity_overrides', 'entity_ids': sorted(before),
+                                    'before': before, 'after': deepcopy(after)})
+            self.redo_stack.clear()
+            return
         if command.get('type') == 'revert_authored_component':
             if set(command) != {'type', 'entity_id', 'component', 'review_key'}:
                 raise ProjectError('Component revert accepts only owner, component and review identity')
@@ -1840,6 +1868,14 @@ class ProjectService:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
         entry = source.pop()
         value = deepcopy(entry[field])
+        if entry.get('target') == 'entity_overrides':
+            for identifier, components in value.items():
+                if components is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = components
+            target.append(entry)
+            return
         if entry.get('target') == 'actor_drafts':
             collection, identifier = self.actor_drafts, entry['entity_id']
         elif entry.get("target") in ("texture_overrides", "model_overrides"):
@@ -1996,6 +2032,47 @@ class ProjectService:
         result.redo_stack.clear()
         result._mark_saved()
         return result
+
+    def actor_placement_batch(self, actor_ids: list[str], delta: dict) -> dict:
+        """Preview every source-grid placement before one atomic group command."""
+        from importer.serialization import encode_placement_coordinate
+        from importer.core import ImportError
+        if (not isinstance(actor_ids, list) or not 2 <= len(actor_ids) <= 128 or
+                any(not isinstance(identifier, str) for identifier in actor_ids) or
+                len(set(actor_ids)) != len(actor_ids)):
+            raise ProjectError('Choose 2 through 128 distinct imported actors in the active scene')
+        if (not isinstance(delta, dict) or not delta or set(delta) - {'x', 'z'} or
+                any(type(value) is not int or abs(value) > 16320 or value % 64 for value in delta.values())):
+            raise ProjectError('Group offsets require X/Z integer multiples of 64, from -16320 through 16320')
+        document = self.imports.get(self.active_scene)
+        actors = {a['semantic_id']: a for a in document['actors']} if document else {}
+        if any(identifier not in actors for identifier in actor_ids):
+            raise ProjectError('Every group actor must belong to the active imported scene')
+        targets = []
+        for identifier in sorted(actor_ids):
+            retail = deepcopy(actors[identifier]['imported_transform']['position'])
+            authored = deepcopy(self.overrides.get(identifier, {}).get('Transform', {}).get('position', {}))
+            effective = {**retail, **authored}
+            proposed = dict(effective)
+            for axis, offset in delta.items():
+                value = effective.get(axis)
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                    raise ProjectError(f'{identifier} has no finite effective {axis.upper()} placement')
+                proposed[axis] = value + offset
+                try:
+                    encode_placement_coordinate(proposed[axis], f'{identifier} proposed {axis.upper()}')
+                except ImportError as exc:
+                    raise ProjectError(str(exc)) from exc
+            targets.append({'entity_id': identifier, 'retail': retail, 'authored': authored,
+                            'effective': effective, 'proposed': proposed})
+        review_key = digest({'project_root': str(self.root), 'scene_id': self.active_scene,
+                             'source_document': digest(document), 'delta': delta,
+                             'overrides': {identifier: self.overrides.get(identifier) for identifier in sorted(actor_ids)}})
+        return {'schema_version': 'legaia.actor-placement-batch.v1', 'scene_id': self.active_scene,
+                'targets': targets, 'delta': deepcopy(delta), 'review_key': review_key,
+                'limitations': ['Only imported active-scene actor X/Z placement offsets are supported.',
+                                'Proposed coordinates must fit the exact retail 64-unit placement grid.',
+                                'Source Y, scripts, scheduling and runtime behavior are not inferred.']}
 
     def component_reviews(self, identifier: str, *, source_digest: str | None = None) -> list[dict]:
         """Detached authored settings with a source-bound identity for component removal."""

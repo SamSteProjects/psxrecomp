@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Atomic actor group placement authoring
+
+- Prior goal turn progressed: fa24cc1d committed component review/removal;
+  tracked tree clean. Added dedicated toolbar actor group selection/preview/
+  Apply, numeric source/effective/proposed layers, bounded 2–128 actor X/Z deltas
+  on the existing 64-unit MAN grid. All targets validate before any mutation.
+- Added source/project/actor-state/delta review identity and one grouped history
+  entry. Undo/Redo restore all owners; changed-source reimport checks every group
+  actor in history. Other components, imported metadata and source Y preserved.
+- 23 focused retail-enabled tests in9.731s/no skips passed. Initial invocation
+  named nonexistent test_project_placement_buildability and failed discovery;
+  corrected actual project/build modules passed, with added stale/replay test.
+  JavaScript syntax and diff checks passed. Retail town01 browser bounds and
+  no-write preview, one Apply request, Undo/Redo/Save, preserved menu edits and
+  close-pending-response rejection passed. Zero page errors; screenshots
+  inspected and final checkbox layout corrected/reviewed without writes.
+- Independent saved-project/package readback matched exact composed MAN: four
+  placement bytes, three prior menu runs and selector240. Package SHA256
+  cf2f42b2604cca3e3fccfdb778c0934e94ab00942df0fcff366f3ce87ed196c0.
+  Private actor-batch-project-20260930 evidence; browser closed, owned server
+  97103 stopped exit1. No game launched/package installed.
+- Updated buildout/status/matrix/usage/manual queue. 405 full checkpoint predates
+  this feature; goal remains active. General viewport group gizmos and runtime
+  placement/script behavior are not claimed.
+
 ### 2026-09-30 - Authored component review and reversible removal
 
 - Previous goal turn progressed: c0c66224 committed selector authoring and source

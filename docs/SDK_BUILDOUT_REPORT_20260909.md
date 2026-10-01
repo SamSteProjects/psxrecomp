@@ -15,6 +15,19 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Actor group placement offsets (2026-09-30):** the editor toolbar now
+previews and applies X/Z offsets to 2–128 imported active-scene actors. Retail,
+Authored, Effective and Proposed positions stay separate. All source-grid/bounds
+checks complete before one atomic command and one Undo entry. History protects
+all group actors during reimport; stale source/project/actor states and replay
+are rejected. 23 focused retail-enabled tests passed in 9.731s, no skips. Retail
+town01 browser preview/no-write/bounds/Apply/Undo/Redo/Save and closed pending
+response checks passed with zero page errors. Independent saved-project/package
+MAN readback matched the four placement bytes while retaining prior menu and
+selector edits. Screenshots inspected; no game launched or package installed.
+The 405-test full checkpoint predates this feature. See the
+[group placement guide](legaia-actor-group-offset.md).
+
 **Authored component review (2026-09-30):** Authored Assets details now
 show component-level review and source-bound Revert actions for actors, P2
 scripts and scenes. Removing one component preserves the others and imported

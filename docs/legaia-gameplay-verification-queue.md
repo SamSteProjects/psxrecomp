@@ -398,3 +398,13 @@ resolve the runtime pool/actual asset, and verify restaging, draw/movement and
 animation behavior through a matching cold build. No predicted character identity
 is supplied by the numeric selector. Offline bytes/history/persistence and
 package/candidate exactness do not prove runtime behavior. No game was launched.
+
+## Actor group placement offsets — deferred 2026-09-30
+
+Private actor-batch-project-20260930 package SHA256
+`cf2f42b2604cca3e3fccfdb778c0934e94ab00942df0fcff366f3ce87ed196c0`
+contains town01 actor0001/0002 effective X/Z offsets +64 each, alongside the
+existing three menu edits and actor0003 selector240. Offline exact MAN readback
+is verified. Later gameplay must establish actor reachability/visibility,
+collision and whether scripts override the initial placements. No package has
+been installed and no game launch is authorized for this offline pass.

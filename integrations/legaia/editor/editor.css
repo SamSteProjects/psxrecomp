@@ -56,6 +56,15 @@
 .transition-unresolved { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .transition-unresolved code { overflow-wrap: anywhere; }
 
+#actor-batch-dialog { width: min(820px, 90vw); }
+.batch-actors { max-height: 230px; overflow: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.batch-actors label { display: flex; flex-direction: row; align-items: center; gap: 7px; margin: 0; font-size: 12px; }
+.batch-actors input { width: auto; }
+.batch-result { overflow-x: auto; }
+.batch-result table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.batch-result th, .batch-result td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+@media (max-width: 600px) { .batch-actors { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 .ramp-filter { display: block; width: 100%; margin-top: 10px; }
 
 .coordinate-comparison { width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed; }

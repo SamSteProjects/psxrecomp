@@ -3,6 +3,7 @@ import {findDecodedPath} from '/script-paths.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {captureRuntimeReview,parseRuntimeReview,MAX_REVIEW_BYTES} from '/runtime-review.js';
+import {mountActorPlacementBatch} from '/actor-placement-batch.js';
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -500,6 +501,7 @@ function notify(message, error=false) {
 }
 function setBusy(value) {
   busy=value;if(value){cancelViewportGesture();cancelFollowTimer();}
+  actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
   document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||(button.dataset.animationEdit==='true'&&state.project?.mode!=='edit'));
@@ -669,6 +671,7 @@ $('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
 const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-button';draftsButton.textContent='NPC drafts';draftsButton.onclick=()=>openNpcDrafts();$('save-button').after(draftsButton);
+const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:entities,isBusy:()=>busy,canEdit,setBusy,api,notify,after:draftsButton});
 $('undo-button').onclick=()=>api('/api/undo',{});
 $('redo-button').onclick=()=>api('/api/redo',{});
 $('edit-mode').onclick=()=>api('/api/mode',{mode:'edit'});
@@ -695,6 +698,7 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
+  actorBatchTool.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(drag?.type==='transform'&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';

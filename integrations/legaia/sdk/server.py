@@ -508,6 +508,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 return
         files = {"/": ("index.html", "text/html"), "/editor.js": ("editor.js", "text/javascript"),
                  "/text-font.js": ("text-font.js", "text/javascript"),
+                 "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
@@ -1065,6 +1066,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
                     return
+                if route == "/api/actor-placement-batch":
+                    if set(body) != {"actor_ids", "delta"}:
+                        raise ProjectError("Actor group preview accepts actor identities and X/Z delta only")
+                    self._json(200, self.server.project.actor_placement_batch(body['actor_ids'], body['delta']))
+                    return
                 self._command(urlsplit(self.path).path, body)
                 self._json(200, self.server.state())
         except (RetailImportError, ProjectError, ValueError, KeyError, TypeError, OSError) as exc:
@@ -1075,6 +1081,10 @@ class EditorHandler(BaseHTTPRequestHandler):
         # Reject malformed field types before they reach filesystem/importer services.
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
+        if route == "/api/command" and body.get("type") == "offset_actor_placements":
+            if set(body) != {"type", "scene_id", "actor_ids", "delta", "review_key"}:
+                raise ProjectError("Actor group offset requires scene, actors, delta and reviewed identity only")
+            required_strings[route] = ("scene_id", "review_key")
         if route == "/api/command" and body.get("type") == "revert_authored_component":
             if set(body) != {"type", "entity_id", "component", "review_key"}:
                 raise ProjectError("Component revert accepts only owner, component and review identity")
