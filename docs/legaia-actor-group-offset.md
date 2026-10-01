@@ -26,7 +26,44 @@ also prevents changed-source reimport even after Undo leaves no active overrides
 Pending preview responses cannot attach after the dialog closes or its source
 context changes. Live mode disables authoring.
 
-## Evidence — 2026-09-30
+## Inspect the proposal in the 3D scene
+
+With the Authored scene loaded, choose **Inspect group in scene** after Preview.
+The viewport moves only the proposed actors and shows a separate proposal bar
+and reference markers. The source scene meshes and authored project stay intact.
+**Group layer** switches between Proposed and Current authored positions with
+the same camera; **Frame group** frames both sets of placement points.
+**Return to group** restores current positions and retains the selection,
+offsets and reviewed table for Apply. **Restore scene** discards the inspection.
+Neither comparison nor Restore sends authoring commands. Transform handles are
+disabled during inspection; scene GLB export requires Restore first.
+
+Proposed positions use a detached scene-service view and the same source terrain
+interpolation as the normal viewport. Missing surfaces keep the explicit
+ground-plane preview convention; no runtime elevation is inferred. Proposals
+are withdrawn on source/scene/project/mode changes or incompatible scene
+geometry/pose inspection. This is an offline placement preview.
+
+### 3D inspection evidence — 2026-09-30
+
+26 focused project/scene/component/group tests passed in 1.301s with no skips.
+Node checks cover exact coordinates, source/review identity, duplicate/missing
+actors, elevation conventions and detached maps. Editor/module syntax passed.
+Retail town01 actor0011/0012 inspection moved exactly the two proposed transforms,
+preserved all other transforms and the mesh set, and derived new source terrain
+height. Proposed/Current kept the camera; Return retained the draft; Restore
+recovered every original transform. Source invalidation withdrew the proposal.
+The inspection-only workflow sent zero authoring requests, preserved authoritative
+project state and had zero page errors. Screenshots were inspected. A separate
+Return-to-group Apply/Undo check restored all authored settings and dirty status;
+proposal export was rejected with zero export requests. No Save or game launch.
+
+Private evidence: `local-output/sdk-20260909/actor-group-scene-20260930/` contains
+`group-scene-browser-check.json`, `group-scene-return-apply.json`,
+`group-scene-proposed.png` and `group-scene-current.png`. The owned browser and
+server were closed. The 405-test full checkpoint predates this addition.
+
+## Group command and package evidence — 2026-09-30
 
 23 focused retail-enabled project/group/build tests passed in 9.731 seconds, no
 skips. Five group tests cover no-write preview and layered values, atomic rejection,

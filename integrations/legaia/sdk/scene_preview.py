@@ -32,6 +32,20 @@ def preview_project(project, representation='authored'):
     view.texture_overrides = {}
     return view
 
+
+def actor_placement_proposal_view(project, report):
+    """Detached placement projection; proposals never enter command history."""
+    verified = project.actor_placement_batch([row['entity_id'] for row in report['targets']], report['delta'])
+    if verified != report:
+        raise ProjectError('Actor group proposal differs from the current reviewed placements')
+    view = copy(project)
+    view.overrides = deepcopy(project.overrides)
+    for row in verified['targets']:
+        for axis, delta in verified['delta'].items():
+            if delta:
+                view.overrides.setdefault(row['entity_id'], {}).setdefault('Transform', {}).setdefault('position', {})[axis] = row['proposed'][axis]
+    return view
+
 def source_key(project, *, geometry_only=False) -> str | None:
     document = project.imports.get(project.active_scene)
     if not project.disc_path or not document:

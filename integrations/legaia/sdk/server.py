@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from copy import deepcopy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
@@ -1065,6 +1066,32 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self._json(200, self.server.export_preview(preview, frame_index, clip_fps))
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
+                    return
+                if route == "/api/actor-placement-batch-scene":
+                    if set(body) != {'actor_ids', 'delta', 'review_key'}:
+                        raise ProjectError('Actor group scene inspection requires actors, delta and reviewed identity only')
+                    from .scene_preview import actor_placement_proposal_view, source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    project = self.server.project
+                    report = project.actor_placement_batch(body['actor_ids'], body['delta'])
+                    if body['review_key'] != report['review_key']:
+                        raise ProjectError('Actor group changed since preview; preview it again')
+                    original_key = source_key(project)
+                    view = actor_placement_proposal_view(project, report)
+                    proposed = self.server.scene_previews.preview(
+                        view, lambda asset, *args, **kwargs: self.server.model_preview(asset, *args, effective_shape=True, project_view=view, **kwargs),
+                        load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
+                    if source_key(project) != original_key:
+                        raise ProjectError('Scene changed during group inspection')
+                    targets = {row['entity_id'] for row in report['targets']}
+                    self._json(200, {'schema_version': 'legaia.actor-placement-scene.v1',
+                                     'scene_id': report['scene_id'], 'project_source_key': original_key,
+                                     'review_key': report['review_key'],
+                                     'positions': [{key: deepcopy(entity[key]) for key in
+                                                    ('entity_id', 'position', 'preview_position', 'display_position', 'preview_height_status')}
+                                                   for entity in proposed['entities'] if entity['entity_id'] in targets]})
                     return
                 if route == "/api/actor-placement-batch":
                     if set(body) != {"actor_ids", "delta"}:

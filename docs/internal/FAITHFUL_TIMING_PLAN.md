@@ -213,6 +213,27 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Actor group 3D proposal inspection
+
+- Previous goal turn progressed: ea2042a9 committed group authoring. Tracked tree
+  clean. Continued the central-viewport workflow with read-only detached group
+  scene views, source-qualified positions and recalculated terrain previews.
+- Added Inspect group in scene, Proposed/Current layers, Frame group, retained
+  draft Return and Restore. Geometry stays unchanged; handles disabled and GLB
+  export requires Restore. Source/mode/context invalidation withdraws proposals.
+- 26 focused project/group/scene/component tests in1.301s, no skips, plus Node
+  identity/coordinate/height/detachment guards and editor/module syntax passed.
+  Retail town01 actor0011/0012 browser verified exact changed transforms, all
+  unrelated transforms/mesh set unchanged, new terrain elevation, same camera
+  comparison, Return/Restore and source invalidation. Inspection workflow made
+  zero authoring requests and kept authoritative state unchanged; zero page
+  errors. Proposed/Current screenshots inspected. Follow-up Return Apply/Undo
+  restored all authored settings/dirty state; export rejection issued no export.
+- Private evidence actor-group-scene-20260930. Browser closed; owned server5185
+  stopped exit1. No Save, package install or game launch in this turn. Updated
+  guide/status/buildout/matrix. Runtime elevation/visibility unverified; 405 full
+  checkpoint predates feature. Full goal remains active.
+
 ### 2026-09-30 - Atomic actor group placement authoring
 
 - Prior goal turn progressed: fa24cc1d committed component review/removal;

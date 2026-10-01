@@ -3,6 +3,18 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Actor group 3D proposal comparison (2026-09-30):** reviewed group offsets
+now inspect in the assembled viewport, with Proposed/Current authored layers,
+Frame group, Return retaining the draft and Restore. Only proposed transforms
+change; source terrain preview heights are recalculated, with unknown runtime
+elevation explicit. Handles are disabled and GLB export requires Restore.
+26 focused tests in 1.301s/no skips and Node guards passed. Retail town01 exact
+actor transforms, unchanged geometry/unrelated transforms, camera comparison,
+Return/Restore and source withdrawal passed with zero authoring requests/page
+errors; screenshots inspected. Separate Return Apply/Undo and export rejection
+passed. No game launched. The 405-test checkpoint predates this addition. See
+[group placement guide](legaia-actor-group-offset.md).
+
 **Actor group placement offsets (2026-09-30):** the editor toolbar now
 previews and applies X/Z offsets to 2–128 imported active-scene actors. Retail,
 Authored, Effective and Proposed positions stay separate. All source-grid/bounds

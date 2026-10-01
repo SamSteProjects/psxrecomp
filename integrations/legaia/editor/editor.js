@@ -10,6 +10,7 @@ const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
+let actorGroupInspection=null;
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
 const transformTools=document.createElement('div');transformTools.className='transform-tools';
 transformTools.innerHTML='<label><input id="transform-snap" type="checkbox"> Snap moves</label><label>Step <select id="transform-snap-step" aria-label="Transform snap step"><option value="16">16 units</option><option value="64" selected>64 units</option><option value="256">256 units</option><option value="1024">1024 units</option></select></label><span id="transform-drag-status" role="status">X/Z moves · snap aligns to scene origin</span>';
@@ -219,7 +220,7 @@ selectedExportButton.onclick=()=>{const id=visibilitySelection();if(!id){notify(
 async function exportSceneGlb(entityId=null){
   if(busy)return;
   if(!scenePreviewCurrent()||!state.scene_preview_source_key){notify('Wait for a current scene preview before exporting.',true);return;}
-  if(scenePose||shapeDraft){notify('Restore the scene pose and finish or discard model edits before exporting.',true);return;}
+  if(scenePose||shapeDraft||actorGroupInspection){notify('Restore the scene inspection and finish or discard model edits before exporting.',true);return;}
   cancelViewportGesture();const key=sceneRequestKey();setBusy(true);sceneExportButton.disabled=true;selectedExportButton.disabled=true;
   try{
     const response=await fetch('/api/export/scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation,source_key:state.scene_preview_source_key,...(entityId?{entity_id:entityId}:{})})}),result=await response.json();
@@ -575,6 +576,7 @@ function selectNpcDraft(id){pendingEntityFrame=null;npcDraftSelection=id;environ
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
+  if(actorGroupInspection)return null;
   if(sceneRepresentation!=="authored")return null;
   const npc=selectedNpcDraft();
   if(npc){if(!scenePreviewCurrent()||hiddenSceneEntities().has(npcDraftSelection))return null;return {id:npcDraftSelection,components:{Transform:{effective:{position:{...npc.position,y:null}}}}};}
@@ -625,6 +627,9 @@ function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase(
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
 function position(entity){
+  if(actorGroupInspection?.layer==='proposed'&&actorGroupInspection.key===resourceStateKey()&&scenePreviewCurrent()){
+    const proposed=actorGroupInspection.positions.get(entity.id);if(proposed)return {...proposed};
+  }
   const source=sceneRepresentation==='retail'?entity.components?.Transform?.imported?.position:entity.components?.Transform?.effective?.position ?? entity.components?.Transform?.imported?.position;
   const preview=scenePreviewCurrent()?activeScenePreview()?.entities.find(item=>item.entity_id===entity.id):null;
   return displayPosition(preview?.preview_position??source);
@@ -671,7 +676,13 @@ $('catalog-search').onclick=()=>readSceneCatalog();$('catalog-previous').onclick
 $('import-form').onsubmit=async event=>{event.preventDefault();$('status').textContent='Importing scene from local disc image…';await api('/api/import',{disc:$('disc-input').value,scene:$('scene-input').value},{dialog:$('import-dialog'),success:'Scene imported.'});};
 $('save-button').onclick=()=>api('/api/project/save',{}, {success:'Project saved.'});
 const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-button';draftsButton.textContent='NPC drafts';draftsButton.onclick=()=>openNpcDrafts();$('save-button').after(draftsButton);
-const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:entities,isBusy:()=>busy,canEdit,setBusy,api,notify,after:draftsButton});
+const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:entities,isBusy:()=>busy,canEdit,setBusy,api,after:draftsButton,
+  canInspectScene:()=>scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft,
+  onSceneInspection:(inspection,layer)=>{cancelViewportGesture();actorGroupInspection=inspection?{...inspection,layer,key:resourceStateKey()}:null;draw();},
+  frameGroup:inspection=>{
+    const points=[];for(const [id,proposed] of inspection.positions){const entity=entities().find(item=>item.id===id);if(!entity)continue;const original=activeScenePreview()?.entities.find(item=>item.entity_id===id)?.display_position;if(original)points.push(original);points.push(proposed);}
+    if(!points.length)return;const min={},max={};for(const axis of ['x','y','z']){min[axis]=Math.min(...points.map(p=>p[axis]));max[axis]=Math.max(...points.map(p=>p[axis]));camera.target[axis]=(min[axis]+max[axis])/2;}camera.distance=Math.max(200,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
+  }});
 $('undo-button').onclick=()=>api('/api/undo',{});
 $('redo-button').onclick=()=>api('/api/redo',{});
 $('edit-mode').onclick=()=>api('/api/mode',{mode:'edit'});
@@ -2630,6 +2641,7 @@ function drawEnvironmentSelection(){
   ctx.restore();
 }
 function draw(){
+  if(actorGroupInspection&&(!scenePreviewCurrent()||actorGroupInspection.key!==resourceStateKey()||sceneRepresentation!=='authored'||scenePose||shapeDraft))actorBatchTool.restore();
   if(scenePose&&(!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project?.mode!=='edit'))clearScenePose();
   if(!ctx)return;ctx.clearRect(0,0,width,height);projected=[];handles=[];
   if(sceneModelsReady()){try{sceneRenderer.draw(sceneView());}catch(error){sceneError=error.message;}}
@@ -2653,10 +2665,18 @@ function draw(){
         const original=displayPosition(entity.components?.Transform?.imported?.position),q=project(original);
         if(q&&Math.hypot(q.x-p.x,q.y-p.y)>3){ctx.save();ctx.setLineDash([4,4]);line(original,world,'#d6ad6c',1.5);ctx.setLineDash([]);ctx.strokeStyle='#d6ad6c';ctx.strokeRect(q.x-4,q.y-4,8,8);ctx.fillStyle='#e7c188';ctx.fillText('Imported',q.x+8,q.y+14);ctx.restore();}
       }
-      if(canEdit()&&sceneRepresentation==='authored'){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
+      if(canEdit()&&sceneRepresentation==='authored'&&!actorGroupInspection){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
   drawEnvironmentSelection();drawCoordinateProbe();drawScriptTargets();
+  if(actorGroupInspection){
+    for(const [id,proposed] of actorGroupInspection.positions){
+      if(hiddenSceneEntities().has(id)||!sceneLayers.actors)continue;
+      const original=activeScenePreview()?.entities.find(item=>item.entity_id===id)?.display_position;
+      if(!original)continue;ctx.save();ctx.setLineDash([4,4]);line(original,proposed,'#e1bb76',1.5);ctx.setLineDash([]);
+      const p=project(actorGroupInspection.layer==='proposed'?proposed:original);if(p){ctx.strokeStyle='#e1bb76';ctx.strokeRect(p.x-7,p.y-7,14,14);ctx.font='11px "Segoe UI",sans-serif';ctx.fillStyle='#e1bb76';ctx.fillText(`${id.split('/').at(-1)} · ${actorGroupInspection.layer}`,p.x+12,p.y+13);}ctx.restore();
+    }
+  }
   const scenery=selectedEnvironment(),movable=movableSelection();
   if((scenery||selectedNpcDraft())&&movable&&canEdit()){
     const world=draft?.id===movable.id?draft.position:position(movable),p=project(world),length=camera.distance*.085;

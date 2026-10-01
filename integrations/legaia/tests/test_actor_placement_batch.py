@@ -92,5 +92,18 @@ class ActorPlacementBatchTests(unittest.TestCase):
             with self.assertRaisesRegex(ProjectError,'command history'):p.import_metadata(changed)
             p.redo();self.assertEqual(p.overrides[B]['Transform']['position']['x'],576)
 
+    def test_detached_scene_proposal_preserves_project_and_history(self):
+        from sdk.scene_preview import actor_placement_proposal_view
+        with tempfile.TemporaryDirectory() as root:
+            p=self.project(root);p.command(dict(type='set_transform',entity_id=A,position={'x':192}))
+            before=deepcopy(p.overrides);history=deepcopy(p.undo_stack)
+            report=p.actor_placement_batch([A,B],{'x':64})
+            view=actor_placement_proposal_view(p,report)
+            self.assertIsNot(view,p);self.assertEqual(view.overrides[A]['Transform']['position']['x'],256)
+            self.assertEqual(view.overrides[B]['Transform']['position']['x'],576)
+            self.assertEqual(p.overrides,before);self.assertEqual(p.undo_stack,history)
+            report['targets'][0]['proposed']['x']+=64
+            with self.assertRaises(ProjectError):actor_placement_proposal_view(p,report)
+
 
 if __name__=='__main__':unittest.main()
