@@ -128,9 +128,10 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     movements={}
     flags={}
     waits={}
+    model_selectors={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits'} if p2 else {'Transform','ActorAppearance','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors'} if p2 else {'Transform','ActorAppearance','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
             raise ProjectError('Draft serialization currently composes only same-scene actor positions, appearances and dialogue')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
@@ -146,6 +147,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         if 'ScriptWaits' in components:
             project._validate_waits(identifier,components['ScriptWaits'])
             waits.update(components['ScriptWaits']['entries'])
+        if 'ScriptModelSelectors' in components:
+            project._validate_model_selectors(identifier,components['ScriptModelSelectors'])
+            model_selectors.update(components['ScriptModelSelectors']['entries'])
         if 'Transitions' in components:
             value=components['Transitions']
             if not isinstance(value,dict) or set(value)!={'entries'} or not isinstance(value['entries'],dict) or not value['entries']:
@@ -179,6 +183,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     flag_context=load_flag_authoring_context(project.disc_path,scene) if flags else None
     from importer.wait_authoring import load_wait_authoring_context
     wait_context=load_wait_authoring_context(project.disc_path,scene) if waits else None
+    from importer.model_selector_authoring import load_model_selector_authoring_context
+    model_selector_context=load_model_selector_authoring_context(project.disc_path,scene) if model_selectors else None
     transition_edits={}
     for identifier,entries in transitions.items():
         allowed={item['semantic_id'] for item in transition_context.options(identifier)['transitions']}
@@ -243,6 +249,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             flag_context.patch(flags,original=source)
         if wait_context:
             wait_context.patch(waits,original=source)
+        if model_selector_context:
+            model_selector_context.patch(model_selectors,original=source)
         if requests:
             candidate,actor_audit=append_actor_candidates(source,sha256(source).hexdigest(),requests)
         else:
@@ -272,6 +280,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         wait_audit=[]
         if wait_context:
             candidate,wait_audit=wait_context.patch_appended(candidate,waits)
+        model_selector_audit=[]
+        if model_selector_context:
+            candidate,model_selector_audit=model_selector_context.patch_appended(candidate,model_selectors)
         absolute=archive.entry(bundle.entry_index).start_lba*2048+bundle.table_offset
         span=locate_physical_span(archive,absolute)
         prot=archive.image.read_user(archive.node.extent_lba,0,archive.node.size,archive.node.size)
@@ -310,7 +321,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         actor=actor_audit,existing_actor_placement_changes=placement_audit,
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_dialogue_changes=dialogue_audit,
-        transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit,
+        transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit,
         final_man_sha256=sha256(candidate).hexdigest(),
         container=container_audit,gameplay_verified=False)
 

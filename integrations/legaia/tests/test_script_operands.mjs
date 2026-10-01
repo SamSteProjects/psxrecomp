@@ -16,6 +16,14 @@ for(const [kind,mnemonic,values,operands] of [['flag','CFLAG_SET',{bit:2},{bit:2
  assert.equal(instructionOperandEditors(r).get(5).kind,kind);
 }
 console.log('Operand layer binding, stale/context/value rejection, bounds, ambiguity and source detachment passed.');
+const modelRow={pc:10,mnemonic:'SET_ACTOR_MODEL',target_context:7,operands:{model_selector_signed:241}};
+const modelTarget={pc:10,mnemonic:modelRow.mnemonic,target_context:7,semantic_id:'script://fixture/actors/man-p1/0001/model-selector/000a',values:{model_selector_signed:241},authored_values:{model_selector_signed:-1},effective_values:{model_selector_signed:-1}};
+const modelReport={instructions:[modelRow],model_selector_authoring:{supported:true,targets:[modelTarget]}};
+assert.equal(instructionOperandEditors(modelReport).get(10).kind,'modelSelector');
+assert.equal(instructionOperandEditors(modelReport).get(10).effective.model_selector_signed,-1);
+assert.equal(instructionOperandEditors({...modelReport,instructions:[{...modelRow,target_context:null}]}).size,0);
+assert.equal(instructionOperandEditors({...modelReport,model_selector_authoring:{supported:true,targets:[{...modelTarget,effective_values:{model_selector_signed:241}}]}}).size,0);
+console.log('Model-selector signed layers and extended-context/source guards passed.');
 
 const owner='scene://fixture/actors/man-p1/0001',prefix='script://fixture/actors/man-p1/0001';
 const menu={pc:8,mnemonic:'DIALOGUE_PICKER',operands:{option_count:2,options:[

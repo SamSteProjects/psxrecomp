@@ -383,3 +383,18 @@ package readback passed. Three authored glyph runs match expected MAN exactly.
 reachability remains unproven; it is not a claimed normal-gameplay checkpoint.
 Later visible label/font/selection verification still requires an evidenced
 reachable menu. No game launch or immediate manual check is requested.
+
+## Script model selectors - manual acceptance pending
+
+Private town01 selector/menu package SHA256
+`228abd8eea3d71114f5401b7897c12109a5d257130474757d51e5b1dfe9ebaac`
+is retained under `local-output/sdk-20260909/model-selector-town01-20260930/`.
+Actor0003 selector at PC0x0C changes241 to240; three earlier debug-like menu
+labels remain composed and their normal-play reachability is unproven. The
+Dolk2 actor0002 saved project and logical rebuilt-archive evidence are under
+`model-selector-project-20260930/`; a playable disc was not emitted/installed.
+When manual verification resumes, establish which source branch executes,
+resolve the runtime pool/actual asset, and verify restaging, draw/movement and
+animation behavior through a matching cold build. No predicted character identity
+is supplied by the numeric selector. Offline bytes/history/persistence and
+package/candidate exactness do not prove runtime behavior. No game was launched.

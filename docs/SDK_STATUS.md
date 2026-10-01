@@ -3,6 +3,19 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Script model-selector authoring (2026-09-30):** reached SET_ACTOR_MODEL
+signed16 operands now use source-qualified commands, separate retail/authored/
+effective layers, draft dispatch display, exact instruction-field navigation,
+Undo/Redo, persistence, descriptor Build and experimental streaming/append output.
+Runtime model-pool bases, actual assets and restaging remain unresolved; the
+viewport does not execute the opcode. 34 focused retail-enabled tests passed in
+35.413s with no skips, including five selector tests covering P2 ownership and
+rebased extended actor-context rejection. Node binding/editor syntax and Dolk2 browser workflows passed; screenshots
+inspected. Town01 package readback matched the exact MAN, retaining three menu
+edits; Dolk2 rebuilt PROT contained the exact candidate. The 405-test checkpoint predates
+this feature. No game launched; gameplay deferred. See the
+[model-selector guide](legaia-script-model-selectors.md).
+
 **Project-wide text search (2026-09-30):** the same text search panel now
 covers all imported scenes, retains scene coverage/reasons and opens the owning
 scene before focusing the exact edit field. Discovery uses detached views and
@@ -12,7 +25,7 @@ editor syntax passed. Browser layer/scene search, cross-scene/return navigation,
 stale aggregate and held-response close/reopen guards passed with unchanged
 text/history and zero authoring requests/page errors. Screenshot inspected.
 Explicit navigation changes Active scene; discovery leaves it unchanged.
-Unknown/unvisited text remains excluded. The405-test checkpoint includes this feature; gameplay remains deferred. See [text search guide](legaia-scene-text-search.md).
+Unknown/unvisited text remains excluded. The 405-test checkpoint includes this feature; gameplay remains deferred. See [text search guide](legaia-scene-text-search.md).
 
 **Scene text search (2026-09-30):** source-qualified dialogue/menu runs
 are searchable by text, owner and retail/effective/authored layers, with pages
@@ -22,7 +35,7 @@ Nine focused Python tests and editor syntax passed. Browser filtering, paging,
 field navigation, stale text-state and closed pending-response guards passed
 with unchanged project state, zero authoring requests and page errors. Screenshot
 inspected. Unknown/unvisited bytes and unsupported dialogue remain excluded;
-coverage is explicit. The405-test checkpoint includes this feature; gameplay deferred.
+coverage is explicit. The 405-test checkpoint includes this feature; gameplay deferred.
 See the [scene text search guide](legaia-scene-text-search.md).
 
 **Retail glyph preview (2026-09-30):** supported dialogue/menu forms show
@@ -32,7 +45,7 @@ Retail browser pixel/advance readback, invalid drafts, Discard, held-response
 close/reopen and malformed request rejection passed with unchanged project
 state, zero authoring requests and page errors. Screenshot inspected. Controls,
 substitutions, boxes, wrapping, pager behavior and runtime tint are not simulated.
-The405-test checkpoint includes this feature; gameplay remains deferred. See the
+The 405-test checkpoint includes this feature; gameplay remains deferred. See the
 [glyph preview guide](legaia-text-glyph-preview.md).
 
 
@@ -83,7 +96,7 @@ Retail texture29 browser checks passed draft/no-write, bounds and stale-hash
 rejection, no-op/no-history, Apply, Undo/Redo, Discard, Save/reopen and Build.
 Independent package readback matched all pixels/palettes and the saved33312-byte
 TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
-focused tests passed with no skips. This feature is included in the current392-test source checkpoint; browser
+focused tests passed with no skips. This feature is included in the 405-test source checkpoint; browser
 and package evidence remain separate. Gameplay appearance remains deferred.
 
 **Renderer newline preservation fix (2026-09-30):** the plain-glyph
@@ -111,7 +124,7 @@ passed. Retail browser export/no-op/preview/immutable-field/stale-import,
 two-run Apply/Undo/Redo/Save, oversized-file and closed pending-read guards
 passed. Independent saved-project/package readback matched all three authored
 label runs, including the prior override. Final preview screenshot and layout
-bounds inspected. The current397-test source checkpoint includes this workflow; browser/package evidence remains separate.
+bounds inspected. The 405-test source checkpoint includes this workflow; browser/package evidence remains separate.
 See the [text-file guide](legaia-text-json-authoring.md). No game was launched;
 menu reachability and display/selection remain deferred.
 
@@ -135,7 +148,7 @@ control/substitution tokens and record boundaries. Ordinary dialogue retains its
 no-stop gate; conflicting or aliased menu spans remain unavailable. 54 focused
 retail-enabled dialogue/script/resource tests passed in29.896s with no skips,
 plus editor syntax and a retail browser workflow. A saved town01 actor0001
-label package independently decoded to exactly the expected MAN. This is included in the current397-test source checkpoint; browser/package evidence remains separate. Menu story
+label package independently decoded to exactly the expected MAN. This is included in the 405-test source checkpoint; browser/package evidence remains separate. Menu story
 reachability, glyph layout and runtime selection are unverified. See the
 [menu-label guide](legaia-menu-label-authoring.md). No game was launched.
 

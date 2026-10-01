@@ -4,7 +4,7 @@ export function instructionOperandEditors(report){
   if(!Array.isArray(instructions)||instructions.length>16384)return new Map();
   const source=new Map(instructions.map(row=>[row.pc,row]));
   const output=new Map(),ambiguous=new Set();let budget=0;
-  for(const [kind,key] of [['movement','movement_authoring'],['flag','flag_authoring'],['wait','wait_authoring']]){
+  for(const [kind,key] of [['movement','movement_authoring'],['flag','flag_authoring'],['wait','wait_authoring'],['modelSelector','model_selector_authoring']]){
     const authoring=report?.[key];if(authoring?.supported!==true)continue;
     const targets=authoring.targets;
     if(!Array.isArray(targets)||(budget+=targets.length)>4096)return new Map();
@@ -13,7 +13,7 @@ export function instructionOperandEditors(report){
       if(!row||!Number.isInteger(target.pc)||row.mnemonic!==target.mnemonic||row.target_context!==target.target_context||
         typeof target.semantic_id!=='string'||!values||!authored||!effective)continue;
       const fields=Object.keys(values);if(!fields.length||fields.length>3)continue;
-      const expected=kind==='flag'?{bit:row.operands?.bit}:kind==='wait'?{duration_ticks:row.operands?.duration_ticks}:
+      const expected=kind==='flag'?{bit:row.operands?.bit}:kind==='wait'?{duration_ticks:row.operands?.duration_ticks}:kind==='modelSelector'?{model_selector_signed:row.operands?.model_selector_signed}:
         {...row.operands?.target_position,move_id:row.operands?.move_id};
       if(fields.some(field=>!Number.isInteger(values[field])||expected[field]!==values[field]||!Number.isInteger(effective[field]))||
         Object.keys(authored).some(field=>!fields.includes(field)||!Number.isInteger(authored[field]))||

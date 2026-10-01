@@ -354,3 +354,12 @@ CLUT, width table, hashes and limits are recorded in the
 advances are reference evidence plus retail extraction; layout and runtime tint
 are not live evidence. Browser canvas readback and visual inspection passed.
 No reference implementation or retail pixels are bundled.
+
+## Script model-selector authoring - 2026-09-30
+
+The unchanged pin's `field/step/menu_ctrl/nibble_5_6_7.rs::op_4c_n5`
+and `field/host.rs::op4c_n5_sub0_set_actor_model` establish signed16 layout,
+signed >=0xF0 high-pool dispatch and primitive state writes. Independent source
+patching preserves every other byte and extended context. Pool-to-asset resolution
+and mesh restaging are not asserted. Source/retail/browser/output evidence and
+limits are recorded in [the guide](legaia-script-model-selectors.md).

@@ -469,7 +469,7 @@ async function openBuildChange(change,vector=null){
   if(!await api('/api/selection',{entity_id:owner}))return;
   frame(selected());
   document.querySelector('.workspace-tabs [data-panel="viewport"]').click();
-  if(change.field==='dialogue.text'||change.scope==='encoded-transition-entry-only')await openActorScript(selected(),false,change.asset_id);
+  if(change.field==='dialogue.text'||change.scope==='encoded-transition-entry-only'||change.scope==='script-model-selector-only')await openActorScript(selected(),false,change.asset_id);
 }
 function renderBuildReport(){
   const result=state.build;
@@ -2194,13 +2194,13 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     const instructionNavigation=appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report);
 
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
-    scriptReport=report;renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();renderFlagAuthoring();renderWaitAuthoring();updateScriptActions();
+    scriptReport=report;renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();renderFlagAuthoring();renderWaitAuthoring();renderModelSelectorAuthoring();updateScriptActions();
     scriptDialog.scrollTop=scroll;
     if(Number.isInteger(focusInstruction)){
       $('script-report').querySelector('.script-instructions').open=true;
       if(!instructionNavigation.select(focusInstruction))notify('The selected instruction was not found in the verified report.',true);
     }
-  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,.movement-authoring,.flag-authoring,.wait-authoring,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);if(input){if(focusRun.includes('/transition/'))input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
+  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,.movement-authoring,.flag-authoring,.wait-authoring,.modelSelector-authoring,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);if(input){if(focusRun.includes('/transition/'))input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
 }
 
 function renderMovementAuthoring(){
@@ -2303,6 +2303,39 @@ function renderWaitAuthoring(){
     section.append(form);form.updateState();
   }
 }
+function renderModelSelectorAuthoring(){
+  const authoring=scriptReport?.model_selector_authoring;if(!authoring)return;
+  const section=document.createElement('section');section.className='modelSelector-authoring';
+  const heading=document.createElement('h3'),note=document.createElement('p');heading.textContent='Script model selectors';note.className='field-note';
+  note.textContent='Edit a signed16 script selector (-32768 to32767), not a resolved model asset. Values >=240 request the high pool. Runtime pool bases and restaging are unresolved; the primitive resets move_id and clears draw flag0x1000. Build and Export disc preserve instruction layout; gameplay remains unverified.';
+  section.append(heading,note);$('script-report').append(section);
+  const owner=scriptEntity.id,key=resourceStateKey(),current=()=>scriptDialog.open&&!busy&&canEditDialogue()&&key===resourceStateKey()&&scriptEntity?.id===owner;
+  const send=async(id,type,values)=>{
+    if(!current())return;
+    if(await api('/api/command',{type,entity_id:owner,model_selector_id:id,...(type==='set_model_selector_target'?{values}:{})})){
+      scriptDrafts.delete(id);await openActorScript(scriptEntity,true,id);
+    }else scriptDialog.querySelector('.dialog-error').textContent=$('status').textContent;
+  };
+  if(authoring.reason){const reason=document.createElement('p');reason.textContent=authoring.reason;section.append(reason);}
+  for(const item of authoring.unavailable??[]){const reason=document.createElement('p');reason.className='field-note';reason.textContent=`SET_ACTOR_MODEL at ${scriptOffset(item.pc)}: ${item.reason}`;section.append(reason);}
+  for(const id of authoring.unresolved_overrides??[]){
+    const button=document.createElement('button');button.textContent=`Clear unresolved model selector ${id}`;button.dataset.clearModelSelector=id;button.onclick=()=>send(id,'clear_model_selector_target');section.append(button);
+  }
+  for(const target of authoring.targets??[]){
+    const form=document.createElement('form');form.className='modelSelector-entry';form.dataset.modelSelectorId=target.semantic_id;
+    const title=document.createElement('h4'),layers=document.createElement('p');title.textContent=`${target.mnemonic} at ${scriptOffset(target.pc)}`;
+    layers.className='modelSelector-layers';layers.textContent=`Retail selector ${target.values.model_selector_signed} · Authored ${Object.keys(target.authored_values).length?target.authored_values.model_selector_signed:'none'} · Effective selector ${target.effective_values.model_selector_signed}${target.target_context!==null?` · Encoded actor context ${target.target_context}, runtime binding unresolved`:''}`;
+    const label=document.createElement('label'),input=document.createElement('input');label.textContent='Signed script model selector';input.type='number';input.required=true;input.min='-32768';input.max='32767';input.step='1';input.dataset.runInput=target.semantic_id;input.value=scriptDrafts.get(target.semantic_id)?.model_selector_signed??target.effective_values.model_selector_signed;input.setAttribute('aria-label',`Model selector at ${scriptOffset(target.pc)}`);label.append(input);
+    const apply=document.createElement('button'),clear=document.createElement('button'),discard=document.createElement('button');apply.type='submit';apply.textContent='Apply model selector';clear.type=discard.type='button';clear.textContent='Clear model selector override';discard.textContent='Discard model selector draft';form.append(title,layers,label,apply,clear,discard);
+    const dispatch=document.createElement('p');dispatch.className='field-note';form.append(dispatch);
+    const valid=()=>input.value!==''&&input.checkValidity();
+    form.updateState=()=>{dispatch.textContent=valid()?`Draft encoded u16 ${Number(input.value)&65535} · High-pool flag ${Number(input.value)>=240?'set':'clear'} · Asset binding unresolved`:'Invalid signed16 selector';const editable=current();input.disabled=!editable;apply.disabled=!editable||!valid();clear.disabled=!editable||!Object.keys(target.authored_values).length;discard.disabled=busy;discard.hidden=!scriptDrafts.has(target.semantic_id);};
+    input.oninput=()=>{scriptDrafts.set(target.semantic_id,{model_selector_signed:input.value});updateScriptActions();};
+    form.onsubmit=event=>{event.preventDefault();if(!apply.disabled)send(target.semantic_id,'set_model_selector_target',{model_selector_signed:Number(input.value)});};
+    clear.onclick=()=>send(target.semantic_id,'clear_model_selector_target');discard.onclick=()=>{scriptDrafts.delete(target.semantic_id);input.value=target.effective_values.model_selector_signed;updateScriptActions();};
+    section.append(form);form.updateState();
+  }
+}
 function renderTransitionAuthoring(){
   const authoring=scriptReport?.transition_authoring;if(!authoring||(!authoring.transitions?.length&&!authoring.unresolved_overrides?.length))return;
   const section=document.createElement('section'),heading=document.createElement('h3'),note=document.createElement('p');
@@ -2356,7 +2389,7 @@ function renderTransitionAuthoring(){
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
 function updateScriptActions(){
   const authoring=scriptReport?.dialogue_authoring;
-  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length||scriptReport?.flag_authoring?.supported||scriptReport?.flag_authoring?.unresolved_overrides?.length||scriptReport?.wait_authoring?.supported||scriptReport?.wait_authoring?.unresolved_overrides?.length);
+  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length||scriptReport?.flag_authoring?.supported||scriptReport?.flag_authoring?.unresolved_overrides?.length||scriptReport?.wait_authoring?.supported||scriptReport?.wait_authoring?.unresolved_overrides?.length||scriptReport?.model_selector_authoring?.supported||scriptReport?.model_selector_authoring?.unresolved_overrides?.length);
   const pending=scriptDrafts.size>0;
   $('script-undo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_undo;
   $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;
@@ -2365,8 +2398,8 @@ function updateScriptActions(){
   for(const button of scriptDialog.querySelectorAll('[data-text-file]'))button.disabled=busy||pending||!canEditDialogue();
   for(const form of scriptDialog.querySelectorAll('.dialogue-run'))updateDialogueRun(form);
   for(const form of scriptDialog.querySelectorAll('.transition-entry'))form.updateState();
-  for(const form of scriptDialog.querySelectorAll('.movement-entry,.flag-entry,.wait-entry'))form.updateState();
-  for(const button of scriptDialog.querySelectorAll('[data-clear-flag],[data-clear-wait]'))button.disabled=busy||!canEditDialogue();
+  for(const form of scriptDialog.querySelectorAll('.movement-entry,.flag-entry,.wait-entry,.modelSelector-entry'))form.updateState();
+  for(const button of scriptDialog.querySelectorAll('[data-clear-flag],[data-clear-wait],[data-clear-model-selector]'))button.disabled=busy||!canEditDialogue();
   for(const button of scriptDialog.querySelectorAll('[data-clear-movement]'))button.disabled=busy||!canEditDialogue();
   for(const button of scriptDialog.querySelectorAll('[data-clear-unresolved],[data-clear-transition]'))button.disabled=busy||!canEditDialogue();
 }

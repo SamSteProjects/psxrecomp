@@ -213,6 +213,42 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Source-qualified script model-selector authoring
+
+- Final review strengthened appended selector guards: encoded actor context
+  must match source; Build audit also verifies instruction PC. Added a
+  regression proving changed extended context is rejected. Refreshed focused
+  retail-enabled suite: 34 tests in 35.413s, no skips, terminal exit0; Node
+  bindings/editor syntax and diff checks passed. No game launched.
+- Buildout/status wording now identifies 405 as the latest full checkpoint
+  and keeps selector validation separate. Local feature commit follows.
+- Previous turn progressed:405-test checkpoint committed bb7b88c7. Verified
+  unchanged reference pin nibble_5_6_7.rs/host.rs signed16 selector, signed>=240
+  high pool and state effects; actual runtime asset/restaging remain unknown.
+- Connected selector codec, P1/P2 commands/history/persistence, source forms and
+  exact instruction-field binding, signed/unsigned draft display, descriptor
+  audited Build, append rebasing and experimental streaming composition. No
+  runtime core or game launch. Numeric selector is not a resolved model asset.
+-32 focused retail-enabled tests35.617s/no skips, then four selector tests0.665s
+  including added P2 ownership. Node bindings/editor syntax passed. Earlier
+  six-test wait-only smoke skipped the disc check because env was absent;
+  retail-enabled rerun passed, and the32-test run is authoritative.
+- Retail scan:10 Dolk2/3 town01 actor selectors offered. Dolk2 actor0002 browser
+  navigation, invalid/negative draft/no-write, Discard, Apply/Undo/Redo/Clear/
+  Undo/Save and Boolean HTTP rejection passed; exact saved field focus and final
+  screenshot inspected with zero page errors. Owned browser closed/server65809
+  stopped exit1. Ordinary Dolk2 package Build correctly rejects streaming data;
+  added/verified selector routing in the experimental streaming exporter.
+- Town01 actor0003 package independently decoded to exact requested MAN plus
+  three prior menu edits. SHA228abd8eea3d71114f5401b7897c12109a5d257130474757d51e5b1dfe9ebaac.
+  Dolk2 candidate exactly matched requested bytes and occurred uniquely in rebuilt
+  PROT. Private evidence in model-selector-project-20260930 and
+  model-selector-town01-20260930. No disc installed/emitted or game launched.
+- Updated report/status/matrix/provenance/manual queue.405 source checkpoint
+  predates feature; source/runtime asset binding, restaging and gameplay deferred.
+  Full goal active and offline work not declared exhausted.
+
+
 ### 2026-09-30 - Fresh405-test SDK checkpoint for glyph and text discovery
 
 - Previous turn was progress: project-wide text search committed cc41ded0.
