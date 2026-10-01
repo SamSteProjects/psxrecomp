@@ -74,3 +74,13 @@ contains `scene-text-index.json`, `text-search-browser-check.json`,
 `text-search-late-check.json` and `text-search.png`. These retain private source
 text and are ignored. The397-test checkpoint predates this feature. No game was
 launched; gameplay acceptance remains deferred.
+
+## Accumulated source checkpoint - 2026-09-30
+
+The405-test retail-enabled SDK discovery run passed in165.295s with no skips
+at unchanged source `cc41ded01fd8b14fee9c9795c9d780aa43a1f82e`. This supersedes
+the397-test checkpoint referenced in the original feature evidence above and
+includes this service and its focused tests. Font/operand/texture/runtime-review
+Node checks and editor syntax passed separately. Browser evidence and deferred
+gameplay acceptance remain separate. Exact private log and command/source/hash
+metadata: `local-output/sdk-20260909/sdk-regression-20260930-text-discovery.log/.json`.

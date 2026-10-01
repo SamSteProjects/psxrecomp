@@ -24,8 +24,7 @@ editor syntax passed. Browser layer/scene search, cross-scene/return navigation,
 stale aggregate and held-response close/reopen guards passed with unchanged
 text/history and zero authoring requests/page errors. Screenshot inspected.
 Explicit navigation changes Active scene; discovery leaves it unchanged.
-Unknown/unvisited text remains excluded. Gameplay remains deferred;397 full
-checkpoint predates this feature. See [text search guide](legaia-scene-text-search.md).
+Unknown/unvisited text remains excluded. The405-test checkpoint includes this feature; gameplay remains deferred. See [text search guide](legaia-scene-text-search.md).
 
 **Scene text search (2026-09-30):** source-qualified dialogue/menu runs
 are searchable by text, owner and retail/effective/authored layers, with pages
@@ -35,7 +34,7 @@ Nine focused Python tests and editor syntax passed. Browser filtering, paging,
 field navigation, stale text-state and closed pending-response guards passed
 with unchanged project state, zero authoring requests and page errors. Screenshot
 inspected. Unknown/unvisited bytes and unsupported dialogue remain excluded;
-coverage is explicit. This follows the397-test checkpoint; gameplay deferred.
+coverage is explicit. The405-test checkpoint includes this feature; gameplay deferred.
 See the [scene text search guide](legaia-scene-text-search.md).
 
 **Retail glyph preview (2026-09-30):** supported dialogue/menu forms show
@@ -45,7 +44,7 @@ Retail browser pixel/advance readback, invalid drafts, Discard, held-response
 close/reopen and malformed request rejection passed with unchanged project
 state, zero authoring requests and page errors. Screenshot inspected. Controls,
 substitutions, boxes, wrapping, pager behavior and runtime tint are not simulated.
-This follows the397-test checkpoint; gameplay remains deferred. See the
+The405-test checkpoint includes this feature; gameplay remains deferred. See the
 [glyph preview guide](legaia-text-glyph-preview.md).
 
 **Renderer newline preservation fix (2026-09-30):** the plain-glyph
@@ -97,7 +96,7 @@ control/substitution tokens and record boundaries. Ordinary dialogue retains its
 no-stop gate; conflicting or aliased menu spans remain unavailable. 54 focused
 retail-enabled dialogue/script/resource tests passed in29.896s with no skips,
 plus editor syntax and a retail browser workflow. A saved town01 actor0001
-label package independently decoded to exactly the expected MAN. This is included in the current397-test source checkpoint; browser/package evidence remains separate. Menu story
+label package independently decoded to exactly the expected MAN. This is included in the current405-test source checkpoint; browser/package evidence remains separate. Menu story
 reachability, glyph layout and runtime selection are unverified. See the
 [menu-label guide](legaia-menu-label-authoring.md). No game was launched.
 
@@ -119,7 +118,7 @@ Retail texture29 browser checks passed draft/no-write, bounds and stale-hash
 rejection, no-op/no-history, Apply, Undo/Redo, Discard, Save/reopen and Build.
 Independent package readback matched all pixels/palettes and the saved33312-byte
 TIM; three indices/image bytes changed, zero palette words.24 retail-enabled
-focused tests passed with no skips. This feature is included in the current397-test source checkpoint; browser
+focused tests passed with no skips. This feature is included in the current405-test source checkpoint; browser
 and package evidence remain separate. Gameplay appearance remains deferred.
 
 **Independent animation consumer review (2026-09-30):** Blender 5.2.2 rendered
@@ -169,7 +168,7 @@ these operands with audited source offsets. The script Inspector now supports
 Apply, Clear and Discard with separate retail/authored/effective operands.
 Independent package and rebuilt archive readbacks passed; see the update below. Special context side effects, unresolved
 local widths, system flags and branch selectors remain unsupported. The
-earlier365/383/390-test checkpoints have been superseded by the current392-test run
+earlier365/383/390-test checkpoints have been superseded by the earlier392-test run
 below. Browser checks for texture dependency inspection, model rotations and
 script operand forms remain separately recorded. Manual gameplay verification remains deferred.
 
@@ -206,19 +205,19 @@ state, history or authored-file changes. Gameplay appearance remains deferred.
   town01 models passed exact JSON round trips; a retail normal-only edit and a
   combined model/animation package passed offline readback checks.
 
-The latest retail-enabled SDK discovery suite passed **397 tests in 164.669
-seconds**, exit code0, with no skips, against unchanged committed source
-`e1b88c22f67cad6b81f29f7d9179e267d95456a8`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-text-files.log`; corresponding
-JSON records command/source/result and SHA256. This includes the accumulated SDK
-services plus menu-label preservation/rejection, partition-one/two command
-history and atomic text-file checks. It supersedes the392-test checkpoint at
-`1eafc313`. Texture usage, instruction operand/menu binding, historical runtime
-review JavaScript checks and editor syntax also passed.
-Browser interaction/rendering retains its separately recorded evidence. A green
-suite does not establish gameplay, runtime parity, retail visibility or external
-rendered animation acceptance beyond the separately reviewed clip below. Historical
-test counts remain dated evidence.
+The retail-enabled SDK discovery suite passed **405 tests in165.295 seconds**,
+exit code0, with no skips, against unchanged committed source
+`cc41ded01fd8b14fee9c9795c9d780aa43a1f82e`. This supersedes the397-test checkpoint
+at `e1b88c22` and includes the renderer-newline fix, retail font decoder/preview
+service, scene text discovery and project-wide text search. Log and exact command,
+source, result and hash metadata:
+`local-output/sdk-20260909/sdk-regression-20260930-text-discovery.log/.json`.
+Log SHA256: `0d3dffe5000f63ef9a7812fd1bd5b6fb89a8b13da3ae55a9d4b7930fcabce036`.
+Font layout/source guards, texture usage, script operand/menu binding and saved
+runtime-review Node checks, plus editor syntax, passed separately. Browser
+workflows retain their recorded pixel/render/navigation evidence; a green suite
+does not establish gameplay, runtime parity or broader rendered acceptance.
+Historical checkpoints below retain their dated evidence.
 
 **Gameplay is deferred at the user's request.** These later changes did not
 launch the game. Full runtime parity, normal lighting, wider scene/animation

@@ -2,13 +2,19 @@
 
 Current scene-editor status (2026-09-30):
 
-Current regression:397 retail-enabled Python discovery tests passed in164.669s,
-no skips, source`e1b88c22`; source remained clean/unchanged throughout. This
-supersedes392 at1eafc313 and includes menu and atomic text-file services. Texture
-usage, operand/menu binding, runtime-review Node checks and editor syntax passed.
-Private log/metadata: `local-output/sdk-20260909/sdk-regression-20260930-text-files.log/.json`.
-Browser/gameplay acceptance remains separate. Historical entries below retain
-their dated source checkpoints.
+The retail-enabled SDK discovery suite passed **405 tests in165.295 seconds**,
+exit code0, with no skips, against unchanged committed source
+`cc41ded01fd8b14fee9c9795c9d780aa43a1f82e`. This supersedes the397-test checkpoint
+at `e1b88c22` and includes the renderer-newline fix, retail font decoder/preview
+service, scene text discovery and project-wide text search. Log and exact command,
+source, result and hash metadata:
+`local-output/sdk-20260909/sdk-regression-20260930-text-discovery.log/.json`.
+Log SHA256: `0d3dffe5000f63ef9a7812fd1bd5b6fb89a8b13da3ae55a9d4b7930fcabce036`.
+Font layout/source guards, texture usage, script operand/menu binding and saved
+runtime-review Node checks, plus editor syntax, passed separately. Browser
+workflows retain their recorded pixel/render/navigation evidence; a green suite
+does not establish gameplay, runtime parity or broader rendered acceptance.
+Historical checkpoints below retain their dated evidence.
 
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |

@@ -49,3 +49,13 @@ Observed retail TIM SHA256:
 `f4d822bab3ffe9e262317da3dabfcd8e56b1c0f5381978d772f00422927c4d9c`.
 Width-table SHA256:
 `d4b26b8ed89674c22562ed9def33cb9308656624cfbd76d8767bcea08b1a1d0f`.
+
+## Accumulated source checkpoint - 2026-09-30
+
+The405-test retail-enabled SDK discovery run passed in165.295s with no skips
+at unchanged source `cc41ded01fd8b14fee9c9795c9d780aa43a1f82e`. This supersedes
+the397-test checkpoint referenced in the original feature evidence above and
+includes this service and its focused tests. Font/operand/texture/runtime-review
+Node checks and editor syntax passed separately. Browser evidence and deferred
+gameplay acceptance remain separate. Exact private log and command/source/hash
+metadata: `local-output/sdk-20260909/sdk-regression-20260930-text-discovery.log/.json`.

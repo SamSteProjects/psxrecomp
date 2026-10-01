@@ -213,6 +213,27 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Fresh405-test SDK checkpoint for glyph and text discovery
+
+- Previous turn was progress: project-wide text search committed cc41ded0.
+- Existing retail-enabled unittest discovery reached terminal exit0 on owned
+  process72826:405 tests in165.295s, no skips, unchanged/clean source
+  cc41ded01fd8b14fee9c9795c9d780aa43a1f82e. Never restarted; live handle and
+  advancing HTTP/test log retained throughout. Late process inventory query was
+  denied, but the same retained handle completed and supplied authoritative result.
+- Private log/metadata: sdk-regression-20260930-text-discovery.log/.json. Log SHA
+  0d3dffe5000f63ef9a7812fd1bd5b6fb89a8b13da3ae55a9d4b7930fcabce036.
+  Includes newline preservation, font decoding, scene/project text discovery.
+- Font, script operand/menu, texture usage, runtime-review Node checks and editor
+  syntax passed separately. Updated status/buildout/matrix and relevant guides;
+  historical counts retain their own source scope. Browser pixel/visual and
+  navigation evidence stays separate;405 tests do not prove game behavior.
+- No game launched. Regression process terminal; no owned browser/server remains
+  from this turn. Full goal active, runtime/manual acceptance deferred. Next
+  feature buildout still includes general script, model/animation import and
+  complete scene/live parity; offline work is not declared exhausted.
+
+
 ### 2026-09-30 - Project-wide text search and cross-scene editor navigation
 
 - Previous turn progressed: scene text search committed679ff7a5. Extended its

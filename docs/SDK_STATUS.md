@@ -12,8 +12,7 @@ editor syntax passed. Browser layer/scene search, cross-scene/return navigation,
 stale aggregate and held-response close/reopen guards passed with unchanged
 text/history and zero authoring requests/page errors. Screenshot inspected.
 Explicit navigation changes Active scene; discovery leaves it unchanged.
-Unknown/unvisited text remains excluded. Gameplay remains deferred;397 full
-checkpoint predates this feature. See [text search guide](legaia-scene-text-search.md).
+Unknown/unvisited text remains excluded. The405-test checkpoint includes this feature; gameplay remains deferred. See [text search guide](legaia-scene-text-search.md).
 
 **Scene text search (2026-09-30):** source-qualified dialogue/menu runs
 are searchable by text, owner and retail/effective/authored layers, with pages
@@ -23,7 +22,7 @@ Nine focused Python tests and editor syntax passed. Browser filtering, paging,
 field navigation, stale text-state and closed pending-response guards passed
 with unchanged project state, zero authoring requests and page errors. Screenshot
 inspected. Unknown/unvisited bytes and unsupported dialogue remain excluded;
-coverage is explicit. This follows the397-test checkpoint; gameplay deferred.
+coverage is explicit. The405-test checkpoint includes this feature; gameplay deferred.
 See the [scene text search guide](legaia-scene-text-search.md).
 
 **Retail glyph preview (2026-09-30):** supported dialogue/menu forms show
@@ -33,7 +32,7 @@ Retail browser pixel/advance readback, invalid drafts, Discard, held-response
 close/reopen and malformed request rejection passed with unchanged project
 state, zero authoring requests and page errors. Screenshot inspected. Controls,
 substitutions, boxes, wrapping, pager behavior and runtime tint are not simulated.
-This follows the397-test checkpoint; gameplay remains deferred. See the
+The405-test checkpoint includes this feature; gameplay remains deferred. See the
 [glyph preview guide](legaia-text-glyph-preview.md).
 
 
@@ -152,16 +151,19 @@ No real runtime capture was performed; capture/gameplay acceptance remains defer
 
 ## Validation scope
 
-The retail-enabled SDK discovery run passed **397 tests in164.669 seconds**,
-exit code0, with no skips, against unchanged source
-`e1b88c22f67cad6b81f29f7d9179e267d95456a8`. Log:
-`local-output/sdk-20260909/sdk-regression-20260930-text-files.log`; corresponding
-JSON records exact command/source/result and log hash. This supersedes the392-test
-checkpoint and includes accumulated services, menu span/command preservation and
-atomic text files. Texture usage, operand/menu binding, historical runtime-review
-JavaScript checks and editor syntax also passed. Browser workflows and runtime
-acceptance remain separate evidence; historical counts below describe earlier
-checkpoints.
+The retail-enabled SDK discovery suite passed **405 tests in165.295 seconds**,
+exit code0, with no skips, against unchanged committed source
+`cc41ded01fd8b14fee9c9795c9d780aa43a1f82e`. This supersedes the397-test checkpoint
+at `e1b88c22` and includes the renderer-newline fix, retail font decoder/preview
+service, scene text discovery and project-wide text search. Log and exact command,
+source, result and hash metadata:
+`local-output/sdk-20260909/sdk-regression-20260930-text-discovery.log/.json`.
+Log SHA256: `0d3dffe5000f63ef9a7812fd1bd5b6fb89a8b13da3ae55a9d4b7930fcabce036`.
+Font layout/source guards, texture usage, script operand/menu binding and saved
+runtime-review Node checks, plus editor syntax, passed separately. Browser
+workflows retain their recorded pixel/render/navigation evidence; a green suite
+does not establish gameplay, runtime parity or broader rendered acceptance.
+Historical checkpoints below retain their dated evidence.
 
 Recent private evidence lives under `local-output/sdk-20260909/`, including `sdk-suite-recheck-20260912.log`, `shared-scenery-multiple-check.json`, `shared-scenery-multiple-z-check.json`, `obj-equivalent-retail-20260912/report.json`, `animation-channel-copy-check.json`, `animation-effective-copy-check.json`, and `animation-copy-request-order-check.json`. These files are local evidence, not redistributable fixtures.
 
