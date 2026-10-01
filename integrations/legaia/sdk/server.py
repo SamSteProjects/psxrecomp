@@ -1093,6 +1093,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                                                     ('entity_id', 'position', 'preview_position', 'display_position', 'preview_height_status')}
                                                    for entity in proposed['entities'] if entity['entity_id'] in targets]})
                     return
+                if route == "/api/actor-component-batch":
+                    if set(body) != {"actor_ids", "component"}:
+                        raise ProjectError("Group component review accepts actor identities and component only")
+                    self._json(200, self.server.project.actor_component_batch(body['actor_ids'], body['component']))
+                    return
                 if route == "/api/actor-placement-batch":
                     if set(body) != {"actor_ids", "delta"}:
                         raise ProjectError("Actor group preview accepts actor identities and X/Z delta only")
@@ -1112,6 +1117,10 @@ class EditorHandler(BaseHTTPRequestHandler):
             if set(body) != {"type", "scene_id", "actor_ids", "delta", "review_key"}:
                 raise ProjectError("Actor group offset requires scene, actors, delta and reviewed identity only")
             required_strings[route] = ("scene_id", "review_key")
+        if route == "/api/command" and body.get("type") == "revert_actor_group_component":
+            if set(body) != {"type", "scene_id", "actor_ids", "component", "review_key"}:
+                raise ProjectError("Group component revert accepts scene, actors, component and review identity only")
+            required_strings[route] = ("scene_id", "component", "review_key")
         if route == "/api/command" and body.get("type") == "revert_authored_component":
             if set(body) != {"type", "entity_id", "component", "review_key"}:
                 raise ProjectError("Component revert accepts only owner, component and review identity")

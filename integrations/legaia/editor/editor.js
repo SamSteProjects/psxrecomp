@@ -689,7 +689,7 @@ const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-
 const actorBoxButton=document.createElement('button');actorBoxButton.id='actor-box-select';actorBoxButton.textContent='Box select actors';actorBoxButton.title='Drag over visible actor meshes; Ctrl/Command adds to the group. Shift-drag pans.';actorBoxButton.setAttribute('aria-pressed','false');
 actorBoxButton.onclick=()=>{if(actorBoxButton.disabled)return;cancelViewportGesture();actorBoxMode=!actorBoxMode;actorBoxButton.classList.toggle('active',actorBoxMode);actorBoxButton.setAttribute('aria-pressed',String(actorBoxMode));draw();};transformTools.prepend(actorBoxButton);
 const actorGroupTools=document.createElement('div');actorGroupTools.id='actor-group-selection';actorGroupTools.hidden=true;
-actorGroupTools.innerHTML='<span role="status"></span><button type="button" data-frame-selection>Frame actor group</button><button type="button" data-review-selection>Review group offset</button><button type="button" data-clear-selection>Clear group</button>';
+actorGroupTools.innerHTML='<span role="status"></span><button type="button" data-frame-selection>Frame actor group</button><button type="button" data-review-selection>Review group offset</button><button type="button" data-review-components>Review group components</button><button type="button" data-clear-selection>Clear group</button>';
 transformTools.after(actorGroupTools);
 function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;updateActorGroupSelection();}
 function updateActorGroupSelection(){
@@ -698,7 +698,7 @@ function updateActorGroupSelection(){
   if(actorBoxButton.disabled&&actorBoxMode){actorBoxMode=false;actorBoxButton.setAttribute('aria-pressed','false');actorBoxButton.classList.remove('active');}
   actorGroupTools.hidden=!actorGroupSelection.length||!!actorGroupInspection;
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
-  actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;
+  actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;actorGroupTools.querySelector('[data-review-components]').disabled=busy||actorGroupSelection.length<2;
   actorGroupTools.querySelector('[data-frame-selection]').disabled=busy||!actorGroupSelection.length||!scenePreviewCurrent();
   actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;
 }
@@ -730,6 +730,34 @@ function frameActorGroupSelection(){
 actorGroupTools.querySelector('[data-frame-selection]').onclick=frameActorGroupSelection;
 actorGroupTools.querySelector('[data-review-selection]').onclick=()=>{if(!busy&&actorGroupSelection.length>=2)document.getElementById('actor-batch-button').click();};
 actorGroupTools.querySelector('[data-clear-selection]').onclick=()=>{if(busy)return;clearActorGroupSelection();renderHierarchy();draw();};
+const groupComponentDialog=document.createElement('dialog');groupComponentDialog.id='group-component-dialog';document.body.append(groupComponentDialog);
+let groupComponentGeneration=0,groupComponentAbort=null;
+groupComponentDialog.addEventListener('close',()=>{groupComponentGeneration++;if(groupComponentAbort){groupComponentAbort.abort();groupComponentAbort=null;setBusy(false);}});
+actorGroupTools.querySelector('[data-review-components]').onclick=()=>{
+  if(busy||!canEdit()||actorGroupSelection.length<2||actorGroupInspection)return;
+  const ids=actorGroupSelection.slice(),context=resourceStateKey(),components=[...new Set((state.authored_assets??[]).filter(row=>ids.includes(row.id)).flatMap(row=>(row.component_reviews??[]).map(item=>item.component)))].sort();
+  groupComponentDialog.replaceChildren();const heading=document.createElement('h2'),note=document.createElement('p'),select=document.createElement('select'),result=document.createElement('div'),error=document.createElement('p'),revert=document.createElement('button'),close=document.createElement('button');
+  heading.textContent='Review actor group components';note.textContent=`${ids.length} imported actors. Revert removes the chosen authored component across this group, preserving imported evidence and other components. One Undo restores the affected actors.`;select.setAttribute('aria-label','Group component');
+  for(const component of components){const option=document.createElement('option');option.value=component;option.textContent=component;select.append(option);}
+  error.className='dialog-error';error.setAttribute('role','alert');revert.textContent='Revert reviewed group component';revert.dataset.revertGroupComponent='';revert.disabled=true;close.textContent='Close group component review';close.onclick=()=>groupComponentDialog.close();groupComponentDialog.append(heading,note,select,result,error,revert,close);
+  let review=null;
+  const current=()=>groupComponentDialog.open&&canEdit()&&context===resourceStateKey()&&JSON.stringify(ids)===JSON.stringify(actorGroupSelection);
+  select.onchange=async()=>{
+    const component=select.value,token=++groupComponentGeneration;groupComponentAbort?.abort();const controller=new AbortController();groupComponentAbort=controller;review=null;revert.disabled=true;result.replaceChildren();error.textContent='';setBusy(true);
+    try{const response=await fetch('/api/actor-component-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({actor_ids:ids,component}),signal:controller.signal}),report=await response.json();if(!response.ok||report.error)throw new Error(report.error||'Group component review failed');
+      if(token!==groupComponentGeneration||!current()||select.value!==component)return;
+      if(report.schema_version!=='legaia.actor-component-batch.v1'||report.component!==component||report.scene_id!==state.scene.id||!Array.isArray(report.targets)||report.targets.length!==ids.length||report.targets.some((row,index)=>row.entity_id!==ids[index]||typeof row.has_authored!=='boolean')||typeof report.review_key!=='string'||!/^[0-9a-f]{64}$/.test(report.review_key)||report.affected_count!==report.targets.filter(row=>row.has_authored).length)throw new Error('Invalid group component review');
+      review=report;const count=document.createElement('p');count.textContent=`${report.affected_count} actors authored · ${ids.length-report.affected_count} inherit retail`;result.append(count);
+      for(const row of report.targets){const details=document.createElement('details'),summary=document.createElement('summary'),data=document.createElement('pre');summary.textContent=`${entities().find(e=>e.id===row.entity_id)?.name??row.entity_id} · ${row.has_authored?'Authored':'Inherits retail'}`;data.className='diagnostic-detail';data.textContent=row.has_authored?JSON.stringify(row.authored,null,2):'No authored component; this actor will remain unchanged.';details.append(summary,data);result.append(details);}
+    }catch(e){if(e.name!=='AbortError'&&token===groupComponentGeneration&&current())error.textContent=e.message;}
+    finally{if(groupComponentAbort===controller){groupComponentAbort=null;setBusy(false);}select.disabled=busy;revert.disabled=busy||!current()||!review?.affected_count;}
+  };
+  revert.onclick=async()=>{if(busy||!current()||!review?.affected_count)return;const accepted=review;review=null;revert.disabled=true;select.disabled=true;
+    if(await api('/api/command',{type:'revert_actor_group_component',scene_id:accepted.scene_id,actor_ids:ids,component:accepted.component,review_key:accepted.review_key},{success:`${accepted.component} reverted on ${accepted.affected_count} actors. Undo restores the group.`})){groupComponentDialog.close();}
+    else if(groupComponentDialog.open){select.disabled=false;error.textContent='Group revert rejected. Choose the component again to refresh the review.';}
+  };
+  groupComponentDialog.showModal();if(components.length)select.onchange();else{select.disabled=true;note.textContent+=' This group has no supported authored components.';}
+};
 const actorBatchTool=mountActorPlacementBatch({getState:()=>state,getEntities:entities,isBusy:()=>busy,canEdit,setBusy,api,notify,after:draftsButton,getSelection:()=>actorGroupSelection,
   canInspectScene:()=>scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft,
   onSceneInspection:(inspection,layer)=>{cancelViewportGesture();actorGroupInspection=inspection?{...inspection,layer,key:resourceStateKey()}:null;draw();},

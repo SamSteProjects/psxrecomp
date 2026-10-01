@@ -3,6 +3,20 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Actor group component review/revert (2026-09-30):** selected imported actor
+groups now offer Review group components, showing each actor's authored settings
+or retail inheritance. A source-bound review includes every selected actor,
+including inherited members; Revert validates the whole group before removing
+only the chosen component, with one Undo entry. Other components and imported
+provenance are preserved. Fifteen focused group/component/history tests passed
+in 1.771s with no skips. Retail town01 three-actor browser review, atomic Revert/
+Undo, unrelated-component preservation, stale inherited-member rejection and
+closed pending-response checks passed with zero page errors; screenshot inspected.
+A private fixture was saved during preparation; no game or package installation.
+This backend/UI addition postdates the 421-test full checkpoint; focused evidence
+is current and a new full-suite result is not claimed. See
+[component review guide](legaia-authored-component-review.md).
+
 **Actor box and hierarchy range selection (2026-09-30):** Box select actors
 now draws a marquee and gathers visible mesh IDs from one depth-tested render,
 read in bounded strips. Shift-click selects a range in the filtered hierarchy;

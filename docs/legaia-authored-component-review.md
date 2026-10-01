@@ -51,3 +51,45 @@ this feature's Python service tests and supersedes the earlier 405-test full
 checkpoint referenced above. Five Node checks and editor/module syntax passed
 separately. Browser/package/rendered evidence and gameplay acceptance remain
 separate; no game was launched for this checkpoint.
+
+## Review and revert a selected actor group — 2026-09-30
+
+Select 2–128 imported active-scene actors through Ctrl-click, ranges or box
+selection, then choose **Review group components**. The component selector lists
+supported authored components present in the selected group. Each actor shows
+its authored settings separately or explicitly inherits retail. With no authored
+components there is nothing to revert. NPC drafts, scenery, P2 scripts and other
+scenes retain their existing dedicated workflows.
+
+**Revert reviewed group component** removes that entire component from affected
+actors only, preserving other components and imported evidence. All members are
+validated before mutation; one Undo/Redo restores/removes the affected group.
+Empty owner override records are removed. Existing Save/Open and build consumers
+use the resulting normal override state. An all-inherited review is a no-op.
+
+The read-only `/api/actor-component-batch` report binds project root, imported
+source document, active scene, selected IDs, chosen component and every member's
+authored/inherited state. The strict `revert_actor_group_component` command
+recomputes that identity before mutation. Changes to the last or an inherited
+member reject the whole command. Unrelated component changes are preserved and
+do not invalidate the chosen component review. Replay, wrong owners, malformed
+fields and Live authoring are rejected. Pending reports cannot attach after
+closure or changed selection/source context. Reopen a stale review to refresh it.
+
+Fifteen focused Python tests passed in 1.771s without skips, including four new
+group tests for detached reviews, inherited members, atomic stale rejection,
+source preservation, unrelated components, one-entry history, persistence,
+no-op/replay and HTTP field validation. Editor syntax and diff checks passed.
+Retail town01 browser selected actor0001/0002/0003: two authored Transform members
+and one inheriting member. Review made no writes; one command reverted the two
+Transforms while retaining menu and selector components. Undo restored authored
+assets and dirty status. Adding a Transform to the inherited third member after
+review rejected the whole revert without additional changes. Closing a held
+read-only response discarded it. Zero page errors; screenshot inspected.
+
+Private evidence: `local-output/sdk-20260909/group-component-review-20260930/`
+contains `group-component-browser-check.json` and `group-component-review.png`.
+Fixture preparation saved two private position overrides; review checks made no
+further Save or installation. No game launched; owned browser/server closed.
+This feature's Python and UI checks postdate the earlier 421-test source checkpoint.
+A new full-suite result and gameplay/runtime acceptance are not claimed.

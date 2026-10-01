@@ -213,6 +213,26 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Atomic selected actor group component review/revert
+
+- Previous turn progressed: dc43e269 committed actor box/range selection. Checked
+  clean tracked tree/current HEAD; connected selected groups to component review.
+  Added detached source-bound report and strict atomic revert command including
+  inherited members, preserving unrelated/source components and one group Undo.
+- Fifteen focused group/component/history tests passed in1.771s, no skips; four
+  new tests cover history/persistence, detached data, source/root/last/inherited
+  stale rejection, malformed fields, unrelated preservation, replay/no-op and HTTP.
+  Editor syntax/diff checks passed. Retail three-actor review/Revert/Undo, stale
+  inherited-member rejection and closed held-response checks passed, zero errors.
+  Screenshot inspected. Current backend/UI evidence postdates421 full checkpoint.
+- Initial browser92148 terminal exit1 because copied fixture lacked Transform
+  edits; prepared/saved two private actor position overrides and reran successfully
+  (terminal exit0). No further Save/install/game. Server56835 stopped terminal
+  exit1; all owned browsers/servers closed. Private group-component-review-20260930.
+- Updated status/report/matrix/component guide. Full SDK/runtime/manual acceptance
+  remains incomplete; no new full-suite result claimed and goal remains active.
+
+
 ### 2026-09-30 - Actor box selection and filtered hierarchy ranges
 
 - Previous turn progressed: 6c59bc56 committed viewport/hierarchy Ctrl-click

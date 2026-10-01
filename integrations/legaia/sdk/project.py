@@ -1315,6 +1315,32 @@ class ProjectService:
                                     'before': before, 'after': deepcopy(after)})
             self.redo_stack.clear()
             return
+        if command.get('type') == 'revert_actor_group_component':
+            if set(command) != {'type', 'scene_id', 'actor_ids', 'component', 'review_key'}:
+                raise ProjectError('Group component revert accepts scene, actors, component and review identity only')
+            report = self.actor_component_batch(command['actor_ids'], command['component'])
+            if command['scene_id'] != report['scene_id'] or command['review_key'] != report['review_key']:
+                raise ProjectError('Actor group component changed since review; review it again')
+            before, after = {}, {}
+            for row in report['targets']:
+                if not row['has_authored']:
+                    continue
+                identifier = row['entity_id']
+                before[identifier] = deepcopy(self.overrides[identifier])
+                after[identifier] = deepcopy(before[identifier])
+                del after[identifier][command['component']]
+                after[identifier] = after[identifier] or None
+            if not before:
+                return
+            for identifier, value in after.items():
+                if value is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = value
+            self.undo_stack.append({'target': 'entity_overrides', 'entity_ids': sorted(before),
+                                    'before': before, 'after': deepcopy(after)})
+            self.redo_stack.clear()
+            return
         if command.get('type') == 'revert_authored_component':
             if set(command) != {'type', 'entity_id', 'component', 'review_key'}:
                 raise ProjectError('Component revert accepts only owner, component and review identity')
@@ -2073,6 +2099,28 @@ class ProjectService:
                 'limitations': ['Only imported active-scene actor X/Z placement offsets are supported.',
                                 'Proposed coordinates must fit the exact retail 64-unit placement grid.',
                                 'Source Y, scripts, scheduling and runtime behavior are not inferred.']}
+
+    def actor_component_batch(self, actor_ids: list[str], component: str) -> dict:
+        """Read-only review binds the chosen component on every selected actor."""
+        if (not isinstance(actor_ids, list) or not 2 <= len(actor_ids) <= 128 or
+                any(not isinstance(identifier, str) for identifier in actor_ids) or
+                len(set(actor_ids)) != len(actor_ids)):
+            raise ProjectError('Choose 2 through 128 distinct imported actors in the active scene')
+        if not isinstance(component, str) or component not in self.REVIEW_COMPONENTS:
+            raise ProjectError('Choose a supported authored component')
+        document = self.imports.get(self.active_scene)
+        actors = {a['semantic_id']: a for a in document['actors']} if document else {}
+        if any(identifier not in actors for identifier in actor_ids):
+            raise ProjectError('Every group actor must belong to the active imported scene')
+        targets = [{'entity_id': identifier,
+                    'authored': deepcopy(self.overrides.get(identifier, {}).get(component)),
+                    'has_authored': component in self.overrides.get(identifier, {})}
+                   for identifier in sorted(actor_ids)]
+        key = digest({'project_root': str(self.root), 'source_document_sha256': digest(document),
+                      'scene_id': self.active_scene, 'component': component, 'targets': targets})
+        return {'schema_version': 'legaia.actor-component-batch.v1', 'scene_id': self.active_scene,
+                'component': component, 'targets': targets, 'review_key': key,
+                'affected_count': sum(row['has_authored'] for row in targets)}
 
     def component_reviews(self, identifier: str, *, source_digest: str | None = None) -> list[dict]:
         """Detached authored settings with a source-bound identity for component removal."""
