@@ -15,6 +15,18 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Project-wide text search (2026-09-30):** the same text search panel now
+covers all imported scenes, retains scene coverage/reasons and opens the owning
+scene before focusing the exact edit field. Discovery uses detached views and
+checks imported/source and all dialogue-override identities. Retail town01/Dolk2
+found645 supported runs across180 scripts (88 partial). Eleven focused tests and
+editor syntax passed. Browser layer/scene search, cross-scene/return navigation,
+stale aggregate and held-response close/reopen guards passed with unchanged
+text/history and zero authoring requests/page errors. Screenshot inspected.
+Explicit navigation changes Active scene; discovery leaves it unchanged.
+Unknown/unvisited text remains excluded. Gameplay remains deferred;397 full
+checkpoint predates this feature. See [text search guide](legaia-scene-text-search.md).
+
 **Scene text search (2026-09-30):** source-qualified dialogue/menu runs
 are searchable by text, owner and retail/effective/authored layers, with pages
 and exact actor/partition-two edit-field navigation. Retail town01 discovery

@@ -178,6 +178,55 @@ def scene_text_index(project) -> dict:
                     'This private response contains retail text; no source payload is added to the metadata-only Asset Database.'])
 
 
+def project_text_state_key(project) -> str:
+    from .project import digest
+    return digest(dict(imports=project.imports, source_key=source_key(project),
+                       dialogue={owner: deepcopy(parts['Dialogue']) for owner, parts in project.overrides.items()
+                                 if 'Dialogue' in parts}))
+
+
+def project_text_index(project) -> dict:
+    """Search imported scenes using detached views, without switching the project."""
+    from copy import copy
+    if not project.disc_path or not 1 <= len(project.imports) <= 64:
+        raise ProjectError('Project text discovery requires a disc and 1-64 imported scenes')
+    key = project_text_state_key(project)
+    view = copy(project)
+    view.imports = deepcopy(project.imports)
+    view.overrides = deepcopy(project.overrides)
+    rows, scenes, restrictions = [], [], []
+    total_bytes = 0
+    coverage = dict(script_count=0, partial_script_count=0, unavailable_script_count=0)
+    with _disc_context(project.disc_path):
+        for scene_id, document in sorted(view.imports.items()):
+            view.active_scene = scene_id
+            try:
+                result = scene_text_index(view)
+            except RetailImportError as exc:
+                scenes.append(dict(scene_id=scene_id, scene_name=document['scene']['name'],
+                                   status='unavailable', reason=str(exc)))
+                continue
+            for row in result['runs']:
+                total_bytes += row['capacity']
+                if len(rows) >= 32768 or total_bytes > 4 * 1024 * 1024:
+                    raise ProjectError('Project text exceeds the run/text budget')
+                rows.append({**row, 'scene_id':scene_id, 'scene_name':document['scene']['name']})
+            restrictions.extend({**item, 'scene_id':scene_id} for item in result['restrictions'])
+            for field in coverage:
+                coverage[field] += result['coverage'][field]
+            scenes.append(dict(scene_id=scene_id, scene_name=document['scene']['name'], status='verified',
+                               run_count=len(result['runs']), coverage=result['coverage']))
+    if key != project_text_state_key(project):
+        raise ProjectError('Project source or text changed during discovery; refresh again')
+    return dict(schema='legaia.project-text.v1', read_only=True, project_path=str(project.root),
+                project_text_state_key=key, runs=rows, coverage=coverage, scenes=scenes,
+                restrictions=restrictions, limitations=[
+                    'Only imported scenes and source-qualified editable plain-glyph runs are included.',
+                    'Unknown/unvisited bytes, unsupported ordinary dialogue and controller records are excluded.',
+                    'Partial scripts may offer menu labels; complete sentences, boxes and story reachability are not reconstructed.',
+                    'This private text response does not add retail payload to the metadata-only Asset Database.'])
+
+
 def scene_flag_index(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from .flags import build_flag_index

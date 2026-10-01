@@ -213,6 +213,28 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Project-wide text search and cross-scene editor navigation
+
+- Previous turn progressed: scene text search committed679ff7a5. Extended its
+  coherent panel across imported scenes using detached views and aggregate
+  import/source/Dialogue guards. Unsupported carriers retain reasons; budget and
+  source mismatches reject.1-64 scenes,32768 runs,4MiB source text budget.
+- Eleven focused text/project tests in0.716s and editor syntax passed. Private
+  town01/Dolk2 fixture yielded645 supported runs,180 scripts,88 partial. Browser
+  scene/layer filtering, exact Dolk2 field and return to saved town01 override,
+  stale project-text navigation, request rejection and held-response close/reopen
+  passed with zero authoring requests/page errors. Screenshot visually inspected.
+- First browser harness incorrectly expected scene switching to remain clean;
+  existing set_scene persistence correctly marks only Active scene unsaved.
+  Corrected that assertion; authored assets/history stayed identical, and return
+  restored saved active scene. No implementation workaround needed.
+- Private evidence: project-text-search-20260930/project-text-index.json,
+  project-text-browser-check.json, project-text-late-check.json and
+  project-text-search.png.397 checkpoint predates feature. Full goal active;
+  owned browser closed/server9234 stopped (exit1); gameplay deferred and no
+  game launched.
+
+
 ### 2026-09-30 - Scene text discovery connected to source-bound editors
 
 - Previous turn was progress: committed retail glyph Inspector preview ab10d017.

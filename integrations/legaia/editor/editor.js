@@ -520,6 +520,7 @@ function setBusy(value) {
   if($('scene-transitions'))$('scene-transitions').disabled=value || !state.capabilities?.scene_transitions;
   if($('scene-flags'))$('scene-flags').disabled=value || !state.capabilities?.scene_flags;if($('project-flags'))$('project-flags').disabled=value||!state.capabilities?.scene_flags;
   if($('scene-text'))$('scene-text').disabled=value||!state.capabilities?.scene_text_search;
+  if($('project-text'))$('project-text').disabled=value||!state.capabilities?.scene_text_search;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
   updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
@@ -835,34 +836,41 @@ async function openSceneTransitions(){
   finally{if(transitionsAbort===controller){transitionsAbort=null;setBusy(false);}}
 }
 const textButton=document.createElement('button');textButton.id='scene-text';textButton.textContent='Search scene text';transitionsButton.after(textButton);
+const projectTextButton=document.createElement('button');projectTextButton.id='project-text';projectTextButton.textContent='Search project text';textButton.after(projectTextButton);
 const textDialog=document.createElement('dialog');textDialog.id='scene-text-dialog';document.body.append(textDialog);let textAbort=null;
-const textContextKey=()=>JSON.stringify([resourceStateKey(),state.scene_text_state_key]);
+const textContextKey=(projectWide=false)=>JSON.stringify([resourceStateKey(),projectWide?state.project_text_state_key:state.scene_text_state_key]);
 textDialog.addEventListener('close',()=>textAbort?.abort());
-textButton.onclick=async()=>{
+textButton.onclick=()=>openTextSearch();projectTextButton.onclick=()=>openTextSearch(true);
+async function openTextSearch(projectWide=false){
   if(busy||!state.capabilities?.scene_text_search)return;
-  const key=textContextKey(),controller=new AbortController();textAbort=controller;textDialog.dataset.sourceContext=key;setBusy(true);
+  const key=textContextKey(projectWide),controller=new AbortController();textAbort=controller;textDialog.dataset.sourceContext=key;textDialog.dataset.projectWide=String(projectWide);setBusy(true);
   textDialog.innerHTML='<div class="dialog-heading"><h2>Search supported scene text</h2><button aria-label="Close text search">Close</button></div><p data-text-summary>Verifying source text runs…</p><label>Search text or owner<input type="search" aria-label="Search scene text"></label><label>Layer<select aria-label="Text search layer"><option value="all">All text layers</option><option value="retail">Retail</option><option value="effective">Effective</option><option value="authored">Authored overrides</option></select></label><div class="dialog-actions"><button data-text-prev>Previous</button><span data-text-page></span><button data-text-next>Next</button></div><div data-text-results></div><details><summary>Coverage and limits</summary><pre class="diagnostic-detail" data-text-evidence></pre></details><p class="dialog-error" role="alert"></p>';
   textDialog.querySelector('[aria-label="Close text search"]').onclick=()=>textDialog.close();textDialog.showModal();
+  if(projectWide){textDialog.querySelector('h2').textContent='Search supported project text';textDialog.querySelector('input').placeholder='Text, owner or imported scene';}
   try{
-    const response=await fetch('/api/scene-text',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal}),data=await response.json();
+    const response=await fetch(projectWide?'/api/project-text':'/api/scene-text',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal}),data=await response.json();
     if(controller.signal.aborted||!textDialog.open)return;
     if(!response.ok)throw new Error(data.error);
-    if(key!==textContextKey()||data.text_state_key!==state.scene_text_state_key||data.schema!=='legaia.scene-text.v1'||data.scene_id!==state.scene?.id||data.source_key!==state.scene_preview_source_key||data.read_only!==true||!Array.isArray(data.runs)||data.runs.length>8192)throw new Error('Text source changed or returned invalid bounds.');
+    const identity=projectWide?data.schema==='legaia.project-text.v1'&&data.project_path===state.project.path&&data.project_text_state_key===state.project_text_state_key:
+      data.schema==='legaia.scene-text.v1'&&data.text_state_key===state.scene_text_state_key&&data.scene_id===state.scene?.id&&data.source_key===state.scene_preview_source_key;
+    if(key!==textContextKey(projectWide)||!identity||data.read_only!==true||!Array.isArray(data.runs)||data.runs.length>(projectWide?32768:8192))throw new Error('Text source changed or returned invalid bounds.');
     textDialog.querySelector('[data-text-summary]').textContent=`${data.runs.length} supported glyph runs · ${data.coverage.script_count} scripts inspected · ${data.coverage.partial_script_count} partial · ${data.coverage.unavailable_script_count} unavailable. Unknown/unvisited bytes and unsupported dialogue are excluded. Story reachability is not evaluated.`;
-    textDialog.querySelector('[data-text-evidence]').textContent=JSON.stringify({coverage:data.coverage,restrictions:data.restrictions,limitations:data.limitations},null,2);
+    if(projectWide)textDialog.querySelector('[data-text-summary]').textContent+=` ${data.scenes.length} imported scenes inspected; ${data.scenes.filter(s=>s.status==='unavailable').length} scene catalogs unavailable.`;
+    textDialog.querySelector('[data-text-evidence]').textContent=JSON.stringify({scenes:data.scenes,coverage:data.coverage,restrictions:data.restrictions,limitations:data.limitations},null,2);
     const search=textDialog.querySelector('input'),layer=textDialog.querySelector('select'),list=textDialog.querySelector('[data-text-results]'),prev=textDialog.querySelector('[data-text-prev]'),next=textDialog.querySelector('[data-text-next]');let page=0;
     const render=()=>{
       const query=search.value.toLowerCase(),mode=layer.value,filtered=data.runs.filter(run=>{
         if(mode==='authored'&&run.authored_text===null)return false;
         const values=mode==='all'?[run.retail_text,run.effective_text,run.authored_text]:[run[mode+'_text']];
-        return [...values,run.owner_id,run.id,run.script_name,run.kind].some(value=>typeof value==='string'&&value.toLowerCase().includes(query));
+        return [...values,run.scene_name,run.owner_id,run.id,run.script_name,run.kind].some(value=>typeof value==='string'&&value.toLowerCase().includes(query));
       });page=Math.min(page,Math.max(0,Math.ceil(filtered.length/25)-1));list.replaceChildren();prev.disabled=page===0;next.disabled=(page+1)*25>=filtered.length;textDialog.querySelector('[data-text-page]').textContent=`${filtered.length} matches · page ${page+1} of ${Math.max(1,Math.ceil(filtered.length/25))}`;
       for(const run of filtered.slice(page*25,(page+1)*25)){
-        const row=document.createElement('article');row.className='text-search-run';const label=document.createElement('strong');label.textContent=`${run.script_name} · ${run.kind==='menu_label'?`Menu option ${run.option_index+1}`:'Dialogue'} · ${scriptOffset(run.pc)} · ${run.capacity} source bytes`;row.append(label);
+        const row=document.createElement('article');row.className='text-search-run';const label=document.createElement('strong');label.textContent=`${projectWide?run.scene_name+' · ':''}${run.script_name} · ${run.kind==='menu_label'?`Menu option ${run.option_index+1}`:'Dialogue'} · ${scriptOffset(run.pc)} · ${run.capacity} source bytes`;row.append(label);
         for(const [name,value] of [['Retail',run.retail_text],['Authored',run.authored_text],['Effective',run.effective_text]]){const title=document.createElement('small'),text=document.createElement('pre');title.textContent=name;text.textContent=value??(name==='Authored'?'No override':'Unavailable');row.append(title,text);}
         if(run.validation_error){const error=document.createElement('p');error.className='field-note';error.textContent=run.validation_error;row.append(error);}
         const button=document.createElement('button');button.textContent='Open text editor';button.dataset.textRun=run.id;button.onclick=async()=>{
-          if(busy||!textDialog.open||key!==textContextKey())return;
+          if(busy||!textDialog.open||key!==textContextKey(projectWide))return;
+          if(projectWide&&run.scene_id!==state.scene?.id){textDialog.close();if(!await api('/api/scene',{scene_id:run.scene_id}))return;}
           const owner=run.partition===2?{id:run.owner_id,name:run.script_name,partitionTwo:true}:entities().find(e=>e.id===run.owner_id);
           if(!owner){notify('The text owner is no longer available.',true);return;}textDialog.close();await openActorScript(owner,false,run.id);
           const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===run.id);if(input)input.scrollIntoView({block:'center'});
@@ -872,7 +880,7 @@ textButton.onclick=async()=>{
     };prev.onclick=()=>{page--;render();};next.onclick=()=>{page++;render();};search.oninput=layer.onchange=()=>{page=0;render();};render();
   }catch(error){if(error.name!=='AbortError'&&textDialog.open)textDialog.querySelector('.dialog-error').textContent=error.message;}
   finally{if(textAbort===controller){textAbort=null;setBusy(false);}}
-};
+}
 const flagsButton=document.createElement('button');flagsButton.id='scene-flags';flagsButton.textContent='Flag references';textButton.after(flagsButton);
 const projectFlagsButton=document.createElement('button');projectFlagsButton.id='project-flags';projectFlagsButton.textContent='Project flag references';flagsButton.after(projectFlagsButton);projectFlagsButton.onclick=()=>openFlagReferences(true);
 const flagsDialog=document.createElement('dialog');flagsDialog.id='scene-flags-dialog';document.body.append(flagsDialog);
@@ -921,7 +929,7 @@ async function openFlagReferences(projectWide=false){
   finally{if(flagsAbort===controller){flagsAbort=null;setBusy(false);}}
 };
 function synchronizeResources(){
-  if(textDialog.open&&textDialog.dataset.sourceContext!==textContextKey())textDialog.close();
+  if(textDialog.open&&textDialog.dataset.sourceContext!==textContextKey(textDialog.dataset.projectWide==='true'))textDialog.close();
   const current=resourceStateKey();
   if(resourceContextKey!==current){
     if(transitionsDialog.open)transitionsDialog.close();
@@ -935,6 +943,7 @@ function synchronizeResources(){
   transitionsButton.hidden=!state.capabilities?.scene_transitions;transitionsButton.disabled=busy||!state.capabilities?.scene_transitions;
   flagsButton.hidden=projectFlagsButton.hidden=!state.capabilities?.scene_flags;flagsButton.disabled=projectFlagsButton.disabled=busy||!state.capabilities?.scene_flags;
   textButton.hidden=!state.capabilities?.scene_text_search;textButton.disabled=busy||!state.capabilities?.scene_text_search;
+  projectTextButton.hidden=!state.capabilities?.scene_text_search;projectTextButton.disabled=busy||!state.capabilities?.scene_text_search;
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
   $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue and field-map metadata.');
 }

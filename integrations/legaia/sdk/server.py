@@ -125,8 +125,12 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["text_font_preview"] = bool(self.project.disc_path)
         state["capabilities"]["scene_text_search"] = bool(self.project.disc_path and self.project.active_scene)
-        from .resources import scene_text_state_key
+        from .resources import scene_text_state_key, project_text_state_key
         state['scene_text_state_key'] = scene_text_state_key(self.project)
+        try:
+            state['project_text_state_key'] = project_text_state_key(self.project)
+        except (RetailImportError, OSError):
+            state['project_text_state_key'] = None
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
@@ -770,6 +774,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Text discovery uses the active scene only')
                     from .resources import scene_text_index
                     self._json(200, scene_text_index(self.server.project))
+                    return
+                if route == '/api/project-text':
+                    if body:
+                        raise ProjectError('Project text discovery uses imported scenes only')
+                    from .resources import project_text_index
+                    self._json(200, project_text_index(self.server.project))
                     return
                 if route == "/api/scene-transitions":
                     if body:

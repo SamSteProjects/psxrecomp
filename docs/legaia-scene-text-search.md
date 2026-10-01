@@ -24,6 +24,34 @@ an unavailable effective layer and retains its validation reason. Retail text
 is returned only in this private inspection response, never stored in the
 metadata-only Asset Database or tracked in Git.
 
+## Project-wide search
+
+**Search project text** uses the same panel across all imported scenes. Search
+also matches scene names; each result identifies its owning scene. Discovery
+uses detached scene views and leaves the active scene, selection and overrides
+unchanged. **Open text editor** switches to the owning imported scene when
+needed, then focuses the exact actor or partition-two text field. That explicit
+navigation changes the active scene and may mark Active scene as unsaved; it
+does not author text or add an Undo entry.
+
+The project snapshot binds imported documents, disc/source identity and all
+Dialogue overrides, including those outside the current scene. Changes during
+discovery reject the aggregate. Unavailable scene catalogs retain their reasons
+and contribute no text; source mismatch and budget failures reject discovery.
+Budgets are1-64 imported scenes,32768 total runs and4MiB source glyph capacity.
+Per-scene budgets and source guards also remain enforced.
+
+Retail town01/Dolk2 review found645 supported runs across180 scripts (88 partial),
+with both catalogs verified. Eleven focused text/project tests passed in0.716s.
+The browser passed scene-name/layer filtering, unchanged discovery state,
+Dolk2 navigation and return to the saved town01 override, unchanged authored
+assets/history, stale project-text navigation, malformed requests and held-response
+close/reopen. Screenshot inspected; zero authoring requests/page errors. Private
+evidence is in `local-output/sdk-20260909/project-text-search-20260930/`:
+`project-text-index.json`, `project-text-browser-check.json`,
+`project-text-late-check.json` and `project-text-search.png`. This validation
+follows the397-test checkpoint. No game was launched; gameplay remains deferred.
+
 Source identity and text override identity are checked independently. Changes
 during discovery reject the result. Closing aborts the request; old responses
 cannot replace a reopened panel. Source or text changes withdraw navigation.
