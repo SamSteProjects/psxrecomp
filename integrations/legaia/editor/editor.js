@@ -1,3 +1,4 @@
+import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
@@ -83,7 +84,7 @@ function renderObservedNodes(query='',nodeIds=null){
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 };
 
-let scenePose=null;
+let scenePose=null,savedActorSelections=null;
 let scriptTargetOverlay=null,scriptTargetHits=[],pickScriptTargets=false;
 const scriptTargetTools=document.createElement('div');scriptTargetTools.id='script-target-tools';scriptTargetTools.hidden=true;
 scriptTargetTools.innerHTML='<span role="status"></span><select aria-label="Script target instruction"></select><button type="button" data-inspect>Inspect target</button><button type="button" data-pick aria-pressed="false">Pick script target</button><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
@@ -528,7 +529,7 @@ function setBusy(value) {
   if($('project-text'))$('project-text').disabled=value||!state.capabilities?.scene_text_search;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
-  updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
+  savedActorSelections?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -701,7 +702,7 @@ function updateActorGroupSelection(){
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
   actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;actorGroupTools.querySelector('[data-review-components]').disabled=busy||actorGroupSelection.length<2;const appearanceButton=document.querySelector('[data-group-appearance]');if(appearanceButton)appearanceButton.disabled=busy||!canEdit()||actorGroupSelection.length<2||!!actorGroupInspection||!!scenePose;
   actorGroupTools.querySelector('[data-frame-selection]').disabled=busy||!actorGroupSelection.length||!scenePreviewCurrent();
-  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;
+  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();
 }
 function toggleActorSelection(id){
   if(busy||!canEdit()||actorGroupInspection)return;
@@ -797,6 +798,18 @@ $('diagnostics-button').onclick=()=>{
   if(scenePreview||sceneError){const details=document.createElement('details');details.className='scene-preview-evidence';details.innerHTML='<summary>Scene model evidence and limits</summary><pre></pre>';details.querySelector('pre').textContent=JSON.stringify({source_key:sceneKey,error:sceneError,metrics:scenePreview?.metrics,limits:scenePreview?.limits,entities:scenePreview?.entities},null,2);$('diagnostics').append(details);}
   $('diagnostics-dialog').showModal();
 };
+savedActorSelections=mountActorSelectionSets({after:$('actor-box-select'),getState:()=>state,getSelection:()=>actorGroupSelection,isBusy:()=>busy,canEdit,
+  canRecall:()=>canEdit()&&!scenePose&&!actorGroupInspection&&!shapeDraft,api,
+  recall:async(value,projectPath)=>{
+    if(state.project.path!==projectPath)throw new Error('Project changed before selection recall');
+    if(value.scene_id!==state.scene.id&&!await api('/api/scene',{scene_id:value.scene_id}))return false;
+    const ids=decodeSavedActorSelection(value,state);
+    if(!await api('/api/selection',{entity_id:ids[0]}))return false;
+    if(state.project.path!==projectPath)throw new Error('Project changed during selection recall');
+    if(!state.actor_selection_sets.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved selection changed during recall. Review it again.');
+    decodeSavedActorSelection(value,state);actorGroupSelection=mergeActorGroupSelection([],ids,entities().map(entity=>entity.id));actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=ids[0];cancelViewportGesture();renderHierarchy();draw();return true;
+  }
+});
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&drag){event.preventDefault();cancelViewportGesture();return;}
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
@@ -807,7 +820,7 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
-  updateActorGroupSelection();actorBatchTool.synchronize();
+  updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(['transform','group-transform'].includes(drag?.type)&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';

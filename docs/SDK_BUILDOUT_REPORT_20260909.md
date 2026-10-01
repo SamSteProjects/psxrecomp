@@ -15,6 +15,23 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Saved actor selections (2026-09-30):** the viewport tool row now saves named
+source-bound imported actor groups for later editing. Create, Rename, Replace
+members and Delete use project commands/Undo/Redo; Save/Open retains UUID identity,
+scene import hash and sorted actor IDs. Recall can navigate to another imported
+scene and seed the existing placement/appearance/component tools. It changes no
+actor component or command history. Stale reviews reject and refresh displayed
+state; changed imports are blocked under selections or their history. Fifteen
+focused Python tests passed in1.318s, plus Node recall binding checks. Retail
+browser create/rename/history/member replacement/delete/Save/reload, Dolk2-to-town01
+recall, placement-dialog seeding and stale rename checks passed, zero page errors.
+A clipped Recall button found in the first browser run was fixed with a wrapping
+dialog layout; final screenshot inspected. Independent retail disk reopen verified
+saved membership/import identity and unchanged build/scene input keys. These are
+editor selections, not game parenting/prefabs. No gameplay check is required for
+selection metadata; authored game edits retain their existing deferred checks.
+This feature postdates425 full checkpoint. No game launched.
+
 **Actor group alignment/distribution (2026-09-30):** **Actor group placements**
 now offers Align X/Z to a selected anchor and Distribute along X/Z, alongside
 offsets. Alignment preserves its anchor; distribution preserves coordinate

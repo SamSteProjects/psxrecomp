@@ -27,7 +27,7 @@ def _hash(data: bytes) -> str:
 
 
 def authored_state_key(project) -> str:
-    """Build-input metadata identity, excluding selection, history and templates.
+    """Build-input metadata identity, excluding selection, history, templates and saved actor selections.
 
     This identifies the authored snapshot, not continued integrity of disc or
     output files. Build always verifies those independently.

@@ -510,6 +510,7 @@ class EditorHandler(BaseHTTPRequestHandler):
         files = {"/": ("index.html", "text/html"), "/editor.js": ("editor.js", "text/javascript"),
                  "/text-font.js": ("text-font.js", "text/javascript"),
                  "/group-appearance.js": ("group-appearance.js", "text/javascript"),
+                 "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),

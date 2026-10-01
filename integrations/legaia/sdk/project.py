@@ -103,6 +103,7 @@ class ProjectService:
         self.assets = AssetDatabase()
         self.overrides: dict[str, dict] = {}
         self.actor_templates: dict[str, dict] = {}
+        self.actor_selection_sets: dict[str, dict] = {}
         self.actor_drafts: dict[str, dict] = {}
         self.texture_overrides: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
@@ -161,6 +162,7 @@ class ProjectService:
                             for key, value in sorted(self.imports.items())],
                 "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
                 "actor_templates": deepcopy(self.actor_templates),
+                **({"actor_selection_sets": deepcopy(self.actor_selection_sets)} if self.actor_selection_sets else {}),
                 **({"actor_drafts": deepcopy(self.actor_drafts)} if self.actor_drafts else {}),
                 **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
@@ -202,7 +204,7 @@ class ProjectService:
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Actor and dialogue edits", "actor_templates": "Actor presets",
                   "texture_overrides": "Texture replacements", "model_overrides": "Model shapes",
-                  "actor_drafts": "New NPC drafts"}
+                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -211,7 +213,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "model_overrides", "actor_drafts")}
+                                "authored", "actor_templates", "texture_overrides", "model_overrides", "actor_drafts", "actor_selection_sets")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -246,6 +248,8 @@ class ProjectService:
             if any(draft and draft.get('scene_id')==scene_id
                    for draft in list(self.actor_drafts.values())+draft_history):
                 raise ProjectError('Imported evidence changed under NPC drafts or their history; resolve drafts before reimport')
+            if any(value['scene_id'] == scene_id for value in self.actor_selection_sets.values()):
+                raise ProjectError('Imported evidence changed under saved actor selections; resolve selections before reimport')
             affected = set(ids) | {actor["semantic_id"] for actor in previous["actors"]}
             if any(key in affected for key in self.overrides) or any(
                     entry.get('entity_id') in affected or affected.intersection(entry.get('entity_ids', []))
@@ -1289,6 +1293,10 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        from .selection_sets import COMMANDS as selection_commands, command as selection_command
+        if isinstance(command.get('type'), str) and command.get('type') in selection_commands:
+            selection_command(self, command)
+            return
         if command.get('type') == 'offset_actor_placements':
             if set(command) != {'type', 'scene_id', 'actor_ids', 'delta', 'review_key'}:
                 raise ProjectError('Actor group offset requires scene, actors, delta and reviewed identity only')
@@ -1948,7 +1956,9 @@ class ProjectService:
                     self.overrides[identifier] = components
             target.append(entry)
             return
-        if entry.get('target') == 'actor_drafts':
+        if entry.get('target') == 'actor_selection_sets':
+            collection, identifier = self.actor_selection_sets, entry['selection_set_id']
+        elif entry.get('target') == 'actor_drafts':
             collection, identifier = self.actor_drafts, entry['entity_id']
         elif entry.get("target") in ("texture_overrides", "model_overrides"):
             collection, identifier = getattr(self, entry['target']), entry["asset_id"]
@@ -2082,6 +2092,18 @@ class ProjectService:
                 raise ProjectError("Duplicate authored template name")
             names.add(template["name"].casefold())
         result.actor_templates = deepcopy(templates)
+        from .selection_sets import validate as validate_selection
+        selection_sets = raw.get('actor_selection_sets', {})
+        if not isinstance(selection_sets, dict) or len(selection_sets) > 128:
+            raise ProjectError('Invalid saved actor selection collection')
+        selection_names = set()
+        for identifier, value in selection_sets.items():
+            validate_selection(result, identifier, value)
+            name = (value['scene_id'], value['name'].casefold())
+            if name in selection_names:
+                raise ProjectError('Duplicate saved selection name in scene')
+            selection_names.add(name)
+        result.actor_selection_sets = deepcopy(selection_sets)
         textures = raw.get("texture_overrides", {})
         if not isinstance(textures, dict) or len(textures) > 128:
             raise ProjectError("Invalid texture replacement collection")
@@ -2414,6 +2436,7 @@ class ProjectService:
         return references
 
     def state(self) -> dict:
+        from .selection_sets import review_key as selection_review_key
         document = self.imports.get(self.active_scene)
         correlation = self._current_correlation()
         entities = []
@@ -2449,6 +2472,9 @@ class ProjectService:
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,
+                "actor_selection_source_key": digest(document) if document else None,
+                "actor_selection_sets": [{**deepcopy(value), 'review_key': selection_review_key(self, value)}
+                                         for value in sorted(self.actor_selection_sets.values(), key=lambda item: (item['scene_id'], item['name'].casefold(), item['id']))],
                 "actor_templates": [{**deepcopy(template), "application": self.template_application(template, self.selected)}
                                     for template in self.actor_templates.values()],
                 "assets": deepcopy(list(self.assets.records.values())),

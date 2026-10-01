@@ -116,3 +116,5 @@
 #actor-group-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 12px; font-size: 11px; color: #8bd7e8; border-bottom: 1px solid var(--line); }
 #actor-group-selection span { flex: 1; }
 .entity-row.group-selected { box-shadow: inset 3px 0 #8bd7e8; background: #253940; }
+
+#actor-selection-sets-dialog{width:min(740px,calc(100vw - 35px));max-height:90vh;overflow:auto}#actor-selection-sets-dialog .dialog-actions{justify-content:flex-start;flex-wrap:wrap}#actor-selection-sets-dialog [data-members]{max-height:24vh;overflow:auto;overflow-wrap:anywhere}

@@ -213,6 +213,28 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Persistent source-bound named actor selections
+
+- Continued SDK offline buildout after6551297c; no runtime/core changes. Added
+  bounded named selection metadata with imported scene/hash/membership binding,
+  UUIDs, strict Create/Rename/Replace/Delete, normal history and Save/Open.
+- Viewport selection dialog recalls across imported scenes and seeds existing
+  group tools. Read-only recall rechecks source and reviewed metadata; captures
+  preserve actor components and scene/build keys. Live/inspection contexts disabled.
+- Fifteen focused Python tests passed in1.318s, no skips; Node recall binding and
+  syntax/diff checks passed. Retail browser Create/Rename/history/member replacement/
+  Delete/Save/reload, Dolk2-to-town01 Recall and placement seeding passed. Stale
+  external rename rejected and refreshed state. Zero page errors. Initial run
+  exposed a clipped Recall button; wrapping dialog fix passed subsequent workflow.
+- Screenshot inspected. Independent saved retail disk reopen confirmed clean
+  state and retained membership/import identity; detached metadata-free comparison
+  proved identical build/nonnull scene keys, authored components and imports.
+- Updated status/buildout/matrix and selection guide. Feature postdates425 full
+  checkpoint. No gameplay check required for this metadata; broader runtime/game
+  edits remain deferred. Owned browsers/server closed; no launch/install/push.
+  Private saved-actor-selections-20260930 evidence retained. Goal incomplete/active.
+
+
 ### 2026-09-30 - Selected actor group alignment and distribution
 
 - Continued offline SDK feature buildout after0dc31332; no core/runtime changes.
