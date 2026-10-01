@@ -3,6 +3,23 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Actor group alignment/distribution (2026-09-30):** **Actor group placements**
+now offers Align X/Z to a selected anchor and Distribute along X/Z, alongside
+offsets. Alignment preserves its anchor; distribution preserves coordinate
+endpoints and sorts ties by stable source ID. Interior coordinates round to the
+nearest retail64-unit grid (ties upward), with adjacent gaps differing by at most
+64. Insufficient span rejects before mutation. Retail/Authored/Effective/Proposed
+review, no-write scene comparison/Return/Restore, atomic Apply/Undo, Save/Open and
+existing Build serialization are connected. Only changed axis values are authored;
+height, facing, source and unrelated components remain unchanged. Ten focused
+Python tests, existing Node group checks and two retail browser workflows passed;
+zero page errors. Town01 actor0013 distribution Z changed2880 to3648 while endpoint
+actors0012/0011 remained1856/5440. Independent ZIP/LZS MAN readback matched every
+expected byte, retaining donor assignments, earlier placements, three menus and
+selector240. Screenshots inspected. No game launched or package installed; the
+425-test full checkpoint predates this feature. See
+[group placement guide](legaia-actor-group-offset.md). Gameplay remains deferred.
+
 **Actor group appearance scene comparison (2026-09-30):** reviewed donor
 assignments now offer **Inspect group appearance in scene** before Apply.
 A detached SDK projection resolves the verified initial model/animation pair at

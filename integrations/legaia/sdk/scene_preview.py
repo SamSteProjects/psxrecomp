@@ -35,14 +35,16 @@ def preview_project(project, representation='authored'):
 
 def actor_placement_proposal_view(project, report):
     """Detached placement projection; proposals never enter command history."""
-    verified = project.actor_placement_batch([row['entity_id'] for row in report['targets']], report['delta'])
+    ids = [row['entity_id'] for row in report['targets']]
+    verified = (project.actor_placement_layout(ids, report['layout']) if report.get('schema_version') == 'legaia.actor-placement-layout.v1'
+                else project.actor_placement_batch(ids, report['delta']))
     if verified != report:
         raise ProjectError('Actor group proposal differs from the current reviewed placements')
     view = copy(project)
     view.overrides = deepcopy(project.overrides)
     for row in verified['targets']:
-        for axis, delta in verified['delta'].items():
-            if delta:
+        for axis in (verified['layout']['axis'],) if 'layout' in verified else verified['delta']:
+            if row['proposed'][axis] != row['effective'][axis]:
                 view.overrides.setdefault(row['entity_id'], {}).setdefault('Transform', {}).setdefault('position', {})[axis] = row['proposed'][axis]
     return view
 

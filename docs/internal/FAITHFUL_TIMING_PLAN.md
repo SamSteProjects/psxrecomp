@@ -213,6 +213,28 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 - Selected actor group alignment and distribution
+
+- Continued offline SDK feature buildout after0dc31332; no core/runtime changes.
+- Added source-grid Align X/Z to selected anchor and deterministic endpoint-fixed
+  Distribute X/Z. Nearest64-grid interiors/ties upward; too little span rejects.
+  Strict reviewed preview/scene/atomic command changes only differing axis values.
+- Existing group dialog now offers operations/anchors, layered target review,
+  no-write Proposed/Current/Frame/Return/Restore, one Apply/Undo and Save/Open.
+  Layout proposals have no offset handles; normal offset workflow remains.
+- Ten focused Python tests passed in1.250s; Node group checks/syntax passed. Retail
+  browser Align X/Undo and Distribute Z/Save/reload/stale last-member rejection
+  passed. Final no-op UI review disabled Apply and preserved state; zero errors.
+  Screenshots inspected. Initial synthetic test fixtures were corrected for a
+  real valid persisted component and insufficient-span group; no product failures.
+- Independent saved package decoded MAN matched exact expected bytes and actor13
+  Z3648, endpoint1856/5440, donor assignments, earlier positions, menus/selector.
+  Private package SHA9469e6b0ba790f166e6f7b540887ee15cde09d60a1c6a0e749d118038724c00f.
+- Updated buildout/status/matrix/guide and deferred gameplay queue. Feature
+  postdates425 checkpoint; no runtime acceptance claim. Browsers/server closed;
+  no game launch, package install or push. Goal remains active/incomplete.
+
+
 ### 2026-09-30 - Unapplied selected group appearance scene comparison
 
 - Continued the authorized offline SDK buildout; no generic timing/runtime change.

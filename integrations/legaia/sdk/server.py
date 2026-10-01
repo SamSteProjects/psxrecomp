@@ -1068,15 +1068,18 @@ class EditorHandler(BaseHTTPRequestHandler):
                         return
                     self._json(200, self.server.model_preview(asset, clip_id))
                     return
-                if route == "/api/actor-placement-batch-scene":
-                    if set(body) != {'actor_ids', 'delta', 'review_key'}:
-                        raise ProjectError('Actor group scene inspection requires actors, delta and reviewed identity only')
+                if route in ("/api/actor-placement-batch-scene", "/api/actor-placement-layout-scene"):
+                    is_layout = route == "/api/actor-placement-layout-scene"
+                    field = 'layout' if is_layout else 'delta'
+                    if set(body) != {'actor_ids', field, 'review_key'}:
+                        raise ProjectError('Actor group scene inspection requires actors, a placement operation and reviewed identity only')
                     from .scene_preview import actor_placement_proposal_view, source_key
                     from importer.scene_animation import load_scene_actor_animation_catalog
                     from importer.environment import load_environment_preview_catalog
                     from .terrain_preview import terrain_preview
                     project = self.server.project
-                    report = project.actor_placement_batch(body['actor_ids'], body['delta'])
+                    report = (project.actor_placement_layout(body['actor_ids'], body['layout']) if is_layout
+                              else project.actor_placement_batch(body['actor_ids'], body['delta']))
                     if body['review_key'] != report['review_key']:
                         raise ProjectError('Actor group changed since preview; preview it again')
                     original_key = source_key(project)
@@ -1129,6 +1132,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Group component review accepts actor identities and component only")
                     self._json(200, self.server.project.actor_component_batch(body['actor_ids'], body['component']))
                     return
+                if route == "/api/actor-placement-layout":
+                    if set(body) != {'actor_ids', 'layout'}:
+                        raise ProjectError('Group layout preview accepts actors and layout only')
+                    self._json(200, self.server.project.actor_placement_layout(body['actor_ids'], body['layout']))
+                    return
                 if route == "/api/actor-placement-batch":
                     if set(body) != {"actor_ids", "delta"}:
                         raise ProjectError("Actor group preview accepts actor identities and X/Z delta only")
@@ -1144,6 +1152,10 @@ class EditorHandler(BaseHTTPRequestHandler):
         # Reject malformed field types before they reach filesystem/importer services.
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
+        if route == "/api/command" and body.get("type") == "layout_actor_placements":
+            if set(body) != {'type', 'scene_id', 'actor_ids', 'layout', 'review_key'}:
+                raise ProjectError('Group layout accepts scene, actors, layout and reviewed identity only')
+            required_strings[route] = ('scene_id', 'review_key')
         if route == "/api/command" and body.get("type") == "offset_actor_placements":
             if set(body) != {"type", "scene_id", "actor_ids", "delta", "review_key"}:
                 raise ProjectError("Actor group offset requires scene, actors, delta and reviewed identity only")

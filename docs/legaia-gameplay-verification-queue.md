@@ -421,3 +421,17 @@ menu and selector edits. Deferred manual checks: confirm both intended actors
 initialize/render/animate with the donor pair and that scene movement/transitions
 and script behavior remain usable. No game launched or package installed for
 this artifact. Browser/package checks do not close these gameplay items.
+
+## Actor group layout package - deferred 2026-09-30
+
+Private saved project: `local-output/sdk-20260909/group-layout-20260930/`.
+Actor0011/0012/0013 Distribute Z retains endpoint1856/5440 and changes actor0013
+from2880 to3648; its X stays3776. Source initial donor0005 assignments on0011/0012,
+earlier placement changes, three menus and selector240 are retained. Independent
+full MAN ZIP/LZS readback and parsed actor coordinates passed; package SHA256
+`9469e6b0ba790f166e6f7b540887ee15cde09d60a1c6a0e749d118038724c00f`.
+See the private group-layout-package-check.json for the exact generated package.
+Manual review later should check initial location, script relocation/visibility
+and collision/walkability of the moved actor. Alignment is browser/Undo verified;
+its transient proposal was undone before this saved package. No game launched or
+package installed. This queue does not authorize a game launch.

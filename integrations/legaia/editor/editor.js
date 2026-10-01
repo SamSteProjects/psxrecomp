@@ -641,7 +641,7 @@ function groupProposalPosition(id,temporary=true){
   return result;
 }
 function groupProposalCenter(temporary=true){
-  if(actorGroupInspection?.layer!=='proposed')return null;
+  if(actorGroupInspection?.layer!=='proposed'||!actorGroupInspection.proposal.delta)return null;
   const points=[...actorGroupInspection.positions.keys()].map(id=>groupProposalPosition(id,temporary));
   return Object.fromEntries(['x','y','z'].map(axis=>[axis,points.reduce((sum,p)=>sum+p[axis],0)/points.length]));
 }
@@ -690,7 +690,7 @@ const draftsButton=document.createElement('button');draftsButton.id='npc-drafts-
 const actorBoxButton=document.createElement('button');actorBoxButton.id='actor-box-select';actorBoxButton.textContent='Box select actors';actorBoxButton.title='Drag over visible actor meshes; Ctrl/Command adds to the group. Shift-drag pans.';actorBoxButton.setAttribute('aria-pressed','false');
 actorBoxButton.onclick=()=>{if(actorBoxButton.disabled)return;cancelViewportGesture();actorBoxMode=!actorBoxMode;actorBoxButton.classList.toggle('active',actorBoxMode);actorBoxButton.setAttribute('aria-pressed',String(actorBoxMode));draw();};transformTools.prepend(actorBoxButton);
 const actorGroupTools=document.createElement('div');actorGroupTools.id='actor-group-selection';actorGroupTools.hidden=true;
-actorGroupTools.innerHTML='<span role="status"></span><button type="button" data-frame-selection>Frame actor group</button><button type="button" data-review-selection>Review group offset</button><button type="button" data-review-components>Review group components</button><button type="button" data-clear-selection>Clear group</button>';
+actorGroupTools.innerHTML='<span role="status"></span><button type="button" data-frame-selection>Frame actor group</button><button type="button" data-review-selection>Review group placements</button><button type="button" data-review-components>Review group components</button><button type="button" data-clear-selection>Clear group</button>';
 transformTools.after(actorGroupTools);
 function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;updateActorGroupSelection();}
 function updateActorGroupSelection(){

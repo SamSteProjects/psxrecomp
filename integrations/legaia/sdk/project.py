@@ -1315,6 +1315,29 @@ class ProjectService:
                                     'before': before, 'after': deepcopy(after)})
             self.redo_stack.clear()
             return
+        if command.get('type') == 'layout_actor_placements':
+            if set(command) != {'type', 'scene_id', 'actor_ids', 'layout', 'review_key'}:
+                raise ProjectError('Group layout requires scene, actors, layout and reviewed identity only')
+            report = self.actor_placement_layout(command['actor_ids'], command['layout'])
+            if command['scene_id'] != report['scene_id'] or command['review_key'] != report['review_key']:
+                raise ProjectError('Actor placement group changed since preview; preview it again')
+            axis = report['layout']['axis']
+            before, after = {}, {}
+            for row in report['targets']:
+                if row['proposed'][axis] == row['effective'][axis]:
+                    continue
+                identifier = row['entity_id']
+                before[identifier] = deepcopy(self.overrides.get(identifier))
+                value = deepcopy(before[identifier] or {})
+                value.setdefault('Transform', {}).setdefault('position', {})[axis] = row['proposed'][axis]
+                after[identifier] = value
+            if not before:
+                return
+            self.overrides.update(after)
+            self.undo_stack.append({'target': 'entity_overrides', 'entity_ids': sorted(before),
+                                    'before': before, 'after': deepcopy(after)})
+            self.redo_stack.clear()
+            return
         if command.get('type') == 'set_actor_group_appearance':
             if set(command) != {'type', 'scene_id', 'actor_ids', 'donor_entity_id', 'review_key'}:
                 raise ProjectError('Group appearance accepts scene, actors, donor and reviewed identity only')
@@ -2122,6 +2145,43 @@ class ProjectService:
                 'limitations': ['Only imported active-scene actor X/Z placement offsets are supported.',
                                 'Proposed coordinates must fit the exact retail 64-unit placement grid.',
                                 'Source Y, scripts, scheduling and runtime behavior are not inferred.']}
+
+    def actor_placement_layout(self, actor_ids: list[str], layout: dict) -> dict:
+        """Align or evenly distribute existing owners on the exact source grid."""
+        if not isinstance(layout, dict) or layout.get('kind') not in ('align', 'distribute') or layout.get('axis') not in ('x', 'z'):
+            raise ProjectError('Choose Align or Distribute along X or Z')
+        fields = {'kind', 'axis', 'anchor_entity_id'} if layout['kind'] == 'align' else {'kind', 'axis'}
+        if set(layout) != fields:
+            raise ProjectError('Group layout accepts kind, axis and an alignment anchor only')
+        base = self.actor_placement_batch(actor_ids, {'x': 0, 'z': 0})
+        axis = layout['axis']
+        targets = base['targets']
+        if layout['kind'] == 'align':
+            anchor = next((row for row in targets if row['entity_id'] == layout['anchor_entity_id']), None)
+            if anchor is None:
+                raise ProjectError('The alignment anchor must be a selected imported actor')
+            for row in targets:
+                row['proposed'][axis] = anchor['effective'][axis]
+        else:
+            ordered = sorted(targets, key=lambda row: (row['effective'][axis], row['entity_id']))
+            low, high = int(ordered[0]['effective'][axis] // 64), int(ordered[-1]['effective'][axis] // 64)
+            span, intervals = high - low, len(ordered) - 1
+            if span < intervals:
+                raise ProjectError('Distribution needs at least one 64-unit grid interval per gap')
+            # Nearest grid coordinate, ties upward; endpoints stay fixed and
+            # adjacent gaps differ by at most one retail grid interval.
+            for index, row in enumerate(ordered):
+                grid = low + (2 * span * index + intervals) // (2 * intervals)
+                row['proposed'][axis] = grid * 64
+        changed = sum(row['proposed'][axis] != row['effective'][axis] for row in targets)
+        review = digest({'placement_review': base['review_key'], 'layout': layout,
+                         'targets': targets, 'algorithm': 'source-grid-layout.v1'})
+        return {'schema_version': 'legaia.actor-placement-layout.v1', 'scene_id': base['scene_id'],
+                'targets': targets, 'layout': deepcopy(layout), 'changed_count': changed,
+                'review_key': review, 'limitations': [
+                    'Only source-grid X/Z positions change; height, facing, scripts and visibility are unchanged.',
+                    'Distribution preserves coordinate endpoints and stable source-ID order for ties.',
+                    'Nearest 64-unit spacing can differ by one grid interval; collision and gameplay are not validated.']}
 
     def actor_appearance_batch(self, actor_ids: list[str], donor_entity_id: str | None = None) -> dict:
         """Intersect verified initial donor pairs for all selected imported actors."""

@@ -1,6 +1,6 @@
-# Actor group placement offsets
+# Actor group placements
 
-Choose **Actor group offset** in the editor toolbar. Select 2 through 128
+Choose **Actor group placements** in the editor toolbar (formerly Actor group offset). Select 2 through 128
 imported actors in the active scene, optionally filtering the list by name or
 stable ID. Enter X/Z offsets and choose **Preview group offset**. The table shows
 Retail, Authored, Effective and Proposed positions independently. Preview does
@@ -214,3 +214,56 @@ rendered evidence and gameplay acceptance remain separate. No game launched.
 Private log/metadata: `sdk-regression-20260930-group-components.log/.json`
 under `local-output/sdk-20260909/`. Log SHA256:
 `69e0a61d32f73d1b313b00b543b0199f8787519991430e17eff44e23c31be60c`.
+
+## Alignment and distribution - 2026-09-30
+
+Use the **Placement operation** selector in the same group dialog. **Align X/Z to
+anchor** offers only selected actors as anchors and defaults to the focused group
+member where possible. Every other selected actor takes that anchor's effective
+coordinate on the chosen axis; the anchor itself stays unchanged. Other axes,
+source height, facing and script scheduling stay unchanged. Alignment can overlap
+actors on one axis; collision/walkability is not inferred.
+
+**Distribute along X/Z** orders actors by their current effective coordinate,
+using stable imported IDs to break ties. The first/last coordinate endpoints stay
+fixed. Interior coordinates round to the nearest64-unit retail grid (exact ties
+upward), making adjacent gaps differ by at most64. At least one grid interval
+per gap is required; insufficient span rejects. This is position distribution,
+not mesh-edge spacing or a change to model scale/orientation.
+
+Choose **Preview group layout**, review Retail/Authored/Effective/Proposed rows,
+then optionally **Inspect group in scene**. Proposed/Current, Frame group, Return
+and Restore use the existing coordinate/terrain preview. Offset drag handles are
+only shown for offset proposals. Return retains operation/anchor/report. Changing
+membership or operation invalidates review; the server recomputes the exact
+operation before **Apply group layout**. One command/Undo changes only owners
+whose selected-axis value differs; zero-change previews disable Apply. Other
+components and immutable import remain unchanged. Save/Open and Build use the
+normal Transform overrides.
+
+`/api/actor-placement-layout` accepts actor IDs and a strict layout object:
+`{kind:"align",axis:"x"|"z",anchor_entity_id:...}` or
+`{kind:"distribute",axis:"x"|"z"}`. Scene inspection adds only review_key at
+`/api/actor-placement-layout-scene`. `layout_actor_placements` additionally binds
+scene_id and review_key and permits no extra fields. Review identity includes the
+source/project/all selected overrides plus operation and deterministic targets.
+Stale/replayed requests and Live commands reject before mutation.
+
+Ten focused Python tests passed in1.250s, covering effective layers, deterministic
+tie order, balanced grid spacing, unchanged endpoints/axes/components, detached
+projection, atomic stale/Live/malformed/HTTP rejection, no-op and history/persistence.
+Existing Node group/scene checks and editor/module syntax passed. Retail browser
+actors0011/0012/0013 passed Align X to0011, no-write scene comparison, retained
+camera/Return, one Apply/Undo, Distribute Z, Save/reload and last-member stale
+rejection; zero page errors. A final UI check verified operation labels, visible
+spacing limitations, zero-change review/disabled Apply and unchanged state.
+Screenshots inspected; browsers/server closed.
+
+Independent saved-project build plus ZIP/LZS MAN readback matched the full expected
+source with actor0013 Z=3648 (retail2880), actor0012/0011 endpoints1856/5440 unchanged,
+earlier position edits, donor0005 initial pairs, three menus and selector240.
+Private evidence lives under `local-output/sdk-20260909/group-layout-20260930/`,
+including group-layout-browser-check.json, layout-noop-browser-check.json,
+group-layout-package-check.json and proposal/review PNGs. Package SHA256:
+`9469e6b0ba790f166e6f7b540887ee15cde09d60a1c6a0e749d118038724c00f`.
+No package installed or game launched. The425-test checkpoint predates this feature.
