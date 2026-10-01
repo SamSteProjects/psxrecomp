@@ -27,13 +27,17 @@ def inspector_schema():
             'properties':[{'id':'source','label':'Source','path':['source_record','prot_entry_name'],'fallback_paths':[['source_record','scene'],['source_record','kind']],'empty_label':'Imported record','type':'string','state':'read-only-retail'}],
             'details':[{'label':'Source, evidence and unresolved fields','path':[]}]},
         'ModelRenderer':{'label':'Model renderer','layout':'read-only-properties',
-            'actions':[{'id':'inspect-model','label':'Inspect model objects','capability':'model_preview','when':['asset_id']}],
+            'actions':[{'id':'inspect-model','label':'Inspect model objects','capability':'model_preview','when':['asset_id']},{'id':'preview-reference-animation','label':'Preview reference animation','capability':'animation_preview','when':['reference_animation','supported']}],
             'properties':[{'id':'asset_id','label':'Asset','path':['asset_id'],'type':'asset-reference','state':'read-only-retail'},
                           {'id':'resolution_status','label':'Resolution','path':['resolution_status'],'type':'string','state':'derived'}]},
         'Dialogue':{'label':'Script and dialogue','units':'Inspect source','layout':'read-only-properties','properties':[],
             'notes':['Inspect decoded dialogue and supported instruction paths; source capacity and unknown instructions remain explicit.'],
             'actions':[{'id':'inspect-script','label':'Inspect script and dialogue','capability':'actor_script_preview'},{'id':'inspect-actor-candidate','label':'Inspect NPC creation candidate','capability':'actor_candidate_inspection'}]},
+        'ActorPresets':{'label':'Actor presets','units':'Position and appearance','layout':'read-only-properties','properties':[],
+            'notes':['Capture or apply saved position and appearance presets to this existing actor.'],
+            'actions':[{'id':'inspect-templates','label':'Open actor templates…','capability':'authored_transform_templates'}]},
         'Animation':{'label':'Animation','layout':'read-only-properties',
+            'actions':[{'id':'preview-scene-animation','label':'Preview imported scene animation','capability':'actor_animation_preview','when':['preview_support','supported']},{'id':'author-animation-channels','label':'Author animation channels','capability':'actor_animation_authoring','requires_edit':True,'when':['preview_support','supported']}],
             'properties':[{'id':'imported_id','label':'Imported ID','path':['imported_id'],'type':'integer','state':'read-only-retail'}],
             'notes':['Timing, live animation state and retargeting are not inferred from an imported association.']}
     },'unknown_component_policy':'read-only-details','live_writes':False}

@@ -70,3 +70,33 @@ tests with no skips, all12 Node checks and10 module syntax checks. See the
 [current SDK status](SDK_STATUS.md) for exact source/command/log evidence.
 Feature-specific browser/disk/package checks above remain separate from deferred
 runtime and gameplay acceptance.
+
+## Animation and preset action migration — 2026-09-30
+
+The SDK now declares four additional registered tools. Animation's supported
+imported association gates **Preview imported scene animation** and **Author
+animation channels**; the latter additionally requires the explicit authoring
+capability and Edit mode. ModelRenderer's **Preview reference animation** requires
+a supported reference clip, kept separate from the imported placement animation.
+**Open actor templates** uses the ActorPresets tool-group descriptor and the
+existing preset library. ActorPresets is an inspector tool group, not an invented
+retail or persisted entity component.
+
+Reference support and the first supported clip ID are derived into detached
+editor state from the imported asset catalog. Source preview/authoring still
+verifies actual data through existing services. No metadata can supply code,
+commands, runtime writes or permission to edit unknown structures. Dispatch uses
+the existing source/selection/busy guards and registered Edit requirement. The
+four old bespoke button creation/callback paths were removed. Numeric animation
+forms, template library forms and asset tools still retain their validated
+specialized adapters; the full inspector migration remains incomplete.
+
+Eight focused Python/HTTP checks passed, including schema capability/condition
+contracts and unchanged imported state. Node checks separate unsupported source
+eligibility, readonly preview and Edit-only authoring. Retail-source browser
+checked unsupported actors and busy disabling, opened the loaded channel form,
+imported scene preview, idle reference preview and preset library through
+registered buttons, and submitted zero authoring commands. Components were
+unchanged; zero page errors. Final action-section screenshot inspected. Private
+evidence: `local-output/sdk-20260909/inspector-animation-actions-20260930/`.
+This postdates the457-test integrated checkpoint. No game/runtime launched.

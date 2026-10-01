@@ -37,3 +37,10 @@ const button={dataset:{inspectorAction:'choose'}},root={querySelectorAll:()=>[bu
 await button.onclick();assert.equal(calls,1);
 for(const field of ['current','editing','isBusy','allowed']){current=true;editing=true;isBusy=false;allowed=true;if(field==='current')current=false;if(field==='editing')editing=false;if(field==='isBusy')isBusy=true;if(field==='allowed')allowed=false;await button.onclick();assert.equal(calls,1);}
 console.log('Registered actions filter capabilities/conditions/unknown handlers and guard Edit/busy/stale dispatch.');
+
+const animationSchema=structuredClone(actionsSchema);animationSchema.components.Animation={layout:'read-only-properties',properties:[],actions:[{id:'author',label:'Author animation channels',capability:'authoring',requires_edit:true,when:['preview_support','supported']},{id:'scene',label:'Preview imported scene animation',capability:'preview',when:['preview_support','supported']}]};
+const animationRegistry={author:{requiresEdit:true,run:()=>{}},scene:{run:()=>{}}};
+assert.equal(registeredActions(animationSchema,'Animation',{preview_support:{supported:false}},{authoring:true,preview:true},animationRegistry,true).length,0);
+const animationActions=registeredActions(animationSchema,'Animation',{preview_support:{supported:true}},{authoring:true,preview:true},animationRegistry,false);
+assert(animationActions.find(action=>action.id==='author').disabled);assert(!animationActions.find(action=>action.id==='scene').disabled);
+console.log('Animation action eligibility separates imported-source support, preview availability and Edit-only authoring.');

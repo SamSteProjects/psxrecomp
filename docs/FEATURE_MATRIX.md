@@ -2,6 +2,19 @@
 
 Current scene-editor status (2026-09-30):
 
+**SDK animation and preset actions (2026-09-30):** Four more actor tools
+now consume SDK action descriptors and registered handlers: imported scene
+animation preview, Edit-only channel authoring, eligible reference animation
+preview and the preset library. The SDK supplies reference-clip eligibility as
+detached view metadata without modifying imported components. Unsupported actions
+are omitted; source/selection/busy/Edit guards remain in dispatch. Eight focused
+Python/HTTP checks and Node action eligibility checks passed. Retail-source
+browser opened all four existing tools, checked unsupported/busy guards and
+confirmed no actor changes or authoring commands, zero errors; screenshot
+inspected. Specialized tool forms and asset actions still use their existing
+adapters. This postdates the457-test checkpoint. No game launched. See
+[inspector contract](legaia-inspector-schema.md).
+
 The retail-enabled SDK discovery suite passed **457 tests in178.185 seconds**,
 exit0, no skips, against unchanged committed source
 `3c8d8f46af7063f2993d49fe74ec02e6a0005639`. This checks the committed SDK discovery suite through preset file

@@ -125,12 +125,19 @@ class EditorServer(ThreadingHTTPServer):
         from importer.scene_animation import actor_animation_capabilities
         actors = {actor["semantic_id"]: actor for actor in
                   self.project.imports.get(self.project.active_scene, {}).get("actors", [])}
+        asset_support={asset['id']:asset.get('animation_support',{}) for asset in state['assets']}
         for entity in state["scene"]["entities"]:
+            model=entity['components'].get('ModelRenderer')
+            if model is not None:
+                support=asset_support.get(model.get('asset_id'),{});clips=support.get('clips',[])
+                model['reference_animation']={'supported':support.get('supported') is True and bool(clips),
+                                              'first_clip_id':clips[0]['id'] if support.get('supported') is True and clips else None}
             actor = actors.get(entity["id"])
             if actor is not None and "Animation" in entity["components"]:
                 asset = self.project.assets.records.get(actor["model_reference"].get("asset_semantic_id"), {})
                 entity["components"]["Animation"]["preview_support"] = actor_animation_capabilities(actor, asset)
         state["capabilities"]["actor_animation_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_animation_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)

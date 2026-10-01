@@ -213,6 +213,29 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-09-30 — SDK animation/preset inspector action migration
+
+Previous turn was progress: full offline457 checkpoint1a48ccde. Revalidated clean
+tracked source and migrated four bespoke actor animation/template buttons to SDK
+action metadata and bounded registered handlers. Added detached asset-derived
+reference-clip eligibility and explicit channel authoring capability; source
+support, busy, current source/selection and Edit guards remain. ActorPresets is
+an inspector tool descriptor, not persisted/imported entity data. Eight focused
+Python/HTTP tests passed in1.285s, plus Node eligibility/readonly/Edit checks and
+editor syntax. Initial test method was appended after the module main guard;
+corrected its placement before rerunning. Retail browser replay opened source channels, scene/reference previews and the
+preset library with unsupported filtering, busy guard, no component changes or
+authoring commands and zero errors. Initial harness used a nonexistent model
+close-button ID; corrected to the actual data-close control. Screenshot capture
+was moved to the visible action section for final inspection. Final browser14198
+passed; screenshot inspected. Owned browsers closed and servers85058/94578
+stopped. Evidence under
+local-output/sdk-20260909/inspector-animation-actions-20260930/. No native game,
+runtime attachment or disc write. Report/status/matrix/guide updated. This
+postdates457; specialized forms and asset action migration, broader SDK/runtime
+work and deferred gameplay acceptance remain incomplete.
+
+
 ### 2026-09-30 — Integrated SDK checkpoint after preset file transfer
 
 Previous turn was progress: preset files/source protection3c8d8f46. Verified

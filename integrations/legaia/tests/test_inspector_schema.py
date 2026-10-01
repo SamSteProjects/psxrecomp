@@ -18,4 +18,31 @@ class InspectorSchema(unittest.TestCase):
         self.assertEqual(schema['Dialogue']['actions'][0]['capability'],'actor_script_preview')
         self.assertTrue(all('authoring' not in p for p in schema['RuntimeCorrelation']['properties']))
         self.assertEqual(schema['RetailMetadata']['details'][0]['path'],[])
+
+    def test_animation_and_preset_actions_preserve_capability_and_edit_guards(self):
+        from copy import deepcopy
+        from unittest.mock import patch
+        from pathlib import Path
+        import tempfile
+        from sdk.project import ProjectService
+        from sdk.server import EditorServer
+        from integrations.legaia.tests.test_project_workflow import synthetic_scene
+        schema=inspector_schema()['components']
+        actions={row['id']:row for row in schema['Animation']['actions']}
+        self.assertTrue(actions['author-animation-channels']['requires_edit'])
+        self.assertEqual(actions['author-animation-channels']['capability'],'actor_animation_authoring')
+        self.assertEqual(actions['preview-scene-animation']['when'],['preview_support','supported'])
+        self.assertEqual(schema['ModelRenderer']['actions'][1]['when'],['reference_animation','supported'])
+        self.assertEqual(schema['ActorPresets']['actions'][0]['capability'],'authored_transform_templates')
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.disc_path='missing-fixture.bin'
+            before=deepcopy(p.imports)
+            with patch('importer.animation.animation_capabilities',return_value={'supported':True,'clips':[{'id':'reference-source'}]}):
+                with EditorServer(('127.0.0.1',0),p) as server:state=server.state()
+            self.assertTrue(state['capabilities']['actor_animation_authoring'])
+            self.assertEqual(state['scene']['entities'][0]['components']['ModelRenderer']['reference_animation'],{'supported':True,'first_clip_id':'reference-source'})
+            self.assertNotIn('reference_animation',p.state()['scene']['entities'][0]['components']['ModelRenderer'])
+            self.assertNotIn('ActorPresets',state['scene']['entities'][0]['components'])
+            self.assertEqual(p.imports,before)
+
 if __name__=='__main__':unittest.main()
