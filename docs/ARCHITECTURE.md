@@ -6,6 +6,22 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+The transition graph workspace (2026-10-02) consumes the existing source-qualified
+scene/project graph APIs. A detached browser decoder validates stable scene,
+owner, partition and instruction identities, source hashes/extents, separate
+entry layers, imported-scene context and exact coverage totals. Scene responses
+bind both source and transition annotation keys; project responses bind the
+complete project transition key. A pure filtered projection groups parallel
+instructions only for diagram arrows and limits the canvas to 80 nodes/160 pairs;
+its separate instruction list keeps all matches for bounded pagination. The
+workspace uses a deterministic column layout, source/destination selection,
+direct-neighbor focus, pan/zoom and ordinary source-script/scene navigation.
+Long arrows pass between scene boxes; badges render above crossing lines. Dynamic
+frame handlers leave with removed nodes, and context/close guards disable retained
+callbacks. Project-only authored/import changes close stale dialogs; a late failure from a
+previous request cannot clear a newly opened workspace. Nothing in
+this visualization evaluates runtime routes or changes authored/imported data.
+
 Source trigger cells (2026-10-02) use a scene-owned `TriggerCells` override,
 qualified by original MAP SHA256 and stable primary kind/row IDs. The importer
 writer changes only the first two bytes of existing kind-0/1 rows. The review

@@ -7,6 +7,30 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Visual transition graph workspace (2026-10-02):** Scene and Project
+transitions now open a selectable node/arrow diagram, scene list, search,
+imported-only filter, direct-reference focus, zoom/pan/Fit and paginated source
+instructions. Parallel instructions remain independent records; arrow badges
+group only equal source/destination pairs. Retail, Authored and Effective entry
+bytes stay separate. Source-script navigation selects the exact owner and PC;
+imported destinations use ordinary scene selection. Coverage, unavailable
+catalogs and unresolved names remain explicit. Project-only freshness changes,
+stale responses and pending-close/reopen cleanup and old-request isolation invalidate retained controls. The
+canvas draws at most 80 scenes and 160 pairs; every matching instruction remains
+accessible in 20-row pages. No gameplay route or story reachability is inferred.
+See [transition graph workflow](legaia-project-transitions.md).
+
+Validation: 26 selected retail-enabled Python cases passed with zero skips;
+6 Node suites and 3 changed-module syntax checks passed. Thirteen actual browser
+workflow checks passed with zero page/HTTP errors, zero authoring commands and
+zero game-launch requests. The four-scene Town01/Dolk2/Town0b/map01 fixture has
+17 nodes, 18 grouped pairs and 35 instructions from 319 scripts (195 partial,
+zero unavailable). Graph, narrow-layout and entry-layer captures were inspected;
+long arrows avoid intervening scene boxes and badges remain selectable above
+crossing lines. Imported metadata and the saved project are unchanged. This
+source-reference workspace is accepted offline; gameplay/runtime verification
+remains deferred for the wider SDK. No game was launched or package installed.
+
 **Reviewed primary trigger cells (2026-10-02):** Existing primary MAP kind-0
 teleport and kind-1 binding rows now have an Edit trigger cell action. Retail,
 Authored, Current and Proposed X/Z cells remain separate, with outline and scene

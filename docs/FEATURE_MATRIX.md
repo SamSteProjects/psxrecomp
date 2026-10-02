@@ -2,6 +2,30 @@
 
 Current scene-editor status (2026-10-02):
 
+**Visual transition graph workspace (2026-10-02):** Scene and Project
+transitions now open a selectable node/arrow diagram, scene list, search,
+imported-only filter, direct-reference focus, zoom/pan/Fit and paginated source
+instructions. Parallel instructions remain independent records; arrow badges
+group only equal source/destination pairs. Retail, Authored and Effective entry
+bytes stay separate. Source-script navigation selects the exact owner and PC;
+imported destinations use ordinary scene selection. Coverage, unavailable
+catalogs and unresolved names remain explicit. Project-only freshness changes,
+stale responses and pending-close/reopen cleanup and old-request isolation invalidate retained controls. The
+canvas draws at most 80 scenes and 160 pairs; every matching instruction remains
+accessible in 20-row pages. No gameplay route or story reachability is inferred.
+See [transition graph workflow](legaia-project-transitions.md).
+
+Validation: 26 selected retail-enabled Python cases passed with zero skips;
+6 Node suites and 3 changed-module syntax checks passed. Thirteen actual browser
+workflow checks passed with zero page/HTTP errors, zero authoring commands and
+zero game-launch requests. The four-scene Town01/Dolk2/Town0b/map01 fixture has
+17 nodes, 18 grouped pairs and 35 instructions from 319 scripts (195 partial,
+zero unavailable). Graph, narrow-layout and entry-layer captures were inspected;
+long arrows avoid intervening scene boxes and badges remain selectable above
+crossing lines. Imported metadata and the saved project are unchanged. This
+source-reference workspace is accepted offline; gameplay/runtime verification
+remains deferred for the wider SDK. No game was launched or package installed.
+
 **Reviewed primary trigger cells (2026-10-02):** Existing primary MAP kind-0
 teleport and kind-1 binding rows now have an Edit trigger cell action. Retail,
 Authored, Current and Proposed X/Z cells remain separate, with outline and scene
@@ -714,7 +738,7 @@ Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 | Effective model-user selection | FUNCTIONAL / OFFLINE. Model Used by details select2–128 effective imported actor users within one scene and seed normal group tools. Fresh SDK usage/owner/effective-asset guards; retail-only assignments and drafts excluded. Node checks and retail exact group/cross-scene/stale rejection passed; zero errors, screenshot inspected. Asset sidebar tool/list scrolling fixed after footer obstruction. | Initial assignments only; script-driven/runtime users and mixed draft/imported groups are not inferred. No component/history authorship by selection. |
 | SDK component inspector contract | FUNCTIONAL / PARTIAL. Versioned SDK metadata drives Transform layers/number controls and ModelRenderer/Animation read-only properties, layered ActorAppearance references, RuntimeCorrelation status and RetailMetadata evidence details. Unregistered components use escaped read-only details. Bounded command adapter, authoring versus Build constraints, unknown retail Y and busy/Edit/source/selection guards. Nine focused Python tests, Node layer/detail checks and retail edit/Undo/Y diagnostics plus donor Clear/Undo/runtime/provenance checks passed. Screenshot inspected. Postdates441 checkpoint. | Six donor/model/script/candidate actions use SDK descriptors and registered handlers, with capability/condition and Edit/busy/stale guards verified by Node and retail Clear/Undo/source-script loading. Specialized forms and asset inspectors retain existing adapters; ten actor tools now use registered SDK actions; migration is incomplete. No runtime writable properties or arbitrary component editing inferred. |
 | Central transition assets | FUNCTIONAL / SOURCE QUALIFIED. Stable instruction IDs in Asset Browser/Inspector and Active/Project dependencies, encoded and static arrival layers, exact-PC source navigation and imported-destination navigation. Fresh authored span qualification and separate transition freshness key.55 retail-enabled Python tests,39 Node checks and browser/Build readback passed. | Source trigger positions, runtime arrival, story conditions and route reachability remain unknown. Partial coverage is distinct from serializer qualification; unknown/conflicting stops and unsupported names block editing. |
-| Project transition references | FUNCTIONAL / READ-ONLY. Source-qualified references across1–64 imported scenes; merged stable scene identities, source coverage/unavailable reasons, layered entry operands and cross-scene source-script/destination navigation. Five focused tests and retail HTTP/browser checks passed; three town01/Dolk2 references,180 scripts,88 partial, zero page errors. Screenshot inspected. Postdates441 checkpoint. | Unknown paths and controller records, complete exits, story-state evaluation, reachability and runtime connections remain unverified. No route inference or path finding. |
+| Project transition references | FUNCTIONAL / READ-ONLY. Selectable scene/project node graph, search, imported-only filtering, direct-reference focus, zoom/pan/Fit, grouped parallel-reference badges and complete 20-row instruction pagination. Strict source/annotation identity, coverage/unavailable reasons, layered entry bytes and exact cross-scene script-PC/destination navigation. Canvas bounds of 80 nodes/160 pairs preserve every filtered reference for the list. 26 selected Python cases, 6 Node suites and 13 real-browser workflows passed; four retail scenes yield 17 nodes, 18 pairs, 35 references. No project/import mutation or game launch. | Unknown paths/controllers, complete exits, story state, reachability and runtime connections remain unverified. Graph edges are decoded instructions; no route or path finding is inferred. |
 | NPC draft repetition | FUNCTIONAL / OFFLINE. Count and X/Z grid spacing, named donor-bound copies, detached scene comparison and Return, one Apply/Undo/Redo, persistence. Eleven focused Python tests, Node guards, retail browser checks, inspected screenshot and independent disk/archive reopen passed. Postdates the 441-test checkpoint. | Normal Build rejects projects containing NPC drafts. Experimental archive serialization proves exact appended placements/initial pairs/cloned script bytes; runtime spawning, scheduling, collision and visibility remain unverified. |
 | Saved scene placement selections | FUNCTIONAL / OFFLINE. 1–128 imported actors/static decorations/mixed members, source-bound library, metadata commands/history/persistence and fresh cross-scene Recall into existing tools. 38 focused Python, 32 Node, 33 syntax and retail browser/copy/unchanged-package checks passed. | NPC drafts, placed scenery and ground excluded. No game parenting or instantiation. |
 | Saved actor selections | FUNCTIONAL / OFFLINE. Named project-local groups of2–128 imported actors, bounded128 selections; source-scene/hash binding, canonical membership, UUID identity, strict Create/Rename/Replace/Delete commands, Undo/Redo and Save/Open. Cross-scene Recall seeds normal group tools without game-component/history changes. Fifteen focused Python tests, Node recall checks, retail browser workflow and independent disk/input-key checks passed. Python services included in441 checkpoint; browser/disk evidence separate. | Mixed/scenery selections use the saved scene placement library. Game parenting and prefab instantiation remain separate; saved selections do not encode those structures. |

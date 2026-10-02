@@ -20,6 +20,8 @@ import {decodeTransitionResource,openTransitionResource} from '/transition-resou
 import {decodeFieldSpatial,drawFieldSpatial,hitFieldSpatial,fieldSpatialFrame} from '/field-spatial.js';
 import {openRegionBounds,decodeRegionBoundsAnnotations,regionBoundsGeometry} from '/region-bounds.js';
 import {openTriggerCells,decodeTriggerCellsAnnotations,triggerCellsGeometry} from '/trigger-cells.js';
+import {decodeTransitionGraph} from '/transition-graph.js';
+import {mountTransitionGraphWorkspace} from '/transition-graph-workspace.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
@@ -1194,38 +1196,31 @@ const transitionsButton=document.createElement('button');transitionsButton.id='s
 const projectTransitionsButton=document.createElement('button');projectTransitionsButton.id='project-transitions';projectTransitionsButton.textContent='Project transitions';transitionsButton.after(projectTransitionsButton);projectTransitionsButton.onclick=()=>openSceneTransitions(true);
 const transitionsContext=(projectWide=false)=>JSON.stringify([resourceStateKey(),projectWide?state.project_transition_state_key:null]);
 const transitionsDialog=document.createElement('dialog');transitionsDialog.id='scene-transitions-dialog';document.body.append(transitionsDialog);
-let transitionsAbort=null;
-transitionsDialog.addEventListener('close',()=>{if(transitionsAbort){transitionsAbort.abort();transitionsAbort=null;setBusy(false);}transitionsDialog.replaceChildren();});
+let transitionsAbort=null,transitionWorkspace=null;
+transitionsDialog.addEventListener('close',()=>{transitionWorkspace?.dispose();transitionWorkspace=null;if(transitionsAbort){transitionsAbort.abort();transitionsAbort=null;setBusy(false);}transitionsDialog.replaceChildren();});
 transitionsButton.onclick=()=>openSceneTransitions();
 async function openSceneTransitions(projectWide=false){
   if(busy||!state.capabilities?.scene_transitions)return;
   const key=transitionsContext(projectWide),controller=new AbortController();transitionsAbort=controller;setBusy(true);
+  const context={projectWide,projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:projectWide?state.project_transition_state_key:state.scene_preview_source_key,transitionStateKey:state.scene_transition_state_key,sceneIds:(state.scenes??[]).map(scene=>scene.id).sort()};
+  transitionsDialog.dataset.sourceContext=key;transitionsDialog.dataset.projectWide=String(projectWide);
   transitionsDialog.innerHTML='<div class="dialog-heading"><h2>Scene transitions</h2><button id="close-scene-transitions" aria-label="Close scene transitions">×</button></div><p id="transitions-summary">Verifying scene scripts…</p><div id="transitions-graph"></div><p class="dialog-error" role="alert"></p>';
   transitionsDialog.querySelector('h2').textContent=projectWide?'Project transitions':'Scene transitions';
   $('close-scene-transitions').onclick=()=>transitionsDialog.close();transitionsDialog.showModal();
+  const current=()=>transitionsDialog.open&&!controller.signal.aborted&&key===transitionsContext(projectWide);
   try{
     const response=await fetch(projectWide?'/api/project-transitions':'/api/scene-transitions',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Transition discovery failed');
     if(controller.signal.aborted||!transitionsDialog.open)return;
-    if(key!==transitionsContext(projectWide)||(projectWide?(result.schema_version!=='legaia.project-transitions.v1'||result.project_path!==state.project.path||result.source_key!==state.project_transition_state_key):(result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.transition_state_key!==state.scene_transition_state_key))||result.read_only!==true||!Array.isArray(result.edges)||result.edges.length>16384||!Array.isArray(result.nodes)||result.nodes.length>(projectWide?16448:16385))throw new Error('Transition source changed or returned invalid graph bounds.');
-    const nodes=new Map(result.nodes.map(node=>[node.id,node]));
-    $('transitions-summary').textContent=`${result.edges.length} encoded scene-change references · ${result.coverage.script_count} scripts inspected · ${result.coverage.partial_script_count} partial · ${result.coverage.unavailable_script_count} unavailable. Gameplay reachability has not been evaluated.`;
-    const graph=$('transitions-graph');
-    if(projectWide){for(const scene of result.scenes??[]){const note=document.createElement('p');note.className='field-note';note.textContent=`${scene.scene_name}: ${scene.status==='verified'?`${scene.reference_count} decoded references`:scene.reason}`;graph.append(note);}}
-    for(const edge of result.edges){
-      const from=nodes.get(edge.source),to=nodes.get(edge.target);if(!from||!to||edge.reachability!=='not_evaluated')throw new Error('Transition graph has an invalid source or destination.');
-      const row=document.createElement('article');row.className='transition-edge';
-      row.innerHTML=`<div class="transition-nodes"><div><small>Source scene</small><strong>${escapeHTML(from.name)}</strong></div><span aria-label="Encoded reference to">→</span><div><small>Encoded destination</small><strong>${escapeHTML(to.name ?? 'Unresolved destination')}</strong><small>${to.imported?'Imported':to.in_scene_index?'In retail scene index · not imported':'Destination not resolved in scene index'}</small></div></div><p>${escapeHTML(edge.script_name)} · ${escapeHTML(scriptOffset(edge.reference.pc))} · ${escapeHTML(resourceLabel(edge.script_status))}</p><p>Imported encoded entry: X ${escapeHTML(edge.reference.entry_x_encoded)} / Z ${escapeHTML(edge.reference.entry_z_encoded)} / direction ${escapeHTML(edge.reference.direction_encoded)}</p><div class="dialog-actions"><button class="inspect-transition-script">Inspect source script</button><button class="open-transition-scene" ${to.imported?'':'disabled'}>Open imported destination</button></div><details><summary>Reference provenance</summary><pre class="diagnostic-detail"></pre></details>`;
-      if(Object.keys(edge.entry_layers?.authored ?? {}).length){const values=edge.entry_layers.effective,note=document.createElement('p');note.className='field-note';note.textContent=`Authored effective entry: X ${values.entry_x_encoded} / Z ${values.entry_z_encoded} / direction ${values.direction_encoded} · Source reverified on Build`;row.querySelector('.dialog-actions').before(note);}
-
-      row.querySelector('pre').textContent=JSON.stringify(edge,null,2);
-      row.querySelector('.inspect-transition-script').onclick=async()=>{if(busy||key!==transitionsContext(projectWide))return;transitionsDialog.close();if(projectWide&&edge.source!==state.scene?.id&&!await api('/api/scene',{scene_id:edge.source}))return;const owner=edge.partition===2?{id:edge.owner_id,name:edge.script_name,partitionTwo:true}:entities().find(entity=>entity.id===edge.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}transitionsDialog.close();openActorScript(owner,false,null,null,edge.reference.pc);};
-      row.querySelector('.open-transition-scene').onclick=async()=>{if(busy||!to.imported||key!==transitionsContext(projectWide))return;transitionsDialog.close();await api('/api/scene',{scene_id:to.id});};
-      graph.append(row);
-    }
-    if(!result.edges.length){const note=document.createElement('p');note.textContent='No scene-change references were decoded in the inspected paths. This does not establish that the scene has no exits.';graph.append(note);}
-    for(const note of result.limitations ?? []){const p=document.createElement('p');p.className='field-note';p.textContent=note;graph.append(p);}
-  }catch(error){if(error.name!=='AbortError'&&transitionsDialog.open){$('transitions-graph').replaceChildren();transitionsDialog.querySelector('.dialog-error').textContent=error.message;}}
+    if(!current())throw new Error('Transition source changed; reopen the graph.');
+    const graph=decodeTransitionGraph(result,context);
+    $('transitions-summary').textContent=`${graph.edges.length} encoded scene-change references · ${graph.coverage.script_count} scripts inspected · ${graph.coverage.partial_script_count} partial · ${graph.coverage.unavailable_script_count} unavailable. Gameplay reachability has not been evaluated.`;
+    transitionWorkspace=mountTransitionGraphWorkspace($('transitions-graph'),graph,{activeSceneId:state.scene?.id,isCurrent:current,
+      onError:error=>{if(current())transitionsDialog.querySelector('.dialog-error').textContent=error.message;},
+      onInspect:async edge=>{if(busy||!current())return;transitionsDialog.close();if(edge.source!==state.scene?.id&&!await api('/api/scene',{scene_id:edge.source}))return;const owner=edge.partition===2?{id:edge.owner_id,name:edge.script_name,partitionTwo:true}:entities().find(entity=>entity.id===edge.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}await openActorScript(owner,false,null,null,edge.reference.pc);},
+      onOpenScene:async node=>{if(busy||!node.imported||!current())return;transitionsDialog.close();await api('/api/scene',{scene_id:node.id});}
+    });
+  }catch(error){if(error.name!=='AbortError'&&!controller.signal.aborted&&transitionsAbort===controller&&transitionsDialog.open){transitionWorkspace?.dispose();transitionWorkspace=null;$('transitions-graph').replaceChildren();$('transitions-summary').textContent='Transition graph unavailable.';transitionsDialog.querySelector('.dialog-error').textContent=error.message;}}
   finally{if(transitionsAbort===controller){transitionsAbort=null;setBusy(false);}}
 }
 const textButton=document.createElement('button');textButton.id='scene-text';textButton.textContent='Search scene text';transitionsButton.after(textButton);
@@ -1324,6 +1319,7 @@ async function openFlagReferences(projectWide=false){
   finally{if(flagsAbort===controller){flagsAbort=null;setBusy(false);}}
 };
 function synchronizeResources(){
+  if(transitionsDialog.open&&transitionsDialog.dataset.sourceContext!==transitionsContext(transitionsDialog.dataset.projectWide==='true'))transitionsDialog.close();
   if(flagsDialog.open&&flagsDialog.dataset.sourceContext!==flagContext(flagsDialog.dataset.projectWide==='true'))flagsDialog.close();
   if(textDialog.open&&textDialog.dataset.sourceContext!==textContextKey(textDialog.dataset.projectWide==='true'))textDialog.close();
   const current=resourceStateKey();
