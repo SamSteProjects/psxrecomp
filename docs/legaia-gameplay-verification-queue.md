@@ -1,5 +1,18 @@
 # Deferred gameplay verification
 
+## Normal raw MAN placement in mixed package — deferred
+
+Private saved project: `local-output/sdk-20260909/raw-MAN-normal-build-20261001/project/`.
+Package: `Builds/60c1e00eb53ebb09/legaia.sdk.0f096fa3c17d-0.1.0-60c1e00eb53ebb09.psxmod`.
+SHA256: `1a2effd3c3f17f30efa9a77a6945bb98ba5b2a458e71dc11950430e0b02f8ef1`.
+Dolk2 actor0011 initial X9408→9472 is one raw MAN byte edit; the package also
+contains nine preexisting Town01 changes. Exact raw/compressed serialization,
+mixed report review, package integrity and browser Build passed. Deferred checks
+include Dolk2 scene entry, initial actor position, visibility, collision and
+subsequent scripted repositioning, plus mixed-package scene transitions. No
+installation or game launch performed. This queue does not request immediate
+manual gameplay. NPC drafts are not part of this normal package.
+
 ## Combined town01 position/appearance preset — deferred
 
 Private saved project: `local-output/sdk-20260909/component-inspector-20260930/`.

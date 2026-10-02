@@ -2,6 +2,17 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Normal Build for raw streamed MAN (2026-10-01):** The typed source handoff now
+routes raw MAN through existing audited placement/header/script composition,
+preserving size, structural chunks, record layout and opaque bytes. Raw output is
+explicitly uncompressed; raw validation and LZS round trips remain distinct.
+Dolk2 placement, donor appearance, dialogue, P2 transition and flag changes
+compose with a separate raw ANM bank. Twenty-seven retail-enabled Python checks,
+25 Node files and26 syntax checks passed. Browser Review Build/Build agreed on
+ten mixed Town01/Dolk2 changes, two overlays/68,930 bytes; authored/persisted data
+unchanged, zero errors, screenshot inspected. No game launched; NPC drafts still
+block normal Build. Postdates integrated498. See [Raw MAN Build](legaia-raw-MAN-normal-build.md).
+
 **Saved Build audit comparison (2026-10-01):** Build history verifies two saved
 packages and compares exact audit identities/records, including animation frame/
 object and detailed deltas. Missing records do not imply deletion or runtime values.

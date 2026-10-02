@@ -2,6 +2,16 @@
 
 Current scene-editor status (2026-10-01):
 
+**Raw streamed MAN normal Build (2026-10-01):** Shared typed-source serialization
+now emits equal-span raw MAN overlays with explicit uncompressed provenance and
+structural/record/opaque-byte guards, alongside existing descriptor LZS output.
+Dolk2 placement/header/dialogue/transition/flag edits and raw ANM compose in
+normal packages. Twenty-seven retail-enabled Python checks,25 Node files/26 syntax
+checks passed. Browser reviewed/built ten mixed-scene changes with no metadata
+mutation/errors; screenshot inspected. NPC creation/relocation and gameplay remain
+separate deferred work; wider raw-family/scene coverage is unproven. Postdates498.
+See [Raw MAN Build](legaia-raw-MAN-normal-build.md).
+
 **Saved Build audit comparison (2026-10-01):** Two verified packages with matching
 recorded disc identity can be compared by stable audit record/frame/object identity.
 Exact records, including detailed deltas, determine differences; absence remains

@@ -8,6 +8,19 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Normal Build for raw streamed MAN (2026-10-01):** Dolk2's earlier placement
+serialization gap is connected through the shared typed MAN source handoff.
+Equal-span raw MAN edits use the existing audited compositors and structural
+chunk/record/opaque-byte validation, with explicit uncompressed package members.
+Descriptor LZS behavior stays separate. Twenty-seven retail-enabled Python checks,
+all25 Node files and26 syntax checks passed; browser reviewed/built ten mixed
+Town01/Dolk2 changes, with two overlays/68,930 bytes, unchanged authored/persisted
+metadata, zero errors and inspected screenshot. Raw donor/dialogue/P2 transition/
+flag/placement edits also compose with raw ANM. Andrew's exact pin was reread for
+chunk/header evidence; no reference code copied. No game launched; broader scene/
+family coverage and gameplay remain open. NPC drafts still block normal Build.
+Postdates integrated498. See [Raw MAN Build](legaia-raw-MAN-normal-build.md).
+
 **Saved Build audit comparison (2026-10-01):** Build history now verifies and
 compares two saved package audits by stable record identity, preserving explicit
 missing/changed records and separate integrity/input/gameplay status. Fifteen

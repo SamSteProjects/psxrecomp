@@ -7,6 +7,18 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+Post-checkpoint feature: raw streamed MAN normal Build has27 retail-enabled focused
+Python checks passing in79.901s, plus25 Node files/26 syntax checks. Tests cover
+source offset/length, exact raw placement, no-op/clear baseline byte equality,
+record/chunk structure, unaudited mutation/bad locator rejection before writes,
+raw donor/dialogue/P2 transition/flag composition with raw ANM, reviewed/build audit
+agreement and saved artifact verification. Existing compressed/header/texture/
+animation package regressions passed. Browser mixed Town01/Dolk2 Review Build
+and Build agree on ten changes/two overlays/68,930 bytes with no authored/persisted
+mutation, page error or Run dispatch; screenshot inspected. Broader raw numeric
+families/scenes and deferred gameplay require separate evidence. This postdates
+integrated498. See [Raw MAN Build](legaia-raw-MAN-normal-build.md).
+
 Post-checkpoint feature: saved Build comparison has 15 focused retail-enabled
 Python checks, 25 Node files and 26 syntax checks passing. Coverage includes
 different sources, ambiguous identities, exact record/detail/frame identity,

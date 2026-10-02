@@ -11,8 +11,9 @@ import stat
 import tempfile
 import zipfile
 
-from importer.core import ImportError, canonical_json, decompress_lzs
-from importer.pipeline import _bounded_scene_range, _disc_context, _read_scene_man, import_scene
+from importer.core import ImportError, canonical_json, decompress_lzs, parse_man
+from importer.pipeline import _bounded_scene_range, _disc_context, import_scene
+from importer.man_source import read_man_source
 from importer.serialization import patch_man_positions, serialize_man_decoded, serialize_man_stream
 from importer.man_assignments import load_man_assignment_context
 from .project import ProjectError
@@ -594,13 +595,15 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if document["source"]["disc_identity"] != "sha256:" + disc_hash:
                 raise BuildError(f"Source disc identity does not match {scene_id}")
             start, end = _bounded_scene_range(archive, mapping, scene)
-            bundle, descriptor, consumed, _parsed = _read_scene_man(archive, start, end, scene)
-            entry = archive.entry(bundle.entry_index)
+            carrier = read_man_source(archive, start, end, scene)
+            raw_man = carrier.kind == 'raw_streaming_man'
+            descriptor, consumed = carrier.descriptor, carrier.encoded_size
+            entry = archive.entry(carrier.entry_index)
             body = archive.read_entry(entry)
-            stream_offset = bundle.table_offset + descriptor.data_offset
+            stream_offset = carrier.payload_offset
             original_span = body[stream_offset:stream_offset + consumed]
-            if edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"] or edits["waits"] or edits["model_selectors"]:
-                baseline = decompress_lzs(original_span, descriptor.size)[0]
+            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"] or edits["waits"] or edits["model_selectors"]:
+                baseline = carrier.payload
                 changed, changes = baseline, []
             if edits["assignments"]:
                 context = load_man_assignment_context(project.disc_path, scene)
@@ -621,7 +624,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 changed, changes = context.patch(assignments, original=baseline)
                 for change in changes:
                     change["donor_entity_id"] = edits["assignments"][change["record_index"]]
-            if edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"] or edits["waits"] or edits["model_selectors"]:
+            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"] or edits["waits"] or edits["model_selectors"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
@@ -737,7 +740,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                       record_index=int(change["owner_id"].rsplit("/", 1)[1]),
                                       scope="script-model-selector-only")
                     changes.extend(model_selector_changes)
-                replacement, sizes = serialize_man_decoded(original_span, descriptor.size, changed, scene)
+                if raw_man:
+                    replacement = changed
+                    sizes = {'original_encoded_size':len(original_span),'new_encoded_size':len(changed),
+                             'decoded_size':len(changed),'source_kind':'raw_streaming_man','compression':'none'}
+                else:
+                    replacement, sizes = serialize_man_decoded(original_span, descriptor.size, changed, scene)
             else:
                 replacement, changes, sizes = serialize_man_stream(original_span, descriptor.size, scene, edits["positions"])
             if not changes:
@@ -747,10 +755,21 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             # Apply exactly the proposed overlay to a private entry copy and
             # independently decode it, checking the surrounding opaque bytes.
             patched = body[:stream_offset] + replacement + body[stream_offset + consumed:]
+            if raw_man:
+                from importer.streaming_man import replace_streaming_payload
+                validated, _ = replace_streaming_payload(body,_hash(body),carrier.chunk_header_offset,_hash(original_span),replacement)
+                if validated != patched:
+                    raise BuildError('Raw MAN structural replacement differs from proposed overlay')
             if patched[:stream_offset] != body[:stream_offset] or patched[stream_offset + consumed:] != body[stream_offset + consumed:]:
                 raise BuildError("MAN patch altered bytes outside its original compressed span")
-            after_man = decompress_lzs(patched[stream_offset:], descriptor.size)[0]
-            before_man = decompress_lzs(original_span, descriptor.size)[0]
+            after_man = patched[stream_offset:stream_offset+consumed] if raw_man else decompress_lzs(patched[stream_offset:], descriptor.size)[0]
+            before_man = original_span if raw_man else decompress_lzs(original_span, descriptor.size)[0]
+            if raw_man:
+                reopened = parse_man(after_man,scene)
+                before_layout = [(a.record_index,a.byte_offset,a.byte_length,a.local_count) for a in carrier.parsed.actors]
+                after_layout = [(a.record_index,a.byte_offset,a.byte_length,a.local_count) for a in reopened.actors]
+                if reopened.partition_counts != carrier.parsed.partition_counts or before_layout != after_layout:
+                    raise BuildError('Raw MAN edits changed record or partition layout')
             changed_offsets = {offset for change in changes for offset in range(
                 change["decoded_byte_offset"], change["decoded_byte_offset"] + change.get("byte_length", 1))}
             if any(a != b and n not in changed_offsets for n, (a, b) in enumerate(zip(before_man, after_man))):
@@ -758,7 +777,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             location = (archive.node.extent_lba + entry.start_lba) * 2048 + stream_offset
             overlays.append({
                 "scene": scene, "offset": location, "size": len(replacement),
-                "file": f"assets/{scene}-man.lzs", "payload": replacement,
+                "file": f"assets/{scene}-man.bin" if raw_man else f"assets/{scene}-man.lzs", "payload": replacement,
                 "sha256": _hash(replacement), "expected_sha256": _hash(original_span),
                 "decoded_before_sha256": _hash(before_man), "decoded_after_sha256": _hash(after_man),
                 **sizes,
@@ -817,10 +836,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         "edits": audit_edits,
         "overlays": [{key: value for key, value in overlay.items() if key != "payload"} for overlay in overlays],
         "validation": {"retail_provenance": "fresh_import_match", "unchanged_opaque_bytes": True,
-                       "lz_decode_round_trip": (True if any(o["file"].endswith(('-man.lzs', '-animation.lzs')) or 'decoded_after_sha256' in o for o in overlays)
+                       "lz_decode_round_trip": (True if any(o.get('source_kind')!='raw_streaming_man' and (o["file"].endswith(('-man.lzs', '-animation.lzs')) or 'decoded_after_sha256' in o) for o in overlays)
                                                 else "not_required_no_compressed_scene_overlay" if overlays else "not_required_unmodified_disc"),
                        "live_runtime": "not_run"},
     }
+    if any(o.get('source_kind')=='raw_streaming_man' for o in overlays):
+        audit['validation']['raw_MAN_structural_round_trip'] = True
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
     # Package identity follows emitted content, including no-op/cleared builds.
     # Separate immutable receipts retain each authored metadata context.

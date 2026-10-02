@@ -6,6 +6,16 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-01 raw MAN normal-Build integration reread that exact pin through
+command-scoped `git show`: `crates/engine-core/src/scene_bundle.rs::streaming_man_payloads`
+extracts chunk payloads after the four-byte header; `crates/asset/src/man_section.rs::actor_placement`
+documents local-count/header offsets and the tile/bit7 coordinate encoding.
+The SDK reuses its independent typed-source loader, placement/header/script
+compositors and equal-span structural writer. Retail Dolk2 package members,
+opaque bytes, layout, same-scene donor and raw ANM composition were checked.
+This does not establish runtime initialization, script reachability or gameplay.
+See [Raw MAN normal Build](legaia-raw-MAN-normal-build.md). No reference code copied.
+
 The 2026-09-10 opening-trigger investigation uses the same pin's
 `crates/engine-vm/src/field/step/menu_ctrl/nibble_e.rs::op_4c_ne`
 (blob `61ad972bd5455bdb84b1ab376f6ad959cb23190b`) for MENU_CTRL ED/E8
