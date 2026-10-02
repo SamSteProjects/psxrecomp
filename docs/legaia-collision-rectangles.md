@@ -53,3 +53,31 @@ Private evidence: `local-output/sdk-20260909/collision-rectangle-20261001/`,
 including `project-final/`, test logs, browser checks, screenshots and package
 proof. See [Deferred gameplay queue](legaia-gameplay-verification-queue.md).
 This feature postdates integrated514; full SDK/runtime acceptance remains open.
+
+## Spatial comparison extension — 2026-10-01
+
+After Review, use **Spatial comparison** to switch Proposed, Current and Retail.
+The diagram shows every selected bit rather than only the first64 table rows.
+Orange means blocked, blue unblocked, dark areas are unreviewed quadrants, and
+green outlines mark differences between Current and Proposed on every layer.
+X increases right and Z increases down. Bounds and quadrant locations use the
+same canonical reference plane as the scene source-wall overlay: each cell128
+units and each quadrant64. This is a diagram of the source grid; terrain heights,
+real movement, runtime paints and live scene identity are not inferred.
+
+Switching layers changes no project data or requests. Editing the proposal
+withdraws the comparison and Apply. The existing stale/source, one-command
+history, Save/Open and normal Build behavior remains unchanged.
+
+Parent integration passed22 focused retail-enabled Python tests in17.122s,
+all27 Node tests and28 syntax checks. Five new loopback HTTP tests check exact
+body fields, bounds, Edit mode, source failure/drift, stale metadata/proposals,
+atomic Apply/Undo/Redo, no-op redo preservation and unchanged saved files on
+failure. Geometry checks cover source bounds2560–2816 /1792–2048 and all four
+quadrant locations. A synthetic browser fixture displayed16 reviewed bits,
+verified blocked counts16 Proposed/4 Current/0 Retail, no layer-change requests
+or writes, input withdrawal and zero page errors. Screenshot inspected; browser
+closed. This browser fixture tests the production tool with synthetic responses,
+not a fresh retail scene viewport. Private evidence:
+`local-output/sdk-20260909/collision-spatial-20261001/`.
+No game launched; this extension postdates the integrated514 checkpoint.

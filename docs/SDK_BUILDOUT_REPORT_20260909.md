@@ -8,6 +8,18 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Spatial wall rectangle comparison (2026-10-01):** Reviewed rectangles now
+show all selected bits in a top-down Retail/Current/Proposed comparison with
+canonical source X/Z bounds, quadrant placement and proposed-change outlines.
+Layer switching is read-only; changed inputs withdraw the map and Apply.
+Twenty-two focused retail-enabled Python tests passed in17.122s, including five
+new synthetic HTTP contract tests; all27 Node tests and28 syntax checks passed.
+A synthetic browser fixture checked16 bits, three layer counts, coordinate
+bounds, no extra requests/writes and input withdrawal; zero page errors and
+screenshot inspected. This is a source-grid diagram, not a terrain/live viewport.
+Postdates integrated514. No game launched. See
+[Wall rectangles](legaia-collision-rectangles.md).
+
 **Rectangular source wall editing (2026-10-01):** Added source-bound collision
 rectangle review and atomic Apply through existing wall-bit serialization,
 preserving low-nibble floor tiers and unselected edits. Bounds, merged4096 limit,

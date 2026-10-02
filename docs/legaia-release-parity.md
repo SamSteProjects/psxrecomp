@@ -1,5 +1,16 @@
 # Legaia stability and release parity
 
+**Read-only inclusion audit — 2026-10-01:** Current split-output discovery,
+body-change propagation, content-hash staging, restore memo invalidation, CD/XA
+and synchronized audio diagnostics remain present. Current main.cpp SHA256
+`815585896574dbb67b9a1b135eee47e3dc0245f114b70c747b0b4152c0163904`,
+recomp_audio_drc.h `8ae350015a3ce1fe38eeb1718e4ed67f7f251274f32a7243b17a19bc5a40c5b9`
+and private stability executable `3ce6d5461628e8962bb9dd6459ddc5c2a442747500500d4b361eee644f2bcd6d`
+match the preserved audio-lock evidence. This audit reran no runtime tests and
+launched no game. It identified no justified missing patch to port; GNU Make
+synthetic fixture acceptance remains optional additional toolchain coverage.
+All runtime/deferred boundaries below still apply.
+
 ## Audio statistics synchronization (2026-09-12)
 
 The pump and debug output reporter now copy bridge statistics under the existing SDL audio lock. `rab_pull` updates these non-atomic fields on the host callback thread; previously both readers copied them without synchronization. The focused executable regression compiles both production snapshot blocks, verifies locked reads and balanced release, and preserves unavailable-device behavior. It passed. This is diagnostic consistency only; startup overflow remains unresolved. A refreshed MSVC Release build passed for source698087e5, embedding nightly-282-g698087e5. The executable SHA-256 is `3ce6d5461628e8962bb9dd6459ddc5c2a442747500500d4b361eee644f2bcd6d`. The previous97f0f026... executable is preserved under `local-output/sdk-20260909/audio-stats-lock-20260912/LegaiaStability-before.exe`; verification.json records both hashes and source/build evidence. The first PowerShell attempt failed before compilation due to duplicate Path/PATH; Git Bash retry passed. This new binary was not launched and does not supersede the previous runtime acceptance evidence below.
