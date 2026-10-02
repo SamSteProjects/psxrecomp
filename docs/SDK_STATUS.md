@@ -2,6 +2,21 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Scenery group drag and actor preview refresh (2026-10-01):** Proposed
+scenery inspection now has X/Z handles with integer movement and optional
+16/64/256/1024 snapping. Release obtains a fresh source-bound review; Apply
+remains one explicit undoable command. Rejected and cancelled pending drags
+retain or restore the verified proposal without saving. Canvas focus now prevents
+scroll displacement during pointer gestures. Imported actor transforms now
+invalidate preview identity while retaining cached geometry, fixing stale actor
+positions after edits and resampling source height where Y is unknown.
+Forty-five focused retail-enabled Python tests passed in16.686s; all28 Node tests
+and29 syntax checks passed. Retail browser group drags, rejection/cancellation,
+Apply/Undo/Redo/Save, individual actor/scenery drags and exact full73728-byte MAP
+ZIP readback passed with zero page errors; screenshots inspected. No game
+launched. This postdates integrated514; gameplay/full acceptance remain deferred.
+See [Scenery groups](legaia-scenery-groups.md).
+
 **Static scenery group placement (2026-10-01):** Ctrl/Command-click static
 decorations in the hierarchy or viewport, or Shift-select a hierarchy range,
 then choose Move scenery group. Source-bound review supports2–128 instances,

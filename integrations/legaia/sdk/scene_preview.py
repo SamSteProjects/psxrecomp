@@ -75,6 +75,10 @@ def source_key(project, *, geometry_only=False) -> str | None:
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
                    "model_shapes": deepcopy(project.model_overrides),
+                   "actor_transforms": None if geometry_only else {
+                       actor["semantic_id"]: deepcopy(project.overrides[actor["semantic_id"]]["Transform"])
+                       for actor in document["actors"]
+                       if "Transform" in project.overrides.get(actor["semantic_id"], {})},
                    "actor_drafts": None if geometry_only else {key: deepcopy(value) for key,value in getattr(project,'actor_drafts',{}).items() if value['scene_id']==project.active_scene},
                    "animation_channels": {a["semantic_id"]: deepcopy(project.overrides[a["semantic_id"]]["AnimationChannels"])
                                           for a in document["actors"] if "AnimationChannels" in project.overrides.get(a["semantic_id"], {})},

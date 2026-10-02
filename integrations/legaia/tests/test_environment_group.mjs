@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {environmentGroupDelta,decodeEnvironmentGroup} from '../editor/environment-group.js';
+import {environmentGroupDelta,decodeEnvironmentGroup,offsetEnvironmentGroup} from '../editor/environment-group.js';
 const key='a'.repeat(64),scene='scene://fixture',ids=[1,2].map(cell=>`environment://fixture/field-map/decorations/${String(cell).padStart(5,'0')}`),delta={x:64,z:-128};
 const report={schema_version:'legaia.environment-group-review.v1',project_source_key:key,scene_id:scene,source_sha256:'b'.repeat(64),review_key:'c'.repeat(64),entity_ids:ids,delta,targets:ids.map((entity_id,index)=>({entity_id,cell_index:index+1,retail:{x:128+index*128,z:256},current:{x:128+index*128,z:320},proposed:{x:192+index*128,z:192}})),affected_count:2,project_change:true,value:{},scope:'static-decoration-instance-transform-only',gameplay_verified:false};
 assert.deepEqual(environmentGroupDelta({z:-65535,x:65535}),{x:65535,z:-65535});
@@ -10,3 +10,13 @@ for(const change of [{cell_index:2},{cell_index:-1},{cell_index:16384},{entity_i
 for(const invalidIds of [[ids[0],ids[0]],[...ids].reverse(),[ids[0]],['environment://fixture/field-map/records/001',ids[1]],Array(129).fill(ids[0])])assert.throws(()=>decodeEnvironmentGroup(report,key,scene,invalidIds,delta));
 const zero={...report,delta:{x:0,z:0},affected_count:0,project_change:false,targets:report.targets.map(row=>({...row,proposed:{...row.current}}))};assert.deepEqual(decodeEnvironmentGroup(zero,key,scene,ids,{x:0,z:0}),zero);
 console.log('Scenery group offset, source identity, ordered selection, placement arithmetic and count guards passed.');
+
+assert.deepEqual(offsetEnvironmentGroup(report,'x',128),{entity_ids:ids,delta:{x:192,z:-128}});
+assert.deepEqual(offsetEnvironmentGroup(report,'z',-64),{entity_ids:ids,delta:{x:64,z:-192}});
+assert.deepEqual(report.delta,delta);assert.equal(report.targets[0].proposed.x,192);
+for(const [axis,amount] of [['y',1],['X',1],['x',true],['z',1.5],['x',NaN],['z',Infinity],['x',Number.MAX_SAFE_INTEGER],['z',-65535]])assert.throws(()=>offsetEnvironmentGroup(report,axis,amount));
+assert.throws(()=>offsetEnvironmentGroup({...report,delta:{x:0}},'x',1));
+assert.throws(()=>offsetEnvironmentGroup({...report,targets:[{...report.targets[0],proposed:{x:Number.MAX_SAFE_INTEGER,z:0}},report.targets[1]]},'x',1));
+assert.throws(()=>offsetEnvironmentGroup({...report,targets:[]},'x',1));
+assert.throws(()=>offsetEnvironmentGroup({...report,targets:[{...report.targets[0],proposed:{x:0,z:null}},report.targets[1]]},'x',1));
+console.log('Retained scenery proposal drag offsets reject invalid axes, amounts, bounds and unsafe target coordinates.');

@@ -219,10 +219,10 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 # rebuild must separately request verified sources for both actors.
                 self.assertEqual([identifier for identifier, flag in verified if flag],
                                  [target["semantic_id"], donor["semantic_id"]] * 2)
-                # Neither transform edits nor another scene's appearance invalidates geometry.
+                # Transform edits refresh the preview but retain cached geometry.
                 project.overrides[target["semantic_id"]]["Transform"] = {"position": {"x": 333}}
                 project.overrides["scene://other/actors/0001"] = {"ActorAppearance": {"donor_entity_id": "elsewhere"}}
-                self.assertEqual(source_key(project), replaced["source_key"])
+                self.assertNotEqual(source_key(project), replaced["source_key"])
                 cached = service.preview(project, loader, lambda *_: Catalog())
                 self.assertEqual(cached["entities"][0]["position"]["x"], 333)
                 self.assertEqual(len(posed), 2)
@@ -241,11 +241,12 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 self.assertEqual(draft_preview['metrics']['total_renderable_count'],sum(bool(e['renderable']) for e in draft_preview['entities']))
                 project.actor_drafts.clear()
                 del project.overrides[target["semantic_id"]]["ActorAppearance"]
-                self.assertEqual(source_key(project), initial_key)
+                self.assertNotEqual(source_key(project), initial_key)
                 reverted = service.preview(project, lambda *_: self.fail('undo rebuilt geometry'),
                                            lambda *_: self.fail('undo rebuilt poses'))
                 self.assertEqual(reverted["entities"][0]["source_actor_id"], target["semantic_id"])
                 self.assertFalse(reverted["entities"][0]["appearance_authored"])
+                self.assertEqual(reverted["entities"][0]["position"]["x"], 333)
                 self.assertEqual(project.imports[project.active_scene], imported)
                 # A fabricated resolver result cannot attach foreign provenance to geometry.
                 project.overrides[target["semantic_id"]]["ActorAppearance"] = {"donor_entity_id": donor["semantic_id"]}
@@ -281,7 +282,7 @@ class ScenePreviewWorkflow(unittest.TestCase):
                 first["assets"][0]["preview"]["vertices"][0][0] = 123456
                 project.command({"type": "set_transform", "entity_id": actor, "position": {"x": 500, "y": -30}})
                 moved = service.preview(project, loader)
-                self.assertEqual(key, moved["source_key"])
+                self.assertNotEqual(key, moved["source_key"])
                 self.assertEqual(len(calls), 1)
                 self.assertEqual(moved["entities"][0]["model_to_scene"][3:12:4], [500, 30, 200])
                 self.assertEqual(moved["assets"][0]["preview"]["vertices"][0][0], 0)

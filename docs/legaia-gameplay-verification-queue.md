@@ -1,5 +1,18 @@
 # Deferred gameplay verification
 
+## Town01 scenery group drag copy — deferred
+
+Private copied project:
+`local-output/sdk-20260909/scenery-group-20261001/project/ProjectCopies/project-e94a1a3e9c7549098a2fcce4b2167aed/`.
+Package: `Builds/8d426bc1dcefbc5f/legaia.sdk.d9a4c92650c7-0.1.0-8d426bc1dcefbc5f.psxmod`.
+SHA256: `d5ce6e02dc710814a1fa015b2634eabbac3cba951ddd218de63dc032241eacc2`.
+The copied previous group edit was offset another X+73/Z+128 via reviewed drag.
+Final source world X/Z: cell1833=5577/2048, cell2089=5577/2272. Existing shared
+record194 X64/Y-rotation64, cell2089 baseline Z32, source wall bit and floor tiers
+remain preserved. Offline pointer/review/history/persistence/full MAP checks
+passed. Defer in-game visibility, collision, scene-entry/scripts and lifecycle.
+No game launched. See [Scenery groups](legaia-scenery-groups.md).
+
 ## Town01 static scenery group placement — deferred
 
 Private project: `local-output/sdk-20260909/scenery-group-20261001/project/`.

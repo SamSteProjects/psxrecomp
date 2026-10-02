@@ -18,25 +18,34 @@ export function decodeEnvironmentGroup(value,key,scene,ids,delta){
   return structuredClone({...value,delta});
 }
 
+export function offsetEnvironmentGroup(report,axis,amount){
+  if(!['x','z'].includes(axis)||!Number.isSafeInteger(amount))throw new Error('Scenery drag requires an integer X or Z offset');
+  const delta=environmentGroupDelta(report?.delta);groupIds(report?.entity_ids);
+  if(!Array.isArray(report.targets)||report.targets.length!==report.entity_ids.length||report.targets.some((row,index)=>row?.entity_id!==report.entity_ids[index]||['x','z'].some(name=>!Number.isSafeInteger(row.proposed?.[name]))))throw new Error('Invalid reviewed scenery placement');
+  delta[axis]+=amount;environmentGroupDelta(delta);
+  if(report.targets.some(row=>!Number.isSafeInteger(row.proposed[axis]+amount)))throw new Error('Scenery drag exceeds safe coordinates');
+  return {entity_ids:[...report.entity_ids],delta};
+}
+
 export function mountEnvironmentGroup({host,getState,getSelection,busy,setBusy,api,canReview,onInspection,onFrame=()=>{},onError=()=>{}}){
   const button=document.createElement('button');button.id='environment-group-button';button.type='button';button.textContent='Move scenery group…';host.append(button);
   const strip=document.createElement('div');strip.id='environment-group-preview';strip.hidden=true;
   const note=document.createElement('span');note.textContent='Scenery group preview · not applied';
   const returnButton=document.createElement('button');returnButton.type='button';returnButton.textContent='Return to scenery review';
   const restoreButton=document.createElement('button');restoreButton.type='button';restoreButton.textContent='Restore scenery preview';strip.append(note,returnButton,restoreButton);host.append(strip);
-  let dialog=null,report=null,context=null,controller=null,generation=0,inspecting=false,retaining=false;
+  let dialog=null,report=null,context=null,controller=null,generation=0,inspecting=false,inspectionLayer=null,retaining=false,renderReport=null,statusReport=null;
   const selection=()=>[...new Set(getSelection())].sort();
   const current=()=>{const s=getState();return !!context&&s.project?.mode==='edit'&&s.scene?.id===context.scene&&s.project_copy_source_key===context.key&&JSON.stringify(selection())===JSON.stringify(context.ids)&&canReview();};
   const delta=()=>{
     const values={};for(const axis of ['x','z']){const text=dialog.querySelector(`[name="${axis}"]`).value;if(!text.trim())throw new Error('Enter both scenery offsets');values[axis]=Number(text);}return environmentGroupDelta(values);
   };
-  const restoreInspection=()=>{if(inspecting){inspecting=false;onInspection(null);}strip.hidden=true;};
-  const withdraw=()=>{generation++;controller?.abort();report=null;restoreInspection();dialog?.querySelector('[data-result]')?.replaceChildren();};
+  const restoreInspection=()=>{if(inspecting){inspecting=false;inspectionLayer=null;onInspection(null);}strip.hidden=true;note.textContent='Scenery group preview · not applied';};
+  const withdraw=()=>{generation++;if(controller){controller.abort();controller=null;setBusy(false);}report=null;restoreInspection();dialog?.querySelector('[data-result]')?.replaceChildren();};
   function restore(){context=null;withdraw();if(dialog){const old=dialog;dialog=null;if(old.open)old.close();old.remove();}refresh();}
   function refresh(){
     let eligible=false;try{groupIds(selection());eligible=getState().project?.mode==='edit'&&canReview();}catch{}
     button.disabled=busy()||!eligible;
-    returnButton.disabled=restoreButton.disabled=busy();
+    returnButton.disabled=busy();restoreButton.disabled=busy()&&!controller;
     if(context&&!current()){restore();return;}
     if(!dialog?.open)return;
     let valid=false;try{delta();valid=true;}catch{}
@@ -57,6 +66,7 @@ export function mountEnvironmentGroup({host,getState,getSelection,busy,setBusy,a
       const table=document.createElement('table'),head=document.createElement('tr');for(const text of ['Decoration','Retail X/Z','Current X/Z','Proposed X/Z']){const th=document.createElement('th');th.textContent=text;head.append(th);}table.append(head);
       for(const row of report.targets){const tr=document.createElement('tr');for(const text of [row.entity_id,...['retail','current','proposed'].map(layer=>`${row[layer].x} / ${row[layer].z}`)]){const td=document.createElement('td');td.textContent=text;tr.append(td);}table.append(tr);}output.append(table);
     };
+    renderReport=render;statusReport=status;
     activeDialog.querySelector('form').oninput=()=>{withdraw();status('Offsets changed; review again.');refresh();};
     activeDialog.querySelector('form').onsubmit=async event=>{
       event.preventDefault();if(busy()||!current()||!activeDialog.querySelector('form').reportValidity())return;
@@ -78,13 +88,30 @@ export function mountEnvironmentGroup({host,getState,getSelection,busy,setBusy,a
     };
     for(const item of activeDialog.querySelectorAll('[data-inspect]'))item.onclick=()=>{
       if(busy()||!report||!current()||JSON.stringify(delta())!==JSON.stringify(report.delta))return;
-      inspecting=true;strip.hidden=false;retaining=true;activeDialog.close();onInspection(report,item.dataset.inspect);onFrame(report);refresh();
+      inspecting=true;inspectionLayer=item.dataset.inspect;strip.hidden=false;retaining=true;activeDialog.close();onInspection(report,item.dataset.inspect);onFrame(report);refresh();
     };
     activeDialog.querySelector('[data-close]').onclick=()=>activeDialog.close();
     activeDialog.addEventListener('close',()=>{if(retaining){retaining=false;return;}if(dialog===activeDialog)restore();});
     document.body.append(activeDialog);activeDialog.showModal();refresh();
   };
   returnButton.onclick=()=>{if(busy()||!report||!current()||!dialog)return;restoreInspection();dialog.showModal();refresh();};
-  restoreButton.onclick=()=>{if(!busy())restore();};
-  return {restore,refresh};
+  restoreButton.onclick=()=>{if(!busy()||controller)restore();};
+  async function moveProposal(axis,amount,reviewKey){
+    if(busy()||!current()||!inspecting||inspectionLayer!=='proposed'||!report||report.review_key!==reviewKey||amount===0)return false;
+    let requested;try{requested=offsetEnvironmentGroup(report,axis,amount);}catch(error){note.textContent=error.message;onError(error.message);return false;}
+    const reviewed=report,binding=context,activeDialog=dialog,token=++generation,requestController=new AbortController();controller=requestController;
+    setBusy(true);note.textContent='Reviewing dragged scenery offset…';refresh();
+    try{
+      const response=await fetch('/api/environment-group-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:binding.scene,...requested}),signal:requestController.signal});
+      const value=await response.json();if(!response.ok||value.error)throw new Error(value.error||'Scenery group review failed');
+      if(dialog!==activeDialog||generation!==token||context!==binding||!current()||!inspecting||inspectionLayer!=='proposed'||report!==reviewed)return false;
+      const fresh=decodeEnvironmentGroup(value,binding.key,binding.scene,binding.ids,requested.delta);
+      report=fresh;for(const name of ['x','z'])activeDialog.querySelector(`[name="${name}"]`).value=String(fresh.delta[name]);
+      renderReport();note.textContent='Scenery group preview · not applied';onInspection(fresh,'proposed');return true;
+    }catch(error){
+      if(error.name!=='AbortError'&&dialog===activeDialog&&generation===token&&context===binding&&current()&&inspecting&&report===reviewed){note.textContent=`Drag rejected: ${error.message}`;statusReport(error.message);onError(error.message);}
+      return false;
+    }finally{if(controller===requestController){controller=null;setBusy(false);}refresh();}
+  }
+  return {restore,refresh,moveProposal};
 }
