@@ -1,5 +1,11 @@
 # Trigger script inspection
 
+The current source workspace also lists triggers in the scene hierarchy and
+links qualified gate-1 rows to exact P2 records in the central Active/Project
+reference graph. Viewport source-cell frame/pick is available, with separate
+X/Z quantization and unknown Y. See
+[field source workspace](../legaia-field-source-workspace.md).
+
 The field trigger inspector can follow verified kind-1, gate-1 references to
 their MAN partition-2 records. Open a trigger in the Asset database and choose
 **Inspect referenced script**. The separate read-only view shows supported

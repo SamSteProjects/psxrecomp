@@ -55,7 +55,11 @@ class ResourceWorkflow(unittest.TestCase):
             project.save()
             before = deepcopy(project._document())
             identifier = "collision://fixture/field-map"
-            preview = {"asset": {"semantic_id": identifier, "asset_kind": "collision"},
+            from importer.field_map import _decode
+            from importer.core import ProtEntry
+            catalog, _ = _decode("fixture", "a" * 64, ProtEntry(4, 100, 8, 36), bytes(0x12000), None)
+            preview = {"asset": catalog["assets"][0], "coordinate_system": "psx_guest_xz",
+                       "triggers": [], "regions": [],
                        "rectangles": [{"x_min": 0, "x_max": 64, "z_min": 0, "z_max": 64}]}
             with patch("sdk.resources._disc_context"), patch("sdk.resources.import_scene", return_value=document), \
                     patch("importer.field_map.preview_field_map", return_value=preview), \
@@ -63,6 +67,8 @@ class ResourceWorkflow(unittest.TestCase):
                 result = field_map_preview(project, identifier)
             self.assertEqual(result["scene_id"], project.active_scene)
             self.assertEqual(result["source_key"], "verified")
+            self.assertEqual(result["spatial"]["scene_id"], project.active_scene)
+            self.assertEqual(result["spatial"]["records"], [])
             self.assertEqual(project._document(), before)
             self.assertFalse(project.dirty)
             self.assertFalse(project.assets.resource_catalogs)

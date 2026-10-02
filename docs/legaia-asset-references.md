@@ -1,5 +1,13 @@
 # Asset dependencies and referenced-by navigation
 
+Gate-1 field triggers now expose `field_trigger_script_reference` edges to a
+unique bounded P2 record. Both source hashes, primary/fallback table identity,
+row/P2 indexes and gate1 qualify the relationship in Active/Project scopes.
+Shared script targets do not merge source trigger rows. Gate0, unknown gates,
+missing and aliased targets remain unresolved; malformed provenance rejects.
+These edges establish source references, without asserting runtime activation.
+See [field source workspace](legaia-field-source-workspace.md).
+
 Transition assets now expose `script_transition_reference` and named
 `transition_destination_source` relationships with exact source record/PC proof.
 Active/Project scopes navigate to the source script and imported destination;

@@ -394,6 +394,8 @@ def field_map_preview(project, asset_id: str, layer: str = "imported") -> dict:
     with _disc_context(project.disc_path):
         _verify(project, document)
         preview = preview_field_map(project.disc_path, document["scene"]["name"], asset_id)
+        from .field_spatial import build_field_spatial
+        preview["spatial"] = build_field_spatial(preview)
         preview["representation"] = layer
         if layer == "effective":
             from importer.collision_authoring import patch_collision_walls

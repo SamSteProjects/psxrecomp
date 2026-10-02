@@ -6,6 +6,17 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Field source footprints adapt freshly verified MAP metadata without another
+format decoder. `sdk.field_spatial.build_field_spatial` preserves primary and
+fallback source ordering, row identities, containing-table bounds and hashes.
+Triggers invert raw 128-unit dispatcher tiles; regions invert 128-unit tiles with
+a 64-unit bias. Source geometry lives only in transient preview responses.
+The hierarchy, shared Inspector and viewport selection use existing resource
+IDs, while actor/scenery selections and authored transforms remain separate.
+The graph qualifies gate-1 rows against unique source P2 records and records
+both row hashes; runtime dispatch, height and reachability stay unevaluated.
+See [field source workspace](legaia-field-source-workspace.md).
+
 Central transition resources adapt the existing decoded transition graph.
 Instruction identities stay separate from authoring operand IDs; imported,
 authored and effective entry layers retain original script ownership and record

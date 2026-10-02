@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-10-02 (SDK field source workspace):** Previous goal turn made concrete
+  progress in7c651e41. This continuation connects source trigger/region outlines,
+  hierarchy/shared Inspector selection, frame/pick and source script references.
+  Parent verified the pinned dispatcher quantization difference: triggers use
+  world>>7; regions use(world-64)>>7. Independent bounded adapters/graph/frontend
+  lanes were centrally integrated. Town01 has 99 triggers/14 regions/51 qualified
+  P2 references; unknown height, gate 0 contact and runtime activation remain
+  unevaluated. Read-only persistence and browser stale-source/scene guards are
+  verified. Final59 retail-enabled Python checks passed in84.629s/no skips, plus
+  41 Node/39 syntax checks; actual browser navigation/picking/cleanup passed.
+  Saved baseline and imported metadata hashes stayed unchanged. Full SDK/runtime
+  goal remains active; no game launch or installation.
+
+
 ### 2026-10-02 - Central transition assets and Inspector
 
 The prior turn made progress in0bee9ae3 (animated actor presets); the full SDK

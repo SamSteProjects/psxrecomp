@@ -147,3 +147,4 @@
 .operand-review-table th,.operand-review-table td {text-align:left;vertical-align:top;padding:.55rem .35rem;border-bottom:1px solid var(--border, #334b4b);overflow-wrap:anywhere;}
 
 #scene-selection-sets-dialog{width:min(780px,calc(100vw - 35px));max-height:90vh;overflow:auto}#scene-selection-sets-dialog .dialog-actions{justify-content:flex-start;flex-wrap:wrap}#scene-selection-sets-dialog [data-members]{max-height:24vh;overflow:auto;overflow-wrap:anywhere}
+.scene-resource-inspector .dialog-actions{flex-wrap:wrap;justify-content:flex-start;margin-top:12px}.scene-resource-inspector .dialog-actions button{max-width:100%;white-space:normal;text-align:left}

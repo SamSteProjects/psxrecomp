@@ -17,6 +17,7 @@ import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files
 import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
 import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
 import {decodeTransitionResource,openTransitionResource} from '/transition-resource.js';
+import {decodeFieldSpatial,drawFieldSpatial,hitFieldSpatial,fieldSpatialFrame} from '/field-spatial.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
@@ -40,6 +41,7 @@ const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
+let sceneResourceSelection=null;
 let scenePlacementMode=false,scenePlacementBoxMode=false,scenePlacementSelection=[],scenePlacementKey=null,scenePlacementInspection=null,scenePlacementTool=null;
 let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null,actorGroupRangeAnchor=null,actorBoxMode=false;
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
@@ -575,7 +577,7 @@ function notify(message, error=false) {
 function setBusy(value) {
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
-  busy=value;updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
@@ -622,7 +624,7 @@ async function api(path, payload, {dialog,success}={}) {
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
-    if(path==='/api/selection'){clearEnvironmentGroupSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();actorGroupRangeAnchor=payload?.entity_id??null;}state=data; render();
+    if(path==='/api/selection'){sceneResourceSelection=null;clearEnvironmentGroupSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();actorGroupRangeAnchor=payload?.entity_id??null;}state=data; render();
     $('connection-dot').classList.add('connected');
     if(dialog) dialog.close();
     if(success) notify(success);
@@ -650,7 +652,7 @@ function frameNpcDraft(){
   if(sceneRepresentation==='retail'){representationSelect.value='authored';representationSelect.onchange();selectNpcDraft(id);}
   frame({id,components:{Transform:{imported:{position:{...value.position,y:null}}}}});
 }
-function selectNpcDraft(id){clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
+function selectNpcDraft(id){sceneResourceSelection=null;clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
@@ -698,8 +700,8 @@ async function moveSharedEnvironment(item,axis,worldValue){
   const remaining=edits.filter(e=>e.offset||e.rotation_psx);
   await api('/api/command',remaining.length||instances.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits:remaining,instances}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
 }
-function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
-function selectEnvironment(identifier){clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function selected(){return selectedSceneResource()||selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
+function selectEnvironment(identifier){sceneResourceSelection=null;clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
 function scenePlacementEligible(){return new Set([...entities().map(e=>e.id),...staticDecorations().map(e=>e.entity_id)]);}
 function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementBoxMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
 function updateScenePlacementSelection(){
@@ -713,6 +715,7 @@ function updateScenePlacementSelection(){
   host.querySelector('[role="status"]').textContent=`${scenePlacementSelection.length} scene placements · Imported actors + static decorations · ${scenePlacementBoxMode?'Drag visible meshes; Ctrl/Command adds; Shift pans':scenePlacementMode?'Click to toggle selection':'Enable selection to choose a mixed group'}`;
 }
 async function toggleScenePlacement(id){
+  sceneResourceSelection=null;
   if(busy||!scenePlacementMode||scenePlacementInspection||!scenePlacementEligible().has(id))return;
   const next=new Set(scenePlacementSelection);if(next.has(id))next.delete(id);else next.add(id);if(next.size>128){notify('Scene placement groups are limited to 128 entities.',true);return;}
   scenePlacementSelection=[...next].sort();scenePlacementKey=resourceStateKey();cancelViewportGesture();
@@ -739,6 +742,7 @@ function updateEnvironmentGroupSelection(){
   const clear=document.querySelector('#environment-group-tools > button:last-child');if(clear)clear.disabled=busy||!environmentGroupSelection.length;
 }
 function toggleEnvironmentSelection(id){
+  sceneResourceSelection=null;
   if(busy||!canEdit()||environmentGroupInspection)return;
   const eligible=staticDecorations().map(e=>e.entity_id);if(!eligible.includes(id)){notify('Scenery groups support static decoration instances.',true);return;}
   const next=new Set(environmentGroupSelection);if(!next.size&&eligible.includes(environmentSelection))next.add(environmentSelection);if(next.has(id))next.delete(id);else next.add(id);
@@ -746,6 +750,7 @@ function toggleEnvironmentSelection(id){
   clearActorGroupSelection();npcDraftSelection=null;environmentSelection=id;environmentGroupSelection=[...next].sort();environmentGroupKey=resourceStateKey();environmentGroupAnchor=id;cancelViewportGesture();renderHierarchy();renderInspector();draw();
 }
 function selectEnvironmentRange(id,add=false){
+  sceneResourceSelection=null;
   if(busy||!canEdit()||environmentGroupInspection)return;
   const eligible=new Set(staticDecorations().map(e=>e.entity_id));if(!eligible.has(id)){notify('Scenery groups support static decoration instances.',true);return;}
   const visible=[...$('hierarchy').querySelectorAll('.entity-row')].map(row=>row.title).filter(id=>eligible.has(id));
@@ -873,6 +878,7 @@ function updateActorGroupSelection(){
   actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
 }
 function toggleActorSelection(id){
+  sceneResourceSelection=null;
   clearEnvironmentGroupSelection();
   if(busy||!canEdit()||actorGroupInspection)return;
   updateActorGroupSelection();
@@ -886,6 +892,7 @@ function setActorGroupMembers(members,add=false){
   actorGroupSelection=mergeActorGroupSelection(base,members,eligible,add);actorGroupSelectionKey=resourceStateKey();cancelViewportGesture();updateActorGroupSelection();renderHierarchy();draw();
 }
 function selectActorRange(id,add=false){
+  sceneResourceSelection=null;
   clearEnvironmentGroupSelection();
   if(busy||!canEdit()||actorGroupInspection)return;
   const eligible=new Set(entities().map(e=>e.id)),visible=[...$('hierarchy').querySelectorAll('.entity-row')].map(row=>row.title).filter(id=>eligible.has(id));
@@ -959,7 +966,7 @@ $('edit-mode').onclick=()=>api('/api/mode',{mode:'edit'});
 $('live-mode').onclick=()=>api('/api/mode',{mode:'live'});
 $('entity-search').oninput=renderHierarchy;
 $('frame-all').onclick=()=>frame();
-$('frame-selected').onclick=()=>{if(selectedNpcDraft())frameNpcDraft();else if(selectedEnvironment())frameEnvironment();else{const entity=selected();if(entity)frame(entity);}};
+$('frame-selected').onclick=()=>{if(selectedSceneResource())frameSceneResource();else if(selectedNpcDraft())frameNpcDraft();else if(selectedEnvironment())frameEnvironment();else{const entity=selected();if(entity)frame(entity);}};
 $('grid-toggle').onclick=()=>{grid=!grid;$('grid-toggle').classList.toggle('active',grid);$('grid-toggle').setAttribute('aria-pressed',grid);draw();};
 $('diagnostics-button').onclick=()=>{
   $('diagnostics').replaceChildren();
@@ -1073,7 +1080,7 @@ function render(){
   $('live-mode').title=state.capabilities?.live_mode?'Observe runtime state':state.runtime?.reason?.message ?? 'Runtime observation is unavailable';
   reconcileLiveFollow();renderRuntimeControls();
   document.querySelector('.preview-badge').firstChild.textContent=live?'AUTHORED SCENE · LIVE OBSERVATIONS SEPARATE':'SCENE PREVIEW';
-  $('frame-selected').disabled=!selected()&&!selectedEnvironment()&&!selectedNpcDraft();
+  $('frame-selected').disabled=!['trigger','region'].includes(selectedSceneResource()?.type)&&!selected()&&!selectedEnvironment()&&!selectedNpcDraft();
   $('status').textContent=state.scene?.id ? `${state.scene.name} · ${entities().length} entities · ${state.project?.dirty?'Changes not saved':'Project ready'}` : 'Ready · Create or open a project to begin';
   renderHierarchy();renderAssets();renderInspector();
   templateButton.disabled=!state.capabilities?.authored_transform_templates;
@@ -1132,8 +1139,10 @@ async function refreshScenePreview(){
 function renderHierarchy(){
   const list=$('hierarchy');list.setAttribute('aria-multiselectable','true');list.replaceChildren();
   const filter=$('entity-search').value.toLowerCase();
-  for(const entity of entities().filter(e=>`${e.name} ${e.id} ${authoredComponentLabels(e).join(" ")}`.toLowerCase().includes(filter))){
-    const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.title=entity.id;
+  const actors=entities().filter(e=>`${e.name} ${e.id} ${authoredComponentLabels(e).join(" ")}`.toLowerCase().includes(filter));
+  if(actors.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Actors (${actors.length})`;list.append(heading);}
+  for(const entity of actors){
+    const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedSceneResource()&&!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedSceneResource()&&!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.title=entity.id;
     row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
     const badge=row.querySelector('.authored-dot');if(badge){const labels=authoredComponentLabels(entity);badge.title=labels.length?`Authored: ${labels.join(', ')}`:'Authored override';badge.setAttribute('aria-label',badge.title);}
     row.classList.toggle('group-selected',scenePlacementSelection.includes(entity.id)||actorGroupSelection.includes(entity.id));row.setAttribute('aria-selected',String(scenePlacementSelection.length?scenePlacementSelection.includes(entity.id):actorGroupSelection.length?actorGroupSelection.includes(entity.id):row.classList.contains('selected')));row.onclick=event=>{if(scenePlacementMode){toggleScenePlacement(entity.id);return;}if(event.shiftKey){selectActorRange(entity.id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleActorSelection(entity.id);return;}environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
@@ -1144,6 +1153,12 @@ function renderHierarchy(){
   for(const [id,item] of npcDrafts){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.textContent=`${item.name} · ${sceneRepresentation==='retail'?'Authored only':'Draft'}`;row.title=id;row.onclick=()=>selectNpcDraft(id);row.setAttribute("aria-selected",id===npcDraftSelection);row.classList.toggle("selected",id===npcDraftSelection);list.append(row);}
   if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
   for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',String(scenePlacementSelection.length?scenePlacementSelection.includes(item.entity_id):environmentGroupSelection.length?environmentGroupSelection.includes(item.entity_id):item.entity_id===environmentSelection));row.classList.toggle('selected',item.entity_id===environmentSelection);row.classList.toggle('group-selected',scenePlacementSelection.includes(item.entity_id)||environmentGroupSelection.includes(item.entity_id));row.textContent=item.name;row.title=item.entity_id;row.onclick=event=>{if(scenePlacementMode){toggleScenePlacement(item.entity_id);return;}if(event.shiftKey){selectEnvironmentRange(item.entity_id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleEnvironmentSelection(item.entity_id);return;}selectEnvironment(item.entity_id);};row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
+  if(resourceKey===resourceStateKey())for(const [kind,label] of [['transition','Transitions'],['trigger','Triggers'],['region','Regions'],['collision','Collision'],['script','Scripts']]){
+    const records=assetRecords().filter(record=>record.type===kind&&record.sceneId===state.scene?.id&&`${record.label} ${record.id}`.toLowerCase().includes(filter));
+    if(!records.length)continue;
+    const heading=document.createElement('div');heading.className='field-note';heading.textContent=`${label} (${records.length})`;list.append(heading);
+    for(const record of records){const row=document.createElement('button');row.className='entity-row scene-resource-row';row.setAttribute('role','treeitem');row.title=record.id;row.textContent=record.label;row.dataset.resourceId=record.id;row.setAttribute('aria-selected',String(record.id===sceneResourceSelection));row.classList.toggle('selected',record.id===sceneResourceSelection);row.onclick=()=>selectSceneResource(record);row.ondblclick=()=>selectSceneResource(record,true);list.append(row);}
+  }
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
   const hidden=hiddenSceneEntities();
   for(const row of list.querySelectorAll('.entity-row')){
@@ -1309,7 +1324,7 @@ function synchronizeResources(){
     if(transitionsDialog.open)transitionsDialog.close();
     if(flagsDialog.open)flagsDialog.close();
     if(textDialog.open)textDialog.close();
-    resourceContextKey=current;clearFieldMap();clearTriggerScript();if(fieldDialog.open)fieldDialog.close();
+    resourceContextKey=current;clearFieldSpatial();sceneResourceSelection=null;clearFieldMap();clearTriggerScript();if(fieldDialog.open)fieldDialog.close();
     resourceAbort?.abort();resourceRecords=[];resourceLimitations=[];resourceKey=null;resourcePendingKey=null;resourceError=null;
     if(textureDialog.open&&!(textureCommandPending&&textureSession?.projectKey===textureProjectKey()))textureDialog.close();if(animationResourceDialog.open)animationResourceDialog.close();if(scriptResourceDialog.open)scriptResourceDialog.close();
   }
@@ -1323,16 +1338,16 @@ function synchronizeResources(){
 }
 async function refreshResources(){
   if(busy||!state.capabilities?.resource_catalog)return;
-  clearFieldMap();clearTriggerScript();draw();
+  clearFieldSpatial();sceneResourceSelection=null;clearFieldMap();clearTriggerScript();draw();
   const key=resourceStateKey(),sceneId=state.scene?.id,sourceKey=state.scene_preview_source_key,controller=new AbortController();
-  resourceAbort?.abort();resourceAbort=controller;resourcePendingKey=key;resourceError=null;resourceRecords=[];resourceLimitations=[];resourceKey=null;setBusy(true);renderAssets();
+  resourceAbort?.abort();resourceAbort=controller;resourcePendingKey=key;resourceError=null;resourceRecords=[];resourceLimitations=[];resourceKey=null;setBusy(true);renderAssets();renderHierarchy();renderInspector();
   try{
     const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
     if(controller.signal.aborted||key!==resourceStateKey())return;
     if(result.scene_id!==sceneId||result.source_key!==sourceKey||result.flag_state_key!==state.scene_flag_state_key||result.transition_state_key!==state.scene_transition_state_key||!Array.isArray(result.records)||result.records.length>4096||new Set(result.records.map(record=>record.semantic_id)).size!==result.records.length||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
     for(const record of result.records){if(record.asset_kind==='flag')decodeFlagResource(record);else if(record.asset_kind==='transition')decodeTransitionResource(record);}
-    resourceLimitations=result.limitations ?? [];resourceRecords=[...new Map(result.records.map(record=>[record.semantic_id,{...record,catalog_limitations:result.limitations}])).values()];resourceKey=key;resourcePendingKey=null;renderAssets();
+    resourceLimitations=result.limitations ?? [];resourceRecords=[...new Map(result.records.map(record=>[record.semantic_id,{...record,catalog_limitations:result.limitations}])).values()];resourceKey=key;resourcePendingKey=null;renderAssets();renderHierarchy();renderInspector();
   }catch(error){if(error.name!=='AbortError'&&key===resourceStateKey()){resourceError=error.message;notify(error.message,true);}}
   finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
 }
@@ -1530,6 +1545,63 @@ const fieldToggle=document.createElement('button');fieldToggle.id='field-map-tog
 const fieldNote=document.createElement('div');fieldNote.className='field-map-note';fieldNote.hidden=true;fieldNote.setAttribute('role','status');document.querySelector('.viewport-toolbar').after(fieldNote);
 const collisionLayer=document.createElement('select');collisionLayer.setAttribute('aria-label','Collision preview layer');collisionLayer.innerHTML='<option value="imported">Retail collision</option><option value="effective">Effective collision</option>';fieldToggle.after(collisionLayer);
 let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMode=false,wallSelection=null,wallInspection=null,wallRectangleTool=null;
+let fieldSpatial=null,fieldSpatialKey=null,fieldSpatialAbort=null,fieldSpatialPending=false,fieldSpatialVisible=false,fieldSpatialPick=false;
+const fieldSpatialToggle=document.createElement('button');fieldSpatialToggle.id='field-spatial-toggle';fieldSpatialToggle.textContent='Source cells';fieldSpatialToggle.setAttribute('aria-pressed','false');collisionLayer.after(fieldSpatialToggle);
+const fieldSpatialPickButton=document.createElement('button');fieldSpatialPickButton.id='field-spatial-pick';fieldSpatialPickButton.textContent='Pick source cell';fieldSpatialPickButton.setAttribute('aria-pressed','false');fieldSpatialToggle.after(fieldSpatialPickButton);
+const fieldSpatialNote=document.createElement('div');fieldSpatialNote.className='field-map-note';fieldSpatialNote.id='field-spatial-note';fieldSpatialNote.hidden=true;fieldSpatialNote.setAttribute('role','status');fieldNote.after(fieldSpatialNote);
+function fieldSpatialCurrent(){return fieldSpatial&&fieldSpatialKey===resourceStateKey()&&resourceKey===resourceStateKey();}
+function selectedSceneResource(){return sceneResourceSelection&&resourceKey===resourceStateKey()?assetRecords().find(record=>record.id===sceneResourceSelection&&record.sceneId===state.scene?.id&&['trigger','region','collision','script','transition'].includes(record.type)):null;}
+function selectSceneResource(record,frameNow=false){
+  if(busy||resourceKey!==resourceStateKey()||!resourceRecords.some(row=>row.semantic_id===record.id)||record.sceneId!==state.scene?.id)return;
+  cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;sceneResourceSelection=record.id;
+  renderHierarchy();renderInspector();$('frame-selected').disabled=!['trigger','region'].includes(record.type);draw();if(frameNow){if(['trigger','region'].includes(record.type))frameSceneResource();else activateAsset(record);}
+}
+function clearFieldSpatial(){fieldSpatialAbort?.abort();fieldSpatialAbort=null;fieldSpatial=null;fieldSpatialKey=null;fieldSpatialPending=false;fieldSpatialVisible=false;fieldSpatialPick=false;fieldSpatialNote.hidden=true;}
+function updateFieldSpatialTools(){
+  fieldSpatialToggle.hidden=!state.capabilities?.field_map_preview;fieldSpatialToggle.disabled=busy||fieldSpatialPending;fieldSpatialToggle.classList.toggle('active',fieldSpatialVisible&&!!fieldSpatialCurrent());fieldSpatialToggle.setAttribute('aria-pressed',String(fieldSpatialVisible&&!!fieldSpatialCurrent()));
+  fieldSpatialPickButton.hidden=fieldSpatialToggle.hidden;fieldSpatialPickButton.disabled=busy||fieldSpatialPending||!fieldSpatialVisible||!fieldSpatialCurrent()||wallSelectMode||pickScriptTargets||pickRuntimeNodes||scenePlacementMode||actorBoxMode;
+  if(fieldSpatialPickButton.disabled)fieldSpatialPick=false;fieldSpatialPickButton.classList.toggle('active',fieldSpatialPick);fieldSpatialPickButton.setAttribute('aria-pressed',String(fieldSpatialPick));
+  fieldSpatialNote.hidden=!fieldSpatialVisible||!fieldSpatialCurrent();
+}
+async function loadFieldSpatial(){
+  if(busy||!state.capabilities?.field_map_preview)return false;
+  if(resourceKey!==resourceStateKey())await refreshResources();
+  if(busy||resourceKey!==resourceStateKey())return false;
+  if(fieldSpatialCurrent()){fieldSpatialVisible=true;updateFieldSpatialTools();renderInspector();draw();return true;}
+  const candidates=assetRecords().filter(record=>record.type==='collision');if(candidates.length!==1){notify('No single verified field MAP is available for source cells.',true);return false;}
+  const key=resourceStateKey(),sceneId=state.scene?.id,controller=new AbortController();fieldSpatialAbort?.abort();fieldSpatialAbort=controller;fieldSpatialPending=true;setBusy(true);updateFieldSpatialTools();
+  try{
+    const response=await fetch('/api/field-map-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:candidates[0].id,layer:'imported'}),signal:controller.signal});
+    const result=await response.json();if(!response.ok||result.error)throw new Error(result.error??'Source cell verification failed.');
+    if(controller.signal.aborted||key!==resourceStateKey())return false;
+    validateFieldMap(result,candidates[0],key);const spatial=decodeFieldSpatial(result.spatial,sceneId);
+    for(const row of spatial.records){const resource=resourceRecords.find(record=>record.semantic_id===row.id);if(!resource||resource.asset_kind!==row.kind||JSON.stringify(resource.source_record)!==JSON.stringify(row.source_record))throw new Error('Source cells differ from the current resource catalog. Refresh resources.');}
+    fieldSpatial=spatial;fieldSpatialKey=key;fieldSpatialVisible=true;fieldSpatialNote.textContent=`${spatial.records.filter(row=>row.kind==='trigger').length} trigger cells · ${spatial.records.filter(row=>row.kind==='region').length} region bounds · Y=0 reference plane, height unknown · Trigger: world >> 7 · Region: (world - 64) >> 7 · Activation unverified`;
+    renderHierarchy();renderInspector();return true;
+  }catch(error){if(error.name!=='AbortError'){clearFieldSpatial();notify(error.message,true);}return false;}
+  finally{if(fieldSpatialAbort===controller){fieldSpatialAbort=null;fieldSpatialPending=false;}setBusy(false);updateFieldSpatialTools();draw();}
+}
+fieldSpatialToggle.onclick=async()=>{if(busy)return;cancelViewportGesture();if(fieldSpatialVisible){fieldSpatialVisible=false;fieldSpatialPick=false;updateFieldSpatialTools();draw();}else await loadFieldSpatial();};
+fieldSpatialPickButton.onclick=()=>{if(busy||fieldSpatialPickButton.disabled)return;cancelViewportGesture();fieldSpatialPick=!fieldSpatialPick;updateFieldSpatialTools();draw();};
+async function frameSceneResource(){
+  const record=selectedSceneResource();if(!record||!['trigger','region'].includes(record.type)||busy)return;
+  const key=resourceStateKey();if(!await loadFieldSpatial()||key!==resourceStateKey()||sceneResourceSelection!==record.id)return;
+  const row=fieldSpatial.records.find(item=>item.id===record.id);if(!row)return;const framed=fieldSpatialFrame(row);camera.target={...framed.target};camera.distance=framed.distance;cameraRevision++;draw();
+}
+function renderSceneResourceInspector(record){
+  const host=$('inspector'),key=resourceStateKey();host.replaceChildren();$('selection-summary').textContent=`${record.label} · Source resource`;
+  const section=document.createElement('section');section.className='component scene-resource-inspector';section.dataset.sceneResource=record.id;host.append(section);
+  const current=()=>resourceKey===resourceStateKey()&&key===resourceStateKey()&&sceneResourceSelection===record.id;
+  mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,activate:async item=>{if(current()&&!busy)await activateAsset(item);},onError:error=>notify(error.message,true)});
+  const actions=document.createElement('div');actions.className='dialog-actions';section.append(actions);
+  if(['trigger','region'].includes(record.type)){
+    const frameButton=document.createElement('button');frameButton.id='frame-source-cell';frameButton.textContent='Frame source cell';frameButton.disabled=busy;frameButton.onclick=()=>{if(current())frameSceneResource();};actions.append(frameButton);
+    const row=fieldSpatialCurrent()?fieldSpatial.records.find(item=>item.id===record.id):null;
+    const summary=document.createElement('p');summary.className='field-note';summary.id='source-cell-coordinates';summary.textContent=row?`X [${row.world_bounds.x_min}, ${row.world_bounds.x_max}) · Z [${row.world_bounds.z_min}, ${row.world_bounds.z_max}) · guest units · Y=0 reference plane, height unknown · Activation unverified`:'Frame source cell to load its verified X/Z bounds. Height and activation are unknown.';section.append(summary);
+  }
+  const details=document.createElement('button');details.id='source-resource-details';details.textContent='Asset details and references';details.disabled=busy;details.onclick=()=>{if(current()&&!busy)showAssetDetails(record);};actions.append(details);
+  const source=document.createElement('details');source.className='resource-provenance';const title=document.createElement('summary');title.textContent='Source record and provenance';const pre=document.createElement('pre');pre.className='diagnostic-detail';pre.textContent=JSON.stringify(record.data,null,2);source.append(title,pre);section.append(source);
+}
 const wallTools=document.createElement('div');wallTools.id='wall-viewport-tools';transformTools.after(wallTools);
 const wallSelectButton=document.createElement('button');wallSelectButton.id='wall-select-mode';wallSelectButton.textContent='Select wall rectangle';wallSelectButton.setAttribute('aria-pressed','false');wallTools.append(wallSelectButton);
 function wallSourceCurrent(){return canEdit()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&fieldMap&&fieldKey===resourceStateKey()&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode;}
@@ -1588,6 +1660,7 @@ fieldToggle.onclick=async()=>{
 collisionLayer.onchange=async()=>{updateFieldToggle();if(busy||!fieldMap)return;const record=assetRecords().find(r=>r.id===fieldMap.semantic_id&&r.type==='collision');if(record)await loadFieldMap(record);else{clearFieldMap();draw();}};
 function openFieldResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
+  selectSceneResource(record);
   const collision=record.type==='collision',data=record.data;
   fieldDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-field-map" aria-label="Close field map inspector">×</button></div>${property('Stable ID',record.id)}${property('Record type',collision?'Base collision grid':record.type==='region'?'Encoded region record':'Encoded trigger record')}<p class="field-note">${collision?fieldMapScope:'Read-only encoded trigger or region fields. Destination scenes, runtime activation and story conditions are not inferred.'}</p><div id="field-record-summary"></div>${collision?'<button id="show-base-collision" class="accent">Show base collision</button>':''}<details class="resource-provenance"><summary>Source provenance and complete metadata</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;
   const summary=$('field-record-summary');
@@ -1609,7 +1682,7 @@ function openFieldResource(record){
     };
     filter.oninput=renderRamps;renderRamps();
   }
-  if(!collision){const coordinates=document.createElement('p');coordinates.className='field-note';coordinates.textContent='Trigger and region tile coordinates are not collision-grid cells. No trigger or region geometry is inferred in the viewport.';summary.append(coordinates);}
+  if(!collision){const coordinates=document.createElement('p');coordinates.className='field-note';coordinates.textContent='Source cells use their own X/Z quantization: triggers use world >> 7; regions use (world - 64) >> 7. Viewport outlines use Y=0 as a reference plane; height and activation are unknown.';summary.append(coordinates);}
   const limits=document.createElement('p');limits.className='field-note';limits.textContent=(data.limitations ?? []).map(value=>typeof value==='string'?value:JSON.stringify(value)).join(' ');summary.append(limits);
   fieldDialog.querySelector('pre').textContent=JSON.stringify(data,null,2);$('close-field-map').onclick=()=>fieldDialog.close();
   if(collision){$('show-base-collision').disabled=!state.capabilities?.field_map_preview;$('show-base-collision').onclick=async()=>{if(await loadFieldMap(record)){fieldDialog.close();document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}};}
@@ -2314,6 +2387,7 @@ async function exportNpcDrafts(entityId){
   finally{exporting=false;close.disabled=false;setBusy(false);}
 }
 function renderInspector(){
+  const resource=selectedSceneResource();if(resource){renderSceneResourceInspector(resource);return;}
   const npc=selectedNpcDraft();
   if(npc){
     const id=npcDraftSelection;
@@ -3167,7 +3241,7 @@ function draw(){
   if(drag?.type==='scene-placement-group-transform'&&!transformGestureCurrent(drag)){cancelViewportGesture();return;}
   updateScenePlacementSelection();
   if(scenePlacementInspection&&(!scenePreviewCurrent()||scenePlacementInspection.report.project_source_key!==state.project_copy_source_key||!canEdit()||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||wallInspection))scenePlacementTool.restore();
-  updateFieldToggle();
+  updateFieldToggle();updateFieldSpatialTools();
   if(wallRectangleTool){wallRectangleTool.refresh();if(wallInspection&&(!wallSourceCurrent()||wallInspection.report.project_source_key!==state.project_copy_source_key))wallRectangleTool.restore();if(wallSelectMode&&!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}if(drag?.type==='wall-rectangle'&&!wallGestureCurrent(drag)){cancelViewportGesture();return;}}
   updateEnvironmentGroupSelection();
   if(environmentGroupInspection&&(!scenePreviewCurrent()||environmentGroupInspection.report.project_source_key!==state.project_copy_source_key||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection)){environmentGroupTool.restore();environmentLayoutTool?.restore();}
@@ -3182,11 +3256,11 @@ function draw(){
   if(pickRuntimeButton.disabled&&pickRuntimeNodes){pickRuntimeNodes=false;pickRuntimeButton.setAttribute('aria-pressed','false');}
 
   if(grid&&!sceneModelsReady()){const spacing=10**Math.floor(Math.log10(camera.distance/7)),half=spacing*12,cx=Math.round(camera.target.x/spacing)*spacing,cz=Math.round(camera.target.z/spacing)*spacing;for(let i=-12;i<=12;i++){line({x:cx+i*spacing,y:0,z:cz-half},{x:cx+i*spacing,y:0,z:cz+half},i===0?'#39504f88':'#33474c66');line({x:cx-half,y:0,z:cz+i*spacing},{x:cx+half,y:0,z:cz+i*spacing},i===0?'#39504f88':'#33474c66');}}
-  drawFieldMap();drawWallSelection();
+  drawFieldMap();if(fieldSpatialVisible&&fieldSpatialCurrent())drawFieldSpatial(ctx,fieldSpatial.records,project,width,height,sceneResourceSelection);drawWallSelection();
   const items=entities().map(entity=>{const world=sceneView().positions.get(entity.id)??position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
     if(!sceneLayers.actors||hiddenSceneEntities().has(entity.id))continue;
-    const active=!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
+    const active=!selectedSceneResource()&&!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
     const grouped=scenePlacementSelection.includes(entity.id)||!actorGroupInspection&&actorGroupSelection.includes(entity.id);if(rendered&&!active&&!grouped)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();
     ctx.beginPath();ctx.moveTo(p.x,p.y-radius);ctx.lineTo(p.x+radius,p.y);ctx.lineTo(p.x,p.y+radius);ctx.lineTo(p.x-radius,p.y);ctx.closePath();ctx.fillStyle=active?'#c9edce':sceneRepresentation==='authored'&&authored(entity)?'#d2ae70':'#759d8d';ctx.fill();ctx.strokeStyle=active?'#f1fff0':'#a8c6b6';ctx.lineWidth=active?1.5:1;ctx.stroke();
@@ -3279,7 +3353,7 @@ canvas.addEventListener('pointerdown',event=>{
   if(wallSelectMode&&event.button===0){const cell=wallCellAt(groundAt(p.x,p.y,0));if(!wallSourceCurrent()||wallInspection||!cell){canvas.releasePointerCapture(event.pointerId);notify('Point is outside the canonical source-wall reference plane.',true);return;}drag={pointerId:event.pointerId,type:'wall-rectangle',context:resourceStateKey(),sourceKey:state.project_copy_source_key,cameraRevision,width,height,wallStart:cell,start:p,last:p,moved:false};wallSelection=wallDragRectangle(cell,cell);canvas.classList.add('dragging');draw();return;}
   const placementBox=scenePlacementBoxMode&&!scenePlacementHost.querySelector('[data-mixed-box]').disabled&&event.button===0&&!event.shiftKey&&!event.altKey;
   const box=placementBox||actorBoxMode&&!actorBoxButton.disabled&&event.button===0&&!event.shiftKey&&!event.altKey;
-  const handle=!box && event.button===0 && !event.ctrlKey && !event.metaKey && !pickScriptTargets && (entity||groupProposalCenter()||sceneryGroupCenter()||scenePlacementCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
+  const handle=!box && event.button===0 && !event.ctrlKey && !event.metaKey && !pickScriptTargets && !fieldSpatialPick && (entity||groupProposalCenter()||sceneryGroupCenter()||scenePlacementCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
   drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,extendSelection:event.ctrlKey||event.metaKey,cameraRevision,representation:sceneRepresentation,type:box?(placementBox?'scene-placement-box':'actor-box'):handle?(handle.scenePlacementGroup?'scene-placement-group-transform':handle.sceneryGroup?'environment-group-transform':handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.scenePlacementGroup?scenePlacementCenter(false):handle?.sceneryGroup?sceneryGroupCenter(false):handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.scenePlacementGroup?scenePlacementInspection.report:handle?.sceneryGroup?environmentGroupInspection.report:handle?.group?actorGroupInspection.proposal:null,sourceKey:state.project_copy_source_key,width,height,snapStep:handle?.scenePlacementGroup||handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
   if(handle&&state.actor_drafts?.[entity?.id])drag.snapStep=64;
@@ -3325,6 +3399,10 @@ canvas.addEventListener('pointerup',async event=>{
   else if(finished.type==='group-transform'&&edit){const axis=finished.handle.axis;await actorBatchTool.moveProposal(axis,edit.groupAmount,finished.proposal.review_key);}
   else if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(state.actor_drafts?.[finished.entity])await api('/api/command',{type:'set_actor_draft_position',entity_id:finished.entity,position:{...state.actor_drafts[finished.entity].position,[axis]:edit.position[axis]}});else if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
   else if(!finished.moved && event.button===0){
+    if(fieldSpatialPick&&fieldSpatialVisible&&fieldSpatialCurrent()&&finished.context===resourceStateKey()){
+      const id=hitFieldSpatial(fieldSpatial.records,project,p.x,p.y,sceneResourceSelection),record=assetRecords().find(row=>row.id===id);
+      if(record)selectSceneResource(record);else notify('No source cell at this point.');draw();return;
+    }
     if(pickScriptTargets&&currentScriptTargets()&&finished.context===resourceStateKey()){
       const hits=scriptTargetHits.filter(hit=>Math.hypot(hit.x-p.x,hit.y-p.y)<10||(hit.label&&p.x>=hit.label.x&&p.x<=hit.label.x+hit.label.w&&p.y>=hit.label.y&&p.y<=hit.label.y+hit.label.h));
       if(hits.length===1){scriptTargetTools.querySelector('select').value=hits[0].pc;await inspectScriptTarget(hits[0].pc);}

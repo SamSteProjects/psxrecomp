@@ -8,6 +8,23 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Field source cells and script links (2026-10-02):** Verified trigger and
+region rows now appear in the scene hierarchy and shared Inspector, with
+viewport outlines, framing and explicit source-cell picking. Trigger dispatch
+uses `world >> 7`; region lookup uses `(world - 64) >> 7`, preserving the
+64-unit difference. Display Y=0 remains an inspection plane with unknown
+height. Coincident rows retain separate source identities. Gate-1 rows link to
+unique bounded P2 scripts in Active/Project reference graphs with both record
+hashes; object binds, unknown gates and missing/aliased targets stay unresolved.
+Town01 supplies 99 trigger cells,14 region bounds and 51 eligible script links.
+Read-only HTTP, source qualification, browser navigation/picking and stale-scene
+cleanup passed. No game launched or package installed; contact/activation and
+retail height acceptance remain deferred. See
+[field source workspace](legaia-field-source-workspace.md). Full SDK/runtime
+coverage is still incomplete.
+
+Final validation:59 retail-enabled Python tests passed with no skips in84.629s;41 Node checks and39 module syntax checks passed. Actual browser frame/pick, overlapping rows, reference/script navigation, actor restoration and scene invalidation passed with zero page/HTTP errors. The saved baseline/import hashes remained unchanged; no package or game was launched.
+
 **Central transition assets (2026-10-02):** Decoded scene-change instructions
 now appear in the Asset Browser, shared Inspector and Active/Project dependency
 graphs. Imported/authored/effective entry bytes and static destination arrival

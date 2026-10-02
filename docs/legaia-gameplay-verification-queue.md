@@ -1,5 +1,21 @@
 # Deferred gameplay verification
 
+## Field source cells and trigger contact - deferred
+
+The private baseline project is `local-output/sdk-20260909/field-spatial-20261002/project/`.
+No edits or installable package were produced. Town01 source cell framing,
+explicit pick, coincident-row cycling, Inspector/source-script navigation and
+scene-change cleanup pass offline. Gate-1 MAP rows resolve 51 source links to22
+P2 records, without proving their dispatch or story conditions.
+
+Later gameplay comparison should check trigger tile contact and region boundaries
+against the correct quantizers: trigger `world >> 7`, region `(world - 64) >> 7`.
+The inspected fallback kind1 row0000 resolves P2[38], with source bounds
+X[12416,12544), Z[1280,1408). Its display Y=0 is an inspection plane; retail
+height, activation and reachability remain unknown. This does not establish
+which trigger executes any particular SCENE_CHANGE. Gate 0 cells are object
+lookup keys, not proven player-contact volumes. No game was launched.
+
 ## Transition arrival Inspector fixture - deferred
 
 The saved project is `local-output/sdk-20260909/transition-assets-20261002/project/`.

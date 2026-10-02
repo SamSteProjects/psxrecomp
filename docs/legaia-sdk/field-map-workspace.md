@@ -1,5 +1,10 @@
 # Field map resources and base collision preview
 
+Source trigger/region cells now connect the hierarchy, shared Inspector and
+viewport. See [field source workspace](../legaia-field-source-workspace.md)
+for the separate trigger/region quantizers, guarded source picking and P2 links.
+These outlines preserve unknown height and do not simulate activation.
+
 Field map discovery follows pinned Andrew reference revision
 `d6e64c68ede25813d35db20980da82a1a025549b`. The scene-window entry and its
 extended footprint come from `scene/scene_ty.rs` (blob

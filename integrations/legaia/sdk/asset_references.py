@@ -7,6 +7,76 @@ def source_key(project):
                        imports={key:digest(doc) for key,doc in sorted(project.imports.items())},
                        overrides=project.overrides,drafts=project.actor_drafts))
 
+def _trigger_script_evidence(record,source_scripts,scene,document):
+    """Qualify one encoded gate-1 MAP row against a unique source P2 record."""
+    encoded=record.get('encoded',{})
+    if record.get('table_kind')!=1 or not isinstance(encoded,dict) or encoded.get('gate')!=1:return None
+    from hashlib import sha256
+    from importer.pipeline import REFERENCE_COMMIT
+    def reject(reason):raise ProjectError('Invalid field trigger script reference '+reason)
+    def integer(value,minimum,maximum):return type(value) is int and minimum<=value<=maximum
+    def hash_value(value):return isinstance(value,str) and len(value)==64 and all(c in '0123456789abcdef' for c in value)
+    name=scene.removeprefix('scene://');table=record.get('table_source');row=record.get('record_index')
+    index=encoded.get('record_index');source=record.get('source_record');reference=record.get('script_reference')
+    if (not scene.startswith('scene://') or table not in ('primary','fallback') or not integer(row,0,2042) or
+            type(record.get('table_kind')) is not int or
+            set(encoded)!={'tile_x','tile_z','record_index','gate'} or
+            any(not integer(encoded[key],0,255) for key in encoded) or
+            record.get('kind')!='trigger' or record.get('asset_kind')!='trigger' or
+            record.get('id')!=f'trigger://{name}/field-map/{table}/kind-1/{row:04d}' or
+            record.get('semantic_id')!=record['id'] or record.get('scene_id',scene)!=scene or
+            record.get('collision_id')!=f'collision://{name}/field-map' or
+            record.get('reference_commit')!=REFERENCE_COMMIT or record.get('trigger_type')!='partition_2_trigger' or
+            not isinstance(reference,dict) or set(reference)!={'partition','record_index','status'} or
+            type(reference['partition']) is not int or reference['partition']!=2 or reference['record_index']!=index or
+            type(reference['record_index']) is not int or reference['status']!='unresolved_source_reference'):
+        reject('identity or encoded row')
+    if not isinstance(source,dict):reject('missing trigger source')
+    disc=source.get('disc');base=0x10000 if table=='primary' else 0
+    if (not isinstance(disc,dict) or set(disc)!={'sha256','serial'} or not hash_value(disc['sha256']) or disc['serial']!='SCUS-94254' or
+            source.get('iso_file')!='PROT.DAT' or source.get('prot_entry_name')!=name or
+            not integer(source.get('prot_entry_index'),0,0xffffffff) or not integer(source.get('prot_start_lba'),0,0xffffffff) or
+            source.get('byte_coordinate_space')!='prot_entry' or type(source.get('byte_length')) is not int or source['byte_length']!=4 or
+            source.get('table_source')!=table or type(source.get('table_kind')) is not int or source['table_kind']!=1 or
+            type(source.get('record_index')) is not int or source['record_index']!=row or
+            not integer(source.get('byte_offset'),base+18+row*4,base+0x2000-4) or
+            type(source.get('containing_span_byte_offset')) is not int or source['containing_span_byte_offset']!=base or
+            type(source.get('containing_span_byte_length')) is not int or source['containing_span_byte_length']!=0x2000 or
+            not hash_value(source.get('containing_span_sha256')) or
+            source.get('sha256')!=sha256(bytes(encoded[key] for key in ('tile_x','tile_z','record_index','gate'))).hexdigest()):
+        reject('trigger provenance or row hash')
+    imported_disc=document.get('source',{}).get('disc_identity')
+    if isinstance(imported_disc,str) and imported_disc.startswith('sha256:') and imported_disc!='sha256:'+disc['sha256']:
+        reject('trigger disc differs from imported scene')
+    target=f'script://{name}/scripts/man-p2/{index:04d}';scripts=source_scripts.get(target,[])
+    # Missing, multiply recorded and aliased P2 targets stay unresolved. The row
+    # retains its source identity, with no guessed script or runtime dispatch.
+    if len(scripts)!=1:return None
+    script=scripts[0];script_source=script.get('source_record')
+    if (script.get('kind')!='script' or script.get('asset_kind')!='script' or script.get('semantic_id')!=target or
+            script.get('script_id')!=target or script.get('scene_id',scene)!=scene or
+            type(script.get('partition')) is not int or script['partition']!=2 or
+            script.get('owner_semantic_id')!='scene://'+target.removeprefix('script://') or script.get('actor_semantic_id') is not None or
+            script.get('reference_commit')!=REFERENCE_COMMIT or not isinstance(script_source,dict) or
+            script_source.get('disc')!=disc or script_source.get('iso_file')!='PROT.DAT' or
+            type(script_source.get('partition')) is not int or script_source['partition']!=2 or
+            type(script_source.get('record_index')) is not int or script_source['record_index']!=index or
+            not integer(script_source.get('prot_entry_index'),0,0xffffffff) or
+            script_source.get('prot_entry_name',name)!=name or
+            script_source.get('byte_coordinate_space') not in ('decoded_lzs_descriptor','raw_man_payload')):
+        reject('P2 identity or provenance')
+    if script_source.get('record_alias_count') is None or script_source.get('byte_offset') is None or script_source.get('sha256') is None:
+        if script.get('status')=='unavailable':return None
+        reject('missing bounded P2 record')
+    if (not integer(script_source.get('record_alias_count'),1,512) or not hash_value(script_source.get('sha256')) or
+            not integer(script_source.get('byte_offset'),0,4*1024*1024) or
+            not integer(script_source.get('byte_length'),1,4*1024*1024-script_source['byte_offset'])):
+        reject('P2 bounds or record hash')
+    if script_source['record_alias_count']!=1:return None
+    return target,dict(trigger_source_record_sha256=source['sha256'],script_source_record_sha256=script_source['sha256'],
+                       table_source=table,table_kind=1,trigger_row_index=row,partition_two_record_index=index,
+                       gate=1,reachability='not_evaluated')
+
 def _reference_clip_evidence(record,model_records):
     """Validate an explicit pinned catalog association, never an actor assignment."""
     if record.get('association_kind')!='reference_pinned_global_model_clip':return None
@@ -82,7 +152,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -95,6 +165,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if reference_clip_evidence is not None:value['reference_clip_evidence']=deepcopy(reference_clip_evidence)
         if flag_evidence is not None:value['flag_reference_evidence']=deepcopy(flag_evidence)
         if transition_evidence is not None:value['transition_reference_evidence']=deepcopy(transition_evidence)
+        if trigger_evidence is not None:value['trigger_reference_evidence']=deepcopy(trigger_evidence)
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -124,12 +195,15 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if ref['imported']:edge(ref['source_id'],ref['target_id'],'initial_model',ref['scene_id'])
         if ref['effective']:edge(ref['source_id'],ref['target_id'],'effective_initial_model',ref['scene_id'],'effective')
     scene=project.active_scene
-    reference_clips={};source_scripts={};transition_ids=set()
+    reference_clips={};source_scripts={};transition_ids=set();trigger_ids=set()
     for record in catalog['records']:
         if record['kind']=='script':source_scripts.setdefault(record['id'],[]).append(record)
         if record['kind']=='transition':
             if record['id'] in transition_ids:raise ProjectError('Duplicate transition reference identity')
             transition_ids.add(record['id'])
+        if record['kind']=='trigger':
+            if record['id'] in trigger_ids:raise ProjectError('Duplicate field trigger reference identity')
+            trigger_ids.add(record['id'])
         evidence=_reference_clip_evidence(record,model_records)
         if evidence is not None:reference_clips[record['id']]=evidence
         node(record['id'],record['kind'],scene,record.get('name'))
@@ -208,7 +282,10 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             target=record.get('collision_id')
             if target in nodes:edge(identity,target,'field_map_table_source',scene,'decoded')
             else:unresolved+=1
-            if record.get('script_reference'):unresolved+=1
+            if record.get('script_reference'):
+                relation=_trigger_script_evidence(record,source_scripts,scene,project.imports[scene]) if kind=='trigger' else None
+                if relation is None:unresolved+=1
+                else:edge(identity,relation[0],'field_trigger_script_reference',scene,'decoded',trigger_evidence=relation[1])
         elif kind=='worldmap':
             name=record.get('destination_source_label')
             if name:
