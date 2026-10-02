@@ -119,6 +119,8 @@ class TriggerAssetReferences(unittest.TestCase):
             lambda row: row['encoded'].update(tile_x=256),
             lambda row: row['encoded'].update(record_index=True),
             lambda row: row['script_reference'].update(partition=0),
+            lambda row: row['script_reference'].update(index_space='flat_man'),
+            lambda row: row['script_reference'].pop('index_space'),
             lambda row: row['script_reference'].update(record_index=1),
             lambda row: row['source_record'].update(sha256='b'*64),
             lambda row: row['source_record']['disc'].update(sha256='b'*64),

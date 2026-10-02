@@ -7,6 +7,28 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Source-facing instruction authoring and object-index correction (2026-10-02):**
+The actor Inspector now opens source-qualified facing controls for simple
+CAM_CFG and nonparked NPC_RUN instructions. Retail, Authored and Effective
+sectors remain separate; drafts have a numeric compass preview, Apply/Clear,
+Undo/Redo and Save/Open. Source-bound operand JSON and scene bundles include
+ScriptFacing. Normal Build composes the exact low-nibble writes with other MAN
+edits and checks the full byte audit and compressed capacity. Retail dispatch,
+LUT reads and actor-facing stores were verified statically before implementation.
+The shared Inspector also renders additional registered components through their
+schema. Gate-0 object references now preserve unresolved flat MAN indices;
+gate-1 remains explicitly P2-local. Initial/live actor heading, branch selection,
+experimental NPC append export and gameplay acceptance remain unresolved.
+See [source-facing workflow](legaia-script-facing.md).
+
+Validation:56 focused retail-enabled Python tests passed without skips in70.133s;
+7 Node checks and3 changed-module syntax checks passed. Nine actual browser
+workflow checks passed with zero page/HTTP errors and zero game-launch requests;
+a real P2 report independently validates/renders31 controls with explicit
+extended-context uncertainty. Retained Town0b actor0019 packaging changes only
+MAN byte9479 from0x81 to0x85, preserving the upper flag. Imports remain unchanged.
+The package is not installed or played; full SDK/runtime scope is incomplete.
+
 **Reviewed field region bounds (2026-10-02):** Primary MAP regions now have
 an Edit region bounds action, four strict corner inputs, separate Retail /
 Authored / Current / Proposed layers, and outline/viewport comparison. Apply

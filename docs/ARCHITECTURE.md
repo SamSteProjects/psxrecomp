@@ -6,6 +6,20 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Source-facing operands (2026-10-02) use a separate `ScriptFacing` component keyed
+by immutable source owner and PC. Fresh MAN qualification and retail-proved
+operand masks permit sectors0–7 while preserving every upper bit and other byte.
+They do not introduce `Transform.heading` or choose a story branch. The editor
+renders imported/authored/effective source values and an operand compass; normal
+Build independently validates their full byte audit when composing MAN families.
+Operand JSON and bundles reuse that same service. Experimental NPC append export
+rejects this component. Gate-0 MAP references retain a flat MAN index with no
+asserted partition; gate-1 explicitly retains its P2-local index space. Additional
+registered actor components render properties/details/actions from the Inspector
+schema, with direct generic property editing disabled. See
+[source-facing contracts and retail evidence](legaia-script-facing.md).
+
+
 Source region authoring reuses the bounded field MAP table parser. The
 serializer writes only four corner bytes per existing primary row and supplies
 complete byte audits. `sdk.region_bounds` requalifies the entire retained

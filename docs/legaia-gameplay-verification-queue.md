@@ -1,5 +1,25 @@
 # Deferred gameplay verification
 
+## Source-facing instruction fixture - deferred
+
+Saved fixture: `local-output/sdk-20260909/script-facing-20261002/project/`.
+Package: `local-output/sdk-20260909/script-facing-20261002/authored-build/legaia.sdk.760132307200-0.1.0-19dab14dc2db8d24.psxmod`.
+SHA256: `556dbae3db541bbd729188d81832ace68aeceac381d74c85495038c06d6c36ea`.
+Town0b actor0019 CAM_CFG at source PC0x0011 changes sector1 to5. Original-disc,
+MAN and ZIP readback changes only MAN9479 from0x81 to0x85; the upper0x80 flag,
+placement, model/animation and every other byte are unchanged. Inspector source
+layers, compass drafts, Apply/Clear, Undo/Redo, Save/reload and mixed-placement
+Build pass offline. P2 source/context qualification is also checked.
+
+Later gameplay acceptance should establish the visible actor/source binding in
+Town0b, verify that this installation instruction executes in the chosen story
+state, compare stock versus authored facing, and check later script behavior.
+The compass is an instruction-operand preview; generic scene-model/initial/live
+heading is unresolved. Conditional Town01 facing instructions need branch-specific
+acceptance. No package installed or game launched; this fixture does not require
+immediate gameplay. See [source-facing workflow](legaia-script-facing.md).
+
+
 ## Authored region bounds - deferred
 
 Saved fixture: `local-output/sdk-20260909/region-bounds-20261002/project/`.

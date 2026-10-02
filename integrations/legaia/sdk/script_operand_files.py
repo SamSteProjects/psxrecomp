@@ -7,6 +7,7 @@ SCHEMA='legaia.script-operand-file.v1'
 MAX_BYTES=65536
 KINDS={
     'ScriptMovement':('set_movement_target','movement_id'),
+    'ScriptFacing':('set_facing_target','facing_id'),
     'ScriptFlags':('set_flag_bit','flag_id'),
     'ScriptWaits':('set_wait_target','wait_id'),
     'ScriptModelSelectors':('set_model_selector_target','model_selector_id'),

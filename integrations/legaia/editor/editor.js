@@ -34,6 +34,7 @@ import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
+import {mountScriptFacing} from '/script-facing.js';
 import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,MAX_REVIEW_BYTES} from '/runtime-review.js';
 import {mountActorPlacementBatch,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '/actor-placement-batch.js';
 const $ = (id) => document.getElementById(id);
@@ -803,7 +804,7 @@ function groupProposalCenter(temporary=true){
   return Object.fromEntries(['x','y','z'].map(axis=>[axis,points.reduce((sum,p)=>sum+p[axis],0)/points.length]));
 }
 function authoredComponentLabels(entity){
-  const labels={Transform:'Position',ActorAppearance:'Appearance',ActorAnimation:'Initial animation',AnimationChannels:'Animation channels',Dialogue:'Dialogue',Transitions:'Transitions',ScriptMovement:'Script movement'};
+  const labels={Transform:'Position',ActorAppearance:'Appearance',ActorAnimation:'Initial animation',AnimationChannels:'Animation channels',Dialogue:'Dialogue',Transitions:'Transitions',ScriptMovement:'Script movement',ScriptFacing:'Script facing'};
   return (entity.authored_components??[]).map(key=>labels[key]??key);
 }
 function authored(entity){return (entity.authored_components?.length??0)>0 || !!entity.components?.Animation?.authored_channels || Object.keys(entity.components?.Transform?.authored?.position ?? {}).length>0 || !!entity.components?.ActorAppearance?.authored?.donor_entity_id || !!entity.components?.ActorAnimation?.authored?.animation_asset_id || Object.keys(entity.components?.Dialogue?.authored?.runs ?? {}).length>0;}
@@ -2566,7 +2567,14 @@ function renderInspector(){
   if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.RuntimeCorrelation.label)} <small>${escapeHTML(state.inspector_schema.components.RuntimeCorrelation.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'RuntimeCorrelation',correlation)}${runtimeCandidateSummary(correlation,entity.id)}${renderComponentDetails(state.inspector_schema,'RuntimeCorrelation',correlation)}</section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata;html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.RetailMetadata.label)} <small>${escapeHTML(state.inspector_schema.components.RetailMetadata.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'RetailMetadata',retail)}${renderComponentDetails(state.inspector_schema,'RetailMetadata',retail)}</section>`;}
   if(components.Dialogue&&state.capabilities?.actor_script_preview)html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.Dialogue.label)} <small>${escapeHTML(state.inspector_schema.components.Dialogue.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'Dialogue',components.Dialogue)}${componentActions('Dialogue')}</section>`;
-  html+=renderUnregisteredComponents(state.inspector_schema,components,['Transform','ActorAppearance','ActorAnimation','ModelRenderer','Animation','RuntimeCorrelation','RetailMetadata','Dialogue']);
+  const renderedComponents=['Transform','ActorAppearance','ActorAnimation','ModelRenderer','Animation','RuntimeCorrelation','RetailMetadata','Dialogue'];
+  for(const [id,value] of Object.entries(components)){
+    const definition=state.inspector_schema?.components?.[id];
+    if(!definition||renderedComponents.includes(id))continue;
+    html+=`<section class="component"><h3>${escapeHTML(definition.label??id)} <small>${escapeHTML(definition.units??'')}</small></h3>${renderComponentProperties(state.inspector_schema,id,value,false)}${componentActions(id)}${renderComponentDetails(state.inspector_schema,id,value)}</section>`;
+    renderedComponents.push(id);
+  }
+  html+=renderUnregisteredComponents(state.inspector_schema,components,renderedComponents);
   $('inspector').innerHTML=html;
   bindComponentActions($('inspector'),actorActions,{current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id,editable:canEdit,busy:()=>busy,onError:error=>notify(error.message,true)});
   const inspectorContext=resourceStateKey();
@@ -2756,7 +2764,19 @@ async function openAppearanceOptions(entity){
 }
 
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
-let scriptEntity=null,scriptReport=null,scriptDrafts=new Map();
+let scriptEntity=null,scriptReport=null,scriptDrafts=new Map(),scriptFacingControls=null;
+scriptDialog.addEventListener('close',()=>{scriptFacingControls?.dispose();scriptFacingControls=null;});
+function renderFacingAuthoring(){
+  scriptFacingControls?.dispose();scriptFacingControls=null;
+  if(!scriptReport?.facing_authoring)return;
+  const owner=scriptEntity.id,key=resourceStateKey(),accepted=scriptReport;
+  scriptFacingControls=mountScriptFacing($('script-report'),{
+    report:accepted,owner,drafts:scriptDrafts,busy:()=>busy,setBusy,api,
+    current:()=>scriptDialog.open&&scriptReport===accepted&&scriptEntity?.id===owner&&key===resourceStateKey()&&canEditDialogue(),
+    reopen:()=>openActorScript(scriptEntity,true),onDraftChange:updateScriptActions,
+    onError:error=>{if(scriptDialog.open)scriptDialog.querySelector('.dialog-error').textContent=error.message;}
+  });
+}
 const scriptOffset=value=>Number.isInteger(value)?'0x'+value.toString(16).toUpperCase():'Unknown';
 function openNpcDrafts(focusId=null){
   if(busy)return;
@@ -2831,7 +2851,7 @@ async function openActorCandidate(entity){
   }catch(error){if(dialog.open)dialog.querySelector('p').textContent=String(error.message||error);}
 }
 async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null){
-  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;setBusy(true);
+  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptFacingControls?.dispose();scriptFacingControls=null;setBusy(true);
   if(!refresh){scriptEntity=entity;scriptDrafts.clear();
   scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Instruction graph remains read only</p><div id="script-authoring-toolbar" class="script-authoring-toolbar" hidden><button id="script-undo">Undo</button><button id="script-redo">Redo</button><button id="script-save">Save project</button><span id="script-authoring-status"></span></div><div id="script-report"><p>Verifying the imported script record…</p></div><p class="dialog-error" role="alert"></p>`;
   $('close-script').onclick=()=>scriptDialog.close();scriptDialog.showModal();
@@ -2857,19 +2877,19 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
       const owner=scriptEntity.id,key=resourceStateKey(),accepted=report,ownerContext=operandOwnerContext(state,owner);
       mountScriptOperandFiles($('script-report'),{owner,scene:state.scene.id,current:()=>scriptDialog.open&&key===resourceStateKey()&&scriptEntity?.id===owner&&scriptReport===accepted&&operandOwnerContext(state,owner)===ownerContext&&canEditDialogue(),busy:()=>busy,setBusy,api,reopen:()=>openActorScript(scriptEntity,true),onError:error=>notify(error.message,true)});
     }
-    renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();renderFlagAuthoring();renderWaitAuthoring();renderModelSelectorAuthoring();updateScriptActions();
+    renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();renderFlagAuthoring();renderWaitAuthoring();renderModelSelectorAuthoring();renderFacingAuthoring();updateScriptActions();
     scriptDialog.scrollTop=scroll;
     if(Number.isInteger(focusInstruction)){
       $('script-report').querySelector('.script-instructions').open=true;
       if(!instructionNavigation.select(focusInstruction))notify('The selected instruction was not found in the verified report.',true);
     }
-  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,.movement-authoring,.flag-authoring,.wait-authoring,.modelSelector-authoring,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);if(input){if(focusRun.includes('/transition/'))input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
+  }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,.movement-authoring,.flag-authoring,.wait-authoring,.modelSelector-authoring,.facing-authoring,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);if(input){if(focusRun.includes('/transition/'))input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
 }
 
 function renderMovementAuthoring(){
   const authoring=scriptReport?.movement_authoring;if(!authoring)return;
   const section=document.createElement('section');section.className='movement-authoring';
-  section.innerHTML='<h3>Script movement operands</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps and NPC_RUN/EXEC_MOVE encoded move selectors (0–255). Selector meanings and depth remain unresolved. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project. Build supports descriptor MAN scenes; Export disc also supports streaming scenes and NPC drafts. Gameplay remains unverified. The instruction table shows retail coordinates; the target overlay offers retail and authored layers.</p>';
+  section.innerHTML='<h3>Script movement operands</h3><p class="field-note">Edit decoded X/Z targets in exact 64-unit steps and NPC_RUN/EXEC_MOVE encoded move selectors (0–255). Selector meanings and upper depth bits remain unresolved. The low nibble is a separate facing operand where supported. Y, branch execution and runtime actor identity remain unresolved. These edits save to the project. Build supports descriptor MAN scenes; Export disc also supports streaming scenes and NPC drafts. Gameplay remains unverified. The instruction table shows retail coordinates; the target overlay offers retail and authored layers.</p>';
   $('script-report').append(section);
   const owner=scriptEntity.id,key=resourceStateKey(),current=()=>!busy&&canEditDialogue()&&key===resourceStateKey()&&scriptEntity?.id===owner;
   const send=async(id,type,values)=>{
@@ -3051,8 +3071,9 @@ function renderTransitionAuthoring(){
 
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
 function updateScriptActions(){
+  scriptFacingControls?.updateState();
   const authoring=scriptReport?.dialogue_authoring;
-  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length||scriptReport?.flag_authoring?.supported||scriptReport?.flag_authoring?.unresolved_overrides?.length||scriptReport?.wait_authoring?.supported||scriptReport?.wait_authoring?.unresolved_overrides?.length||scriptReport?.model_selector_authoring?.supported||scriptReport?.model_selector_authoring?.unresolved_overrides?.length);
+  $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length||scriptReport?.flag_authoring?.supported||scriptReport?.flag_authoring?.unresolved_overrides?.length||scriptReport?.wait_authoring?.supported||scriptReport?.wait_authoring?.unresolved_overrides?.length||scriptReport?.model_selector_authoring?.supported||scriptReport?.model_selector_authoring?.unresolved_overrides?.length||scriptReport?.facing_authoring?.supported||scriptReport?.facing_authoring?.unresolved_overrides?.length);
   const pending=scriptDrafts.size>0;
   $('script-undo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_undo;
   $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;

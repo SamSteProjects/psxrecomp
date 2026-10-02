@@ -27,7 +27,8 @@ def _trigger_script_evidence(record,source_scripts,scene,document):
             record.get('semantic_id')!=record['id'] or record.get('scene_id',scene)!=scene or
             record.get('collision_id')!=f'collision://{name}/field-map' or
             record.get('reference_commit')!=REFERENCE_COMMIT or record.get('trigger_type')!='partition_2_trigger' or
-            not isinstance(reference,dict) or set(reference)!={'partition','record_index','status'} or
+            not isinstance(reference,dict) or set(reference)!={'partition','record_index','status','index_space'} or
+            reference['index_space']!='partition_local' or
             type(reference['partition']) is not int or reference['partition']!=2 or reference['record_index']!=index or
             type(reference['record_index']) is not int or reference['status']!='unresolved_source_reference'):
         reject('identity or encoded row')

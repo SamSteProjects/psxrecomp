@@ -1,5 +1,6 @@
 """Source footprints invert the two distinct retail field quantizers."""
 from copy import deepcopy
+import os
 from pathlib import Path
 import struct
 import sys
@@ -93,6 +94,48 @@ class FieldSpatialTests(unittest.TestCase):
         self.assertEqual(document['records'][-1]['world_bounds']['x_max'], 32768)
         self.assertEqual(document['records'][-1]['activation'], 'not_evaluated')
 
+    def test_flat_object_references_remain_unresolved_and_forged_partitions_are_rejected(self):
+        indices = (35, 36, 88, 89, 127, 128, 255)
+        source = preview({1: [(8, 9, index, 0) for index in indices]},
+                         {1: [(8, 9, 255, 0)]})
+        before = deepcopy(source)
+        document = build_field_spatial(source)
+        self.assertEqual(document['schema_version'], 'legaia.field-spatial.v1')
+        self.assertEqual(len(document['records']), len(indices) + 1)
+        for row, flat in zip(source['triggers'], (*indices, 255)):
+            self.assertEqual(row['script_reference'],
+                             {'partition': None, 'record_index': flat, 'index_space': 'flat_man',
+                              'flat_record_index': flat, 'resolved': False,
+                              'status': 'unresolved_source_reference'})
+        self.assertTrue(all(row['activation'] == 'not_evaluated' for row in document['records']))
+        self.assertTrue(all(row['world_bounds'] == {'x_min': 1024, 'x_max': 1152,
+                                                   'z_min': 1152, 'z_max': 1280}
+                            for row in document['records']))
+        self.assertEqual(source, before)
+        for field, value in (('partition', 0), ('partition', 1), ('partition', 2),
+                             ('resolved', True), ('resolved', 0),
+                             ('index_space', 'partition_local'), ('flat_record_index', 36),
+                             ('flat_record_index', True), ('record_index', 36)):
+            bad = deepcopy(source)
+            bad['triggers'][0]['script_reference'][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ProjectError):
+                build_field_spatial(bad)
+        for field in ('index_space', 'flat_record_index', 'resolved'):
+            bad = deepcopy(source)
+            del bad['triggers'][0]['script_reference'][field]
+            with self.subTest(missing=field), self.assertRaises(ProjectError):
+                build_field_spatial(bad)
+        local_source = preview({1: [(8, 9, 11, 1)]}, {})
+        self.assertEqual(local_source['triggers'][0]['script_reference'],
+                         {'partition': 2, 'record_index': 11, 'index_space': 'partition_local',
+                          'status': 'unresolved_source_reference'})
+        for changes in ({'index_space': 'flat_man'}, {'partition': None},
+                        {'flat_record_index': 11}, {'resolved': False}):
+            bad = deepcopy(local_source)
+            bad['triggers'][0]['script_reference'].update(changes)
+            with self.subTest(local_changes=changes), self.assertRaises(ProjectError):
+                build_field_spatial(bad)
+
     def test_regions_normalize_reversed_and_degenerate_bounds_with_signed_bias(self):
         source = preview({3: [(255, 0, 255, 0, 0, 0, 0, 0),
                               (10, 9, 2, 3, 1, 0, 0, 0)]}, {})
@@ -176,6 +219,30 @@ class FieldSpatialTests(unittest.TestCase):
         for bad in (duplicate, missing, inconsistent, aliased, oversized):
             with self.assertRaises(ProjectError):
                 build_field_spatial(bad)
+
+
+@unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'), 'requires private retail disc')
+class RetailFieldSpatialReferenceTests(unittest.TestCase):
+    def test_retail_object_references_do_not_infer_partition_or_activation(self):
+        from importer.field_map import preview_field_map
+        from importer.pipeline import _disc_context
+        disc = os.environ['LEGAIA_DISC_BIN']
+        with _disc_context(disc):
+            for scene, bind_count in (('town01', 37), ('dolk2', 25)):
+                source = preview_field_map(disc, scene, f'collision://{scene}/field-map')
+                document = build_field_spatial(source)
+                bindings = [row for row in source['triggers'] if row.get('trigger_type') == 'object_bind']
+                self.assertEqual(len(bindings), bind_count)
+                for binding in bindings:
+                    reference = binding['script_reference']
+                    self.assertEqual(reference['index_space'], 'flat_man')
+                    self.assertEqual(reference['flat_record_index'], binding['encoded']['record_index'])
+                    self.assertIsNone(reference['partition'])
+                    self.assertIs(reference['resolved'], False)
+                    spatial = next(row for row in document['records'] if row['id'] == binding['semantic_id'])
+                    self.assertEqual(spatial['source_record'], binding['source_record'])
+                    self.assertEqual(spatial['activation'], 'not_evaluated')
+                    self.assertEqual(spatial['height_status'], 'unknown')
         empty = build_field_spatial(preview({}, {}))
         self.assertEqual(empty['records'], [])
         self.assertEqual(empty['scene_id'], 'scene://fixture')

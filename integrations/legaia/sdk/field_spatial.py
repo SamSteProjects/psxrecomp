@@ -153,8 +153,13 @@ def _record(asset, scene, collision_source):
                     any(type(actual[key]) is not int or actual[key] != value for key, value in destination.items())):
                 _reject('teleport destination metadata')
         else:
-            expected = {'partition': {0: 0, 1: 2}.get(encoded['gate']),
+            expected = {'partition': 2 if encoded['gate'] == 1 else None,
                         'record_index': encoded['record_index'], 'status': 'unresolved_source_reference'}
+            if encoded['gate'] == 0:
+                expected.update(index_space='flat_man', flat_record_index=encoded['record_index'],
+                                resolved=False)
+            elif encoded['gate'] == 1:
+                expected['index_space'] = 'partition_local'
             actual = asset['script_reference']
             if (not isinstance(actual, dict) or set(actual) != set(expected) or
                     any(type(actual[key]) is not type(value) or actual[key] != value for key, value in expected.items())):

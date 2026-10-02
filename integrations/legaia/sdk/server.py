@@ -35,6 +35,16 @@ def _movement_authoring_report(project, identifier):
                 "limitations": ["Read-only inspection does not establish movement-write safety."]}
 
 
+def _facing_authoring_report(project, identifier):
+    """Source operand availability never suppresses read-only script inspection."""
+    try:
+        return project.facing_options(identifier)
+    except (RetailImportError, ProjectError) as exc:
+        return {'supported': False, 'reason': str(exc), 'targets': [], 'unavailable': [],
+                'unresolved_overrides': sorted(project.overrides.get(identifier, {}).get('ScriptFacing', {}).get('entries', {})),
+                'limitations': ['No initial or live heading is established by source inspection.']}
+
+
 def _flag_authoring_report(project, identifier):
     """Unsupported authoring must not suppress the read-only script report."""
     try:
@@ -165,6 +175,7 @@ class EditorServer(ThreadingHTTPServer):
         state['scene_flag_state_key'] = scene_flag_state_key(self.project)
         state['project_flag_state_key'] = project_flag_state_key(self.project)
         state["capabilities"]["script_operand_files"] = bool(self.project.disc_path and self.project.active_scene)
+        state['capabilities']['script_facing_authoring'] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_replacement"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
@@ -302,6 +313,7 @@ class EditorServer(ThreadingHTTPServer):
         with _disc_context(project.disc_path):
             report = inspect_actor_script(project.disc_path, document["scene"]["name"], actor)
             report["movement_authoring"] = _movement_authoring_report(project, entity_id)
+            report['facing_authoring'] = _facing_authoring_report(project, entity_id)
             report["flag_authoring"] = _flag_authoring_report(project, entity_id)
             report["wait_authoring"] = _wait_authoring_report(project, entity_id)
             report["model_selector_authoring"] = _model_selector_authoring_report(project, entity_id)
@@ -592,6 +604,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
+                 "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript")}
         if route not in files:
@@ -1057,6 +1070,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report["dialogue_authoring"] = self.server.project.dialogue_options(body["entity_id"])
                     report["transition_authoring"] = _transition_authoring_report(self.server.project, body["entity_id"])
                     report["movement_authoring"] = _movement_authoring_report(self.server.project, body["entity_id"])
+                    report['facing_authoring'] = _facing_authoring_report(self.server.project, body["entity_id"])
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, body["entity_id"])
                     report["wait_authoring"] = _wait_authoring_report(self.server.project, body["entity_id"])
                     report["model_selector_authoring"] = _model_selector_authoring_report(self.server.project, body["entity_id"])
@@ -1071,6 +1085,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     report["dialogue_authoring"] = self.server.project.dialogue_options(identifier)
                     report["transition_authoring"] = _transition_authoring_report(self.server.project, identifier)
                     report["movement_authoring"] = _movement_authoring_report(self.server.project, identifier)
+                    report['facing_authoring'] = _facing_authoring_report(self.server.project, identifier)
                     report["flag_authoring"] = _flag_authoring_report(self.server.project, identifier)
                     report["wait_authoring"] = _wait_authoring_report(self.server.project, identifier)
                     report["model_selector_authoring"] = _model_selector_authoring_report(self.server.project, identifier)

@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-10-02 (SDK source-facing instructions):** Previous goal turn made
+  concrete progress in `dab40469` (reviewed region authoring); full specification
+  remains incomplete. Fresh retail SCUS/PROT897 proves the facing LUT, opcode
+  dispatch masks and actor+0x26 stores before source-operand implementation.
+  ScriptFacing now connects exact owner/PC/hash edits to Inspector compass
+  drafts, source layers, history, persistence, operand JSON/bundles and normal
+  Build. Gate-0 object references were corrected to unresolved flat MAN indices;
+  P2 trigger indices remain local.56 retail-enabled Python checks,7 Node checks,
+  3 syntax checks and9 actual browser workflow checks pass; P2 qualification and
+  31-control rendering pass separately. Saved Town0b actor0019 ZIP readback
+  changes only MAN9479,0x81→0x85, preserving upper flags/imports. No game launch,
+  package install, runtime change or parity acceptance. Manual gameplay remains
+  deferred, generic initial/live heading and appended-NPC integration unproved;
+  full goal remains active. Details: `docs/legaia-script-facing.md`.
+
+
 - **2026-10-02 (SDK authored field regions):** Previous goal turn made concrete
   progress in07cdebc1. Independent bounded serializer/service/frontend lanes were
   centrally integrated into the primary-region editor, immutable/effective

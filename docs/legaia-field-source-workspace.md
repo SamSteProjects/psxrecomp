@@ -42,6 +42,25 @@ gate 1. Shared script references preserve separate trigger identities. Gate 0,
 unknown gates, missing and aliased P2 records remain unresolved. Runtime
 binding is `not_asserted`; reachability is `not_evaluated`.
 
+Gate 0 references preserve the encoded record byte as a **flat MAN index**:
+`script_reference` contains `index_space: "flat_man"`, `flat_record_index`
+equal to `record_index`, `partition: null` and `resolved: false`. MAP metadata
+does not resolve the concatenated P0/P1/P2 record table. A future qualified
+resolver must verify the MAN source, partition counts and bounded record span:
+indices below N0 belong to P0; indices below N0+N1 belong to P1 with local
+index `flat-N0`; subsequent indices below N0+N1+N2 belong to P2 with local
+index `flat-N0-N1`. Out-of-range indices remain unresolved. Gate 1 separately
+uses `index_space: "partition_local"`, partition 2 and its encoded P2-local
+`record_index`. Unknown gates retain an unresolved interpretation.
+
+The prior unconditional P0 annotation was concealed by the sampled scenes:
+Town01 has MAN counts (36,53,39), and its 37 gate 0 rows all reference the P0
+range; Dolk2 has counts (29,73,17), and all 25 gate 0 rows do likewise. That
+coincidence does not define the index space. The correction changes derived
+reference metadata; stable row identities, source bytes/hashes, source ordering,
+`legaia.field-spatial.v1` geometry and tile quantization remain intact.
+Object binding, object contact volumes and runtime activation remain unresolved.
+
 `POST /api/field-map-preview` now includes `spatial` with schema
 `legaia.field-spatial.v1`. `sdk.field_spatial.build_field_spatial` adapts the
 existing fresh importer metadata; it does not add a source decoder. The adapter
@@ -60,6 +79,15 @@ normalization are in `crates/engine-core/src/field_regions.rs`, blob
 `crates/engine-core/src/world/field_movement.rs`, blob
 `12ce75c6990cfd5df489a28cb17c6fb33a719f26`. The reference is a development
 oracle; no dependency or runtime code was copied.
+
+The gate 0 flat-index contract is explicit in pinned
+`docs/subsystems/field-locomotion.md`, lines276-278, blob
+`220746dd6a415bfd61cc8982f18c9aae691279d4`, and
+`crates/engine-core/src/man_field_scripts/partitions.rs`, lines316-342, blob
+`bae5afa8d22e0fd9983596d2422f9b8a8b18922d`. The object-binding consumer is
+`crates/engine-core/src/man_field_scripts/npc_motion.rs`, lines802-867, blob
+`a8573a0f44b09a81290cffbea31e4aac42b96c35`. The older P0 shorthand in the
+`TileTrigger` member comment does not supersede that explicit resolver.
 
 Town01 has 99 trigger cells,14 region bounds and 51 gate 1 references to 22 P2
 records. Fallback kind1 row0000 resolves P2[38] and frames X[12416,12544),

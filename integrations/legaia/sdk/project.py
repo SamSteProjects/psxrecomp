@@ -100,7 +100,7 @@ class AssetDatabase:
 class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions",
-                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors",
+                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing",
                                   "Environment", "AnimationChannels", "Collision", "RegionBounds"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
@@ -677,6 +677,41 @@ class ProjectService:
             encoded = validate_movement_values(entry["effective_values"])
             entry["effective_parked_target"] = ((encoded['x'] & 127) == 127 and (encoded['z'] & 127) == 127) if entry['mnemonic'] == 'NPC_RUN' else None
         result["unresolved_overrides"] = sorted(set(authored) - known)
+        return result
+
+    def _validate_facing(self, identifier: str, value: dict) -> None:
+        import re
+        from importer.core import ImportError
+        from importer.facing_authoring import validate_facing_values
+        self._dialogue_document(identifier)
+        if (not isinstance(value, dict) or set(value) != {'entries'} or
+                not isinstance(value['entries'], dict) or not 1 <= len(value['entries']) <= 1024):
+            raise ProjectError('ScriptFacing requires a bounded nonempty entry collection')
+        prefix = 'script://' + identifier.removeprefix('scene://') + '/facing/'
+        for key, fields in value['entries'].items():
+            if not isinstance(key, str) or re.fullmatch(re.escape(prefix) + r'[0-9a-f]{4}', key) is None:
+                raise ProjectError('Facing operand must belong to its source owner')
+            try:
+                validate_facing_values(fields)
+            except ImportError as error:
+                raise ProjectError(str(error)) from error
+
+    def _facing_context(self, identifier: str):
+        from importer.facing_authoring import FacingAuthoringContext
+        return FacingAuthoringContext(self._dialogue_context(identifier))
+
+    def facing_options(self, identifier: str) -> dict:
+        from importer.facing_authoring import validate_facing_values
+        result = self._facing_context(identifier).options(identifier)
+        authored = self.overrides.get(identifier, {}).get('ScriptFacing', {}).get('entries', {})
+        known = set()
+        for entry in result['targets']:
+            key = entry['semantic_id']
+            known.add(key)
+            entry['authored_values'] = deepcopy(authored.get(key, {}))
+            entry['effective_values'] = dict(entry['values'], **authored.get(key, {}))
+            validate_facing_values(entry['effective_values'])
+        result['unresolved_overrides'] = sorted(set(authored) - known)
         return result
 
     def _validate_flags(self, identifier: str, value: dict) -> None:
@@ -1736,6 +1771,34 @@ class ProjectService:
                 self.undo_stack.append({"entity_id": identifier, "before": before, "after": deepcopy(after)})
                 self.redo_stack.clear()
             return
+        if command.get('type') in ('set_facing_target', 'clear_facing_target'):
+            required = {'type', 'entity_id', 'facing_id'} | ({'values'} if command['type'] == 'set_facing_target' else set())
+            if set(command) != required:
+                raise ProjectError('Facing commands require only owner, instruction identity and sector')
+            identifier, key = command.get('entity_id'), command.get('facing_id')
+            self._validate_facing(identifier, {'entries': {key: {'sector': 0}}})
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            entries = deepcopy(after.get('ScriptFacing', {}).get('entries', {}))
+            if command['type'] == 'set_facing_target':
+                entries[key] = deepcopy(command.get('values'))
+                self._validate_facing(identifier, {'entries': entries})
+                self._facing_context(identifier).patch(entries)
+            else:
+                entries.pop(key, None)
+            if entries:
+                after['ScriptFacing'] = {'entries': entries}
+            else:
+                after.pop('ScriptFacing', None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_flag_bit", "clear_flag_bit"):
             identifier, key = command.get("entity_id"), command.get("flag_id")
             # Clear also checks owner syntax, but remains possible offline.
@@ -2216,7 +2279,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "Environment", "AnimationChannels", "Collision", "RegionBounds"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "Environment", "AnimationChannels", "Collision", "RegionBounds"}:
                 raise ProjectError("Unsupported authored component")
             if 'RegionBounds' in components:
                 value = result._validate_region_bounds(identifier, components['RegionBounds'])
@@ -2254,6 +2317,9 @@ class ProjectService:
             if "ScriptMovement" in components:
                 result._validate_movements(identifier, components["ScriptMovement"])
                 result.overrides.setdefault(identifier, {})["ScriptMovement"] = deepcopy(components["ScriptMovement"])
+            if 'ScriptFacing' in components:
+                result._validate_facing(identifier, components['ScriptFacing'])
+                result.overrides.setdefault(identifier, {})['ScriptFacing'] = deepcopy(components['ScriptFacing'])
             if "ScriptFlags" in components:
                 result._validate_flags(identifier, components["ScriptFlags"])
                 result.overrides.setdefault(identifier, {})["ScriptFlags"] = deepcopy(components["ScriptFlags"])
@@ -2544,6 +2610,9 @@ class ProjectService:
                 entries = edits.get("Transitions", {}).get("entries", {})
                 if entries:
                     changes.append(f"Transitions: {len(entries)} entries")
+                facing = edits.get('ScriptFacing', {}).get('entries', {})
+                if facing:
+                    changes.append(f'Facing operands: {len(facing)} instructions')
                 movement = edits.get("ScriptMovement", {}).get("entries", {})
                 if movement:
                     changes.append(f"Movement: {len(movement)} targets")
@@ -2567,6 +2636,9 @@ class ProjectService:
             runs = edits.get("Dialogue", {}).get("runs", {})
             entries = edits.get("Transitions", {}).get("entries", {})
             changes = ([f"Dialogue: {len(runs)} text runs"] if runs else []) + ([f"Transitions: {len(entries)} entries"] if entries else [])
+            facing = edits.get('ScriptFacing', {}).get('entries', {})
+            if facing:
+                changes.append(f'Facing operands: {len(facing)} instructions')
             movement = edits.get("ScriptMovement", {}).get("entries", {})
             if movement:
                 changes.append(f"Movement: {len(movement)} targets")
@@ -2698,6 +2770,7 @@ class ProjectService:
                                                                'effective': animation_identity(animation_actor)},
                                             "Dialogue": {"authored": deepcopy(self.overrides.get(identifier, {}).get("Dialogue", {})),
                                                          "limitations": ["Only verified plain-text runs are writable; controls and record boundaries remain fixed. Source capacity is rechecked on edit/build."]},
+                                            'ScriptFacing': {'entries': deepcopy(self.overrides.get(identifier, {}).get('ScriptFacing', {}).get('entries', {}))},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
         from .project_settings import view as project_settings
@@ -2724,6 +2797,6 @@ class ProjectService:
                 "history": {"can_undo": bool(self.undo_stack), "can_redo": bool(self.redo_stack)},
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
-                                "Build supports representable X/Z placements; authored height and facing cannot yet be serialized."],
+                                "Build supports representable X/Z placements and qualified script-facing operands; authored height and generic Transform rotation are unsupported."],
                 "capabilities": {"project_settings": True, "project_navigation": True, "edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True,
                                  "live_mode": False, "build": False, "model_preview": False}}

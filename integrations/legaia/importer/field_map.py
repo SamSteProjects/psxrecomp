@@ -165,9 +165,17 @@ def _decode(scene: str, digest: str, entry: Any, data: bytes,
                                      destination_scene=None)
                     else:
                         encoded.update(record_index=a, gate=b)
+                        reference = {"partition": 2 if b == 1 else None, "record_index": a,
+                                     "status": "unresolved_source_reference"}
+                        if b == 0:
+                            # FUN_8003C8F0(id, 0) uses the concatenated MAN
+                            # table, not an asserted partition-0 target.
+                            reference.update(index_space="flat_man", flat_record_index=a,
+                                             resolved=False)
+                        elif b == 1:
+                            reference["index_space"] = "partition_local"
                         asset.update(trigger_type={0: "object_bind", 1: "partition_2_trigger"}.get(b, "unknown_gate"),
-                                     script_reference={"partition": {0: 0, 1: 2}.get(b), "record_index": a,
-                                                       "status": "unresolved_source_reference"})
+                                     script_reference=reference)
                         if b not in (0, 1):
                             asset["status"] = "unknown_gate"
                     asset["encoded"] = encoded

@@ -52,9 +52,14 @@ class FieldMapTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         teleport, bind, trigger, region, unknown, fallback = report['assets'][1:]
         self.assertEqual(teleport['destination_world'], {'x': 448, 'z': 512})
-        self.assertEqual(bind['script_reference']['partition'], 0)
+        self.assertEqual(bind['script_reference'],
+                         {'partition': None, 'record_index': 10, 'index_space': 'flat_man',
+                          'flat_record_index': 10, 'resolved': False,
+                          'status': 'unresolved_source_reference'})
         self.assertEqual(bind['table_kind'], 1)
-        self.assertEqual(trigger['script_reference']['partition'], 2)
+        self.assertEqual(trigger['script_reference'],
+                         {'partition': 2, 'record_index': 11, 'index_space': 'partition_local',
+                          'status': 'unresolved_source_reference'})
         self.assertEqual(region['tile_bounds'], {'x_min': 6, 'x_max': 8, 'z_min': 2, 'z_max': 4})
         self.assertEqual(unknown['status'], 'unknown_gate')
         self.assertIsNone(unknown['script_reference']['partition'])
@@ -64,6 +69,24 @@ class FieldMapTests(unittest.TestCase):
         encoded = json.dumps(report)
         for key in ('"data"', '"grid"', '"raw_hex"', '"rectangles"', '"text"'):
             self.assertNotIn(key, encoded)
+
+    def test_gate_zero_preserves_flat_indices_across_possible_partition_boundaries(self):
+        # Hypothetical counts (36,53,39): these byte indices span P0, P1,
+        # P2 and an out-of-range target. MAP alone cannot resolve any of them.
+        for index in (0, 35, 36, 88, 89, 127, 128, 255):
+            source = bytearray(self.data)
+            source[0x1001A] = index  # First primary kind-1 row's record byte.
+            report, grid = _decode('fixture', '0' * 64, self.entry, bytes(source), None)
+            bind = next(row for row in report['assets'] if row.get('trigger_type') == 'object_bind')
+            with self.subTest(flat_index=index):
+                self.assertEqual(bind['encoded']['record_index'], index)
+                self.assertEqual(bind['script_reference'],
+                                 {'partition': None, 'record_index': index, 'index_space': 'flat_man',
+                                  'flat_record_index': index, 'resolved': False,
+                                  'status': 'unresolved_source_reference'})
+                self.assertEqual(bind['semantic_id'], 'trigger://fixture/field-map/primary/kind-1/0000')
+                self.assertEqual(bind['source_record']['byte_offset'], 0x10018)
+                self.assertEqual(grid, bytes(source[0x4000:0x8000]))
 
     def test_every_rectangle_inverts_reference_lookup_including_integer_edges(self):
         # All 65,024 canonical quadrants, not only hand-picked cell centers.
@@ -171,6 +194,19 @@ class RetailFieldMapTests(unittest.TestCase):
             self.assertLessEqual(len(preview['rectangles']), 4228)
             self.assertGreater(len(preview['rectangles']), 4000)
             self.assertTrue(all(t['encoded']['gate'] == 1 for t in preview['triggers'] if t['table_source'] == 'fallback'))
+            for trigger in preview['triggers']:
+                if trigger['table_kind'] != 1:
+                    continue
+                reference = trigger['script_reference']
+                self.assertEqual(reference['record_index'], trigger['encoded']['record_index'])
+                if trigger['encoded']['gate'] == 0:
+                    self.assertEqual(reference['index_space'], 'flat_man')
+                    self.assertEqual(reference['flat_record_index'], trigger['encoded']['record_index'])
+                    self.assertIsNone(reference['partition'])
+                    self.assertIs(reference['resolved'], False)
+                else:
+                    self.assertEqual(reference['index_space'], 'partition_local')
+                    self.assertEqual(reference['partition'], 2)
             json.dumps(report)
 
 
