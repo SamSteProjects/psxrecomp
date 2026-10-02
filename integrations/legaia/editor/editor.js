@@ -1,3 +1,4 @@
+import {openAssetReferences} from '/asset-references.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -1216,6 +1217,15 @@ function showAssetDetails(record){
   assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
+  if(state.capabilities?.asset_references&&record.type!=='template'&&(!record.sceneId||record.sceneId===state.scene?.id||['actor','model','scene'].includes(record.type))){
+    const button=document.createElement('button');button.textContent='Inspect asset references…';button.id='inspect-asset-references';const key=state.asset_reference_source_key;
+    button.onclick=()=>{if(busy||key!==state.asset_reference_source_key)return;assetDetails.close();openAssetReferences({record,getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onNavigate:async node=>{
+      if(!node.available||!(state.scenes??[]).some(scene=>scene.id===node.scene_id))throw new Error('Reference source scene is not imported.');
+      if(node.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:node.scene_id}))return;
+      if(!['actor','model','scene'].includes(node.kind))await refreshResources();
+      const target=assetRecords().find(item=>item.id===node.id);if(!target)throw new Error('Referenced asset is absent from the current catalog.');showAssetDetails(target);
+    }});};$('asset-source-data').parentElement.before(button);
+  }
   if(inspectorId){
     const section=document.createElement('section');section.dataset.assetInspector=record.type;
     const context=resourceStateKey(),snapshot=JSON.stringify(record),contract=JSON.stringify([state.inspector_schema,state.capabilities]);

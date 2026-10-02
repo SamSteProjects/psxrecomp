@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — SDK asset dependencies and referenced-by navigation
+
+Added source-verified bounded reference neighborhoods with imported/effective/
+authored/decoded layers and no runtime binding claims. Asset Details opens a
+shared reference view and navigates to imported neighbor records. Unimported
+encoded scenes remain unavailable; model pools, trigger dispatch, material use
+and effective animation bindings remain unknown. Fourteen focused Python tests
+including a fresh retail query, 22 Node files and24 syntax checks passed. Browser
+actor/script navigation and stale guard passed with zero errors/authoring
+commands; screenshot inspected. Cross-scene navigation and closed-request
+withdrawal also passed; fixture restored to its starting active scene.
+No game launched; broad goal active and incomplete. Docs updated; postdates475.
+
+
 ### 2026-10-01 — SDK project settings and valid Unicode package names
 
 Added ProjectSettings metadata inspector with immutable source/path properties

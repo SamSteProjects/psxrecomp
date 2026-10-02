@@ -6,6 +6,13 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+The SDK asset-reference service verifies imported project sources and adapts
+explicit membership, assignment and active derived-catalog relationships into
+bounded one-hop views. The editor consumes that contract for dependency and
+referenced-by navigation; it does not infer runtime use from source ownership.
+Imported, effective, authored and decoded evidence remains distinct. See
+[Asset reference navigation](legaia-asset-references.md).
+
 The title-specific product lives under `integrations/legaia`; it does not put
 retail addresses or asset layouts into the generic runtime. Its local editor
 is served by `tools/legaia_editor.py` within that directory.

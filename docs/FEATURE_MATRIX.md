@@ -2,6 +2,19 @@
 
 Current scene-editor status (2026-10-01):
 
+**Asset reference navigation (2026-10-01):** Asset Details exposes Dependencies
+and Referenced by for verified imported membership/model assignments and active
+script, dialogue, animation, field-table and landmark source relationships.
+Authored draft donors and effective model assignments retain separate evidence
+layers; unavailable destination scenes cannot be navigated. Runtime use,
+script model pools, trigger dispatch and texture/material dependencies remain
+unresolved. Fourteen focused Python checks, all22 Node test files and24 module
+syntax checks passed. Browser verified actor/script and cross-scene navigation, stale-view rejection,
+closed-request withdrawal, unchanged authored content/history and zero errors
+or authoring commands; screenshot inspected. This feature postdates integrated475; full SDK/runtime
+acceptance remains incomplete. See [Asset references](legaia-asset-references.md).
+
+
 **SDK asset inspector tools (2026-10-01):** Asset Details now uses the
 same SDK property/action contract as actor inspectors for eight catalog types:
 models, textures, animations, scripts, dialogue, collision, triggers and regions.

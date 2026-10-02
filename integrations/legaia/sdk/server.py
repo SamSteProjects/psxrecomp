@@ -153,6 +153,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
         state["capabilities"]["actor_preset_batch"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
+        state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
@@ -529,6 +530,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
+                 "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
@@ -834,6 +836,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Operand bundle export takes no fields')
                     from .script_operand_bundle import export_file
                     self._json(200,export_file(self.server.project))
+                    return
+                if route == '/api/asset-references':
+                    if set(body)!={'asset_id'}:raise ProjectError('Asset references require stable asset ID only')
+                    from .asset_references import inspect
+                    self._json(200,inspect(self.server.project,body['asset_id']))
                     return
                 if route == '/api/script-operand-bundle-review':
                     if set(body)!={'content'}:raise ProjectError('Operand bundle review requires file only')

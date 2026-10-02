@@ -2528,7 +2528,8 @@ class ProjectService:
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
         from .project_settings import view as project_settings
-        return {"inspector_schema": inspector_schema(), "project_settings": project_settings(self), "project": {"name": self.name, "path": str(self.root), "disc_path": self.disc_path, "dirty": self.dirty, "unsaved_sections": self.unsaved_sections, "mode": self.mode},
+        from .asset_references import source_key as reference_key
+        return {"inspector_schema": inspector_schema(), "asset_reference_source_key": reference_key(self), "project_settings": project_settings(self), "project": {"name": self.name, "path": str(self.root), "disc_path": self.disc_path, "dirty": self.dirty, "unsaved_sections": self.unsaved_sections, "mode": self.mode},
                 "placement_build_issues": self.placement_build_issues(),
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
