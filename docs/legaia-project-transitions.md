@@ -1,5 +1,11 @@
 # Project transition references
 
+Central transition assets now expose the same decoded instruction identities in
+the Asset Browser and shared Inspector, with encoded/static arrival layers and
+Active/Project asset references. Authored entry spans are freshly qualified before
+annotation; scene annotations have a separate freshness key. See
+[transition asset workflow](legaia-transition-assets.md).
+
 Choose **Project transitions** in the Asset Database tool area to inspect decoded
 scene-change references from all imported scenes. Scene transitions still limits
 the view to the current scene. Discovery verifies retail source evidence, batches

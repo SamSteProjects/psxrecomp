@@ -66,6 +66,7 @@ def inspector_schema():
         'animation': ('AssetAnimation', 'Animation resource', 'animation_preview', 'inspect-asset-animation', 'Inspect animation bindings'),
         'script': ('AssetScript', 'Script resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect script'),
         'dialogue': ('AssetDialogue', 'Dialogue resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect dialogue'),
+        'transition': ('AssetTransition', 'Transition source reference', 'scene_transitions', 'inspect-asset-transition', 'Inspect transition entry and source'),
         'flag': ('AssetFlag', 'Flag reference group', 'scene_flags', 'inspect-asset-flag', 'Inspect flag reference sites'),
         'collision': ('AssetCollision', 'Collision resource', 'field_map_preview', 'inspect-asset-field', 'Inspect collision'),
         'trigger': ('AssetTrigger', 'Trigger resource', 'field_map_preview', 'inspect-asset-field', 'Inspect trigger'),
@@ -84,6 +85,18 @@ def inspector_schema():
             'notes': ['Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
+    transition=schema['components']['AssetTransition']
+    transition['properties'] += [
+        {'id':'script','label':'Source script','path':['data','script_id'],'type':'asset-reference','state':'read-only-retail'},
+        {'id':'destination','label':'Named destination','path':['data','reference','target_scene_name'],'empty_label':'Unresolved name encoding','type':'string','state':'read-only-retail'},
+        {'id':'pc','label':'Source PC','path':['data','reference','pc'],'type':'integer','state':'read-only-retail'},
+        {'id':'arrival_x','label':'Effective arrival X','path':['data','arrival_layers','effective','x'],'type':'integer','state':'derived'},
+        {'id':'arrival_z','label':'Effective arrival Z','path':['data','arrival_layers','effective','z'],'type':'integer','state':'derived'},
+        {'id':'reachability','label':'Reachability','path':['data','reachability'],'type':'string','state':'unresolved'},
+    ]
+    transition['notes']=['One decoded scene-change instruction with immutable source identity and separately verified authored/effective entry bytes.',
+                         'Arrival X/Z and facing are static retail interpretations in the destination scene. Source trigger position and gameplay reachability are unknown.',
+                         'Coverage remains partial where bytes are unvisited. Unknown/conflicting path stops and unsupported names block edits; the source script tool qualifies individual entries.']
     flag=schema['components']['AssetFlag']
     flag['properties'] += [
         {'id':'script','label':'Source script','path':['data','script_id'],'type':'asset-reference','state':'read-only-retail'},

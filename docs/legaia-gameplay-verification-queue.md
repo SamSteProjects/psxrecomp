@@ -1,5 +1,23 @@
 # Deferred gameplay verification
 
+## Transition arrival Inspector fixture - deferred
+
+The saved project is `local-output/sdk-20260909/transition-assets-20261002/project/`.
+Package: `local-output/sdk-20260909/transition-assets-20261002/authored-build/legaia.sdk.0f096fa3c17d-0.1.0-50a14a259788567b.psxmod`.
+SHA256: `7277e4d50b88a668386beab8f707f6616be894a2b4e11e7a52b9591100a27a46`.
+Town01 P2[0], PC0x16 retains encoded destination map01 and Z3264; authored X
+is128 (from12352), facing1024 (from2048). Independent package MAN readback
+changes only28574 (96 to128) and28576 (4 to2); Save/Open reproduces the package.
+The shared transition Inspector, source navigation, guarded destination
+navigation, operand layers and history/persistence passed offline browser checks.
+
+Remaining gameplay acceptance is to identify and traverse the actual source
+trigger, verify map01 arrival/facing and scene/script continuity, and compare a
+retail baseline. The source trigger location is unresolved; encoded arrival is
+not its location. No package was installed and no game was launched. This adds a
+fixture to the existing transition-arrival gate rather than requiring immediate
+manual verification. See [transition assets](legaia-transition-assets.md).
+
 ## Initial animation assignment — deferred
 
 The saved fixture is

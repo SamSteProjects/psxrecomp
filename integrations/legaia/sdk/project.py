@@ -60,13 +60,13 @@ class AssetDatabase:
         self.resource_catalogs: dict[str, dict] = {}
         self.material_reference_catalogs: dict[str, dict] = {}
 
-    def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str], *, flag_state_key: str | None = None) -> dict:
+    def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str], *, flag_state_key: str | None = None, transition_state_key: str | None = None) -> dict:
         """Replace a verified derived catalog without mutating imported project facts."""
         indexed = {}
         for item in records:
             identifier = item.get("semantic_id")
             kind = item.get("asset_kind")
-            if not isinstance(identifier, str) or kind not in ("texture", "animation", "script", "dialogue", "collision", "trigger", "region", "worldmap", "flag") or identifier in indexed:
+            if not isinstance(identifier, str) or kind not in ("texture", "animation", "script", "dialogue", "collision", "trigger", "region", "worldmap", "flag", "transition") or identifier in indexed:
                 raise ProjectError("Resource catalog has an invalid or duplicate identity")
             record = deepcopy(item)
             record.update(id=identifier, kind=kind, layer="derived", scene_id=scene_id)
@@ -75,6 +75,8 @@ class AssetDatabase:
                   "records": [indexed[key] for key in sorted(indexed)], "limitations": list(limitations)}
         if flag_state_key is not None:
             result['flag_state_key'] = flag_state_key
+        if transition_state_key is not None:
+            result['transition_state_key'] = transition_state_key
         self.resource_catalogs[scene_id] = result
         return deepcopy(result)
 

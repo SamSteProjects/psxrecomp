@@ -8,6 +8,21 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Central transition assets (2026-10-02):** Decoded scene-change instructions
+now appear in the Asset Browser, shared Inspector and Active/Project dependency
+graphs. Imported/authored/effective entry bytes and static destination arrival
+coordinates remain distinct from unknown source triggers. A dedicated transition
+key invalidates stale views without reloading geometry. Fresh serializer checks
+qualify authored entries; partial catalog coverage with zero decoder stops no
+longer blocks otherwise supported entries. Retail discovery found 35 transitions
+across Town01, Dolk2, map01 and Town0b.55 retail-enabled Python tests passed
+with no skips;39 Node checks and38 syntax checks passed. Browser editing,
+history, persistence, source/destination navigation and reference scopes passed.
+Reopened Build changes only Town01 MAN bytes28574 (96 to128) and28576 (4 to2).
+No game launched; existing transition-arrival gameplay acceptance is deferred.
+See [transition asset workflow](legaia-transition-assets.md). The full SDK and
+runtime objective remains incomplete.
+
 **Reusable initial-animation presets (2026-10-02):** Versioned v2 presets
 capture a verified initial clip alone or with authored position/appearance.
 Frozen witness proof survives later source-actor edits; full proposed components

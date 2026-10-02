@@ -80,6 +80,7 @@ def refresh_resource_catalog(project) -> dict:
     # must never leave a prior catalog presented as the current verified result.
     project.assets.resource_catalogs.pop(project.active_scene, None)
     flag_key = scene_flag_state_key(project)
+    transition_key = scene_transition_state_key(project)
     records, limitations = [], []
     with _disc_context(project.disc_path):
         _verify(project, document)
@@ -95,13 +96,48 @@ def refresh_resource_catalog(project) -> dict:
                 if kind == 'Scripts and dialogue':
                     from .flag_assets import build_flag_assets
                     records.extend(build_flag_assets(catalog, _flag_edits(project, project.active_scene)))
+                    from .transition_assets import build_transition_assets
+                    records.extend(build_transition_assets(catalog, project.imports, _transition_edits(project, project.active_scene)))
             except RetailImportError as exc:
                 limitations.append(f"{kind} unavailable: {exc}")
-    if key != source_key(project) or flag_key != scene_flag_state_key(project):
+    if (key != source_key(project) or flag_key != scene_flag_state_key(project) or
+            transition_key != scene_transition_state_key(project)):
         raise ProjectError("Resource source changed during discovery; refresh again")
     if len(records) > 4096:
         raise ProjectError("Resource catalog exceeds the bounded record budget")
-    return project.assets.register_resources(project.active_scene, key, records, limitations, flag_state_key=flag_key)
+    return project.assets.register_resources(project.active_scene, key, records, limitations, flag_state_key=flag_key, transition_state_key=transition_key)
+
+
+def scene_transition_state_key(project) -> str:
+    """Transition annotation changes must invalidate resources without geometry edits."""
+    from .project import digest
+    scene = project.active_scene
+    return digest(dict(scene_id=scene, transitions={owner: deepcopy(parts['Transitions'])
+                  for owner, parts in project.overrides.items()
+                  if scene and owner.startswith(scene + '/') and 'Transitions' in parts}))
+
+
+def _transition_edits(project, scene_id):
+    """Reverify authored transition spans before exposing effective entry metadata."""
+    requested, owners = {}, {}
+    for owner, components in deepcopy(getattr(project, 'overrides', {})).items():
+        if not owner.startswith(scene_id + '/') or 'Transitions' not in components:
+            continue
+        value = components['Transitions']
+        project._validate_transitions(owner, value)
+        owners[owner] = {'Transitions': value}
+        for key, values in value['entries'].items():
+            if key in requested:
+                raise ProjectError('Transition entry has multiple authored owners')
+            requested[key] = values
+    if requested:
+        from importer.transition_authoring import load_transition_authoring_context
+        try:
+            context = load_transition_authoring_context(project.disc_path, project.imports[scene_id]['scene']['name'])
+            context.patch(requested)
+        except RetailImportError as exc:
+            raise ProjectError('Authored transition entries failed source verification: ' + str(exc)) from exc
+    return owners
 
 
 def scene_flag_state_key(project) -> str:
@@ -312,12 +348,15 @@ def scene_transition_graph(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from .transitions import build_transition_graph
     document, key = _scene(project)
+    transition_key = scene_transition_state_key(project)
     with _disc_context(project.disc_path):
         _verify(project, document)
         catalog = load_script_asset_catalog(project.disc_path, document["scene"]["name"])
-    if key != source_key(project):
+        authored = _transition_edits(project, project.active_scene)
+    if key != source_key(project) or transition_key != scene_transition_state_key(project):
         raise ProjectError("Scene source changed during transition discovery; refresh again")
-    return {**build_transition_graph(catalog, project.imports, project.overrides), "source_key": key}
+    return {**build_transition_graph(catalog, project.imports, authored), "source_key": key,
+            "transition_state_key": transition_key}
 
 
 def trigger_script_preview(project, asset_id: str) -> dict:
@@ -441,7 +480,7 @@ def project_transition_graph(project):
     if not project.disc_path or not 1<=len(project.imports)<=64:
         raise ProjectError('Project transition discovery requires a disc and1–64 imported scenes')
     key=project_transition_state_key(project)
-    documents=deepcopy(project.imports);overrides=deepcopy(project.overrides)
+    documents=deepcopy(project.imports)
     nodes={};edges=[];scenes=[]
     coverage=dict(script_count=0,partial_script_count=0,unavailable_script_count=0)
     with _disc_context(project.disc_path):
@@ -451,7 +490,7 @@ def project_transition_graph(project):
             nodes.setdefault(scene_id,dict(id=scene_id,name=name,imported=True,roles=[],in_scene_index=True))
             try:
                 catalog=load_script_asset_catalog(project.disc_path,name)
-                graph=build_transition_graph(catalog,documents,overrides)
+                graph=build_transition_graph(catalog,documents,_transition_edits(project,scene_id))
             except RetailImportError as exc:
                 scenes.append(dict(scene_id=scene_id,scene_name=name,status='unavailable',reason=str(exc)))
                 continue

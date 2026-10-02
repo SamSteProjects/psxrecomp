@@ -6,6 +6,17 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Central transition resources adapt the existing decoded transition graph.
+Instruction identities stay separate from authoring operand IDs; imported,
+authored and effective entry layers retain original script ownership and record
+hashes. Refresh and graph callers reverify requested edits through the existing
+MAN transition serializer. Catalog partial status reports unvisited bytes;
+actual decoder stops independently determine whether source edits can qualify.
+A scene transition-state key tracks annotations separately from geometry.
+The shared Inspector navigates to exact source PCs and already imported targets;
+static destination arrival coordinates do not create source trigger transforms,
+runtime bindings or route assertions. See [transition assets](legaia-transition-assets.md).
+
 The SDK asset-reference service verifies imported project sources and adapts
 explicit membership, assignment and active derived-catalog relationships into
 bounded one-hop views. The editor consumes that contract for dependency and

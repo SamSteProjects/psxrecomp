@@ -1,5 +1,13 @@
 # Read-only actor script and dialogue inspection
 
+Central transition assets (2026-10-02) adapt existing catalog/graph evidence;
+no decoder, opcode handler or retail source pin changed. Each asset retains
+source record SHA, source PC/stop count and layered entry bytes. Existing static
+retail arrival interpretation remains runtime-unverified and does not identify
+a source trigger. Fresh caller qualification uses the existing transition
+serializer, including partial catalogs with no actual stops. See
+[`docs/legaia-transition-assets.md`](../../../docs/legaia-transition-assets.md).
+
 `importer/script_inspection.py` independently inspects a selected actor's bounded
 MAN record. It never runs the field VM, writes guest state or offers a serializer.
 The unchanged Andrew source pin is

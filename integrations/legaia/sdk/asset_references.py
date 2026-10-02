@@ -82,7 +82,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -94,6 +94,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             value['source_catalog_key']=catalog['source_key']
         if reference_clip_evidence is not None:value['reference_clip_evidence']=deepcopy(reference_clip_evidence)
         if flag_evidence is not None:value['flag_reference_evidence']=deepcopy(flag_evidence)
+        if transition_evidence is not None:value['transition_reference_evidence']=deepcopy(transition_evidence)
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -123,8 +124,12 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if ref['imported']:edge(ref['source_id'],ref['target_id'],'initial_model',ref['scene_id'])
         if ref['effective']:edge(ref['source_id'],ref['target_id'],'effective_initial_model',ref['scene_id'],'effective')
     scene=project.active_scene
-    reference_clips={}
+    reference_clips={};source_scripts={};transition_ids=set()
     for record in catalog['records']:
+        if record['kind']=='script':source_scripts.setdefault(record['id'],[]).append(record)
+        if record['kind']=='transition':
+            if record['id'] in transition_ids:raise ProjectError('Duplicate transition reference identity')
+            transition_ids.add(record['id'])
         evidence=_reference_clip_evidence(record,model_records)
         if evidence is not None:reference_clips[record['id']]=evidence
         node(record['id'],record['kind'],scene,record.get('name'))
@@ -155,6 +160,34 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                 proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
                 proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
                 edge(target,identity,'script_flag_reference',scene,'decoded',reference['pc'],flag_evidence=proof)
+        elif kind=='transition':
+            from .transition_assets import validate_transition_asset
+            validate_transition_asset(record)
+            if record['source']!=scene:raise ProjectError('Transition reference belongs to another resource scene')
+            scripts=source_scripts.get(record['script_id'],[])
+            if len(scripts)!=1 or nodes[record['script_id']]['kind']!='script':
+                raise ProjectError('Transition reference has no unique verified source script')
+            script=scripts[0];source=script.get('source_record')
+            if (source!=record['source_record'] or script.get('semantic_id',script['id'])!=record['script_id'] or
+                    (script.get('owner_semantic_id') or script.get('actor_semantic_id'))!=record['owner_id'] or
+                    script.get('status')!=record['script_status'] or script.get('name')!=record['script_name']):
+                raise ProjectError('Transition reference differs from its source script or record hash')
+            stops=script.get('stops');stop_count=script.get('stop_count',len(stops) if isinstance(stops,list) else None)
+            if (stops is not None and not isinstance(stops,list) or type(stop_count) is not int or stop_count<0 or
+                    stops is not None and stop_count!=len(stops) or stop_count!=record['script_stop_count']):
+                raise ProjectError('Transition inspection stops differ from its verified source script')
+            reference=record['reference'];matches=[row for row in script.get('transitions',[]) if row.get('pc')==reference['pc']]
+            if len(matches)!=1 or matches[0]!=reference:
+                raise ProjectError('Transition destination or instruction differs from its verified source script')
+            name=reference['target_scene_name'];destination='scene://'+name if name is not None else None
+            proof=dict(transition_id=record['entry_layers']['transition_id'],source_record_sha256=record['source_record']['sha256'],
+                       destination_scene_id=destination,extended_target=reference['extended_target'],name_sha256=reference['name_sha256'],
+                       status=reference['status'],reachability='not_evaluated')
+            edge(record['script_id'],identity,'script_transition_reference',scene,'decoded',reference['pc'],transition_evidence=proof)
+            if destination is not None:
+                node(destination,'scene',destination,name,destination in project.imports)
+                edge(identity,destination,'transition_destination_source',scene,'decoded',reference['pc'],transition_evidence=proof)
+            # The source-script pass already counts each unresolved name once.
         elif kind=='animation':
             if identity in reference_clips:
                 evidence=reference_clips[identity];model=evidence['model_id']
@@ -265,7 +298,7 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
             if catalog.get('scene_id',scene)!=scene or not isinstance(catalog.get('records'),list):
                 raise ProjectError('Invalid project reference resource catalog')
             for record in catalog['records']:
-                if not isinstance(record,dict) or record.get('kind') not in ('texture','animation','script','dialogue','collision','trigger','region','worldmap','flag'):
+                if not isinstance(record,dict) or record.get('kind') not in ('texture','animation','script','dialogue','collision','trigger','region','worldmap','flag','transition'):
                     raise ProjectError('Invalid project reference resource type')
                 if record.get('name') is not None and (not isinstance(record['name'],str) or len(record['name'])>8192):
                     raise ProjectError('Invalid project reference resource label')

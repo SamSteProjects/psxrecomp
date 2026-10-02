@@ -158,7 +158,8 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
-        from .resources import scene_flag_state_key, project_flag_state_key
+        from .resources import scene_flag_state_key, project_flag_state_key, scene_transition_state_key
+        state['scene_transition_state_key'] = scene_transition_state_key(self.project)
         state['scene_flag_state_key'] = scene_flag_state_key(self.project)
         state['project_flag_state_key'] = project_flag_state_key(self.project)
         state["capabilities"]["script_operand_files"] = bool(self.project.disc_path and self.project.active_scene)
@@ -576,6 +577,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
+                 '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),

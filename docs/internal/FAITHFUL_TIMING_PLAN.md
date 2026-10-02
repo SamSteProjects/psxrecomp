@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-02 - Central transition assets and Inspector
+
+The prior turn made progress in0bee9ae3 (animated actor presets); the full SDK
+objective remains active. This session connected existing decoded scene changes
+to stable transition assets, shared Inspector/source-PC navigation, imported
+scene navigation and Active/Project dependency proof. Separate transition keys
+invalidate annotations without changing geometry. Retail catalog partial status
+with no stops is distinct from source-qualified entry support; fresh MAN patch
+verification remains required.35 transitions across four imported scenes were
+verified.55 retail-enabled Python tests and39 Node/38 syntax checks passed;
+actual browser editing/history/navigation and independent reopened package MAN
+readback passed. Town01 changes only28574 (96 to128),28576 (4 to2). Evidence:
+local-output/sdk-20260909/transition-assets-20261002/. No game/core/generated
+code changes, package installation or live writes. SDK/buildout/matrix/acceptance
+and workflow reports updated. Full runtime coverage and gameplay remain deferred.
+
 ### 2026-10-02 — Reusable initial-animation actor presets
 
 Versioned v2 actor presets capture exact authored initial-clip witnesses, alone

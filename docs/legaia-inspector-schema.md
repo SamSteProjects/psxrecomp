@@ -1,5 +1,11 @@
 # SDK inspector property contract
 
+The shared asset Inspector also covers transition resources through
+`AssetTransition`: source script/PC, named destination, static effective arrival
+and reachability, with a capability-guarded source tool action. No direct property
+write is exposed. Source trigger positions stay unknown. See
+[transition asset workflow](legaia-transition-assets.md).
+
 Project state exposes `inspector_schema` with version
 `legaia.inspector-schema.v1`. The SDK owns component/property labels, paths,
 layer order, value types, authoring bounds, Build constraints and unknown states.

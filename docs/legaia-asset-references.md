@@ -1,5 +1,11 @@
 # Asset dependencies and referenced-by navigation
 
+Transition assets now expose `script_transition_reference` and named
+`transition_destination_source` relationships with exact source record/PC proof.
+Active/Project scopes navigate to the source script and imported destination;
+unknown labels remain unresolved. Legacy direct scene-change edges are retained.
+See [central transition assets](legaia-transition-assets.md).
+
 Flag assets now expose one `script_flag_reference` dependency per decoded PC,
 with the inverse source-script relationship under Referenced by. Both Active
 and Project scopes retain script/context/bank/retail-index identities and
