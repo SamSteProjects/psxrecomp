@@ -2,6 +2,20 @@
 
 Current scene-editor status (2026-10-01):
 
+**Viewport source-wall editing (2026-10-01):** Select wall rectangle loads
+verified source collision data and picks canonical X/Z cells directly in the
+scene. Dragging prepares inclusive bounds without a project command; release
+opens the existing review. Proposed/Current/Retail wall layers can be inspected
+on the labelled Y=0 reference plane, with retained Return/Restore and explicit
+atomic Apply/Undo/Redo, Save/Open and normal Build. Camera/source/representation
+changes, Escape and pending cancellation withdraw stale gestures or reviews.
+Twenty-one focused retail-enabled Python tests passed in10.570s, all30 Node
+files and31 syntax checks passed. Real2×-DPI top/perspective browser drags,
+comparison layers, no-op/input withdrawal, cancellation and exact full73728-byte
+MAP ZIP readback passed with zero page errors; screenshots inspected.
+No game launched. This postdates548; gameplay and full acceptance remain open.
+See [Wall rectangle workflow](legaia-collision-rectangles.md).
+
 **Integrated offline checkpoint (2026-10-01):** Full retail-enabled discovery
 passed548 Python tests in247.512s, exit0 with no skips, on unchanged clean source
 `80d4ae765f820551759f181d8372478a49358b72`. All29 Node test files and30 editor
@@ -11,8 +25,7 @@ actor transform preview refresh and scenery alignment/distribution with the
 previous SDK workflows. The user-owned disc SHA256 and466714416-byte length were
 freshly verified. Browser/package evidence remains separate; no game launched.
 Full16-layer SDK, runtime parity, genuine Live identity and gameplay acceptance
-remain incomplete. Next offline frontier: source wall selection and reviewed
-editing directly in the central scene viewport.
+remain incomplete. This checkpoint predates the viewport wall workflow above.
 
 Private evidence: `sdk-regression-20261001-scenery-layout.log/.json` and
 `node-checks-20261001-scenery-layout.json` under `local-output/sdk-20260909/`.
@@ -599,7 +612,7 @@ is complete. Runtime fixes from the preceding milestone are committed as
 | Live bridge | PARTIAL / LIVE-VALIDATED | Cold town01 v2 capture accepted 90 nodes under executable/witness/scene/epoch guards. Early exact-PC preparation now runs during compatible discovery and owned launch readiness; a fresh cold New Game with automatic preparation passed the unchanged v2 guard with 90 nodes and all three witnesses current. One same-scene restore recovered all three witnesses and 90 nodes after normal dialogue input, without sustained slowdown in the measured window. Late attachment cannot recover unrecorded entry execution. Archived v1 remains strict; repeated/cross-scene restore and town0c/transition acceptance remain pending. |
 | Correlation | PARTIAL / READ-ONLY | Guarded MAN-header/model evidence yields explicit candidates and ambiguity. Actor0052 authored header and world position match `(4480,11904)`, with a visible savepoint beside Vahn. Generic bindings remain candidates; they are not promoted to confirmed identity. |
 | Scripts/dialogue/flags | PARTIAL / BOUNDED TEXT WRITING | Actor inspector decodes supported bounded MAN instruction paths and inline dialogue, with explicit substitution tokens, flag operands, successors, opaque bytes and stop reasons. The asset browser links script/dialogue resources to their actor inspector and records 1,183 source-qualified flag references across P1/P2. Bounded flag-word branches expose five additional read-only P2[4] dialogue segments; its unresolved graph still rejects authoring. Town01 actor0049 shows 23 instructions/seven dialogue segments; actor0001 stops at unsupported0x29. Supported plain-text runs have Apply/Clear, undo/redo, save/open and guarded build serialization; P2[36]/[37] each expose one supported ten-byte run; broader partial graphs remain read-only. No script execution, story-state evaluation, control editing or text relocation. One actor-49 authored message is cold-gameplay accepted; P2 display remains unaccepted. |
-| Collision and field regions | PARTIAL / SOURCE WALL AUTHORING | Field MAP source grid supplies 4,228 blocked subcells in town01, displayed as bounded ground-plane outlines. Source/project changes clear overlays. Exact wall bits support commands, undo/redo, persistence and composition with scenery in one MAP overlay; retail/effective previews and browser single-cell Apply/Undo are verified. Floor tiers, script paints and actor blockers remain unmodified; in-game movement acceptance is pending. Fourteen region records expose encoded tile bounds; no floor height, runtime actor blockers or script paints are inferred. |
+| Collision and field regions | PARTIAL / SOURCE WALL AUTHORING | Field MAP source grid supplies 4,228 blocked subcells in town01, displayed as bounded ground-plane outlines. Source/project changes clear overlays. Exact wall bits support commands, undo/redo, persistence and composition with scenery in one MAP overlay; retail/effective previews and browser single-cell Apply/Undo are verified. Central viewport rectangle picking, retained Proposed/Current/Retail inspection, canonical boundary/gesture cancellation and atomic rectangle authoring now have focused/retail browser/package checks. Floor tiers, script paints and actor blockers remain unmodified; in-game movement acceptance is pending. Fourteen region records expose encoded tile bounds; no floor height, runtime actor blockers or script paints are inferred. |
 | Transitions/world map | FOUNDATION | Prior observation vocabulary retained. Script resources expose encoded named scene-change references when decoded; one occurs in the cataloged town01 P2 paths; reachability is not established. Field MAP discovery adds 99 town01 trigger records: 11 local teleports, 37 object bindings and 51 fallback P2 references. Eligible gate-1 triggers open bounded P2 script inspection with Back navigation; all 51 town01 references resolve, with unsupported paths explicitly partial. All 39 P2 scripts and their bounded decoded dialogue segments are directly browsable. Opening P2[3] exposes eight segments before a known halt with unresolved trailing ownership; opening text remains read-only. These do not establish named or reachable scene edges. Reachable transition graphs, MAPDSIP coverage and world-map authoring remain pending. |
 | Build and Run | FUNCTIONAL / PARTIAL ACCEPTANCE | Supported X/Z, donor appearance and bounded text edits build into guarded private .psxmod packages; clearing edits builds a verified zero-overlay retail baseline. A reopenable build report lists audited changes and validation, with stale status after authored edits. Editor-owned Windows launch verifies executable/BIOS/disc/mod identity; Attach and Stop pass. Cold game consumed 24894 patched bytes over13sectors and rendered town01. A moved savepoint visibly appears at its authored location; a fresh zero-overlay retail run removes it there and restores its original world coordinates. |
 

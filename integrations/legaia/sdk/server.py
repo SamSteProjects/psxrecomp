@@ -542,6 +542,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
                  "/environment-layout.js": ("environment-layout.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
+                 "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),

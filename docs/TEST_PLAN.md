@@ -7,6 +7,20 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+**Viewport source-wall editing (2026-10-01):** Select wall rectangle loads
+verified source collision data and picks canonical X/Z cells directly in the
+scene. Dragging prepares inclusive bounds without a project command; release
+opens the existing review. Proposed/Current/Retail wall layers can be inspected
+on the labelled Y=0 reference plane, with retained Return/Restore and explicit
+atomic Apply/Undo/Redo, Save/Open and normal Build. Camera/source/representation
+changes, Escape and pending cancellation withdraw stale gestures or reviews.
+Twenty-one focused retail-enabled Python tests passed in10.570s, all30 Node
+files and31 syntax checks passed. Real2×-DPI top/perspective browser drags,
+comparison layers, no-op/input withdrawal, cancellation and exact full73728-byte
+MAP ZIP readback passed with zero page errors; screenshots inspected.
+No game launched. This postdates548; gameplay and full acceptance remain open.
+See [Wall rectangle workflow](legaia-collision-rectangles.md).
+
 **Integrated offline checkpoint (2026-10-01):** Full retail-enabled discovery
 passed548 Python tests in247.512s, exit0 with no skips, on unchanged clean source
 `80d4ae765f820551759f181d8372478a49358b72`. All29 Node test files and30 editor
@@ -16,8 +30,7 @@ actor transform preview refresh and scenery alignment/distribution with the
 previous SDK workflows. The user-owned disc SHA256 and466714416-byte length were
 freshly verified. Browser/package evidence remains separate; no game launched.
 Full16-layer SDK, runtime parity, genuine Live identity and gameplay acceptance
-remain incomplete. Next offline frontier: source wall selection and reviewed
-editing directly in the central scene viewport.
+remain incomplete. This checkpoint predates the viewport wall workflow above.
 
 Private evidence: `sdk-regression-20261001-scenery-layout.log/.json` and
 `node-checks-20261001-scenery-layout.json` under `local-output/sdk-20260909/`.

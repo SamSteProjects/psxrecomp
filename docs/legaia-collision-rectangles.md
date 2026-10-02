@@ -27,6 +27,34 @@ This edits the supported 0x12000-byte source MAP. Runtime script collision paint
 actor blockers, walkability, visibility and scene-entry behavior remain separate
 unverified concerns. It does not create trigger/region records or live collision.
 
+## Selecting walls in the scene viewport
+
+Choose **Select wall rectangle** in an authored Edit scene. The tool loads the
+verified source collision catalog if needed. Left-drag selects inclusive source
+cells; release opens a seeded rectangle review. A click selects one cell. The
+initial proposal blocks all four quadrants; the review form can select one
+quadrant or Unblocked. Choose **Top (X/Z)** for a direct view, or use perspective.
+Pan/orbit camera controls remain available. Escape cancels the active drag;
+Escape with no drag exits selection mode. A camera/projection/viewport-size or
+source change cancels a stale gesture. Outside bounds and oversized selections
+are rejected. No pointer movement writes an authored command.
+
+Picking uses the canonical reference X `(0,16384]`, Z `[0,16256)`. X=128 belongs
+to column0, while Z=128 begins row2; quadrant64-unit boundaries retain the same
+source decoder bias. Row zero and wrapped/aliased coordinates remain excluded.
+The overlay uses Y=0 as a reference plane, not decoded terrain height. It draws
+above the models, so mesh occlusion is not used to infer source wall eligibility.
+
+After Review, **Inspect proposed walls**, **Inspect current walls** and
+**Inspect retail walls** display the selected bits in the central scene. Orange
+means blocked, blue unblocked; green outlines mark Current/Proposed differences.
+The preview strip identifies the layer, selected count and reference plane.
+**Return to wall review** retains the proposal and inputs. **Restore wall preview**
+withdraws it. Input/source/mode/representation changes withdraw stale reviews.
+Apply remains explicit and requires the freshly recomputed source-bound key.
+The collision Inspector's numeric rectangle opener still rejects pending
+single-cell edits until Apply or Discard.
+
 ## Verification — 2026-10-01
 
 Seventeen focused retail-enabled Python checks passed in14.410s. Checks cover
@@ -81,3 +109,35 @@ closed. This browser fixture tests the production tool with synthetic responses,
 not a fresh retail scene viewport. Private evidence:
 `local-output/sdk-20260909/collision-spatial-20261001/`.
 No game launched; this extension postdates the integrated514 checkpoint.
+
+## Viewport verification — 2026-10-01
+
+Two isolated subagents owned pure source-grid math/tests and the retained review
+dialog; parent owned central scene/gesture/server integration and acceptance.
+Twenty-one focused retail-enabled Python tests passed in10.570s, all30 Node files
+and31 syntax checks passed. New math checks cover exact/fractional quadrant and
+cell boundaries, invalid/nonfinite/domain inputs, reverse drags and4096-bit limits.
+The first Python batch referenced two nonexistent module names; corrected to
+existing environment/importer suites. A parent file edit briefly used the Windows
+locale encoding and was restored to UTF-8 before final Node checks. The initial
+browser found a disabled viewport button after scene readiness; draw now refreshes
+its eligibility, and the same complete workflow passed after terminal failure.
+
+Retail browser at2× DPI selected rows15–16/columns20–21 using real pointers,
+verified16 bits and no draft command or saved-file changes, retained inputs and
+Proposed16/Current0/Retail0 comparisons, input withdrawal, one Apply/Undo/Redo/Save.
+A second browser passed tilted perspective reverse drag, Escape/camera change
+cancellation, pending-close abort and late-response withdrawal. Final read-only
+inspection on the saved project verified Proposed16/Current16/Retail0, explicit
+layer/plane labels, no-op Apply disabled and retail-representation withdrawal.
+Zero page errors; scene and review screenshots inspected.
+
+Normal saved package SHA256:
+`a8e9c953747947da0a147e6aeff86ce26c5c44fc322ff6b3cd68c09d4a3bd012`.
+ZIP matches all73728 MAP bytes with six preserved scenery audit changes and17
+collision changes (16 selected plus one previous outside bit). All selected wall
+high nibbles are blocked; floor low nibbles, outside collision and the complete
+scenery binding remain unchanged. Private copied-project path is recorded in
+`local-output/sdk-20260909/wall-viewport-20261001/prepared.json`; browser/test/ZIP
+proofs share that directory. No game launched. This feature postdates integrated548;
+walkability, runtime paints/blockers and full16-layer acceptance remain open.

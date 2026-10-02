@@ -5,7 +5,8 @@ import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
 import {mountEnvironmentGroup} from '/environment-group.js';
 import {mountEnvironmentLayout} from '/environment-layout.js';
-import {mountWallRectangle} from '/collision-rectangle.js';
+import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
+import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
@@ -816,7 +817,7 @@ const clearScenery=document.createElement('button');clearScenery.textContent='Cl
 function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;updateActorGroupSelection();}
 function updateActorGroupSelection(){
   if(actorGroupSelection.length&&(!canEdit()||actorGroupSelectionKey!==resourceStateKey()||actorGroupSelection.some(id=>!entities().some(e=>e.id===id)))){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;}
-  actorBoxButton.disabled=busy||!canEdit()||!!actorGroupInspection||!!scenePose||!!shapeDraft||!scenePreviewCurrent()||pickScriptTargets||pickRuntimeNodes;
+  actorBoxButton.disabled=busy||wallSelectMode||!!wallInspection||!canEdit()||!!actorGroupInspection||!!scenePose||!!shapeDraft||!scenePreviewCurrent()||pickScriptTargets||pickRuntimeNodes;
   if(actorBoxButton.disabled&&actorBoxMode){actorBoxMode=false;actorBoxButton.setAttribute('aria-pressed','false');actorBoxButton.classList.remove('active');}
   actorGroupTools.hidden=!actorGroupSelection.length||!!actorGroupInspection;
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
@@ -964,6 +965,7 @@ savedActorSelections=mountActorSelectionSets({after:$('actor-box-select'),getSta
 });
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&drag){event.preventDefault();cancelViewportGesture();return;}
+  if(event.key==='Escape'&&wallSelectMode){event.preventDefault();wallSelectMode=false;updateFieldToggle();draw();return;}
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!busy)api('/api/project/save',{}, {success:'Project saved.'});}
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='z'){event.preventDefault();const redo=event.shiftKey;if(redo?state.history?.can_redo:state.history?.can_undo)api(redo?'/api/redo':'/api/undo',{});}
@@ -1417,15 +1419,35 @@ const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dia
 const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
 const fieldNote=document.createElement('div');fieldNote.className='field-map-note';fieldNote.hidden=true;fieldNote.setAttribute('role','status');document.querySelector('.viewport-toolbar').after(fieldNote);
 const collisionLayer=document.createElement('select');collisionLayer.setAttribute('aria-label','Collision preview layer');collisionLayer.innerHTML='<option value="imported">Retail collision</option><option value="effective">Effective collision</option>';fieldToggle.after(collisionLayer);
-let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false;
+let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMode=false,wallSelection=null,wallInspection=null,wallRectangleTool=null;
+const wallTools=document.createElement('div');wallTools.id='wall-viewport-tools';transformTools.after(wallTools);
+const wallSelectButton=document.createElement('button');wallSelectButton.id='wall-select-mode';wallSelectButton.textContent='Select wall rectangle';wallSelectButton.setAttribute('aria-pressed','false');wallTools.append(wallSelectButton);
+function wallSourceCurrent(){return canEdit()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&fieldMap&&fieldKey===resourceStateKey()&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection;}
+wallRectangleTool=mountWallRectangle({host:wallTools,getState:()=>state,busy:()=>busy,setBusy,api,sourceCurrent:wallSourceCurrent,hasDraft:()=>false,closeInspector:()=>{if(fieldDialog.open)fieldDialog.close();},
+  onInspection:(report,layer)=>{cancelViewportGesture();wallSelectMode=false;wallSelection=null;if(fieldDialog.open)fieldDialog.close();wallInspection=report?{report,layer}:null;updateFieldToggle();draw();},
+  onFrame:report=>{const g=wallSelectionGeometry(report.rectangle);camera.target={x:(g.x_min+g.x_max)/2,y:0,z:(g.z_min+g.z_max)/2};camera.distance=Math.max(200,Math.hypot(g.x_max-g.x_min,g.z_max-g.z_min)*2.5);cameraRevision++;draw();}});
+wallSelectButton.onclick=async()=>{
+  if(busy||wallSelectButton.disabled)return;cancelViewportGesture();wallSelection=null;
+  if(wallSelectMode){wallSelectMode=false;updateFieldToggle();draw();return;}
+  if(!fieldMap||fieldKey!==resourceStateKey()){
+    if(resourceKey!==resourceStateKey())await refreshResources();
+    const candidates=assetRecords().filter(record=>record.type==='collision');
+    if(candidates.length!==1||!await loadFieldMap(candidates[0])){notify('Load one verified source collision map before selecting walls.',true);return;}
+  }
+  if(!wallSourceCurrent())return;actorBoxMode=false;wallSelectMode=true;updateActorGroupSelection();updateFieldToggle();draw();notify('Drag source grid cells on the Y=0 reference plane; release to review wall bits.');
+};
+function wallGestureCurrent(gesture){return !busy&&wallSourceCurrent()&&!wallInspection&&gesture.context===resourceStateKey()&&gesture.sourceKey===state.project_copy_source_key&&gesture.cameraRevision===cameraRevision&&gesture.width===width&&gesture.height===height;}
+function wallRectangleAt(gesture,p){return wallDragRectangle(gesture.wallStart,wallCellAt(groundAt(p.x,p.y,0)));}
 const fieldMapScope='Base blocked grid only · Y = 0 is a display placeholder, not decoded height. Runtime/script paints and actors are excluded. Canonical positive-X range only; wrapping and boundary aliases are not shown. Lines are drawn over models.';
 function updateFieldToggle(){
   fieldToggle.hidden=!state.capabilities?.field_map_preview;fieldToggle.disabled=busy||fieldPending;
+  wallSelectButton.hidden=fieldToggle.hidden;wallSelectButton.disabled=busy||fieldPending||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallInspection;
+  if(!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}wallSelectButton.classList.toggle('active',wallSelectMode);wallSelectButton.setAttribute('aria-pressed',String(wallSelectMode));wallRectangleTool?.refresh();
   collisionLayer.hidden=fieldToggle.hidden;collisionLayer.disabled=busy||fieldPending;
   fieldToggle.classList.toggle('active',!!fieldMap);fieldToggle.setAttribute('aria-pressed',!!fieldMap);fieldToggle.textContent=fieldPending?'Loading collision…':collisionLayer.value==='effective'?'Effective collision':'Base collision';
 }
 function clearFieldMap(){
-  fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;updateFieldToggle();
+  fieldAbort?.abort();fieldAbort=null;fieldMap=null;fieldKey=null;fieldPending=false;fieldNote.hidden=true;wallSelectMode=false;wallSelection=null;wallRectangleTool?.restore();updateFieldToggle();
 }
 function validateFieldMap(result,record,key){
   if(key!==resourceStateKey()||result.source_key!==state.scene_preview_source_key||result.scene_id!==state.scene?.id||result.semantic_id!==record.id||result.asset_kind!=='collision'||result.coordinate_system!=='psx_guest_xz')throw new Error('Field map source changed while loading. Refresh scene resources and retry.');
@@ -1524,7 +1546,7 @@ function openFieldResource(record){
       };
       const apply=async command=>{if(busy||state.project.mode!=='edit'||resourceStateKey()!==key||state.scene.id!==scene)return;await api('/api/command',command,{dialog:fieldDialog,success:'Source wall edits updated. Save project to persist.'});};
       const applyEdits=edits=>apply(edits.length?{type:'set_collision_walls',entity_id:scene,value:{source_sha256:snapshot.asset.source_record.containing_span_sha256,edits}}:{type:'clear_collision_walls',entity_id:scene});
-      mountWallRectangle({host:summary,getState:()=>state,busy:()=>busy,setBusy,api,sourceCurrent:()=>fieldDialog.open&&resourceStateKey()===key&&state.scene.id===scene,hasDraft:dirty,closeInspector:()=>fieldDialog.close()});
+      const rectangleButton=document.createElement('button');rectangleButton.textContent='Edit wall rectangle…';summary.append(rectangleButton);rectangleButton.onclick=()=>{if(dirty()){notify('Apply or discard the single-cell wall change first.',true);return;}if(busy||resourceStateKey()!==key||state.scene.id!==scene)return;fieldDialog.close();wallRectangleTool.open();};
       restore.onclick=()=>{if(dirty()||!form.reportValidity())return;return applyEdits(wallEdits.filter(e=>!sameCell(e,cell())));};
       form.onsubmit=async event=>{event.preventDefault();if(!dirty()||!form.reportValidity())return;const c=cell(),edits=wallEdits.filter(e=>!sameCell(e,c)),change=snapshot.authored_changes?.find(e=>sameCell(e,c)),retailBlocked=change?change.before_value:appliedBlocked;if(form.elements.blocked.checked!==retailBlocked)edits.push({...c,blocked:form.elements.blocked.checked});await applyEdits(edits);};
       form.querySelector('.clear-collision').disabled=!snapshot.authored?.edits?.length;form.querySelector('.clear-collision').onclick=()=>apply({type:'clear_collision_walls',entity_id:scene});
@@ -1766,6 +1788,14 @@ function drawFieldMap(){
     if(points.some(p=>!p||!numeric(p.x)||!numeric(p.y))||points.every(p=>p.x<0)||points.every(p=>p.x>width)||points.every(p=>p.y<0)||points.every(p=>p.y>height))continue;
     ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const point of points.slice(1))ctx.lineTo(point.x,point.y);ctx.closePath();ctx.fill();ctx.stroke();
   }
+  ctx.restore();
+}
+function drawWallSelection(){
+  const polygons=[];
+  if(wallSelection){const g=wallSelectionGeometry(wallSelection);polygons.push({...g,color:'#68f0ac',fill:'#68f0ac25'});}
+  if(wallInspection&&wallSourceCurrent()&&wallInspection.report.project_source_key===state.project_copy_source_key){const g=wallRectangleGeometry(wallInspection.report,wallInspection.layer);for(const cell of g.cells)polygons.push({x_min:g.x+cell.x,x_max:g.x+cell.x+64,z_min:g.z+cell.z,z_max:g.z+cell.z+64,color:cell.changed?'#68f0ac':'#b6cad7',fill:cell.blocked?'#dc9851a0':'#314359c0'});}
+  ctx.save();ctx.lineWidth=2;ctx.setLineDash([]);
+  for(const item of polygons){const points=[[item.x_min,item.z_min],[item.x_max,item.z_min],[item.x_max,item.z_max],[item.x_min,item.z_max]].map(([x,z])=>project({x,y:0,z}));if(points.some(p=>!p))continue;ctx.strokeStyle=item.color;ctx.fillStyle=item.fill;ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();ctx.fill();ctx.stroke();}
   ctx.restore();
 }
 const textureDialog=document.createElement('dialog');textureDialog.id='texture-dialog';document.body.append(textureDialog);
@@ -3012,6 +3042,8 @@ function drawEnvironmentSelection(){
   ctx.restore();
 }
 function draw(){
+  updateFieldToggle();
+  if(wallRectangleTool){wallRectangleTool.refresh();if(wallInspection&&(!wallSourceCurrent()||wallInspection.report.project_source_key!==state.project_copy_source_key))wallRectangleTool.restore();if(wallSelectMode&&!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}if(drag?.type==='wall-rectangle'&&!wallGestureCurrent(drag)){cancelViewportGesture();return;}}
   updateEnvironmentGroupSelection();
   if(environmentGroupInspection&&(!scenePreviewCurrent()||environmentGroupInspection.report.project_source_key!==state.project_copy_source_key||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection)){environmentGroupTool.restore();environmentLayoutTool?.restore();}
   updateActorGroupSelection();
@@ -3025,7 +3057,7 @@ function draw(){
   if(pickRuntimeButton.disabled&&pickRuntimeNodes){pickRuntimeNodes=false;pickRuntimeButton.setAttribute('aria-pressed','false');}
 
   if(grid&&!sceneModelsReady()){const spacing=10**Math.floor(Math.log10(camera.distance/7)),half=spacing*12,cx=Math.round(camera.target.x/spacing)*spacing,cz=Math.round(camera.target.z/spacing)*spacing;for(let i=-12;i<=12;i++){line({x:cx+i*spacing,y:0,z:cz-half},{x:cx+i*spacing,y:0,z:cz+half},i===0?'#39504f88':'#33474c66');line({x:cx-half,y:0,z:cz+i*spacing},{x:cx+half,y:0,z:cz+i*spacing},i===0?'#39504f88':'#33474c66');}}
-  drawFieldMap();
+  drawFieldMap();drawWallSelection();
   const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
     if(!sceneLayers.actors||hiddenSceneEntities().has(entity.id))continue;
@@ -3087,7 +3119,7 @@ function cancelViewportGesture(){
   if(!drag)return;
   const pointerId=drag.pointerId;drag=null;draft=null;canvas.classList.remove('dragging');
   if(canvas.hasPointerCapture(pointerId))canvas.releasePointerCapture(pointerId);
-  $('transform-drag-status').textContent='Move cancelled';draw();
+  wallSelection=null;$('transform-drag-status').textContent='Move cancelled';draw();
 }
 function transformGestureCurrent(gesture){
   if(gesture.type==='environment-group-transform'){
@@ -3107,6 +3139,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewp
 canvas.addEventListener('pointerdown',event=>{
   pendingEntityFrame=null;
   if(busy||drag)return;const p=pointer(event),entity=movableSelection();canvas.focus({preventScroll:true});canvas.setPointerCapture(event.pointerId);
+  if(wallSelectMode&&event.button===0){const cell=wallCellAt(groundAt(p.x,p.y,0));if(!wallSourceCurrent()||wallInspection||!cell){canvas.releasePointerCapture(event.pointerId);notify('Point is outside the canonical source-wall reference plane.',true);return;}drag={pointerId:event.pointerId,type:'wall-rectangle',context:resourceStateKey(),sourceKey:state.project_copy_source_key,cameraRevision,width,height,wallStart:cell,start:p,last:p,moved:false};wallSelection=wallDragRectangle(cell,cell);canvas.classList.add('dragging');draw();return;}
   const box=actorBoxMode&&!actorBoxButton.disabled&&event.button===0&&!event.shiftKey&&!event.altKey;
   const handle=!box && event.button===0 && !event.ctrlKey && !event.metaKey && !pickScriptTargets && (entity||groupProposalCenter()||sceneryGroupCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
   drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,extendSelection:event.ctrlKey||event.metaKey,cameraRevision,representation:sceneRepresentation,type:box?'actor-box':handle?(handle.sceneryGroup?'environment-group-transform':handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.sceneryGroup?sceneryGroupCenter(false):handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.sceneryGroup?environmentGroupInspection.report:handle?.group?actorGroupInspection.proposal:null,sourceKey:state.project_copy_source_key,snapStep:handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
@@ -3119,6 +3152,7 @@ canvas.addEventListener('pointermove',event=>{
   if(Math.hypot(p.x-drag.start.x,p.y-drag.start.y)>3)drag.moved=true;
   if(drag.moved){
     if(['transform','group-transform','environment-group-transform'].includes(drag.type)){if(!transformGestureCurrent(drag)){cancelViewportGesture();return;}const point=groundAt(p.x,p.y,drag.original.y);if(point&&drag.ground){const axis=drag.handle.axis,group=['group-transform','environment-group-transform'].includes(drag.type),amount=snappedTransformCoordinate(point[axis]-drag.ground[axis],drag.snapStep);draft={id:drag.entity,group,sceneryGroup:drag.type==='environment-group-transform',groupAmount:amount,position:{...drag.original,[axis]:group?drag.original[axis]+amount:snappedTransformCoordinate(drag.original[axis]+point[axis]-drag.ground[axis],drag.snapStep)}};}}
+    else if(drag.type==='wall-rectangle'){if(!wallGestureCurrent(drag)){cancelViewportGesture();return;}try{wallSelection=wallRectangleAt(drag,p);$('transform-drag-status').textContent=`Source wall rows ${wallSelection.row_start}–${wallSelection.row_end}, columns ${wallSelection.column_start}–${wallSelection.column_end} · Y=0 reference plane · Release to review`;}catch(error){wallSelection=null;$('transform-drag-status').textContent=error.message;}}
     else if(drag.type==='actor-box'){drag.last=p;}
     else if(drag.type==='orbit'){camera.yaw-=dx*.006;camera.pitch=Math.max(.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
     else {const b=basis(),scale=camera.distance/Math.max(1,Math.min(width,height)*.9);camera.target.x-=dx*scale*b.right.x;camera.target.z-=dx*scale*b.right.z;camera.target.x-=dy*scale*Math.sin(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));camera.target.z-=dy*scale*Math.cos(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));cameraRevision++;}
@@ -3131,6 +3165,7 @@ canvas.addEventListener('pointerup',async event=>{
   if(!drag||event.pointerId!==drag.pointerId)return;
   if(['transform','group-transform','environment-group-transform'].includes(drag.type)&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
+  if(finished.type==='wall-rectangle'){wallSelection=null;wallSelectMode=false;updateFieldToggle();if(wallGestureCurrent(finished)){try{wallRectangleTool.open(wallRectangleAt(finished,p));}catch(error){notify(error.message,true);}}draw();return;}
   if(finished.type==='actor-box'){
     if(finished.moved&&!busy&&canEdit()&&!actorGroupInspection&&finished.context===resourceStateKey()&&finished.cameraRevision===cameraRevision&&finished.representation===sceneRepresentation&&scenePreviewCurrent()){
       try{const eligible=new Set(entities().map(e=>e.id)),hidden=hiddenSceneEntities(),hits=sceneModelsReady()?sceneRenderer.pickRegion(finished.start,p,sceneView()).filter(id=>eligible.has(id)):[...projected].filter(item=>eligible.has(item.id)&&!hidden.has(item.id)&&item.x>=Math.min(finished.start.x,p.x)&&item.x<=Math.max(finished.start.x,p.x)&&item.y>=Math.min(finished.start.y,p.y)&&item.y<=Math.max(finished.start.y,p.y)).map(item=>item.id);setActorGroupMembers(hits,finished.extendSelection);notify(`${hits.length} actor${hits.length===1?'':'s'} in box · ${sceneModelsReady()?'visible mesh pixels':'placement markers; occlusion unknown'}`);}

@@ -1,5 +1,19 @@
 # Deferred gameplay verification
 
+## Town01 viewport-selected source walls — deferred
+
+Private copied project path: `local-output/sdk-20260909/wall-viewport-20261001/prepared.json`
+contains the exact `project` directory.
+Package within that project:
+`Builds/39bd3cdfa55cdd03/legaia.sdk.44ca503d8301-0.1.0-39bd3cdfa55cdd03.psxmod`.
+SHA256: `a8e9c953747947da0a147e6aeff86ce26c5c44fc322ff6b3cd68c09d4a3bd012`.
+Viewport drag authored all16 source wall bits in rows15–16, columns20–21:
+reference X `(2560,2816]`, Z `[1792,2048)`. One previous outside wall bit and
+saved scenery distribution remain preserved; full MAP byte readback passed.
+Source-plane Y0 does not establish floor height. Actual movement, runtime paints,
+actor blockers, scene-entry and lifecycle acceptance remain deferred. No game
+launched. See [Viewport wall workflow](legaia-collision-rectangles.md).
+
 ## Town01 scenery distribution copy — deferred
 
 Private project:
