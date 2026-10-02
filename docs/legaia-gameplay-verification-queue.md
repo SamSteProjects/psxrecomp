@@ -1,5 +1,27 @@
 # Deferred gameplay verification
 
+## Authored primary trigger cells - deferred
+
+Saved fixture: `local-output/sdk-20260909/trigger-cells-20261002/project/`.
+Package: `local-output/sdk-20260909/trigger-cells-20261002/authored-build/legaia.sdk.0f096fa3c17d-0.1.0-f5d1cda012898e68.psxmod`.
+SHA256: `f626c5d0fd53fff6ddf51fad209304ee4587fa03d4015136e8785c35f865ccf3`.
+Town01 primary kind-0 row0000 changes tile X30 to31, retaining tile Z40 and
+teleport destination bytes146/132. Fresh disc, MAP and ZIP readback confirms
+only65554 changes30 to31. The effective source cell is world X[3968,4096),
+Z[5120,5248), with Y=0 an unknown-height inspection plane. Retail remains
+X[3840,3968). Actual browser review, separate layers, frame, history, persistence,
+reset and primary binding composition passed. Build composition with regions,
+scenery and walls changes exactly the four audited bytes in one MAP overlay.
+
+Later gameplay acceptance should compare stock/authored contact at both cells,
+retained destination/binding, primary/fallback precedence and coincident-row
+shadowing. Check scene initialization, object-cell footprints, story state,
+height and normal control afterward. The reference dispatcher covers tiles0..127;
+byte values outside that range have no activation claim. This package does not
+paint object/collision flags or change trigger payloads. No package installed or
+game launched; manual verification is saved for later. See
+[trigger cell workflow](legaia-trigger-cells.md).
+
 ## Source-facing instruction fixture - deferred
 
 Saved fixture: `local-output/sdk-20260909/script-facing-20261002/project/`.

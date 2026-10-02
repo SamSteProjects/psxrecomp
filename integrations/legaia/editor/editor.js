@@ -19,6 +19,7 @@ import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
 import {decodeTransitionResource,openTransitionResource} from '/transition-resource.js';
 import {decodeFieldSpatial,drawFieldSpatial,hitFieldSpatial,fieldSpatialFrame} from '/field-spatial.js';
 import {openRegionBounds,decodeRegionBoundsAnnotations,regionBoundsGeometry} from '/region-bounds.js';
+import {openTriggerCells,decodeTriggerCellsAnnotations,triggerCellsGeometry} from '/trigger-cells.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
@@ -514,6 +515,12 @@ async function openBuildChange(change,vector=null){
   const owner=change.owner_id,resource=buildChangeResource(change);
   buildDialog.close();
   if(scene.id!==state.scene?.id&&!await api('/api/scene',{scene_id:scene.id}))return;
+  if(['source-MAP-trigger-cell-only','source-MAP-region-bounds-only'].includes(change.scope)){
+    if(resourceKey!==resourceStateKey())await refreshResources();
+    const source=assetRecords().find(item=>item.id===change.asset_id);
+    if(!source){notify('The reported source cell is unavailable. Refresh or rebuild.',true);return;}
+    selectSceneResource(source);if(source.type==='trigger')await inspectTriggerCells(source);else await inspectRegionBounds(source);return;
+  }
   if(change.scope==='shared-scene-animation-record'){
     if(!Number.isInteger(change.frame_index)||!Number.isInteger(change.object_index)){notify('Animation channel identity is missing from this older report.',true);return;}
     if(!await api('/api/selection',{entity_id:owner}))return;
@@ -1180,7 +1187,7 @@ const assetDetails=document.createElement('dialog');assetDetails.id='asset-detai
 $('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
 const assetSearchHelp=document.createElement('details');assetSearchHelp.id='asset-search-help';assetSearchHelp.innerHTML='<summary>Search filters</summary><p>Use name:, id:, type:, scene:, model:, confidence: or provenance:. Combine terms to narrow results; quote phrases and prefix a term with - to exclude it.</p><p>Examples: <code>type:model scene:town01 confidence:confirmed</code> · <code>name:&quot;Actor 0012&quot; -type:script</code>. Confidence searches recorded claims; a match does not confirm every property. Model filters include recorded imported and authored references, without proving runtime use. Resources cover the refreshed scene.</p>';assetTools.append(assetSearchHelp);
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
-const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key,state.scene_flag_state_key,state.scene_transition_state_key,state.scene_region_state_key]);
+const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key,state.scene_flag_state_key,state.scene_transition_state_key,state.scene_region_state_key,state.scene_trigger_state_key]);
 let flagResourceDialog=null,transitionResourceDialog=null;
 $('resource-refresh').onclick=refreshResources;
 const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);
@@ -1347,7 +1354,7 @@ async function refreshResources(){
     const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
     if(controller.signal.aborted||key!==resourceStateKey())return;
-    if(result.scene_id!==sceneId||result.source_key!==sourceKey||result.flag_state_key!==state.scene_flag_state_key||result.transition_state_key!==state.scene_transition_state_key||result.region_state_key!==state.scene_region_state_key||!Array.isArray(result.records)||result.records.length>4096||new Set(result.records.map(record=>record.semantic_id)).size!==result.records.length||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
+    if(result.scene_id!==sceneId||result.source_key!==sourceKey||result.flag_state_key!==state.scene_flag_state_key||result.transition_state_key!==state.scene_transition_state_key||result.region_state_key!==state.scene_region_state_key||result.trigger_state_key!==state.scene_trigger_state_key||!Array.isArray(result.records)||result.records.length>4096||new Set(result.records.map(record=>record.semantic_id)).size!==result.records.length||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
     for(const record of result.records){if(record.asset_kind==='flag')decodeFlagResource(record);else if(record.asset_kind==='transition')decodeTransitionResource(record);}
     resourceLimitations=result.limitations ?? [];resourceRecords=[...new Map(result.records.map(record=>[record.semantic_id,{...record,catalog_limitations:result.limitations}])).values()];resourceKey=key;resourcePendingKey=null;renderAssets();renderHierarchy();renderInspector();
   }catch(error){if(error.name!=='AbortError'&&key===resourceStateKey()){resourceError=error.message;notify(error.message,true);}}
@@ -1484,6 +1491,7 @@ function showAssetDetails(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
+  if(action==='inspect-asset-trigger-cells'){await inspectTriggerCells(record);return;}
   if(record.type==='worldmap'){worldmapButton.click();return;}
   if(record.type==='template'){showTemplates();return;}
   if(record.authoredRecord&&['actor','texture','script','model'].includes(record.type)&&record.sceneId!==state.scene?.id){
@@ -1550,9 +1558,10 @@ const collisionLayer=document.createElement('select');collisionLayer.setAttribut
 let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMode=false,wallSelection=null,wallInspection=null,wallRectangleTool=null;
 let fieldSpatial=null,fieldSpatialKey=null,fieldSpatialAbort=null,fieldSpatialPending=false,fieldSpatialVisible=false,fieldSpatialPick=false;
 let regionAnnotations=[],regionInspection=null,regionBoundsDialog=null;
+let triggerAnnotations=[],triggerInspection=null,triggerCellsDialog=null;
 const fieldSpatialToggle=document.createElement('button');fieldSpatialToggle.id='field-spatial-toggle';fieldSpatialToggle.textContent='Source cells';fieldSpatialToggle.setAttribute('aria-pressed','false');collisionLayer.after(fieldSpatialToggle);
 const fieldSpatialPickButton=document.createElement('button');fieldSpatialPickButton.id='field-spatial-pick';fieldSpatialPickButton.textContent='Pick source cell';fieldSpatialPickButton.setAttribute('aria-pressed','false');fieldSpatialToggle.after(fieldSpatialPickButton);
-const fieldSpatialLayer=document.createElement('select');fieldSpatialLayer.id='field-spatial-layer';fieldSpatialLayer.setAttribute('aria-label','Source cell representation');for(const [value,label] of [['imported','Retail source cells'],['effective','Effective region bounds']]){const option=document.createElement('option');option.value=value;option.textContent=label;fieldSpatialLayer.append(option);}fieldSpatialLayer.value='effective';fieldSpatialPickButton.after(fieldSpatialLayer);
+const fieldSpatialLayer=document.createElement('select');fieldSpatialLayer.id='field-spatial-layer';fieldSpatialLayer.setAttribute('aria-label','Source cell representation');for(const [value,label] of [['imported','Retail source cells'],['effective','Effective source cells']]){const option=document.createElement('option');option.value=value;option.textContent=label;fieldSpatialLayer.append(option);}fieldSpatialLayer.value='effective';fieldSpatialPickButton.after(fieldSpatialLayer);
 const fieldSpatialNote=document.createElement('div');fieldSpatialNote.className='field-map-note';fieldSpatialNote.id='field-spatial-note';fieldSpatialNote.hidden=true;fieldSpatialNote.setAttribute('role','status');fieldNote.after(fieldSpatialNote);
 function fieldSpatialCurrent(){return fieldSpatial&&fieldSpatialKey===resourceStateKey()&&resourceKey===resourceStateKey();}
 function selectedSceneResource(){return sceneResourceSelection&&resourceKey===resourceStateKey()?assetRecords().find(record=>record.id===sceneResourceSelection&&record.sceneId===state.scene?.id&&['trigger','region','collision','script','transition'].includes(record.type)):null;}
@@ -1561,12 +1570,12 @@ function selectSceneResource(record,frameNow=false){
   cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;sceneResourceSelection=record.id;
   renderHierarchy();renderInspector();$('frame-selected').disabled=!['trigger','region'].includes(record.type);draw();if(frameNow){if(['trigger','region'].includes(record.type))frameSceneResource();else activateAsset(record);}
 }
-function clearFieldSpatial(){regionBoundsDialog?.dispose?.();regionInspection=null;regionAnnotations=[];fieldSpatialAbort?.abort();fieldSpatialAbort=null;fieldSpatial=null;fieldSpatialKey=null;fieldSpatialPending=false;fieldSpatialVisible=false;fieldSpatialPick=false;fieldSpatialNote.hidden=true;}
+function clearFieldSpatial(){regionBoundsDialog?.dispose?.();triggerCellsDialog?.dispose?.();regionInspection=null;regionAnnotations=[];triggerInspection=null;triggerAnnotations=[];fieldSpatialAbort?.abort();fieldSpatialAbort=null;fieldSpatial=null;fieldSpatialKey=null;fieldSpatialPending=false;fieldSpatialVisible=false;fieldSpatialPick=false;fieldSpatialNote.hidden=true;}
 function updateFieldSpatialTools(){
   fieldSpatialToggle.hidden=!state.capabilities?.field_map_preview;fieldSpatialToggle.disabled=busy||fieldSpatialPending;fieldSpatialToggle.classList.toggle('active',fieldSpatialVisible&&!!fieldSpatialCurrent());fieldSpatialToggle.setAttribute('aria-pressed',String(fieldSpatialVisible&&!!fieldSpatialCurrent()));
   fieldSpatialPickButton.hidden=fieldSpatialToggle.hidden;fieldSpatialPickButton.disabled=busy||fieldSpatialPending||!fieldSpatialVisible||!fieldSpatialCurrent()||wallSelectMode||pickScriptTargets||pickRuntimeNodes||scenePlacementMode||actorBoxMode;
   if(fieldSpatialPickButton.disabled)fieldSpatialPick=false;fieldSpatialPickButton.classList.toggle('active',fieldSpatialPick);fieldSpatialPickButton.setAttribute('aria-pressed',String(fieldSpatialPick));
-  fieldSpatialLayer.hidden=fieldSpatialToggle.hidden;fieldSpatialLayer.disabled=busy||fieldSpatialPending||!fieldSpatialCurrent()||!!regionInspection;
+  fieldSpatialLayer.hidden=fieldSpatialToggle.hidden;fieldSpatialLayer.disabled=busy||fieldSpatialPending||!fieldSpatialCurrent()||!!regionInspection||!!triggerInspection;
   fieldSpatialNote.hidden=!fieldSpatialVisible||!fieldSpatialCurrent();
 }
 async function loadFieldSpatial(){
@@ -1580,10 +1589,12 @@ async function loadFieldSpatial(){
     const response=await fetch('/api/field-map-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:candidates[0].id,layer:'imported'}),signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error??'Source cell verification failed.');
     if(controller.signal.aborted||key!==resourceStateKey())return false;
-    validateFieldMap(result,candidates[0],key);if(result.region_state_key!==state.scene_region_state_key)throw new Error('Region bounds changed during preview. Refresh resources.');const spatial=decodeFieldSpatial(result.spatial,sceneId);
+    validateFieldMap(result,candidates[0],key);if(result.region_state_key!==state.scene_region_state_key||result.trigger_state_key!==state.scene_trigger_state_key)throw new Error('Source cell overrides changed during preview. Refresh resources.');const spatial=decodeFieldSpatial(result.spatial,sceneId);
     for(const row of spatial.records){const resource=resourceRecords.find(record=>record.semantic_id===row.id);if(!resource||resource.asset_kind!==row.kind||JSON.stringify(resource.source_record)!==JSON.stringify(row.source_record))throw new Error('Source cells differ from the current resource catalog. Refresh resources.');}
     regionAnnotations=decodeRegionBoundsAnnotations(result.region_bounds,spatial);
     for(const annotation of regionAnnotations){const source=resourceRecords.find(row=>row.semantic_id===annotation.region_id);if(!source||['x0','z0','x1','z1'].some(key=>source.encoded?.[key]!==annotation.values_layers.imported[key]))throw new Error('Region annotation corners differ from the source catalog.');}
+    triggerAnnotations=decodeTriggerCellsAnnotations(result.trigger_cells,spatial);
+    for(const annotation of triggerAnnotations){const source=resourceRecords.find(row=>row.semantic_id===annotation.trigger_id);if(!source||['tile_x','tile_z'].some(key=>source.encoded?.[key]!==annotation.values_layers.imported[key]))throw new Error('Trigger annotation coordinates differ from the source catalog.');}
     fieldSpatial=spatial;fieldSpatialKey=key;fieldSpatialVisible=true;fieldSpatialNote.textContent=`${spatial.records.filter(row=>row.kind==='trigger').length} trigger cells · ${spatial.records.filter(row=>row.kind==='region').length} region bounds · Y=0 reference plane, height unknown · Trigger: world >> 7 · Region: (world - 64) >> 7 · Activation unverified`;
     renderHierarchy();renderInspector();return true;
   }catch(error){if(error.name!=='AbortError'){clearFieldSpatial();notify(error.message,true);}return false;}
@@ -1599,9 +1610,10 @@ async function frameSceneResource(){
 }
 function fieldSpatialRows(){
   if(!fieldSpatialCurrent())return [];
-  const byId=new Map(regionAnnotations.map(row=>[row.region_id,row]));
+  const byId=new Map([...regionAnnotations.map(row=>[row.region_id,row]),...triggerAnnotations.map(row=>[row.trigger_id,row])]);
   return fieldSpatial.records.map(row=>{
     if(regionInspection?.key===resourceStateKey()&&regionInspection.report.region_id===row.id)return {...row,...regionBoundsGeometry(regionInspection.report,regionInspection.layer)};
+    if(triggerInspection?.key===resourceStateKey()&&triggerInspection.report.trigger_id===row.id)return {...row,...triggerCellsGeometry(triggerInspection.report,triggerInspection.layer)};
     const annotation=fieldSpatialLayer.value==='effective'?byId.get(row.id):null;
     if(!annotation)return row;
     const bounds=annotation.world_bounds_layers.effective;
@@ -1614,10 +1626,24 @@ async function inspectRegionBounds(record){
   if(!await loadFieldSpatial()||key!==resourceStateKey())return;
   selectSceneResource(record);fieldSpatialPick=false;
   const current=()=>key===resourceStateKey()&&resourceKey===key&&JSON.stringify(assetRecords().find(row=>row.id===record.id))===snapshot;
+  triggerCellsDialog?.dispose?.();regionBoundsDialog?.dispose?.();
   regionBoundsDialog=openRegionBounds({record,getState:()=>state,busy:()=>busy,setBusy,current,
     api:async(route,body)=>{const ok=await api(route,body);if(ok&&route==='/api/region-bounds-apply'&&state.scene?.id===sceneId&&state.project?.path===projectPath){fieldSpatialLayer.value='effective';await refreshResources();const next=assetRecords().find(row=>row.id===record.id);if(next){selectSceneResource(next);await loadFieldSpatial();}}return ok;},
     onInspection:(report,layer)=>{cancelViewportGesture();regionInspection=report?{report,layer,key:resourceStateKey()}:null;updateFieldSpatialTools();renderInspector();draw();},
     onFrame:(report,layer)=>{const framed=fieldSpatialFrame(regionBoundsGeometry(report,layer));camera.target={...framed.target};camera.distance=framed.distance;cameraRevision++;draw();},
+    onError:error=>notify(error.message,true)});
+}
+async function inspectTriggerCells(record){
+  if(busy||!canEdit()||record.type!=='trigger'||resourceKey!==resourceStateKey())return;
+  const key=resourceStateKey(),snapshot=JSON.stringify(record),sceneId=state.scene?.id,projectPath=state.project?.path;
+  if(!await loadFieldSpatial()||key!==resourceStateKey())return;
+  selectSceneResource(record);fieldSpatialPick=false;
+  const current=()=>key===resourceStateKey()&&resourceKey===key&&JSON.stringify(assetRecords().find(row=>row.id===record.id))===snapshot;
+  regionBoundsDialog?.dispose?.();triggerCellsDialog?.dispose?.();
+  triggerCellsDialog=openTriggerCells({record,getState:()=>state,busy:()=>busy,setBusy,current,
+    api:async(route,body)=>{const ok=await api(route,body);if(ok&&route==='/api/trigger-cells-apply'&&state.scene?.id===sceneId&&state.project?.path===projectPath){fieldSpatialLayer.value='effective';await refreshResources();const next=assetRecords().find(row=>row.id===record.id);if(next){selectSceneResource(next);await loadFieldSpatial();}}return ok;},
+    onInspection:(report,layer)=>{cancelViewportGesture();triggerInspection=report?{report,layer,key:resourceStateKey()}:null;updateFieldSpatialTools();renderInspector();draw();},
+    onFrame:(report,layer)=>{const framed=fieldSpatialFrame(triggerCellsGeometry(report,layer));camera.target={...framed.target};camera.distance=framed.distance;cameraRevision++;draw();},
     onError:error=>notify(error.message,true)});
 }
 function renderSceneResourceInspector(record){
@@ -1629,7 +1655,7 @@ function renderSceneResourceInspector(record){
   if(['trigger','region'].includes(record.type)){
     const frameButton=document.createElement('button');frameButton.id='frame-source-cell';frameButton.textContent='Frame source cell';frameButton.disabled=busy;frameButton.onclick=()=>{if(current())frameSceneResource();};actions.append(frameButton);
     const row=fieldSpatialCurrent()?fieldSpatialRows().find(item=>item.id===record.id):null;
-    const summary=document.createElement('p');summary.className='field-note';summary.id='source-cell-coordinates';summary.textContent=row?`${regionInspection?.key===resourceStateKey()&&regionInspection.report.region_id===record.id?({imported:'Retail region bounds',current:'Current region bounds',proposed:'Proposed region bounds'}[regionInspection.layer]):record.type==='region'&&fieldSpatialLayer.value==='effective'?'Effective region bounds':'Retail source cells'} · X [${row.world_bounds.x_min}, ${row.world_bounds.x_max}) · Z [${row.world_bounds.z_min}, ${row.world_bounds.z_max}) · guest units · Y=0 reference plane, height unknown · Activation unverified`:'Frame source cell to load its verified X/Z bounds. Height and activation are unknown.';section.append(summary);
+    const summary=document.createElement('p');summary.className='field-note';summary.id='source-cell-coordinates';summary.textContent=row?`${triggerInspection?.key===resourceStateKey()&&triggerInspection.report.trigger_id===record.id?({imported:'Retail trigger cell',current:'Current trigger cell',proposed:'Proposed trigger cell'}[triggerInspection.layer]):regionInspection?.key===resourceStateKey()&&regionInspection.report.region_id===record.id?({imported:'Retail region bounds',current:'Current region bounds',proposed:'Proposed region bounds'}[regionInspection.layer]):fieldSpatialLayer.value==='effective'?'Effective source cells':'Retail source cells'} · X [${row.world_bounds.x_min}, ${row.world_bounds.x_max}) · Z [${row.world_bounds.z_min}, ${row.world_bounds.z_max}) · guest units · Y=0 reference plane, height unknown · Activation unverified`:'Frame source cell to load its verified X/Z bounds. Height and activation are unknown.';section.append(summary);
   }
   const details=document.createElement('button');details.id='source-resource-details';details.textContent='Asset details and references';details.disabled=busy;details.onclick=()=>{if(current()&&!busy)showAssetDetails(record);};actions.append(details);
   const source=document.createElement('details');source.className='resource-provenance';const title=document.createElement('summary');title.textContent='Source record and provenance';const pre=document.createElement('pre');pre.className='diagnostic-detail';pre.textContent=JSON.stringify(record.data,null,2);source.append(title,pre);section.append(source);
@@ -1768,6 +1794,7 @@ function openFieldResource(record){
     };
   }
   if(record.type==='region'&&state.capabilities?.field_region_authoring){const button=document.createElement('button');button.id='edit-field-region-bounds';button.textContent='Edit region bounds';button.onclick=()=>{if(busy)return;fieldDialog.close();inspectRegionBounds(record);};summary.append(button);}
+  if(record.type==='trigger'&&record.data?.table_source==='primary'&&state.capabilities?.field_trigger_authoring){const button=document.createElement('button');button.id='edit-field-trigger-cell';button.textContent='Edit trigger cell';button.onclick=()=>{if(busy)return;fieldDialog.close();inspectTriggerCells(record);};summary.append(button);}
   if(record.type==='trigger'&&state.capabilities?.trigger_script_preview&&(data.script_reference?.partition===2||data.trigger_type==='partition_2_trigger')){
     const button=document.createElement('button');button.className='accent';button.id='inspect-trigger-script';button.textContent='Inspect referenced script';button.onclick=()=>openTriggerScript(record);summary.append(button);
   }

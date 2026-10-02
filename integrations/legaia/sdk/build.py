@@ -41,6 +41,42 @@ def authored_state_key(project) -> str:
                                 "models": getattr(project, "model_overrides", {})}).encode("utf-8"))
 
 
+def _merge_trigger_patch(original, current, changed, audit, scene, binding):
+    """Bind every emitted trigger byte to the requested source cell independently."""
+    from importer.trigger_authoring import trigger_authoring_options
+    if not all(isinstance(value, bytes) and len(value) == 0x12000
+               for value in (original, current, changed)):
+        raise BuildError('Trigger composition requires equal supported MAP spans')
+    if binding['source_sha256'] != _hash(original):
+        raise BuildError('Trigger MAP source binding changed during Build')
+    records = {row['trigger_id']: row for row in trigger_authoring_options(original, scene)['records']}
+    expected = {}
+    for edit in binding['edits']:
+        record = records[edit['trigger_id']]
+        for delta, field in enumerate(('tile_x', 'tile_z')):
+            offset = record['byte_offset'] + delta
+            before, after = original[offset], edit[field]
+            if before != after:
+                expected[offset] = dict(trigger_id=record['trigger_id'], table_kind=record['table_kind'],
+                    record_index=record['record_index'], field='trigger.' + field, byte_offset=offset,
+                    before_value=before, after_value=after, scope='source-MAP-trigger-cell-only')
+    if not isinstance(audit, list) or any(not isinstance(row, dict) for row in audit):
+        raise BuildError('Trigger serializer returned an invalid byte audit')
+    actual = {row.get('byte_offset'): row for row in audit}
+    differences = {offset: (before, after) for offset, (before, after) in
+                   enumerate(zip(original, changed)) if before != after}
+    if (len(actual) != len(audit) or actual != expected or
+            differences != {offset: (row['before_value'], row['after_value'])
+                            for offset, row in expected.items()}):
+        raise BuildError('Trigger serialization differs from requested cells or its exact byte audit')
+    merged = bytearray(current)
+    for offset, row in expected.items():
+        if current[offset] != original[offset]:
+            raise BuildError('Trigger cell overlaps a scenery, collision or region edit')
+        merged[offset] = row['after_value']
+    return bytes(merged)
+
+
 def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
@@ -59,6 +95,7 @@ def package_change_kinds(edits) -> list[str]:
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'source-MAP-wall-bit-only': 'source collision walls',
         'source-MAP-region-bounds-only': 'source region bounds',
+        'source-MAP-trigger-cell-only': 'source trigger cells',
         'shared-scene-animation-record': 'animation channels',
     }
     return sorted({('initial actor animation' if edit.get('assignment_kind') == 'ActorAnimation' and edit.get('field') == 'animation_id' else labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data')) for edit in edits})
@@ -399,6 +436,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     environment_edits = {}
     collision_edits = {}
     region_edits = {}
+    trigger_edits = {}
     animation_edits = {}
     entity_lookup = {actor["semantic_id"]: (scene_id, actor)
                      for scene_id, document in project.imports.items()
@@ -409,6 +447,13 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if value is not None:
                 region_edits[identifier] = value
             components = {k:v for k,v in components.items() if k != 'RegionBounds'}
+            if not components:
+                continue
+        if isinstance(components, dict) and 'TriggerCells' in components:
+            value = project._validate_trigger_cells(identifier, components['TriggerCells'])
+            if value is not None:
+                trigger_edits[identifier] = value
+            components = {k:v for k,v in components.items() if k != 'TriggerCells'}
             if not components:
                 continue
         if isinstance(components, dict) and "Collision" in components:
@@ -602,7 +647,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                  "payload": payload, "sha256": _hash(payload), "expected_sha256": patch['expected_sha256'],
                                  'carrier': metadata['carriers'][index], **evidence})
             audit_edits.extend({**change, "scene": scene, "semantic_id": change["animation_id"]} for change in changes)
-        for scene_id in sorted(set(environment_edits) | set(collision_edits) | set(region_edits)):
+        for scene_id in sorted(set(environment_edits) | set(collision_edits) | set(region_edits) | set(trigger_edits)):
             binding = environment_edits.get(scene_id)
             from importer.environment_authoring import patch_environment_overrides
             from importer.environment import load_environment_placements
@@ -638,6 +683,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         raise BuildError('Region bounds overlap a scenery or collision edit')
                     merged[offset] = region_data[offset]
                 changed = bytes(merged)
+            trigger_changes = []
+            if scene_id in trigger_edits:
+                from importer.trigger_authoring import patch_field_triggers
+                triggers = trigger_edits[scene_id]
+                trigger_data, trigger_changes = patch_field_triggers(original, triggers['source_sha256'], scene, triggers['edits'])
+                changed = _merge_trigger_patch(original, changed, trigger_data, trigger_changes, scene, triggers)
             allowed = set()
             for row in changes:
                 if 'allocation' in row:
@@ -649,13 +700,14 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                     allowed.update(range(row['byte_offset'], row['byte_offset']+2))
             allowed.update(row["byte_offset"] for row in wall_changes)
             allowed.update(row["byte_offset"] for row in region_changes)
+            allowed.update(row["byte_offset"] for row in trigger_changes)
             if len(changed) != len(original) or any(a != b and i not in allowed for i,(a,b) in enumerate(zip(original,changed))):
-                raise BuildError("MAP patch changed bytes outside audited scenery, wall or region fields")
+                raise BuildError("MAP patch changed bytes outside audited scenery, wall, region or trigger fields")
             location = (archive.node.extent_lba + entry.start_lba) * 2048
             disc_user_size = (_image.size // 2352) * 2048
             if _image.read_user(0, location, len(original), disc_user_size) != original:
                 raise BuildError("Environment MAP overlay differs from its original disc span")
-            if changes or wall_changes or region_changes:
+            if changes or wall_changes or region_changes or trigger_changes:
                 overlays.append({"scene":scene, "offset":location, "size":len(changed),
                                  "file":f"assets/{scene}-environment.map", "payload":changed,
                                  "sha256":_hash(changed), "expected_sha256":_hash(original)})
@@ -666,6 +718,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         "scope":row.get('scope', 'shared-MAP-transform-only')})
                 audit_edits.extend({**row, "scene": scene, "semantic_id": f"collision://{scene}/field-map"} for row in wall_changes)
                 audit_edits.extend({**row, "scene": scene, "semantic_id": row["region_id"]} for row in region_changes)
+                audit_edits.extend({**row, "scene": scene, "semantic_id": row["trigger_id"]} for row in trigger_changes)
         for scene_id, edits in sorted(scene_edits.items()):
             document = project.imports[scene_id]
             scene = document["scene"]["name"]

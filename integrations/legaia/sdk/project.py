@@ -60,7 +60,7 @@ class AssetDatabase:
         self.resource_catalogs: dict[str, dict] = {}
         self.material_reference_catalogs: dict[str, dict] = {}
 
-    def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str], *, flag_state_key: str | None = None, transition_state_key: str | None = None, region_state_key: str | None = None) -> dict:
+    def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str], *, flag_state_key: str | None = None, transition_state_key: str | None = None, region_state_key: str | None = None, trigger_state_key: str | None = None) -> dict:
         """Replace a verified derived catalog without mutating imported project facts."""
         indexed = {}
         for item in records:
@@ -79,6 +79,8 @@ class AssetDatabase:
             result['transition_state_key'] = transition_state_key
         if region_state_key is not None:
             result['region_state_key'] = region_state_key
+        if trigger_state_key is not None:
+            result['trigger_state_key'] = trigger_state_key
         self.resource_catalogs[scene_id] = result
         return deepcopy(result)
 
@@ -101,7 +103,7 @@ class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions",
                                   "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing",
-                                  "Environment", "AnimationChannels", "Collision", "RegionBounds"})
+                                  "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
         self.root = root.resolve()
@@ -596,6 +598,20 @@ class ProjectService:
         edits = [deepcopy(row) for row in value['edits']
                  if any(row[key] != records[row['region_id']]['encoded'][key] for key in ('x0', 'z0', 'x1', 'z1'))]
         return {'source_sha256': value['source_sha256'], 'edits': sorted(edits, key=lambda row: row['region_id'])} if edits else None
+
+    def _validate_trigger_cells(self, identifier: str, value: dict) -> dict | None:
+        from importer.trigger_authoring import patch_field_triggers, trigger_authoring_options
+        if not isinstance(identifier, str) or identifier not in self.imports:
+            raise ProjectError('Trigger cells owner must be an imported scene')
+        if not isinstance(value, dict) or set(value) != {'source_sha256', 'edits'}:
+            raise ProjectError('Trigger cells require a source SHA256 and cell edits only')
+        original = self._environment_source(identifier)
+        scene = self.imports[identifier]['scene']['name']
+        patch_field_triggers(original, value['source_sha256'], scene, value['edits'])
+        records = {row['trigger_id']: row for row in trigger_authoring_options(original, scene)['records']}
+        edits = [deepcopy(row) for row in value['edits']
+                 if any(row[key] != records[row['trigger_id']]['encoded'][key] for key in ('tile_x', 'tile_z'))]
+        return {'source_sha256': value['source_sha256'], 'edits': sorted(edits, key=lambda row: row['trigger_id'])} if edits else None
 
     def _validate_environment(self, identifier: str, value: dict) -> None:
         import re
@@ -1651,6 +1667,33 @@ class ProjectService:
                 self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': deepcopy(after)})
                 self.redo_stack.clear()
             return
+        if command.get('type') == 'apply_trigger_cells':
+            from .trigger_cells import apply
+            apply(self, command)
+            return
+        if command.get('type') in ('set_trigger_cells', 'clear_trigger_cells'):
+            setting = command['type'] == 'set_trigger_cells'
+            if set(command) != ({'type', 'entity_id', 'value'} if setting else {'type', 'entity_id'}):
+                raise ProjectError('Trigger cells commands accept only scene identity and cell override')
+            identifier = command['entity_id']
+            if not isinstance(identifier, str) or identifier not in self.imports or identifier != self.active_scene:
+                raise ProjectError('Trigger cells require the active imported scene')
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            value = self._validate_trigger_cells(identifier, deepcopy(command['value'])) if setting else None
+            if value is not None:
+                after['TriggerCells'] = value
+            else:
+                after.pop('TriggerCells', None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_collision_walls", "clear_collision_walls"):
             setting = command["type"] == "set_collision_walls"
             if set(command) != ({"type", "entity_id", "value"} if setting else {"type", "entity_id"}):
@@ -2279,12 +2322,16 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "Environment", "AnimationChannels", "Collision", "RegionBounds"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells"}:
                 raise ProjectError("Unsupported authored component")
             if 'RegionBounds' in components:
                 value = result._validate_region_bounds(identifier, components['RegionBounds'])
                 if value is not None:
                     result.overrides.setdefault(identifier, {})['RegionBounds'] = value
+            if 'TriggerCells' in components:
+                value = result._validate_trigger_cells(identifier, components['TriggerCells'])
+                if value is not None:
+                    result.overrides.setdefault(identifier, {})['TriggerCells'] = value
             if "Collision" in components:
                 result._validate_collision(identifier, components["Collision"])
                 result.overrides.setdefault(identifier, {})["Collision"] = deepcopy(components["Collision"])
@@ -2584,6 +2631,10 @@ class ProjectService:
             if region_bounds:
                 scene_changes.append(f"Region bounds: {len(region_bounds['edits'])} authored rectangles")
                 scene_authored['RegionBounds'] = deepcopy(region_bounds)
+            trigger_cells = self.overrides.get(scene_id, {}).get('TriggerCells')
+            if trigger_cells:
+                scene_changes.append(f"Trigger cells: {len(trigger_cells['edits'])} authored cells")
+                scene_authored['TriggerCells'] = deepcopy(trigger_cells)
             if scene_authored:
                 records.append({"id":scene_id, "kind":"scene", "name":document["scene"]["name"],
                                 "scene_id":scene_id, "source_scene":document["scene"]["name"],

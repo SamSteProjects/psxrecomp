@@ -213,6 +213,24 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-10-02 (SDK primary trigger cell authoring):** Previous goal turn made
+  concrete progress in`2b06f01b`; the full39-section objective and editor supplement
+  remain incomplete. Three bounded agents supplied source writer/evidence,
+  reviewed service and frontend; parent integrated Project, HTTP, shared
+  Inspector, source-layer freshness, viewport and normal Build. Primarykind0/1
+  edits change only two lookup-coordinate bytes with fixed payload/order and
+  originalMAPhash. Runtime contact/activation and fallback writes remain deferred.
+  Initial50-case integration found a late SDK error-type mismatch, a wrong new
+  Build-test result-key expectation and an Inspector action-count expectation.
+  The service translation and test expectations were repaired;12 affected and
+  neighbor cases passed. All50 selected cases have passing evidence, with0skips.
+  Six Node suites/3 syntax checks and13 actual browser workflows passed,0page/
+  HTTPerrors/0runrequests. Visual review passed. Exact retained Town01 build
+  changesMAP65554,30→31 with destination146/132 intact; fresh disc and ZIP match.
+  Mixed trigger/region/scenery/wall packaging proves exactly4changedbytes in one
+  overlay. Private evidence:`local-output/sdk-20260909/trigger-cells-20261002/`.
+  No game launch, package install, pin change or runtime patch. Full SDK goal active.
+
 - **2026-10-02 (SDK source-facing instructions):** Previous goal turn made
   concrete progress in `dab40469` (reviewed region authoring); full specification
   remains incomplete. Fresh retail SCUS/PROT897 proves the facing LUT, opcode

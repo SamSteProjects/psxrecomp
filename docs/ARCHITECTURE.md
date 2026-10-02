@@ -6,6 +6,18 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Source trigger cells (2026-10-02) use a scene-owned `TriggerCells` override,
+qualified by original MAP SHA256 and stable primary kind/row IDs. The importer
+writer changes only the first two bytes of existing kind-0/1 rows. The review
+service rechecks complete bindings and project/source freshness before atomic
+Apply; inherited cells normalize to absence. The shared Inspector opens cell
+controls, while a separate trigger annotation key updates the source-cell
+workspace without changing imported spatial records or model geometry. Normal
+Build independently reconstructs the requested trigger byte audit and composes
+it with disjoint region, scenery and collision writes. Unknown payloads stay
+unchanged; reference Y, activation, runtime footprints and contact remain outside
+this authoring contract. See [trigger cells](legaia-trigger-cells.md).
+
 Source-facing operands (2026-10-02) use a separate `ScriptFacing` component keyed
 by immutable source owner and PC. Fresh MAN qualification and retail-proved
 operand masks permit sectors0–7 while preserving every upper bit and other byte.

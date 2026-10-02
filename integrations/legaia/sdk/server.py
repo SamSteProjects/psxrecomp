@@ -168,9 +168,11 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
-        from .resources import scene_flag_state_key, project_flag_state_key, scene_transition_state_key, scene_region_state_key
+        from .resources import scene_flag_state_key, project_flag_state_key, scene_transition_state_key, scene_region_state_key, scene_trigger_state_key
         state['scene_transition_state_key'] = scene_transition_state_key(self.project)
         state['scene_region_state_key'] = scene_region_state_key(self.project)
+        state['scene_trigger_state_key'] = scene_trigger_state_key(self.project)
+        state['capabilities']['field_trigger_authoring'] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['capabilities']['field_region_authoring'] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['scene_flag_state_key'] = scene_flag_state_key(self.project)
         state['project_flag_state_key'] = project_flag_state_key(self.project)
@@ -594,6 +596,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
                  '/region-bounds.js': ('region-bounds.js', 'text/javascript'),
+                 '/trigger-cells.js': ('trigger-cells.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
@@ -1105,6 +1108,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route == '/api/region-bounds-apply':
                     from .region_bounds import apply
+                    apply(self.server.project, body)
+                    self._json(200, self.server.state())
+                    return
+                if route == '/api/trigger-cells-review':
+                    if set(body) != {'trigger_id', 'values', 'action'}:
+                        raise ProjectError('Trigger review requires trigger identity, complete cell coordinates and action only')
+                    from .trigger_cells import review
+                    self._json(200, review(self.server.project, body['trigger_id'], body['values'], body['action']))
+                    return
+                if route == '/api/trigger-cells-apply':
+                    from .trigger_cells import apply
                     apply(self.server.project, body)
                     self._json(200, self.server.state())
                     return

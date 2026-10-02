@@ -2,6 +2,30 @@
 
 Current scene-editor status (2026-10-02):
 
+**Reviewed primary trigger cells (2026-10-02):** Existing primary MAP kind-0
+teleport and kind-1 binding rows now have an Edit trigger cell action. Retail,
+Authored, Current and Proposed X/Z cells remain separate, with outline and scene
+comparison, per-row retail reset, one-step Undo/Redo and Save/Open. Fresh source
+and review keys qualify the complete retained binding; stable row identity stays
+independent of coordinates. Only two lookup-coordinate bytes are writable.
+Destinations, record/gate payloads, row order, footprints, elevation and all other
+MAP bytes remain unchanged. A separate trigger key invalidates annotations
+without reloading geometry. Normal Build composes triggers, regions, scenery and
+collision walls in one exact MAP overlay, independently binding every trigger
+byte to the requested cells. Build report links reopen the source resource.
+Fallback rows remain read-only; unknown gates keep their unresolved behavior.
+Moving a row can change first-match shadowing. Height, contact, activation and
+playable behavior remain deferred. See [trigger cell workflow](legaia-trigger-cells.md).
+
+Validation:50 selected retail-enabled Python cases verified without skips,
+including the12 affected/neighbor cases rerun after repairs;6 Node suites and3
+changed-module syntax checks passed. Thirteen actual browser workflow checks
+passed with zero page/HTTP errors and zero game-launch requests. Visually
+inspected review and viewport captures are readable. The retained Town01
+kind-0/0000 fixture changes only MAP65554 from30 to31, preserving destination
+bytes146/132. Fresh disc-span, ZIP and imported-metadata readbacks agree. The
+package is built, not installed or played; full SDK/runtime scope remains incomplete.
+
 **Source-facing instruction authoring and object-index correction (2026-10-02):**
 The actor Inspector now opens source-qualified facing controls for simple
 CAM_CFG and nonparked NPC_RUN instructions. Retail, Authored and Effective
@@ -677,6 +701,7 @@ Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 | Script operand JSON files | FUNCTIONAL / OFFLINE. Source-bound authored entries across five supported numeric operand families, reviewed all-or-nothing Apply, one Undo/Redo, Save/Open, exact MAN readback and retail browser workflow. | Same imported owner/source only; no instruction/control-flow/dialogue transfer or clearing of omitted entries. Actual execution and gameplay deferred. |
 | SDK asset inspector tools | FUNCTIONAL / PARTIAL. All fourteen catalog record types share SDK property/action metadata and explicit type-specific registered tool handlers: actor, scene, template, worldmap, model, texture, animation, script, dialogue, flag, transition, collision, trigger and region. Details navigation, previews/resource tools and busy/closed guards have Node/browser evidence; Python inspector contracts are included in514. | Specialized editing forms retain existing adapters; runtime/gameplay acceptance remains deferred. |
 | Field source workspace | FUNCTIONAL / SOURCE INSPECTION. Scene hierarchy groups expose source transitions/triggers/regions/collision/scripts; shared Inspector selection, source-cell framing and explicit viewport picking preserve row identities and stale-scene guards. Town01 has 99 trigger cells and14 region bounds. Trigger/region quantization differs by64 units; Y=0 is an unknown-height reference plane. Gate-1 source links connect 51 rows to 22 distinct P2 records across Active/Project graphs. | Imported source views remain immutable; the reviewed region editor supplies separate authored/effective bounds. Trigger contact, script activation and runtime height still require later gameplay acceptance. |
+| Primary trigger cell authoring | FUNCTIONAL / WRITABLE / OFFLINE. Source-qualified kind-0/1 X/Z cell review, immutable payloads, Retail/Authored/Current/Proposed outline and viewport layers, history/persistence and exact normal MAP Build composition.50 selected Python cases,6 Node suites and13 browser workflows verified. | Fallback rows, payload rebinding/teleport destinations, footprint painting, contact/activation/story state, floor height and gameplay acceptance remain unsupported or unverified. Unknown gates preserve their payload and uncertainty. |
 | Field region bounds authoring | FUNCTIONAL / SOURCE-BOUND. Registered region action reviews four byte corners with Retail/Authored/Current/Proposed layers, visual comparison, guarded Apply and per-row retail reset. Canonical commands provide one Undo, no-op normalization, persistence and exact normal Build composition with scenery/walls. | Only existing primary kind-3 rows; type/padding remain intact. No height, activation or gameplay acceptance is asserted. |
 | Central flag-reference assets | FUNCTIONAL / SOURCE-SCOPED. Verified script/context/bank/retail-index groups share Asset Database search, metadata Inspector and per-PC script reference edges. Dedicated annotation keys cover Apply/Clear/Undo; active/project graph navigation and exact P1/P2 source inspection are supported. Fresh three-scene evidence covers899 groups/2,142 sites. | No runtime variable identity, story names, unvisited/controller paths or current values; existing flag source edits retain deferred gameplay acceptance. |
 | Animated actor presets | FUNCTIONAL / OFFLINE. Capture authored initial clip alone or with authored position/appearance; immutable witness and composed proposal proof, single/group atomic history, metadata v2 transfer, detached scene comparison and Save/Open.47 focused Python,8 compatibility tests,37 Node files and actual browser workflow pass; independent MAN/header/position and reopened package proofs recorded. | Initial MAN header only, existing local/nonzero/full exact-model bindings. No channel retargeting, global pairing, new clips or spawning. Existing gameplay acceptance deferred. |

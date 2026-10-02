@@ -2,6 +2,30 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Reviewed primary trigger cells (2026-10-02):** Existing primary MAP kind-0
+teleport and kind-1 binding rows now have an Edit trigger cell action. Retail,
+Authored, Current and Proposed X/Z cells remain separate, with outline and scene
+comparison, per-row retail reset, one-step Undo/Redo and Save/Open. Fresh source
+and review keys qualify the complete retained binding; stable row identity stays
+independent of coordinates. Only two lookup-coordinate bytes are writable.
+Destinations, record/gate payloads, row order, footprints, elevation and all other
+MAP bytes remain unchanged. A separate trigger key invalidates annotations
+without reloading geometry. Normal Build composes triggers, regions, scenery and
+collision walls in one exact MAP overlay, independently binding every trigger
+byte to the requested cells. Build report links reopen the source resource.
+Fallback rows remain read-only; unknown gates keep their unresolved behavior.
+Moving a row can change first-match shadowing. Height, contact, activation and
+playable behavior remain deferred. See [trigger cell workflow](legaia-trigger-cells.md).
+
+Validation:50 selected retail-enabled Python cases verified without skips,
+including the12 affected/neighbor cases rerun after repairs;6 Node suites and3
+changed-module syntax checks passed. Thirteen actual browser workflow checks
+passed with zero page/HTTP errors and zero game-launch requests. Visually
+inspected review and viewport captures are readable. The retained Town01
+kind-0/0000 fixture changes only MAP65554 from30 to31, preserving destination
+bytes146/132. Fresh disc-span, ZIP and imported-metadata readbacks agree. The
+package is built, not installed or played; full SDK/runtime scope remains incomplete.
+
 **Source-facing instruction authoring and object-index correction (2026-10-02):**
 The actor Inspector now opens source-qualified facing controls for simple
 CAM_CFG and nonparked NPC_RUN instructions. Retail, Authored and Effective
