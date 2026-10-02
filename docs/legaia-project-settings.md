@@ -1,5 +1,9 @@
 # Project settings inspector
 
+For independent authoring experiments, **Copy project…** beside Settings captures
+current inputs, including unsaved edits, without saving the original. See
+[Editable project copies](legaia-project-copies.md).
+
 Open **Settings…** beside Project in the top bar. SDK inspector metadata displays
 the current name, project folder, retail source path and identity, imported scene
 count, active scene and mode. Source and path properties are read-only. Unknown

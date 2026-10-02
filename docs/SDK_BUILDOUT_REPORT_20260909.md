@@ -8,6 +8,16 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Editable project copies (2026-10-01):** Current unsaved metadata and referenced
+authored files can be copied into an independent project without saving the source.
+Copies retain drafts/templates/views/selections; retail discs, generated outputs,
+runtime/live state and Undo history are excluded. Readback/reopen/source drift
+checks and project-local path/size guards precede a completion report. Thirty-nine
+focused Python checks,26 Node files and27 syntax checks passed. Browser verified
+unsaved Dolk2 X9536, dirty-open guard, independent copy Save at X9600 and original
+X9472 with unchanged saved bytes, zero page errors and inspected screenshots.
+No game launched; postdates integrated498. See [Project copies](legaia-project-copies.md).
+
 **Normal Build for raw streamed MAN (2026-10-01):** Dolk2's earlier placement
 serialization gap is connected through the shared typed MAN source handoff.
 Equal-span raw MAN edits use the existing audited compositors and structural

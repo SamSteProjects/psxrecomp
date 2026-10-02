@@ -2,6 +2,16 @@
 
 Current scene-editor status (2026-10-01):
 
+**Editable project copies (2026-10-01):** Current unsaved authored metadata and
+referenced model/texture files copy into fresh project-local folders, preserving
+the source and validating copied hashes/normal reopen/source drift. Drafts,
+templates and saved views/selections persist; game disc, generated outputs,
+runtime/live state and Undo history are excluded. Thirty-nine focused Python
+checks,26 Node files/27 syntax checks passed; browser proves dirty-open guard,
+independent copy Save and original-byte preservation with zero errors and
+inspected screenshots. Postdates498; no gameplay required for copying.
+See [Project copies](legaia-project-copies.md).
+
 **Raw streamed MAN normal Build (2026-10-01):** Shared typed-source serialization
 now emits equal-span raw MAN overlays with explicit uncompressed provenance and
 structural/record/opaque-byte guards, alongside existing descriptor LZS output.

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {decodeCopyReview,copyRequest,decodeCreatedCopy} from '../editor/project-copy.js';
+const key='a'.repeat(64),path='C:\\SDK\\Project',files=[{path:'project.legaia.json',sha256:'b'.repeat(64),byte_length:12}];
+const review={schema_version:'legaia.project-copy-review.v1',project_source_key:key,review_key:key,source_project:path,source_name:'Source',source_dirty:true,source_authored_state_key:key,imported_scene_count:0,file_count:1,byte_length:12,files,includes_unsaved_metadata:true,retail_disc_included:false,undo_history_included:false,generated_outputs_included:false,live_state_included:false};
+assert.deepEqual(decodeCopyReview(review,key,path),review);
+assert.deepEqual(copyRequest(review,'  Copy 🚀  '),{name:'Copy 🚀',review_key:key});
+for(const name of ['',true,'x'.repeat(121),'a\nb','\ud800'])assert.throws(()=>copyRequest(review,name));
+for(const changes of [{project_source_key:'f'.repeat(64)},{retail_disc_included:true},{imported_scene_count:65},{byte_length:13},{files:[...files,...files]},{files:[{...files[0],path:'../outside'}]}])assert.throws(()=>decodeCopyReview({...review,...changes},key,path));
+const created={schema_version:'legaia.project-copy.v1',source_project:path,project_source_key:key,source_review_key:key,source_authored_state_key:key,source_dirty:true,copied_project:path+'\\ProjectCopies\\project-'+'c'.repeat(32),name:'Copy 🚀',files,readback_verified:true,reopened_metadata_verified:true,retail_disc_included:false,undo_history_included:false,generated_outputs_included:false,live_state_included:false};
+assert.deepEqual(decodeCreatedCopy(created,key,path),created);
+for(const changes of [{copied_project:'C:\\elsewhere\\project-'+ 'c'.repeat(32)},{copied_project:created.copied_project+'\\..\\outside'},{readback_verified:false},{source_dirty:'yes'},{name:'\ud800'},{files:[{...files[0],byte_length:64*1024*1024+1}]}])assert.throws(()=>decodeCreatedCopy({...created,...changes},key,path));
+const independent=decodeCreatedCopy(created,key,path);independent.files[0].path='changed';assert.equal(created.files[0].path,'project.legaia.json');
+console.log('Project copy Unicode names, source context, inventory, destination and completion guards passed.');

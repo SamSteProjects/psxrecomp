@@ -7,6 +7,16 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+Post-checkpoint feature: editable project copies have39 focused Python checks
+passing in3.628s,26 Node files/27 syntax checks passing. Tests cover dirty-source
+history/file preservation, copied templates/drafts/views/selections and referenced
+TIM/TMD bytes, source metadata/file drift, size/path/mode/name guards, HTTP fields
+and dirty project-open rejection. Browser copied unsaved Dolk2 X9536, blocked
+dirty Open before dispatch, opened after Undo, saved independent X9600 and reopened
+original X9472 with identical source bytes, zero page errors and inspected images.
+No game launched; test browser/server stopped. Postdates integrated498, not a
+replacement full-suite/runtime checkpoint. See [Project copies](legaia-project-copies.md).
+
 Post-checkpoint feature: raw streamed MAN normal Build has27 retail-enabled focused
 Python checks passing in79.901s, plus25 Node files/26 syntax checks. Tests cover
 source offset/length, exact raw placement, no-op/clear baseline byte equality,

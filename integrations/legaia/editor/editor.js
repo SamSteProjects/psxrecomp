@@ -2,6 +2,7 @@ import {mountBuildReview} from '/build-review.js';
 import {mountBuildHistory} from '/build-history.js';
 import {openAssetReferences} from '/asset-references.js';
 import {mountProjectSettings} from '/project-settings.js';
+import {mountProjectCopy} from '/project-copy.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
@@ -561,6 +562,7 @@ function notify(message, error=false) {
 }
 function setBusy(value) {
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
+  if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   busy=value;updateActorGroupSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
@@ -720,6 +722,7 @@ function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceC
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.name ?? 'Legaia project'; $('project-path-input').value=state.project?.path ?? '';showDialog('project-dialog'); };
 mountProjectSettings({after:$('project-button'),getState:()=>state,busy:()=>busy,api,onError:error=>notify(error.message,true)});
+mountProjectCopy({after:$('project-settings-button'),getState:()=>state,busy:()=>busy,setBusy,api});
 for(const id of ['import-button','empty-import']) $(id).onclick=()=>{if(!$('disc-input').value)$('disc-input').value=state.project?.disc_path??'';showDialog('import-dialog');};
 $('project-form').onsubmit=async event=>{event.preventDefault();await api('/api/project/new',{name:$('project-name-input').value,path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project created.'});};
 $('open-project').onclick=async()=>{if(!$('project-path-input').reportValidity())return;await api('/api/project/open',{path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project opened.'});};

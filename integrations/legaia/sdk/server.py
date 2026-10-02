@@ -166,6 +166,9 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['build_review'] = bool(self.project.disc_path and 1<=len(self.project.imports)<=64)
         from .build import authored_state_key
         state['build_review_source_key'] = authored_state_key(self.project)
+        from .project_copy import source_key as copy_source_key
+        state['project_copy_source_key'] = copy_source_key(self.project)
+        state['capabilities']['project_copy'] = self.project.mode=='edit' and len(self.project.imports)<=64
         if self.last_build is None:
             state["build"] = None
         else:
@@ -536,6 +539,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
+                 "/project-copy.js": ("project-copy.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
@@ -851,6 +855,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Build review takes no fields')
                     from .build_review import review
                     self._json(200,review(self.server.project))
+                    return
+                if route in ('/api/project/copy-review','/api/project/copy'):
+                    from .project_copy import review as copy_review,create_copy
+                    if route.endswith('copy-review'):
+                        if body:raise ProjectError('Copy review takes no fields')
+                        result=copy_review(self.server.project)
+                    else:
+                        if set(body)!={'name','review_key'}:raise ProjectError('Project copy takes a name and current review key only')
+                        result=create_copy(self.server.project,body['name'],body['review_key'])
+                    self._json(200,result)
                     return
                 if route in ('/api/builds','/api/builds/verify'):
                     from .build_history import list_builds, verify_build

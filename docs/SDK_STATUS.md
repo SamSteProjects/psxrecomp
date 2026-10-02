@@ -2,6 +2,16 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Editable project copies (2026-10-01):** Copy project captures unsaved authoring
+inputs into a fresh project-local folder, including referenced TIM/TMD files,
+drafts, templates and saved views/selections. Hash readback, normal reopen and
+source drift checks precede the completion report. Source files, dirty state and
+Undo history are preserved; Open copy requires Save/Undo first when dirty.
+Thirty-nine focused Python checks, all26 Node files and27 syntax checks passed.
+Browser verified unsaved Dolk2 X9536, independent copy Save at X9600 and original
+X9472 recovery with unchanged source bytes and zero errors; screenshots inspected.
+No game launched. Postdates integrated498. See [Project copies](legaia-project-copies.md).
+
 **Normal Build for raw streamed MAN (2026-10-01):** The typed source handoff now
 routes raw MAN through existing audited placement/header/script composition,
 preserving size, structural chunks, record layout and opaque bytes. Raw output is

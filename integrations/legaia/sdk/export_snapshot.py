@@ -5,17 +5,30 @@ from .build import authored_state_key
 from .project import ProjectError, canonical, digest, atomic_write
 
 
-def capture_export_inputs(project):
+def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     key = authored_state_key(project)
-    files = {'project.legaia.json': canonical(project._document())}
+    files = {}
+    total = 0
+    def store(relative,payload):
+        nonlocal total
+        old=files.get(relative)
+        if old is not None:
+            if old!=payload:raise ProjectError('Snapshot contains conflicting file identities')
+            return
+        if max_bytes is not None and (len(payload)>64*1024*1024 or total+len(payload)>max_bytes):
+            raise ProjectError('Project input snapshot exceeds its byte limit')
+        if max_files is not None and len(files)>=max_files:
+            raise ProjectError('Project input snapshot exceeds its file limit')
+        total+=len(payload);files[relative]=payload
+    store('project.legaia.json',canonical(project._document()))
     for document in project.imports.values():
-        files[f'Imported/{digest(document)}.json'] = canonical(document)
+        store(f'Imported/{digest(document)}.json',canonical(document))
     for binding in project.texture_overrides.values():
         payload = project.read_texture_replacement(binding)
-        files[f"Authored/Textures/{binding['asset_sha256']}.tim"] = payload
+        store(f"Authored/Textures/{binding['asset_sha256']}.tim",payload)
     for identifier, binding in project.model_overrides.items():
         payload = project.read_model_replacement(identifier, binding)
-        files[f"Authored/Models/{binding['asset_sha256']}.tmd"] = payload
+        store(f"Authored/Models/{binding['asset_sha256']}.tmd",payload)
     if authored_state_key(project) != key:
         raise ProjectError('Project changed while capturing export inputs')
     return key, files
