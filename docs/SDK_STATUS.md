@@ -2,6 +2,17 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Saved Build audit comparison (2026-10-01):** Build history verifies two saved
+packages and compares exact audit identities/records, including animation frame/
+object and detailed deltas. Missing records do not imply deletion or runtime values.
+Different retail sources, ambiguous identities, corruption and stale context reject.
+Fifteen focused retail-enabled Python checks, all 25 Node files and 26 syntax checks
+passed. Browser compared one changed Town01 record with eight identical records,
+blocked identical IDs, rejected/restored corrupt bytes, and preserved all authored/
+saved metadata with zero errors. Corrected spacing/status labels; final screenshot
+inspected. No game launched. Postdates integrated 498. See
+[Build comparison](legaia-build-comparison.md).
+
 **Integrated SDK checkpoint after Build-history correction (2026-10-01):**
 Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
 exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.

@@ -8,6 +8,17 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Saved Build audit comparison (2026-10-01):** Build history now verifies and
+compares two saved package audits by stable record identity, preserving explicit
+missing/changed records and separate integrity/input/gameplay status. Fifteen
+retail-enabled Python checks, all 25 Node files and 26 syntax checks passed.
+Town01 browser comparison verified actor0011 X2944→3008 as one differing record,
+eight unchanged records, same-ID dispatch guard, corrupt archive rejection and
+restored success. Authored/persisted data unchanged, zero page errors, no game
+launched. Final screenshot inspected after spacing/status fixes. Postdates the
+integrated 498-test result; full SDK/runtime acceptance remains open. See
+[Build comparison](legaia-build-comparison.md).
+
 **Integrated SDK checkpoint after Build-history correction (2026-10-01):**
 Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
 exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.

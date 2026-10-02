@@ -862,6 +862,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         result=verify_build(self.server.project,body['id'])
                     self._json(200,result)
                     return
+                if route == '/api/builds/compare':
+                    if set(body)!={'left_id','right_id'}:raise ProjectError('Build comparison requires two saved identities only')
+                    from .build_compare import compare_builds
+                    self._json(200,compare_builds(self.server.project,body['left_id'],body['right_id']))
+                    return
                 if route == '/api/script-operand-bundle-review':
                     if set(body)!={'content'}:raise ProjectError('Operand bundle review requires file only')
                     from .script_operand_bundle import review

@@ -2,6 +2,15 @@
 
 Current scene-editor status (2026-10-01):
 
+**Saved Build audit comparison (2026-10-01):** Two verified packages with matching
+recorded disc identity can be compared by stable audit record/frame/object identity.
+Exact records, including detailed deltas, determine differences; absence remains
+explicit audit absence. Fifteen retail-enabled Python checks, 25 Node files and
+26 syntax checks passed. Browser verified one difference/eight identical records,
+same-ID guard, corruption rejection/recovery, no authored mutation/errors and
+readable final view after spacing/status corrections. Postdates integrated 498;
+source-disc integrity and gameplay are not asserted. See [Guide](legaia-build-comparison.md).
+
 **Integrated SDK checkpoint after Build-history correction (2026-10-01):**
 Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
 exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.

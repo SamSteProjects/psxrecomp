@@ -7,6 +7,17 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+Post-checkpoint feature: saved Build comparison has 15 focused retail-enabled
+Python checks, 25 Node files and 26 syntax checks passing. Coverage includes
+different sources, ambiguous identities, exact record/detail/frame identity,
+same-ID rejection, source/receipt drift, metadata bounds, real baseline/authored
+package comparison and corrupted archive rejection. Retail browser verifies
+one difference/eight identical records with no authoring or persistence changes,
+same-ID client guard, malformed API rejection and corrupt-file recovery. Final
+screenshot inspected after spacing/status fixes. This postdates integrated 498;
+future acceptance should include larger mixed-scene audits and pending-request
+context changes. See [Build comparison](legaia-build-comparison.md).
+
 **Integrated SDK checkpoint after Build-history correction (2026-10-01):**
 Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
 exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.
