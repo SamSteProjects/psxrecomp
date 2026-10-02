@@ -2,6 +2,25 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Source-bound model GLB editing (2026-10-02):** Imported models now support
+Export current model + binding → external mesh edit → Review → Inspect proposed
+model → Apply → Undo/Redo → Save/Open → normal Build. Explicit source vertex
+and corner attributes retain identities across Blender splits and quad
+triangulation. This imports existing positions and UV bytes; effective RGB,
+normals, face references, material words, images and opaque bytes are preserved.
+Topology allocation and arbitrary mesh/material replacement remain pending.
+
+Validation: 14 focused Python tests, the Node workflow suite, both frontend
+syntax checks and 12 integrated browser checks passed. Actual Blender 5.2.2
+round-tripped a fresh SDK export exactly; its edit changed only vertex 27 X and
+primitive 50/corner 2 U of Dolk2 model 0133. The saved browser Build independently
+reproduces those two fields and unchanged neighboring decoded bytes within the
+118,461-byte compressed source span. Review/preview are read only; stale/no-op
+Apply guards, history, persistence and 540px layout passed. Page/HTTP errors and
+game-launch requests were zero. Gameplay appearance remains deferred.
+See [workflow and limits](legaia-model-glb.md); private evidence is under
+`local-output/sdk-20260909/model-glb-20261002/`.
+
 **Imported project Asset Database (2026-10-02):** The primary asset browser now
 offers explicit project discovery, source-scene filtering, searches across all
 retained memberships, and pages of 128 rows. Shared IDs retain complete per-scene

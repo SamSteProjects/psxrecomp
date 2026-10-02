@@ -2,6 +2,19 @@
 
 Current scene-editor status (2026-10-02):
 
+**Source-bound model GLB editing:** FUNCTIONAL / EXISTING LAYOUT. Export current
+unposed model + binding, edit positions/UVs externally, review exact source and
+current changes, inspect the proposed model, Apply, Undo/Redo, Save/Open and
+normal Build are connected. Explicit vertex/corner IDs qualify split aliases
+and quad triangles; conflicting or missing identities reject. Fresh Blender
+5.2.2 and saved browser Build readback preserve all bytes except two reviewed
+fields. Fourteen Python tests, the Node suite, two frontend syntax checks and
+12 browser checks passed, including 540px layout and stale guards, with zero
+page/HTTP errors or game launches. Effective colors, normals, references,
+materials, images and opaque bytes remain unchanged. Arbitrary topology,
+allocation, skins, hierarchy, RGB/normal GLB import and gameplay parity remain
+pending. See [workflow](legaia-model-glb.md).
+
 **Imported project Asset Database (2026-10-02):** The primary asset browser now
 offers explicit project discovery, source-scene filtering, searches across all
 retained memberships, and pages of 128 rows. Shared IDs retain complete per-scene

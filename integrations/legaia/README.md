@@ -4,6 +4,13 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+Imported models support **Edit model through GLB**: export the current unposed
+model and binding, edit existing positions/UVs in Blender, review exact fields,
+inspect the proposed model and Apply through normal history, Save/Open and Build.
+Keep Merge Vertices off and Custom Attributes on. Colors, normals, topology,
+materials and images remain source owned; arbitrary allocation and gameplay
+acceptance remain pending. See the [model GLB workflow](../../docs/legaia-model-glb.md).
+
 The primary Asset Database can explicitly refresh **Imported project resources**,
 filter a source scene, search every retained membership and page the inventory.
 Shared IDs keep separate source records; Details chooses a membership before

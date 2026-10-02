@@ -123,6 +123,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["runtime_discovery"] = True
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
         state["capabilities"]["model_shape_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["model_glb_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         from .scene_preview import source_key
         try:
@@ -649,7 +650,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
-                 "/animation-glb.js": ("animation-glb.js", "text/javascript")}
+                 "/animation-glb.js": ("animation-glb.js", "text/javascript"),
+                 "/model-glb.js": ("model-glb.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})
             return
@@ -670,7 +672,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import'):
                 request_limit = 44 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
@@ -1233,6 +1235,66 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route == '/api/model-glb-export':
+                    if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Model GLB export requires a model asset only')
+                    from .model_glb import export_model
+                    from .build import _guard_output
+                    from .project import atomic_write
+                    from importer.export import write_encoded_glb
+                    payload, binding, report = export_model(self.server.project, body['asset_id'])
+                    output = self.server.project.root / 'Exports'
+                    _guard_output(output / '.gitignore', self.server.project.root)
+                    result = write_encoded_glb(payload, report, output)
+                    binding_path = Path(result['path']).with_suffix('.binding.json')
+                    _guard_output(binding_path, self.server.project.root)
+                    with binding_path.open('xb') as handle:
+                        handle.write((json.dumps(binding, sort_keys=True, indent=2, allow_nan=False) + '\n').encode('utf-8'))
+                    if not (output / '.gitignore').exists():
+                        atomic_write(output / '.gitignore', b'*\n')
+                    self._json(200, dict(path=result['path'], filename=result['filename'],
+                                         binding=binding, binding_path=str(binding_path),
+                                         binding_filename=binding_path.name, report=report,
+                                         content_base64=base64.b64encode(payload).decode('ascii')))
+                    return
+                if route in ('/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import'):
+                    expected = {'asset_id', 'content_base64', 'binding'}
+                    if route == '/api/model-glb-import':
+                        expected.add('review_key')
+                    if (set(body) != expected or not isinstance(body['asset_id'], str) or
+                            not isinstance(body['binding'], dict) or
+                            len(json.dumps(body['binding'], allow_nan=False).encode('utf-8')) > 128 * 1024):
+                        raise ProjectError('Model GLB requires a model asset, bounded binding and GLB bytes')
+                    encoded = body['content_base64']
+                    if not isinstance(encoded, str) or len(encoded) > 44739244:
+                        raise ProjectError('Model GLB exceeds 32 MiB')
+                    try:
+                        payload = base64.b64decode(encoded, validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Model GLB requires valid base64') from exc
+                    if not 1 <= len(payload) <= 32 * 1024 * 1024:
+                        raise ProjectError('Model GLB must contain at most 32 MiB')
+                    from .model_glb import apply_import, pose_import, preview_import
+                    if route == '/api/model-glb-preview':
+                        self._json(200, preview_import(self.server.project, body['asset_id'], payload, body['binding']))
+                    elif route == '/api/model-glb-pose-preview':
+                        from importer.assets import decode_tmd
+                        candidate, report = pose_import(self.server.project, body['asset_id'], payload, body['binding'])
+                        project = self.server.project
+                        asset = next(item for item in project.imports[project.active_scene]['assets']['models']
+                                     if item['semantic_id'] == body['asset_id'])
+                        preview = decode_tmd(candidate)
+                        preview.update(semantic_id=body['asset_id'], source_record=asset['source_record'],
+                                       representation='model-glb-proposal', model_glb_proposal=True)
+                        preview = self.server.model_preview(asset, prepared=preview)
+                        from .scene_preview import source_key
+                        if source_key(project) != report['project_source_key']:
+                            raise ProjectError('Project changed while preparing the proposed model; review again')
+                        self._json(200, dict(preview=preview, report=report))
+                    else:
+                        report = apply_import(self.server.project, body['asset_id'], payload, body['binding'], body['review_key'])
+                        self._json(200, dict(self.server.state(), model_glb_report=report))
                     return
                 if route == '/api/animation-glb-export':
                     if set(body) != {'entity_id', 'clip_fps'} or not isinstance(body['entity_id'], str):

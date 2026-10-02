@@ -8,6 +8,22 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Source-bound model GLB editing (2026-10-02):** A connected model Export + binding,
+external position/UV edit, Review, proposed-model inspection and explicit Apply
+workflow now uses ordinary model commands, Undo/Redo, Save/Open and normal Build.
+Source vertex/corner attributes qualify aliases and quad triangulation. Effective
+colors, normals, face references, materials, images and opaque bytes survive.
+Arbitrary topology/material replacement remains outside the supported layout.
+
+Fourteen focused Python tests, the Node suite, both frontend syntax checks and
+12 browser checks passed. A fresh SDK export through Blender 5.2.2 preserves
+every source byte; its edit changes exactly two fields in Dolk2 model 0133. The
+saved browser package reproduces the candidate and preserves decoded neighbors
+and compressed capacity. Review/preview, stale/no-op gates, history, persistence
+and 540px layout passed, with zero page/HTTP errors or game launches.
+[Workflow and limitations](legaia-model-glb.md) include private evidence.
+Gameplay acceptance remains deferred; the full SDK objective remains unfinished.
+
 **Imported project Asset Database (2026-10-02):** The primary asset browser now
 offers explicit project discovery, source-scene filtering, searches across all
 retained memberships, and pages of 128 rows. Shared IDs retain complete per-scene

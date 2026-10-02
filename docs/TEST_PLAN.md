@@ -7,6 +7,22 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Source-bound model GLB editing:** 14 focused Python cases pass with the private
+disc and no skips: 24 packet families, exact alias/quad byte masks, indexed and
+interleaved accessors, topology/bounds rejection, fresh binding, read-only review
+and proposal, effective model composition, Apply/history/persistence and normal
+Build readback. The Node suite covers immutable Files, stale/closed/late replies,
+no-op and preview Return. Both frontend syntax checks and 12 browser checks pass,
+including 540px layout and normal model rendering, with zero page/HTTP errors or
+game launches. Actual Blender 5.2.2 receives a fresh SDK GLB and preserves source
+bytes on re-export; its edit changes exactly one vertex X and one quad UV U.
+Merge Vertices or lost attributes reject. RGB and normals are preserved.
+The saved Dolk2 browser Build reconstructs the exact candidate within its source
+capacity with unchanged decoded neighbors. Private proof:
+`local-output/sdk-20260909/model-glb-20261002/parent/final-evidence.json`.
+Later gameplay acceptance must check matching model/UV appearance and shared
+instances. No immediate game verification is required. See [workflow](legaia-model-glb.md).
+
 **Imported project Asset Database (2026-10-02):** The primary browser uses
 source-qualified project inventories with retained shared memberships, scene
 filters, field search, pagination and canonical cross-scene inspectors. The
