@@ -348,6 +348,7 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
+    input_key = authored_state_key(project)
     if getattr(project, 'actor_drafts', {}):
         raise BuildError('New NPC drafts are not yet connected to playable Build; remove drafts before building existing overrides')
     if not project.disc_path:
@@ -821,7 +822,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                        "live_runtime": "not_run"},
     }
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
-    build_id = _hash(audit_bytes)[:16]
+    # Distinguish identical serialized bytes built from different input snapshots.
+    build_id = _hash(audit_bytes + input_key.encode('ascii'))[:16]
     package_id = "legaia.sdk." + _hash((project.name + disc_hash).encode("utf-8"))[:12]
     version = "0.1.0-" + build_id
     destination = Path(output_dir).absolute() if output_dir is not None else project.root / "Builds" / build_id
@@ -921,6 +923,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                     audit_sha256=_hash(audit_bytes),manifest_sha256=_hash(manifest),overlay_count=len(overlays),
                     source_disc_sha256=disc_hash,package_directory=str(package_dir),
                     archive_packing='not_run',runtime_status='not_run',output_written=False)
+    if authored_state_key(project) != input_key:
+        raise BuildError('Project inputs changed during Build')
     _write_exact(destination / ".gitignore", b"*\n", boundary)
     for overlay in overlays:
         _write_exact(package_dir / overlay["file"], overlay["payload"], boundary)
@@ -945,9 +949,20 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         for overlay in overlays:
             if _hash(archive_file.read(overlay["file"])) != overlay["sha256"]:
                 raise BuildError("Packaged overlay payload hash mismatch")
+    if authored_state_key(project) != input_key:
+        raise BuildError('Project inputs changed during Build; no completion receipt saved')
+    receipt = {'schema_version':'legaia.build-receipt.v1', 'authored_state_key':input_key,
+               'audit_sha256':_hash(audit_bytes), 'manifest_sha256':_hash(manifest),
+               'archive_file':archive_path.name, 'archive_sha256':_hash(archive_bytes),
+               'archive_bytes':len(archive_bytes), 'package_id':package_id, 'version':version,
+               'source_disc_sha256':disc_hash, 'build_kind':build_kind,
+               'runtime_status':'package_built_not_launched', 'feature_id':'placements'}
+    _write_exact(destination / 'build-receipt.json',
+                 (canonical_json(receipt, pretty=True)+'\n').encode('utf-8'), boundary)
     return {
         "path": str(archive_path), "audit": str(destination / "build-audit.json"), "build_kind": build_kind,
-        "authored_state_key": authored_state_key(project), "report": build_report(audit),
+        "authored_state_key": input_key, "report": build_report(audit),
+        "receipt": str(destination / 'build-receipt.json'),
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
         "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
         **({"changed_fields_unit": "authored fields/runs/textures"} if has_texture else

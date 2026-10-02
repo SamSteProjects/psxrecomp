@@ -8,6 +8,18 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Saved normal Build history (2026-10-01):** Build completion receipts preserve
+package provenance after editor/server restart. History compares recorded input
+identity separately from an explicit file verification operation covering audit,
+manifest, source payload files and exact ZIP members. Older folders without
+receipts remain unavailable; no provenance or acceptance is invented. Nineteen
+retail-enabled Python checks, all24 Node files and26 syntax checks passed. A
+fresh-server browser reopened a real nine-change package report with unchanged
+authored/persisted metadata, verified package files, explicit older-build status
+and rejected malformed requests. Zero page errors; corrected column clipping and
+inspected the final screenshot. No game launched. Postdates integrated475; full
+SDK/runtime acceptance remains incomplete. See [Build history](legaia-build-history.md).
+
 Current buildout includes menu-label and source-bound text-file authoring, saved runtime node
 review, indexed texture rectangle copying and model object
 translation/rotation/scaling, instruction-to-operand navigation, flag/wait editing,

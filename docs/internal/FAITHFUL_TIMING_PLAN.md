@@ -213,6 +213,8 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-10-01 (SDK saved normal Build history):** Previous status-only turn checked account limits and active goal, no implementation progress. This turn adds deterministic completion receipts, authored-input/audit-derived output identity, bounded project-local Build discovery and independent audit/manifest/payload/archive/ZIP verification. Older folders without receipts remain explicit unavailable states. Editor saved reports survive fresh-server reopen and reject stale/closed project context. Nineteen retail-enabled focused Python checks, all24 Node files and26 syntax checks passed. Browser reopened real nine-change/24894-byte package, verified saved files, labeled legacy Build and rejected malformed APIs without authoring or Run requests, persisted metadata/authors unchanged, zero page errors. Initial screenshot clipped report columns; widened dialog/scrolling and repeated browser checks, final screenshot inspected. Private evidence build-history-20261001/. Updated status/report/matrix/guide/test plan. No game launched or controlled; broad goal remains active, integrated475 predates this feature, gameplay deferred.
+
 ### 2026-10-01 — Read-only normal Build serialization review
 
 Added detached preflight using normal serializers, overlap/span/provenance checks,

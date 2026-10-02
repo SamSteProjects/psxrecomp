@@ -2,6 +2,18 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Saved normal Build history (2026-10-01):** Successful Builds retain deterministic
+completion receipts; Build history reopens reports after server restart. Input
+match, package integrity and gameplay status remain separate. Verify saved files
+checks receipt/audit/manifest, package payloads and exact ZIP contents. Older
+folders without receipts show unavailable input match/integrity. Bounded scans
+and path guards reject invalid coverage or redirected files. Nineteen focused
+retail-enabled Python checks, all24 Node files and26 syntax checks passed.
+Fresh-server browser reopened a real nine-change report and verified the package;
+legacy labels/malformed request rejection passed, authored/persisted data unchanged,
+zero page errors. Corrected clipped report columns and inspected the final view.
+Postdates integrated475; no game launched. See [Build history](legaia-build-history.md).
+
 
 **Read-only normal Build review (2026-10-01):** Review Build reuses the actual
 serializer and manifest/file guards on detached authored inputs without creating

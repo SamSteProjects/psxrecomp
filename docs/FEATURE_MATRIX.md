@@ -2,6 +2,16 @@
 
 Current scene-editor status (2026-10-01):
 
+**Saved normal Build history (2026-10-01):** Deterministic completion receipts,
+restart-persistent report discovery, explicit legacy/invalid statuses and bounded
+project-local scans. Verification binds audit/manifest/payloads/archive and exact
+ZIP members; input match and gameplay acceptance remain distinct. Nineteen
+retail-enabled Python checks,24 Node files and26 syntax checks passed. Fresh-server
+browser reopened nine audited changes, verified files and rejected malformed
+requests without changing authored/persisted data. Final screenshot inspected
+after widening the clipped dialog. No gameplay/disc recheck or saved-input copy
+is claimed. Postdates integrated475. See [Build history](legaia-build-history.md).
+
 **Read-only normal Build review (2026-10-01):** Review Build reuses the actual
 serializer and manifest/file guards on detached authored inputs without creating
 outputs. Retained NPC drafts remain explicit blockers; existing overrides are

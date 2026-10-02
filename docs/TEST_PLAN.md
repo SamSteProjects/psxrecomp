@@ -246,6 +246,23 @@ are byte-identical to baseline. Browser acceptance covers the generated report,
 reopening it, stale status after an edit and restored freshness after undo.
 These checks establish build reporting, not gameplay execution.
 
+Saved normal Build history (2026-10-01): 19 focused retail-enabled Python
+checks include actual repeated packaging/receipt determinism, saved-project
+reopen, authored-input drift distinct from package integrity, read-only file
+verification, audit/manifest/payload/archive tampering, duplicate ZIP members,
+missing/invalid receipts, reparse/path rejection and bounded immediate scans.
+The focused set also retains normal Build review and raw/compressed animation
+packaging regressions. All24 Node files and26 syntax checks passed; strict browser
+contracts reject false gameplay/disc-integrity claims and malformed identities.
+Fresh-server browser acceptance reopens a saved real nine-change report, verifies
+package files, displays older-build receipt absence and rejects malformed routes.
+No authoring/Build/Run request, persisted metadata change or page error occurred.
+The corrected wide report screenshot was inspected. These checks postdate the
+integrated475 checkpoint. Future acceptance should cover larger mixed-scene
+histories, concurrent external filesystem changes and deliberate project context
+switches during pending history requests; no atomic filesystem snapshot or
+gameplay acceptance is implied. See [Build history](legaia-build-history.md).
+
 Texture runtime acceptance (2026-09-10): one cold authored TIM run and one cold
 zero-overlay baseline visibly show replacement and removal of the magenta
 ground palette. Both processes exit zero without restore or RAM writes.

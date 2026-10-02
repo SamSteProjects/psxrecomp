@@ -1,4 +1,5 @@
 import {mountBuildReview} from '/build-review.js';
+import {mountBuildHistory} from '/build-history.js';
 import {openAssetReferences} from '/asset-references.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {interpolateAnimationRange} from '/animation-range.js';
@@ -371,6 +372,7 @@ const buildButton=document.createElement('button');buildButton.id='build-button'
 mountBuildReview({after:buildButton,getState:()=>state,busy:()=>busy,setBusy,onBuild:async review_key=>{if(await api('/api/build',{review_key}))showBuildReport();},onError:error=>notify(error.message,true)});
 const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';buildDialog.id='build-report-dialog';document.body.append(buildDialog);
 const buildReportButton=document.createElement('button');buildReportButton.id='build-report-button';buildReportButton.textContent='Build report';buildReportButton.title='Review the latest build';buildReportButton.hidden=true;buildButton.after(buildReportButton);buildReportButton.onclick=()=>showBuildReport();
+mountBuildHistory({after:buildReportButton,getState:()=>state,busy:()=>busy,setBusy});
 const exportProjectButton=document.createElement('button');exportProjectButton.id='export-project-button';exportProjectButton.textContent='Export disc';exportProjectButton.title='Export supported authored changes as a separate experimental disc';buildButton.after(exportProjectButton);exportProjectButton.onclick=()=>exportNpcDrafts();
 const exportHistoryButton=document.createElement('button');exportHistoryButton.id='export-history-button';exportHistoryButton.textContent='Export history';buildReportButton.after(exportHistoryButton);
 exportHistoryButton.onclick=async()=>{

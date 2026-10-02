@@ -535,6 +535,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
                  "/build-review.js": ("build-review.js", "text/javascript"),
+                 "/build-history.js": ("build-history.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
@@ -850,6 +851,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Build review takes no fields')
                     from .build_review import review
                     self._json(200,review(self.server.project))
+                    return
+                if route in ('/api/builds','/api/builds/verify'):
+                    from .build_history import list_builds, verify_build
+                    if route == '/api/builds':
+                        if body:raise ProjectError('Build history takes no fields')
+                        result=list_builds(self.server.project)
+                    else:
+                        if set(body)!={'id'}:raise ProjectError('Build verification requires saved Build identity only')
+                        result=verify_build(self.server.project,body['id'])
+                    self._json(200,result)
                     return
                 if route == '/api/script-operand-bundle-review':
                     if set(body)!={'content'}:raise ProjectError('Operand bundle review requires file only')
