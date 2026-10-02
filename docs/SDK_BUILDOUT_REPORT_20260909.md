@@ -15,12 +15,25 @@ and isolated/shared model and texture proposals in the assembled scene. The date
 filename is retained for existing links. This section supersedes the historical milestone inventory and
 old test counts below; those sections record what was proven at that time.
 
+**Imported material source navigation (2026-10-01):** Model Dependencies and
+texture Referenced by now include successful static UV/texture-page/CLUT address
+matches with source hashes and material indexes. Missing/conflicting/unsupported
+materials remain explicit diagnostics; shared and boot sources outside the active
+navigable catalog remain disabled. Metadata has no pixel payloads. Relationships
+describe candidate word providers, not unique upload ownership or runtime material
+use; authored replacements remain separate. Twenty-three retail-enabled Python
+tests, all22 Node files and24 syntax checks passed. Retail browser showed three
+Dolk2 material groups linking to TIM69/0/19, opened its provenance and verified
+the reverse texture Referenced by view, with zero
+errors/authoring commands and unchanged authored content/history. Screenshot
+inspected. Postdates integrated475; no game launched. See [Material references](legaia-material-references.md).
+
 **Asset reference navigation (2026-10-01):** Asset Details exposes Dependencies
 and Referenced by for verified imported membership/model assignments and active
 script, dialogue, animation, field-table and landmark source relationships.
 Authored draft donors and effective model assignments retain separate evidence
 layers; unavailable destination scenes cannot be navigated. Runtime use,
-script model pools, trigger dispatch and texture/material dependencies remain
+script model pools, trigger dispatch and effective animation donor bindings remain
 unresolved. Fourteen focused Python checks, all22 Node test files and24 module
 syntax checks passed. Browser verified actor/script and cross-scene navigation, stale-view rejection,
 closed-request withdrawal, unchanged authored content/history and zero errors

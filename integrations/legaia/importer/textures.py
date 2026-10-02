@@ -329,7 +329,7 @@ def load_asset_texture_catalog(disc: Any, asset: dict[str, Any],
 
 
 def associate_material(catalog: TextureCatalog, material: dict[str, Any],
-                       uv_bounds: tuple[int, int, int, int] = (0, 0, 255, 255)) -> dict[str, Any]:
+                       uv_bounds: tuple[int, int, int, int] = (0, 0, 255, 255), *, include_pixels: bool = True) -> dict[str, Any]:
     """Resolve an inclusive UV crop against unique catalog word values.
 
     Output status is address_match, missing, ambiguous or unsupported. Only
@@ -397,12 +397,14 @@ def associate_material(catalog: TextureCatalog, material: dict[str, Any],
                 if bpp < 16:
                     index = (raw >> ((u % (16 // bpp)) * bpp)) & ((1 << bpp) - 1)
                     raw = word(cx + index, cy)
-                rgba.extend(_rgba(raw))
-                stp.append(raw >> 15)
+                if include_pixels:
+                    rgba.extend(_rgba(raw))
+                    stp.append(raw >> 15)
     except LookupError as exc:
         return dict(result, status="missing", reason=str(exc), source_ids=sorted(used))
     except ValueError as exc:
         return dict(result, status="ambiguous", reason=str(exc), source_ids=sorted(used))
-    return dict(result, status="address_match", width=u1-u0+1, height=v1-v0+1,
-                uv_origin=[u0, v0], rgba=bytes(rgba), stp=bytes(stp),
-                source_ids=sorted(used), semi_transparent=bool(material.get("semi_transparent")))
+    result = dict(result, status="address_match", width=u1-u0+1, height=v1-v0+1,
+                  uv_origin=[u0, v0], source_ids=sorted(used), semi_transparent=bool(material.get("semi_transparent")))
+    if include_pixels:result.update(rgba=bytes(rgba),stp=bytes(stp))
+    return result

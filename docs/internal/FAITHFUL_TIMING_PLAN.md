@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Imported model material source references
+
+Added bounded metadata-only material address discovery using the existing TIM/
+field-party/boot word resolver. Successful static matches add model-to-texture
+candidate edges with source hashes, material indexes and raw page/CLUT/UV evidence.
+Missing/conflicting/unsupported results remain diagnostics; noncatalog sources
+are unavailable for navigation. Imported and authored resource use stay distinct;
+no runtime upload ownership or residency claim. 23 retail-enabled Python tests,
+22 Node files and24 syntax checks passed. Retail browser proved Dolk2 model0133
+material groups1/2/3 link to TIM69/0/19 and navigate to its provenance; zero page
+errors/authoring commands, authored/history unchanged. Screenshot inspected.
+First observation expired before the successful server response; server was
+retained and a longer observation succeeded. Reverse texture Referenced by
+view also passed. Owned browser/server closed; private evidence kept ignored. No game launched; full SDK goal remains active/incomplete. Postdates475.
+
+
 ### 2026-10-01 — SDK asset dependencies and referenced-by navigation
 
 Added source-verified bounded reference neighborhoods with imported/effective/

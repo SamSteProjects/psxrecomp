@@ -32,6 +32,10 @@ class AssetReferences(unittest.TestCase):
   with self.assertRaises(ProjectError):assemble(self.p,bad,self.actor)
   key=source_key(self.p);self.p.overrides[self.actor]={'Transform':{'position':{'x':200}}};self.assertNotEqual(key,source_key(self.p))
   with self.assertRaises(ProjectError):inspect(self.p,[])
+ def test_material_edges_preserve_static_evidence_and_unresolved_results(self):
+  material=dict(material_index=0,tpage=128,clut=0,uv_bounds=[0,0,1,1],evidence='static_vram_addresses_not_runtime_residency',status='address_match',source_ids=['texture://outside'])
+  materials=dict(models=[dict(model_id=self.model,source_sha256='b'*64,materials=[material,dict(material_index=1,status='ambiguous',source_ids=['texture://candidate'])])],unresolved_reference_count=1,limitations=['Static only'])
+  result=assemble(self.p,self.catalog,self.model,materials);edges=[e for e in result['outgoing'] if e['kind']=='static_material_texture_source'];self.assertEqual(len(edges),1);self.assertEqual(edges[0]['material_evidence']['model_source_sha256'],'b'*64);self.assertFalse(next(n for n in result['nodes'] if n['id']=='texture://outside')['available']);self.assertNotIn('texture://candidate',{n['id'] for n in result['nodes']});self.assertEqual(result['coverage']['unresolved_reference_count'],3)
 
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class RetailAssetReferences(unittest.TestCase):

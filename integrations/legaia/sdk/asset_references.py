@@ -7,7 +7,7 @@ def source_key(project):
                        imports={key:digest(doc) for key,doc in sorted(project.imports.items())},
                        overrides=project.overrides,drafts=project.actor_drafts))
 
-def assemble(project,catalog,identifier):
+def assemble(project,catalog,identifier,materials=None):
     """Adapt explicit imported/derived references; callers verify retail sources first."""
     if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
     nodes={};edges={};unresolved=0
@@ -19,12 +19,13 @@ def assemble(project,catalog,identifier):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
         value['source_import_sha256']=digest(project.imports[scene])
         if layer=='decoded':value['source_catalog_key']=catalog['source_key']
+        if evidence is not None:value['material_evidence']=deepcopy(evidence)
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -75,6 +76,16 @@ def assemble(project,catalog,identifier):
             if name:
                 target='scene://'+name;node(target,'scene',target,name,target in project.imports);edge(identity,target,'landmark_destination_source',scene,'decoded')
             else:unresolved+=1
+    if materials is not None:
+        unresolved+=materials['unresolved_reference_count']
+        for model in materials['models']:
+            for material in model['materials']:
+                if material['status']!='address_match':continue
+                evidence={key:deepcopy(material[key]) for key in ('material_index','tpage','clut','uv_bounds','evidence')}
+                evidence['model_source_sha256']=model['source_sha256']
+                for target in material['source_ids']:
+                    node(target,'texture',scene,available=target in nodes)
+                    edge(model['model_id'],target,'static_material_texture_source',scene,'decoded',evidence=evidence)
     if identifier not in nodes:raise ProjectError('Asset is outside imported project records and the active resource catalog')
     incoming=sorted((e for e in edges.values() if e['target_id']==identifier),key=lambda e:(e['kind'],e['source_id'],e.get('pc',-1)))
     outgoing=sorted((e for e in edges.values() if e['source_id']==identifier),key=lambda e:(e['kind'],e['target_id'],e.get('pc',-1)))
@@ -83,9 +94,10 @@ def assemble(project,catalog,identifier):
     return deepcopy(dict(schema_version='legaia.asset-references.v1',asset_id=identifier,source_key=source_key(project),read_only=True,
                          nodes=[nodes[key] for key in sorted(neighbors)],incoming=incoming,outgoing=outgoing,
                          coverage=dict(verified_scene_ids=sorted(project.imports),resource_scene_id=scene,unresolved_reference_count=unresolved),
+                         material_diagnostics=deepcopy(next((row for row in (materials or {}).get('models',[]) if row['model_id']==identifier),None)),
                          limitations=['Imported scene/model membership and initial assignments are project-wide. Derived resources cover the active scene only.',
-                                      'Script model pools, field trigger dispatch, texture/material dependencies and effective animation donor bindings are not resolved here.',
-                                      'Edges describe recorded references, not runtime residency, successful scheduling or gameplay reachability.',*catalog.get('limitations',[])]))
+                                      'Script model pools, field trigger dispatch and effective animation donor bindings are not resolved here.',
+                                      'Edges describe recorded references, not runtime residency, successful scheduling or gameplay reachability.',*(materials or {}).get('limitations',['Material source relationships were not requested.']),*catalog.get('limitations',[])]))
 
 def inspect(project,identifier):
     from importer.pipeline import _disc_context
@@ -95,6 +107,7 @@ def inspect(project,identifier):
     key=source_key(project)
     with _disc_context(project.disc_path):
         for document in project.imports.values():_verify(project,document)
-        catalog=refresh_resource_catalog(project);result=assemble(project,catalog,identifier)
+        from .material_references import discover
+        catalog=refresh_resource_catalog(project);materials=discover(project);result=assemble(project,catalog,identifier,materials)
     if key!=source_key(project):raise ProjectError('Asset reference source changed during discovery')
     return result
