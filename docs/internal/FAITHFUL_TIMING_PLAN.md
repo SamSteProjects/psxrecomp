@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Effective donor animation references and material metadata reuse
+
+Added exact verified donor/model-to-clip effective links, separate authored draft
+retail-donor links and authored appearance donor navigation. Imported relations
+retain their source facts; no count-only clip compatibility or runtime claim.
+Asset Database holds two bounded copied imported material catalogs; every query
+verifies retail sources before reuse. Source drift/oversize prevents installation;
+cache excluded from saves. Twenty retail-enabled Python checks, 22 Node files
+and24 syntax checks passed, including actual reuse with fresh verification.
+Browser probe initially compared changing catalog review keys as imported facts;
+fixture restored, comparison corrected and workflow rerun passed: imported clip
+retained, effective donor clip and authored draft clip recorded, one authoring
+command followed by Undo, actor/authored state restored, saved metadata unchanged,
+zero page errors. Screenshot inspected. Owned browser/server closed. No game
+launched. Full SDK/runtime goal remains active/incomplete; gameplay deferred.
+
+
 ### 2026-10-01 — Imported model material source references
 
 Added bounded metadata-only material address discovery using the existing TIM/

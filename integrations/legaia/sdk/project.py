@@ -58,6 +58,7 @@ class AssetDatabase:
     def __init__(self) -> None:
         self.records: dict[str, dict] = {}
         self.resource_catalogs: dict[str, dict] = {}
+        self.material_reference_catalogs: dict[str, dict] = {}
 
     def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str]) -> dict:
         """Replace a verified derived catalog without mutating imported project facts."""

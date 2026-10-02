@@ -1,5 +1,6 @@
 const kinds=new Set(['scene','actor','model','texture','animation','script','dialogue','collision','trigger','region','worldmap']);
 const relations=new Set(['scene_actor','scene_model_catalog','draft_donor','initial_model','effective_initial_model','actor_script_record','encoded_scene_change','script_dialogue_segment','initial_animation_binding','recorded_model_clip_binding','field_map_table_source','landmark_destination_source','static_material_texture_source']);
+relations.add('effective_initial_animation_binding');relations.add('draft_initial_animation_binding');relations.add('appearance_donor');
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 const identity=value=>typeof value==='string'&&value.length>0&&value.length<=1024;
 export function decodeAssetReferences(value,assetId,sourceKey){
@@ -12,6 +13,9 @@ export function decodeAssetReferences(value,assetId,sourceKey){
     edges.add(edge.id);
     if(edge.kind==='static_material_texture_source'){
       const e=edge.material_evidence;if(edge.layer!=='decoded'||nodes.get(edge.source_id).kind!=='model'||nodes.get(edge.target_id).kind!=='texture'||!e||!Number.isSafeInteger(e.material_index)||e.material_index<0||e.material_index>=32||!Number.isSafeInteger(e.tpage)||e.tpage<0||e.tpage>511||!Number.isSafeInteger(e.clut)||e.clut<0||e.clut>32767||!hash(e.model_source_sha256)||e.evidence!=='static_vram_addresses_not_runtime_residency'||!Array.isArray(e.uv_bounds)||e.uv_bounds.length!==4||e.uv_bounds.some(v=>!Number.isSafeInteger(v)||v<0||v>255)||e.uv_bounds[0]>e.uv_bounds[2]||e.uv_bounds[1]>e.uv_bounds[3])throw new Error('Invalid material address evidence.');
+    }
+    if(['effective_initial_animation_binding','draft_initial_animation_binding'].includes(edge.kind)){
+      const e=edge.effective_animation_evidence;if(edge.layer!==(edge.kind==='draft_initial_animation_binding'?'authored':'effective')||nodes.get(edge.source_id).kind!=='actor'||nodes.get(edge.target_id).kind!=='animation'||!hash(edge.source_catalog_key)||!e||!identity(e.donor_entity_id)||!identity(e.model_id)||!Number.isSafeInteger(e.initial_animation_id)||e.initial_animation_id<1||e.initial_animation_id>255)throw new Error('Invalid effective animation evidence.');
     }
   }
   const coverage=value.coverage;if(!coverage||!Array.isArray(coverage.verified_scene_ids)||coverage.verified_scene_ids.length<1||coverage.verified_scene_ids.length>64||coverage.verified_scene_ids.some(id=>!identity(id))||new Set(coverage.verified_scene_ids).size!==coverage.verified_scene_ids.length||!coverage.verified_scene_ids.includes(coverage.resource_scene_id)||!Number.isSafeInteger(coverage.unresolved_reference_count)||coverage.unresolved_reference_count<0||!Array.isArray(value.limitations)||value.limitations.length>256||value.limitations.some(item=>typeof item!=='string'||item.length>8192))throw new Error('Invalid asset reference coverage.');

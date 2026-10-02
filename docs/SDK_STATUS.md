@@ -3,6 +3,22 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Effective animation references and imported material reuse (2026-10-01):**
+Actor reference views now distinguish initial retail clip bindings, effective
+bindings from exact verified appearance donors, and authored draft donor clips.
+Appearance donor relationships also navigate to imported actors. Missing bindings
+remain unknown; equal counts do not create new combinations. Asset Database
+material metadata is bounded to two eight-MiB entries, keyed by imported source,
+scene, path and decoder version. Queries still verify retail sources before reuse
+and assemble current authored relationships separately. Cache data is copied,
+never persisted, and contains no pixels. Twenty focused retail-enabled Python
+checks, all22 Node files and24 syntax checks passed; repeated retail query reused
+material metadata while still verifying source. Browser proved separate retail/
+effective links after one donor assignment, authored draft clips, current review
+keys and Undo restoration; persisted metadata unchanged, zero page errors.
+Screenshot inspected. Postdates integrated475; no game launched. See
+[Effective animation relationships](legaia-effective-animation-references.md).
+
 **Imported material source navigation (2026-10-01):** Model Dependencies and
 texture Referenced by now include successful static UV/texture-page/CLUT address
 matches with source hashes and material indexes. Missing/conflicting/unsupported
@@ -21,7 +37,7 @@ and Referenced by for verified imported membership/model assignments and active
 script, dialogue, animation, field-table and landmark source relationships.
 Authored draft donors and effective model assignments retain separate evidence
 layers; unavailable destination scenes cannot be navigated. Runtime use,
-script model pools, trigger dispatch and effective animation donor bindings remain
+script model pools, trigger dispatch and live animation state remain
 unresolved. Fourteen focused Python checks, all22 Node test files and24 module
 syntax checks passed. Browser verified actor/script and cross-scene navigation, stale-view rejection,
 closed-request withdrawal, unchanged authored content/history and zero errors

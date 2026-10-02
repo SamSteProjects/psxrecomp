@@ -19,13 +19,16 @@ def assemble(project,catalog,identifier,materials=None):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
         value['source_import_sha256']=digest(project.imports[scene])
         if layer=='decoded':value['source_catalog_key']=catalog['source_key']
         if evidence is not None:value['material_evidence']=deepcopy(evidence)
+        if animation_evidence is not None:
+            value['effective_animation_evidence']=deepcopy(animation_evidence)
+            value['source_catalog_key']=catalog['source_key']
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -36,7 +39,16 @@ def assemble(project,catalog,identifier,materials=None):
             node(model['semantic_id'],'model',scene,model.get('name') or 'Model '+model['semantic_id'].rsplit('/',1)[-1]);edge(scene,model['semantic_id'],'scene_model_catalog',scene)
     for identifier_draft,draft in sorted(project.actor_drafts.items()):
         node(identifier_draft,'actor',draft['scene_id'],draft['name']);edge(identifier_draft,draft['donor_entity_id'],'draft_donor',draft['scene_id'],'authored')
-    for ref in project.model_references():
+    for actor_id,components in sorted(project.overrides.items()):
+        donor=components.get('ActorAppearance',{}).get('donor_entity_id')
+        if donor and donor!=actor_id:
+            if actor_id in nodes and donor in nodes:edge(actor_id,donor,'appearance_donor',nodes[actor_id]['scene_id'],'authored')
+            else:unresolved+=1
+    model_references=project.model_references()
+    effective_bindings={}
+    for ref in model_references:
+        if ref['effective']:
+            effective_bindings.setdefault((ref['scene_id'],ref['effective_donor_id'],ref['target_id']),[]).append(ref)
         if ref['target_id'] not in nodes:unresolved+=1;continue
         if ref['imported']:edge(ref['source_id'],ref['target_id'],'initial_model',ref['scene_id'])
         if ref['effective']:edge(ref['source_id'],ref['target_id'],'effective_initial_model',ref['scene_id'],'effective')
@@ -66,6 +78,10 @@ def assemble(project,catalog,identifier,materials=None):
                 else:unresolved+=1
                 if model in nodes:edge(identity,model,'recorded_model_clip_binding',scene,'decoded')
                 else:unresolved+=1
+                for ref in effective_bindings.get((scene,actor,model),[]):
+                    draft=ref['kind']=='draft_initial_model_assignment'
+                    edge(ref['source_id'],identity,'draft_initial_animation_binding' if draft else 'effective_initial_animation_binding',scene,'authored' if draft else 'effective',
+                         animation_evidence=dict(donor_entity_id=actor,model_id=model,initial_animation_id=binding['initial_animation_id']))
         elif kind in ('trigger','region'):
             target=record.get('collision_id')
             if target in nodes:edge(identity,target,'field_map_table_source',scene,'decoded')
@@ -96,7 +112,7 @@ def assemble(project,catalog,identifier,materials=None):
                          coverage=dict(verified_scene_ids=sorted(project.imports),resource_scene_id=scene,unresolved_reference_count=unresolved),
                          material_diagnostics=deepcopy(next((row for row in (materials or {}).get('models',[]) if row['model_id']==identifier),None)),
                          limitations=['Imported scene/model membership and initial assignments are project-wide. Derived resources cover the active scene only.',
-                                      'Script model pools, field trigger dispatch and effective animation donor bindings are not resolved here.',
+                                      'Script model pools, field trigger dispatch and live animation state are not resolved here.',
                                       'Edges describe recorded references, not runtime residency, successful scheduling or gameplay reachability.',*(materials or {}).get('limitations',['Material source relationships were not requested.']),*catalog.get('limitations',[])]))
 
 def inspect(project,identifier):
@@ -107,7 +123,7 @@ def inspect(project,identifier):
     key=source_key(project)
     with _disc_context(project.disc_path):
         for document in project.imports.values():_verify(project,document)
-        from .material_references import discover
-        catalog=refresh_resource_catalog(project);materials=discover(project);result=assemble(project,catalog,identifier,materials)
+        from .material_references import verified_catalog
+        catalog=refresh_resource_catalog(project);materials=verified_catalog(project);result=assemble(project,catalog,identifier,materials)
     if key!=source_key(project):raise ProjectError('Asset reference source changed during discovery')
     return result

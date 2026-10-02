@@ -5,6 +5,27 @@ from importer.assets import load_model_source,decode_tmd
 from importer.textures import load_scene_texture_catalog,load_asset_texture_catalog,associate_material
 from .project import ProjectError
 
+def source_key(project):
+    from .project import digest
+    return digest(dict(version='legaia.imported-materials.v1',disc_path=project.disc_path,
+                       scene_id=project.active_scene,document=project.imports[project.active_scene]))
+
+def verified_catalog(project):
+    """Request-scoped verification must precede reuse of this imported-only cache."""
+    from copy import deepcopy
+    from .project import canonical
+    key=source_key(project)
+    cache=project.assets.material_reference_catalogs
+    if key in cache:
+        result=cache.pop(key);cache[key]=result
+        return deepcopy(result)
+    result=discover(project)
+    if key!=source_key(project):raise ProjectError('Imported material source changed during discovery')
+    if len(canonical(result))>8*1024*1024:raise ProjectError('Material reference metadata exceeds8 MiB')
+    while len(cache)>=2:cache.pop(next(iter(cache)))
+    cache[key]=deepcopy(result)
+    return deepcopy(result)
+
 def discover(project):
     document=project.imports[project.active_scene];assets=document['assets'].get('models',[])
     if len(assets)>512:raise ProjectError('Material reference discovery exceeds512 active scene models')

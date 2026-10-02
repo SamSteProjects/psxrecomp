@@ -21,7 +21,8 @@ These edges do not prove runtime residency, scheduling, actor spawning or
 gameplay reachability. Script model-pool selectors and trigger dispatch remain
 unresolved. Imported static material source candidates are now supplied through
 the [material reference service](legaia-material-references.md); runtime material
-use and effective animation donor bindings remain unresolved. The unresolved count describes the assembled graph, not just
+use remains unresolved. [Effective initial donor animation relationships](legaia-effective-animation-references.md)
+now retain their own evidence layer. The unresolved count describes the assembled graph, not just
 the selected neighborhood. Missing edges therefore do not prove absence of use.
 
 Queries change only derived caches. They do not issue authoring commands, mutate
