@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-02 — Reusable initial-animation actor presets
+
+Versioned v2 actor presets capture exact authored initial-clip witnesses, alone
+or with authored position/appearance. Detached complete-component validation
+keeps frozen source proof independent of mutable source overrides and preserves
+omitted settings/channel ownership. Single/group atomic Apply, transfer v2,
+scene Proposed/Current/Return and history/persistence are connected. The browser
+found an empty-override inheritance bug; the fix now proves a true no-op.
+47 retail-enabled focused Python tests plus8 compatibility checks and37 Node
+files/37 syntax checks pass. Browser capture/transfer/single/group/Save passes
+with no page or unexpected HTTP errors. Independent MAN readback and reopened
+combined Build match expected bytes and the recorded private package hash.
+
+No core timing changes, runtime writes or game launch. Existing initial-clip
+playback/script/gameplay acceptance remains deferred; the full SDK/runtime goal
+stays active. See [animated preset workflow](../legaia-animated-actor-presets.md).
+
 ### 2026-10-02 — Central source-qualified flag assets
 
 The central resource model now includes flag-reference groups, shared Inspector

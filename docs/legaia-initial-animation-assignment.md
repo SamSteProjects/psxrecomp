@@ -24,7 +24,9 @@ timing, looping and gameplay suitability remain unknown.
 
 Compatible appearance changes retain a qualified animation witness. Appearance,
 group/preset or component-revert changes that invalidate it reject atomically.
-Existing position/appearance templates do not capture this separate component.
+Versioned v2 [animated actor presets](legaia-animated-actor-presets.md) now
+capture this component alone or with authored position/appearance. Legacy v1
+presets retain omission semantics and preserve compatible target assignments.
 
 ## Supported evidence and limits
 

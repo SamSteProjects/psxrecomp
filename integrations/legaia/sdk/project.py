@@ -1908,7 +1908,7 @@ class ProjectService:
             raise ProjectError("Invalid authored template identity") from exc
         if not isinstance(template, dict) or set(template) != {"id", "name", "scope", "source", "components"}:
             raise ProjectError("Invalid authored transform template")
-        if template["id"] != identifier or template["scope"] not in ("authored-position-v1", "authored-appearance-v1", "authored-actor-preset-v1"):
+        if template["id"] != identifier or template["scope"] not in ("authored-position-v1", "authored-appearance-v1", "authored-actor-preset-v1", "authored-actor-preset-v2"):
             raise ProjectError("Unsupported authored template scope")
         name = template["name"]
         if not isinstance(name, str) or name != name.strip() or not 1 <= len(name) <= 80:
@@ -1920,17 +1920,25 @@ class ProjectService:
         if source["disc_identity"] != disc:
             raise ProjectError("Template belongs to a different imported disc")
         components = template["components"]
-        if template["scope"] in ("authored-appearance-v1","authored-actor-preset-v1"):
-            expected={"ActorAppearance","Transform"} if template["scope"]=="authored-actor-preset-v1" else {"ActorAppearance"}
-            if not isinstance(components, dict) or set(components) != expected:
-                raise ProjectError("Appearance templates require one donor pair")
+        scopes = {'authored-position-v1': {'Transform'}, 'authored-appearance-v1': {'ActorAppearance'},
+                  'authored-actor-preset-v1': {'Transform', 'ActorAppearance'}}
+        if template['scope'] == 'authored-actor-preset-v2':
+            if (not isinstance(components, dict) or 'ActorAnimation' not in components or
+                    set(components) - {'Transform', 'ActorAppearance', 'ActorAnimation'}):
+                raise ProjectError('Animation presets require a captured clip and optional position/appearance')
+        elif not isinstance(components, dict) or set(components) != scopes[template['scope']]:
+            raise ProjectError('Template components differ from their versioned scope')
+        if 'ActorAppearance' in components:
             document, _, _ = self._appearance_binding(source["entity_id"], components["ActorAppearance"])
             if document["scene"]["semantic_id"] != source["scene_id"]:
                 raise ProjectError("Appearance template source scene does not match its actor")
-            if template["scope"]=="authored-appearance-v1":return
-        if not isinstance(components, dict) or set(components) != ({"Transform","ActorAppearance"} if template["scope"]=="authored-actor-preset-v1" else {"Transform"}) or not isinstance(components["Transform"], dict) or set(components["Transform"]) != {"position"}:
-            raise ProjectError("Templates support authored position only")
-        self._validate_position(components["Transform"]["position"])
+        if 'Transform' in components:
+            if not isinstance(components['Transform'], dict) or set(components['Transform']) != {'position'}:
+                raise ProjectError('Template Transform supports authored position axes only')
+            self._validate_position(components['Transform']['position'])
+        if 'ActorAnimation' in components:
+            from .preset_animation import validate_frozen
+            validate_frozen(self, template)
 
     def template_application(self, template: dict, entity_id: str | None) -> dict:
         """Cheap selected-actor eligibility; Apply still verifies the retail source."""
@@ -1941,12 +1949,12 @@ class ProjectService:
             return {**result, "reason": "Select an imported actor to apply this preset"}
         try:
             self._actor(entity_id)
-            if template["scope"] in ("authored-appearance-v1","authored-actor-preset-v1"):
-                self._appearance_binding(entity_id, template["components"]["ActorAppearance"])
+            from .preset_animation import compose
+            compose(self, entity_id, template['components'])
         except ProjectError as exc:
             return {**result, "reason": str(exc)}
         return {**result, "available": True, "reason":
-                "Appearance source and compatibility will be verified on Apply" if template["scope"] in ("authored-appearance-v1","authored-actor-preset-v1")
+                "Appearance/initial clip source and compatibility will be verified on Apply" if {'ActorAppearance','ActorAnimation'} & template['components'].keys()
                 else "Applies the saved absolute position axes; other axes stay unchanged"}
 
     def _template_command(self, command: dict) -> None:
@@ -1962,21 +1970,34 @@ class ProjectService:
             if any(value["name"].casefold() == name.strip().casefold() for value in self.actor_templates.values()):
                 raise ProjectError("An authored template already uses that name")
             capture = command.get("capture", "position")
-            if capture not in ("position", "appearance", "combined"):
-                raise ProjectError("Template capture must be position, appearance or combined")
+            if capture not in ("position", "appearance", "combined", "animation", "animated"):
+                raise ProjectError("Template capture must be position, appearance, combined, animation or animated")
             position = self.overrides.get(entity_id, {}).get("Transform", {}).get("position", {})
             appearance = self.overrides.get(entity_id, {}).get("ActorAppearance")
+            animation = self.overrides.get(entity_id, {}).get('ActorAnimation')
             if capture in ("appearance","combined") and not appearance:
                 raise ProjectError("Author an appearance override before creating an appearance template")
             if capture in ("position","combined") and not position:
                 raise ProjectError("Author one or more position axes before creating a template")
+            if capture in ('animation','animated') and not animation:
+                raise ProjectError('Author an initial animation assignment before capturing an animation preset')
             scene_id, document = next((key, value) for key, value in self.imports.items()
                                       if any(actor["semantic_id"] == entity_id for actor in value["actors"]))
             identifier = "template://" + str(uuid.uuid4())
-            template = {"id": identifier, "name": name.strip(), "scope": "authored-actor-preset-v1" if capture=="combined" else "authored-appearance-v1" if capture == "appearance" else "authored-position-v1",
+            template = {"id": identifier, "name": name.strip(), "scope": "authored-actor-preset-v2" if capture in ('animation','animated') else "authored-actor-preset-v1" if capture=="combined" else "authored-appearance-v1" if capture == "appearance" else "authored-position-v1",
                         "source": {"disc_identity": document["source"]["disc_identity"], "scene_id": scene_id, "entity_id": entity_id},
                         "components": {"Transform":{"position":deepcopy(position)},"ActorAppearance":deepcopy(appearance)} if capture=="combined" else {"ActorAppearance": deepcopy(appearance)} if capture == "appearance" else {"Transform": {"position": deepcopy(position)}}}
+            if capture in ('animation','animated'):
+                template['components'] = {'ActorAnimation': deepcopy(animation)}
+                if capture == 'animated':
+                    if position: template['components']['Transform'] = {'position': deepcopy(position)}
+                    if appearance: template['components']['ActorAppearance'] = deepcopy(appearance)
             self._validate_template(identifier, template)
+            if capture in ('animation','animated'):
+                from .actor_animation import validate
+                from .preset_animation import validate_frozen
+                validate(self, entity_id, animation, verify_disc=True)
+                validate_frozen(self, template, verify_disc=True)
             self.actor_templates[identifier] = template
             self.undo_stack.append({"target": "actor_templates", "template_id": identifier, "entity_id": entity_id,
                                     "before": None, "after": deepcopy(template)})
@@ -2006,7 +2027,7 @@ class ProjectService:
             self.redo_stack.clear()
             return
         if kind == "apply_actor_template":
-            if template["scope"]=="authored-actor-preset-v1":
+            if template["scope"] in ('authored-actor-preset-v1','authored-actor-preset-v2'):
                 from .actor_presets import apply as apply_actor_preset
                 apply_actor_preset(self,command)
                 return
@@ -2533,7 +2554,10 @@ class ProjectService:
             scene_id = template["source"]["scene_id"]
             records.append({"id": identifier, "kind": "template", "name": template["name"],
                             "scene_id": scene_id, "source_scene": self.imports.get(scene_id, {}).get("scene", {}).get("name", scene_id),
-                            "changes": ["Appearance template" if template["scope"] == "authored-appearance-v1" else "Position template"], "authored": deepcopy(template)})
+                            "changes": ["Animation preset" if template['scope']=='authored-actor-preset-v2' else
+                                        "Appearance template" if template["scope"] == "authored-appearance-v1" else
+                                        "Position and appearance preset" if template['scope']=='authored-actor-preset-v1' else
+                                        "Position template"], "authored": deepcopy(template)})
         source_digests = {}
         for record in records:
             if record['id'] not in self.overrides:

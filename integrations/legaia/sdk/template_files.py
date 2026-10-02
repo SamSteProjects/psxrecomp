@@ -6,6 +6,7 @@ from .project import ProjectError,digest
 
 MAX_FILE_BYTES=8*1024
 SCHEMA='legaia.actor-preset-file.v1'
+ANIMATED_SCHEMA='legaia.actor-preset-file.v2'
 
 def _pairs(items):
     result={}
@@ -25,12 +26,15 @@ def parse(content):
     try:
         value=json.loads(content,object_pairs_hook=_pairs,parse_constant=_constant)
     except (ValueError,RecursionError) as exc:raise ProjectError('Invalid preset JSON') from exc
-    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version']!=SCHEMA:
+    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA):
         raise ProjectError('Unsupported preset file fields or schema')
     source_hash=value['source_import_sha256']
     if not isinstance(source_hash,str) or len(source_hash)!=64 or any(c not in '0123456789abcdef' for c in source_hash):
         raise ProjectError('Preset requires a source import SHA256')
     if not isinstance(value['template'],dict):raise ProjectError('Preset file requires template metadata')
+    from .preset_animation import ANIMATED_SCOPE
+    if (value['schema_version']==ANIMATED_SCHEMA)!=(value['template'].get('scope')==ANIMATED_SCOPE):
+        raise ProjectError('Preset file version differs from its template scope')
     return value
 
 def _verify_source(project,template):
@@ -49,13 +53,17 @@ def _verify_source(project,template):
         donor=template['components']['ActorAppearance']['donor_entity_id']
         if not any(row['donor_entity_id']==donor for row in project.appearance_options(source['entity_id'])['options']):
             raise ProjectError('Preset donor is not a verified compatible initial pair')
+    if 'ActorAnimation' in template['components']:
+        from .preset_animation import validate_frozen
+        validate_frozen(project,template,verify_disc=True)
     return digest(document)
 
 def export_file(project,template_id):
     if not isinstance(template_id,str) or template_id not in project.actor_templates:raise ProjectError('Choose an existing actor preset')
     template=deepcopy(project.actor_templates[template_id])
     source_hash=_verify_source(project,template)
-    value={'schema_version':SCHEMA,'source_import_sha256':source_hash,'template':template}
+    from .preset_animation import ANIMATED_SCOPE
+    value={'schema_version':ANIMATED_SCHEMA if template['scope']==ANIMATED_SCOPE else SCHEMA,'source_import_sha256':source_hash,'template':template}
     encoded=json.dumps(value,ensure_ascii=True,indent=2)+'\n'
     parse(encoded)
     if project.actor_templates.get(template_id)!=template:raise ProjectError('Preset changed during export')

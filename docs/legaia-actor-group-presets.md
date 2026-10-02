@@ -1,5 +1,11 @@
 # Apply actor presets to a group
 
+Versioned [initial-animation presets](legaia-animated-actor-presets.md) now use
+this same group workflow. Review includes imported/current/proposed clips and
+immutable witness proof. Every complete final appearance/clip composition is
+verified before one atomic Apply. A captured clip already inherited by an
+untouched target is a true no-op; omission preserves a compatible existing clip.
+
 Select 2–128 imported actors in one active scene with Ctrl-click or the actor box
 tool. Choose **Apply preset to group**, pick a position, appearance or combined
 preset, then **Review group preset**. The SDK freshly verifies the source scene,

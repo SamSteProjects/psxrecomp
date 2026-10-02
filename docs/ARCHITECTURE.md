@@ -108,12 +108,19 @@ state; an effective transform merges authored fields with imported fields.
 An authored height does not turn an unknown imported height into a known fact.
 Reimport rejects changed evidence underneath authored actors.
 
-Authored transform templates are separate project records with source disc,
-scene and actor provenance. They capture only explicitly authored position
-axes and apply absolute values through the normal undo command to an existing
-same-disc actor. Unspecified axes and imported facts remain intact. Templates
-neither create native entities nor imply model/animation replacement support;
-Build applies the same representable-field checks as ordinary edits.
+Authored actor templates are separate UUID project records with source disc,
+scene and actor provenance. Versioned v1 scopes capture position axes,
+appearance donors or both. `authored-actor-preset-v2` requires an existing
+authored initial-animation witness and optionally captures authored position
+and appearance. The frozen template's clip proof is independent of the source
+actor's later overrides. A detached final-component proposal validates the
+appearance and animation together before single or group atomic application.
+Omitted components and imported facts remain intact; inherited clip matches
+normalize to absence rather than empty overrides. Portable v1/v2 metadata
+envelopes retain exact import hashes and fresh witness proof. Existing Build
+writers compose the resulting initial MAN header once. There is no spawning,
+new clip pairing or channel retargeting. See the
+[animated preset workflow](legaia-animated-actor-presets.md).
 
 `sdk/resources.py` exposes source-verified texture and animation discovery.
 The central AssetDatabase stores derived catalogs separately from its immutable

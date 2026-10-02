@@ -2,6 +2,26 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Reusable initial-animation presets (2026-10-02):** Versioned v2 presets
+capture a verified initial clip alone or with authored position/appearance.
+Frozen witness proof survives later source-actor edits; full proposed components
+are validated together before one single/group Apply. Omitted components and
+imported channel ownership stay intact. Inherited clip matches normalize to
+absence, including a true no-op on untouched targets. Metadata-only v2 files
+retain fresh source/import/hash proof and independent library identity; legacy
+v1 files/scopes remain supported. Proposed/Current scene comparison, Return,
+Undo/Redo and Save/Open are connected.47 focused retail-enabled Python tests
+passed in57.695s, plus8 HTTP/project compatibility tests in1.293s;37 Node files
+and37 syntax checks passed. Actual browser capture/transfer/single/group scene
+review/Apply/history/Save passed with zero page or unexpected HTTP errors.
+Independent Town0b pure-clip MAN readback changes only9471,14→13; inheritance
+reproduces baseline output. The saved combined fixture changes only19122,13→14,
+and19123,119→150 (X15296→2944), retaining model0102/Z1472. Reopened Build
+reproduces package SHA256 `2cc94474453d5a5bd8eaddb07808c6f3dbd10d089d126f9a8e8c4cb0dbd06389`.
+No game launched; existing playback/script/gameplay acceptance remains deferred.
+See [animated preset workflow](legaia-animated-actor-presets.md). The full SDK
+and runtime objective remains incomplete.
+
 **Central flag-reference assets (2026-10-02):** Source-scoped flag groups
 now appear in Asset Database search, a shared Inspector, and Active/Project
 script dependency graphs. The Inspector shows retail/authored/effective sites,
@@ -23,8 +43,8 @@ Undo/Redo and Save/Open. The authored scene and assigned GLB preview keep target
 identity/position; normal and draft writers compose the final MAN header once.
 Effective references and unconfirmed Live candidates keep animation witnesses
 separate from appearance donors and invalidate stale observations. Incompatible
-appearance/preset/revert changes reject atomically. Existing templates still
-capture position/appearance only. Global/zero/unknown/partial pairings remain
+appearance/preset/revert changes reject atomically. Legacy v1 templates capture position/appearance; versioned v2 presets now
+include the separate initial assignment. Global/zero/unknown/partial pairings remain
 unsupported; scripts, timing and gameplay suitability remain unverified.
 39 focused retail-enabled Python checks passed in55.598s, plus a22-check
 compatibility pass in21.572s; all34 Node files and35 syntax checks passed. Seven raw MAN/appearance compatibility checks

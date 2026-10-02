@@ -1,5 +1,6 @@
 import {decodeGroupAppearanceScene} from './group-appearance.js';
 import {decodeActorPlacementScene} from './actor-placement-batch.js';
+import {ANIMATION_PRESET_SCOPE,presetReviewContext,validatePresetComponentChange,decodePresetAnimationScene,appendPresetAnimationLayers,presetScopeLabel} from './preset-animation.js';
 export function decodePresetBatchScene(response,report,current){
   const scene=response?.scene;
   if(response?.schema_version!=='legaia.actor-preset-batch-scene.v1'||response.review_key!==report.review_key||response.project_source_key!==current?.source_key||response.scene_id!==report.scene_id||scene?.schema!=='legaia.scene-preview.v1'||scene.scene_id!==current.scene_id||scene.representation!=='authored'||scene.coordinate_system!==current.coordinate_system||JSON.stringify(scene.position_to_display)!==JSON.stringify(current.position_to_display)||!Array.isArray(scene.entities)||scene.entities.length!==current.entities.length||scene.entities.length>512||!Array.isArray(scene.assets)||scene.assets.length>128)throw new Error('Group preset scene differs from the reviewed source');
@@ -12,7 +13,9 @@ export function decodePresetBatchScene(response,report,current){
     if(!original||JSON.stringify(target.model_to_scene)!==JSON.stringify(matrix)||JSON.stringify(target.authored_position)!==JSON.stringify(row.after?.Transform?.position??{})||(target.preview_ground_sample!==null&&(target.preview_height_status!=='source_surface'||target.preview_ground_sample?.y!==target.preview_position.y))||JSON.stringify(target.evidence?.heading)!==JSON.stringify(original.evidence?.heading)||JSON.stringify(target.evidence?.scale)!==JSON.stringify(original.evidence?.scale)||target.evidence?.position!==original.evidence?.position)throw new Error('Group preset placement layers differ from review');
     for(const key of ['position','preview_position','preview_ground_sample','display_position','preview_height_status','model_to_scene','authored_position','evidence'])copy[key]=structuredClone(original[key]);
   }
-  if(report.scope==='authored-position-v1'){
+  if(report.scope===ANIMATION_PRESET_SCOPE||report.targets.some(row=>row.animation)){
+    decodePresetAnimationScene(normalized,current,report.targets);
+  }else if(report.scope==='authored-position-v1'){
     if(JSON.stringify(normalized.entities)!==JSON.stringify(current.entities)||JSON.stringify(normalized.assets)!==JSON.stringify(current.assets))throw new Error('Position preset changed unrelated owners or geometry');
   }else{
     const donor=report.targets[0]?.proposed_donor,options=report.targets.map(row=>row.appearance);
@@ -30,12 +33,13 @@ export function decodePresetBatch(value,template,ids,state){
       if(row.imported_position?.[axis]!==imported||row.effective_position?.[axis]!==effective||row.proposed_position?.[axis]!==proposed)throw new Error('Preset group position layers differ from the current scene');}
     if(template.components.ActorAppearance&&row.proposed_donor!==template.components.ActorAppearance.donor_entity_id)throw new Error('Preset group donor differs from the selected preset');
     if(!template.components.ActorAppearance&&row.proposed_donor!==row.authored_donor)throw new Error('Position preset changed appearance');
+    if(template.scope===ANIMATION_PRESET_SCOPE||row.animation)validatePresetComponentChange(row,template,actor,state.scene.id);
   }
   return structuredClone(value);
 }
 export function mountPresetBatch({after,getState,getSelection,isBusy,canEdit,canAuthor=canEdit,setBusy,api,canInspectScene,getScenePreview,inspectScene}){
   const button=document.createElement('button');button.dataset.groupPresets='';button.textContent='Apply preset to group';after.append(button);let session=null;
-  const signature=()=>JSON.stringify([getState().project?.path,getState().scene?.id,getState().scene_preview_source_key,getState().scene?.entities,getState().actor_templates,[...getSelection()].sort()]);
+  const signature=()=>presetReviewContext(getState(),getSelection());
   const eligible=()=>canAuthor()&&getState().capabilities?.actor_preset_batch&&getSelection().length>=2&&getSelection().length<=128&&getState().actor_templates?.length;
   const sync=()=>{button.disabled=isBusy()||!eligible();if(session?.dialog.open&&session.key!==signature())session.dialog.close();};
   button.onclick=()=>{
@@ -44,7 +48,7 @@ export function mountPresetBatch({after,getState,getSelection,isBusy,canEdit,can
     session={dialog,key};let report=null,keepClose=false;
     const dispose=()=>{report=null;controller.abort();dialog.remove();if(session?.dialog===dialog)session=null;};
     const current=()=>dialog.open&&key===signature()&&canAuthor()&&!controller.signal.aborted;
-    const select=dialog.querySelector('[data-preset]');for(const template of state.actor_templates){const option=document.createElement('option');option.value=template.id;option.textContent=template.name;select.append(option);}
+    const select=dialog.querySelector('[data-preset]');for(const template of state.actor_templates){const option=document.createElement('option');option.value=template.id;option.textContent=`${template.name} · ${presetScopeLabel(template.scope)}`;select.append(option);}
     select.onchange=()=>{report=null;dialog.querySelector('[data-inspect]').disabled=true;dialog.querySelector('[data-apply]').disabled=true;dialog.querySelector('[data-results]').replaceChildren();dialog.querySelector('[data-summary]').textContent='Review the selected preset.';};
     dialog.querySelector('[data-close]').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(keepClose){keepClose=false;return;}dispose();});
     dialog.querySelector('[data-review]').onclick=async()=>{
@@ -56,6 +60,7 @@ export function mountPresetBatch({after,getState,getSelection,isBusy,canEdit,can
         const result=dialog.querySelector('[data-results]');result.replaceChildren();const table=document.createElement('table'),header=document.createElement('tr');for(const text of ['Actor','Imported XYZ','Effective XYZ','Proposed XYZ','Authored → proposed donor']){const cell=document.createElement('th');cell.textContent=text;header.append(cell);}table.append(header);
         const xyz=p=>['x','y','z'].map(axis=>p[axis]??'Unknown').join(' / ');
         for(const row of report.targets){const tr=document.createElement('tr');for(const text of [row.entity_id,xyz(row.imported_position),xyz(row.effective_position),xyz(row.proposed_position),`${row.authored_donor??'inherit'} → ${row.proposed_donor??'inherit'}`]){const cell=document.createElement('td');cell.textContent=text;tr.append(cell);}table.append(tr);}result.append(table);
+        for(const row of report.targets)if(row.animation){const section=document.createElement('section'),heading=document.createElement('h3');heading.textContent=row.entity_id;section.append(heading);appendPresetAnimationLayers(section,row.animation);result.append(section);}
         for(const note of [...new Set([...report.limitations,...report.targets.flatMap(row=>row.build_issues)])]){const p=document.createElement('p');p.className='field-note';p.textContent=note;result.append(p);}
         const details=document.createElement('details');details.innerHTML='<summary>Complete authored component changes</summary><pre></pre>';details.querySelector('pre').textContent=JSON.stringify(report.targets,null,2);result.append(details);dialog.querySelector('[data-apply]').disabled=!report.changed_count;dialog.querySelector('[data-inspect]').disabled=!canInspectScene();
       }catch(error){if(error.name!=='AbortError'&&current())dialog.querySelector('[role="alert"]').textContent=error.message;}

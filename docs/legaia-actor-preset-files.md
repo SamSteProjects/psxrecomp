@@ -23,6 +23,13 @@ values, duplicate names, missing/changed source imports, stale library reviews
 and the 128-preset project limit reject. A changed source scene cannot replace
 an import underneath saved actor presets; resolve the library first.
 
+As of 2026-10-02, [initial-animation presets](legaia-animated-actor-presets.md)
+use `authored-actor-preset-v2` and `legaia.actor-preset-file.v2`, with an exact
+clip witness/hash and optional authored position/appearance. Legacy files keep
+the v1 envelope. Version/scope mismatches reject; no animation payload is
+included. Frozen witness validation does not reinterpret a preset through the
+source actor's mutable appearance. All existing bounds and transfer gates apply.
+
 Coordinates are absolute. Uncaptured axes remain inherited when applied; authored
 Y may be project-only. Files do not introduce actor spawning, runtime identity,
 script scheduling, collision or gameplay guarantees. Closing a pending file or

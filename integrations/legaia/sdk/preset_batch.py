@@ -25,9 +25,15 @@ def review(project,template_id,actor_ids):
         for identifier in ids:
             before=deepcopy(project.overrides.get(identifier))
             command=dict(type='apply_actor_template',template_id=template_id,entity_id=identifier)
-            if template['scope']=='authored-actor-preset-v1':
+            animation=None
+            if template['scope'] in ('authored-actor-preset-v1','authored-actor-preset-v2'):
                 from .actor_presets import preview
-                command['review_key']=preview(staged,template_id,identifier)['review_key']
+                prepared=preview(staged,template_id,identifier)
+                command['review_key']=prepared['review_key']
+                animation=deepcopy(prepared['animation'])
+            elif 'ActorAnimation' in (before or {}):
+                from .preset_animation import compose
+                _,animation=compose(staged,identifier,template['components'],verify_disc=True)
             appearance=None
             if 'ActorAppearance' in template['components']:
                 donor=template['components']['ActorAppearance']['donor_entity_id']
@@ -36,7 +42,7 @@ def review(project,template_id,actor_ids):
             staged.command(command)
             after=deepcopy(staged.overrides.get(identifier));imported=deepcopy(allowed[identifier]['imported_transform']['position'])
             authored=deepcopy((before or {}).get('Transform',{}).get('position',{}));proposed=deepcopy((after or {}).get('Transform',{}).get('position',{}))
-            targets.append(dict(entity_id=identifier,before=before,after=after,changed=before!=after,appearance=deepcopy(appearance),
+            targets.append(dict(entity_id=identifier,before=before,after=after,changed=before!=after,appearance=deepcopy(appearance),animation=animation,
                 imported_position=imported,authored_position=authored,effective_position={**imported,**authored},proposed_position={**imported,**proposed},
                 authored_donor=(before or {}).get('ActorAppearance',{}).get('donor_entity_id'),proposed_donor=(after or {}).get('ActorAppearance',{}).get('donor_entity_id'),
                 build_issues=project._placement_issues((after or {}).get('Transform',{}))))
@@ -58,6 +64,7 @@ def apply(project,command):
         else:project.overrides[identifier]=deepcopy(value)
     template=project.actor_templates[report['template_id']];sources=[template['source']['entity_id']]
     if 'ActorAppearance' in template['components']:sources.append(template['components']['ActorAppearance']['donor_entity_id'])
+    if 'ActorAnimation' in template['components']:sources.append(template['components']['ActorAnimation']['donor_entity_id'])
     project.undo_stack.append(dict(target='entity_overrides',entity_ids=sorted(after),source_entity_ids=sorted(set(sources)),before=before,after=after))
     project.redo_stack.clear()
 

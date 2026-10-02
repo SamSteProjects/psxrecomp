@@ -1,12 +1,29 @@
+import {ANIMATION_PRESET_SCOPE,presetScopeLabel,validatePresetMetadata} from './preset-animation.js';
 const MAX_BYTES=8*1024;
 const context=getState=>{const s=getState();return JSON.stringify([s.project?.path,s.scenes,s.actor_templates]);};
+const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+export function decodePresetFileExport(value,template){
+  const expected=template.scope===ANIMATION_PRESET_SCOPE?'legaia.actor-preset-file.v2':'legaia.actor-preset-file.v1';
+  if(value?.schema_version!==expected||value.template?.id!==template.id||value.template?.name!==template.name||value.template?.scope!==template.scope||!/^[0-9a-f]{64}$/.test(value.source_import_sha256)||!same(value.template?.source,template.source)||!same(value.template?.components,template.components)||Object.keys(value).length!==3)throw new Error('Preset export differs from the selected source-bound metadata');
+  validatePresetMetadata(value.template);
+  return structuredClone(value);
+}
+export function decodePresetImportReview(value,content,name){
+  if(typeof content!=='string'||new TextEncoder().encode(content).length>MAX_BYTES)throw new Error('Preset file exceeds 8 KiB');
+  let original;try{original=JSON.parse(content);}catch{throw new Error('Invalid preset JSON');}
+  decodePresetFileExport(original,original?.template??{});
+  if(value?.schema_version!=='legaia.actor-preset-import-review.v1'||value.template?.name!==name||!/^[0-9a-f]{64}$/.test(value.review_key)||value.source_import_sha256!==original.source_import_sha256||value.template?.scope!==original.template.scope||!same(value.template?.source,original.template.source)||!same(value.template?.components,original.template.components)||!Array.isArray(value.limitations)||value.limitations.length>64||value.limitations.some(note=>typeof note!=='string'||note.length>8192))throw new Error('Preset import review differs from the source-bound file');
+  validatePresetMetadata(value.template);
+  return structuredClone(value);
+}
 export function presetExportButton({template,getState,isBusy,setBusy,onError}){
   const button=document.createElement('button');button.textContent='Export preset JSON';button.dataset.presetExport=template.id;
   button.onclick=async()=>{if(isBusy())return;const key=context(getState);setBusy(true);try{
     const response=await fetch('/api/actor-preset-file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({template_id:template.id})}),value=await response.json();
     if(!response.ok||value.error)throw new Error(value.error??'Preset export failed');
     if(key!==context(getState)||!button.isConnected||!button.closest('dialog')?.open)throw new Error('Preset library changed during export');
-    if(value.schema_version!=='legaia.actor-preset-file.v1'||value.template?.id!==template.id||value.template?.name!==template.name||value.template?.scope!==template.scope||value.source_import_sha256?.length!==64)throw new Error('Preset export differs from the selected metadata');
+    decodePresetFileExport(value,template);
     const content=JSON.stringify(value,null,2)+'\n';if(new TextEncoder().encode(content).length>MAX_BYTES)throw new Error('Preset export exceeds 8 KiB');
     const url=URL.createObjectURL(new Blob([content],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='actor-preset.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }catch(e){onError(e.message);}finally{setBusy(false);}};return button;
@@ -34,10 +51,10 @@ function openImportReview({content,suggested,getState,canEdit,isBusy,setBusy,api
   preview.onclick=async()=>{if(isBusy()||!current())return;const token=++revision,chosen=name.value;report=null;apply.disabled=true;name.disabled=true;preview.disabled=true;setBusy(true);error.textContent='';
     try{const response=await fetch('/api/actor-preset-import-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content,name:chosen}),signal:controller.signal}),value=await response.json();
       if(!response.ok||value.error)throw new Error(value.error??'Preset import review failed');if(token!==revision||!current()||name.value!==chosen)return;
-      if(value.schema_version!=='legaia.actor-preset-import-review.v1'||value.template?.name!==chosen||typeof value.template?.id!=='string'||!value.template.id.startsWith('template://')||!/^[0-9a-f]{64}$/.test(value.review_key))throw new Error('Preset import review differs from the file/name');
-      report=value;const result=dialog.querySelector('[data-result]');result.replaceChildren();const summary=document.createElement('p'),scope={'authored-position-v1':'Position','authored-appearance-v1':'Appearance','authored-actor-preset-v1':'Position and appearance'};summary.textContent=`${value.template.name} · ${scope[value.template.scope]??value.template.scope} · source ${value.template.source.scene_id}`;result.append(summary);
+      report=decodePresetImportReview(value,content,chosen);const result=dialog.querySelector('[data-result]');result.replaceChildren();const summary=document.createElement('p');summary.textContent=`${value.template.name} · ${presetScopeLabel(value.template.scope)} · source ${value.template.source.scene_id}`;result.append(summary);
       const positions=value.template.components.Transform?.position;if(positions){const p=document.createElement('p');p.textContent='Absolute coordinates: '+Object.entries(positions).map(([axis,position])=>axis.toUpperCase()+' '+position).join(' · ');result.append(p);}
       const donor=value.template.components.ActorAppearance?.donor_entity_id;if(donor){const p=document.createElement('p');p.textContent='Appearance donor: '+donor;result.append(p);}
+      const animation=value.template.components.ActorAnimation;if(animation){const p=document.createElement('p');p.textContent=`Initial clip: ${animation.animation_asset_id} · witness ${animation.donor_entity_id} · SHA-256 ${animation.source_record_sha256}`;result.append(p);const note=document.createElement('p');note.className='field-note';note.textContent='Initial MAN animation header only; channel edits retain their imported shared-clip ownership.';result.append(note);}
       const provenance=document.createElement('details'),title=document.createElement('summary'),details=document.createElement('pre');title.textContent='Source provenance';details.className='diagnostic-detail';details.textContent=JSON.stringify({source:value.template.source,source_import_sha256:value.source_import_sha256},null,2);provenance.append(title,details);result.append(provenance);
       for(const note of value.limitations){const p=document.createElement('p');p.textContent=note;result.append(p);}
     }catch(e){if(e.name!=='AbortError'&&current())error.textContent=e.message;}

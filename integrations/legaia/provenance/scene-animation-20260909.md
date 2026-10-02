@@ -81,3 +81,24 @@ silently treat this imported pose as runtime state. Scene clip rate and looping
 are left unknown: the separately pinned party locomotion cadence is not evidence
 for every NPC record. Private proof data and rendered previews remain ignored in
 `local-output/sdk-20260909/scene-animation`; no retail bytes are tracked.
+
+## Reusable initial-animation presets — 2026-10-02
+
+No new retail decode rule or reference pin was added. Versioned v2 presets
+capture the existing exact ActorAnimation witness/hash, with optional authored
+position/appearance. Frozen source proof validates the captured composition or
+an imported witness independently of the originating actor's current overrides.
+Target review proves the complete proposed model/clip against the existing
+fresh MAN assignment options before atomic single/group mutation. An inherited
+captured clip normalizes to absence; omitted assignments stay unchanged.
+
+47 focused retail-enabled tests plus8 compatibility checks and37 Node files
+pass. Real browser capture/transfer/scene/group/history/Save passes with no
+page/unexpected HTTP errors. Independent pure-clip MAN readback changes only9471
+14→13, preserving channel ownership; combined actor0049 readback changes only
+19122 13→14 and19123 119→150. Record13 SHA-256 is
+5f8e8175544512db45f3ec37a9be33ddf414ee0b5a2ddf079ac195b6d5bdd09e.
+Reopened combined package SHA-256 is
+2cc94474453d5a5bd8eaddb07808c6f3dbd10d089d126f9a8e8c4cb0dbd06389.
+Evidence: local-output/sdk-20260909/animated-presets-20261002/.
+No runtime binding, playback timing or gameplay acceptance is asserted.

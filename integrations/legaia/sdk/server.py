@@ -580,6 +580,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
                  "/actor-preset-review.js": ("actor-preset-review.js", "text/javascript"),
+                 "/preset-animation.js": ("preset-animation.js", "text/javascript"),
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),

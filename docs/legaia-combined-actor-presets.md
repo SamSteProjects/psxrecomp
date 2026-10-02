@@ -6,7 +6,7 @@ and appearance**. Existing position-only and appearance-only presets remain
 supported. The combined preset stores only captured authored axes and the
 source-qualified donor, with template UUID and disc/scene/actor provenance.
 
-Select another compatible existing actor and choose **Review combined preset**.
+Select another compatible existing actor and choose **Review actor preset**.
 The read-only dialog separates imported, authored, effective and proposed
 positions, shows the donor and reports Build issues. Saved coordinates are
 absolute. Uncaptured axes and unrelated target components remain unchanged.
@@ -18,14 +18,14 @@ No actor is instantiated and no imported provenance is replaced.
 
 ## Preview both components in the assembled scene
 
-From the combined preset review, choose **Inspect combined preset in scene**.
+From the combined preset review, choose **Inspect actor preset in scene**.
 The authored scene must be loaded. A detached SDK projection resolves the
 proposed position and donor's initial model/animation together. Inspection writes
 no project overrides or history. Source terrain supplies a display height only
 when retail Y is unknown; it does not establish runtime height.
 
 **Inspection layer** switches between Proposed and Current while retaining the
-camera. **Return to combined preset** restores the authored scene and reopens the
+camera. **Return to actor preset** restores the authored scene and reopens the
 same review for Apply. **Restore scene preview** discards the inspection and its
 retained review. Export requires restoration. Changes to the scene components,
 preset, source or selection withdraw the comparison; delayed or closed requests
@@ -72,6 +72,10 @@ Private evidence: `local-output/sdk-20260909/actor-preset-scene-20260930/`.
 No real runtime or gameplay acceptance is claimed.
 
 Presets can also be [exported/imported as source-bound metadata files](legaia-actor-preset-files.md) for reuse in another project.
+
+The later [animated preset workflow](legaia-animated-actor-presets.md) also
+captures a verified initial clip. Appearance and clip are validated together;
+omitted clips in the original combined scope remain untouched.
 
 The later integrated offline checkpoint on source `3c8d8f46` passed457 Python
 tests with no skips, all12 Node checks and10 module syntax checks. See the
