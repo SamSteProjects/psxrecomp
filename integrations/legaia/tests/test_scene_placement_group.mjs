@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {scenePlacementGroupDelta,decodeScenePlacementGroup} from '../editor/scene-placement-group.js';
+import {scenePlacementGroupDelta,decodeScenePlacementGroup,offsetScenePlacementGroup} from '../editor/scene-placement-group.js';
 const key='a'.repeat(64),scene='scene://fixture';
 const ids=['environment://fixture/field-map/decorations/00001','scene://fixture/actors/man-p1/0001'];
 const delta={x:64,z:-128};
@@ -21,3 +21,13 @@ assert.deepEqual(decodeScenePlacementGroup(zero,key,scene,ids,{x:0,z:0}),zero);
 const overflow={...report,targets:[{...report.targets[0],current:{x:Number.MAX_SAFE_INTEGER,z:320},proposed:{x:Number.MAX_SAFE_INTEGER+64,z:192}},report.targets[1]]};
 assert.throws(()=>decodeScenePlacementGroup(overflow,key,scene,ids,delta));
 console.log('Mixed placement source identity, actor/decor selection, exact X/Z arithmetic, immutable decoding, no-op and offset bounds passed.');
+
+assert.deepEqual(offsetScenePlacementGroup(report,'x',-128),{entity_ids:ids,delta:{x:-64,z:-128}});
+assert.deepEqual(offsetScenePlacementGroup(report,'z',192),{entity_ids:ids,delta:{x:64,z:64}});
+assert.deepEqual(report.delta,delta);
+const dragged=offsetScenePlacementGroup(report,'x',64);dragged.entity_ids.pop();assert.equal(report.entity_ids.length,2);
+for(const [axis,amount] of [['y',64],['x',1],['z',-65],['x',1.5],['z',true],['x',Infinity],['x',16320],['z',-16320]])assert.throws(()=>offsetScenePlacementGroup(report,axis,amount));
+assert.throws(()=>offsetScenePlacementGroup({...report,targets:[{...report.targets[0],kind:'actor'},report.targets[1]]},'x',64));
+const safeEdge={...report,delta:{x:0,z:0},affected_count:0,project_change:false,targets:report.targets.map((row,index)=>({...row,current:{x:index?Number.MAX_SAFE_INTEGER:192,z:320},proposed:{x:index?Number.MAX_SAFE_INTEGER:192,z:320}}))};
+assert.throws(()=>offsetScenePlacementGroup(safeEdge,'x',64));
+console.log('Mixed placement drag composition, 64-unit increments, immutable selections, bounds and decoded proposal guards passed.');

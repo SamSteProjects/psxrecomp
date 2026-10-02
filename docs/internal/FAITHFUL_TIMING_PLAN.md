@@ -213,6 +213,27 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Mixed placement viewport X/Z handles
+
+Completed the next offline transform workflow: Proposed actor/static-decoration
+X/Z handles with mandatory relative64 snapping, held preview Y/rotation, fresh
+source-bound re-review on release and retained explicit Apply. Parent owns mixed
+selection/render/pointer guards; isolated dialog agent owns draft composition and
+request generation/abort handling. Current has no handles; invalid/rejected/pending
+drags preserve prior matrices/report/inputs. Escape/source/camera/resize cancel.
+31 focused retail-enabled Python checks passed/18.361s; all32 Node and33 syntax
+checks passed. Actual2×-DPI top-view X64/Z128 pointer drags, rejection/Restore,
+retained Current/Proposed, Apply/Undo/Redo/Save, fresh camera/resize/Escape guards
+passed with zero page errors; screenshots inspected. Normal two-overlay MAN/MAP
+package passed full73728-byte MAP ZIP and independent actor/grid decode, preserving
+opaque data, prior actor/scenery edits, rotation/Y, all17 walls, floor tiers and
+saved scene selections. Package SHA256 `caf02c24b52e375563bc4a904f6601684a7acfcac236d47a18b94c83294c84f2`.
+Evidence: `local-output/sdk-20260909/scene-placement-drag-20261001/`.
+SDK status/buildout/matrix/plan/workflow/manual queue updated. No game launched;
+historical548 predates this feature, full goal and deferred gameplay remain open.
+Last goal turn classified as verified progress.
+
+
 ### 2026-10-01 — Persisted scene placement selections
 
 Completed the next offline editor workflow after mixed placement groups:

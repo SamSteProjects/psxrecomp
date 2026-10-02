@@ -7,6 +7,24 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+**Mixed placement viewport handles (2026-10-01):** Retained Proposed
+actor/static-decoration groups now expose X/Z handles. Every drag snaps to a
+relative 64-unit offset, holding each displayed height and rotation; release
+freshly reviews the full source-bound mixed proposal without a project command.
+Current has no handles. Rejected/pending drags keep the prior verified matrices
+and inputs; Restore cancels pending review and ignores late responses. Escape,
+camera, preview/source/representation changes and resize cancel stale gestures.
+Thirty-one focused retail-enabled Python checks passed in 18.361s, all 32 Node
+files and 33 syntax checks passed. Actual 2×-DPI top-view X/Z pointer drags,
+retained review, rejection, cancellation, Current matrices, Apply/Undo/Redo/Save
+and fresh Escape/camera/resize checks passed with zero page errors; screenshots
+inspected. Normal two-overlay MAN/MAP package passed exact full73728-byte MAP ZIP
+readback and independent actor/grid decode, preserving prior actor/scenery edits,
+height/rotation, 17 collision edits, floor tiers and saved selection metadata.
+Private evidence: `local-output/sdk-20260909/scene-placement-drag-20261001/`.
+No game launched; gameplay remains deferred. Historical548 predates this feature.
+See [Mixed placement workflow](legaia-scene-placement-groups.md).
+
 **Saved scene placement selections (2026-10-01):** Named project-local
 selections now retain 1–128 imported actors, static decorations or mixed members.
 Create/Rename/Replace/Delete use strict source-bound commands and one-step

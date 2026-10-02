@@ -1,5 +1,22 @@
 # Deferred gameplay verification
 
+## Mixed viewport-drag placement — deferred
+
+The exact copied-project path is recorded in
+`local-output/sdk-20260909/scene-placement-drag-20261001/prepared.json`.
+Package within that project:
+`Builds/e15173dcb8d4b4e7/legaia.sdk.2899fc3afad4-0.1.0-e15173dcb8d4b4e7.psxmod`.
+SHA256: `caf02c24b52e375563bc4a904f6601684a7acfcac236d47a18b94c83294c84f2`.
+Actor `scene://town01/actors/man-p1/0012` now has X/Z `(3840,1984)`;
+decoration `environment://town01/field-map/decorations/01833` `(5705,2240)`.
+The reviewed viewport drag added `(64,128)` to both current placements. Prior
+actor0001 `(9984,8704)`, unselected scenery/shared rotations, all17 collision edits,
+floor tiers and saved selection metadata remain unchanged. Exact MAP ZIP readback
+and independent MAN decode passed. No game launched. Use the exact saved package
+and an identified interactive runtime to compare visibility, terrain contact,
+collision, entry/re-entry and any script-driven replacement of initial actor
+placement. Preview height is held; it does not establish runtime Y.
+
 ## Mixed actor/static-decoration placement group — deferred
 
 Private copied-project identity is recorded in

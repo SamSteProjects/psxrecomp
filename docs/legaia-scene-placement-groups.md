@@ -24,6 +24,15 @@ input. **Restore placement preview** withdraws the inspection. Editing offsets,
 changing selection/source/scene/mode, or cancelling a pending request invalidates
 the review; a late response cannot reinstate it.
 
+While inspecting Proposed, drag **Placements X** or **Placements Z** to shift
+the full group. Handles always snap the relative movement in 64-unit steps,
+including when the general Snap moves checkbox is off. Both object types keep
+their current displayed height and rotations. Release requests a fresh review;
+it does not apply changes. Current has no movement handles. Rejected requests
+retain the verified proposal, and Restore cancels a pending review. Escape,
+camera/representation/source changes and resize cancel an in-progress gesture.
+Return retains the freshly reviewed numeric offsets for explicit Apply.
+
 **Apply group** validates the same full project/source context, selection and
 offsets again, then publishes the actor Transform and scene Environment changes
 as one Undo/Redo operation. Existing actor components, authored Y, decoration
@@ -49,3 +58,17 @@ floor tiers. Private evidence: `local-output/sdk-20260909/scene-placement-group-
 The 548-test checkpoint predates this tool. No game launched. Runtime visibility,
 collision, script-driven placement and scene lifecycle remain in the
 [deferred manual queue](legaia-gameplay-verification-queue.md).
+
+## Viewport-handle verification — 2026-10-01
+
+31 focused retail-enabled Python checks passed in18.361s; all32 Node and33 syntax
+checks passed. Real2×-DPI top-view pointer drags produced X64/Z128, retained
+Current/Proposed matrices, held height/rotation, rejection/pending Restore, atomic
+Apply/Undo/Redo/Save and no authored command during dragging. Fresh Escape/camera/
+resize cancellation passed without writes; zero page errors, screenshots inspected.
+Exact normal MAN/MAP package ZIP and independent actor/grid decoding preserved
+unselected actor/scenery changes, source rotations/heights, collision/floor bits
+and the saved selection library. Private evidence:
+`local-output/sdk-20260909/scene-placement-drag-20261001/`.
+No game launched. Runtime visibility, placement scripts and collision remain in
+[the deferred gameplay queue](legaia-gameplay-verification-queue.md).
