@@ -1,7 +1,7 @@
 import {renderComponentProperties,renderComponentActions,bindComponentActions} from './component-inspector.js';
 
 const TYPES={actor:'AssetActor',scene:'AssetScene',template:'AssetTemplate',worldmap:'AssetWorldmap',model:'AssetModel',texture:'AssetTexture',animation:'AssetAnimation',script:'AssetScript',dialogue:'AssetDialogue',flag:'AssetFlag',transition:'AssetTransition',collision:'AssetCollision',trigger:'AssetTrigger',region:'AssetRegion'};
-const ACTION_TYPES={'select-asset-actor':['actor'],'open-asset-scene':['scene'],'open-asset-template':['template'],'open-asset-worldmap':['worldmap'],'inspect-landmark-destination':['worldmap'],'inspect-asset-model':['model'],'inspect-asset-texture':['texture'],'inspect-asset-animation':['animation'],'inspect-asset-script':['script','dialogue'],'inspect-asset-flag':['flag'],'inspect-asset-transition':['transition'],'inspect-asset-field':['collision','trigger','region']};
+const ACTION_TYPES={'select-asset-actor':['actor'],'open-asset-scene':['scene'],'open-asset-template':['template'],'open-asset-worldmap':['worldmap'],'inspect-landmark-destination':['worldmap'],'inspect-asset-model':['model'],'inspect-asset-texture':['texture'],'inspect-asset-animation':['animation'],'inspect-asset-script':['script','dialogue'],'inspect-asset-flag':['flag'],'inspect-asset-transition':['transition'],'inspect-asset-field':['collision','trigger','region'],'inspect-asset-region-bounds':['region']};
 export function assetInspectorDefinition(schema,record){
   const expected=TYPES[record?.type];if(!expected)return null;
   if(schema?.asset_inspectors?.[record.type]!==expected)throw new Error('Unsupported asset inspector descriptor');

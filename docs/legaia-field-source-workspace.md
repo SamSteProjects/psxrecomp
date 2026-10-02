@@ -13,6 +13,13 @@ the overlay exits picking. Ordinary actor/scenery selection restores the
 normal Inspector. Scene, project or resource-context changes discard the
 source overlay and selected resource.
 
+**Edit region bounds** opens the reviewed primary-region editor. The source-cell
+representation switch compares **Retail source cells** with **Effective region
+bounds**. Temporary Retail/Current/Proposed inspection overrides only the
+selected outline; the shared Inspector names the exact layer and coordinates.
+Returning or changing scene clears the comparison. See
+[region bounds authoring](legaia-region-bounds.md) for Save/Open, reset and Build.
+
 The two tile lookups use different arithmetic:
 
 | Source | Tile lookup | World interval for tile t |

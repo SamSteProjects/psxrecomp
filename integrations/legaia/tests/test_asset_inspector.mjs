@@ -13,7 +13,8 @@ assert.equal(registeredActions(schema,'AssetModel',record,{model_preview:false},
 const button={dataset:{inspectorAction:'inspect-asset-model'}};
 bindComponentActions({querySelectorAll:()=>[button]},registry,{current:()=>current,editable:()=>false,busy:()=>busy,onError:e=>{throw e;}});
 await button.onclick();assert.equal(calls,1);current=false;await button.onclick();assert.equal(calls,1);current=true;busy=true;await button.onclick();assert.equal(calls,1);
-for(const type of ['texture','animation','script','dialogue','flag','transition','collision','trigger','region'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
+for(const type of ['texture','animation','script','dialogue','flag','transition','collision','trigger'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
+assert.deepEqual(Object.keys(assetInspectorRegistry({type:'region'},()=>{})),['inspect-asset-field','inspect-asset-region-bounds']);
 for(const type of ['actor','scene','template'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
 const landmark={id:'worldmap://fixture/1',type:'worldmap',data:{destination_source_label:'town01'}};
 const wmDefinition={layout:'read-only-properties',properties:[],actions:[{id:'open-asset-worldmap',capability:'worldmap_source_navigation'},{id:'inspect-landmark-destination',capability:'worldmap_source_navigation',when:['data','destination_source_label']}]};

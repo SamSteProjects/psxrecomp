@@ -81,6 +81,7 @@ def refresh_resource_catalog(project) -> dict:
     project.assets.resource_catalogs.pop(project.active_scene, None)
     flag_key = scene_flag_state_key(project)
     transition_key = scene_transition_state_key(project)
+    region_key = scene_region_state_key(project)
     records, limitations = [], []
     with _disc_context(project.disc_path):
         _verify(project, document)
@@ -101,11 +102,18 @@ def refresh_resource_catalog(project) -> dict:
             except RetailImportError as exc:
                 limitations.append(f"{kind} unavailable: {exc}")
     if (key != source_key(project) or flag_key != scene_flag_state_key(project) or
-            transition_key != scene_transition_state_key(project)):
+            transition_key != scene_transition_state_key(project) or region_key != scene_region_state_key(project)):
         raise ProjectError("Resource source changed during discovery; refresh again")
     if len(records) > 4096:
         raise ProjectError("Resource catalog exceeds the bounded record budget")
-    return project.assets.register_resources(project.active_scene, key, records, limitations, flag_state_key=flag_key, transition_state_key=transition_key)
+    return project.assets.register_resources(project.active_scene, key, records, limitations, flag_state_key=flag_key, transition_state_key=transition_key, region_state_key=region_key)
+
+
+def scene_region_state_key(project) -> str:
+    """Invalidate region annotations while preserving the geometry source key."""
+    from .project import digest
+    scene = project.active_scene
+    return digest(dict(scene_id=scene, region_bounds=deepcopy(project.overrides.get(scene, {}).get('RegionBounds'))))
 
 
 def scene_transition_state_key(project) -> str:
@@ -391,11 +399,14 @@ def field_map_preview(project, asset_id: str, layer: str = "imported") -> dict:
     if layer not in ("imported", "effective"):
         raise ProjectError("Choose imported or effective collision preview")
     document, key = _scene(project)
+    region_key = scene_region_state_key(project)
     with _disc_context(project.disc_path):
         _verify(project, document)
         preview = preview_field_map(project.disc_path, document["scene"]["name"], asset_id)
         from .field_spatial import build_field_spatial
         preview["spatial"] = build_field_spatial(preview)
+        from .region_bounds import effective_annotations
+        preview["region_bounds"] = effective_annotations(project, project.active_scene)
         preview["representation"] = layer
         if layer == "effective":
             from importer.collision_authoring import patch_collision_walls
@@ -409,10 +420,10 @@ def field_map_preview(project, asset_id: str, layer: str = "imported") -> dict:
                 preview["rectangle_count"] = len(preview["rectangles"])
                 preview["authored_changes"] = audit
             preview["limitations"] = [*preview["limitations"], "Effective source wall edits only; runtime script paints and actor blockers remain unobserved."]
-    if key != source_key(project):
+    if key != source_key(project) or region_key != scene_region_state_key(project):
         raise ProjectError("Field map source changed during preview; refresh again")
     return {**preview, "semantic_id": preview["asset"]["semantic_id"], "asset_kind": "collision",
-            "scene_id": project.active_scene, "source_key": key}
+            "scene_id": project.active_scene, "source_key": key, "region_state_key": region_key}
 
 
 def texture_preview(project, asset_id: str, palette_index: int, layer: str = "effective") -> dict:

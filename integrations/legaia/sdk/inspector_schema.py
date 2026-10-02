@@ -85,6 +85,8 @@ def inspector_schema():
             'notes': ['Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
+    schema['components']['AssetRegion']['actions'].append({'id': 'inspect-asset-region-bounds', 'label': 'Edit region bounds', 'capability': 'field_region_authoring'})
+    schema['components']['AssetRegion']['notes'].append('Primary source corners can be reviewed, undone and built; region type, height and activation remain read-only or unknown.')
     transition=schema['components']['AssetTransition']
     transition['properties'] += [
         {'id':'script','label':'Source script','path':['data','script_id'],'type':'asset-reference','state':'read-only-retail'},

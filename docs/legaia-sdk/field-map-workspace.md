@@ -32,8 +32,9 @@ Primary and fallback trigger tables retain distinct source identities and
 ordering. Kind 0 is a local coordinate teleport, not a named scene transition.
 Kind 1 gate 0 binds an object record; gate 1 references a P2 script. A record
 reference does not establish that its script is reachable or resolves to a
-particular destination scene. Region rectangles retain encoded fields and
-remain read-only. The current P1 actor inspector is not evidence for P2 routes.
+particular destination scene. Region rectangles retain immutable encoded source fields. Their four primary
+corner bytes have a separate [reviewed authored workflow](../legaia-region-bounds.md);
+region type and opaque padding remain read-only. The current P1 actor inspector is not evidence for P2 routes.
 
 The editor consumes SDK metadata and precomputed world rectangles. Collision
 and trigger inspection never alters imported or authored state. Source/project

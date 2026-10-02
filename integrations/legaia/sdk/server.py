@@ -158,8 +158,10 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['worldmap_source_navigation'] = bool(self.project.disc_path)
         state["capabilities"]["scene_transitions"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
-        from .resources import scene_flag_state_key, project_flag_state_key, scene_transition_state_key
+        from .resources import scene_flag_state_key, project_flag_state_key, scene_transition_state_key, scene_region_state_key
         state['scene_transition_state_key'] = scene_transition_state_key(self.project)
+        state['scene_region_state_key'] = scene_region_state_key(self.project)
+        state['capabilities']['field_region_authoring'] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['scene_flag_state_key'] = scene_flag_state_key(self.project)
         state['project_flag_state_key'] = project_flag_state_key(self.project)
         state["capabilities"]["script_operand_files"] = bool(self.project.disc_path and self.project.active_scene)
@@ -579,6 +581,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
                  '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
+                 '/region-bounds.js': ('region-bounds.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
@@ -1078,6 +1081,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Model source accepts a catalog identity only")
                     from .resources import model_shape_source
                     self._json(200, model_shape_source(self.server.project, body["asset_id"], body.get('format','tmd'), body.get('layer','imported')))
+                    return
+                if route == '/api/region-bounds-review':
+                    if set(body) != {'region_id', 'values', 'action'}:
+                        raise ProjectError('Region review requires region identity, complete corners and action only')
+                    from .region_bounds import review
+                    self._json(200, review(self.server.project, body['region_id'], body['values'], body['action']))
+                    return
+                if route == '/api/region-bounds-apply':
+                    from .region_bounds import apply
+                    apply(self.server.project, body)
+                    self._json(200, self.server.state())
                     return
                 if route == "/api/field-map-preview":
                     if set(body) - {"asset_id", "layer"} or not isinstance(body.get("asset_id"), str) or not body["asset_id"]:

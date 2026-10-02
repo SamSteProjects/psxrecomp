@@ -1,5 +1,24 @@
 # Deferred gameplay verification
 
+## Authored region bounds - deferred
+
+Saved fixture: `local-output/sdk-20260909/region-bounds-20261002/project/`.
+Package: `local-output/sdk-20260909/region-bounds-20261002/authored-build/legaia.sdk.fec5aa9d3474-0.1.0-a26b58e7bca78d90.psxmod`.
+SHA256: `0c9a9fe907206e20d7ca3d71c44185661fecdcd5a542870461b31be51e57f803`.
+Town01 primary region0000 retains type4, padding and corners107/127/1; x0
+changes58 to59. Independent package readback changes only MAP byte66692. The
+minimum X boundary moves7488 to7616 under the source `(world-64)>>7` lookup.
+Review, distinct coordinate layers, viewport framing/comparison, one-step Undo,
+Redo, Save/Open, retail reset and stale scene cleanup pass offline. Combined
+region/scenery/wall Build also preserves its exact combined byte audit.
+
+Later gameplay acceptance should compare the stock region boundary with the
+fixture, establish what encoded type4 affects, and verify actual entry/exit,
+height and movement continuity. These behaviors remain unknown; the browser
+reference plane does not prove activation. No package installed or game launched.
+See [region bounds workflow](legaia-region-bounds.md). This adds a later fixture
+and does not require immediate manual verification.
+
 ## Field source cells and trigger contact - deferred
 
 The private baseline project is `local-output/sdk-20260909/field-spatial-20261002/project/`.

@@ -148,3 +148,5 @@
 
 #scene-selection-sets-dialog{width:min(780px,calc(100vw - 35px));max-height:90vh;overflow:auto}#scene-selection-sets-dialog .dialog-actions{justify-content:flex-start;flex-wrap:wrap}#scene-selection-sets-dialog [data-members]{max-height:24vh;overflow:auto;overflow-wrap:anywhere}
 .scene-resource-inspector .dialog-actions{flex-wrap:wrap;justify-content:flex-start;margin-top:12px}.scene-resource-inspector .dialog-actions button{max-width:100%;white-space:normal;text-align:left}
+
+#region-bounds-dialog table{width:100%;border-collapse:collapse;margin:12px 0}#region-bounds-dialog th,#region-bounds-dialog td{padding:5px 8px;text-align:left;border-bottom:1px solid #344b4d}#region-bounds-preview{background:#1a292b;border:1px solid #456562;border-radius:6px;box-shadow:0 6px 24px #0008;color:#dbe9e9}#region-bounds-preview p{margin:0 0 8px}#region-bounds-preview button{margin-right:6px}

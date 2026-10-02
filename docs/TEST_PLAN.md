@@ -7,6 +7,24 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Reviewed field region bounds (2026-10-02):** Primary MAP regions now have
+an Edit region bounds action, four strict corner inputs, separate Retail /
+Authored / Current / Proposed layers, and outline/viewport comparison. Apply
+and per-row retail reset use one undo step; inherited/no-op values normalize
+without dirtying the project. Source-qualified effective annotations leave the
+imported spatial envelope intact, and a separate region key invalidates views
+without reloading geometry. Save/Open and normal Build preserve the region
+type, padding, source order and all bytes outside audited corners. Region edits
+compose with scenery and collision walls in one MAP overlay. Browser review,
+frame, comparison, Apply, history, persistence and scene cleanup passed with
+zero page/HTTP errors and zero game-launch requests. The retained Town01
+fixture changes only MAP byte66692 from58 to59; its package is built but not
+installed or played. Height, activation and movement acceptance remain deferred.
+See [region bounds workflow](legaia-region-bounds.md). The full SDK/runtime
+objective remains incomplete.
+
+Region milestone validation:54 retail-enabled Python tests passed with no skips in74.565s;42 Node checks and40 module syntax checks passed. Actual browser comparison passed10 workflow checks with zero page/HTTP errors and zero run requests. Independent package readback confirms one byte changes; imported scene hashes remain unchanged. No game launched or package installed.
+
 **Field source cells and script links (2026-10-02):** Verified trigger and
 region rows now appear in the scene hierarchy and shared Inspector, with
 viewport outlines, framing and explicit source-cell picking. Trigger dispatch

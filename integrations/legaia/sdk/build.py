@@ -57,6 +57,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-model-selector-only': 'script model selectors',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'source-MAP-wall-bit-only': 'source collision walls',
+        'source-MAP-region-bounds-only': 'source region bounds',
         'shared-scene-animation-record': 'animation channels',
     }
     return sorted({('initial actor animation' if edit.get('assignment_kind') == 'ActorAnimation' and edit.get('field') == 'animation_id' else labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data')) for edit in edits})
@@ -358,11 +359,19 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     scene_edits: dict[str, dict] = {}
     environment_edits = {}
     collision_edits = {}
+    region_edits = {}
     animation_edits = {}
     entity_lookup = {actor["semantic_id"]: (scene_id, actor)
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(components, dict) and 'RegionBounds' in components:
+            value = project._validate_region_bounds(identifier, components['RegionBounds'])
+            if value is not None:
+                region_edits[identifier] = value
+            components = {k:v for k,v in components.items() if k != 'RegionBounds'}
+            if not components:
+                continue
         if isinstance(components, dict) and "Collision" in components:
             project._validate_collision(identifier, components["Collision"])
             collision_edits[identifier] = components["Collision"]
@@ -502,7 +511,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
 
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
-    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits) | set(collision_edits)) or project.imports:
+    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits) | set(collision_edits) | set(region_edits)) or project.imports:
         document = project.imports[scene_id]
         fresh = import_scene(project.disc_path, document["scene"]["name"])
         if canonical_json(document) != canonical_json(fresh):
@@ -545,7 +554,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                  "payload": payload, "sha256": _hash(payload), "expected_sha256": patch['expected_sha256'],
                                  'carrier': metadata['carriers'][index], **evidence})
             audit_edits.extend({**change, "scene": scene, "semantic_id": change["animation_id"]} for change in changes)
-        for scene_id in sorted(set(environment_edits) | set(collision_edits)):
+        for scene_id in sorted(set(environment_edits) | set(collision_edits) | set(region_edits)):
             binding = environment_edits.get(scene_id)
             from importer.environment_authoring import patch_environment_overrides
             from importer.environment import load_environment_placements
@@ -569,6 +578,18 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         raise BuildError("Collision wall edit overlaps a scenery edit")
                     merged[offset] = (merged[offset] & ~mask) | (wall_data[offset] & mask)
                 changed = bytes(merged)
+            region_changes = []
+            if scene_id in region_edits:
+                from importer.region_authoring import patch_field_regions
+                regions = region_edits[scene_id]
+                region_data, region_changes = patch_field_regions(original, regions['source_sha256'], scene, regions['edits'])
+                merged = bytearray(changed)
+                for row in region_changes:
+                    offset = row['byte_offset']
+                    if changed[offset] != original[offset]:
+                        raise BuildError('Region bounds overlap a scenery or collision edit')
+                    merged[offset] = region_data[offset]
+                changed = bytes(merged)
             allowed = set()
             for row in changes:
                 if 'allocation' in row:
@@ -579,13 +600,14 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 else:
                     allowed.update(range(row['byte_offset'], row['byte_offset']+2))
             allowed.update(row["byte_offset"] for row in wall_changes)
+            allowed.update(row["byte_offset"] for row in region_changes)
             if len(changed) != len(original) or any(a != b and i not in allowed for i,(a,b) in enumerate(zip(original,changed))):
-                raise BuildError("Environment patch changed bytes outside audited transform axes")
+                raise BuildError("MAP patch changed bytes outside audited scenery, wall or region fields")
             location = (archive.node.extent_lba + entry.start_lba) * 2048
             disc_user_size = (_image.size // 2352) * 2048
             if _image.read_user(0, location, len(original), disc_user_size) != original:
                 raise BuildError("Environment MAP overlay differs from its original disc span")
-            if changes or wall_changes:
+            if changes or wall_changes or region_changes:
                 overlays.append({"scene":scene, "offset":location, "size":len(changed),
                                  "file":f"assets/{scene}-environment.map", "payload":changed,
                                  "sha256":_hash(changed), "expected_sha256":_hash(original)})
@@ -595,6 +617,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                        if 'allocation' in row else f"environment://{scene}/field-map/records/{row['record_index']:03d}"),
                         "scope":row.get('scope', 'shared-MAP-transform-only')})
                 audit_edits.extend({**row, "scene": scene, "semantic_id": f"collision://{scene}/field-map"} for row in wall_changes)
+                audit_edits.extend({**row, "scene": scene, "semantic_id": row["region_id"]} for row in region_changes)
         for scene_id, edits in sorted(scene_edits.items()):
             document = project.imports[scene_id]
             scene = document["scene"]["name"]
@@ -909,7 +932,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         description = 'Private source-bound model shapes and optional authored scene data.'
         feature_description = 'Apply verified model coordinate edits and other packaged overrides; model topology and materials remain source-owned.'
     change_kinds = package_change_kinds(audit_edits)
-    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('animation channels', 'source collision walls', 'other audited scene data')):
+    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('animation channels', 'source collision walls', 'source region bounds', 'other audited scene data')):
         package_suffix = ' authored scene data'
         feature_name = 'Authored scene data'
     if change_kinds:

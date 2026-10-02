@@ -60,7 +60,7 @@ class AssetDatabase:
         self.resource_catalogs: dict[str, dict] = {}
         self.material_reference_catalogs: dict[str, dict] = {}
 
-    def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str], *, flag_state_key: str | None = None, transition_state_key: str | None = None) -> dict:
+    def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str], *, flag_state_key: str | None = None, transition_state_key: str | None = None, region_state_key: str | None = None) -> dict:
         """Replace a verified derived catalog without mutating imported project facts."""
         indexed = {}
         for item in records:
@@ -77,6 +77,8 @@ class AssetDatabase:
             result['flag_state_key'] = flag_state_key
         if transition_state_key is not None:
             result['transition_state_key'] = transition_state_key
+        if region_state_key is not None:
+            result['region_state_key'] = region_state_key
         self.resource_catalogs[scene_id] = result
         return deepcopy(result)
 
@@ -99,7 +101,7 @@ class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions",
                                   "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors",
-                                  "Environment", "AnimationChannels", "Collision"})
+                                  "Environment", "AnimationChannels", "Collision", "RegionBounds"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
         self.root = root.resolve()
@@ -580,6 +582,20 @@ class ProjectService:
         if not isinstance(value, dict) or set(value) != {"source_sha256", "edits"}:
             raise ProjectError("Collision override requires source SHA256 and wall edits")
         patch_collision_walls(self._environment_source(identifier), value["source_sha256"], value["edits"])
+
+    def _validate_region_bounds(self, identifier: str, value: dict) -> dict | None:
+        from importer.region_authoring import patch_field_regions, region_authoring_options
+        if not isinstance(identifier, str) or identifier not in self.imports:
+            raise ProjectError('Region bounds owner must be an imported scene')
+        if not isinstance(value, dict) or set(value) != {'source_sha256', 'edits'}:
+            raise ProjectError('Region bounds require a source SHA256 and corner edits only')
+        original = self._environment_source(identifier)
+        scene = self.imports[identifier]['scene']['name']
+        patch_field_regions(original, value['source_sha256'], scene, value['edits'])
+        records = {row['region_id']: row for row in region_authoring_options(original, scene)['records']}
+        edits = [deepcopy(row) for row in value['edits']
+                 if any(row[key] != records[row['region_id']]['encoded'][key] for key in ('x0', 'z0', 'x1', 'z1'))]
+        return {'source_sha256': value['source_sha256'], 'edits': sorted(edits, key=lambda row: row['region_id'])} if edits else None
 
     def _validate_environment(self, identifier: str, value: dict) -> None:
         import re
@@ -1573,6 +1589,33 @@ class ProjectService:
             from .collision_rectangle import apply
             apply(self,command)
             return
+        if command.get('type') == 'apply_region_bounds':
+            from .region_bounds import apply
+            apply(self, command)
+            return
+        if command.get('type') in ('set_region_bounds', 'clear_region_bounds'):
+            setting = command['type'] == 'set_region_bounds'
+            if set(command) != ({'type', 'entity_id', 'value'} if setting else {'type', 'entity_id'}):
+                raise ProjectError('Region bounds commands accept only scene identity and corner override')
+            identifier = command['entity_id']
+            if not isinstance(identifier, str) or identifier not in self.imports or identifier != self.active_scene:
+                raise ProjectError('Region bounds require the active imported scene')
+            before = deepcopy(self.overrides.get(identifier))
+            after = deepcopy(before or {})
+            value = self._validate_region_bounds(identifier, deepcopy(command['value'])) if setting else None
+            if value is not None:
+                after['RegionBounds'] = value
+            else:
+                after.pop('RegionBounds', None)
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get("type") in ("set_collision_walls", "clear_collision_walls"):
             setting = command["type"] == "set_collision_walls"
             if set(command) != ({"type", "entity_id", "value"} if setting else {"type", "entity_id"}):
@@ -2173,8 +2216,12 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "Environment", "AnimationChannels", "Collision"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "Environment", "AnimationChannels", "Collision", "RegionBounds"}:
                 raise ProjectError("Unsupported authored component")
+            if 'RegionBounds' in components:
+                value = result._validate_region_bounds(identifier, components['RegionBounds'])
+                if value is not None:
+                    result.overrides.setdefault(identifier, {})['RegionBounds'] = value
             if "Collision" in components:
                 result._validate_collision(identifier, components["Collision"])
                 result.overrides.setdefault(identifier, {})["Collision"] = deepcopy(components["Collision"])
@@ -2467,6 +2514,10 @@ class ProjectService:
             if collision:
                 scene_changes.append(f"Collision walls: {len(collision['edits'])} authored bits")
                 scene_authored["Collision"] = deepcopy(collision)
+            region_bounds = self.overrides.get(scene_id, {}).get('RegionBounds')
+            if region_bounds:
+                scene_changes.append(f"Region bounds: {len(region_bounds['edits'])} authored rectangles")
+                scene_authored['RegionBounds'] = deepcopy(region_bounds)
             if scene_authored:
                 records.append({"id":scene_id, "kind":"scene", "name":document["scene"]["name"],
                                 "scene_id":scene_id, "source_scene":document["scene"]["name"],

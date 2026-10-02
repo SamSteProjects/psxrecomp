@@ -6,6 +6,16 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Source region authoring reuses the bounded field MAP table parser. The
+serializer writes only four corner bytes per existing primary row and supplies
+complete byte audits. `sdk.region_bounds` requalifies the entire retained
+binding and current review before single-history project commands. Effective
+annotations travel beside immutable `legaia.field-spatial.v1` metadata; the
+region annotation key is separate from the geometry source key. Normal Build
+merges original-source region, scenery and wall writes with overlap rejection
+into one guarded MAP carrier. No activation simulation or runtime dependency is
+introduced. See [region bounds](legaia-region-bounds.md).
+
 Field source footprints adapt freshly verified MAP metadata without another
 format decoder. `sdk.field_spatial.build_field_spatial` preserves primary and
 fallback source ordering, row identities, containing-table bounds and hashes.

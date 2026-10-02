@@ -213,6 +213,18 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+- **2026-10-02 (SDK authored field regions):** Previous goal turn made concrete
+  progress in07cdebc1. Independent bounded serializer/service/frontend lanes were
+  centrally integrated into the primary-region editor, immutable/effective
+  coordinate comparison, reviewed Apply/reset, one-step history, persistence and
+  normal MAP Build composition. The retained Town01 proof changes only byte66692
+  from58 to59, preserving type/padding/all other bytes; combined scenery/wall/
+  region Build also emits one complete audited MAP overlay. Actual browser
+  review/frame/comparison/history/save/cleanup passes without page/HTTP errors
+  or run requests. Final54 retail Python tests/no skips passed in74.565s,
+  plus42 Node/40 module syntax checks. Pinned reference remains a read-only oracle. Full SDK/runtime
+  goal stays active; gameplay is deferred and no package was installed.
+
 - **2026-10-02 (SDK field source workspace):** Previous goal turn made concrete
   progress in7c651e41. This continuation connects source trigger/region outlines,
   hierarchy/shared Inspector selection, frame/pick and source script references.
