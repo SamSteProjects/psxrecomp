@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+## Town01 static scenery group placement — deferred
+
+Private project: `local-output/sdk-20260909/scenery-group-20261001/project/`.
+Package: `Builds/b00ea72e47be4add/legaia.sdk.0f096fa3c17d-0.1.0-b00ea72e47be4add.psxmod`.
+SHA256: `eca7822f30607c925c345ad825a1075331167b8d0b042c35b54104f3df25f4f4`.
+Cells1833 and2089 reviewed/applied X+128 / Z+64 relative to existing authored
+placements; record194 shared X64/Y-rotation64, cell2089 existing Z32 and one
+source wall bit were preserved. Offline source/preview/history/persistence/full
+MAP package checks passed. Defer visible placement, collision interaction,
+scene-entry/script behavior and lifecycle acceptance. No game launched.
+See [Scenery group workflow](legaia-scenery-groups.md).
+
 ## Town01 rectangular source walls — deferred
 
 Private project: `local-output/sdk-20260909/collision-rectangle-20261001/project-final/`.

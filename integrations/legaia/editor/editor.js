@@ -3,6 +3,7 @@ import {mountBuildHistory} from '/build-history.js';
 import {openAssetReferences} from '/asset-references.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
+import {mountEnvironmentGroup} from '/environment-group.js';
 import {mountWallRectangle} from '/collision-rectangle.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -279,7 +280,7 @@ selectedExportButton.onclick=()=>{const id=visibilitySelection();if(!id){notify(
 async function exportSceneGlb(entityId=null){
   if(busy)return;
   if(!scenePreviewCurrent()||!state.scene_preview_source_key){notify('Wait for a current scene preview before exporting.',true);return;}
-  if(scenePose||shapeDraft||actorGroupInspection){notify('Restore the scene inspection and finish or discard model edits before exporting.',true);return;}
+  if(scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection){notify('Restore the scene inspection and finish or discard model edits before exporting.',true);return;}
   cancelViewportGesture();const key=sceneRequestKey();setBusy(true);sceneExportButton.disabled=true;selectedExportButton.disabled=true;
   try{
     const response=await fetch('/api/export/scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation,source_key:state.scene_preview_source_key,...(entityId?{entity_id:entityId}:{})})}),result=await response.json();
@@ -611,7 +612,7 @@ async function api(path, payload, {dialog,success}={}) {
     const data=await response.json();
     if(!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:JSON.stringify(data.error ?? data));
     if(!data.project || !('scene' in data)) throw new Error('Project service returned an invalid state response.');
-    if(path==='/api/selection'){pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();actorGroupRangeAnchor=payload?.entity_id??null;}state=data; render();
+    if(path==='/api/selection'){clearEnvironmentGroupSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;clearActorGroupSelection();actorGroupRangeAnchor=payload?.entity_id??null;}state=data; render();
     $('connection-dot').classList.add('connected');
     if(dialog) dialog.close();
     if(success) notify(success);
@@ -629,7 +630,8 @@ async function api(path, payload, {dialog,success}={}) {
   } finally {setBusy(false);}
 }
 function entities(){return state.scene?.entities ?? [];}
-let environmentSelection=null;
+let environmentSelection=null,environmentGroupSelection=[],environmentGroupKey=null,environmentGroupAnchor=null,environmentGroupInspection=null;
+let environmentGroupTool=null;
 let sharedEnvironmentMove=null;
 let npcDraftSelection=null;
 function selectedNpcDraft(){const value=state.actor_drafts?.[npcDraftSelection];return value?.scene_id===state.scene?.id?value:null;}
@@ -638,11 +640,11 @@ function frameNpcDraft(){
   if(sceneRepresentation==='retail'){representationSelect.value='authored';representationSelect.onchange();selectNpcDraft(id);}
   frame({id,components:{Transform:{imported:{position:{...value.position,y:null}}}}});
 }
-function selectNpcDraft(id){clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
+function selectNpcDraft(id){clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=id;environmentSelection=null;cancelViewportGesture();renderHierarchy();renderInspector();$("frame-selected").disabled=false;draw();}
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
-  if(actorGroupInspection||actorGroupSelection.length)return null;
+  if(actorGroupInspection||actorGroupSelection.length||environmentGroupInspection||environmentGroupSelection.length>1)return null;
   if(sceneRepresentation!=="authored")return null;
   const npc=selectedNpcDraft();
   if(npc){if(!scenePreviewCurrent()||hiddenSceneEntities().has(npcDraftSelection))return null;return {id:npcDraftSelection,components:{Transform:{effective:{position:{...npc.position,y:null}}}}};}
@@ -687,7 +689,35 @@ async function moveSharedEnvironment(item,axis,worldValue){
   await api('/api/command',remaining.length||instances.length?{type:'set_environment_transforms',entity_id:state.scene.id,value:{source_sha256:source.source_record.map_sha256,edits:remaining,instances}}:{type:'clear_environment_transforms',entity_id:state.scene.id});
 }
 function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
-function selectEnvironment(identifier){clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function selectEnvironment(identifier){clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function staticDecorations(){return environmentEntities().filter(e=>e.entity_id.includes('/decorations/')&&e.source_record?.object_record_index>=4);}
+function clearEnvironmentGroupSelection(){environmentGroupSelection=[];environmentGroupKey=null;environmentGroupAnchor=null;if(environmentGroupInspection)environmentGroupTool?.restore();environmentGroupTool?.refresh();}
+function updateEnvironmentGroupSelection(){
+  if(environmentGroupSelection.length&&(!canEdit()||!scenePreviewCurrent()||environmentGroupKey!==resourceStateKey()||environmentGroupSelection.some(id=>!staticDecorations().some(e=>e.entity_id===id))))clearEnvironmentGroupSelection();
+  environmentGroupTool?.refresh();
+  const clear=document.querySelector('#environment-group-tools > button:last-child');if(clear)clear.disabled=busy||!environmentGroupSelection.length;
+}
+function toggleEnvironmentSelection(id){
+  if(busy||!canEdit()||environmentGroupInspection)return;
+  const eligible=staticDecorations().map(e=>e.entity_id);if(!eligible.includes(id)){notify('Scenery groups support static decoration instances.',true);return;}
+  const next=new Set(environmentGroupSelection);if(!next.size&&eligible.includes(environmentSelection))next.add(environmentSelection);if(next.has(id))next.delete(id);else next.add(id);
+  if(next.size>128){notify('Scenery group is limited to 128 instances.',true);return;}
+  clearActorGroupSelection();npcDraftSelection=null;environmentSelection=id;environmentGroupSelection=[...next].sort();environmentGroupKey=resourceStateKey();environmentGroupAnchor=id;cancelViewportGesture();renderHierarchy();renderInspector();draw();
+}
+function selectEnvironmentRange(id,add=false){
+  if(busy||!canEdit()||environmentGroupInspection)return;
+  const eligible=new Set(staticDecorations().map(e=>e.entity_id));if(!eligible.has(id)){notify('Scenery groups support static decoration instances.',true);return;}
+  const visible=[...$('hierarchy').querySelectorAll('.entity-row')].map(row=>row.title).filter(id=>eligible.has(id));
+  const members=actorGroupRange(environmentGroupAnchor??environmentSelection,id,visible),next=new Set(add?environmentGroupSelection:[]);for(const member of members)next.add(member);
+  if(next.size>128){notify('Scenery group is limited to 128 instances.',true);return;}
+  clearActorGroupSelection();npcDraftSelection=null;environmentSelection=id;environmentGroupSelection=[...next].sort();environmentGroupKey=resourceStateKey();environmentGroupAnchor=id;cancelViewportGesture();renderHierarchy();renderInspector();draw();
+}
+function frameEnvironmentGroup(report){
+  const rows=report?.targets??environmentGroupSelection.map(entity_id=>({entity_id})),view=sceneView();
+  const corners=rows.flatMap(row=>sceneRenderer?.bounds(view.positions,row.entity_id)??[]);if(!corners.length)return;
+  for(const axis of ['x','y','z'])camera.target[axis]=(Math.min(...corners.map(p=>p[axis]))+Math.max(...corners.map(p=>p[axis])))/2;
+  camera.distance=Math.max(800,Math.hypot(...['x','y','z'].map(axis=>Math.max(...corners.map(p=>p[axis]))-Math.min(...corners.map(p=>p[axis]))))*1.5);cameraRevision++;draw();
+}
 function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
 function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
 function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
@@ -763,6 +793,11 @@ actorBoxButton.onclick=()=>{if(actorBoxButton.disabled)return;cancelViewportGest
 const actorGroupTools=document.createElement('div');actorGroupTools.id='actor-group-selection';actorGroupTools.hidden=true;
 actorGroupTools.innerHTML='<span role="status"></span><button type="button" data-frame-selection>Frame actor group</button><button type="button" data-review-selection>Review group placements</button><button type="button" data-review-components>Review group components</button><button type="button" data-clear-selection>Clear group</button>';
 transformTools.after(actorGroupTools);
+const environmentGroupHost=document.createElement('div');environmentGroupHost.id='environment-group-tools';transformTools.after(environmentGroupHost);
+environmentGroupTool=mountEnvironmentGroup({host:environmentGroupHost,getState:()=>state,getSelection:()=>environmentGroupSelection,
+  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
+  onInspection:(report,layer)=>{cancelViewportGesture();environmentGroupInspection=report?{report,layer}:null;draw();},onFrame:frameEnvironmentGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
+const clearScenery=document.createElement('button');clearScenery.textContent='Clear scenery group';clearScenery.onclick=()=>{clearEnvironmentGroupSelection();renderHierarchy();renderInspector();draw();};environmentGroupHost.append(clearScenery);
 function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;updateActorGroupSelection();}
 function updateActorGroupSelection(){
   if(actorGroupSelection.length&&(!canEdit()||actorGroupSelectionKey!==resourceStateKey()||actorGroupSelection.some(id=>!entities().some(e=>e.id===id)))){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;}
@@ -775,17 +810,20 @@ function updateActorGroupSelection(){
   actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
 }
 function toggleActorSelection(id){
+  clearEnvironmentGroupSelection();
   if(busy||!canEdit()||actorGroupInspection)return;
   updateActorGroupSelection();
   try{actorGroupSelection=toggleActorGroupSelection(actorGroupSelection,id,entities().map(e=>e.id),selected()?.id);actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=id;cancelViewportGesture();updateActorGroupSelection();renderHierarchy();draw();}
   catch(error){notify(error.message,true);}
 }
 function setActorGroupMembers(members,add=false){
+  clearEnvironmentGroupSelection();
   if(busy||!canEdit()||actorGroupInspection)return;
   const eligible=entities().map(e=>e.id),base=actorGroupSelection.length?actorGroupSelection:selected()?[selected().id]:[];
   actorGroupSelection=mergeActorGroupSelection(base,members,eligible,add);actorGroupSelectionKey=resourceStateKey();cancelViewportGesture();updateActorGroupSelection();renderHierarchy();draw();
 }
 function selectActorRange(id,add=false){
+  clearEnvironmentGroupSelection();
   if(busy||!canEdit()||actorGroupInspection)return;
   const eligible=new Set(entities().map(e=>e.id)),visible=[...$('hierarchy').querySelectorAll('.entity-row')].map(row=>row.title).filter(id=>eligible.has(id));
   const anchor=actorGroupRangeAnchor??selected()?.id??id;
@@ -919,6 +957,7 @@ document.addEventListener('keydown',event=>{
 window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.preventDefault();event.returnValue='';}});
 
 function render(){
+  updateEnvironmentGroupSelection();
   updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(['transform','group-transform'].includes(drag?.type)&&!transformGestureCurrent(drag))cancelViewportGesture();
@@ -949,7 +988,7 @@ function render(){
 function activeScenePreview(){return scenePreview&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&sceneProjectPath===state.project?.path&&scenePreview.scene_id===state.scene?.id&&scenePreview.representation===sceneRepresentation?scenePreview:null;}
 function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===sceneRequestKey()&&!sceneError;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
-function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(draft&&!draft.group)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
+function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const item=environmentEntities().find(e=>e.entity_id===row.entity_id);if(item)positions.set(row.entity_id,{...item.display_position,x:row.proposed.x,z:row.proposed.z});}if(draft&&!draft.group)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
   if($('texture-scene-uses'))$('texture-scene-uses').disabled=busy||!scenePreviewCurrent();
   comparisonNotice.hidden=sceneRepresentation!=='retail';
@@ -1007,7 +1046,7 @@ function renderHierarchy(){
   if(npcDrafts.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`NPC drafts (${npcDrafts.length})`;list.append(heading);}
   for(const [id,item] of npcDrafts){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.textContent=`${item.name} · ${sceneRepresentation==='retail'?'Authored only':'Draft'}`;row.title=id;row.onclick=()=>selectNpcDraft(id);row.setAttribute("aria-selected",id===npcDraftSelection);row.classList.toggle("selected",id===npcDraftSelection);list.append(row);}
   if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
-  for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',item.entity_id===environmentSelection);row.classList.toggle('selected',item.entity_id===environmentSelection);row.textContent=item.name;row.title=item.entity_id;row.onclick=()=>selectEnvironment(item.entity_id);row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
+  for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',String(environmentGroupSelection.length?environmentGroupSelection.includes(item.entity_id):item.entity_id===environmentSelection));row.classList.toggle('selected',item.entity_id===environmentSelection);row.classList.toggle('group-selected',environmentGroupSelection.includes(item.entity_id));row.textContent=item.name;row.title=item.entity_id;row.onclick=event=>{if(event.shiftKey){selectEnvironmentRange(item.entity_id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleEnvironmentSelection(item.entity_id);return;}selectEnvironment(item.entity_id);};row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
   const hidden=hiddenSceneEntities();
   for(const row of list.querySelectorAll('.entity-row')){
@@ -2164,7 +2203,7 @@ function renderInspector(){
   }
   const environment=selectedEnvironment();
   if(environment){
-    $('selection-summary').textContent=environment.name;
+    $('selection-summary').textContent=environmentGroupSelection.length>1?`${environmentGroupSelection.length} scenery instances · focused ${environment.name}`:environment.name;
     const source=environment.source_record,transform=source.imported_transform;
     $('inspector').innerHTML=`<section class="component"><h3>Environment <small>Source and overrides</small></h3>${property('Identity',environment.entity_id)}${property('Model',environment.asset_id ?? 'Unresolved')}${property('Geometry',environment.renderable?environment.pose_kind:environment.reason ?? 'Unavailable')}<button id="frame-environment">Frame object</button></section><section class="component"><h3>Retail transform</h3>${property('Position',JSON.stringify(transform.position))}${property('Rotation · PSX units',JSON.stringify(transform.rotation_psx))}<p class="field-note">4096 angle units equal one turn. Source placement and initial pose; scripts and runtime visibility are not evaluated.</p></section><section class="component"><h3>Source and bindings</h3><pre>${escapeHTML(JSON.stringify({source,evidence:environment.evidence},null,2))}</pre></section>`;
     $('frame-environment').onclick=frameEnvironment;
@@ -2941,6 +2980,7 @@ function drawObservedCandidates(){
 function drawEnvironmentSelection(){
   const item=selectedEnvironment();
   if(!item||!sceneModelsReady()||hiddenSceneEntities().has(item.entity_id))return;
+  if(environmentGroupSelection.length>1){ctx.save();ctx.setLineDash([5,3]);for(const id of environmentGroupSelection){const bounds=sceneRenderer.bounds(sceneView().positions,id);if(hiddenSceneEntities().has(id)||bounds.length!==8)continue;for(let corner=0;corner<8;corner++)for(const bit of [1,2,4])if(!(corner&bit))line(bounds[corner],bounds[corner|bit],'#68f0ac',1.5);}ctx.restore();}
   const corners=sceneRenderer.bounds(sceneView().positions,item.entity_id);
   if(corners.length!==8)return;
   ctx.save();
@@ -2957,6 +2997,8 @@ function drawEnvironmentSelection(){
   ctx.restore();
 }
 function draw(){
+  updateEnvironmentGroupSelection();
+  if(environmentGroupInspection&&(!scenePreviewCurrent()||environmentGroupInspection.report.project_source_key!==state.project_copy_source_key||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection))environmentGroupTool.restore();
   updateActorGroupSelection();
   if(actorGroupInspection&&(!scenePreviewCurrent()||actorGroupInspection.key!==resourceStateKey()||sceneRepresentation!=='authored'||scenePose||shapeDraft))actorBatchTool.restore();
   if(scenePose&&(!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project?.mode!=='edit'||(scenePose.isCurrent&&!scenePose.isCurrent())))clearScenePose();
@@ -3093,9 +3135,9 @@ canvas.addEventListener('pointerup',async event=>{
     let hit=null;
     if(sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}
     if(!hit)hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;
-    if(finished.extendSelection){if(hit)toggleActorSelection(hit);}
+    if(finished.extendSelection){if(hit){if(environmentEntities().some(e=>e.entity_id===hit))toggleEnvironmentSelection(hit);else toggleActorSelection(hit);}}
     else if(hit){if(state.actor_drafts?.[hit])selectNpcDraft(hit);else if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}}
-    else if(actorGroupSelection.length){clearActorGroupSelection();renderHierarchy();}
+    else if(environmentGroupSelection.length){clearEnvironmentGroupSelection();renderHierarchy();}else if(actorGroupSelection.length){clearActorGroupSelection();renderHierarchy();}
   }
   draw();
 });

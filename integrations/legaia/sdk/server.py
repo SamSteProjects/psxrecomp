@@ -540,6 +540,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
+                 "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
@@ -856,6 +857,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Build review takes no fields')
                     from .build_review import review
                     self._json(200,review(self.server.project))
+                    return
+                if route == '/api/environment-group-review':
+                    if set(body)!={'entity_id','entity_ids','delta'}:raise ProjectError('Scenery group review requires scene, selected identities and X/Z delta only')
+                    from .environment_group import review
+                    self._json(200,review(self.server.project,body['entity_id'],body['entity_ids'],body['delta']))
                     return
                 if route == '/api/collision-rectangle-review':
                     if set(body)!={'entity_id','rectangle'}:raise ProjectError('Wall rectangle review requires scene identity and rectangle only')

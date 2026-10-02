@@ -1507,6 +1507,10 @@ class ProjectService:
                 self.undo_stack.append({'target':'model_overrides','asset_id':identifier,'before':before,'after':None})
                 self.redo_stack.clear()
             return
+        if command.get('type')=='apply_environment_group':
+            from .environment_group import apply
+            apply(self,command)
+            return
         if command.get('type')=='apply_collision_rectangle':
             from .collision_rectangle import apply
             apply(self,command)

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {environmentGroupDelta,decodeEnvironmentGroup} from '../editor/environment-group.js';
+const key='a'.repeat(64),scene='scene://fixture',ids=[1,2].map(cell=>`environment://fixture/field-map/decorations/${String(cell).padStart(5,'0')}`),delta={x:64,z:-128};
+const report={schema_version:'legaia.environment-group-review.v1',project_source_key:key,scene_id:scene,source_sha256:'b'.repeat(64),review_key:'c'.repeat(64),entity_ids:ids,delta,targets:ids.map((entity_id,index)=>({entity_id,cell_index:index+1,retail:{x:128+index*128,z:256},current:{x:128+index*128,z:320},proposed:{x:192+index*128,z:192}})),affected_count:2,project_change:true,value:{},scope:'static-decoration-instance-transform-only',gameplay_verified:false};
+assert.deepEqual(environmentGroupDelta({z:-65535,x:65535}),{x:65535,z:-65535});
+for(const value of [{x:65536,z:0},{x:1.5,z:0},{x:true,z:0},{x:0},{x:0,z:0,extra:1},{x:NaN,z:0},{x:Infinity,z:0},null])assert.throws(()=>environmentGroupDelta(value));
+const decoded=decodeEnvironmentGroup(report,key,scene,ids,delta);assert.deepEqual(decoded,report);decoded.targets[0].current.x=0;assert.notEqual(decoded.targets[0].current.x,report.targets[0].current.x);
+for(const changes of [{schema_version:'wrong'},{project_source_key:'d'.repeat(64)},{scene_id:'scene://other'},{source_sha256:'bad'},{review_key:'bad'},{gameplay_verified:true},{scope:'runtime'},{project_change:1},{affected_count:1},{entity_ids:[...ids].reverse()},{delta:{x:65,z:-128}},{targets:report.targets.slice(0,1)}])assert.throws(()=>decodeEnvironmentGroup({...report,...changes},key,scene,ids,delta));
+for(const change of [{cell_index:2},{cell_index:-1},{cell_index:16384},{entity_id:ids[1]},{proposed:{x:193,z:192}},{current:{x:128,z:null}},{retail:{x:1.5,z:256}},{proposed:{x:Number.MAX_SAFE_INTEGER+1,z:192}}])assert.throws(()=>decodeEnvironmentGroup({...report,targets:[{...report.targets[0],...change},report.targets[1]]},key,scene,ids,delta));
+for(const invalidIds of [[ids[0],ids[0]],[...ids].reverse(),[ids[0]],['environment://fixture/field-map/records/001',ids[1]],Array(129).fill(ids[0])])assert.throws(()=>decodeEnvironmentGroup(report,key,scene,invalidIds,delta));
+const zero={...report,delta:{x:0,z:0},affected_count:0,project_change:false,targets:report.targets.map(row=>({...row,proposed:{...row.current}}))};assert.deepEqual(decodeEnvironmentGroup(zero,key,scene,ids,{x:0,z:0}),zero);
+console.log('Scenery group offset, source identity, ordered selection, placement arithmetic and count guards passed.');

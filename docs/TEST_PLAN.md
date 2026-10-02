@@ -7,6 +7,19 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+**Static scenery group placement (2026-10-01):** Ctrl/Command-click static
+decorations in the hierarchy or viewport, or Shift-select a hierarchy range,
+then choose Move scenery group. Source-bound review supports2–128 instances,
+common integer X/Z offsets, retained Proposed/Current textured scene inspection,
+one atomic Apply, Undo/Redo, Save/Open and normal Build. Shared offsets/rotations,
+Y, unselected instances, Collision and imported identities remain preserved.
+Full merged descriptor capacity, signed range, source/metadata/selection guards
+and exact zero-offset no-op behavior are checked. Twenty-one focused retail-
+enabled Python tests passed in16.060s, all28 Node tests and29 syntax checks passed.
+Retail browser two-wall workflow and full73728-byte ZIP MAP readback passed;
+screenshots inspected and zero page errors. No game launched; gameplay deferred.
+Postdates integrated514. See [Scenery groups](legaia-scenery-groups.md).
+
 **Spatial wall rectangle comparison (2026-10-01):** Reviewed rectangles now
 show all selected bits in a top-down Retail/Current/Proposed comparison with
 canonical source X/Z bounds, quadrant placement and proposed-change outlines.
