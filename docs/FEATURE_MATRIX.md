@@ -2,6 +2,15 @@
 
 Current scene-editor status (2026-10-01):
 
+**Collision rectangle authoring (2026-10-01):** Inclusive canonical grid ranges,
+single/all-quadrant review and one atomic Apply preserve floor bits and existing
+edits outside the area. Exact source/context key, bounds/merged-budget/no-op guards,
+Undo/Save/Open and normal Build are connected. Seventeen Python checks,27 Node
+files/28 syntax checks passed. Browser16-bit workflow and full73728-byte ZIP MAP
+readback passed, with zero errors and inspected compact dialog. Runtime collision
+paints and gameplay remain deferred; postdates514. See
+[Wall rectangles](legaia-collision-rectangles.md).
+
 **Saved editable copy discovery (2026-10-01):** Disk-backed bounded copy listing
 survives restart and shows current names, saved metadata changes and partial
 records. Normal Open validates current inputs; dirty sources cannot switch.

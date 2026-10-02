@@ -2,6 +2,16 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Rectangular source wall editing (2026-10-01):** Collision tools now review
+inclusive grid rectangles and apply one atomic wall override, preserving floor
+bits, outside edits and unrelated components. Fresh source/review guards, bounds,
+merged4096 limit, no-op and Undo/Save/Open support are connected. Seventeen focused
+Python checks,27 Node files/28 syntax checks passed. Browser reviewed/applied16
+town01 bits, verified history/Save/stale/no-op guards, zero errors and inspected
+compact dialog. Normal package ZIP matches the expected complete73728-byte MAP
+with floor tiers preserved. No game launched; runtime collision paints/gameplay
+remain deferred. Postdates514. See [Wall rectangles](legaia-collision-rectangles.md).
+
 **Saved editable copy discovery (2026-10-01):** Copy project now lists bounded
 project-local creation records after restart, shows current saved names/metadata
 changes, labels partial records and reopens through normal validation and the

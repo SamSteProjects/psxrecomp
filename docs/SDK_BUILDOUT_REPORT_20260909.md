@@ -8,6 +8,18 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Rectangular source wall editing (2026-10-01):** Added source-bound collision
+rectangle review and atomic Apply through existing wall-bit serialization,
+preserving low-nibble floor tiers and unselected edits. Bounds, merged4096 limit,
+stale/changed proposals, Live mode and no-ops reject or remain nonmutating.
+Seventeen focused Python checks,27 Node files/28 syntax checks passed. Retail
+browser reviewed16 bits, Apply/Undo/Redo/Save and stale/no-op guards with zero
+errors; compact screenshot inspected. Saved normal package ZIP readback matched
+the complete73728-byte MAP with floor tiers preserved. Andrew's exact pinned
+movement source reread; no copied code or new runtime semantics. No game launched;
+deferred package recorded in gameplay queue. Postdates514. See
+[Wall rectangles](legaia-collision-rectangles.md).
+
 **Saved editable copy discovery (2026-10-01):** Copy project lists creation records
 from disk after restart, distinguishes changed saved metadata from partial records,
 and opens validated copies with the existing unsaved-change guard. Bounded local

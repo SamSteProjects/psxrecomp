@@ -7,6 +7,16 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+Post-checkpoint feature: collision rectangle authoring passed17 retail-enabled
+focused Python checks in14.410s,27 Node files and28 syntax checks. Multi-cell/
+quadrant preservation, merged bounds, stale/context rejection, one-command history,
+retail restoration/no-ops, Save/Open and normal package readback are covered.
+Browser reviewed/applied16 town01 bits with no review writes, changed/reversed-input
+withdrawal, Undo/Redo/Save, stale/extra API rejection and no-op disabled; zero errors,
+compact screenshot inspected. Saved package ZIP matched the complete73728-byte
+expected MAP with floor tiers preserved. No game launched; owned browser/server
+stopped. Postdates514; see [Wall rectangles](legaia-collision-rectangles.md).
+
 Post-checkpoint extension: saved editable-copy discovery passed28 focused Python
 checks in4.058s,26 Node files/27 syntax checks. Fresh service/read-only listings,
 edited names/metadata, incomplete/foreign/malformed receipts, scan/path/mode/source

@@ -540,6 +540,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
+                 "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
@@ -855,6 +856,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Build review takes no fields')
                     from .build_review import review
                     self._json(200,review(self.server.project))
+                    return
+                if route == '/api/collision-rectangle-review':
+                    if set(body)!={'entity_id','rectangle'}:raise ProjectError('Wall rectangle review requires scene identity and rectangle only')
+                    from .collision_rectangle import review
+                    self._json(200,review(self.server.project,body['entity_id'],body['rectangle']))
                     return
                 if route == '/api/project/copies':
                     if body:raise ProjectError('Project copy listing takes no fields')

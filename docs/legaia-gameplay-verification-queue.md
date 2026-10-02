@@ -1,5 +1,18 @@
 # Deferred gameplay verification
 
+## Town01 rectangular source walls — deferred
+
+Private project: `local-output/sdk-20260909/collision-rectangle-20261001/project-final/`.
+Package: `Builds/ab02650b81407720/legaia.sdk.0f096fa3c17d-0.1.0-ab02650b81407720.psxmod`.
+SHA256: `63176d4fd5b8b5bc89bbcf199ca25148e84543568b301a5de3d3d9af9ddefed1`.
+Rows15–16, columns20–21, all quadrants changed from unblocked to blocked:16 source
+wall bits, guest integer extent X(2560,2816], Z[1792,2048). Browser review/history/
+Save and independent complete73728-byte MAP ZIP readback passed; floor tiers
+preserved. Deferred checks include scene entry, collision-grid loading and later
+script repainting, movement probes and visible behavior at the chosen extent.
+No installation or game launch performed. This does not request immediate manual
+gameplay verification or imply source walls necessarily survive runtime scripts.
+
 ## Normal raw MAN placement in mixed package — deferred
 
 Private saved project: `local-output/sdk-20260909/raw-MAN-normal-build-20261001/project/`.

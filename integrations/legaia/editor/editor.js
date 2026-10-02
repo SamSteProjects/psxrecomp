@@ -3,6 +3,7 @@ import {mountBuildHistory} from '/build-history.js';
 import {openAssetReferences} from '/asset-references.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
+import {mountWallRectangle} from '/collision-rectangle.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
@@ -1469,6 +1470,7 @@ function openFieldResource(record){
       };
       const apply=async command=>{if(busy||state.project.mode!=='edit'||resourceStateKey()!==key||state.scene.id!==scene)return;await api('/api/command',command,{dialog:fieldDialog,success:'Source wall edits updated. Save project to persist.'});};
       const applyEdits=edits=>apply(edits.length?{type:'set_collision_walls',entity_id:scene,value:{source_sha256:snapshot.asset.source_record.containing_span_sha256,edits}}:{type:'clear_collision_walls',entity_id:scene});
+      mountWallRectangle({host:summary,getState:()=>state,busy:()=>busy,setBusy,api,sourceCurrent:()=>fieldDialog.open&&resourceStateKey()===key&&state.scene.id===scene,hasDraft:dirty,closeInspector:()=>fieldDialog.close()});
       restore.onclick=()=>{if(dirty()||!form.reportValidity())return;return applyEdits(wallEdits.filter(e=>!sameCell(e,cell())));};
       form.onsubmit=async event=>{event.preventDefault();if(!dirty()||!form.reportValidity())return;const c=cell(),edits=wallEdits.filter(e=>!sameCell(e,c)),change=snapshot.authored_changes?.find(e=>sameCell(e,c)),retailBlocked=change?change.before_value:appliedBlocked;if(form.elements.blocked.checked!==retailBlocked)edits.push({...c,blocked:form.elements.blocked.checked});await applyEdits(edits);};
       form.querySelector('.clear-collision').disabled=!snapshot.authored?.edits?.length;form.querySelector('.clear-collision').onclick=()=>apply({type:'clear_collision_walls',entity_id:scene});

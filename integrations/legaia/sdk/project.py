@@ -1507,6 +1507,10 @@ class ProjectService:
                 self.undo_stack.append({'target':'model_overrides','asset_id':identifier,'before':before,'after':None})
                 self.redo_stack.clear()
             return
+        if command.get('type')=='apply_collision_rectangle':
+            from .collision_rectangle import apply
+            apply(self,command)
+            return
         if command.get("type") in ("set_collision_walls", "clear_collision_walls"):
             setting = command["type"] == "set_collision_walls"
             if set(command) != ({"type", "entity_id", "value"} if setting else {"type", "entity_id"}):
