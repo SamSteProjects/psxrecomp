@@ -2,6 +2,18 @@
 
 Current scene-editor status (2026-10-01):
 
+**Latest integrated offline checkpoint (2026-10-01):** Retail-enabled discovery
+passed **514 Python tests in 365.743 seconds**, exit0, no skips, on unchanged
+clean source `7a6459e4e29ad96f858d2a8c79eab25dabbc60f2`. All26 Node test files
+and27 editor syntax checks passed on that same source. This supersedes498 and
+includes saved Build comparison, raw MAN normal Build and editable project copies.
+The private retail disc SHA256 and466714416-byte length matched the expected
+source. No game launched. Browser/rendered evidence remains separate; runtime
+parity, genuine Live identity, gameplay and the full16-layer plan remain open.
+Private logs: `sdk-regression-20261001-project-copy.log/.json` and
+`node-checks-20261001-project-copy.json` under `local-output/sdk-20260909/`.
+Python log SHA256: `cde485238587c1200c630c4cc6306f4cbf35d7ecdb4892458df9f02b1dfe7434`.
+
 **Editable project copies (2026-10-01):** Current unsaved authored metadata and
 referenced model/texture files copy into fresh project-local folders, preserving
 the source and validating copied hashes/normal reopen/source drift. Drafts,
@@ -31,7 +43,7 @@ same-ID guard, corruption rejection/recovery, no authored mutation/errors and
 readable final view after spacing/status corrections. Postdates integrated 498;
 source-disc integrity and gameplay are not asserted. See [Guide](legaia-build-comparison.md).
 
-**Integrated SDK checkpoint after Build-history correction (2026-10-01):**
+**Historical integrated SDK checkpoint after Build-history correction (2026-10-01):**
 Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
 exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.
 All24 Node test files and26 editor module syntax checks passed on that source.
@@ -314,7 +326,7 @@ Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
 | Script operand JSON files | FUNCTIONAL / OFFLINE. Source-bound authored entries across five supported numeric operand families, reviewed all-or-nothing Apply, one Undo/Redo, Save/Open, exact MAN readback and retail browser workflow. | Same imported owner/source only; no instruction/control-flow/dialogue transfer or clearing of omitted entries. Actual execution and gameplay deferred. |
-| SDK asset inspector tools | FUNCTIONAL / PARTIAL. Eight catalog record types share SDK property/action metadata and explicit type-specific registered tool handlers. Actual Details navigation, previews/resource tools and busy/closed guards passed retail browser checks without actor writes. | Specialized editing forms and other asset kinds retain existing adapters; runtime/gameplay acceptance remains deferred. |
+| SDK asset inspector tools | FUNCTIONAL / PARTIAL. All twelve catalog record types share SDK property/action metadata and explicit type-specific registered tool handlers: actor, scene, template, worldmap, model, texture, animation, script, dialogue, collision, trigger and region. Details navigation, previews/resource tools and busy/closed guards have Node/browser evidence; Python inspector contracts are included in514. | Specialized editing forms retain existing adapters; runtime/gameplay acceptance remains deferred. |
 | Actor group presets | FUNCTIONAL / OFFLINE. Position/appearance/combined preset review across2–128 active-scene imported actors, all-target source/compatibility validation, one atomic Apply/Undo/Redo and Save/Open. Focused tests, Node checks, retail browser and exact full MAN package readback passed. | Absolute saved axes may overlap targets; no instantiation or runtime/visibility/collision guarantees. Normal Build rejects projects containing drafts; gameplay deferred. |
 | Asset browser field search | FUNCTIONAL / OFFLINE. Name/ID/type/scene/model/confidence/provenance filters, phrases and exclusions with bounded strict syntax; imported/authored model users match recorded references. Node and retail browser checks passed, no actor changes or authoring commands. | Active-scene resource scope and existing category limits remain; no aggregate confidence or runtime-use inference. |
 | Actor group placement offsets | FUNCTIONAL / OFFLINE. Dedicated scene actor group selection, source/effective/proposed table, grid/bounds validation, atomic command and one-step Undo/Redo, persistence and existing Build serialization. 23 focused tests and retail browser/exact package checks passed. 3D Proposed/Current layers, Frame group, draft Return and Restore now pass 26 focused tests and exact retail browser transform/camera/no-write checks; source terrain preview height recalculated. Proposed group X/Z handles now pass relative 64-unit snap, browser pointer drags, cancellation, bounds rejection, Return and atomic Apply/Undo checks. Ctrl/Command-click imported actor group selection in the viewport/hierarchy, highlights, Frame/Clear and dialog seeding now pass real mesh/browser workflow checks. Depth-tested box selection and filtered hierarchy ranges now pass real 2x-DPI exact mesh/hidden/add/reverse/Escape/source and review-seeding checks; bounded strip readback and atomic selection merges pass Node checks. These UI checks postdate the 421-test Python checkpoint. | Mixed actor/scenery groups, Y/facing, NPC drafts and scenery groups remain separate work. Gameplay visibility/collision/script movement deferred. |

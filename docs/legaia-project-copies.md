@@ -56,3 +56,7 @@ Python/Node logs, browser checks, copied project and screenshots. Initial fixtur
 assertions used an incorrect override shape and a one-actor selection; corrected
 tests passed without weakening production validators. This feature postdates
 the integrated 498-test checkpoint. Full SDK/runtime acceptance remains open.
+
+A subsequent integrated pass on clean committed source `7a6459e4` passed514
+Python tests in365.743s with no skips,26 Node test files and27 editor syntax checks.
+This includes project copies; it does not add gameplay or native runtime acceptance.

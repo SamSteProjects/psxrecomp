@@ -2,6 +2,18 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Latest integrated offline checkpoint (2026-10-01):** Retail-enabled discovery
+passed **514 Python tests in 365.743 seconds**, exit0, no skips, on unchanged
+clean source `7a6459e4e29ad96f858d2a8c79eab25dabbc60f2`. All26 Node test files
+and27 editor syntax checks passed on that same source. This supersedes498 and
+includes saved Build comparison, raw MAN normal Build and editable project copies.
+The private retail disc SHA256 and466714416-byte length matched the expected
+source. No game launched. Browser/rendered evidence remains separate; runtime
+parity, genuine Live identity, gameplay and the full16-layer plan remain open.
+Private logs: `sdk-regression-20261001-project-copy.log/.json` and
+`node-checks-20261001-project-copy.json` under `local-output/sdk-20260909/`.
+Python log SHA256: `cde485238587c1200c630c4cc6306f4cbf35d7ecdb4892458df9f02b1dfe7434`.
+
 **Editable project copies (2026-10-01):** Copy project captures unsaved authoring
 inputs into a fresh project-local folder, including referenced TIM/TMD files,
 drafts, templates and saved views/selections. Hash readback, normal reopen and
@@ -34,7 +46,7 @@ saved metadata with zero errors. Corrected spacing/status labels; final screensh
 inspected. No game launched. Postdates integrated 498. See
 [Build comparison](legaia-build-comparison.md).
 
-**Integrated SDK checkpoint after Build-history correction (2026-10-01):**
+**Historical integrated SDK checkpoint after Build-history correction (2026-10-01):**
 Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
 exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.
 All24 Node test files and26 editor module syntax checks passed on that source.

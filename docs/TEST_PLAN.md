@@ -7,7 +7,19 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
-Post-checkpoint feature: editable project copies have39 focused Python checks
+Retail-enabled discovery passed **514 Python tests in365.743 seconds**, exit0,
+no skips, on unchanged clean source `7a6459e4e29ad96f858d2a8c79eab25dabbc60f2`.
+All26 Node test files and27 editor syntax checks passed on that source. This
+supersedes498 and integrates saved Build comparison, raw MAN normal Build and
+editable project copies with the earlier SDK workflows. The user-owned retail
+disc SHA256 and466714416-byte length matched the expected source. No game launched.
+Private evidence: `sdk-regression-20261001-project-copy.log/.json` and
+`node-checks-20261001-project-copy.json` under `local-output/sdk-20260909/`.
+Python log SHA256: `cde485238587c1200c630c4cc6306f4cbf35d7ecdb4892458df9f02b1dfe7434`.
+Browser/package/rendered evidence remains separate. Native runtime parity, genuine
+Live identity, gameplay and full16-layer acceptance remain incomplete.
+
+Pre-checkpoint feature evidence: editable project copies have39 focused Python checks
 passing in3.628s,26 Node files/27 syntax checks passing. Tests cover dirty-source
 history/file preservation, copied templates/drafts/views/selections and referenced
 TIM/TMD bytes, source metadata/file drift, size/path/mode/name guards, HTTP fields
@@ -17,7 +29,7 @@ original X9472 with identical source bytes, zero page errors and inspected image
 No game launched; test browser/server stopped. Postdates integrated498, not a
 replacement full-suite/runtime checkpoint. See [Project copies](legaia-project-copies.md).
 
-Post-checkpoint feature: raw streamed MAN normal Build has27 retail-enabled focused
+Pre-checkpoint feature evidence: raw streamed MAN normal Build has27 retail-enabled focused
 Python checks passing in79.901s, plus25 Node files/26 syntax checks. Tests cover
 source offset/length, exact raw placement, no-op/clear baseline byte equality,
 record/chunk structure, unaudited mutation/bad locator rejection before writes,
