@@ -2,6 +2,14 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Build-history compatibility correction (2026-10-01):** Integrated discovery
+at e49e09b0 ran497 tests but found four no-op package-equality failures and one
+stale-source guard-order error. Content-derived package identity is restored;
+separate immutable input receipts retain distinct authored snapshots. All29
+focused regression checks passed, plus six history checks including conflicting
+input-receipt rejection. The failed run is retained as evidence, not presented
+as integrated acceptance. A fresh integrated result is pending.
+
 **Saved normal Build history (2026-10-01):** Successful Builds retain deterministic
 completion receipts; Build history reopens reports after server restart. Input
 match, package integrity and gameplay status remain separate. Verify saved files

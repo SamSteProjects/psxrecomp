@@ -7,6 +7,14 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+Pending update: full discovery at e49e09b0 ran497 tests in358.846s, no skips,
+but failed four no-op package-equality checks and one stale-source validation-order
+check. It is retained at `sdk-regression-20261001-build-history.log/.json` under
+private local output and does not replace the passing checkpoint below. The
+implementation restores content-derived package identity with separate input
+receipts. All29 focused regression checks and six history checks passed. A fresh
+integrated run must verify the correction and all newer SDK features together.
+
 **Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
 Python discovery passed **475 tests in 279.577 seconds**, exit0, no skips, on
 unchanged clean committed source `9084e5454bd8e191f4f4b03e01f4c82497564619`.

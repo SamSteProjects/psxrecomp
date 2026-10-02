@@ -8,6 +8,14 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Build-history compatibility correction (2026-10-01):** Full discovery at
+e49e09b0 ran497 tests with four no-op package-equality failures and one stale-source
+guard-order error. The failed run is retained and does not supersede the passing
+475 checkpoint. Content-derived package identity now preserves byte-identical
+no-op packages; separate immutable input receipts retain authored metadata
+contexts. All29 focused regression checks and six history checks passed. Fresh
+integrated discovery is pending; no game launched.
+
 **Saved normal Build history (2026-10-01):** Build completion receipts preserve
 package provenance after editor/server restart. History compares recorded input
 identity separately from an explicit file verification operation covering audit,

@@ -7,6 +7,9 @@ from sdk.build_history import list_builds,verify_build
 from sdk.project import ProjectService,ProjectError
 
 class BuildHistory(unittest.TestCase):
+ def test_additional_input_receipt_is_exactly_bound_and_primary_is_preserved(self):
+  with tempfile.TemporaryDirectory() as d:
+   p,i,directory,archive=self.fixture(Path(d));primary=(directory/'build-receipt.json').read_bytes();receipt=json.loads(primary);p.name='A second authored context';key=authored_state_key(p);receipt['authored_state_key']=key;(directory/'input-receipts').mkdir();candidate=directory/'input-receipts'/(key+'.json');candidate.write_text(json.dumps(receipt));self.assertTrue(list_builds(p)['builds'][0]['matches_current_inputs']);self.assertTrue(verify_build(p,i)['matches_current_inputs']);self.assertEqual(primary,(directory/'build-receipt.json').read_bytes());receipt['archive_sha256']='c'*64;candidate.write_text(json.dumps(receipt));self.assertEqual(list_builds(p)['builds'][0]['status'],'invalid')
  def test_history_scan_is_bounded_and_does_not_claim_newest(self):
   with tempfile.TemporaryDirectory() as d:
    p=ProjectService(Path(d));(p.root/'Builds').mkdir()

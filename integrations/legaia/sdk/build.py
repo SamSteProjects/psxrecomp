@@ -348,7 +348,6 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
-    input_key = authored_state_key(project)
     if getattr(project, 'actor_drafts', {}):
         raise BuildError('New NPC drafts are not yet connected to playable Build; remove drafts before building existing overrides')
     if not project.disc_path:
@@ -502,6 +501,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         if canonical_json(document) != canonical_json(fresh):
             raise BuildError(f"Imported provenance for {scene_id} no longer matches a fresh retail import")
 
+    input_key = authored_state_key(project)
     overlays = []
     audit_edits = []
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
@@ -822,8 +822,9 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                        "live_runtime": "not_run"},
     }
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
-    # Distinguish identical serialized bytes built from different input snapshots.
-    build_id = _hash(audit_bytes + input_key.encode('ascii'))[:16]
+    # Package identity follows emitted content, including no-op/cleared builds.
+    # Separate immutable receipts retain each authored metadata context.
+    build_id = _hash(audit_bytes)[:16]
     package_id = "legaia.sdk." + _hash((project.name + disc_hash).encode("utf-8"))[:12]
     version = "0.1.0-" + build_id
     destination = Path(output_dir).absolute() if output_dir is not None else project.root / "Builds" / build_id
@@ -957,12 +958,25 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                'archive_bytes':len(archive_bytes), 'package_id':package_id, 'version':version,
                'source_disc_sha256':disc_hash, 'build_kind':build_kind,
                'runtime_status':'package_built_not_launched', 'feature_id':'placements'}
-    _write_exact(destination / 'build-receipt.json',
-                 (canonical_json(receipt, pretty=True)+'\n').encode('utf-8'), boundary)
+    receipt_bytes = (canonical_json(receipt, pretty=True)+'\n').encode('utf-8')
+    primary_receipt = destination / 'build-receipt.json'
+    _guard_output(primary_receipt,boundary)
+    if primary_receipt.exists():
+        from .project import read_metadata_json
+        previous = read_metadata_json(primary_receipt)
+        previous_key = previous.get('authored_state_key')
+        if not isinstance(previous_key,str) or len(previous_key)!=64 or any(c not in '0123456789abcdef' for c in previous_key):
+            raise BuildError('Existing completion receipt has an invalid authored input identity')
+        if {k:v for k,v in previous.items() if k!='authored_state_key'} != {k:v for k,v in receipt.items() if k!='authored_state_key'}:
+            raise BuildError('Existing completion receipt refers to different package artifacts')
+    else:
+        _write_exact(primary_receipt,receipt_bytes,boundary)
+    input_receipt = destination / 'input-receipts' / (input_key+'.json')
+    _write_exact(input_receipt,receipt_bytes,boundary)
     return {
         "path": str(archive_path), "audit": str(destination / "build-audit.json"), "build_kind": build_kind,
         "authored_state_key": input_key, "report": build_report(audit),
-        "receipt": str(destination / 'build-receipt.json'),
+        "receipt": str(input_receipt),
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
         "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
         **({"changed_fields_unit": "authored fields/runs/textures"} if has_texture else

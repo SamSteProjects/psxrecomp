@@ -2,6 +2,12 @@
 
 Current scene-editor status (2026-10-01):
 
+**Build-history compatibility correction (2026-10-01):** Restored content-derived
+package identity after full discovery at e49e09b0 exposed four no-op equality
+failures and one stale-source validation-order error. Separate immutable input
+receipts bind each authored context to the same unchanged package. All29 focused
+regression checks and six history checks passed; integrated rerun pending.
+
 **Saved normal Build history (2026-10-01):** Deterministic completion receipts,
 restart-persistent report discovery, explicit legacy/invalid statuses and bounded
 project-local scans. Verification binds audit/manifest/payloads/archive and exact

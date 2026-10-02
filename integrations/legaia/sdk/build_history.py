@@ -53,13 +53,23 @@ def _load(project, identifier):
         raise ProjectError('Saved Build completion receipt is invalid')
     audit, data = _metadata(_path(project,identifier,'build-audit.json'))
     if (sha256(data).hexdigest() != receipt['audit_sha256']
-            or sha256(data+receipt['authored_state_key'].encode('ascii')).hexdigest()[:16] != identifier
+            or identifier not in (sha256(data).hexdigest()[:16],sha256(data+receipt['authored_state_key'].encode('ascii')).hexdigest()[:16])
             or audit.get('schema_version') != 'legaia.build-audit.v1'
             or audit.get('disc_sha256') != receipt['source_disc_sha256']
             or audit.get('build_kind') != receipt['build_kind']
             or not isinstance(audit.get('edits'),list) or len(audit['edits'])>65536
             or not isinstance(audit.get('overlays'),list) or len(audit['overlays'])>4096):
         raise ProjectError('Saved audit does not match its completion receipt')
+    # O(1) lookup of a retained current-input receipt; never scan nested folders.
+    current = authored_state_key(project)
+    candidate = _path(project,identifier,'input-receipts/'+current+'.json')
+    if candidate.exists():
+        recorded, _ = _metadata(candidate)
+        if (recorded.get('authored_state_key')!=current or
+                {k:v for k,v in recorded.items() if k!='authored_state_key'} !=
+                {k:v for k,v in receipt.items() if k!='authored_state_key'}):
+            raise ProjectError('Saved current-input receipt differs from completion artifacts')
+        receipt=recorded
     return receipt, audit
 
 

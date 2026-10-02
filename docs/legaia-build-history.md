@@ -9,9 +9,13 @@ checking its package. The receipt records the authored-input identity, source
 disc hash, audit/manifest/archive hashes, package identity and byte length.
 It contains no extracted payloads or gameplay acceptance claim. Identical
 inputs produce the same receipt and package; filesystem timestamps are not
-used as build identity. Build directory/version identity combines audit bytes
-and the authored-input key, so distinct input snapshots can retain separate
-receipts even when their serialized changes are identical.
+used as build identity. Build directory/version identity follows serialized
+audit bytes. No-op authored overrides therefore retain byte-identical baseline
+packages. The first `build-receipt.json` is preserved; each input context also
+gets an immutable `input-receipts/<authored-key>.json`. History looks up the exact
+current key without scanning nested folders and validates that receipt against
+the same package artifact identity. Receipts from the first snapshot-based
+identity implementation remain readable; new packages use content identity.
 
 The history list checks receipt structure and its audit hash. Its input match
 compares recorded authored metadata to current project inputs. This comparison
@@ -61,3 +65,12 @@ checks repeated and the final screenshot inspected. Private evidence is under
 
 This feature postdates the integrated 475-test checkpoint. Full SDK/runtime
 completion and the separate manual gameplay queue remain open.
+
+Compatibility correction (2026-10-01): full discovery at `e49e09b0` ran 497
+tests with no skips but found four package-equality failures and one stale-source
+validation-order error. Those failures were not accepted as a checkpoint. Build
+now retains content identity plus separate immutable input receipts, and stale
+retail validation occurs before snapshot metadata hashing. All29 focused checks
+covering the five failing workflows passed; an additional six-check history set
+passed, including exact binding and rejection of conflicting current-input
+receipts. Fresh full discovery is required before claiming integrated success.
