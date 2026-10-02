@@ -59,7 +59,7 @@ def package_change_kinds(edits) -> list[str]:
         'source-MAP-wall-bit-only': 'source collision walls',
         'shared-scene-animation-record': 'animation channels',
     }
-    return sorted({labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data') for edit in edits})
+    return sorted({('initial actor animation' if edit.get('assignment_kind') == 'ActorAnimation' and edit.get('field') == 'animation_id' else labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data')) for edit in edits})
 
 
 def build_report(audit) -> dict:
@@ -448,8 +448,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             raise BuildError(f"Authored entity has no imported provenance: {identifier}")
         scene_id, actor = entity_lookup[identifier]
         if (not isinstance(components, dict) or not components or
-                set(components) - {"Transform", "ActorAppearance", "Dialogue"}):
-            raise BuildError(f"{identifier}: only authored Transform.position, ActorAppearance and bounded Dialogue runs can be built")
+                set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue"}):
+            raise BuildError(f"{identifier}: only authored Transform.position, initial appearance/animation and bounded Dialogue runs can be built")
         edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "flags": {}, "waits": {}, "model_selectors": {}})
         record = actor["source_record"]["record_index"]
         if "Transform" in components:
@@ -469,6 +469,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if donor_id not in entity_lookup or entity_lookup[donor_id][0] != scene_id:
                 raise BuildError(f"{identifier}: appearance donor must be an imported actor in the same scene")
             edits["assignments"][record] = donor_id
+        if "ActorAnimation" in components:
+            from .actor_animation import validate
+            witness = validate(project, identifier, components['ActorAnimation'], verify_disc=True)
+            # Compose the final header once; the clip witness has the exact
+            # inherited appearance model source, not a retargeted model.
+            edits['assignments'][record] = witness['semantic_id']
         if "Dialogue" in components:
             dialogue = components["Dialogue"]
             if (not isinstance(dialogue, dict) or set(dialogue) != {"runs"} or
@@ -624,6 +630,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 changed, changes = context.patch(assignments, original=baseline)
                 for change in changes:
                     change["donor_entity_id"] = edits["assignments"][change["record_index"]]
+                    target_id = f'scene://{scene}/actors/man-p1/{change["record_index"]:04d}'
+                    animation = project.overrides.get(target_id, {}).get('ActorAnimation')
+                    if animation:
+                        change.update(assignment_kind='ActorAnimation', animation_asset_id=animation['animation_asset_id'],
+                                      assignment_source_record_sha256=animation['source_record_sha256'])
             if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["flags"] or edits["waits"] or edits["model_selectors"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)

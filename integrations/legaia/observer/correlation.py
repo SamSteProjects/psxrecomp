@@ -198,7 +198,8 @@ def unavailable(reason: str) -> dict:
 
 
 def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any],
-              appearance_donors: Mapping[str, str] | None = None) -> dict:
+              appearance_donors: Mapping[str, str] | None = None,
+              animation_donors: Mapping[str, str] | None = None) -> dict:
     """Produce structural candidate groups; never promote unique guesses to identity."""
     if imported is None:
         return unavailable("No imported scene is active")
@@ -244,6 +245,42 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
            for target, donor in appearance_donors.items()):
         return unavailable("Appearance donor is outside the imported scene")
     models = {model["semantic_id"]: model for model in imported.get("assets", {}).get("models", [])}
+    if animation_donors is not None and not isinstance(animation_donors, Mapping):
+        return unavailable("Animation witness assignments require an imported actor mapping")
+    animation_donors = dict(animation_donors or {})
+    if animation_donors and (len(actor_lookup) != len(actors) or
+                            len(models) != len(imported.get("assets", {}).get("models", []))):
+        return unavailable("Animation witness evidence has ambiguous imported identities")
+    if any(not isinstance(target, str) or not isinstance(witness, str) or
+           target not in actor_lookup or witness not in actor_lookup
+           for target, witness in animation_donors.items()):
+        return unavailable("Animation witness is outside the imported scene")
+    for target, witness_id in animation_donors.items():
+        base = actor_lookup[appearance_donors.get(target, target)]
+        witness = actor_lookup[witness_id]
+        base_ref, witness_ref = base.get("model_reference", {}), witness.get("model_reference", {})
+        model_index = base_ref.get("model_index")
+        asset_id = base_ref.get("asset_semantic_id")
+        model = models.get(asset_id, {})
+        count = model.get("source_record", {}).get("object_count")
+        if (base.get("source_record", {}).get("record_kind") != "man_partition_1_actor_placement" or
+                witness.get("source_record", {}).get("record_kind") != "man_partition_1_actor_placement" or
+                base_ref.get("resolution_status") != "resolved" or
+                witness_ref.get("resolution_status") != "resolved" or
+                type(model_index) is not int or not 0 <= model_index < 0xF0 or
+                type(witness_ref.get("model_index")) is not int or
+                type(base_ref.get("normalized_pool_index")) is not int or
+                type(witness_ref.get("normalized_pool_index")) is not int or
+                base_ref.get("model_pool") != "scene_tmd" or
+                base_ref.get("normalized_pool_index") != model_index or
+                not isinstance(asset_id, str) or asset_id not in models or
+                any(witness_ref.get(key) != base_ref.get(key) for key in
+                    ("asset_semantic_id", "model_index", "model_pool", "normalized_pool_index")) or
+                type(count) is not int or not 1 <= count <= MAX_OBJECTS or
+                any(type(source.get("placement_fields", {}).get("animation_id")) is not int or
+                    not 1 <= source["placement_fields"]["animation_id"] <= 255
+                    for source in (base, witness))):
+            return unavailable("Animation witness lacks the exact effective scene model binding")
     entries = {actor["semantic_id"]: {"status": "unmatched", "binding_confirmed": False,
                 "candidates": [], "reason": "No independently compatible MAN/model evidence"} for actor in actors}
     result = {"available": True, "state": "candidates", "reason": None,
@@ -252,7 +289,8 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
               "runtime_process_identity": epoch["runtime_process_identity"],
               "profile_hash": profile["profile_hash"], "guard_token": epoch["observation_guard_token"],
               "scene_name": epoch["scene_name"], "disc_identity": binding["disc_identity"],
-              "import_digest": _digest(imported), "appearance_donors": deepcopy(appearance_donors), "frame": binding["last_frame"],
+              "import_digest": _digest(imported), "appearance_donors": deepcopy(appearance_donors),
+              "animation_donors": deepcopy(animation_donors), "frame": binding["last_frame"],
               "complete": binding.get("complete") is True, "historical_observation": True,
               "source_evidence": deepcopy(SOURCE_EVIDENCE)}
     seen = set()
@@ -282,9 +320,11 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
         for actor in actors:
             actor_id = actor["semantic_id"]
             donor_id = appearance_donors.get(actor_id, actor_id)
-            variants = [("imported", actor), ("effective", actor_lookup[donor_id])]
+            animation_donor_id = animation_donors.get(actor_id, donor_id)
+            variants = [("imported", actor, actor),
+                        ("effective", actor_lookup[donor_id], actor_lookup[animation_donor_id])]
             matching_layers = []
-            for layer, appearance_actor in variants:
+            for layer, appearance_actor, animation_actor in variants:
                 ref = appearance_actor["model_reference"]
                 asset = models.get(ref.get("asset_semantic_id"), {})
                 if (actor.get("source_record", {}).get("record_kind") != "man_partition_1_actor_placement" or
@@ -293,7 +333,7 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
                         ref.get("model_pool") != observed.get("model_pool") or
                         ref.get("normalized_pool_index") != observed.get("normalized_pool_index") or
                         actor["placement_fields"].get("local_count") != observed.get("local_count") or
-                        appearance_actor["placement_fields"].get("animation_id") != observed.get("animation_id") or
+                        animation_actor["placement_fields"].get("animation_id") != observed.get("animation_id") or
                         asset.get("source_record", {}).get("object_count") != observed.get("object_count")):
                     continue
                 matching_layers.append(layer)
@@ -306,6 +346,7 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
             candidate = {"runtime_node_id": node_id, "confidence": "supported_candidate",
                          "appearance_layers": matching_layers,
                          "effective_donor_id": donor_id if "effective" in matching_layers else None,
+                         "effective_animation_donor_id": animation_donor_id if "effective" in matching_layers else None,
                          "epoch_id": epoch["epoch_id"], "frame": observed["observed_frame"],
                          "position_capture_frames": deepcopy(node_lookup[node_id].get("position_capture_frames")),
                          "evidence": ["MAN model selector and pool", "MAN animation selector", "MAN local-count prefix",

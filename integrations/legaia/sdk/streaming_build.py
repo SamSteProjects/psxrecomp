@@ -34,7 +34,7 @@ def prepare_streaming_scene(project, scene_id):
             map_components = components
             continue
         p2 = isinstance(identifier, str) and re.fullmatch(re.escape(scene_id) + r'/scripts/man-p2/[0-9]{4}', identifier) is not None
-        allowed = {'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors'} if p2 else {'Transform', 'ActorAppearance', 'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'AnimationChannels'}
+        allowed = {'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors'} if p2 else {'Transform', 'ActorAppearance', 'ActorAnimation', 'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components, dict) or not components or set(components) - allowed:
             raise ProjectError('Streaming export currently supports actor positions, donor appearance, dialogue, transition entries, animation channels, scenery and collision; other authored components require further serialization support')
         if 'AnimationChannels' in components:
@@ -50,6 +50,13 @@ def prepare_streaming_scene(project, scene_id):
             assignments[record] = dict(model_index=donor['model_reference']['model_index'],
                                        animation_id=donor['placement_fields']['animation_id'])
             assignment_donors[record] = appearance['donor_entity_id']
+        if 'ActorAnimation' in components:
+            from .actor_animation import validate
+            witness = validate(project, identifier, components['ActorAnimation'], verify_disc=True)
+            record = actors[identifier]['source_record']['record_index']
+            assignments[record] = dict(model_index=witness['model_reference']['model_index'],
+                                       animation_id=witness['placement_fields']['animation_id'])
+            assignment_donors[record] = witness['semantic_id']
         if 'ScriptMovement' in components:
             project._validate_movements(identifier, components['ScriptMovement'])
             movement_edits.update(components['ScriptMovement']['entries'])
@@ -96,6 +103,11 @@ def prepare_streaming_scene(project, scene_id):
             candidate, appearance_changes = context.patch_appended(candidate, assignments)
             for change in appearance_changes:
                 change['donor_entity_id'] = assignment_donors[change['record_index']]
+                target = f'{scene_id}/actors/man-p1/{change["record_index"]:04d}'
+                animation = project.overrides.get(target, {}).get('ActorAnimation')
+                if animation:
+                    change.update(assignment_kind='ActorAnimation', animation_asset_id=animation['animation_asset_id'],
+                                  assignment_source_record_sha256=animation['source_record_sha256'])
         candidate, placements = patch_man_positions(candidate, scene, edits)
         transition_changes = []
         if transition_edits:

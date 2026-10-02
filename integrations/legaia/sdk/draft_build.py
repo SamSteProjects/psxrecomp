@@ -131,7 +131,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     model_selectors={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors'} if p2 else {'Transform','ActorAppearance','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors'} if p2 else {'Transform','ActorAppearance','ActorAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
             raise ProjectError('Draft serialization currently composes only same-scene actor positions, appearances and dialogue')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
@@ -174,6 +174,12 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             assignments[record]=dict(model_index=donor['model_reference']['model_index'],
                                      animation_id=donor['placement_fields']['animation_id'])
             assignment_donors[record]=appearance['donor_entity_id']
+        if 'ActorAnimation' in components:
+            from .actor_animation import validate
+            witness=validate(project,identifier,components['ActorAnimation'],verify_disc=True)
+            assignments[record]=dict(model_index=witness['model_reference']['model_index'],
+                                     animation_id=witness['placement_fields']['animation_id'])
+            assignment_donors[record]=witness['semantic_id']
     context=load_man_assignment_context(project.disc_path,scene) if assignments else None
     dialogue_context=load_dialogue_authoring_context(project.disc_path,scene) if dialogues else None
     transition_context=load_transition_authoring_context(project.disc_path,scene) if transitions else None
@@ -262,6 +268,11 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             candidate,appearance_audit=context.patch_appended(candidate,assignments)
             for change in appearance_audit:
                 change['donor_entity_id']=assignment_donors[change['record_index']]
+                target=f'scene://{scene}/actors/man-p1/{change["record_index"]:04d}'
+                animation=overrides.get(target,{}).get('ActorAnimation')
+                if animation:
+                    change.update(assignment_kind='ActorAnimation',animation_asset_id=animation['animation_asset_id'],
+                                  assignment_source_record_sha256=animation['source_record_sha256'])
         candidate,placement_audit=patch_man_positions(candidate,scene,edits)
         dialogue_audit=[]
         if dialogue_context:

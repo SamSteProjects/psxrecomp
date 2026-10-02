@@ -151,6 +151,7 @@ class EditorServer(ThreadingHTTPServer):
         except (RetailImportError, OSError):
             state['project_text_state_key'] = None
         state["capabilities"]["actor_appearance"] = bool(self.project.disc_path)
+        state['capabilities']['actor_animation_assignment'] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["actor_preset_batch"] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["resource_catalog"] = bool(self.project.disc_path and self.project.active_scene)
         state['capabilities']['asset_references'] = bool(self.project.disc_path and self.project.active_scene and len(self.project.imports)<=64)
@@ -320,6 +321,27 @@ class EditorServer(ThreadingHTTPServer):
                                         clip_id="authored-appearance", layer="authored",
                                         label="Authored initial appearance")
             preview["animation_support"]["clips"] = [{"id": "authored-appearance", "label": "Authored initial appearance"}]
+            return preview
+
+    def actor_initial_animation_preview(self, entity_id: str) -> dict:
+        from .actor_animation import source_actor
+        from importer.pipeline import _disc_context
+        if not self.project.overrides.get(entity_id, {}).get('ActorAnimation'):
+            raise ProjectError('Actor has no authored initial animation assignment')
+        if not any(a['semantic_id'] == entity_id for a in
+                   self.project.imports.get(self.project.active_scene, {}).get('actors', [])):
+            raise ProjectError('Initial animation preview requires an actor in the active scene')
+        with _disc_context(self.project.disc_path):
+            witness = source_actor(self.project, entity_id, verify_disc=True)
+            value = self.project.overrides[entity_id]['ActorAnimation']
+            changed = any(c.get('AnimationChannels', {}).get('animation_id') == value['animation_asset_id']
+                          for c in self.project.overrides.values())
+            preview = self.actor_animation_preview(witness['semantic_id'], 'authored' if changed else 'imported')
+            preview['animation'].update(entity_id=entity_id, donor_entity_id=witness['semantic_id'],
+                clip_id='authored-initial-animation', source_clip_id=value['animation_asset_id'],
+                layer='authored', label='Assigned initial animation',
+                assignment_source_record_sha256=value['source_record_sha256'])
+            preview['animation_support']['clips'] = [{'id':'authored-initial-animation', 'label':'Assigned initial animation'}]
             return preview
 
     def export_preview(self, preview: dict, frame_index: int | None, clip_fps: float | None = None) -> dict:
@@ -537,6 +559,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
+                 '/actor-animation.js': ('actor-animation.js', 'text/javascript'),
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
@@ -1105,6 +1128,22 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Animation options require an actor identity only")
                     self._json(200, self.server.project.animation_authoring_options(body["entity_id"]))
                     return
+                if route == '/api/actor-animation-options':
+                    if (set(body) != {'entity_id'} or not isinstance(body.get('entity_id'), str) or
+                            not any(a['semantic_id'] == body['entity_id'] for a in
+                                    self.server.project.imports.get(self.server.project.active_scene, {}).get('actors', []))):
+                        raise ProjectError('Initial animation options require an actor identity only')
+                    from .actor_animation import options
+                    self._json(200, options(self.server.project, body['entity_id']))
+                    return
+                if route == '/api/actor-animation-review':
+                    if (set(body) != {'entity_id', 'animation_asset_id', 'source_key'} or not isinstance(body.get('entity_id'), str) or
+                            not isinstance(body.get('source_key'), str) or len(body['source_key']) != 64 or
+                            any(c not in '0123456789abcdef' for c in body['source_key'])):
+                        raise ProjectError('Initial animation review requires actor, clip and source identity only')
+                    from .actor_animation import review
+                    self._json(200, review(self.server.project, body['entity_id'], body['animation_asset_id'], body['source_key']))
+                    return
                 if route in ("/api/actor-appearance-options", "/api/actor-appearance-preview", "/api/export/actor-appearance"):
                     exporting = route == "/api/export/actor-appearance"
                     expected = {"entity_id", "clip_fps" if "clip_fps" in body else "frame_index"} if exporting else {"entity_id"}
@@ -1120,6 +1159,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if exporting:
                         frame_index, clip_fps = _animation_export_choice(body)
                     preview = self.server.actor_appearance_preview(body["entity_id"])
+                    self._json(200, self.server.export_preview(preview, frame_index, clip_fps) if exporting else preview)
+                    return
+                if route in ('/api/actor-initial-animation-preview', '/api/export/actor-initial-animation'):
+                    exporting = route.startswith('/api/export/')
+                    expected = {'entity_id', 'clip_fps' if 'clip_fps' in body else 'frame_index'} if exporting else {'entity_id'}
+                    if set(body) != expected or not isinstance(body.get('entity_id'), str) or not body['entity_id']:
+                        raise ProjectError('Initial animation requests accept only an active actor and export frame/rate')
+                    frame_index, clip_fps = _animation_export_choice(body) if exporting else (None, None)
+                    preview = self.server.actor_initial_animation_preview(body['entity_id'])
                     self._json(200, self.server.export_preview(preview, frame_index, clip_fps) if exporting else preview)
                     return
                 if route == "/api/export/actor-drafts":

@@ -20,7 +20,8 @@ export function decodeGroupAppearanceScene(response, report, current){
     const geometry=assets.get(target.geometry_key);
     if(target.renderable&&(!geometry||geometry.asset_id!==target.asset_id))throw new Error('Group appearance geometry is missing');
     if(selected.has(target.entity_id)){
-      if(target.source_actor_id!==report.donor_entity_id||target.asset_id!==donor.asset_id||target.appearance_authored!==true)throw new Error('Group appearance donor binding differs from review');
+      const retainedAnimation=original.animation_assignment_authored===true&&target.animation_assignment_authored===true&&target.source_actor_id===original.source_actor_id&&JSON.stringify(target.source_record)===JSON.stringify(original.source_record)&&JSON.stringify(target.model_reference)===JSON.stringify(original.model_reference);
+      if((target.source_actor_id!==report.donor_entity_id&&!retainedAnimation)||target.asset_id!==donor.asset_id||target.appearance_authored!==true)throw new Error('Group appearance donor binding differs from review');
     }else if(target.renderable&&JSON.stringify(sharedGeometryContent(geometry?.preview))!==JSON.stringify(sharedGeometryContent(sourceAssets.get(original.geometry_key)?.preview)))throw new Error('Group appearance changed unrelated geometry');
   }
   return structuredClone(proposed);

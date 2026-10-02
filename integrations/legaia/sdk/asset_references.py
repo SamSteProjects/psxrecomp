@@ -113,7 +113,11 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
     effective_bindings={}
     for ref in model_references:
         if ref['effective']:
-            effective_bindings.setdefault((ref['scene_id'],ref['effective_donor_id'],ref['target_id']),[]).append(ref)
+            donor=ref['effective_donor_id']
+            if project.overrides.get(ref['source_id'],{}).get('ActorAnimation'):
+                from .actor_animation import source_actor
+                donor=source_actor(project,ref['source_id'])['semantic_id']
+            effective_bindings.setdefault((ref['scene_id'],donor,ref['target_id']),[]).append(ref)
         if ref['target_id'] not in nodes:unresolved+=1;continue
         if ref['imported']:edge(ref['source_id'],ref['target_id'],'initial_model',ref['scene_id'])
         if ref['effective']:edge(ref['source_id'],ref['target_id'],'effective_initial_model',ref['scene_id'],'effective')

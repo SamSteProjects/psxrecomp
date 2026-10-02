@@ -2,6 +2,34 @@
 
 Current scene-editor status (2026-10-02):
 
+**Initial animation assignment (2026-10-02):** The actor Inspector now offers
+source-verified same-model clip choices, explicit Review/Apply/Clear and witness
+preview. A separate ActorAnimation component preserves imported channel ownership,
+Undo/Redo and Save/Open. The authored scene and assigned GLB preview keep target
+identity/position; normal and draft writers compose the final MAN header once.
+Effective references and unconfirmed Live candidates keep animation witnesses
+separate from appearance donors and invalidate stale observations. Incompatible
+appearance/preset/revert changes reject atomically. Existing templates still
+capture position/appearance only. Global/zero/unknown/partial pairings remain
+unsupported; scripts, timing and gameplay suitability remain unverified.
+39 focused retail-enabled Python checks passed in55.598s, plus a22-check
+compatibility pass in21.572s; all34 Node files and35 syntax checks passed. Seven raw MAN/appearance compatibility checks
+also passed in47.334s without skips.
+Actual browser Review/Preview/Apply/Clear, assigned-frame GLB export,
+Undo/Redo/Save, exact scene placement and initial/effective reference edges passed
+with zero page errors; malformed/stale HTTP rejected without history changes.
+Visual review repaired a clipped Review button; final layout and screenshot
+passed. Fresh Town0b package readback changes only MAN offset9471,14→13,
+model0102/positions/imports/saved bytes unchanged. Record12 digest and exact
+retail import were reverified; clearing reproduces baseline package bytes.
+Draft composition preserves the appended retail donor clip and rebases the
+existing header9471→9474. Saved private fixture/package/evidence:
+`local-output/sdk-20260909/actor-animation-assignment-20261002/`.
+See [initial assignment workflow](legaia-initial-animation-assignment.md).
+No game launched or package installed. Manual checks are queued for later;
+full SDK/runtime acceptance remains incomplete and the565 checkpoint predates
+this feature.
+
 **Shared model/clip reference navigation (2026-10-02):** Asset references
 now links the eight supported shared field clips to their five global models in
 both Active scene and Project scopes. These are explicit reference-pinned

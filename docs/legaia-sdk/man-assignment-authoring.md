@@ -5,6 +5,12 @@ existing MAN actor's initial model/animation pair. The project commands, editor,
 scene preview and package build service now use this helper. It creates no actor
 and writes no RAM or source disc. Gameplay acceptance remains separate.
 
+A separate [initial-animation picker](../legaia-initial-animation-assignment.md)
+now chooses an observed clip for the inherited model. ActorAnimation retains its
+qualified witness, while ActorAppearance controls the default model/clip pair.
+Build composes both as one final header assignment; imported AnimationChannels
+ownership remains unchanged.
+
 ## Encoding and pinned evidence
 
 Research reference: `AndrewAltimit/legend-of-legaia-re`, commit

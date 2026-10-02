@@ -74,6 +74,8 @@ def source_key(project, *, geometry_only=False) -> str | None:
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
+                   "animation_assignments": {a['semantic_id']: deepcopy(project.overrides[a['semantic_id']]['ActorAnimation'])
+                                             for a in document['actors'] if 'ActorAnimation' in project.overrides.get(a['semantic_id'], {})},
                    "model_shapes": deepcopy(project.model_overrides),
                    "actor_transforms": None if geometry_only else {
                        actor["semantic_id"]: deepcopy(project.overrides[actor["semantic_id"]]["Transform"])
@@ -333,7 +335,7 @@ class ScenePreviewService:
             authored_clips = {v["animation_id"] for v in animation_overrides.values()}
             actor_views = [(actor, False) for actor in actors]
             actor_views += [(actor, True) for actor in actors
-                            if 'ActorAppearance' in project.overrides.get(actor['semantic_id'], {})]
+                            if {'ActorAppearance', 'ActorAnimation'} & project.overrides.get(actor['semantic_id'], {}).keys()]
             for actor, retail_draft_source in actor_views:
                 identifier = actor["semantic_id"]
                 resolver = getattr(project, "appearance_source_actor", None)
@@ -341,6 +343,10 @@ class ScenePreviewService:
                 if resolver is None and appearance is not None:
                     raise ProjectError("Scene appearance override requires a verified source resolver")
                 source_actor = resolver(identifier, verify_disc=True) if resolver and not retail_draft_source else actor
+                assignment = None if retail_draft_source else project.overrides.get(identifier, {}).get('ActorAnimation')
+                if assignment is not None:
+                    from .actor_animation import source_actor as animation_source_actor
+                    source_actor = animation_source_actor(project, identifier, verify_disc=True)
                 if retail_draft_source:
                     identifier += '/retail-draft-source'
                 # Never let a resolver fabricate geometry provenance or cross scene boundaries.
@@ -353,6 +359,7 @@ class ScenePreviewService:
                            "source_record": deepcopy(source_actor.get("source_record")),
                            "model_reference": deepcopy(source_actor["model_reference"]),
                            "appearance_authored": appearance is not None,
+                           "animation_assignment_authored": assignment is not None,
                            "pose_kind": "unavailable", "reason": "Imported model reference is unresolved"}
                 bindings[identifier] = binding
                 if asset is None:
@@ -361,6 +368,8 @@ class ScenePreviewService:
                 geometry_key = digest({"asset": asset_id, "animation_id": animation_id})
                 if geometry_key in decoded:
                     binding.update(decoded[geometry_key])
+                    if assignment is not None and binding['renderable']:
+                        binding['pose_kind'] = 'authored_initial_animation_frame0'
                     continue
                 result = {"geometry_key": None, "renderable": False, "pose_kind": "unavailable"}
                 try:
@@ -417,6 +426,8 @@ class ScenePreviewService:
                     result["reason"] = str(exc)
                 decoded[geometry_key] = result
                 binding.update(result)
+                if assignment is not None and binding['renderable']:
+                    binding['pose_kind'] = 'authored_initial_animation_frame0'
             environment = []
             environment_metadata = None
             environment_error = None

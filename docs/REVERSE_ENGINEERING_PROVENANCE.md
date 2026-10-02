@@ -6,6 +6,16 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 initial animation picker reuses independently implemented MAN
+assignment and scene ANM decoders. Fresh Town0b evidence qualifies actors0019
+and0049 sharing scene TMD0102: ANM records13/12, six channels,15/30frames.
+An observed clip choice changes only MAN animation byte9471,14→13; normal
+package readback and appended-draft header rebasing pass. Exact TMD source,
+active mapping, non-aliased pair and ANM record SHA checks remain mandatory.
+Imported channel authoring is not retargeted. Runtime script behavior/timing is
+unverified. No reference code or retail data is staged; the reference pin stays
+unchanged. See [initial assignment workflow](legaia-initial-animation-assignment.md).
+
 The 2026-10-01 raw MAN normal-Build integration reread that exact pin through
 command-scoped `git show`: `crates/engine-core/src/scene_bundle.rs::streaming_man_payloads`
 extracts chunk payloads after the four-byte header; `crates/asset/src/man_section.rs::actor_placement`

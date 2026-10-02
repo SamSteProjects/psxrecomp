@@ -16,3 +16,13 @@ attributed.scene.assets[0].preview.pose={actor_semantic_id:'a',association:{acto
 assert.doesNotThrow(()=>decodeGroupAppearanceScene(attributed,report,attributedBase));
 attributed.scene.assets[0].preview.pose.association.animation_id=57;assert.throws(()=>decodeGroupAppearanceScene(attributed,report,attributedBase));
 console.log('Shared pose source actor attribution is tolerated; changed animation evidence is rejected.');
+
+const retainedBase=structuredClone(current),retained=structuredClone(response);
+Object.assign(retainedBase.entities[0],{animation_assignment_authored:true,source_actor_id:'clip-witness',source_record:{record_index:49},model_reference:{asset_semantic_id:'new'}});
+Object.assign(retained.scene.entities[0],{animation_assignment_authored:true,source_actor_id:'clip-witness',source_record:{record_index:49},model_reference:{asset_semantic_id:'new'}});
+assert.doesNotThrow(()=>decodeGroupAppearanceScene(retained,report,retainedBase));
+for(const mutate of [r=>r.scene.entities[0].source_actor_id='other-witness',r=>r.scene.entities[0].source_record.record_index=50,r=>r.scene.entities[0].model_reference.asset_semantic_id='other-model',r=>r.scene.entities[0].animation_assignment_authored=false]){
+  const bad=structuredClone(retained);mutate(bad);assert.throws(()=>decodeGroupAppearanceScene(bad,report,retainedBase));
+}
+assert.throws(()=>decodeGroupAppearanceScene(retained,report,current));
+console.log('A retained verified initial-animation witness survives same-model appearance proposals; changed or fabricated witnesses reject.');

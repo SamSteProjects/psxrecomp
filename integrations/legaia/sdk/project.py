@@ -93,7 +93,7 @@ class AssetDatabase:
 
 class ProjectService:
     FORMAT = "legaia.project.v1"
-    REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "Dialogue", "Transitions",
+    REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions",
                                   "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors",
                                   "Environment", "AnimationChannels", "Collision"})
 
@@ -125,12 +125,22 @@ class ProjectService:
         return {actor["semantic_id"]: self.overrides[actor["semantic_id"]]["ActorAppearance"]["donor_entity_id"]
                 for actor in document["actors"] if self.overrides.get(actor["semantic_id"], {}).get("ActorAppearance")} if document else {}
 
+    def _animation_donors(self) -> dict:
+        document = self.imports.get(self.active_scene)
+        if not document:
+            return {}
+        from .actor_animation import validate
+        return {actor['semantic_id']: validate(self, actor['semantic_id'],
+                    self.overrides[actor['semantic_id']]['ActorAnimation'])['semantic_id']
+                for actor in document['actors']
+                if self.overrides.get(actor['semantic_id'], {}).get('ActorAnimation')}
+
     def correlate_runtime(self, live_status: dict) -> dict:
         from integrations.legaia.observer.correlation import correlate
         # Always replace prior observations, including on disconnect/rejection.
         # Nothing from this layer participates in save, dirty state or commands.
         self._live_correlation = None
-        result = correlate(self.imports.get(self.active_scene), live_status, self._appearance_donors())
+        result = correlate(self.imports.get(self.active_scene), live_status, self._appearance_donors(), self._animation_donors())
         self._live_correlation = deepcopy(result)
         return self._current_correlation()
 
@@ -145,6 +155,9 @@ class ProjectService:
             if current.get("appearance_donors", {}) != self._appearance_donors():
                 self._live_correlation = None
                 return unavailable("Authored appearance changed since observation; capture again")
+            if current.get('animation_donors', {}) != self._animation_donors():
+                self._live_correlation = None
+                return unavailable('Authored initial animation changed since observation; capture again')
         result = deepcopy(self._live_correlation) if self._live_correlation else unavailable("No accepted runtime correlation")
         for identifier, entry in result.get("entities", {}).items():
             authored = self.overrides.get(identifier, {}).get("Transform", {}).get("position", {})
@@ -1302,8 +1315,33 @@ class ProjectService:
         self.redo_stack.clear()
 
     def command(self, command: dict) -> None:
+        # Retained animation assignments must survive appearance/template changes
+        # as coherent same-model bindings. Reject the whole change on conflict.
+        changing_appearance = command.get('type') in {
+            'set_actor_appearance', 'clear_actor_appearance', 'set_actor_group_appearance',
+            'apply_actor_template', 'apply_actor_preset_batch',
+            'revert_actor_group_component', 'revert_authored_component'}
+        if changing_appearance and any('ActorAnimation' in value for value in self.overrides.values()):
+            before = deepcopy((self.overrides, self.undo_stack, self.redo_stack))
+            try:
+                self._command(command)
+                from .actor_animation import validate
+                for identifier, components in self.overrides.items():
+                    if 'ActorAnimation' in components:
+                        validate(self, identifier, components['ActorAnimation'], verify_disc=True)
+            except Exception:
+                self.overrides, self.undo_stack, self.redo_stack = before
+                raise
+            return
+        self._command(command)
+
+    def _command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'set_actor_animation':
+            from .actor_animation import apply
+            apply(self, command)
+            return
         if command.get('type') == 'rename_project':
             from .project_settings import rename
             rename(self,command)
@@ -2110,7 +2148,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "Environment", "AnimationChannels", "Collision"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "Environment", "AnimationChannels", "Collision"}:
                 raise ProjectError("Unsupported authored component")
             if "Collision" in components:
                 result._validate_collision(identifier, components["Collision"])
@@ -2130,6 +2168,10 @@ class ProjectService:
                 # Opening metadata remains possible offline; preview/build reverify wire resources.
                 result._appearance_binding(identifier, components["ActorAppearance"])
                 result.overrides.setdefault(identifier, {})["ActorAppearance"] = deepcopy(components["ActorAppearance"])
+            if 'ActorAnimation' in components:
+                from .actor_animation import validate
+                validate(result, identifier, components['ActorAnimation'])
+                result.overrides.setdefault(identifier, {})['ActorAnimation'] = deepcopy(components['ActorAnimation'])
             if "Dialogue" in components:
                 # Offline opening checks syntax; actual source capacities are verified on edit/build.
                 result._validate_dialogue(identifier, components["Dialogue"], allow_legacy_newline=True)
@@ -2415,6 +2457,8 @@ class ProjectService:
                     changes.append("Position: " + ", ".join(axis.upper() for axis in sorted(position)))
                 if edits.get("ActorAppearance"):
                     changes.append("Initial appearance")
+                if edits.get('ActorAnimation'):
+                    changes.append('Initial animation assignment')
                 channels = edits.get("AnimationChannels", {}).get("edits", [])
                 if channels:
                     changes.append(f"Animation: {len(channels)} edited channel{'s' if len(channels) != 1 else ''}")
@@ -2554,6 +2598,14 @@ class ProjectService:
                               "animation_id": donor["placement_fields"].get("animation_id")}
             if appearance:
                 effective_pair["donor_entity_id"] = donor["semantic_id"]
+            from .actor_animation import source_actor as animation_source_actor
+            animation_actor = animation_source_actor(self, identifier)
+            def animation_identity(source):
+                number = source['placement_fields'].get('animation_id')
+                local = source['model_reference'].get('model_index')
+                return {'animation_asset_id': f"animation://{document['scene']['name']}/scene-anm/{number-1:04d}"
+                        if type(number) is int and 1 <= number <= 255 and type(local) is int and 0 <= local < 240 else None,
+                        'initial_animation_id': number, 'donor_entity_id': source['semantic_id']}
             entities.append({"id": identifier, "name": "Actor " + identifier.rsplit("/", 1)[-1],
                              "authored_components": sorted(key for key, value in self.overrides.get(identifier, {}).items() if value),
                              "components": {"Transform": {"imported": imported, "authored": authored, "effective": effective,
@@ -2562,6 +2614,9 @@ class ProjectService:
                                                                 "limitations": ["Initial model/animation pair only; scripts may replace it. Script and gameplay compatibility remain unverified."]},
                                             "ModelRenderer": {"asset_id": model.get("asset_semantic_id"), "resolution_status": model.get("resolution_status")},
                                             "Animation": {"imported_id": actor["placement_fields"].get("animation_id"), "resolution_status": "unresolved", "authored_channels": deepcopy(self.overrides.get(identifier, {}).get("AnimationChannels"))},
+                                            'ActorAnimation': {'imported': animation_identity(actor), 'base': animation_identity(donor),
+                                                               'authored': deepcopy(self.overrides.get(identifier, {}).get('ActorAnimation', {})),
+                                                               'effective': animation_identity(animation_actor)},
                                             "Dialogue": {"authored": deepcopy(self.overrides.get(identifier, {}).get("Dialogue", {})),
                                                          "limitations": ["Only verified plain-text runs are writable; controls and record boundaries remain fixed. Source capacity is rechecked on edit/build."]},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),

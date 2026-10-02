@@ -1,5 +1,27 @@
 # Deferred gameplay verification
 
+## Initial animation assignment — deferred
+
+The saved fixture is
+`local-output/sdk-20260909/actor-animation-assignment-20261002/project/`.
+Package inside it:
+`Builds/initial-animation-verification/legaia.sdk.0f096fa3c17d-0.1.0-1ee1fc4c87dcc868.psxmod`.
+SHA256: `8352ed3e3d0cb287091e657b344d0ebfa036ec85f266c2f83649ca78bb52e9cc`.
+Town0b actor0019 retains model0102 and its imported position, with initial
+animation byte14→13 (ANM record13/15frames→record12/30frames), qualified by
+same-model actor0049. Independent MAN readback differs only at9471; source
+record12 digest, exact fresh import and unchanged saved project bytes verified.
+The browser applies the assignment to the target; channel edits still own their
+imported shared clip. No package was installed and no game launched.
+
+When manual verification resumes, establish the actual Town0b scene and intended
+actor/script branch first. Check scene entry, whether scripts replace the initial
+clip, visual suitability/looping, interaction and progression, and scene exit.
+A correct initial header and offline pose do not prove runtime timing or branch
+execution. No immediate manual check is required; other offline work may continue.
+See [workflow and scope](legaia-initial-animation-assignment.md).
+
+
 ## Mixed viewport-drag placement — deferred
 
 The exact copied-project path is recorded in
