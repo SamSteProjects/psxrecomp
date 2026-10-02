@@ -7,6 +7,28 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Model primitive content authoring (2026-10-02):** The integrated model
+face/UV/baked-RGB workflow now spans source inspection, reviewed paired previews,
+existing posed scene instances, atomic Apply, vector composition, Undo/Redo,
+Save/Open, authored TMD export and normal Build audit navigation. Source packet
+ownership, all24 flag layouts, bounded fields, stale/late requests, unchanged
+opaque bytes and Vahn's actual idle-animation prefix are checked. Added objects,
+packet/vector allocation, changed material bindings and runtime rendering
+acceptance remain unfinished. See [model content contract](legaia-model-content.md).
+
+Validation: 31 selected Python cases passed with the private retail disc enabled
+and zero skips; 3 Node suites and 2 changed-module syntax checks passed. Sixteen
+actual browser workflows passed with zero page/HTTP errors and zero game-launch
+requests, including normal Build review/package/source navigation. Reviewed,
+scene, Build and narrow-layout captures were inspected. Town01 model0000 changes
+exactly source bytes48/52/62/64; independent package readback verifies the complete
+304116-byte decoded container, 154518 encoded bytes within the 154547-byte source
+capacity, and unchanged unused encoded tail. Imported metadata is unchanged and
+Save/Open retains the exact versioned binding. Vahn idle retains its verified
+12-to-10 object prefix and frame coordinates. Gameplay appearance/lighting/culling
+remain deferred; no game was launched or package installed. Private evidence is
+under `local-output/sdk-20260909/model-primitives-20261002/`.
+
 **Visual transition graph workspace (2026-10-02):** Scene and Project
 transitions now open a selectable node/arrow diagram, scene list, search,
 imported-only filter, direct-reference focus, zoom/pan/Fit and paginated source

@@ -229,7 +229,7 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Actor and dialogue edits", "actor_templates": "Actor presets",
-                  "texture_overrides": "Texture replacements", "model_overrides": "Model shapes",
+                  "texture_overrides": "Texture replacements", "model_overrides": "Model content",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
@@ -1216,9 +1216,9 @@ class ProjectService:
             return load_model_source(self.disc_path, asset)
 
     def read_model_replacement(self, asset_id: str, binding: dict) -> bytes:
-        from importer.model_authoring import replace_model_shape
+        from importer.model_authoring import replace_model_shape, replace_model_content
         if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'}
-                or binding['format'] != 'tmd-shape' or type(binding['byte_length']) is not int
+                or binding['format'] not in ('tmd-shape', 'tmd-content-v1') or type(binding['byte_length']) is not int
                 or not 1 <= binding['byte_length'] <= 4*1024*1024
                 or any(not isinstance(binding[k],str) or len(binding[k]) != 64 or any(c not in '0123456789abcdef' for c in binding[k]) for k in ('asset_sha256','source_sha256'))
                 or not isinstance(binding['source_scene_id'], str)):
@@ -1229,12 +1229,13 @@ class ProjectService:
         content = path.read_bytes()
         if hashlib.sha256(content).hexdigest() != binding['asset_sha256']:
             raise ProjectError('Model shape content hash differs from binding')
-        replace_model_shape(self._model_source(asset_id, binding['source_scene_id']), binding['source_sha256'], content)
+        validator = replace_model_shape if binding['format'] == 'tmd-shape' else replace_model_content
+        validator(self._model_source(asset_id, binding['source_scene_id']), binding['source_sha256'], content)
         return content
 
     def _prepare_model_file(self, asset_id: str, content: bytes, format: str) -> tuple[bytes, dict]:
-        from importer.model_authoring import replace_model_shape
-        from importer.model_json import import_shape_json
+        from importer.model_authoring import replace_model_content
+        from importer.model_json import import_shape_json, export_shape_json
         from importer.model_obj import import_shape_obj
         if self.mode != 'edit':
             raise ProjectError('Model shape authoring requires Edit mode')
@@ -1245,17 +1246,75 @@ class ProjectService:
         effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
                      if asset_id in self.model_overrides else original)
         if format == 'json':
-            replacement, _ = import_shape_json(original, digest, content)
+            import json
+            vectors, _ = import_shape_json(original, digest, content)
+            document = json.loads(export_shape_json(vectors))
+            document['source_sha256'] = hashlib.sha256(effective).hexdigest()
+            replacement, _ = import_shape_json(effective, document['source_sha256'], json.dumps(document).encode())
         elif format == 'obj':
             replacement, _ = import_shape_obj(effective, hashlib.sha256(effective).hexdigest(), content)
         else:
-            replacement, _ = replace_model_shape(original, digest, content)
-        _, changes = replace_model_shape(original, digest, replacement)
-        _, pending = replace_model_shape(effective, hashlib.sha256(effective).hexdigest(), replacement)
+            replacement, _ = replace_model_content(original, digest, content)
+        _, changes = replace_model_content(original, digest, replacement)
+        _, pending = replace_model_content(effective, hashlib.sha256(effective).hexdigest(), replacement)
         return replacement, {'asset_id': asset_id, 'source_sha256': digest,
                              'proposed_sha256': hashlib.sha256(replacement).hexdigest(),
                              'comparison': 'retail_source', 'coordinate_changes': changes,
                              'changes_from_current': pending, 'project_changed': False}
+
+    def model_primitive_source(self, asset_id: str) -> dict:
+        """Inspect source packet identities and the current authored values."""
+        from importer.model_primitives import inspect_model_primitives
+        from .scene_preview import source_key
+        key = source_key(self)
+        original = self._model_source(asset_id, self.active_scene)
+        effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
+                     if asset_id in self.model_overrides else original)
+        report = inspect_model_primitives(effective)
+        report.update(asset_id=asset_id, source_sha256=hashlib.sha256(original).hexdigest(),
+                      effective_sha256=hashlib.sha256(effective).hexdigest(),
+                      project_source_key=key,
+                      retail_objects=inspect_model_primitives(original)['objects'])
+        if not key or source_key(self) != key:
+            raise ProjectError('Scene changed during face inspection; reopen the editor')
+        return report
+
+    def _prepare_model_primitives(self, asset_id: str, edits: list, expected_sha256: str,
+                                  expected_source_key: str) -> tuple[bytes, dict]:
+        from importer.model_primitives import patch_model_primitives
+        from importer.model_authoring import replace_model_content
+        from importer.assets import decode_tmd
+        from .scene_preview import source_key
+        if self.mode != 'edit':
+            raise ProjectError('Model face authoring requires Edit mode')
+        key = source_key(self)
+        if not key or expected_source_key != key:
+            raise ProjectError('Scene changed since face inspection; reopen the editor')
+        original = self._model_source(asset_id, self.active_scene)
+        effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
+                     if asset_id in self.model_overrides else original)
+        replacement, pending = patch_model_primitives(effective, expected_sha256, edits)
+        _, changes = replace_model_content(original, hashlib.sha256(original).hexdigest(), replacement)
+        if source_key(self) != key:
+            raise ProjectError('Scene changed during face inspection; reopen the editor')
+        return replacement, dict(asset_id=asset_id, source_sha256=hashlib.sha256(original).hexdigest(),
+                                 effective_sha256=hashlib.sha256(effective).hexdigest(),
+                                 project_source_key=key, proposed_sha256=hashlib.sha256(replacement).hexdigest(),
+                                 coordinate_changes=changes, changes_from_current=pending,
+                                 project_changed=False, preview=decode_tmd(replacement),
+                                 current_preview=decode_tmd(effective))
+
+    def preview_model_primitives(self, asset_id: str, edits: list, expected_sha256: str,
+                                 expected_source_key: str) -> dict:
+        return self._prepare_model_primitives(asset_id, edits, expected_sha256, expected_source_key)[1]
+
+    def set_model_primitives(self, asset_id: str, edits: list, expected_sha256: str,
+                             expected_source_key: str, proposed_sha256: str) -> None:
+        replacement, report = self._prepare_model_primitives(asset_id, edits, expected_sha256, expected_source_key)
+        if report['proposed_sha256'] != proposed_sha256:
+            raise ProjectError('Face draft differs from the reviewed proposal; preview it again')
+        if report['changes_from_current']:
+            self.set_model_replacement(asset_id, replacement)
 
     def set_model_vector(self, asset_id: str, object_index: int, kind: str, vector_index: int,
                          values: list[int], expected_sha256: str) -> None:
@@ -1277,8 +1336,8 @@ class ProjectService:
         if not isinstance(values, list) or len(values) != 3 or any(type(v) is not int or not -32768 <= v <= 32767 for v in values):
             raise ProjectError('Vector XYZ requires three signed16 integer source values')
         vectors[vector_index] = values
-        document['source_sha256'] = hashlib.sha256(original).hexdigest()
-        replacement, _ = import_shape_json(original, document['source_sha256'], json.dumps(document).encode())
+        # Patch the effective source so a vector edit retains authored faces/UVs/colors.
+        replacement, _ = import_shape_json(effective, expected_sha256, json.dumps(document).encode())
         self.set_model_replacement(asset_id, replacement)
 
     def translate_model_object(self, asset_id: str, object_index: int, offset: list[int],
@@ -1356,7 +1415,7 @@ class ProjectService:
             self.set_model_replacement(asset_id,replacement)
 
     def set_model_replacement(self, asset_id: str, content: bytes) -> None:
-        from importer.model_authoring import replace_model_shape
+        from importer.model_authoring import replace_model_content
         if self.mode != 'edit':
             raise ProjectError('Model shape authoring requires Edit mode')
         if not isinstance(asset_id, str) or len(asset_id) > 512 or not isinstance(content, bytes) or not 1 <= len(content) <= 4*1024*1024:
@@ -1365,9 +1424,10 @@ class ProjectService:
             raise ProjectError('Project supports at most 128 model shapes')
         original = self._model_source(asset_id, self.active_scene)
         source_hash = hashlib.sha256(original).hexdigest()
-        _, audit = replace_model_shape(original, source_hash, content)
+        _, audit = replace_model_content(original, source_hash, content)
         before = deepcopy(self.model_overrides.get(asset_id))
-        binding = {'format':'tmd-shape','source_scene_id':self.active_scene,'source_sha256':source_hash,
+        binding = {'format': ('tmd-content-v1' if any(row['kind'] == 'primitive' for row in audit) else 'tmd-shape'),
+                   'source_scene_id':self.active_scene,'source_sha256':source_hash,
                    'asset_sha256':hashlib.sha256(content).hexdigest(),'byte_length':len(content)} if audit else None
         if before == binding:
             return
@@ -2713,7 +2773,7 @@ class ProjectService:
             asset = next(a for a in self.imports[scene_id]['assets']['models'] if a['semantic_id'] == identifier)
             records.append({'id':identifier, 'kind':'model', 'name':'Model shape ' + identifier.rsplit('/',1)[-1],
                             'scene_id':scene_id, 'source_scene':self.imports[scene_id]['scene']['name'],
-                            'changes':['TMD shape replacement'], 'authored':deepcopy(binding),
+                            'changes':['TMD content replacement' if binding['format'] == 'tmd-content-v1' else 'TMD shape replacement'], 'authored':deepcopy(binding),
                             'source_record':deepcopy(asset['source_record'])})
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]

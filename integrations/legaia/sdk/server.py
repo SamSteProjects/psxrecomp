@@ -388,6 +388,20 @@ class EditorServer(ThreadingHTTPServer):
         report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,{'asset_sha256':report['proposed_sha256']})
         if all_instances:
             report.update(preview_shape_instances(scene,asset_id,replacement,{'asset_sha256':report['proposed_sha256']}))
+        # UV edits change the required texture crop even when CLUT/page bindings
+        # stay fixed. Refresh each proposed pose group from the verified catalog.
+        from .scene_preview import MAX_TEXTURE_BYTES
+        asset = self.project.assets.records.get(asset_id)
+        if asset is None:
+            raise ProjectError('Scene model proposal has no imported asset identity')
+        report['preview'] = self.model_preview(asset, prepared=report['preview'])
+        texture_bytes = 0
+        for geometry in report.get('proposal_assets', []):
+            geometry['preview'] = self.model_preview(asset, prepared=geometry['preview'])
+            texture_bytes += sum((len(t.get('rgba_base64', '')) + len(t.get('stp_base64', ''))) * 3 // 4
+                                 for t in geometry['preview'].get('textures', []))
+        if texture_bytes > MAX_TEXTURE_BYTES:
+            raise ProjectError('Proposed scene model textures exceed the scene byte budget')
         report.pop('current_preview',None)
         report.update(entity_id=entity_id,scene_id=scene['scene_id'],project_source_key=key)
         if source_key(self.project) != key:
@@ -599,6 +613,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/trigger-cells.js': ('trigger-cells.js', 'text/javascript'),
                  '/transition-graph.js': ('transition-graph.js', 'text/javascript'),
                  '/transition-graph-workspace.js': ('transition-graph-workspace.js', 'text/javascript'),
+                 '/model-primitives.js': ('model-primitives.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
@@ -732,6 +747,41 @@ class EditorHandler(BaseHTTPRequestHandler):
                     replacement, report = self.server.project._prepare_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
                     report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key,body.get('all_instances',False))
                     self._json(200,report)
+                    return
+                if route == '/api/model-primitive-source':
+                    if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Face inspection requires a model identity only')
+                    self._json(200, self.server.project.model_primitive_source(body['asset_id']))
+                    return
+                if route in ('/api/model-primitive-preview', '/api/model-primitives', '/api/model-primitive-scene-preview'):
+                    expected = {'asset_id', 'expected_sha256', 'source_key', 'edits'}
+                    if route == '/api/model-primitives':
+                        expected.add('proposed_sha256')
+                    if route == '/api/model-primitive-scene-preview':
+                        expected.update(('proposed_sha256', 'entity_id', 'all_instances'))
+                    if (set(body) != expected or not isinstance(body['asset_id'], str)
+                            or not isinstance(body['expected_sha256'], str) or not isinstance(body['source_key'], str)):
+                        raise ProjectError('Face authoring requires exact model, inspected hashes and packet edits')
+                    project = self.server.project
+                    if route == '/api/model-primitives':
+                        project.set_model_primitives(body['asset_id'], body['edits'], body['expected_sha256'],
+                                                     body['source_key'], body['proposed_sha256'])
+                        self._json(200, self.server.state())
+                        return
+                    replacement, report = project._prepare_model_primitives(body['asset_id'], body['edits'],
+                                                                           body['expected_sha256'], body['source_key'])
+                    if route == '/api/model-primitive-scene-preview':
+                        if (not isinstance(body['entity_id'], str) or type(body['all_instances']) is not bool
+                                or body['proposed_sha256'] != report['proposed_sha256']):
+                            raise ProjectError('Scene face proposal differs from the reviewed model or instance')
+                        report = self.server.scene_shape_proposal(body['asset_id'], body['entity_id'], replacement,
+                                                                 report, body['source_key'], body['all_instances'])
+                    else:
+                        asset = project.assets.records[body['asset_id']]
+                        for key in ('preview', 'current_preview'):
+                            report[key].update(semantic_id=asset['semantic_id'], source_record=asset['source_record'])
+                            report[key] = self.server.model_preview(asset, prepared=report[key])
+                    self._json(200, report)
                     return
                 if route == '/api/model-object-preview':
                     if set(body) != {'asset_id','object_index','operation','values','expected_sha256'} or not isinstance(body['asset_id'],str):

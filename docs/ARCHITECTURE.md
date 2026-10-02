@@ -6,6 +6,21 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Model content authoring (2026-10-02) adds a source-qualified packet inspector
+and exact byte-mask writer to the existing model replacement path. A separate
+`tmd-content-v1` binding allows XYZ plus existing face references, UV pairs and
+baked RGB; legacy `tmd-shape` validation remains XYZ-only. Disjoint table/vector/
+primitive ownership, explicit terminators, declared counts, bounded fields and
+whole-candidate decoding precede an exact audit of every changed byte. Stable
+object/group/primitive identities and current/source/candidate hashes bind UI
+review to atomic Apply. The normal model command owns history and persistence;
+container composition/recompression and independent readback enter normal Build.
+Candidate preview now updates topology/color/UV arrays through existing pose
+prefixes/frames and rebuilds source-address texture crops. The browser uses paired
+Current/Proposed cameras and retained scene proposals with close/context guards.
+[The model content contract](legaia-model-content.md) records pinned packet evidence
+and preserves the unfinished allocator/material/lighting scope.
+
 The transition graph workspace (2026-10-02) consumes the existing source-qualified
 scene/project graph APIs. A detached browser decoder validates stable scene,
 owner, partition and instruction identities, source hashes/extents, separate

@@ -8,6 +8,35 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Model faces, UVs and baked colors (2026-10-02):** The model viewer now
+provides a source-bound primitive editor with separate Retail, Current and
+Proposed values. Existing face connections, UV byte pairs and stored RGB words
+can be authored across all 24 supported flags. Preview uses paired textured
+views with a shared camera; a reviewed proposal can be inspected across supported
+scene instances while retaining their existing poses and placement. Apply checks
+current model, scene and candidate hashes. Undo/Redo, Save/Open, authored TMD
+export and normal Build use a versioned `tmd-content-v1` binding; legacy
+`tmd-shape` bindings retain strict XYZ-only validation. Vector/whole-object/JSON
+edits preserve authored primitives. Pose composition now refreshes face/color/UV
+arrays, and proposed scene textures recrop from candidate UVs. Normal Build audit
+links reopen the exact source primitive. Object/group counts, capacities, normal
+references, material bindings and opaque bytes remain source-owned. Arbitrary
+new mesh allocation and runtime lighting/culling acceptance remain unfinished.
+See [model content workflow](legaia-model-content.md).
+
+Validation: 31 selected Python cases passed with the private retail disc enabled
+and zero skips; 3 Node suites and 2 changed-module syntax checks passed. Sixteen
+actual browser workflows passed with zero page/HTTP errors and zero game-launch
+requests, including normal Build review/package/source navigation. Reviewed,
+scene, Build and narrow-layout captures were inspected. Town01 model0000 changes
+exactly source bytes48/52/62/64; independent package readback verifies the complete
+304116-byte decoded container, 154518 encoded bytes within the 154547-byte source
+capacity, and unchanged unused encoded tail. Imported metadata is unchanged and
+Save/Open retains the exact versioned binding. Vahn idle retains its verified
+12-to-10 object prefix and frame coordinates. Gameplay appearance/lighting/culling
+remain deferred; no game was launched or package installed. Private evidence is
+under `local-output/sdk-20260909/model-primitives-20261002/`.
+
 **Visual transition graph workspace (2026-10-02):** Scene and Project
 transitions now open a selectable node/arrow diagram, scene list, search,
 imported-only filter, direct-reference focus, zoom/pan/Fit and paginated source
@@ -1312,7 +1341,7 @@ state, history or authored-file changes. Gameplay appearance remains deferred.
   scalar changes and link to the matching model/vector with stale-hash checks.
   A model-view wireframe overlay exposes decoded triangle edges, including
   hidden edges; it follows preview vertex updates without authoring changes.
-  Arbitrary topology/material replacement remains unsupported. Browser shaders
+  Added/deleted objects or packets, new vector capacity and changed material bindings remain unsupported. Existing face rewiring/UV/baked-RGB authoring is implemented above. Browser shaders
   do not calculate normal-based lighting.
 - **Scene content:** supported dialogue, appearance, transitions, script movement,
   textures, collision and scenery edits use source-validated overrides. NPC

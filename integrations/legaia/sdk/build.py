@@ -93,6 +93,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-model-selector-only': 'script model selectors',
         'script-facing-sector-only': 'script facing operands',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
+        'TMD-existing-layout-content': 'model faces, UVs and baked colors',
         'source-MAP-wall-bit-only': 'source collision walls',
         'source-MAP-region-bounds-only': 'source region bounds',
         'source-MAP-trigger-cell-only': 'source trigger cells',

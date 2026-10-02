@@ -1,7 +1,9 @@
-"""Source-bound TMD shape replacement with existing topology and materials.
+"""Source-bound TMD shape and existing-layout content replacement.
 
-Object-local vertex and normal XYZ words are writable. Object descriptors,
-primitive packets, material bindings and vector padding remain source-owned.
+Object-local vertex and normal XYZ words are writable. Legacy shape bindings
+keep primitives source-owned. Versioned content bindings
+also permit proven face references, UV bytes and baked RGB without reallocating
+packets or changing material bindings and vector padding.
 """
 from hashlib import sha256
 import struct
@@ -11,7 +13,7 @@ from .core import ImportError
 
 
 def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
-    """Apply replacement local coordinates through already-verified pose channels."""
+    """Compose candidate content through already-verified rigid pose channels."""
     from copy import deepcopy
     from .animation import pose_vertices, _bounds
     result = deepcopy(preview)
@@ -20,13 +22,27 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     # Party poses intentionally omit trailing equipment objects; only accept the
     # same prefix/ranges, never infer a new object-to-channel association.
     if len(objects) > len(shape['objects']) or any(
-            any(obj[k] != shape['objects'][i][k] for k in ('object_index','vertex_start','vertex_count'))
+            any(obj[k] != shape['objects'][i][k] for k in
+                ('object_index','vertex_start','vertex_count','triangle_start','triangle_count'))
             for i,obj in enumerate(objects)):
         raise ImportError('Shape objects do not match the existing pose layout')
     count = sum(obj['vertex_count'] for obj in objects)
     vertices = shape['vertices'][:count]
     if len(vertices) != len(result['vertices']):
         raise ImportError('Shape vertex count differs from preview geometry')
+    triangle_count = sum(obj['triangle_count'] for obj in objects)
+    if triangle_count != len(result['triangles']):
+        raise ImportError('Model face count differs from preview geometry')
+    # Material identities use only unchanged flags/mode/CLUT/page words. Keep
+    # any already-associated metadata (e.g. blend evidence), but reject changed
+    # keys instead of assigning a candidate face to an unrelated texture.
+    material_fields = ('textured', 'clut', 'tpage', 'semi_transparent')
+    if (len(result['materials']) != len(shape['materials']) or
+            any(any(old.get(key) != new.get(key) for key in material_fields)
+                for old, new in zip(result['materials'], shape['materials']))):
+        raise ImportError('Model content changed source material bindings')
+    for key in ('triangles', 'triangle_colors', 'triangle_uvs', 'triangle_materials'):
+        result[key] = deepcopy(shape[key][:triangle_count])
     transforms = result.get('pose', {}).get('object_transforms')
     if result.get('posed') and transforms is None and not result.get('frames'):
         raise ImportError('Shape preview requires explicit pose transforms')
@@ -84,6 +100,65 @@ def replace_model_shape(original: bytes, expected_sha256: str, replacement: byte
     return replacement, audit
 
 
+def replace_model_content(original: bytes, expected_sha256: str, replacement: bytes):
+    """Validate the union of XYZ and proven primitive fields, with exact audit."""
+    from .model_primitives import _qualified_model, _primitive_field_locations
+    if not isinstance(original, bytes) or sha256(original).hexdigest() != expected_sha256:
+        raise ImportError('Model source hash differs from the authored binding')
+    inspection, vectors = _qualified_model(original)
+    if not isinstance(replacement, bytes) or len(replacement) != len(original):
+        raise ImportError('Model content must preserve the source TMD byte length')
+    allowed = bytearray(len(original))
+    audit = []
+    for start, _stop, index, kind, count in vectors:
+        for vector in range(count):
+            for axis in range(3):
+                at = start + vector * 8 + axis * 2
+                allowed[at:at + 2] = b'\x01\x01'
+                before = struct.unpack_from('<h', original, at)[0]
+                after = struct.unpack_from('<h', replacement, at)[0]
+                if before != after:
+                    audit.append(dict(object_index=index, kind=kind, vector_index=vector,
+                                      axis='xyz'[axis], byte_offset=at,
+                                      before_value=before, after_value=after))
+    for identity, width in _primitive_field_locations(inspection):
+        at = identity['byte_offset']
+        allowed[at:at + width] = b'\x01' * width
+        before, after = original[at], replacement[at]
+        if width == 2:
+            before = struct.unpack_from('<H', original, at)[0] // 8
+            raw_after = struct.unpack_from('<H', replacement, at)[0]
+            if raw_after % 8:
+                raise ImportError('Face reference must be an aligned SVECTOR byte offset')
+            after = raw_after // 8
+        if before != after:
+            audit.append({**identity, 'before_value': before, 'after_value': after})
+    differences = {i: (a, b) for i, (a, b) in enumerate(zip(original, replacement)) if a != b}
+    if any(not allowed[at] for at in differences):
+        raise ImportError('Model content changed layout, material, normal reference or opaque bytes')
+    _qualified_model(replacement)
+    audited = {}
+    for change in audit:
+        at = change['byte_offset']
+        primitive = change['kind'] == 'primitive'
+        if primitive and change['field'] == 'vertex_index':
+            before = struct.pack('<H', change['before_value'] * 8)
+            after = struct.pack('<H', change['after_value'] * 8)
+        elif primitive:
+            before, after = bytes([change['before_value']]), bytes([change['after_value']])
+        else:
+            before = struct.pack('<h', change['before_value'])
+            after = struct.pack('<h', change['after_value'])
+        for delta, (a, b) in enumerate(zip(before, after)):
+            if a != b:
+                if at + delta in audited:
+                    raise ImportError('Model content audit fields overlap')
+                audited[at + delta] = (a, b)
+    if differences != audited:
+        raise ImportError('Model content changed an unaudited byte')
+    return replacement, audit
+
+
 def model_shape_overlays(archive, assets: dict, replacements: dict):
     """Compose model members sharing one compressed stream before encoding."""
     from .core import parse_lzs_sections, decompress_lzs
@@ -119,14 +194,16 @@ def model_shape_overlays(archive, assets: dict, replacements: dict):
             if len(decoded) != source['containing_size'] or start < 0 or start+length > len(decoded):
                 raise ImportError('Model replacement source bounds changed')
             original = decoded[start:start+length]
-            payload, changes = replace_model_shape(original, sha256(original).hexdigest(), replacements[identifier])
+            payload, changes = replace_model_content(original, sha256(original).hexdigest(), replacements[identifier])
             if not changes:
                 continue
             if any(start < b and start+length > a for a,b in intervals):
                 raise ImportError('Model replacement source members overlap')
             intervals.append((start,start+length))
             changed[start:start+length] = payload
-            audit.append(dict(semantic_id=identifier, field='model.shape', scope='TMD-vertex-normal-XYZ-only',
+            scope = ('TMD-existing-layout-content' if any(c['kind'] == 'primitive' for c in changes)
+                     else 'TMD-vertex-normal-XYZ-only')
+            audit.append(dict(semantic_id=identifier, field='model.shape', scope=scope,
                               before_sha256=sha256(original).hexdigest(), after_sha256=sha256(payload).hexdigest(),
                               coordinate_changes=changes))
             if stream is None:
