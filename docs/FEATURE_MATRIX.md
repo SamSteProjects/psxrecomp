@@ -2,6 +2,20 @@
 
 Current scene-editor status (2026-10-01):
 
+**Scenery alignment and distribution (2026-10-01):** Arrange scenery group
+aligns2–128 selected static decorations to an anchor on X/Z or evenly distributes
+them between fixed endpoints using integer half-up rounding and stable identity
+ordering. Other axes, shared transforms, Y/rotation, outside edits and Collision
+are preserved. Fresh review, textured Proposed/Current comparison, retained
+Return/Restore, atomic Apply/Undo/Redo, Save/Open and normal Build are connected.
+Fifty-three focused retail-enabled Python tests passed in17.726s, all29 Node tests
+and30 syntax checks passed. Retail browser alignment/distribution, input withdrawal,
+comparison matrices, no-op Apply and pending-close cancellation passed with zero
+page errors; screenshots inspected. Complete73728-byte MAP ZIP matches the saved
+binding and independently decoded descriptor coordinates. No game launched.
+This postdates integrated514; runtime visibility/collision/lifecycle remain deferred.
+See [Scenery groups](legaia-scenery-groups.md).
+
 **Scenery group drag and actor preview refresh (2026-10-01):** Proposed
 scenery inspection now has X/Z handles with integer movement and optional
 16/64/256/1024 snapping. Release obtains a fresh source-bound review; Apply
@@ -423,7 +437,7 @@ Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 | Script movement targets | FUNCTIONAL / READ-ONLY. Viewport marker picking and a target selector reopen exact actor/partition-2 source instructions; overlapping hits require explicit choice. Actor and partition-2 script views now frame simultaneous target markers with explicit reference Y, source PCs/X/Z and unresolved contexts. Retail browser checks cover3actor and4partition-2 targets, Clear, height validation and source invalidation without authored commands. NPC_RUN and MOVE_TO expose decoded X/Z, raw operands and unknown Y; MOVE_TO is labeled a teleport target, and NPC_RUN retains parked status. Locate target fills the viewport locator and requires an explicit reference height; branch execution is not assumed. Script asset metadata includes searchable target coordinates and exact source-instruction links; retail Dolk2 browser discovery found14targets across9scripts. | Story-state execution, movement interpolation and runtime position verification. |
 | Orthographic placement inspection | FUNCTIONAL / OFFLINE. Perspective and orthographic rendering/picking, matching overlay and move-plane projection, and Top (X/Z) camera shortcut. Eight math parity cases and actual map01 browser313/313 passed. | Runtime coordinate/visual comparison remains deferred. |
 | Selection and inspection | Hierarchy, viewport picking, selection outlines, object framing and Actors/Scenery/Ground visibility layers work together. Source provenance remains separate from authored transforms. | Broader scene acceptance and extensible inspector coverage. |
-| Static scenery group placement | FUNCTIONAL / WRITABLE / OFFLINE. Hierarchy and viewport modifier selection;2–128 static decoration instances, source-bound common X/Z review, Proposed/Current textured scene comparison, atomic Apply/history/persistence/normal Build. Proposed X/Z handles, optional snapping, fresh review, rejected/pending drag restoration and actor preview refresh pass focused/browser checks. Retail two-wall browser and exact full MAP ZIP readback passed. | Group alignment/rotation, mixed placed-object/actor groups and in-game visibility/collision remain separate. |
+| Static scenery group placement | FUNCTIONAL / WRITABLE / OFFLINE. Hierarchy and viewport modifier selection;2–128 static decoration instances, source-bound common X/Z review, Proposed/Current textured scene comparison, atomic Apply/history/persistence/normal Build. Proposed X/Z handles, optional snapping, fresh review, rejected/pending drag restoration and actor preview refresh pass focused/browser checks. Selected-anchor X/Z alignment and endpoint-preserving integer distribution now support the same review/preview/atomic authoring/Build workflow with retail three-wall acceptance. Retail two-wall browser and exact full MAP ZIP readback passed. | Group rotation, mixed placed-object/actor groups and in-game visibility/collision remain separate. |
 | Shared scenery transforms | Writable numeric offsets/rotations, undo/redo, save/reopen, effective preview and guarded MAP packaging. Browser edit/save/undo accepted. | In-game visual/behavior acceptance; spawnable scenery remains shared-only. |
 | Individual decorations | Writable cell-local transforms clone a descriptor into an unreferenced zero-filled slot while preserving grid flags. Retail checks verify distinct transforms for cells1833/2089 and unchanged unrelated bytes. | In-game rendered result and broader allocation/lifecycle acceptance. |
 | Decoration and placed-scenery move handles | Browser-validated X/Z dragging, free X movement, Undo, origin-aligned64-unit Z snapping, unchanged shared counterpart and Save. | Placed scenery now has explicitly enabled shared X/Z handles. Dolk2 browser X/Z drag/Undo verified three shared instances and366 unchanged unrelated instances. Gameplay acceptance remains pending. Other transform tools remain open. |

@@ -540,6 +540,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
+                 "/environment-layout.js": ("environment-layout.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
@@ -857,6 +858,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Build review takes no fields')
                     from .build_review import review
                     self._json(200,review(self.server.project))
+                    return
+                if route == '/api/environment-layout-review':
+                    if set(body)!={'entity_id','entity_ids','operation'}:raise ProjectError('Scenery layout review requires scene, selected identities and operation only')
+                    from .environment_layout import review
+                    self._json(200,review(self.server.project,body['entity_id'],body['entity_ids'],body['operation']))
                     return
                 if route == '/api/environment-group-review':
                     if set(body)!={'entity_id','entity_ids','delta'}:raise ProjectError('Scenery group review requires scene, selected identities and X/Z delta only')

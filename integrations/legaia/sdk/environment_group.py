@@ -9,7 +9,7 @@ from .project_copy import source_key
 from importer.environment_authoring import patch_environment_overrides, patch_environment_transforms
 
 
-def review(project, scene, entity_ids, delta):
+def _prepare(project, scene, entity_ids):
     if project.mode != 'edit' or not isinstance(scene, str) or scene not in project.imports or scene != project.active_scene:
         raise ProjectError('Decoration group requires the active imported scene in Edit mode')
     if not isinstance(entity_ids, list) or not 2 <= len(entity_ids) <= 128 or any(not isinstance(item, str) for item in entity_ids) or len(set(entity_ids)) != len(entity_ids):
@@ -21,8 +21,6 @@ def review(project, scene, entity_ids, delta):
         if not identifier.startswith(prefix) or not re.fullmatch(r'[0-9]{5}', suffix) or int(suffix) >= 16384:
             raise ProjectError('Decoration group identity is outside the canonical scene grid')
         cells.append((identifier, int(suffix)))
-    if not isinstance(delta, dict) or set(delta) != {'x', 'z'} or any(type(v) is not int or not -65535 <= v <= 65535 for v in delta.values()):
-        raise ProjectError('Decoration group requires exact integer X/Z offsets within -65535..65535')
     before = source_key(project)
     original = project._environment_source(scene)
     source_hash = sha256(original).hexdigest()
@@ -46,14 +44,35 @@ def review(project, scene, entity_ids, delta):
         entry = deepcopy(instances.get(cell, dict(cell_index=cell)))
         offset = deepcopy(entry.get('offset', {}))
         current_axes = {**inherited, **offset}
-        proposed_axes = {**current_axes, 'x': current_axes['x'] + delta['x'], 'z': current_axes['z'] - delta['z']}
-        if any(not -32768 <= proposed_axes[axis] <= 32767 for axis in ('x', 'z')):
+        def position(axes):
+            return dict(x=(cell % 128) * 128 + axes['x'] + 64, z=(cell // 128) * 128 - axes['z'] + 64)
+        targets.append(dict(entity_id=identifier, cell_index=cell, retail=position(retail_axes), current=position(current_axes)))
+    return dict(before=before, original=original, source_hash=source_hash, authored=authored, value=value,
+                shared=shared, instances=instances, targets=targets)
+
+
+def _merge(project, scene, context, proposed):
+    """Merge per-cell world positions once, retaining inherited and unrelated axes."""
+    value = context['value']
+    instances = context['instances']
+    targets = deepcopy(context['targets'])
+    for target in targets:
+        cell = target['cell_index']
+        point = proposed[target['entity_id']]
+        target['proposed'] = deepcopy(point)
+        inherited = dict(zip('xyz', struct.unpack_from('<3h', context['shared'],
+                             (struct.unpack_from('<H', context['original'], 0x8000 + cell * 2)[0] & 511) * 32)))
+        entry = deepcopy(instances.get(cell, dict(cell_index=cell)))
+        offset = deepcopy(entry.get('offset', {}))
+        axes = dict(x=point['x'] - (cell % 128) * 128 - 64,
+                    z=(cell // 128) * 128 + 64 - point['z'])
+        if any(type(v) is not int or not -32768 <= v <= 32767 for v in axes.values()):
             raise ProjectError('Decoration group offset exceeds the signed MAP descriptor range')
         for axis in ('x', 'z'):
-            if proposed_axes[axis] == inherited[axis]:
+            if axes[axis] == inherited[axis]:
                 offset.pop(axis, None)
             else:
-                offset[axis] = proposed_axes[axis]
+                offset[axis] = axes[axis]
         if offset:
             entry['offset'] = offset
         else:
@@ -62,27 +81,33 @@ def review(project, scene, entity_ids, delta):
             instances[cell] = entry
         else:
             instances.pop(cell, None)
-        def position(axes):
-            return dict(x=(cell % 128) * 128 + axes['x'] + 64, z=(cell // 128) * 128 - axes['z'] + 64)
-        targets.append(dict(entity_id=identifier, cell_index=cell, retail=position(retail_axes), current=position(current_axes), proposed=position(proposed_axes)))
-    # A zero offset is a placement no-op, even when existing valid metadata
-    # retains redundant inherited axes or a different instance ordering.
-    if delta == {'x': 0, 'z': 0} and authored is not None:
-        value = deepcopy(authored)
+    # Preserve the exact original metadata for any placement no-op.
+    if all(t['current'] == t['proposed'] for t in targets) and context['authored'] is not None:
+        value = deepcopy(context['authored'])
     elif instances or 'instances' in value:
         value['instances'] = [instances[cell] for cell in sorted(instances)]
     if value.get('edits') or value.get('instances'):
         project._validate_environment(scene, value)
-    patch_environment_overrides(original, value)
-    if source_key(project) != before:
+    patch_environment_overrides(context['original'], value)
+    if source_key(project) != context['before']:
         raise ProjectError('Project changed while reviewing decoration group')
-    identities = sorted(entity_ids)
-    key = digest(dict(project_source_key=before, scene=scene, source_sha256=source_hash, entity_ids=identities, delta=delta))
     normalized = value if value.get('edits') or value.get('instances') else None
-    return dict(schema_version='legaia.environment-group-review.v1', project_source_key=before, scene_id=scene,
-                source_sha256=source_hash, review_key=key, entity_ids=identities, delta=deepcopy(delta), targets=targets,
-                affected_count=sum(t['current'] != t['proposed'] for t in targets), project_change=authored != normalized,
-                value=value, scope='static-decoration-instance-transform-only', gameplay_verified=False)
+    return dict(targets=targets, affected_count=sum(t['current'] != t['proposed'] for t in targets),
+                project_change=context['authored'] != normalized, value=value)
+
+
+def review(project, scene, entity_ids, delta):
+    if not isinstance(delta, dict) or set(delta) != {'x', 'z'} or any(type(v) is not int or not -65535 <= v <= 65535 for v in delta.values()):
+        raise ProjectError('Decoration group requires exact integer X/Z offsets within -65535..65535')
+    context = _prepare(project, scene, entity_ids)
+    proposed = {t['entity_id']: {axis: t['current'][axis] + delta[axis] for axis in ('x', 'z')}
+                for t in context['targets']}
+    merged = _merge(project, scene, context, proposed)
+    identities = sorted(entity_ids)
+    key = digest(dict(project_source_key=context['before'], scene=scene, source_sha256=context['source_hash'], entity_ids=identities, delta=delta))
+    return dict(schema_version='legaia.environment-group-review.v1', project_source_key=context['before'], scene_id=scene,
+                source_sha256=context['source_hash'], review_key=key, entity_ids=identities, delta=deepcopy(delta),
+                **merged, scope='static-decoration-instance-transform-only', gameplay_verified=False)
 
 
 def apply(project, command):

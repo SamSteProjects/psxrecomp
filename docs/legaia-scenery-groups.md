@@ -25,6 +25,16 @@ prior verified proposal. Rejection retains that proposal and reports the reason.
 **Restore scenery preview** can cancel a pending request; a late response cannot
 reinstate it. Current inspection has no group drag handles.
 
+Choose **Arrange scenery group…** to align or distribute the current selection.
+For **Align**, choose X or Z and a selected anchor; every target adopts that
+anchor's current coordinate on the chosen axis. The other axis remains unchanged.
+For **Distribute**, targets sort by current axis coordinate and stable identity;
+endpoints stay fixed and intermediate positions use evenly spaced integer units,
+rounding half units upward. This is not grid snapping. A span smaller than the
+number of intervals is rejected rather than collapsing positions. Review,
+Proposed/Current comparison, Return/Restore, Apply, Undo/Redo, Save/Open and Build
+use the same scenery workflow. Arrangement inspection has no move handles.
+
 **Apply group** recomputes against fresh source bytes and the same selection,
 full project metadata, scene and offsets. It merges one Environment override,
 with one Undo/Redo operation. Save/Open and normal Build preserve the result.
@@ -45,8 +55,8 @@ non-placed descriptors are supported. Individual overrides allocate only unused
 zero-filled descriptors through the existing MAP serializer.
 
 This does not establish terrain height after a move, runtime visibility, movement,
-collision interaction or script behavior. Group rotations,
-alignment and mixed entity groups remain future work.
+collision interaction or script behavior. Group rotations
+and mixed entity groups remain future work.
 
 ## Verification — 2026-10-01
 
@@ -119,3 +129,36 @@ The copied saved project produced package SHA256
 ZIP readback exactly matched73728 MAP bytes, six scenery audits and one preserved
 collision change with floor tiers unchanged. No game launched. This focused
 milestone postdates integrated514 and does not establish runtime acceptance.
+
+## Arrangement verification — 2026-10-01
+
+Two isolated subagents owned service/refactor tests and the new dialog/Node tests;
+parent owned command/HTTP/scene integration and final verification. Fifty-three
+focused retail-enabled Python tests passed in17.726s, all29 Node tests and30
+syntax checks passed. Seven new service tests exercise deterministic rounding,
+shared/instance precedence, no-op metadata preservation, stale operations/source,
+signed bounds and whole merged descriptor capacity. HTTP review rejects missing
+or extra fields and invalid anchors/axes; one Apply is atomic, stale replay is
+rejected, Undo/Redo restore documents and no review saves bytes.
+
+The retail copied project selected cells1833,2089,2345. X alignment to cell2345
+changed two proposals while preserving Z/Y; Proposed matrices matched the table
+and Current matrices restored exactly. Distribution on Z retained endpoints
+2048/2368 and moved only cell2089 from2272 to2208. Both views had no group drag
+handles. Changed controls withdrew Apply. Apply/Undo/Redo/Save passed; repeating
+distribution was an exact no-op with Apply disabled. Closing a pending review
+aborted it and a late valid response did not restore inspection. Zero page errors;
+textured scene and compact review screenshots inspected.
+
+The initial final browser step waited on a disabled arrangement button because
+Save correctly withdrew the old source-bound selection. The fixture was restored
+to its baseline and the harness corrected to reselect before no-op review; the
+complete workflow then passed. This was a harness assumption, not a product fix.
+
+Private evidence: `local-output/sdk-20260909/scenery-layout-20261001/`.
+Saved package SHA256:
+`75d11678520b6acb2f4b21987436a8f21390f5cf1575b0db65dc2d5de8e0a055`.
+ZIP readback exactly matches73728 MAP bytes, six scenery audit changes and one
+preserved collision change. Independent grid/descriptor decoding matches each
+selected world coordinate; selected Y/rotation and floor tiers remain unchanged.
+No game launched; gameplay and full16-layer SDK acceptance remain incomplete.

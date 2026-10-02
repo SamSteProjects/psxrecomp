@@ -4,6 +4,7 @@ import {openAssetReferences} from '/asset-references.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
 import {mountEnvironmentGroup} from '/environment-group.js';
+import {mountEnvironmentLayout} from '/environment-layout.js';
 import {mountWallRectangle} from '/collision-rectangle.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -631,7 +632,7 @@ async function api(path, payload, {dialog,success}={}) {
 }
 function entities(){return state.scene?.entities ?? [];}
 let environmentSelection=null,environmentGroupSelection=[],environmentGroupKey=null,environmentGroupAnchor=null,environmentGroupInspection=null;
-let environmentGroupTool=null;
+let environmentGroupTool=null,environmentLayoutTool=null;
 let sharedEnvironmentMove=null;
 let npcDraftSelection=null;
 function selectedNpcDraft(){const value=state.actor_drafts?.[npcDraftSelection];return value?.scene_id===state.scene?.id?value:null;}
@@ -691,10 +692,10 @@ async function moveSharedEnvironment(item,axis,worldValue){
 function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
 function selectEnvironment(identifier){clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
 function staticDecorations(){return environmentEntities().filter(e=>e.entity_id.includes('/decorations/')&&e.source_record?.object_record_index>=4);}
-function clearEnvironmentGroupSelection(){environmentGroupSelection=[];environmentGroupKey=null;environmentGroupAnchor=null;if(environmentGroupInspection)environmentGroupTool?.restore();environmentGroupTool?.refresh();}
+function clearEnvironmentGroupSelection(){environmentGroupSelection=[];environmentGroupKey=null;environmentGroupAnchor=null;if(environmentGroupInspection){environmentGroupTool?.restore();environmentLayoutTool?.restore();}environmentGroupTool?.refresh();environmentLayoutTool?.refresh();}
 function updateEnvironmentGroupSelection(){
   if(environmentGroupSelection.length&&(!canEdit()||!scenePreviewCurrent()||environmentGroupKey!==resourceStateKey()||environmentGroupSelection.some(id=>!staticDecorations().some(e=>e.entity_id===id))))clearEnvironmentGroupSelection();
-  environmentGroupTool?.refresh();
+  environmentGroupTool?.refresh();environmentLayoutTool?.refresh();
   const clear=document.querySelector('#environment-group-tools > button:last-child');if(clear)clear.disabled=busy||!environmentGroupSelection.length;
 }
 function toggleEnvironmentSelection(id){
@@ -719,7 +720,7 @@ function sceneryGroupPosition(row,temporary=true){
   return result;
 }
 function sceneryGroupCenter(temporary=true){
-  if(environmentGroupInspection?.layer!=='proposed')return null;
+  if(environmentGroupInspection?.layer!=='proposed'||environmentGroupInspection.report.schema_version!=='legaia.environment-group-review.v1')return null;
   const points=environmentGroupInspection.report.targets.map(row=>sceneryGroupPosition(row,temporary));if(points.some(p=>!p))return null;
   return Object.fromEntries(['x','y','z'].map(axis=>[axis,points.reduce((sum,p)=>sum+p[axis],0)/points.length]));
 }
@@ -806,8 +807,11 @@ actorGroupTools.innerHTML='<span role="status"></span><button type="button" data
 transformTools.after(actorGroupTools);
 const environmentGroupHost=document.createElement('div');environmentGroupHost.id='environment-group-tools';transformTools.after(environmentGroupHost);
 environmentGroupTool=mountEnvironmentGroup({host:environmentGroupHost,getState:()=>state,getSelection:()=>environmentGroupSelection,
-  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
-  onInspection:(report,layer)=>{cancelViewportGesture();environmentGroupInspection=report?{report,layer}:null;draw();},onFrame:frameEnvironmentGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
+  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&(!environmentGroupInspection||environmentGroupInspection.report.schema_version==='legaia.environment-group-review.v1'),
+  onInspection:(report,layer)=>{cancelViewportGesture();if(report)environmentLayoutTool?.restore();environmentGroupInspection=report?{report,layer}:null;draw();},onFrame:frameEnvironmentGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
+environmentLayoutTool=mountEnvironmentLayout({host:environmentGroupHost,getState:()=>state,getSelection:()=>environmentGroupSelection,
+  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&(!environmentGroupInspection||environmentGroupInspection.report.schema_version==='legaia.environment-layout-review.v1'),
+  onInspection:(report,layer)=>{cancelViewportGesture();if(report)environmentGroupTool?.restore();environmentGroupInspection=report?{report,layer}:null;draw();},onFrame:frameEnvironmentGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
 const clearScenery=document.createElement('button');clearScenery.textContent='Clear scenery group';clearScenery.onclick=()=>{clearEnvironmentGroupSelection();renderHierarchy();renderInspector();draw();};environmentGroupHost.append(clearScenery);
 function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;updateActorGroupSelection();}
 function updateActorGroupSelection(){
@@ -3009,7 +3013,7 @@ function drawEnvironmentSelection(){
 }
 function draw(){
   updateEnvironmentGroupSelection();
-  if(environmentGroupInspection&&(!scenePreviewCurrent()||environmentGroupInspection.report.project_source_key!==state.project_copy_source_key||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection))environmentGroupTool.restore();
+  if(environmentGroupInspection&&(!scenePreviewCurrent()||environmentGroupInspection.report.project_source_key!==state.project_copy_source_key||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection)){environmentGroupTool.restore();environmentLayoutTool?.restore();}
   updateActorGroupSelection();
   if(actorGroupInspection&&(!scenePreviewCurrent()||actorGroupInspection.key!==resourceStateKey()||sceneRepresentation!=='authored'||scenePose||shapeDraft))actorBatchTool.restore();
   if(scenePose&&(!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project?.mode!=='edit'||(scenePose.isCurrent&&!scenePose.isCurrent())))clearScenePose();

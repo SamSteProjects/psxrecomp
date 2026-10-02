@@ -8,6 +8,20 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Scenery alignment and distribution (2026-10-01):** Arrange scenery group
+aligns2–128 selected static decorations to an anchor on X/Z or evenly distributes
+them between fixed endpoints using integer half-up rounding and stable identity
+ordering. Other axes, shared transforms, Y/rotation, outside edits and Collision
+are preserved. Fresh review, textured Proposed/Current comparison, retained
+Return/Restore, atomic Apply/Undo/Redo, Save/Open and normal Build are connected.
+Fifty-three focused retail-enabled Python tests passed in17.726s, all29 Node tests
+and30 syntax checks passed. Retail browser alignment/distribution, input withdrawal,
+comparison matrices, no-op Apply and pending-close cancellation passed with zero
+page errors; screenshots inspected. Complete73728-byte MAP ZIP matches the saved
+binding and independently decoded descriptor coordinates. No game launched.
+This postdates integrated514; runtime visibility/collision/lifecycle remain deferred.
+See [Scenery groups](legaia-scenery-groups.md).
+
 **Scenery group drag and actor preview refresh (2026-10-01):** Proposed
 scenery inspection now has X/Z handles with integer movement and optional
 16/64/256/1024 snapping. Release obtains a fresh source-bound review; Apply
