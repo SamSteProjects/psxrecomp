@@ -7,6 +7,15 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+Post-checkpoint extension: saved editable-copy discovery passed28 focused Python
+checks in4.058s,26 Node files/27 syntax checks. Fresh service/read-only listings,
+edited names/metadata, incomplete/foreign/malformed receipts, scan/path/mode/source
+guards, API fields and normal Open validation are covered. Retail browser checked
+matching/edited/incomplete records, corruption rejection, dirty guard before Open,
+Dolk2 X9536 reopen, closed pending list and Refresh with unchanged source bytes,
+zero page errors and inspected screenshots. No game launched; owned browser/server
+stopped. Postdates514; see [Project copies](legaia-project-copies.md).
+
 Retail-enabled discovery passed **514 Python tests in365.743 seconds**, exit0,
 no skips, on unchanged clean source `7a6459e4e29ad96f858d2a8c79eab25dabbc60f2`.
 All26 Node test files and27 editor syntax checks passed on that source. This

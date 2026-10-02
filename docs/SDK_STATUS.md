@@ -2,6 +2,16 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Saved editable copy discovery (2026-10-01):** Copy project now lists bounded
+project-local creation records after restart, shows current saved names/metadata
+changes, labels partial records and reopens through normal validation and the
+dirty-source guard. Listing does not claim current input integrity. Twenty-eight
+focused Python checks,26 Node files/27 syntax checks passed. Browser verifies
+three states, corrupted-import rejection, dirty guard, reopened Dolk2 X9536,
+pending-close withdrawal and Refresh with unchanged source bytes, zero errors
+and inspected screenshots. No game launched; postdates514. See
+[Project copies](legaia-project-copies.md).
+
 **Latest integrated offline checkpoint (2026-10-01):** Retail-enabled discovery
 passed **514 Python tests in 365.743 seconds**, exit0, no skips, on unchanged
 clean source `7a6459e4e29ad96f858d2a8c79eab25dabbc60f2`. All26 Node test files

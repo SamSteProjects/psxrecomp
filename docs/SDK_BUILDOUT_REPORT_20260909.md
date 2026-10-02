@@ -8,6 +8,16 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Saved editable copy discovery (2026-10-01):** Copy project lists creation records
+from disk after restart, distinguishes changed saved metadata from partial records,
+and opens validated copies with the existing unsaved-change guard. Bounded local
+discovery has no write effects or current-input integrity claim. Twenty-eight
+focused Python checks,26 Node files/27 syntax checks passed. Browser checked
+matching/edited/partial rows, corrupt import rejection, dirty-open guard before
+dispatch, Dolk2 X9536 reopen, closed-pending withdrawal and Refresh; source bytes/
+authored state unchanged, zero errors and inspected screenshots. No game launched;
+extension postdates integrated514. See [Project copies](legaia-project-copies.md).
+
 **Latest integrated offline checkpoint (2026-10-01):** Retail-enabled discovery
 passed **514 Python tests in 365.743 seconds**, exit0, no skips, on unchanged
 clean source `7a6459e4e29ad96f858d2a8c79eab25dabbc60f2`. All26 Node test files

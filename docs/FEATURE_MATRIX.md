@@ -2,6 +2,14 @@
 
 Current scene-editor status (2026-10-01):
 
+**Saved editable copy discovery (2026-10-01):** Disk-backed bounded copy listing
+survives restart and shows current names, saved metadata changes and partial
+records. Normal Open validates current inputs; dirty sources cannot switch.
+Twenty-eight focused Python checks,26 Node files/27 syntax checks passed. Browser
+verified three states, corruption rejection, pending-close/Refresh guards and
+edited-copy reopen with preserved source bytes, zero errors and inspected images.
+No game launched; postdates514. See [Project copies](legaia-project-copies.md).
+
 **Latest integrated offline checkpoint (2026-10-01):** Retail-enabled discovery
 passed **514 Python tests in 365.743 seconds**, exit0, no skips, on unchanged
 clean source `7a6459e4e29ad96f858d2a8c79eab25dabbc60f2`. All26 Node test files

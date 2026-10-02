@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {decodeCopyReview,copyRequest,decodeCreatedCopy} from '../editor/project-copy.js';
+import {decodeCopyReview,copyRequest,decodeCreatedCopy,decodeCopyList} from '../editor/project-copy.js';
 const key='a'.repeat(64),path='C:\\SDK\\Project',files=[{path:'project.legaia.json',sha256:'b'.repeat(64),byte_length:12}];
 const review={schema_version:'legaia.project-copy-review.v1',project_source_key:key,review_key:key,source_project:path,source_name:'Source',source_dirty:true,source_authored_state_key:key,imported_scene_count:0,file_count:1,byte_length:12,files,includes_unsaved_metadata:true,retail_disc_included:false,undo_history_included:false,generated_outputs_included:false,live_state_included:false};
 assert.deepEqual(decodeCopyReview(review,key,path),review);
@@ -11,3 +11,9 @@ assert.deepEqual(decodeCreatedCopy(created,key,path),created);
 for(const changes of [{copied_project:'C:\\elsewhere\\project-'+ 'c'.repeat(32)},{copied_project:created.copied_project+'\\..\\outside'},{readback_verified:false},{source_dirty:'yes'},{name:'\ud800'},{files:[{...files[0],byte_length:64*1024*1024+1}]}])assert.throws(()=>decodeCreatedCopy({...created,...changes},key,path));
 const independent=decodeCreatedCopy(created,key,path);independent.files[0].path='changed';assert.equal(created.files[0].path,'project.legaia.json');
 console.log('Project copy Unicode names, source context, inventory, destination and completion guards passed.');
+const row={id:'project-'+'c'.repeat(32),path:created.copied_project,name:'Edited copy',creation_name:created.name,status:'recorded_copy',saved_metadata_state:'changed_since_creation',current_inputs_validation:'not_checked',creation_file_count:1};
+const listing={schema_version:'legaia.project-copy-list.v1',project_source_key:key,source_project:path,copies:[row],truncated:false,ordering:'lexicographic_identity',current_inputs_validation:'not_checked'};
+assert.deepEqual(decodeCopyList(listing,key,path),listing);
+for(const changes of [{project_source_key:'f'.repeat(64)},{current_inputs_validation:'verified'},{copies:[row,row]},{copies:[{...row,path:'C:/outside'}]},{copies:[{...row,status:'complete'}]}])assert.throws(()=>decodeCopyList({...listing,...changes},key,path));
+const partial={...row,status:'incomplete_or_invalid',saved_metadata_state:'unavailable',creation_file_count:null,name:null,creation_name:null};assert.deepEqual(decodeCopyList({...listing,copies:[partial]},key,path).copies,[partial]);
+console.log('Saved copy list changed metadata, incomplete records, context and path guards passed.');

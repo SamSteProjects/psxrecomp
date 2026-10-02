@@ -856,6 +856,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .build_review import review
                     self._json(200,review(self.server.project))
                     return
+                if route == '/api/project/copies':
+                    if body:raise ProjectError('Project copy listing takes no fields')
+                    from .project_copy_history import list_copies
+                    self._json(200,list_copies(self.server.project))
+                    return
                 if route in ('/api/project/copy-review','/api/project/copy'):
                     from .project_copy import review as copy_review,create_copy
                     if route.endswith('copy-review'):

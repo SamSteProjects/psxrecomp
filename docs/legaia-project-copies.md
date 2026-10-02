@@ -1,5 +1,38 @@
 # Editable project copies
 
+## Find and reopen saved copies
+
+The Copy project panel also lists copies from the current project's
+`ProjectCopies/` folder. Discovery works after restarting the editor. **Refresh
+saved copies** rereads the list. Entries show the current saved name and whether
+saved `project.legaia.json` bytes match the creation receipt or changed afterward.
+An edited copy remains a normal editable project. These labels do not verify
+current imported/model/texture files: normal validation runs on **Open saved copy**.
+Creation receipts are local provenance records, not signed integrity certificates.
+
+Missing/invalid receipts or unreadable metadata produce an explicit unavailable
+row with no Open action. Save or Undo source changes before opening a listed copy.
+Listing reads bounded metadata only, creates no projects and rewrites no files.
+It scans at most4096 immediate directory entries, then shows up to64 matching
+identities in lexicographic order with truncation indicated. This is not date or
+recency order. Per-document metadata is limited to8 MiB; response size to2 MiB.
+Copies whose source/destination paths differ from their creation records are
+unavailable through this list; ordinary Open project remains separate.
+
+**Discovery verification — 2026-10-01:** Twenty-eight focused retail-enabled Python
+checks passed in4.058s, all26 Node files and27 syntax checks passed. New checks
+cover fresh-service discovery, edited names/metadata, read-only behavior, malformed
+or partial records, path/size/scan/mode/source guards, API whitelists and current
+input validation on Open. Browser found matching/edited/incomplete copies from
+disk, reopened Dolk2 X9536 with empty history, rejected a corrupted import, blocked
+dirty Open before dispatch, withdrew a closed pending list and refreshed normally.
+Original saved bytes/authored state were preserved, zero page errors, screenshots
+inspected; owned browser/server stopped. No game launched. Private evidence:
+`local-output/sdk-20260909/project-copy-history-20261001/`. This extension postdates
+the integrated514 checkpoint; full SDK/runtime acceptance remains open.
+
+## Create a copy
+
 In Edit mode, choose **Copy project…** beside Settings. Review the captured input
 count and size, enter a name, and choose **Create editable copy**. The copy captures
 current authoring metadata, including unsaved changes. It does not Save the source
