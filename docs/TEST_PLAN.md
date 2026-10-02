@@ -788,3 +788,14 @@ display conversion, epoch mismatch and the 128-entry bound. Ten observer-service
 tests pass, including rejection of a revoked token/backwards frame before actor
 traversal and acceptance only after a new guarded capture. These are targeted
 checks, not the complete cross-scene or repeated-restore campaign.
+
+## Source-bound animation GLB workflow
+
+Targeted checks cover GLB accessor/timeline guards, equivalent quaternion byte
+preservation, source-nearest Euler/quantization, real Blender edit/re-export,
+shared contribution ownership, stale review rejection, proposed pose inspection,
+Undo/Redo, Save/Open and independent normal Build bank readback. Private retail
+fixtures cover compressed Town01 and raw-stream Dolk2 animation banks. Browser
+checks exercise the actual dialog and history workflow without any game request.
+Gameplay clip selection and retail cadence remain deferred. See
+[animation GLB workflow](legaia-animation-glb.md).

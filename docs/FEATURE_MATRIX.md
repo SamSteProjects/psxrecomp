@@ -2,6 +2,17 @@
 
 Current scene-editor status (2026-10-02):
 
+**Source-bound GLB animation authoring (2026-10-02):** An imported actor's
+current effective rigid clip exports with a separate binding JSON. External GLB
+translation/rotation edits receive an exact source-axis and quantization review,
+proposed animation inspection and revalidated Apply through normal animation
+commands. Unchanged axes retain their existing ownership; other shared-clip
+contributors are not adopted. Stale exports, ownership-only changes, conflicts
+and unsupported layouts reject. Undo/Redo, Save/Open and normal Build retain the
+existing record and capacity checks. Counts, skinning, general retargeting and
+retail timing/runtime acceptance remain unfinished. See
+[animation GLB workflow](legaia-animation-glb.md).
+
 **Visual transition graph workspace (2026-10-02):** Scene and Project
 transitions now open a selectable node/arrow diagram, scene list, search,
 imported-only filter, direct-reference focus, zoom/pan/Fit and paginated source

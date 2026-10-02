@@ -8,6 +8,33 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Source-bound GLB animation authoring (2026-10-02):** An imported actor's
+current effective rigid clip exports with a separate binding JSON. External GLB
+translation/rotation edits receive an exact source-axis and quantization review,
+proposed animation inspection and revalidated Apply through normal animation
+commands. Unchanged axes retain their existing ownership; other shared-clip
+contributors are not adopted. Stale exports, ownership-only changes, conflicts
+and unsupported layouts reject. Undo/Redo, Save/Open and normal Build retain the
+existing record and capacity checks. Counts, skinning, general retargeting and
+retail timing/runtime acceptance remain unfinished. See
+[animation GLB workflow](legaia-animation-glb.md).
+
+Validation: 26 selected Python cases passed with the private retail disc enabled
+and zero skips; 4 Node suites and 2 changed-module syntax checks passed. Thirteen
+actual browser workflows passed with zero page/HTTP errors and zero game-launch
+requests, including file downloads, stale/late response guards, proposed pose
+inspection, Apply, Undo/Redo, Save and normal reviewed Build. Final viewer and
+narrow-layout checks verify the retained review and named clip. Blender 5.2.2
+actually edited and re-exported Dolk2 object 0/frame 0 translation X+1 and rotation
+X+16; baseline imports byte-identically, edited imports exactly those two axes,
+with zero translation error and maximum angular error 0.0000191993 degrees.
+Independent readback of the browser-produced 114764-byte raw animation bank
+changes exactly bytes 52228/52233 and preserves every other byte. Save/Open
+retains the contribution and imported metadata is unchanged. Private evidence
+is under `local-output/sdk-20260909/animation-glb-20261002/` and
+`local-output/sdk-20260909/animation-glb-integration-20261002/`. Gameplay clip
+selection and cadence remain deferred; no game was launched or software installed.
+
 **Model faces, UVs and baked colors (2026-10-02):** The model viewer now
 provides a source-bound primitive editor with separate Retail, Current and
 Proposed values. Existing face connections, UV byte pairs and stored RGB words

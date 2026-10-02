@@ -523,3 +523,14 @@ independent Edit/source/selection/busy checks and existing validated workflows;
 unknown action IDs do not render. Metadata never supplies executable commands.
 Specialized forms and remaining animation/template/asset actions are separate
 migration work.
+
+## Reviewed external rigid animation import
+
+`importer/animation_glb.py` validates GLB channels and performs source-preserving
+TR quantization. `sdk/animation_glb.py` owns fresh binding resolution, effective
+baseline comparison, per-actor contribution merging and exact shared-bank
+composition. `sdk/server.py` owns bounded HTTP transport, private GLB/sidecar
+export and model-preview decoration. `editor/animation-glb.js` owns explicit
+file selection, review freshness and dialog lifecycle. Apply uses ordinary
+`AnimationChannels` commands; no new persistence or runtime writer is introduced.
+See [animation GLB workflow](legaia-animation-glb.md).

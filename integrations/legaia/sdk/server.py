@@ -626,7 +626,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
-                 "/runtime-review.js": ("runtime-review.js", "text/javascript")}
+                 "/runtime-review.js": ("runtime-review.js", "text/javascript"),
+                 "/animation-glb.js": ("animation-glb.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})
             return
@@ -647,6 +648,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import'):
+                request_limit = 44 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
             content = self.rfile.read(length)
@@ -1187,6 +1190,67 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route == '/api/animation-glb-export':
+                    if set(body) != {'entity_id', 'clip_fps'} or not isinstance(body['entity_id'], str):
+                        raise ProjectError('Animation GLB export requires an actor and explicit interchange rate only')
+                    from .animation_glb import export_clip, preview_import
+                    from .build import _guard_output
+                    from .project import atomic_write
+                    from importer.export import encode_model_glb, write_encoded_glb
+                    animation, asset, binding = export_clip(self.server.project, body['entity_id'], body['clip_fps'])
+                    preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
+                    preview['frames'] = animation.pop('frames')
+                    preview['animation'] = animation
+                    payload, audit = encode_model_glb(preview, clip_fps=body['clip_fps'])
+                    check = preview_import(self.server.project, body['entity_id'], payload, binding)
+                    if check['changed_axes']:
+                        raise ProjectError('Animation GLB export did not preserve its source channels')
+                    output = self.server.project.root / 'Exports'
+                    _guard_output(output / '.gitignore', self.server.project.root)
+                    result = write_encoded_glb(payload, audit, output)
+                    binding_path = Path(result['path']).with_suffix('.binding.json')
+                    _guard_output(binding_path, self.server.project.root)
+                    with binding_path.open('xb') as handle:
+                        handle.write((json.dumps(binding, sort_keys=True, indent=2, allow_nan=False) + '\n').encode('utf-8'))
+                    if not (output / '.gitignore').exists():
+                        atomic_write(output / '.gitignore', b'*\n')
+                    self._json(200, dict(result, binding=binding, binding_path=str(binding_path),
+                                         binding_filename=binding_path.name, byte_length=len(payload),
+                                         glb_base64=base64.b64encode(payload).decode('ascii')))
+                    return
+                if route in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import'):
+                    expected = {'entity_id', 'glb_base64', 'binding'}
+                    if route == '/api/animation-glb-import':
+                        expected.add('review_key')
+                    if (set(body) != expected or not isinstance(body['entity_id'], str) or
+                            not isinstance(body['binding'], dict) or
+                            len(json.dumps(body['binding'], allow_nan=False).encode('utf-8')) > 128 * 1024):
+                        raise ProjectError('Animation GLB import requires an actor, bounded binding sidecar and GLB bytes')
+                    encoded = body['glb_base64']
+                    if not isinstance(encoded, str) or len(encoded) > 44739244:
+                        raise ProjectError('Animation GLB exceeds 32 MiB')
+                    try:
+                        payload = base64.b64decode(encoded, validate=True)
+                    except ValueError as exc:
+                        raise ProjectError('Animation GLB requires valid base64') from exc
+                    if not 1 <= len(payload) <= 32 * 1024 * 1024:
+                        raise ProjectError('Animation GLB must contain at most 32 MiB')
+                    from .animation_glb import apply_import, pose_import, preview_import
+                    if route == '/api/animation-glb-preview':
+                        self._json(200, preview_import(self.server.project, body['entity_id'], payload, body['binding']))
+                    elif route == '/api/animation-glb-pose-preview':
+                        animation, asset = pose_import(self.server.project, body['entity_id'], payload, body['binding'])
+                        preview = self.server.model_preview(asset, prepared=animation.pop('geometry'))
+                        preview['frames'] = animation.pop('frames')
+                        animation.update(source_clip_id=body['binding']['animation_id'], clip_id='file-preview', entity_id=body['entity_id'])
+                        preview['report'] = animation['proposal']
+                        preview['animation'] = animation
+                        preview['animation_support'] = {'supported': True, 'clips': [{'id': 'file-preview', 'label': 'Proposed GLB animation'}], 'evidence': 'reviewed_glb_not_applied_or_runtime_verified'}
+                        self._json(200, preview)
+                    else:
+                        apply_import(self.server.project, body['entity_id'], payload, body['binding'], body['review_key'])
+                        self._json(200, self.server.state())
                     return
                 if route == '/api/animation-record-source':
                     if set(body) - {'entity_id', 'layer', 'format'} or not isinstance(body.get('entity_id'), str) or not body['entity_id'].strip():

@@ -23,6 +23,7 @@ import {openTriggerCells,decodeTriggerCellsAnnotations,triggerCellsGeometry} fro
 import {decodeTransitionGraph} from '/transition-graph.js';
 import {mountTransitionGraphWorkspace} from '/transition-graph-workspace.js';
 import {openModelPrimitiveEditor} from '/model-primitives.js';
+import {openAnimationGlbEditor} from '/animation-glb.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
@@ -1325,6 +1326,7 @@ async function openFlagReferences(projectWide=false){
 };
 function synchronizeResources(){
   modelPrimitiveEditor?.updateState();
+  if(animationGlbEditor){if(selected()?.id!==animationGlbEntityId)animationGlbEditor.dispose();else animationGlbEditor.updateState();}
   if(transitionsDialog.open&&transitionsDialog.dataset.sourceContext!==transitionsContext(transitionsDialog.dataset.projectWide==='true'))transitionsDialog.close();
   if(flagsDialog.open&&flagsDialog.dataset.sourceContext!==flagContext(flagsDialog.dataset.projectWide==='true'))flagsDialog.close();
   if(textDialog.open&&textDialog.dataset.sourceContext!==textContextKey(textDialog.dataset.projectWide==='true'))textDialog.close();
@@ -2614,6 +2616,23 @@ function renderInspector(){
   }));
 }
 
+let animationGlbEditor=null,animationGlbEntityId=null;
+async function inspectAnimationGlb(entity){
+  if(busy||state.project.mode!=='edit')return;
+  animationGlbEditor?.dispose();animationGlbEntityId=entity.id;
+  animationGlbEditor=await openAnimationGlbEditor({entityId:entity.id,
+    getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
+    busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
+    onApplied:next=>{state=next;render();notify('Animation GLB imported. Save project to persist.');},
+    onPosePreview:async(data,{returnToEditor})=>{
+      setBusy(false);
+      await openModel(data.semantic_id,'file-preview',entity.id,'imported',null,data,returnToEditor);
+      if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open the reviewed animation preview.');
+      $('model-dialog').addEventListener('close',()=>{
+        if(model===data&&scenePose?.preview!==data)returnToEditor();
+      },{once:true});
+    }});
+}
 const animationEditDialog=document.createElement('dialog');animationEditDialog.className='project-dialog';document.body.append(animationEditDialog);
 async function openAnimationChannels(entity,initialChannel=null){
   if(busy||state.project.mode!=='edit')return;
@@ -2628,6 +2647,9 @@ async function openAnimationChannels(entity,initialChannel=null){
     const binding=result.binding,edits=result.authored?.edits??[];
     animationEditDialog.innerHTML=`<h2>Edit imported animation channels</h2><p>${escapeHTML(binding.semantic_id)}</p><p>Imported actors sharing this clip: ${escapeHTML((result.shared_actor_ids??[]).join(", "))}</p><p>Edits apply to the imported clip. Blank axes remove this actor’s contribution; other shared-clip edits still apply. Build patches the shared scene clip within its original compressed capacity. Other actors using that clip are affected. Conflicting overrides or edits that need relocation are rejected. In-game playback has not yet been verified.</p><form><label>Frame (zero based)<input name="frame" type="number" min="0" max="${binding.frame_count-1}" step="1" value="0" required></label><label>Rigid object (zero based)<input name="object" type="number" min="0" max="${binding.bone_count-1}" step="1" value="0" required></label><div class="animation-channel-fields"></div><p class="dialog-error" role="alert"></p><button type="submit">Apply channel override</button><button type="button" class="clear-animation">Clear this actor’s channel edits</button><button type="button" class="close-animation">Close</button></form>`;
     const form=animationEditDialog.querySelector('form'),fields=form.querySelector('.animation-channel-fields'),error=form.querySelector('[role="alert"]');
+    const glbEditorButton=document.createElement('button');glbEditorButton.type='button';glbEditorButton.textContent='Edit animation through GLB';glbEditorButton.dataset.animationEdit='true';
+    glbEditorButton.onclick=async()=>{if(!current()||busy)return;if(channelDirty){error.textContent='Apply or discard the current channel draft before opening GLB authoring.';return;}animationEditDialog.close();await inspectAnimationGlb(entity);};
+    form.querySelector('.close-animation').after(glbEditorButton);
     if(initialChannel&&Number.isInteger(initialChannel.frame)&&Number.isInteger(initialChannel.object)&&initialChannel.frame>=0&&initialChannel.frame<binding.frame_count&&initialChannel.object>=0&&initialChannel.object<binding.bone_count){form.elements.frame.value=initialChannel.frame;form.elements.object.value=initialChannel.object;}
     const clearChannel=document.createElement('button');clearChannel.type='button';clearChannel.textContent='Clear selected channel contribution';clearChannel.className='clear-animation-channel';form.querySelector('.clear-animation').before(clearChannel);
     for(const group of ['translation','rotation_psx'])for(const axis of ['x','y','z']){const limits=result[group],label=document.createElement('label');label.textContent=`${group==='translation'?'Translation':'Rotation (PSX units)'} ${axis.toUpperCase()}`;const input=document.createElement('input');input.name=`${group}_${axis}`;input.type='number';input.min=limits.minimum;input.max=limits.maximum;input.step=limits.step;input.placeholder='Retail';label.append(input);fields.append(label);}
