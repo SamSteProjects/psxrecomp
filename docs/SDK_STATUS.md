@@ -2,6 +2,24 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Saved scene placement selections (2026-10-01):** Named project-local
+selections now retain 1–128 imported actors, static decorations or mixed members.
+Create/Rename/Replace/Delete use strict source-bound commands and one-step
+Undo/Redo. Metadata validation remains portable without a disc; scenery Create,
+Replace and Recall freshly verify static MAP identities. Cross-scene Recall seeds
+actor, scenery or mixed placement tools without editing game overrides. Changed
+reimport is blocked under the library and its history. Thirty-eight focused Python
+checks passed in 2.554s, all 32 Node files and 33 syntax checks passed. Actual
+Town01/Dolk2 browser Create/Rename/Delete/history, Save/Open, cross-scene mixed
+recall, single-decoration replacement/recall/Undo and pending source/recall Cancel
+checks passed with zero page errors; screenshot inspected. Private saved-project
+copy retains the library; normal package is byte-identical before/after selection
+metadata (SHA256 `1503a2fb0aa1c141927efac65285390afa876028bfd7ddc46f44dd70c02302fe`).
+Private evidence: `local-output/sdk-20260909/scene-selection-sets-20261001/`.
+No game launched. This feature requires no new gameplay gate; it does not establish
+runtime placement parity. Historical 548 checkpoint predates it.
+See [Saved scene selections](legaia-scene-selections.md).
+
 **Mixed scene placement groups (2026-10-01):** Select scene placements combines
 imported actors and static decorations in one bounded selection. Move scene
 placement group reviews 2–128 targets, including at least one of each kind, with

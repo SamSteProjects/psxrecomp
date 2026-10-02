@@ -540,6 +540,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/build-review.js": ("build-review.js", "text/javascript"),
                  "/build-history.js": ("build-history.js", "text/javascript"),
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
+                 "/scene-selection-sets.js": ("scene-selection-sets.js", "text/javascript"),
                  "/scene-placement-group.js": ("scene-placement-group.js", "text/javascript"),
                  "/environment-layout.js": ("environment-layout.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
@@ -860,6 +861,20 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if body:raise ProjectError('Build review takes no fields')
                     from .build_review import review
                     self._json(200,review(self.server.project))
+                    return
+                if route == '/api/scene-selection-binding':
+                    if set(body)!={'scene_id','entity_ids'}:raise ProjectError('Scene selection binding requires scene and placement identities only')
+                    from .scene_selection_sets import source_binding
+                    from .project_copy import source_key
+                    key=source_key(self.server.project)
+                    binding=source_binding(self.server.project,body['scene_id'],body['entity_ids'])
+                    if source_key(self.server.project)!=key:raise ProjectError('Project changed while verifying selection sources')
+                    self._json(200,dict(schema_version='legaia.scene-selection-binding.v1',project_source_key=key,scene_id=body['scene_id'],entity_ids=sorted(body['entity_ids']),read_only=True,**binding))
+                    return
+                if route == '/api/scene-selection-review':
+                    if set(body)!={'selection_set_id','review_key'}:raise ProjectError('Scene selection recall requires saved identity and review key only')
+                    from .scene_selection_sets import review
+                    self._json(200,review(self.server.project,body['selection_set_id'],body['review_key']))
                     return
                 if route == '/api/scene-placement-group-review':
                     if set(body)!={'entity_id','entity_ids','delta'}:raise ProjectError('Scene placement review requires scene, selected identities and X/Z offset only')

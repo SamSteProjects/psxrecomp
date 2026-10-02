@@ -213,6 +213,27 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Persisted scene placement selections
+
+Completed the next offline editor workflow after mixed placement groups:
+source-bound saved selections for 1–128 imported actors/static decorations in
+any combination, metadata-only Create/Rename/Replace/Delete, Undo/Redo, portable
+Save/Open, cross-scene fresh Recall and project-copy retention. Parent integrated
+isolated service/dialog workstreams. Reimport/history guards preserve source
+bindings; fresh MAP proof is required for scenery creation/replacement/recall.
+Browser caught a clipped Recall button; applying existing dialog wrap/width styles
+fixed it. 38 focused Python checks passed/2.554s; all32 Node and33 syntax checks
+passed. Actual Town01/Dolk2 browser CRUD/history/persistence/mixed recall and single
+scenery replacement/Undo plus pending source/recall Cancel passed, zero page errors,
+screenshot inspected. Private copied project retained library; normal package was
+byte-identical before/after selection metadata, SHA256
+`1503a2fb0aa1c141927efac65285390afa876028bfd7ddc46f44dd70c02302fe`.
+Evidence: `local-output/sdk-20260909/scene-selection-sets-20261001/`.
+SDK status/buildout/matrix/plan and workflow guide updated. All owned test processes
+stopped; no game launched. Historical548 predates this feature; full goal and
+previous deferred gameplay remain open. Last goal turn classified as progress.
+
+
 ### 2026-10-01 — Mixed imported actor/static-decoration placement groups
 
 Added bounded mixed scene selection and reviewed 64-unit X/Z offsets, retained

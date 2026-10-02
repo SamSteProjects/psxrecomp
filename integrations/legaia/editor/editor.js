@@ -5,6 +5,7 @@ import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
 import {mountEnvironmentGroup} from '/environment-group.js';
 import {mountEnvironmentLayout} from '/environment-layout.js';
+import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selection-sets.js';
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
@@ -146,7 +147,7 @@ function renderObservedNodes(query='',nodeIds=null){
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>nodesDialog.close();nodesDialog.append(close);if(!nodesDialog.open)nodesDialog.showModal();
 };
 
-let scenePose=null,savedActorSelections=null,savedSceneViews=null,groupPresetTool=null;
+let scenePose=null,savedActorSelections=null,savedSceneSelections=null,savedSceneViews=null,groupPresetTool=null;
 let scriptTargetOverlay=null,scriptTargetHits=[],pickScriptTargets=false;
 const scriptTargetTools=document.createElement('div');scriptTargetTools.id='script-target-tools';scriptTargetTools.hidden=true;
 scriptTargetTools.innerHTML='<span role="status"></span><select aria-label="Script target instruction"></select><button type="button" data-inspect>Inspect target</button><button type="button" data-pick aria-pressed="false">Pick script target</button><button type="button" data-frame>Frame script targets</button><button type="button" data-clear>Clear script targets</button>';
@@ -598,7 +599,7 @@ function setBusy(value) {
   if($('project-text'))$('project-text').disabled=value||!state.capabilities?.scene_text_search;
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
-  savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
+  savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
@@ -698,7 +699,7 @@ function scenePlacementEligible(){return new Set([...entities().map(e=>e.id),...
 function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
 function updateScenePlacementSelection(){
   if((scenePlacementMode||scenePlacementSelection.length)&&(!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePlacementKey!==resourceStateKey()||scenePlacementSelection.some(id=>!scenePlacementEligible().has(id))))clearScenePlacementSelection();
-  scenePlacementTool?.refresh();const host=document.querySelector('#scene-placement-tools');if(!host)return;
+  savedSceneSelections?.synchronize();scenePlacementTool?.refresh();const host=document.querySelector('#scene-placement-tools');if(!host)return;
   host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
   host.querySelector('[data-mixed-select]').classList.toggle('active',scenePlacementMode);host.querySelector('[data-mixed-select]').setAttribute('aria-pressed',String(scenePlacementMode));host.querySelector('[data-mixed-clear]').disabled=busy||!scenePlacementSelection.length;
   host.querySelector('[role="status"]').textContent=`${scenePlacementSelection.length} scene placements · Imported actors + static decorations · ${scenePlacementMode?'Click to toggle selection':'Enable selection to choose a mixed group'}`;
@@ -853,7 +854,7 @@ function updateActorGroupSelection(){
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
   actorGroupTools.querySelector('[data-review-selection]').disabled=busy||actorGroupSelection.length<2;actorGroupTools.querySelector('[data-review-components]').disabled=busy||actorGroupSelection.length<2;const appearanceButton=document.querySelector('[data-group-appearance]');if(appearanceButton)appearanceButton.disabled=busy||!canEdit()||actorGroupSelection.length<2||!!actorGroupInspection||!!scenePose;
   actorGroupTools.querySelector('[data-frame-selection]').disabled=busy||!actorGroupSelection.length||!scenePreviewCurrent();
-  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
+  actorGroupTools.querySelector('[data-clear-selection]').disabled=busy;savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
 }
 function toggleActorSelection(id){
   clearEnvironmentGroupSelection();
@@ -993,6 +994,38 @@ savedActorSelections=mountActorSelectionSets({after:$('actor-box-select'),getSta
     decodeSavedActorSelection(value,state);actorGroupSelection=mergeActorGroupSelection([],ids,entities().map(entity=>entity.id));actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=ids[0];cancelViewportGesture();renderHierarchy();draw();return true;
   }
 });
+function currentPlacementSelection(){
+  if(scenePlacementSelection.length)return scenePlacementSelection.slice();
+  if(actorGroupSelection.length)return actorGroupSelection.slice();
+  if(environmentGroupSelection.length)return environmentGroupSelection.slice();
+  if(environmentSelection&&scenePlacementEligible().has(environmentSelection))return [environmentSelection];
+  return selected()?[selected().id]:[];
+}
+function sceneSelectionState(){return {...state,scene_selection_eligible_ids:[...scenePlacementEligible()],scene_selection_map_sha256:staticDecorations()[0]?.source_record?.source_record?.map_sha256??null};}
+savedSceneSelections=mountSceneSelectionSets({host:scenePlacementHost,getState:sceneSelectionState,getSelection:currentPlacementSelection,isBusy:()=>busy,canEdit,api,
+  canRecall:()=>canEdit()&&modelsEnabled&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!wallInspection&&!wallSelectMode,
+  onError:error=>notify(typeof error==='string'?error:error.message,true),
+  recall:async(value,projectPath,current)=>{
+    const check=()=>{if(!current()||state.project.path!==projectPath||!canEdit()||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||wallInspection||wallSelectMode||!state.scene_selection_sets?.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved scene selection changed during recall. Review it again.');};
+    check();if(!await api('/api/state',undefined))return false;check();
+    if(value.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:value.scene_id}))return false;check();
+    const deadline=performance.now()+60000;
+    while(!scenePreviewCurrent()){check();if(sceneError||!modelsEnabled||performance.now()>deadline)throw new Error(sceneError||'Scene preview is not ready for placement recall');await new Promise(resolve=>setTimeout(resolve,50));}
+    check();const sourceKey=state.project_copy_source_key;
+    const response=await fetch('/api/scene-selection-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selection_set_id:value.id,review_key:value.review_key})});const report=await response.json();check();
+    if(!response.ok||report.error)throw new Error(report.error||'Saved placement verification failed');
+    if(report.schema_version!=='legaia.scene-selection-review.v1'||report.read_only!==true||report.project_source_key!==sourceKey||state.project_copy_source_key!==sourceKey||report.scene_id!==value.scene_id||report.id!==value.id||report.review_key!==value.review_key||report.import_sha256!==value.import_sha256||report.map_sha256!==value.map_sha256||JSON.stringify(report.entity_ids)!==JSON.stringify(value.entity_ids))throw new Error('Saved placement sources changed during recall');
+    const ids=decodeSavedSceneSelection(value,sceneSelectionState());
+    clearScenePlacementSelection();clearActorGroupSelection();clearEnvironmentGroupSelection();
+    const actorIds=ids.filter(id=>entities().some(entity=>entity.id===id)),decorIds=ids.filter(id=>!actorIds.includes(id));
+    if(actorIds.length){if(!await api('/api/selection',{entity_id:actorIds[0]}))return false;check();decodeSavedSceneSelection(value,sceneSelectionState());}else{environmentSelection=decorIds[0];npcDraftSelection=null;}
+    if(actorIds.length&&decorIds.length){scenePlacementSelection=ids;scenePlacementKey=resourceStateKey();scenePlacementMode=false;}
+    else if(actorIds.length>1){actorGroupSelection=ids;actorGroupSelectionKey=resourceStateKey();actorGroupRangeAnchor=ids[0];}
+    else if(decorIds.length){environmentGroupSelection=ids;environmentGroupKey=resourceStateKey();environmentGroupAnchor=ids[0];}
+    cancelViewportGesture();renderHierarchy();renderInspector();draw();return true;
+  }
+});
+
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&drag){event.preventDefault();cancelViewportGesture();return;}
   if(event.key==='Escape'&&scenePlacementMode){event.preventDefault();scenePlacementMode=false;draw();return;}
@@ -1006,7 +1039,7 @@ window.addEventListener('beforeunload',event=>{if(state.project?.dirty){event.pr
 
 function render(){
   updateEnvironmentGroupSelection();
-  updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
+  updateActorGroupSelection();actorBatchTool.synchronize();savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();
   draftsButton.textContent=`NPC drafts (${Object.keys(state.actor_drafts??{}).length})`;
   if(['transform','group-transform','environment-group-transform'].includes(drag?.type)&&!transformGestureCurrent(drag))cancelViewportGesture();
   $('project-name').textContent=state.project?.name ?? 'No project';

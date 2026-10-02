@@ -6,6 +6,8 @@ membership. The focused object remains available in the Inspector; selected
 bounds identify the group. Select 2–128 targets, including at least one imported
 actor and one static decoration. **Clear placement group** clears membership.
 NPC drafts, ground and placed scenery are excluded.
+[Saved scene selections](legaia-scene-selections.md) retains and recalls mixed
+membership across project sessions or scene changes.
 
 Choose **Move scene placement group…** and enter common X and Z offsets. Both
 must be integer multiples of 64 within -16320 through 16320. Actor coordinates
