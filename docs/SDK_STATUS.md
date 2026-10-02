@@ -2,13 +2,30 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Integrated SDK checkpoint after Build-history correction (2026-10-01):**
+Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
+exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.
+All24 Node test files and26 editor module syntax checks passed on that source.
+This supersedes the passing475 checkpoint and includes Project Settings,
+dependency/material/effective-animation references, Build review, saved Build
+history and its no-op package compatibility correction. The initial497-test
+run at e49e09b0 failed four equality checks and one guard-order check; its evidence
+is retained, and the unchanged regressions now pass in full discovery.
+The user-owned disc SHA256 and466714416-byte length matched the expected source.
+No game launched. Browser/package/rendered evidence remains separate, and native
+runtime parity, genuine Live identity, gameplay and the full16-layer plan remain
+incomplete. Private evidence: `sdk-regression-20261001-build-history-fixed.log/.json`
+and `node-checks-20261001-build-history-fixed.json` under `local-output/sdk-20260909/`.
+Log SHA256: `dd9141e0657fce546357327f9750709553de66284299018ba7353a218761ac28`.
+
+
 **Build-history compatibility correction (2026-10-01):** Integrated discovery
 at e49e09b0 ran497 tests but found four no-op package-equality failures and one
 stale-source guard-order error. Content-derived package identity is restored;
 separate immutable input receipts retain distinct authored snapshots. All29
 focused regression checks passed, plus six history checks including conflicting
 input-receipt rejection. The failed run is retained as evidence, not presented
-as integrated acceptance. A fresh integrated result is pending.
+as integrated acceptance. The integrated result above verifies this correction.
 
 **Saved normal Build history (2026-10-01):** Successful Builds retain deterministic
 completion receipts; Build history reopens reports after server restart. Input

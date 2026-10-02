@@ -8,13 +8,30 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Integrated SDK checkpoint after Build-history correction (2026-10-01):**
+Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
+exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.
+All24 Node test files and26 editor module syntax checks passed on that source.
+This supersedes the passing475 checkpoint and includes Project Settings,
+dependency/material/effective-animation references, Build review, saved Build
+history and its no-op package compatibility correction. The initial497-test
+run at e49e09b0 failed four equality checks and one guard-order check; its evidence
+is retained, and the unchanged regressions now pass in full discovery.
+The user-owned disc SHA256 and466714416-byte length matched the expected source.
+No game launched. Browser/package/rendered evidence remains separate, and native
+runtime parity, genuine Live identity, gameplay and the full16-layer plan remain
+incomplete. Private evidence: `sdk-regression-20261001-build-history-fixed.log/.json`
+and `node-checks-20261001-build-history-fixed.json` under `local-output/sdk-20260909/`.
+Log SHA256: `dd9141e0657fce546357327f9750709553de66284299018ba7353a218761ac28`.
+
+
 **Build-history compatibility correction (2026-10-01):** Full discovery at
 e49e09b0 ran497 tests with four no-op package-equality failures and one stale-source
 guard-order error. The failed run is retained and does not supersede the passing
 475 checkpoint. Content-derived package identity now preserves byte-identical
 no-op packages; separate immutable input receipts retain authored metadata
-contexts. All29 focused regression checks and six history checks passed. Fresh
-integrated discovery is pending; no game launched.
+contexts. All29 focused regression checks and six history checks passed. The integrated
+checkpoint above verifies this correction; no game launched.
 
 **Saved normal Build history (2026-10-01):** Build completion receipts preserve
 package provenance after editor/server restart. History compares recorded input

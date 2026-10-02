@@ -7,15 +7,27 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
-Pending update: full discovery at e49e09b0 ran497 tests in358.846s, no skips,
-but failed four no-op package-equality checks and one stale-source validation-order
-check. It is retained at `sdk-regression-20261001-build-history.log/.json` under
-private local output and does not replace the passing checkpoint below. The
-implementation restores content-derived package identity with separate input
-receipts. All29 focused regression checks and six history checks passed. A fresh
-integrated run must verify the correction and all newer SDK features together.
+**Integrated SDK checkpoint after Build-history correction (2026-10-01):**
+Retail-enabled discovery passed **498 Python tests in 368.664 seconds**,
+exit0, no skips, on unchanged clean source `ba77695b6e4e86210a2d921e1e5d9935c706e611`.
+All24 Node test files and26 editor module syntax checks passed on that source.
+This supersedes the passing475 checkpoint and includes Project Settings,
+dependency/material/effective-animation references, Build review, saved Build
+history and its no-op package compatibility correction. The initial497-test
+run at e49e09b0 failed four equality checks and one guard-order check; its evidence
+is retained, and the unchanged regressions now pass in full discovery.
+The user-owned disc SHA256 and466714416-byte length matched the expected source.
+No game launched. Browser/package/rendered evidence remains separate, and native
+runtime parity, genuine Live identity, gameplay and the full16-layer plan remain
+incomplete. Private evidence: `sdk-regression-20261001-build-history-fixed.log/.json`
+and `node-checks-20261001-build-history-fixed.json` under `local-output/sdk-20260909/`.
+Log SHA256: `dd9141e0657fce546357327f9750709553de66284299018ba7353a218761ac28`.
 
-**Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
+
+The previous failed497-test discovery is retained as evidence. The corrected
+full result above supersedes the historical passing result below.
+
+**Historical integrated offline checkpoint (2026-10-01):** Retail-enabled
 Python discovery passed **475 tests in 279.577 seconds**, exit0, no skips, on
 unchanged clean committed source `9084e5454bd8e191f4f4b03e01f4c82497564619`.
 All **20 Node test files** and **22 editor module syntax checks** passed on that

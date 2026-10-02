@@ -73,4 +73,4 @@ now retains content identity plus separate immutable input receipts, and stale
 retail validation occurs before snapshot metadata hashing. All29 focused checks
 covering the five failing workflows passed; an additional six-check history set
 passed, including exact binding and rejection of conflicting current-input
-receipts. Fresh full discovery is required before claiming integrated success.
+receipts. Fresh retail-enabled discovery on `ba77695b6e4e86210a2d921e1e5d9935c706e611` subsequently passed all498 tests; all24 Node files and26 syntax checks also passed. Browser verification after the correction retained the nine-change report and explicit incomplete entry, with unchanged authored metadata and no game launch. The corrected wide screenshot was inspected.
