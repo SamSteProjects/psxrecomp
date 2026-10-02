@@ -8,6 +8,23 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Integrated offline checkpoint (2026-10-01):** Full retail-enabled discovery
+passed548 Python tests in247.512s, exit0 with no skips, on unchanged clean source
+`80d4ae765f820551759f181d8372478a49358b72`. All29 Node test files and30 editor
+syntax checks passed with captured file hashes. This supersedes514 and integrates
+saved-copy discovery, wall rectangles/spatial comparison, scenery groups/drags,
+actor transform preview refresh and scenery alignment/distribution with the
+previous SDK workflows. The user-owned disc SHA256 and466714416-byte length were
+freshly verified. Browser/package evidence remains separate; no game launched.
+Full16-layer SDK, runtime parity, genuine Live identity and gameplay acceptance
+remain incomplete. Next offline frontier: source wall selection and reviewed
+editing directly in the central scene viewport.
+
+Private evidence: `sdk-regression-20261001-scenery-layout.log/.json` and
+`node-checks-20261001-scenery-layout.json` under `local-output/sdk-20260909/`.
+Python log SHA256:
+`a247306827edfc8672e0133478dbf1d0fd83ebf6e24536f014a414b4c153da2a`.
+
 **Scenery alignment and distribution (2026-10-01):** Arrange scenery group
 aligns2–128 selected static decorations to an anchor on X/Z or evenly distributes
 them between fixed endpoints using integer half-up rounding and stable identity
@@ -19,7 +36,7 @@ and30 syntax checks passed. Retail browser alignment/distribution, input withdra
 comparison matrices, no-op Apply and pending-close cancellation passed with zero
 page errors; screenshots inspected. Complete73728-byte MAP ZIP matches the saved
 binding and independently decoded descriptor coordinates. No game launched.
-This postdates integrated514; runtime visibility/collision/lifecycle remain deferred.
+Included in548; runtime visibility/collision/lifecycle remain deferred.
 See [Scenery groups](legaia-scenery-groups.md).
 
 **Scenery group drag and actor preview refresh (2026-10-01):** Proposed
@@ -34,7 +51,7 @@ Forty-five focused retail-enabled Python tests passed in16.686s; all28 Node test
 and29 syntax checks passed. Retail browser group drags, rejection/cancellation,
 Apply/Undo/Redo/Save, individual actor/scenery drags and exact full73728-byte MAP
 ZIP readback passed with zero page errors; screenshots inspected. No game
-launched. This postdates integrated514; gameplay/full acceptance remain deferred.
+launched. Included in548; gameplay/full acceptance remain deferred.
 See [Scenery groups](legaia-scenery-groups.md).
 
 **Static scenery group placement (2026-10-01):** Ctrl/Command-click static
