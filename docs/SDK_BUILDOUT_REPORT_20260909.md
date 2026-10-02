@@ -6,7 +6,26 @@ record separates functioning features, demonstrated failures and remaining
 product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 [16-layer acceptance plan](TEST_PLAN.md) remain authoritative for scope.
 
-## Current buildout status — updated 2026-10-01
+## Current buildout status — updated 2026-10-02
+
+**Shared model/clip reference navigation (2026-10-02):** Asset references
+now links the eight supported shared field clips to their five global models in
+both Active scene and Project scopes. These are explicit reference-pinned
+associations, separate from initial/effective actor assignments. Edges retain
+the pinned commit, model/clip identity, decoded counts and full source locator;
+strict model provenance, record mapping and bounded metadata checks reject
+inconsistent evidence. Missing models remain unresolved. The browser labels
+actor playback unknown and supports model-to-clip and clip-to-model navigation.
+31 focused retail-enabled Python checks passed in 24.333s; all 33 Node files and 34
+syntax checks passed with hashes matched to final source. Fresh Town01/Dolk2/map01
+discovery verified all 8 clips and 24 source-qualified edges in 33.826s, exact edge
+hashes and untouched project/cache/saved bytes. Actual browser Active/Project
+HTTP, three-scene navigation and the auxiliary loop passed with zero page errors
+or authoring commands; screenshot inspected. Private evidence:
+`local-output/sdk-20260909/shared-clip-references-20261001/`.
+No game launched; this read-only feature needs no new gameplay gate. The
+565-test checkpoint predates both reference workflows; full SDK/runtime
+acceptance remains incomplete.
 
 **Project-wide asset references (2026-10-01):** Asset Details → Inspect
 asset references now offers Active scene and Project scopes. Project discovery

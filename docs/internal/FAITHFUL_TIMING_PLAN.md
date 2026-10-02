@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-02 — Pinned shared model/clip reference navigation
+
+Previous turn made progress: saved project-wide references at 226e6a4f. This
+turn spans midnight and completes their missing shared animation/model links.
+Parent owns specification, contract review, integration, fresh retail/browser
+verification and documentation; two isolated agents own backend+Python tests
+and frontend+Node tests. Eight explicitly pinned global model/clip pairs add
+decoded source-qualified dependencies in existing Active/Project schemas;
+counts/source bounds, pin/record mapping and imported model provenance reject
+inconsistency. Missing models stay unresolved; actor/live playback is unknown.
+Central 31 focused retail-enabled Python checks passed/24.333s, 33 Node and 34
+syntax checks passed with captured hashes matched to final source. Fresh
+Town01/Dolk2/map01 proof passed/33.826s, independently matches 24 edge identities
+and source evidence, and preserves complete project/cache/file state. Actual
+HTTP/browser model↔clip navigation, three-scene scope and auxiliary loop pass
+with zero errors, authoring commands or saved/history changes; screenshot
+inspected. Initial private harness Path/dictionary assumptions, test invocation
+name and resource/panel setup errors were corrected; final receipts above
+supersede those failed attempts. Private evidence:
+`local-output/sdk-20260909/shared-clip-references-20261001/`.
+Owned browser/server stopped before save. No game launched, no new gameplay
+gate, no core/runtime changes. Historical 565 predates both reference features;
+full 16-layer SDK/runtime/Live acceptance remains incomplete.
+
+
 ### 2026-10-01 — Project-wide derived asset reference workflow
 
 Previous implementation turn made progress; interrupted follow-up completed

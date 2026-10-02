@@ -1,5 +1,26 @@
 # Asset dependencies and referenced-by navigation
 
+Shared field clips now expose `reference_pinned_model_clip` dependencies to
+their global models. Model Referenced by lists the inverse relationships. The
+eight supported pairs are party idle/walk for global slots 00f0–00f2 and the
+reference loops for 00f3–00f4; the auxiliary model's role remains unresolved.
+Each edge retains `reference_clip_evidence`: the pinned reference commit,
+model ID, clip ID, record index, frame/channel counts and complete disc/PROT/LZS
+source locator. Exact stable IDs, pinned model source, record mapping and
+bounded source/count metadata are validated before rendering. Missing imported
+models increase unresolved coverage without inventing a target. Actor initial
+assignment, effective donor playback and live timing are never inferred from
+these model associations. The label reads "actor playback unknown."
+
+These edges use the existing Active/Project response versions and navigation.
+Fresh three-scene discovery checked 8 clips/24 scene-qualified edges and exact
+source/edge hashes while preserving the whole project and caches. 31 focused
+Python checks, 33 Node files and 34 syntax checks passed; actual browser party
+and auxiliary navigation, three-scene scope and saved/history preservation
+passed with zero errors. Evidence:
+`local-output/sdk-20260909/shared-clip-references-20261001/`.
+No game launched or new gameplay gate introduced.
+
 **Reference scope** selects Active scene or Project. Active scene retains the
 original response and refresh behavior below. Project verifies every imported
 scene before decoding existing resource/material relationships in detached

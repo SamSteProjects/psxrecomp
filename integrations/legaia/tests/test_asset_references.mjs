@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const code=await readFile(new URL('../editor/asset-references.js',import.meta.url),'utf8');
-const {decodeAssetReferences,assetReferenceNavigationNode}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {decodeAssetReferences,assetReferenceNavigationNode,assetReferenceRelationLabel}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const hash='a'.repeat(64),root='scene://fixture',actor=root+'/actors/0001';
 const value={schema_version:'legaia.asset-references.v1',asset_id:root,source_key:hash,read_only:true,nodes:[{id:root,kind:'scene',scene_id:root,label:'Fixture',available:true},{id:actor,kind:'actor',scene_id:root,label:'Actor 0001',available:true}],incoming:[],outgoing:[{id:'b'.repeat(64),source_id:root,target_id:actor,kind:'scene_actor',scene_id:root,layer:'imported',runtime_binding:'not_asserted',source_import_sha256:hash}],coverage:{verified_scene_ids:[root],resource_scene_id:root,unresolved_reference_count:1},limitations:['Recorded source only']};
 const result=decodeAssetReferences(value,root,hash);result.nodes[0].label='Detached';assert.equal(value.nodes[0].label,'Fixture');
@@ -36,3 +36,47 @@ assert.equal(assetReferenceNavigationNode(sharedPartial.nodes[1],sharedPartial.o
 assert.equal(assetReferenceNavigationNode(sharedPartial.nodes[1],sharedPartial.outgoing[1],'project').scene_id,other);
 assert.equal(assetReferenceNavigationNode(project.nodes[1],project.outgoing[1],'project').scene_id,other);
 assert.equal(assetReferenceNavigationNode(project.nodes[1],project.outgoing[1]).scene_id,root);
+
+const referenceCommit='d6e64c68ede25813d35db20980da82a1a025549b';
+function pinnedClip(slot,clipId){
+  const model=`asset://legaia/models/global-special/${(0xf0+slot).toString(16).padStart(4,'0')}`,index=slot<3?slot*7+(clipId==='idle'?1:0):slot+18;
+  const animation=`animation://legaia/field-locomotion/${String(index).padStart(4,'0')}`,channels=slot<3?10:slot===3?3:2,frames=12,length=16+frames*channels*8;
+  const evidence={reference_commit:referenceCommit,model_id:model,clip_id:clipId,record_index:index,frame_count:frames,channel_count:channels,source_record:{disc:{sha256:hash,serial:'SCUS-94254'},iso_file:'PROT.DAT',prot_entry_index:874,container_section:1,compressed_stream_offset:4096,compressed_bytes_consumed:2048,record_index:index,byte_offset:96,byte_length:length,byte_coordinate_space:'decoded_lzs_section',containing_size:96+length+32}};
+  return {...structuredClone(value),asset_id:animation,nodes:[{id:animation,kind:'animation',scene_id:root,label:'Reference clip',available:true},{id:model,kind:'model',scene_id:root,label:'Pinned model',available:true}],outgoing:[{id:'2'.repeat(64),source_id:animation,target_id:model,kind:'reference_pinned_model_clip',scene_id:root,layer:'decoded',runtime_binding:'not_asserted',source_import_sha256:hash,source_catalog_key:hash,reference_clip_evidence:evidence}]};
+}
+for(const [slot,clipIds] of [[0,['idle','walk']],[1,['idle','walk']],[2,['idle','walk']],[3,['loop']],[4,['loop']]])for(const clipId of clipIds){
+  const reference=pinnedClip(slot,clipId),decoded=decodeAssetReferences(reference,reference.asset_id,hash);
+  assert.equal(assetReferenceRelationLabel(decoded.outgoing[0]),`pinned model/clip association · clip ${clipId} · actor playback unknown`);
+  decoded.outgoing[0].reference_clip_evidence.source_record.disc.sha256='3'.repeat(64);assert.equal(reference.outgoing[0].reference_clip_evidence.source_record.disc.sha256,hash);
+  const modelRoot=structuredClone(reference);modelRoot.asset_id=modelRoot.nodes[1].id;modelRoot.incoming=modelRoot.outgoing;modelRoot.outgoing=[];decodeAssetReferences(modelRoot,modelRoot.asset_id,hash);
+}
+const pinned=pinnedClip(3,'loop');
+const malformedPinned=[
+  v=>v.outgoing[0].runtime_binding='confirmed',v=>v.outgoing[0].layer='effective',v=>v.outgoing[0].kind='initial_animation_binding',
+  v=>v.nodes[0].kind='actor',v=>v.nodes[1].kind='actor',v=>v.outgoing[0].pc=123,v=>v.outgoing[0].effective_animation_evidence={initial_animation_id:1},
+  v=>v.outgoing[0].reference_clip_evidence.reference_commit='0'.repeat(40),v=>v.outgoing[0].reference_clip_evidence.model_id='asset://other',
+  v=>v.outgoing[0].reference_clip_evidence.clip_id='idle',v=>v.outgoing[0].reference_clip_evidence.record_index=22,
+  v=>v.outgoing[0].reference_clip_evidence.channel_count=10,v=>v.outgoing[0].reference_clip_evidence.frame_count=true,
+  v=>{const e=v.outgoing[0].reference_clip_evidence;e.frame_count=513;e.source_record.byte_length=16+513*3*8;e.source_record.containing_size=96+e.source_record.byte_length;},
+  v=>v.outgoing[0].reference_clip_evidence.actor_semantic_id=actor,v=>delete v.outgoing[0].reference_clip_evidence.channel_count,
+  v=>v.outgoing[0].reference_clip_evidence.source_record.disc.sha256='BAD',v=>v.outgoing[0].reference_clip_evidence.source_record.disc.serial='SLUS-00000',
+  v=>v.outgoing[0].reference_clip_evidence.source_record.disc.live=true,v=>v.outgoing[0].reference_clip_evidence.source_record.iso_file='OTHER.DAT',
+  v=>v.outgoing[0].reference_clip_evidence.source_record.container_section=0,v=>v.outgoing[0].reference_clip_evidence.source_record.prot_entry_index=873,
+  v=>v.outgoing[0].reference_clip_evidence.source_record.record_index=22,v=>v.outgoing[0].reference_clip_evidence.source_record.byte_coordinate_space='compressed_stream',
+  v=>v.outgoing[0].reference_clip_evidence.source_record.byte_offset=95,v=>v.outgoing[0].reference_clip_evidence.source_record.byte_length++,
+  v=>{const s=v.outgoing[0].reference_clip_evidence.source_record;s.byte_offset=s.containing_size-s.byte_length+1;},
+  v=>v.outgoing[0].reference_clip_evidence.source_record.containing_size=4*1024*1024+1,
+  v=>v.outgoing[0].reference_clip_evidence.source_record.compressed_stream_offset=-1,v=>v.outgoing[0].reference_clip_evidence.source_record.compressed_bytes_consumed=0,
+  v=>{const s=v.outgoing[0].reference_clip_evidence.source_record;s.compressed_stream_offset=0xffffffff;s.compressed_bytes_consumed=1;},
+  v=>v.outgoing[0].reference_clip_evidence.source_record.byte_payload=[]
+];
+for(const mutate of malformedPinned){const invalid=structuredClone(pinned);mutate(invalid);assert.throws(()=>decodeAssetReferences(invalid,invalid.asset_id,hash));}
+// Re-keying a clip or both model endpoints cannot disguise a different pinned association.
+for(const target of ['animation','model']){const invalid=structuredClone(pinned),edge=invalid.outgoing[0];if(target==='animation'){invalid.asset_id='animation://legaia/field-locomotion/0022';invalid.nodes[0].id=invalid.asset_id;edge.source_id=invalid.asset_id;}else{invalid.nodes[1].id='asset://legaia/models/global-special/00f4';edge.target_id=invalid.nodes[1].id;edge.reference_clip_evidence.model_id=edge.target_id;}assert.throws(()=>decodeAssetReferences(invalid,invalid.asset_id,hash));}
+const largeContainer=structuredClone(pinned);largeContainer.outgoing[0].reference_clip_evidence.source_record.compressed_stream_offset=5*1024*1024;decodeAssetReferences(largeContainer,largeContainer.asset_id,hash);
+const projectPinned=structuredClone(pinned);projectPinned.schema_version='legaia.project-asset-references.v1';projectPinned.coverage=structuredClone(project.coverage);
+for(const node of projectPinned.nodes){node.scene_ids=[root,other];node.navigable_scene_ids=[root,other];}
+projectPinned.outgoing[0].source_catalog_key=catalogKey;projectPinned.outgoing.push({...structuredClone(projectPinned.outgoing[0]),id:'4'.repeat(64),scene_id:other,source_import_sha256:otherHash,source_catalog_key:otherCatalog});
+const projectClip=decodeAssetReferences(projectPinned,projectPinned.asset_id,hash,'project');assert.equal(projectClip.outgoing.length,2);assert.equal(assetReferenceNavigationNode(projectClip.nodes[1],projectClip.outgoing[1],'project').scene_id,other);
+assert.throws(()=>decodeAssetReferences({...pinned,schema_version:'legaia.asset-references.v2'},pinned.asset_id,hash));
+console.log('pinned model/clip references: eight exact associations, source bounds, detached provenance, project navigation and actor/live rejection passed');

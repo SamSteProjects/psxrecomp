@@ -7,10 +7,70 @@ def source_key(project):
                        imports={key:digest(doc) for key,doc in sorted(project.imports.items())},
                        overrides=project.overrides,drafts=project.actor_drafts))
 
+def _reference_clip_evidence(record,model_records):
+    """Validate an explicit pinned catalog association, never an actor assignment."""
+    if record.get('association_kind')!='reference_pinned_global_model_clip':return None
+    from importer.animation import MAX_BUNDLE_BYTES,MAX_FRAMES,animation_capabilities
+    from importer.pipeline import REFERENCE_COMMIT,REFERENCE_REPOSITORY
+    def reject(reason):raise ProjectError('Invalid reference-pinned model/clip '+reason)
+    def integer(value,minimum,maximum):return type(value) is int and minimum<=value<=maximum
+    preview=record.get('preview')
+    if (record.get('kind')!='animation' or record.get('asset_kind')!='animation' or record.get('scope')!='global-field' or
+        record.get('reference_commit')!=REFERENCE_COMMIT or not isinstance(preview,dict) or set(preview)!={'asset_id','clip_id'} or
+        record.get('bindings')!=[] or record.get('actor_semantic_ids',[])!=[] or record.get('runtime_state')!='not_observed'):
+        reject('association metadata')
+    models=tuple(f'asset://legaia/models/global-special/{0xf0+slot:04x}' for slot in range(5))
+    model=preview['asset_id'];clip=preview['clip_id']
+    if model not in models or record.get('asset_semantic_ids')!=[model]:reject('model identity')
+    slot=models.index(model)
+    if clip not in (('idle','walk') if slot<3 else ('loop',)):reject('clip identity')
+    index=slot*7+(1 if clip=='idle' else 0) if slot<3 else slot+18
+    identity=f'animation://legaia/field-locomotion/{index:04d}'
+    if record.get('id')!=identity or record.get('semantic_id')!=identity or not integer(record.get('record_index'),0,22) or record['record_index']!=index:
+        reject('record identity')
+    frames=record.get('frame_count');channels=record.get('channel_count')
+    expected_channels=10 if slot<3 else 3 if slot==3 else 2
+    if not integer(frames,1,MAX_FRAMES) or not integer(channels,1,64) or channels!=expected_channels or type(record.get('bone_count')) is not int or record['bone_count']!=channels:
+        reject('decoded counts')
+    source=record.get('source_record')
+    source_keys={'disc','iso_file','prot_entry_index','container_section','compressed_stream_offset','compressed_bytes_consumed',
+                 'record_index','byte_offset','byte_length','byte_coordinate_space','containing_size'}
+    if not isinstance(source,dict) or set(source)!=source_keys:reject('source metadata')
+    disc=source['disc']
+    if (not isinstance(disc,dict) or set(disc)!={'sha256','serial'} or disc['serial']!='SCUS-94254' or
+        not isinstance(disc['sha256'],str) or len(disc['sha256'])!=64 or any(c not in '0123456789abcdef' for c in disc['sha256'])):
+        reject('disc identity')
+    if (source['iso_file']!='PROT.DAT' or type(source['prot_entry_index']) is not int or source['prot_entry_index']!=874 or
+        type(source['container_section']) is not int or source['container_section']!=1 or
+        source['byte_coordinate_space']!='decoded_lzs_section' or not integer(source['record_index'],0,22) or source['record_index']!=index):
+        reject('source locator')
+    if (not integer(source['compressed_stream_offset'],0,0xffffffff) or not integer(source['compressed_bytes_consumed'],1,0xffffffff) or
+        source['compressed_stream_offset']+source['compressed_bytes_consumed']>0xffffffff or
+        not integer(source['containing_size'],96,MAX_BUNDLE_BYTES) or not integer(source['byte_offset'],96,MAX_BUNDLE_BYTES) or
+        not integer(source['byte_length'],16,MAX_BUNDLE_BYTES) or source['byte_length']!=16+frames*channels*8 or
+        source['byte_offset']+source['byte_length']>source['containing_size']):
+        reject('source bounds')
+    for imported_model in model_records.get(model,[]):
+        model_source=imported_model.get('source_record',{})
+        if (not animation_capabilities(imported_model)['supported'] or model_source.get('disc')!=disc or
+            model_source.get('iso_file')!='PROT.DAT' or any(type(model_source.get(key)) is not int for key in ('prot_entry_index','container_section','pack_slot')) or
+            ('reference_commit' in imported_model and imported_model['reference_commit']!=REFERENCE_COMMIT)):
+            reject('imported model provenance')
+        # The importer records its reference pin in claim evidence, not a model
+        # top-level field. Fresh verification remains the caller's responsibility.
+        for claim in imported_model.get('claims',[]):
+            if claim.get('property')!='source_record':continue
+            proofs=[proof for proof in claim.get('evidence',[]) if proof.get('source')==REFERENCE_REPOSITORY]
+            if (claim.get('confidence')!='confirmed' or claim.get('value')!=model_source or claim.get('source')!=model_source or
+                not proofs or any(proof.get('commit')!=REFERENCE_COMMIT for proof in proofs)):
+                reject('imported model reference pin')
+    return dict(reference_commit=REFERENCE_COMMIT,model_id=model,clip_id=clip,record_index=index,
+                frame_count=frames,channel_count=channels,source_record=deepcopy(source))
+
 def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
     """Adapt explicit imported/derived references; callers verify retail sources first."""
     if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
-    nodes={};edges={};unresolved=0;memberships={};navigation={}
+    nodes={};edges={};unresolved=0;memberships={};navigation={};model_records={}
     import_digests={scene:digest(document) for scene,document in project.imports.items()}
     def node(identifier,kind,scene,label=None,available=True):
         if not isinstance(identifier,str) or not identifier or len(identifier)>1024:raise ProjectError('Invalid asset reference identity')
@@ -22,7 +82,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -32,6 +92,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if animation_evidence is not None:
             value['effective_animation_evidence']=deepcopy(animation_evidence)
             value['source_catalog_key']=catalog['source_key']
+        if reference_clip_evidence is not None:value['reference_clip_evidence']=deepcopy(reference_clip_evidence)
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -39,6 +100,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         for actor in document['actors']:
             node(actor['semantic_id'],'actor',scene,'Actor '+actor['semantic_id'].rsplit('/',1)[-1]);edge(scene,actor['semantic_id'],'scene_actor',scene)
         for model in document['assets'].get('models',[]):
+            model_records.setdefault(model['semantic_id'],[]).append(model)
             node(model['semantic_id'],'model',scene,model.get('name') or 'Model '+model['semantic_id'].rsplit('/',1)[-1]);edge(scene,model['semantic_id'],'scene_model_catalog',scene)
     for identifier_draft,draft in sorted(project.actor_drafts.items()):
         node(identifier_draft,'actor',draft['scene_id'],draft['name']);edge(identifier_draft,draft['donor_entity_id'],'draft_donor',draft['scene_id'],'authored')
@@ -56,7 +118,11 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if ref['imported']:edge(ref['source_id'],ref['target_id'],'initial_model',ref['scene_id'])
         if ref['effective']:edge(ref['source_id'],ref['target_id'],'effective_initial_model',ref['scene_id'],'effective')
     scene=project.active_scene
-    for record in catalog['records']:node(record['id'],record['kind'],scene,record.get('name'))
+    reference_clips={}
+    for record in catalog['records']:
+        evidence=_reference_clip_evidence(record,model_records)
+        if evidence is not None:reference_clips[record['id']]=evidence
+        node(record['id'],record['kind'],scene,record.get('name'))
     for record in catalog['records']:
         identity=record['id'];kind=record['kind']
         if kind=='script':
@@ -75,6 +141,11 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if target in nodes:edge(target,identity,'script_dialogue_segment',scene,'decoded',record.get('pc'))
             else:unresolved+=1
         elif kind=='animation':
+            if identity in reference_clips:
+                evidence=reference_clips[identity];model=evidence['model_id']
+                if model in model_records and model in nodes and nodes[model]['kind']=='model':
+                    edge(identity,model,'reference_pinned_model_clip',scene,'decoded',reference_clip_evidence=evidence)
+                else:unresolved+=1
             for binding in record.get('bindings',[]):
                 actor=binding.get('actor_semantic_id');model=binding.get('model_asset_semantic_id')
                 if actor in nodes:edge(actor,identity,'initial_animation_binding',scene,'decoded')
