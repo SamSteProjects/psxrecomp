@@ -213,6 +213,29 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Integrated565 SDK checkpoint
+
+Previous goal turn was progress: committed visible mixed rectangle selection at
+`43994eb2`. Checked current worktree and both specifications before integration
+verification. Full existing retail-enabled SDK discovery passed565 tests in
+250.658s/252.001s wall, exit0/no skips, on unchanged clean commit
+`43994eb25f5125da4378f2cb970b311931745bf9`. All33 Node test files and34 editor
+syntax checks passed; captured hashes freshly matched source. Disc SHA256 and
+466714416-byte length freshly verified. This supersedes548 and centrally checks
+all five subsequent editor workflows without launching a game. Private evidence:
+`sdk-regression-20261001-scene-placement.log/.json` and
+`node-checks-20261001-scene-placement.json` under `local-output/sdk-20260909/`.
+Python log SHA256 `4a52fe3e8f7923fc173298f8c6f38b6fa460193ccf72eb6ced78177ff27a595f`.
+Read-only subagent audit, verified by parent source inspection, identifies the
+next meaningful offline frontier: project-wide derived asset references.
+Current asset_references.inspect verifies all imports but catalogs active scene
+only, and editor resource reference navigation is active-scene limited. Proposed
+work must use detached scene views, scene-qualified source provenance, bounded
+coverage and explicit unavailable reasons, preserving project/selection/history.
+No new feature implementation claimed for that audit. Gameplay remains deferred;
+full16-layer SDK, runtime parity and genuine Live acceptance are still incomplete.
+
+
 ### 2026-10-01 — Visible mixed placement rectangle selection
 
 Previous goal turn was progress: committed reviewed mixed viewport handles at

@@ -7,6 +7,23 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-01
 
+**Integrated offline checkpoint (2026-10-01):** Full retail-enabled SDK
+regression passed565 Python tests in250.658s (252.001s wall time), exit0 with no
+skips, on unchanged clean source `43994eb25f5125da4378f2cb970b311931745bf9`.
+All33 Node test files and34 editor syntax checks passed with captured hashes
+freshly matched to source. This supersedes548 and includes viewport source-wall
+editing, atomic mixed actor/scenery placements and their X/Z handles, saved
+scene selections and visible placement rectangle selection, alongside earlier
+SDK workflows. User-owned disc identity and466714416-byte length were freshly
+verified. Browser and package readback evidence remains separate from this
+regression. No game launched; runtime parity, genuine Live identity, gameplay
+acceptance and full16-layer SDK completion remain unproven.
+
+Private evidence under `local-output/sdk-20260909/`:
+`sdk-regression-20261001-scene-placement.log/.json` and
+`node-checks-20261001-scene-placement.json`. Python log SHA256:
+`4a52fe3e8f7923fc173298f8c6f38b6fa460193ccf72eb6ced78177ff27a595f`.
+
 **Placement rectangle selection (2026-10-01):** Box select placements now
 selects visible imported actor and static-decoration meshes through one
 depth-tested renderer ID pass. Drag replaces the selection; Ctrl/Command adds,
