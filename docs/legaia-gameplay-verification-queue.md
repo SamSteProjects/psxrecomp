@@ -1,5 +1,24 @@
 # Deferred gameplay verification
 
+## Mixed actor/static-decoration placement group — deferred
+
+Private copied-project identity is recorded in
+`local-output/sdk-20260909/scene-placement-group-20261001/prepared.json`.
+Package within that project:
+`Builds/327b5af3b3396091/legaia.sdk.98a51b29d3fe-0.1.0-327b5af3b3396091.psxmod`.
+SHA256: `3e53d091e78ad808ad3a3164e83ade2ac3985b2780765a391a5b08b913c496d1`.
+Actor `scene://town01/actors/man-p1/0001` is authored at X/Z `(9984,8704)`;
+decoration `environment://town01/field-map/decorations/01833` at `(5641,2112)`.
+Both moved by `(64,64)` from the saved source. Existing 17 wall edits (16 in the
+viewport rectangle plus one outside), unselected decorations and shared rotations
+remain preserved. Exact full MAP ZIP readback and independent MAN decoding passed.
+Manual verification must use this saved project, package and an identified runtime.
+Check both placements, terrain contact, collision interaction, scene entry and
+whether actor scripts replace initial placement. Undo/revert should restore both
+kinds together while existing wall edits remain intact. Proposal height is held
+and does not establish runtime Y. No game launched.
+See [Mixed placement workflow](legaia-scene-placement-groups.md).
+
 ## Town01 viewport-selected source walls — deferred
 
 Private copied project path: `local-output/sdk-20260909/wall-viewport-20261001/prepared.json`

@@ -8,6 +8,25 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-01
 
+**Mixed scene placement groups (2026-10-01):** Select scene placements combines
+imported actors and static decorations in one bounded selection. Move scene
+placement group reviews 2–128 targets, including at least one of each kind, with
+common X/Z offsets in 64-unit steps within ±16320. Proposed/Current inspection
+retains the review and holds preview height; runtime height remains unknown.
+Fresh full-source validation precedes one atomic Apply/Undo/Redo operation across
+actor and Environment overrides, preserving unrelated components and edits.
+NPC drafts and placed scenery are excluded. Forty-seven focused Python checks
+passed (43 in 23.086s, four HTTP checks in 2.912s); all 31 Node files and 32 syntax
+checks passed. Actual 2×-DPI retail hierarchy selection, Proposed/Current matrices,
+held height/rotation, no-op/input withdrawal, one-step Undo for both owners,
+Redo/Save and pending Cancel/late-response withdrawal passed with zero page errors.
+Fresh browser representation guards also passed without writes; screenshots inspected.
+The normal package contains both MAN and complete 73728-byte MAP overlays: exact ZIP
+readback and independent MAN/grid coordinate decoding preserved opaque bytes,
+unselected scenery, shared rotations, existing collision edits and floor tiers.
+The previous 548-test checkpoint predates this change and remains unchanged.
+No game launched. Gameplay remains deferred. See [Mixed placement workflow](legaia-scene-placement-groups.md).
+
 **Viewport source-wall editing (2026-10-01):** Select wall rectangle loads
 verified source collision data and picks canonical X/Z cells directly in the
 scene. Dragging prepares inclusive bounds without a project command; release

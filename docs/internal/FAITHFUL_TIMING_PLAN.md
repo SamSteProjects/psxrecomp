@@ -213,6 +213,27 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Mixed imported actor/static-decoration placement groups
+
+Added bounded mixed scene selection and reviewed 64-unit X/Z offsets, retained
+Proposed/Current inspection and a full-source guarded atomic Apply across actor
+and Environment owners. One Undo restores both; unrelated Y/rotation, components,
+scenery and Collision remain preserved. Parent integrated isolated service/dialog
+and HTTP/documentation workstreams. Fixed mixed toolbar refresh after Save and
+empty-selection representation withdrawal; readable review table verified.
+Forty-seven focused Python checks passed (43/23.086s plus four HTTP/2.912s), all
+31 Node files and 32 syntax checks passed. Actual retail 2×-DPI browser hierarchy
+workflow verified matrices, held height/rotation, no-op/input withdrawal,
+Apply/Undo/Redo/Save and pending Cancel/late response; fresh representation guards
+and screenshot inspection passed with zero page errors. Saved-project reopen and
+normal two-overlay MAN/MAP package passed full73728-byte MAP ZIP comparison,
+independent actor/grid decode and opaque/unselected/collision/floor preservation.
+Private evidence in `local-output/sdk-20260909/scene-placement-group-20261001/`;
+package SHA256 `3e53d091e78ad808ad3a3164e83ade2ac3985b2780765a391a5b08b913c496d1`.
+SDK status/buildout/matrix/plan/manual queue updated. Historical 548 checkpoint
+predates this feature. No game launched; full goal and deferred gameplay remain open.
+
+
 - **2026-10-01 (SDK viewport source-wall workflow):** Previous goal turn established integrated548 in0c8eaa21. Continued product buildout with isolated pure source-grid math/test and retained rectangle dialog subagents; parent owns central viewport gestures, projection, HTTP module route and final acceptance. Select wall rectangle auto-loads verified collision; canonical biased X/Z picking on explicitY0 reference plane seeds existing reviewed wall command without pointer-time writes. Proposed/Current/Retail overlays retain Return/Restore, exact source/scene/mode/representation/selection/camera/viewport guards, cancel pending requests, atomic Apply/history/Save/Open/Build. Parent fixed button eligibility refreshing after asynchronous geometry readiness. Initial Python names corrected; locale file edit repaired to UTF8 before final checks. Parent centrally passed21 focused retail-enabled Python tests in10.570s,30 Node files and31 syntax checks. Retail real2xDPI top drag selected16 bits, layer counts16/0/0, input withdrawal, Apply/Undo/Redo/Save; tilted perspective reverse drag, Escape/camera cancellation and pending-close late response passed. Final saved read-only comparison16/16/0, labelled plane/layer, no-op Apply disabled and representation withdrawal passed, zeroerrors/screenshots inspected. ZIP matches full73728MAP with six preserved scenery/17 collision audits, outside wall/floor/scenery unchanged. Packagea8e9c953747947da0a147e6aeff86ce26c5c44fc322ff6b3cd68c09d4a3bd012; privatewall-viewport-20261001/. No game launched; gameplay deferred. Postdates548; full goal active.
 
 - **2026-10-01 (SDK integrated548 checkpoint and next offline frontier):** Previous goal turn made concrete progress in80d4ae76 with reviewed scenery alignment/distribution. Parent completed existing retail-enabled full discovery on unchanged clean source80d4ae765f820551759f181d8372478a49358b72:548 Python tests in247.512s (248.894s wall), exit0/no skips. All29 Node files and30 syntax checks passed with captured hashes; disc freshly verified e6120a5d70716dd2f026a2da32d0171d52651971b52c4347a68541299f75258c/466714416bytes. This supersedes514 and integrates saved-copy discovery, wall rectangle/spatial review, scenery groups/drags, actor preview refresh and arrangement. Private sdk-regression-20261001-scenery-layout.log/.json plus node-checks-20261001-scenery-layout.json; Python logSHAa247306827edfc8672e0133478dbf1d0fd83ebf6e24536f014a414b4c153da2a. Existing redirected process37236 was polled to terminal success; no game launched. One read-only subagent found no concrete arrangement/preview integration defect and identified source-wall viewport selection/review/Apply as highest-value next offline workflow, using canonical64-unit quadrant bounds and current serializers, with reference-plane Y explicit. Runtime paints/actor blockers/gameplay remain unknown/manual. Full goal active; no completion inferred from checkpoint.

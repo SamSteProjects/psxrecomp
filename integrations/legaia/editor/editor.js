@@ -5,6 +5,7 @@ import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
 import {mountEnvironmentGroup} from '/environment-group.js';
 import {mountEnvironmentLayout} from '/environment-layout.js';
+import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
@@ -33,6 +34,7 @@ const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
+let scenePlacementMode=false,scenePlacementSelection=[],scenePlacementKey=null,scenePlacementInspection=null,scenePlacementTool=null;
 let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null,actorGroupRangeAnchor=null,actorBoxMode=false;
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
 const transformTools=document.createElement('div');transformTools.className='transform-tools';
@@ -282,7 +284,7 @@ selectedExportButton.onclick=()=>{const id=visibilitySelection();if(!id){notify(
 async function exportSceneGlb(entityId=null){
   if(busy)return;
   if(!scenePreviewCurrent()||!state.scene_preview_source_key){notify('Wait for a current scene preview before exporting.',true);return;}
-  if(scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection){notify('Restore the scene inspection and finish or discard model edits before exporting.',true);return;}
+  if(scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||scenePlacementInspection){notify('Restore the scene inspection and finish or discard model edits before exporting.',true);return;}
   cancelViewportGesture();const key=sceneRequestKey();setBusy(true);sceneExportButton.disabled=true;selectedExportButton.disabled=true;
   try{
     const response=await fetch('/api/export/scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({representation:sceneRepresentation,source_key:state.scene_preview_source_key,...(entityId?{entity_id:entityId}:{})})}),result=await response.json();
@@ -567,7 +569,7 @@ function notify(message, error=false) {
 function setBusy(value) {
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
-  busy=value;updateActorGroupSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
@@ -646,7 +648,7 @@ function selectNpcDraft(id){clearEnvironmentGroupSelection();clearActorGroupSele
 function environmentEntities(){return activeScenePreview()?.entities.filter(e=>e.kind==='environment') ?? [];}
 function selectedEnvironment(){return environmentEntities().find(e=>e.entity_id===environmentSelection);}
 function movableSelection(){
-  if(actorGroupInspection||actorGroupSelection.length||environmentGroupInspection||environmentGroupSelection.length>1)return null;
+  if(scenePlacementMode||scenePlacementInspection||actorGroupInspection||actorGroupSelection.length||environmentGroupInspection||environmentGroupSelection.length>1)return null;
   if(sceneRepresentation!=="authored")return null;
   const npc=selectedNpcDraft();
   if(npc){if(!scenePreviewCurrent()||hiddenSceneEntities().has(npcDraftSelection))return null;return {id:npcDraftSelection,components:{Transform:{effective:{position:{...npc.position,y:null}}}}};}
@@ -692,6 +694,27 @@ async function moveSharedEnvironment(item,axis,worldValue){
 }
 function selected(){return selectedEnvironment()||selectedNpcDraft()?null:entities().find(e=>e.id===state.selection?.entity_id);}
 function selectEnvironment(identifier){clearEnvironmentGroupSelection();clearActorGroupSelection();pendingEntityFrame=null;npcDraftSelection=null;environmentSelection=identifier;cancelViewportGesture();renderHierarchy();renderInspector();$('frame-selected').disabled=false;draw();}
+function scenePlacementEligible(){return new Set([...entities().map(e=>e.id),...staticDecorations().map(e=>e.entity_id)]);}
+function clearScenePlacementSelection(){scenePlacementMode=false;scenePlacementSelection=[];scenePlacementKey=null;scenePlacementTool?.restore();}
+function updateScenePlacementSelection(){
+  if((scenePlacementMode||scenePlacementSelection.length)&&(!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePlacementKey!==resourceStateKey()||scenePlacementSelection.some(id=>!scenePlacementEligible().has(id))))clearScenePlacementSelection();
+  scenePlacementTool?.refresh();const host=document.querySelector('#scene-placement-tools');if(!host)return;
+  host.querySelector('[data-mixed-select]').disabled=busy||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallSelectMode||!!wallInspection||!!scenePlacementInspection;
+  host.querySelector('[data-mixed-select]').classList.toggle('active',scenePlacementMode);host.querySelector('[data-mixed-select]').setAttribute('aria-pressed',String(scenePlacementMode));host.querySelector('[data-mixed-clear]').disabled=busy||!scenePlacementSelection.length;
+  host.querySelector('[role="status"]').textContent=`${scenePlacementSelection.length} scene placements · Imported actors + static decorations · ${scenePlacementMode?'Click to toggle selection':'Enable selection to choose a mixed group'}`;
+}
+async function toggleScenePlacement(id){
+  if(busy||!scenePlacementMode||scenePlacementInspection||!scenePlacementEligible().has(id))return;
+  const next=new Set(scenePlacementSelection);if(next.has(id))next.delete(id);else next.add(id);if(next.size>128){notify('Scene placement groups are limited to 128 entities.',true);return;}
+  scenePlacementSelection=[...next].sort();scenePlacementKey=resourceStateKey();cancelViewportGesture();
+  if(entities().some(e=>e.id===id)){environmentSelection=null;await api('/api/selection',{entity_id:id});}else{environmentSelection=id;npcDraftSelection=null;renderInspector();}
+  renderHierarchy();draw();
+}
+function scenePlacementPosition(row){
+  const current=row.kind==='actor'?position(entities().find(e=>e.id===row.entity_id)):environmentEntities().find(e=>e.entity_id===row.entity_id)?.display_position;
+  return current?{...current,x:row.proposed.x,z:row.proposed.z}:null;
+}
+function frameScenePlacementGroup(report){const view=sceneView(),corners=report.targets.flatMap(row=>sceneRenderer?.bounds(view.positions,row.entity_id)??[]);if(!corners.length)return;const lo={},hi={};for(const axis of ['x','y','z']){lo[axis]=Math.min(...corners.map(p=>p[axis]));hi[axis]=Math.max(...corners.map(p=>p[axis]));camera.target[axis]=(lo[axis]+hi[axis])/2;}camera.distance=Math.max(100,Math.hypot(...['x','y','z'].map(axis=>hi[axis]-lo[axis]))*1.8);cameraRevision++;draw();}
 function staticDecorations(){return environmentEntities().filter(e=>e.entity_id.includes('/decorations/')&&e.source_record?.object_record_index>=4);}
 function clearEnvironmentGroupSelection(){environmentGroupSelection=[];environmentGroupKey=null;environmentGroupAnchor=null;if(environmentGroupInspection){environmentGroupTool?.restore();environmentLayoutTool?.restore();}environmentGroupTool?.refresh();environmentLayoutTool?.refresh();}
 function updateEnvironmentGroupSelection(){
@@ -808,16 +831,23 @@ actorGroupTools.innerHTML='<span role="status"></span><button type="button" data
 transformTools.after(actorGroupTools);
 const environmentGroupHost=document.createElement('div');environmentGroupHost.id='environment-group-tools';transformTools.after(environmentGroupHost);
 environmentGroupTool=mountEnvironmentGroup({host:environmentGroupHost,getState:()=>state,getSelection:()=>environmentGroupSelection,
-  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&(!environmentGroupInspection||environmentGroupInspection.report.schema_version==='legaia.environment-group-review.v1'),
+  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!scenePlacementInspection&&(!environmentGroupInspection||environmentGroupInspection.report.schema_version==='legaia.environment-group-review.v1'),
   onInspection:(report,layer)=>{cancelViewportGesture();if(report)environmentLayoutTool?.restore();environmentGroupInspection=report?{report,layer}:null;draw();},onFrame:frameEnvironmentGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
 environmentLayoutTool=mountEnvironmentLayout({host:environmentGroupHost,getState:()=>state,getSelection:()=>environmentGroupSelection,
-  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&(!environmentGroupInspection||environmentGroupInspection.report.schema_version==='legaia.environment-layout-review.v1'),
+  busy:()=>busy,setBusy,api,canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!scenePlacementInspection&&(!environmentGroupInspection||environmentGroupInspection.report.schema_version==='legaia.environment-layout-review.v1'),
   onInspection:(report,layer)=>{cancelViewportGesture();if(report)environmentGroupTool?.restore();environmentGroupInspection=report?{report,layer}:null;draw();},onFrame:frameEnvironmentGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
+const scenePlacementHost=document.createElement('div');scenePlacementHost.id='scene-placement-tools';environmentGroupHost.after(scenePlacementHost);
+scenePlacementHost.innerHTML='<button type="button" data-mixed-select aria-pressed="false">Select scene placements</button><span role="status"></span><button type="button" data-mixed-clear>Clear placement group</button>';
+scenePlacementHost.querySelector('[data-mixed-select]').onclick=()=>{if(busy||scenePlacementHost.querySelector('[data-mixed-select]').disabled)return;cancelViewportGesture();if(scenePlacementMode){scenePlacementMode=false;}else{clearActorGroupSelection();clearEnvironmentGroupSelection();actorBoxMode=false;scenePlacementMode=true;scenePlacementKey=resourceStateKey();}renderHierarchy();draw();};
+scenePlacementHost.querySelector('[data-mixed-clear]').onclick=()=>{clearScenePlacementSelection();renderHierarchy();draw();};
+scenePlacementTool=mountScenePlacementGroup({host:scenePlacementHost,getState:()=>state,getSelection:()=>scenePlacementSelection,busy:()=>busy,setBusy,api,
+  canReview:()=>canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!wallSelectMode&&!wallInspection,
+  onInspection:(report,layer)=>{cancelViewportGesture();scenePlacementMode=false;scenePlacementInspection=report?{report,layer}:null;draw();},onFrame:frameScenePlacementGroup,onError:error=>notify(typeof error==='string'?error:error.message,true)});
 const clearScenery=document.createElement('button');clearScenery.textContent='Clear scenery group';clearScenery.onclick=()=>{clearEnvironmentGroupSelection();renderHierarchy();renderInspector();draw();};environmentGroupHost.append(clearScenery);
 function clearActorGroupSelection(){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;updateActorGroupSelection();}
 function updateActorGroupSelection(){
   if(actorGroupSelection.length&&(!canEdit()||actorGroupSelectionKey!==resourceStateKey()||actorGroupSelection.some(id=>!entities().some(e=>e.id===id)))){actorGroupSelection=[];actorGroupSelectionKey=null;actorGroupRangeAnchor=null;}
-  actorBoxButton.disabled=busy||wallSelectMode||!!wallInspection||!canEdit()||!!actorGroupInspection||!!scenePose||!!shapeDraft||!scenePreviewCurrent()||pickScriptTargets||pickRuntimeNodes;
+  actorBoxButton.disabled=busy||scenePlacementMode||!!scenePlacementInspection||wallSelectMode||!!wallInspection||!canEdit()||!!actorGroupInspection||!!scenePose||!!shapeDraft||!scenePreviewCurrent()||pickScriptTargets||pickRuntimeNodes;
   if(actorBoxButton.disabled&&actorBoxMode){actorBoxMode=false;actorBoxButton.setAttribute('aria-pressed','false');actorBoxButton.classList.remove('active');}
   actorGroupTools.hidden=!actorGroupSelection.length||!!actorGroupInspection;
   actorGroupTools.querySelector('span').textContent=`${actorGroupSelection.length} actor${actorGroupSelection.length===1?'':'s'} in group · Ctrl-click to toggle · Inspector shows focused actor`;
@@ -965,6 +995,7 @@ savedActorSelections=mountActorSelectionSets({after:$('actor-box-select'),getSta
 });
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&drag){event.preventDefault();cancelViewportGesture();return;}
+  if(event.key==='Escape'&&scenePlacementMode){event.preventDefault();scenePlacementMode=false;draw();return;}
   if(event.key==='Escape'&&wallSelectMode){event.preventDefault();wallSelectMode=false;updateFieldToggle();draw();return;}
   if(event.target.matches('input,textarea') || document.querySelector('dialog[open]')) return;
   if((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();if(!busy)api('/api/project/save',{}, {success:'Project saved.'});}
@@ -1005,7 +1036,7 @@ function render(){
 function activeScenePreview(){return scenePreview&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&sceneProjectPath===state.project?.path&&scenePreview.scene_id===state.scene?.id&&scenePreview.representation===sceneRepresentation?scenePreview:null;}
 function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===sceneRequestKey()&&!sceneError;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
-function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const proposed=sceneryGroupPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(draft&&!draft.group)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
+function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const proposed=sceneryGroupPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(scenePlacementInspection?.layer==='proposed')for(const row of scenePlacementInspection.report.targets){const proposed=scenePlacementPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(draft&&!draft.group)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
   if($('texture-scene-uses'))$('texture-scene-uses').disabled=busy||!scenePreviewCurrent();
   comparisonNotice.hidden=sceneRepresentation!=='retail';
@@ -1056,14 +1087,14 @@ function renderHierarchy(){
     const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.title=entity.id;
     row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
     const badge=row.querySelector('.authored-dot');if(badge){const labels=authoredComponentLabels(entity);badge.title=labels.length?`Authored: ${labels.join(', ')}`:'Authored override';badge.setAttribute('aria-label',badge.title);}
-    row.classList.toggle('group-selected',actorGroupSelection.includes(entity.id));row.setAttribute('aria-selected',String(actorGroupSelection.length?actorGroupSelection.includes(entity.id):row.classList.contains('selected')));row.onclick=event=>{if(event.shiftKey){selectActorRange(entity.id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleActorSelection(entity.id);return;}environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
+    row.classList.toggle('group-selected',scenePlacementSelection.includes(entity.id)||actorGroupSelection.includes(entity.id));row.setAttribute('aria-selected',String(scenePlacementSelection.length?scenePlacementSelection.includes(entity.id):actorGroupSelection.length?actorGroupSelection.includes(entity.id):row.classList.contains('selected')));row.onclick=event=>{if(scenePlacementMode){toggleScenePlacement(entity.id);return;}if(event.shiftKey){selectActorRange(entity.id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleActorSelection(entity.id);return;}environmentSelection=null;api('/api/selection',{entity_id:entity.id});};row.ondblclick=()=>frame(entity);list.append(row);
   }
   const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
   const npcDrafts=Object.entries(state.actor_drafts??{}).filter(([id,item])=>item.scene_id===state.scene?.id&&`${item.name} ${id}`.toLowerCase().includes(filter));
   if(npcDrafts.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`NPC drafts (${npcDrafts.length})`;list.append(heading);}
   for(const [id,item] of npcDrafts){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.textContent=`${item.name} · ${sceneRepresentation==='retail'?'Authored only':'Draft'}`;row.title=id;row.onclick=()=>selectNpcDraft(id);row.setAttribute("aria-selected",id===npcDraftSelection);row.classList.toggle("selected",id===npcDraftSelection);list.append(row);}
   if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
-  for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',String(environmentGroupSelection.length?environmentGroupSelection.includes(item.entity_id):item.entity_id===environmentSelection));row.classList.toggle('selected',item.entity_id===environmentSelection);row.classList.toggle('group-selected',environmentGroupSelection.includes(item.entity_id));row.textContent=item.name;row.title=item.entity_id;row.onclick=event=>{if(event.shiftKey){selectEnvironmentRange(item.entity_id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleEnvironmentSelection(item.entity_id);return;}selectEnvironment(item.entity_id);};row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
+  for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',String(scenePlacementSelection.length?scenePlacementSelection.includes(item.entity_id):environmentGroupSelection.length?environmentGroupSelection.includes(item.entity_id):item.entity_id===environmentSelection));row.classList.toggle('selected',item.entity_id===environmentSelection);row.classList.toggle('group-selected',scenePlacementSelection.includes(item.entity_id)||environmentGroupSelection.includes(item.entity_id));row.textContent=item.name;row.title=item.entity_id;row.onclick=event=>{if(scenePlacementMode){toggleScenePlacement(item.entity_id);return;}if(event.shiftKey){selectEnvironmentRange(item.entity_id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleEnvironmentSelection(item.entity_id);return;}selectEnvironment(item.entity_id);};row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
   const hidden=hiddenSceneEntities();
   for(const row of list.querySelectorAll('.entity-row')){
@@ -1422,7 +1453,7 @@ const collisionLayer=document.createElement('select');collisionLayer.setAttribut
 let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMode=false,wallSelection=null,wallInspection=null,wallRectangleTool=null;
 const wallTools=document.createElement('div');wallTools.id='wall-viewport-tools';transformTools.after(wallTools);
 const wallSelectButton=document.createElement('button');wallSelectButton.id='wall-select-mode';wallSelectButton.textContent='Select wall rectangle';wallSelectButton.setAttribute('aria-pressed','false');wallTools.append(wallSelectButton);
-function wallSourceCurrent(){return canEdit()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&fieldMap&&fieldKey===resourceStateKey()&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection;}
+function wallSourceCurrent(){return canEdit()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&fieldMap&&fieldKey===resourceStateKey()&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode;}
 wallRectangleTool=mountWallRectangle({host:wallTools,getState:()=>state,busy:()=>busy,setBusy,api,sourceCurrent:wallSourceCurrent,hasDraft:()=>false,closeInspector:()=>{if(fieldDialog.open)fieldDialog.close();},
   onInspection:(report,layer)=>{cancelViewportGesture();wallSelectMode=false;wallSelection=null;if(fieldDialog.open)fieldDialog.close();wallInspection=report?{report,layer}:null;updateFieldToggle();draw();},
   onFrame:report=>{const g=wallSelectionGeometry(report.rectangle);camera.target={x:(g.x_min+g.x_max)/2,y:0,z:(g.z_min+g.z_max)/2};camera.distance=Math.max(200,Math.hypot(g.x_max-g.x_min,g.z_max-g.z_min)*2.5);cameraRevision++;draw();}});
@@ -1441,7 +1472,7 @@ function wallRectangleAt(gesture,p){return wallDragRectangle(gesture.wallStart,w
 const fieldMapScope='Base blocked grid only · Y = 0 is a display placeholder, not decoded height. Runtime/script paints and actors are excluded. Canonical positive-X range only; wrapping and boundary aliases are not shown. Lines are drawn over models.';
 function updateFieldToggle(){
   fieldToggle.hidden=!state.capabilities?.field_map_preview;fieldToggle.disabled=busy||fieldPending;
-  wallSelectButton.hidden=fieldToggle.hidden;wallSelectButton.disabled=busy||fieldPending||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallInspection;
+  wallSelectButton.hidden=fieldToggle.hidden;wallSelectButton.disabled=busy||fieldPending||!canEdit()||!scenePreviewCurrent()||sceneRepresentation!=='authored'||!!scenePose||!!shapeDraft||!!actorGroupInspection||!!environmentGroupInspection||!!wallInspection||scenePlacementMode||!!scenePlacementInspection;
   if(!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}wallSelectButton.classList.toggle('active',wallSelectMode);wallSelectButton.setAttribute('aria-pressed',String(wallSelectMode));wallRectangleTool?.refresh();
   collisionLayer.hidden=fieldToggle.hidden;collisionLayer.disabled=busy||fieldPending;
   fieldToggle.classList.toggle('active',!!fieldMap);fieldToggle.setAttribute('aria-pressed',!!fieldMap);fieldToggle.textContent=fieldPending?'Loading collision…':collisionLayer.value==='effective'?'Effective collision':'Base collision';
@@ -3042,6 +3073,8 @@ function drawEnvironmentSelection(){
   ctx.restore();
 }
 function draw(){
+  updateScenePlacementSelection();
+  if(scenePlacementInspection&&(!scenePreviewCurrent()||scenePlacementInspection.report.project_source_key!==state.project_copy_source_key||!canEdit()||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||wallInspection))scenePlacementTool.restore();
   updateFieldToggle();
   if(wallRectangleTool){wallRectangleTool.refresh();if(wallInspection&&(!wallSourceCurrent()||wallInspection.report.project_source_key!==state.project_copy_source_key))wallRectangleTool.restore();if(wallSelectMode&&!wallSourceCurrent()){wallSelectMode=false;wallSelection=null;}if(drag?.type==='wall-rectangle'&&!wallGestureCurrent(drag)){cancelViewportGesture();return;}}
   updateEnvironmentGroupSelection();
@@ -3058,11 +3091,11 @@ function draw(){
 
   if(grid&&!sceneModelsReady()){const spacing=10**Math.floor(Math.log10(camera.distance/7)),half=spacing*12,cx=Math.round(camera.target.x/spacing)*spacing,cz=Math.round(camera.target.z/spacing)*spacing;for(let i=-12;i<=12;i++){line({x:cx+i*spacing,y:0,z:cz-half},{x:cx+i*spacing,y:0,z:cz+half},i===0?'#39504f88':'#33474c66');line({x:cx-half,y:0,z:cz+i*spacing},{x:cx+half,y:0,z:cz+i*spacing},i===0?'#39504f88':'#33474c66');}}
   drawFieldMap();drawWallSelection();
-  const items=entities().map(entity=>{const world=draft?.id===entity.id?draft.position:position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
+  const items=entities().map(entity=>{const world=sceneView().positions.get(entity.id)??position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
     if(!sceneLayers.actors||hiddenSceneEntities().has(entity.id))continue;
     const active=!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id,rendered=sceneModelsReady()&&sceneRenderer.hasEntity(entity.id),radius=active?7:4.5;
-    const grouped=!actorGroupInspection&&actorGroupSelection.includes(entity.id);if(rendered&&!active&&!grouped)continue;
+    const grouped=scenePlacementSelection.includes(entity.id)||!actorGroupInspection&&actorGroupSelection.includes(entity.id);if(rendered&&!active&&!grouped)continue;
     projected.push({id:entity.id,x:p.x,y:p.y});ctx.beginPath();ctx.ellipse(p.x,p.y+5,active?12:7,active?4:2.5,0,0,Math.PI*2);ctx.fillStyle='#02090966';ctx.fill();
     ctx.beginPath();ctx.moveTo(p.x,p.y-radius);ctx.lineTo(p.x+radius,p.y);ctx.lineTo(p.x,p.y+radius);ctx.lineTo(p.x-radius,p.y);ctx.closePath();ctx.fillStyle=active?'#c9edce':sceneRepresentation==='authored'&&authored(entity)?'#d2ae70':'#759d8d';ctx.fill();ctx.strokeStyle=active?'#f1fff0':'#a8c6b6';ctx.lineWidth=active?1.5:1;ctx.stroke();
     if(grouped){ctx.strokeStyle='#8bd7e8';ctx.lineWidth=2;ctx.strokeRect(p.x-8,p.y-8,16,16);}
@@ -3072,9 +3105,10 @@ function draw(){
         const original=displayPosition(entity.components?.Transform?.imported?.position),q=project(original);
         if(q&&Math.hypot(q.x-p.x,q.y-p.y)>3){ctx.save();ctx.setLineDash([4,4]);line(original,world,'#d6ad6c',1.5);ctx.setLineDash([]);ctx.strokeStyle='#d6ad6c';ctx.strokeRect(q.x-4,q.y-4,8,8);ctx.fillStyle='#e7c188';ctx.fillText('Imported',q.x+8,q.y+14);ctx.restore();}
       }
-      if(canEdit()&&sceneRepresentation==='authored'&&!actorGroupInspection&&!actorGroupSelection.length){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
+      if(canEdit()&&sceneRepresentation==='authored'&&!scenePlacementMode&&!scenePlacementInspection&&!actorGroupInspection&&!actorGroupSelection.length){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
+  if(sceneModelsReady()&&scenePlacementSelection.length){ctx.save();ctx.setLineDash([5,3]);for(const id of scenePlacementSelection){if(hiddenSceneEntities().has(id))continue;const actor=entities().some(e=>e.id===id);if(actor?!sceneLayers.actors:!sceneLayers.scenery)continue;const corners=sceneRenderer.bounds(sceneView().positions,id);if(corners.length!==8)continue;for(let corner=0;corner<8;corner++)for(const bit of [1,2,4])if(!(corner&bit))line(corners[corner],corners[corner|bit],'#8bd7e8',1.5);}ctx.restore();}
   drawEnvironmentSelection();drawCoordinateProbe();drawScriptTargets();
   if(actorGroupInspection){
     for(const id of actorGroupInspection.positions.keys()){
@@ -3197,6 +3231,7 @@ canvas.addEventListener('pointerup',async event=>{
     let hit=null;
     if(sceneModelsReady()){try{hit=sceneRenderer.pick(p.x,p.y,sceneView());}catch(error){notify(error.message,true);}}
     if(!hit)hit=[...projected].reverse().find(item=>Math.hypot(item.x-p.x,item.y-p.y)<12)?.id;
+    if(scenePlacementMode){if(hit)await toggleScenePlacement(hit);draw();return;}
     if(finished.extendSelection){if(hit){if(environmentEntities().some(e=>e.entity_id===hit))toggleEnvironmentSelection(hit);else toggleActorSelection(hit);}}
     else if(hit){if(state.actor_drafts?.[hit])selectNpcDraft(hit);else if(environmentEntities().some(e=>e.entity_id===hit))selectEnvironment(hit);else{environmentSelection=null;await api('/api/selection',{entity_id:hit});}}
     else if(environmentGroupSelection.length){clearEnvironmentGroupSelection();renderHierarchy();}else if(actorGroupSelection.length){clearActorGroupSelection();renderHierarchy();}

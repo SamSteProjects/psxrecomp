@@ -56,7 +56,9 @@ zero-filled descriptors through the existing MAP serializer.
 
 This does not establish terrain height after a move, runtime visibility, movement,
 collision interaction or script behavior. Group rotations
-and mixed entity groups remain future work.
+remain future work. Imported actors and static decorations can also be selected
+together through the separate [mixed placement tool](legaia-scene-placement-groups.md);
+that tool uses64-unit X/Z offsets and excludes drafts and placed scenery.
 
 ## Verification — 2026-10-01
 

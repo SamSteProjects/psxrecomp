@@ -9,11 +9,11 @@ from .project_copy import source_key
 from importer.environment_authoring import patch_environment_overrides, patch_environment_transforms
 
 
-def _prepare(project, scene, entity_ids):
+def _prepare(project, scene, entity_ids, minimum=2):
     if project.mode != 'edit' or not isinstance(scene, str) or scene not in project.imports or scene != project.active_scene:
         raise ProjectError('Decoration group requires the active imported scene in Edit mode')
-    if not isinstance(entity_ids, list) or not 2 <= len(entity_ids) <= 128 or any(not isinstance(item, str) for item in entity_ids) or len(set(entity_ids)) != len(entity_ids):
-        raise ProjectError('Decoration group requires 2..128 unique decoration identities')
+    if not isinstance(entity_ids, list) or not minimum <= len(entity_ids) <= 128 or any(not isinstance(item, str) for item in entity_ids) or len(set(entity_ids)) != len(entity_ids):
+        raise ProjectError(f'Decoration group requires {minimum}..128 unique decoration identities')
     prefix = 'environment://' + scene.removeprefix('scene://') + '/field-map/decorations/'
     cells = []
     for identifier in sorted(entity_ids):
