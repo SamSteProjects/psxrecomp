@@ -53,3 +53,12 @@ No game launched or disc installed. Normal Build still rejects authored NPC
 drafts; verification detached them only in memory. Playback and gameplay remain
 deferred. These checks postdate the integrated469-test checkpoint and do not
 establish complete SDK or runtime acceptance.
+
+
+The final source9084e545 browser guard also verified that an observed external
+authored-state change blocks both the old Apply and a new review from the stale
+channel form. No interpolation command was sent; Undo restored the baseline.
+Private evidence: `authored-state-guard.json` in the folder above. The subsequent
+integrated offline run on that unchanged source passed475 Python tests with
+retail input and no skips,20 Node files and22 editor syntax checks. See the
+[current validation checkpoint](TEST_PLAN.md).

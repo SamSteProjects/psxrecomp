@@ -213,6 +213,20 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Integrated SDK checkpoint after raw ANM Build
+
+Retail-enabled discovery passed475 Python tests in279.577s (wall280.994),
+exit0/no skips, on clean unchanged9084e545 source. All20 Node files and22
+editor syntax checks passed on the same revision. Independently verified disc
+SHA e6120a5d70716dd2f026a2da32d0171d52651971b52c4347a68541299f75258c,
+466714416 bytes. Final browser proved observed authored-state changes withdraw
+interpolation Apply and review; no interpolation commands/errors, baseline
+restored. Temporary browser/server closed. Updated report/status/matrix/plan and
+animation guide. New checkpoint supersedes469 but does not establish runtime,
+Live identity, gameplay or full goal completion. No game launched.
+Private log SHA 2ceab6a68dee7a3088ff6faac10b73310931e1917b16cc0c4dcc206c4239791e.
+
+
 ### 2026-10-01 — Reviewed animation interpolation and normal raw ANM Build
 
 Added copied-to-selected verified rigid-pose interpolation over existing frames:

@@ -3,6 +3,23 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
+Python discovery passed **475 tests in 279.577 seconds**, exit0, no skips, on
+unchanged clean committed source `9084e5454bd8e191f4f4b03e01f4c82497564619`.
+All **20 Node test files** and **22 editor module syntax checks** passed on that
+source. This supersedes the469-test checkpoint and includes script operand files
+and atomic scene bundles, all12 catalog inspector types, bare scene URI search,
+reviewed animation interpolation, and normal raw/compressed animation Build.
+The final browser additionally verified observed authored-state changes withdraw
+both interpolation Apply and review; baseline restored with zero page errors.
+Independent user-owned disc SHA256 and466714416-byte length matched prior input.
+No game launched. Native runtime parity, confirmed Live actor identity, gameplay
+and the complete16-layer acceptance plan remain incomplete. Private metadata:
+`local-output/sdk-20260909/sdk-regression-20261001-animation-build.log/.json`;
+Node/syntax source hashes and results:
+`local-output/sdk-20260909/node-checks-20261001-animation-build.json`.
+Log SHA256: `2ceab6a68dee7a3088ff6faac10b73310931e1917b16cc0c4dcc206c4239791e`.
+
 **Reviewed animation interpolation and raw ANM Build (2026-10-01):**
 The animation channel editor now blends a copied verified pose into the selected
 effective pose across an existing frame range. Read-only review precedes one
@@ -85,7 +102,7 @@ Normal Build still rejects drafts. Private evidence:
 469-test integrated checkpoint; execution/gameplay remains deferred. No game
 launched or disc installed. See [operand files](legaia-script-operand-files.md).
 
-**Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
+**Previous integrated offline checkpoint (2026-10-01):** Retail-enabled
 Python discovery passed **469 tests in 176.301 seconds**, exit 0, no skips, on
 unchanged clean committed source `d948b2a0f27e77c2b60f17b490ca7d8878389646`.
 All **17 Node checks** and **19 editor module syntax checks** passed on that
