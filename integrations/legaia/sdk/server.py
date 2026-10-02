@@ -163,6 +163,9 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["trigger_script_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
+        state['capabilities']['build_review'] = bool(self.project.disc_path and 1<=len(self.project.imports)<=64)
+        from .build import authored_state_key
+        state['build_review_source_key'] = authored_state_key(self.project)
         if self.last_build is None:
             state["build"] = None
         else:
@@ -531,6 +534,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),
+                 "/build-review.js": ("build-review.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
@@ -841,6 +845,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body)!={'asset_id'}:raise ProjectError('Asset references require stable asset ID only')
                     from .asset_references import inspect
                     self._json(200,inspect(self.server.project,body['asset_id']))
+                    return
+                if route == '/api/build-review':
+                    if body:raise ProjectError('Build review takes no fields')
+                    from .build_review import review
+                    self._json(200,review(self.server.project))
                     return
                 if route == '/api/script-operand-bundle-review':
                     if set(body)!={'content'}:raise ProjectError('Operand bundle review requires file only')
@@ -1397,7 +1406,9 @@ class EditorHandler(BaseHTTPRequestHandler):
         elif route == "/api/project/save":
             project.save()
         elif route == "/api/build":
-            from .build import build_project
+            from .build import build_project,authored_state_key
+            if set(body)-{'review_key'} or ('review_key' in body and body['review_key']!=authored_state_key(project)):
+                raise ProjectError('Build inputs differ from the reviewed project; review again')
             if project.mode != "edit":
                 raise ProjectError("Build requires Edit mode")
             self.server.last_build = None

@@ -313,11 +313,17 @@ def _guard_output(path: Path, boundary: Path) -> None:
         current = current.parent
 
 
-def _write_exact(path: Path, content: bytes, boundary: Path) -> None:
+def _validate_exact(path: Path, content: bytes, boundary: Path) -> bool:
     _guard_output(path, boundary)
     if path.exists():
         if not path.is_file() or path.read_bytes() != content:
             raise BuildError(f"Existing build output differs; choose a new output directory: {path}")
+        return True
+    return False
+
+
+def _write_exact(path: Path, content: bytes, boundary: Path) -> None:
+    if _validate_exact(path, content, boundary):
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     _guard_output(path, boundary)
@@ -341,7 +347,7 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
         raise BuildError(str(exc)) from exc
 
 
-def _build_project(project, output_dir) -> dict:
+def _build_project(project, output_dir, *, review_only=False) -> dict:
     if getattr(project, 'actor_drafts', {}):
         raise BuildError('New NPC drafts are not yet connected to playable Build; remove drafts before building existing overrides')
     if not project.disc_path:
@@ -908,6 +914,13 @@ def _build_project(project, output_dir) -> dict:
                 present_files.add(path.relative_to(package_dir).as_posix())
         if present_files - expected_files:
             raise BuildError("Package directory contains unrelated files; choose a new output directory")
+    if review_only:
+        for path,content in [(destination / '.gitignore',b'*\n'),(package_dir / 'manifest.toml',manifest),(destination / 'build-audit.json',audit_bytes),*((package_dir / overlay['file'],overlay['payload']) for overlay in overlays)]:
+            _validate_exact(path,content,boundary)
+        return dict(report=build_report(audit),build_kind=build_kind,change_kinds=package_change_kinds(audit_edits),
+                    audit_sha256=_hash(audit_bytes),manifest_sha256=_hash(manifest),overlay_count=len(overlays),
+                    source_disc_sha256=disc_hash,package_directory=str(package_dir),
+                    archive_packing='not_run',runtime_status='not_run',output_written=False)
     _write_exact(destination / ".gitignore", b"*\n", boundary)
     for overlay in overlays:
         _write_exact(package_dir / overlay["file"], overlay["payload"], boundary)

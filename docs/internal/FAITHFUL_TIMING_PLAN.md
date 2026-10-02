@@ -213,6 +213,22 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Read-only normal Build serialization review
+
+Added detached preflight using normal serializers, overlap/span/provenance checks,
+manifest parsing and shared existing-file guards before any output. NPC drafts
+remain explicit normal-Build blockers; existing overrides receive a clearly
+excluded-draft assessment. Ready Build dispatch checks authored identity in
+browser and server. Five retail-enabled Python checks, 23 Node files and25 syntax
+checks passed; audit/manifest/report equal actual Build and raw/compressed ANM
+regression passed. Initial test requested X beyond the retail range; corrected
+fixture, without weakening validator. Browser proved four retained blockers,
+nine reviewed changes, no output, stale rejection, Undo and matching package in
+separate no-draft fixture. Saved metadata/authored state unchanged, zero errors;
+screenshots inspected. No game launched. Owned test browsers/servers closed;
+private evidence excluded. Full SDK/runtime goal incomplete; gameplay deferred.
+
+
 ### 2026-10-01 — Effective donor animation references and material metadata reuse
 
 Added exact verified donor/model-to-clip effective links, separate authored draft

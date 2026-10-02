@@ -3,6 +3,19 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Read-only normal Build review (2026-10-01):** Review Build reuses the actual
+serializer and manifest/file guards on detached authored inputs without creating
+outputs. Retained NPC drafts remain explicit blockers; existing overrides are
+assessed with the exclusion clearly recorded. Ready reviews can dispatch a Build
+with browser/server input-identity guards. Five retail-enabled Python checks,
+all23 Node files and25 syntax checks passed. Review audit/manifest/report matched
+actual Build; normal raw/compressed animation packaging still passed. Browser
+proved four retained draft blockers, nine existing changes, no review outputs,
+stale dispatch rejection, Undo restoration and matching package creation in a
+separate no-draft fixture. Zero page errors; saved metadata/authored content
+unchanged; screenshots inspected; no game launched. Postdates integrated475.
+See [Build review](legaia-build-review.md).
+
 **Effective animation references and imported material reuse (2026-10-01):**
 Actor reference views now distinguish initial retail clip bindings, effective
 bindings from exact verified appearance donors, and authored draft donor clips.

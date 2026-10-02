@@ -1,3 +1,4 @@
+import {mountBuildReview} from '/build-review.js';
 import {openAssetReferences} from '/asset-references.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {interpolateAnimationRange} from '/animation-range.js';
@@ -367,6 +368,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&liveFollow
 window.addEventListener('pagehide',()=>{if(liveFollow.active)stopLiveFollow('Page closed');});
 
 const buildButton=document.createElement('button');buildButton.id='build-button';buildButton.textContent='Build';buildButton.title='Build the project with supported edits or as a verified retail baseline';$('save-button').after(buildButton);
+mountBuildReview({after:buildButton,getState:()=>state,busy:()=>busy,setBusy,onBuild:async review_key=>{if(await api('/api/build',{review_key}))showBuildReport();},onError:error=>notify(error.message,true)});
 const buildDialog=document.createElement('dialog');buildDialog.className='project-dialog';buildDialog.id='build-report-dialog';document.body.append(buildDialog);
 const buildReportButton=document.createElement('button');buildReportButton.id='build-report-button';buildReportButton.textContent='Build report';buildReportButton.title='Review the latest build';buildReportButton.hidden=true;buildButton.after(buildReportButton);buildReportButton.onclick=()=>showBuildReport();
 const exportProjectButton=document.createElement('button');exportProjectButton.id='export-project-button';exportProjectButton.textContent='Export disc';exportProjectButton.title='Export supported authored changes as a separate experimental disc';buildButton.after(exportProjectButton);exportProjectButton.onclick=()=>exportNpcDrafts();
@@ -572,6 +574,7 @@ function setBusy(value) {
   $('undo-button').disabled=value || !state.history?.can_undo;
   $('redo-button').disabled=value || !state.history?.can_redo;
   buildButton.disabled=value || !state.capabilities?.build || !canEdit();
+  if($('build-review-button'))$('build-review-button').disabled=value||!state.capabilities?.build_review;
   renderRunStatus();renderBuildStatus();
   document.querySelectorAll('[data-axis],[data-component-property]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
