@@ -102,7 +102,7 @@ class AssetDatabase:
 class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions",
-                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing",
+                                  "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
                                   "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
@@ -729,6 +729,14 @@ class ProjectService:
             validate_facing_values(entry['effective_values'])
         result['unresolved_overrides'] = sorted(set(authored) - known)
         return result
+
+    def _validate_branches(self, identifier: str, value: dict) -> None:
+        from .script_branches import validate
+        validate(self, identifier, value)
+
+    def _branch_context(self, identifier: str):
+        from importer.branch_authoring import BranchAuthoringContext
+        return BranchAuthoringContext(self._dialogue_context(identifier))
 
     def _validate_flags(self, identifier: str, value: dict) -> None:
         import re
@@ -1476,6 +1484,10 @@ class ProjectService:
         if command.get('type') == 'rename_project':
             from .project_settings import rename
             rename(self,command)
+            return
+        if command.get('type') == 'set_branch':
+            from .script_branches import apply
+            apply(self, command)
             return
         if command.get('type') == 'import_script_operand_bundle':
             from .script_operand_bundle import apply
@@ -2382,7 +2394,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells"}:
                 raise ProjectError("Unsupported authored component")
             if 'RegionBounds' in components:
                 value = result._validate_region_bounds(identifier, components['RegionBounds'])
@@ -2427,6 +2439,9 @@ class ProjectService:
             if 'ScriptFacing' in components:
                 result._validate_facing(identifier, components['ScriptFacing'])
                 result.overrides.setdefault(identifier, {})['ScriptFacing'] = deepcopy(components['ScriptFacing'])
+            if 'ScriptBranches' in components:
+                result._validate_branches(identifier, components['ScriptBranches'])
+                result.overrides.setdefault(identifier, {})['ScriptBranches'] = deepcopy(components['ScriptBranches'])
             if "ScriptFlags" in components:
                 result._validate_flags(identifier, components["ScriptFlags"])
                 result.overrides.setdefault(identifier, {})["ScriptFlags"] = deepcopy(components["ScriptFlags"])
@@ -2727,6 +2742,9 @@ class ProjectService:
                 movement = edits.get("ScriptMovement", {}).get("entries", {})
                 if movement:
                     changes.append(f"Movement: {len(movement)} targets")
+                branches = edits.get('ScriptBranches', {}).get('entries', {})
+                if branches:
+                    changes.append(f'Branch destinations: {len(branches)} instructions')
                 flags = edits.get("ScriptFlags", {}).get("entries", {})
                 if flags:
                     changes.append(f"Flags: {len(flags)} operands")
@@ -2753,6 +2771,10 @@ class ProjectService:
             movement = edits.get("ScriptMovement", {}).get("entries", {})
             if movement:
                 changes.append(f"Movement: {len(movement)} targets")
+            branches = edits.get('ScriptBranches', {}).get('entries', {})
+            if branches:
+                changes.append(f'Branch destinations: {len(branches)} instructions')
+
             flags = edits.get("ScriptFlags", {}).get("entries", {})
             if flags:
                 changes.append(f"Flags: {len(flags)} operands")
@@ -2881,6 +2903,7 @@ class ProjectService:
                                                                'effective': animation_identity(animation_actor)},
                                             "Dialogue": {"authored": deepcopy(self.overrides.get(identifier, {}).get("Dialogue", {})),
                                                          "limitations": ["Only verified plain-text runs are writable; controls and record boundaries remain fixed. Source capacity is rechecked on edit/build."]},
+                                            'ScriptBranches': {'entries': deepcopy(self.overrides.get(identifier, {}).get('ScriptBranches', {}).get('entries', {}))},
                                             'ScriptFacing': {'entries': deepcopy(self.overrides.get(identifier, {}).get('ScriptFacing', {}).get('entries', {}))},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})

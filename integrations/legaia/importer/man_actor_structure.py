@@ -148,7 +148,7 @@ def append_actor_donor(source: bytes, expected_sha256: str, donor_record_index: 
         dialogue_count=len(graph['dialogues']),
         opaque_byte_count=sum(region['length'] for region in graph['opaque_regions']),
         stop_count=len(graph['stops']),
-        camera_apply_jump_count=sum(row['mnemonic'] == 'CAMERA_APPLY_JUMP'
+        camera_apply_count=sum(row['mnemonic'] == 'CAMERA_APPLY'
                                     for row in graph['instructions']),
         explicit_spawn_count=sum(row['mnemonic'] == 'SPAWN_RECORD'
                                  for row in graph['instructions']),

@@ -8,6 +8,38 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Source-qualified field branch authoring (2026-10-02):** The script workspace
+now links a selectable source-flow diagram to disassembly and reviews existing
+JMP, conditional, bounding-box, flag-word and ordinary system-flag destinations.
+Retail, authored, current and proposed edges remain separate; encoded conditions
+are not evaluated. Targets must be original instruction or atomic MES starts
+through PC32767. Reviewed Apply/reset uses ordinary Undo/Redo and Save/Open;
+normal Build, streaming export, appended-record composition and operand files/
+bundles retain record layout and independently qualify changed flow. Other
+authored operands survive branches that make source nodes unvisited.
+
+Retail handler validation also corrects three existing decoder interpretations:
+camera apply and FIELD43/44 continue, and flag-word targets use relative offsets.
+Ordinary SYSFLAG forms cover50..7F; extended forms stop with an explicit reason.
+The pinned Andrew reference remains unchanged. Town01 now has619 decoded dialogue
+segments and1339 flag references; Dolk2 has629 segments and744 references.
+See [field branch workflow and evidence](legaia-script-branches.md).
+
+Validation:88 integrated Python regression cases passed with the private retail
+disc and no skips, including compressed Town01 and raw Dolk2 normal packages.
+Three HTTP cases reject18 malformed/foreign requests and stale Apply without
+changing evidence or history. Four Node suites and15 browser workflows passed;
+browser page/HTTP errors and game-launch requests were zero. The browser's
+reviewed Town01 package independently reads back with only byte4791 changed
+(PC31 target15-to11); its saved imports still match a fresh source import.
+Dolk2 PC28 target63-to9 changes only bytes7481/7482. Real Town01 donor append
+preserves that branch at rebased byte4794 in the prepared MAN; full rebuilt-disc
+acceptance is deferred. Current/Proposed navigation, multiple pending choices,
+reviewed Apply/reset, Undo/Redo, Save, no-op/stale gates, narrow layout and exact
+Build-to-source navigation were checked. Private evidence remains in
+`local-output/sdk-20260909/script-branches-20261002/`. Runtime branch activation,
+story behavior and termination remain deferred; the full SDK remains incomplete.
+
 **Source-bound GLB animation authoring (2026-10-02):** An imported actor's
 current effective rigid clip exports with a separate binding JSON. External GLB
 translation/rotation edits receive an exact source-axis and quantization review,

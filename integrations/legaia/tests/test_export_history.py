@@ -14,9 +14,10 @@ class ExportHistoryTests(unittest.TestCase):
         self.assertEqual(_change_summary({}), {'npc_draft_count': None, 'categories': []})
         result = _change_summary({'drafts': {'id': {'name': 'Private NPC'}}, 'scenes': {'scene://fixture': {
             'existing_actor_dialogue_changes': [{'after_hex': 'private'}],
+            'branch_changes': [{'before_value': 15, 'after_value': 11}],
             'animation_changes': {'changes': [{}]}, 'texture_changes': {'changes': []},
             'map_changes': {'collision_changes': [{}]}}}})
-        self.assertEqual(result, {'npc_draft_count': 1, 'categories': ['Animation channels', 'Collision', 'Dialogue', 'NPC additions']})
+        self.assertEqual(result, {'npc_draft_count': 1, 'categories': ['Animation channels', 'Collision', 'Dialogue', 'NPC additions', 'Script branch destinations']})
         self.assertEqual(_change_summary({'drafts': {}, 'existing_actor_placement_changes': [{}]})['categories'], ['Actor positions'])
 
     def test_editable_copy_preserves_saved_snapshot(self):

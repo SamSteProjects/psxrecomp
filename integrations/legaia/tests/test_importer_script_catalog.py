@@ -53,13 +53,20 @@ class ScriptAssetCatalogTests(unittest.TestCase):
         self.assertFalse(forbidden_fields(result))
 
     def test_flag_word_branches_join_evidenced_banks_without_live_values(self):
-        result = catalog(b"\x4c\xa0\x03\x0a\0\x4c\xa1\xf3\x0f\0\x4c\xa2\x05\x14\0")
-        refs = result["assets"][0]["flag_references"]
+        # Retail offsets are relative to each target word, so delta 2 joins
+        # the fallthrough instruction boundary instead of naming an absolute PC.
+        result = catalog(b"\x4c\xa0\x03\x02\0\x4c\xa1\xf3\x02\0\x4c\xa2\x05\x02\0")
+        script = result["assets"][0]
+        refs = script["flag_references"]
         self.assertEqual([r["bank"] for r in refs], ["context", "local", "global"])
         self.assertEqual([r["index"] for r in refs], [3, 19, 5])
+        self.assertEqual([r["pc"] for r in refs], [5, 10, 15])
         self.assertEqual(refs[1]["status"], "bank_width_unresolved")
         self.assertTrue(all(r["operation"] == "test" and r["runtime_value"] is None for r in refs))
         self.assertEqual(result["flag_reference_count"], 3)
+        self.assertEqual((script["status"], script["instruction_count"], script["opaque_byte_count"]),
+                         ("decoded_supported_paths", 3, 0))
+        self.assertEqual(forbidden_fields(result), set())
 
     def test_menu_metadata_has_no_labels_and_preserves_bounded_source(self):
         labels = b"\x1fPrivateOne\0\x1fPrivateTwo\0"
@@ -96,15 +103,15 @@ class ScriptAssetCatalogTests(unittest.TestCase):
         self.assertEqual(forbidden_fields(result), set())
 
     def test_extended_context_width_system_selector_and_extra_flags_remain_scoped(self):
-        # LFLAG ordinary / extended; GFLAG; extended CFLAG; ordinary/extended
-        # system selectors; extra-flags conditional with both successors equal.
+        # LFLAG ordinary / extended; GFLAG; extended CFLAG; ordinary system
+        # selectors; extra-flags conditional with both successors equal.
         result = catalog(b"\x2b\x02\xab\x07\x12\x2e\x03\xb1\x08\x05"
-                         b"\x51\x23\xd0\x09\x44\x42\x00\x23\x02\x00")
+                         b"\x51\x23\x50\x44\x42\x00\x23\x02\x00")
         script = result["assets"][0]
         refs = script["flag_references"]
         self.assertEqual(len(refs), 7)
         self.assertEqual([r["bank"] for r in refs], ["local", "local", "global", "context", "system", "system", "extra"])
-        self.assertEqual([r["index"] for r in refs], [2, 18, 3, 5, 0x123, 0x8044, 3])
+        self.assertEqual([r["index"] for r in refs], [2, 18, 3, 5, 0x123, 0x44, 3])
         self.assertEqual(refs[1]["extended_target"], 7)
         self.assertEqual(refs[1]["context_resolution"], "extended_target_unresolved")
         self.assertEqual(refs[1]["status"], "bank_width_unresolved")
@@ -113,6 +120,17 @@ class ScriptAssetCatalogTests(unittest.TestCase):
         self.assertEqual(refs[6]["scope"], "host_extra_flags")
         self.assertTrue(all(r["runtime_value"] is None for r in refs))
         self.assertEqual(script["status"], "decoded_supported_paths")
+        # Extended SYSFLAG reads raw s0 operands in the actual dispatcher,
+        # not the header-adjusted generic operand pointer. Its unknown tail
+        # must not manufacture system/extra references or dialogue assets.
+        unresolved = catalog(b"\xd0\x09\x44\x42\x00\x23\x02\x00\x1fOpaque\0")
+        opaque = unresolved["assets"][0]
+        self.assertEqual((opaque["status"], opaque["instruction_count"]), ("partial", 0))
+        self.assertEqual((unresolved["flag_reference_count"], unresolved["dialogue_count"]), (0, 0))
+        self.assertIn("extended SYSFLAG raw operand addressing", opaque["stops"][0]["reason"])
+        self.assertEqual(opaque["opaque_ranges"], [{"pc": 5, "length": 16,
+                         "byte_offset": opaque["source_record"]["byte_offset"] + 5}])
+        self.assertEqual(forbidden_fields(unresolved), set())
 
     def test_named_transition_preserves_encoded_entry_and_rejects_unclean_name(self):
         def transition(name):
@@ -179,17 +197,13 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
         from importer.pipeline import _disc_context
         with _disc_context(os.environ["LEGAIA_DISC_BIN"]):
             result = load_script_asset_catalog(os.environ["LEGAIA_DISC_BIN"], "town01")
-            # Verified field-state continuations expose ten more segments in
-            # actors 25-30 and 36; their unknown tails still remain partial.
-            # Acquire coverage reveals actor 40's conflicting target boundary;
-            # its entire ambiguous graph must be withdrawn.
-            # Flag-word branches expose five bounded P2[4] dialogue segments.
-            # Refreshed against the committed decoder on 2026-09-12: 550
-            # segments and 1249 flag references; streaming reader changes
-            # produce an exactly equal Town01 catalog.
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 550))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (641, 60))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1249, 1))
+            # Refreshed 2026-10-02 against hashed retail PROT dispatcher words:
+            # camera/field parameters continue instead of becoming false PCs;
+            # flag-word targets are relative. The additional bounded segments
+            # retain 60 partial scripts and never imply runtime reachability.
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 619))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (710, 60))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1339, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(result["partition_two_script_count"], 39)
             p2 = assets["script://town01/scripts/man-p2/0037"]
@@ -198,7 +212,12 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             self.assertEqual(p2["owner_semantic_id"], "scene://town01/scripts/man-p2/0037")
             opening = assets["script://town01/scripts/man-p2/0003"]
             self.assertEqual((opening["status"], opening["dialogue_count"]), ("partial", 8))
-            self.assertEqual(assets["script://town01/actors/man-p1/0040"]["instruction_count"], 0)
+            ramp_actor = assets["script://town01/actors/man-p1/0040"]
+            self.assertEqual((ramp_actor["status"], ramp_actor["instruction_count"], ramp_actor["dialogue_count"]),
+                             ("partial", 60, 45))
+            self.assertEqual(ramp_actor["opaque_ranges"], [{"pc": 1372, "length": 4,
+                             "byte_offset": ramp_actor["source_record"]["byte_offset"] + 1372}])
+            self.assertEqual(ramp_actor["source_record"]["byte_length"], 1376)
             self.assertEqual(len(assets), result["asset_count"])
             script_id = "script://town01/actors/man-p1/0049"
             script = assets[script_id]

@@ -42,7 +42,7 @@ def _change_summary(archive):
     categories = set()
     fields = {'existing_actor_placement_changes': 'Actor positions',
               'existing_actor_appearance_changes': 'Actor appearances',
-              'existing_actor_dialogue_changes': 'Dialogue', 'transition_changes': 'Transitions', 'movement_changes': 'Script movement'}
+              'existing_actor_dialogue_changes': 'Dialogue', 'transition_changes': 'Transitions', 'movement_changes': 'Script movement', 'branch_changes': 'Script branch destinations'}
     nested = {'animation_changes': 'Animation channels', 'model_changes': 'Model content',
               'texture_changes': 'Textures'}
     drafts = archive.get('drafts')

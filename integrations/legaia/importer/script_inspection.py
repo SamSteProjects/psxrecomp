@@ -4,6 +4,14 @@ Pinned evidence: asset/man_section.rs, asset/field_disasm/{decode,decode_subops}
 engine-vm/field/step.rs, engine-core/{dialog,man_field_scripts/placements}.rs,
 mes/lib.rs. No VM executes here. Unknown instruction widths stop that path;
 there is no byte-by-byte recovery or magic scan through opaque payloads.
+
+Executing SCUS-94254 evidence takes precedence where the pinned VM differs:
+PROT[897], load 0x801CE818, SHA256 216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b.
+45/C0 advances after a camera call; 4C43/44 write/ramp without jumping;
+4C/A0..A2 branches relative to its signed-word location. Retail consumers
+store and sign-extend 16-bit PCs; source inspection does not prove a high-bit
+target is usable at runtime. Extended SYSFLAG raw operand addressing remains
+unsupported rather than inheriting the pinned generic header assumption.
 """
 from __future__ import annotations
 
@@ -221,8 +229,9 @@ def _instruction(data: bytes, pc: int) -> dict:
         args = {"unresolved_control_flow":
                 "retail dispatcher returns the same PC for opcode 0x2a; external entry ownership of trailing bytes remains unresolved"}
     elif op == 0x45:
-        # Pinned executing step/camera.rs: selector high bits distinguish
-        # a payload, save, absolute jump, and a ten-slot sparse parameter list.
+        # Executing retail 801DF210..288: C0 calls 801DE084 with a signed
+        # parameter read at operand+1, then advances PC by header+3. The
+        # pinned camera.rs incorrectly treats that camera argument as a PC.
         need(1)
         selector = data[operand]
         form = selector & 0xC0
@@ -232,11 +241,10 @@ def _instruction(data: bytes, pc: int) -> dict:
         elif form == 0x80:
             size, mnemonic = 1, "CAMERA_SAVE"
         elif form == 0xC0:
-            size, mnemonic = 3, "CAMERA_APPLY_JUMP"
+            size, mnemonic = 3, "CAMERA_APPLY"
             need(size)
-            target = struct.unpack_from("<H", data, operand + 1)[0]
-            args["target"] = target
-            branches = [{"pc": target, "condition": "unconditional"}]
+            args.update(apply_trigger=struct.unpack_from("<h", data, operand + 1)[0],
+                        mode=(selector >> 2) & 15, runtime_effect="not_evaluated")
         else:
             need(4)
             mask = (selector << 8) | data[operand + 1]
@@ -318,8 +326,10 @@ def _instruction(data: bytes, pc: int) -> dict:
             size, mnemonic = 1, "FIELD_STATE_CONTROL"
             args = {"sub_op": sub, "can_yield": sub in (0x30, 0x31, 0x37)}
         elif 0x40 <= sub <= 0x4D and sub != 0x49:
-            # Executing nibble_3_4.rs has encoded jumps for 43/44 and
-            # a wider 45 form. Never treat this cluster as uniform width.
+            # Retail 801E1138 adds 6 to the adjusted opcode PC. Sub43/44
+            # handlers 801E1234/126C write or ramp ctx24/28 and preserve that
+            # continuation. The pinned nibble_3_4.rs invents absolute jumps.
+            # Sub45 has a wider form; never treat this cluster as uniform.
             size, mnemonic = (10 if sub == 0x45 else 5), "FIELD_RAMP"
             need(size)
             args = {"sub_op": sub}
@@ -330,9 +340,6 @@ def _instruction(data: bytes, pc: int) -> dict:
             else:
                 value, ticks = struct.unpack_from("<hH", data, operand + 1)
                 args.update(value=value, ticks=ticks)
-                if (sub == 0x43 and ticks == 0) or (sub == 0x44 and ticks != 0):
-                    mnemonic = "FIELD_ABSOLUTE_JUMP"
-                    branches = [{"pc": value, "condition": "unconditional"}]
         elif sub == 0x81:
             # Executing pinned menu_ctrl/nibble_8.rs: u24 model and two
             # unsigned u16 frame operands; continuation is unconditional.
@@ -363,14 +370,17 @@ def _instruction(data: bytes, pc: int) -> dict:
                 branches = [{"pc": operand + size, "condition": "acquire_succeeded"},
                             {"pc": pc, "condition": "acquire_wait"}]
         elif sub in (0xA0, 0xA1, 0xA2):
-            # Pinned executing menu_ctrl/nibble_9_a.rs sign-extends the
-            # absolute target; negative targets remain out-of-bounds, not wrapped.
+            # Retail 801E255C..25DC adds 5 to adjusted PC and reads signed16
+            # at operand+2 via 8003CE9C. Common3614/361C adds delta-2, yielding
+            # operand+2+delta. The pinned nibble_9_a.rs incorrectly uses an
+            # absolute target. All caller PCs are subsequently narrowed 16-bit.
             size, mnemonic = 4, "FLAG_WORD_BRANCH"
             need(size)
-            target = struct.unpack_from("<h", data, operand + 2)[0]
+            delta = struct.unpack_from("<h", data, operand + 2)[0]
+            target = (operand + 2 + delta) & 0xFFFF
             bank = {0xA0: "actor_flags", 0xA1: "actor_local_flags", 0xA2: "global_story_word"}[sub]
             args = {"sub_op": sub, "flag_word": bank, "bit_encoded": data[operand + 1],
-                    "target": target, "runtime_value": "not_observed"}
+                    "delta": delta, "target": target, "runtime_value": "not_observed"}
             branches = [{"pc": target, "condition": "flag_bit_set"},
                         {"pc": operand + size, "condition": "flag_bit_clear"}]
         elif 0x70 <= sub <= 0x73:
@@ -463,9 +473,13 @@ def _instruction(data: bytes, pc: int) -> dict:
                             runtime_effect="not_evaluated")
         else:
             raise ImportError(f"unsupported MENU_CTRL sub-op 0x{sub:02x}")
-    elif 0x50 <= op <= 0x77:
-        # The pinned executing VM covers through 0x77, while its disassembler
-        # claims through 0x7F. Higher indices remain unsupported here.
+    elif 0x50 <= op <= 0x7F:
+        # Retail 801E3568 routes the complete raw 5x/6x/7x range. It reads
+        # index at s0+1 and TEST delta at s0+2/+3. Extended prelude adjusts
+        # operand(s6) and PC but never s0; the pinned generic extended
+        # interpretation therefore has unproved operand/selector semantics.
+        if header != 1:
+            raise ImportError("extended SYSFLAG raw operand addressing is unresolved; no generic header interpretation")
         need(1)
         route = op >> 4
         size, mnemonic = (3, "SYSFLAG_TEST") if route == 7 else (1, "SYSFLAG_SET" if route == 5 else "SYSFLAG_CLEAR")

@@ -262,16 +262,17 @@ stay unvisited and an edge into a label invalidates the graph. Six focused,
 applicable. No runtime reachability or new authoring support is claimed.
 
 
-P2[20]'s newly discovered conflict was traced with the production decoder:
-CAMERA_APPLY_JUMP at1361 (0x551), bytes45 C0 44 00, targets68 (0x44).
-That target lies inside EMITTER_SIX_WORDS at61 (0x3D), length14. The pinned
-field/step/camera.rs0xC0 arm explicitly returns the unsigned absolute target;
-there is no evidence here to reinterpret it as a relative jump. The underlying
-retail semantics remain unresolved and the graph stays withdrawn. Private
-p2-menu-conflict.json preserves source and decoded attempts. Conflict diagnostics
-now include owner_pc and name that offset in the user-visible reason, making
-this ownership conflict inspectable without relaxing the guard. Six focused
-and23 retail inspection tests pass.
+The original P2[20] conflict diagnosis used the pinned camera0xC0 absolute-jump
+interpretation and withdrew its graph. That interpretation is superseded by
+independent retail handler validation on2026-10-02: the camera handler reads a
+signed parameter, calls camera processing, and returns ordinary PC+4 or extended
+PC+5. It does not replace the PC. The false edge and resulting overlap disappear.
+Retail validation likewise establishes continuing FIELD43/44 operations and
+relative flag-word target arithmetic. The pinned checkout is preserved unchanged;
+SDK decoding follows the executing source evidence. Exact handler/consumer hashes,
+qualified branch families and deferred runtime limits are documented in
+[the branch evidence contract](legaia-script-branches.md). Earlier catalog counts
+in this chronology describe those historical decoder versions.
 
 
 ### Transition entry serializer foundation (2026-09-10)

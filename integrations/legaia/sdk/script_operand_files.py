@@ -6,6 +6,7 @@ from .project import ProjectError,digest
 SCHEMA='legaia.script-operand-file.v1'
 MAX_BYTES=65536
 KINDS={
+    'ScriptBranches':('set_branch','branch_id'),
     'ScriptMovement':('set_movement_target','movement_id'),
     'ScriptFacing':('set_facing_target','facing_id'),
     'ScriptFlags':('set_flag_bit','flag_id'),
@@ -66,16 +67,23 @@ def review(project,owner,content):
         staged._dialogue_context(owner).options(owner)
         if value['scene_id']!=scene or value['source_import_sha256']!=source:raise ProjectError('Operand file differs from imported source')
         rows=[]
-        for component in sorted(value['components']):
+        for component in sorted(value['components'], key=lambda key: (key == 'ScriptBranches', key)):
             kind,key_field=KINDS[component]
             for identifier,values in sorted(value['components'][component]['entries'].items()):
                 previous=deepcopy((before or {}).get(component,{}).get('entries',{}).get(identifier))
-                staged.command(dict(type=kind,entity_id=owner,**{key_field:identifier},values=values))
-                rows.append(dict(component=component,operand_id=identifier,before=previous,after=deepcopy(values),changed=previous!=values))
+                if component == 'ScriptBranches':
+                    from .script_branches import review as branch_review
+                    inspected, _ = branch_review(staged, owner, identifier, values)
+                    if not inspected['review']['no_op']:
+                        staged.command(dict(type=kind, entity=owner, branch_id=identifier, value=values, review_key=inspected['review']['review_key']))
+                else:
+                    staged.command(dict(type=kind,entity_id=owner,**{key_field:identifier},values=values))
+                actual = deepcopy(staged.overrides.get(owner, {}).get(component, {}).get('entries', {}).get(identifier))
+                rows.append(dict(component=component,operand_id=identifier,before=previous,after=deepcopy(values),changed=previous!=actual))
         if project.overrides.get(owner)!=before:raise ProjectError('Script owner changed during review')
     after=deepcopy(staged.overrides.get(owner))
     report=dict(schema_version='legaia.script-operand-review.v1',owner_id=owner,scene_id=scene,source_import_sha256=source,entries=rows,change_count=sum(row['changed'] for row in rows),before=before,after=after,
-        limitations=['Each supplied entry replaces its authored operand fields. Other entries and components remain unchanged.','No instructions, dialogue, control-flow layout or runtime state are transferred. Execution and gameplay remain unverified.'])
+        limitations=['Each supplied entry replaces its authored operand fields. Other entries and components remain unchanged.','No instructions, dialogue, record layout or runtime state are transferred; qualified branch words may change encoded edges. Execution and gameplay remain unverified.'])
     report['review_key']=digest(dict(project_root=str(project.root),file=value,before=before,after=after))
     return report
 

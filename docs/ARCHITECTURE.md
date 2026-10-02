@@ -6,6 +6,24 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Field branch authoring (2026-10-02) adds `BranchAuthoringContext` over the
+existing verified unique P1/P2 MAN owner snapshot. Retail executing-handler
+arithmetic overrides three incorrect pinned decoder interpretations without
+changing the oracle checkout. Every source instruction/message boundary is
+retained; only qualified target-word spans change. Existing operand serializers
+qualify against retail first, then branch words compose last and the candidate
+flow is independently rescanned. MAN layout, source preimages, untouched bytes,
+recompression capacity and serialization readback remain mandatory.
+
+The project service binds Review/Apply to all authored inputs, fresh source
+hashes and disc stamp, independently from geometry preview freshness. The
+`ScriptBranches` component participates in ordinary history, Save/Open, normal
+and experimental exports, component review and operand transfer. A detached
+frontend module displays bounded source/current/proposed neighborhoods, decoded
+conditions and unresolved regions, links disassembly selection in both directions,
+and retains per-branch drafts across ordinary refresh. Story reachability and
+termination are not inferred. See [the branch contract](legaia-script-branches.md).
+
 Model content authoring (2026-10-02) adds a source-qualified packet inspector
 and exact byte-mask writer to the existing model replacement path. A separate
 `tmd-content-v1` binding allows XYZ plus existing face references, UV pairs and

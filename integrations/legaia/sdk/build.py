@@ -92,6 +92,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-wait-target-only': 'script wait targets',
         'script-model-selector-only': 'script model selectors',
         'script-facing-sector-only': 'script facing operands',
+        'script-branch-target-only': 'script branch destinations',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'TMD-existing-layout-content': 'model faces, UVs and baked colors',
         'source-MAP-wall-bit-only': 'source collision walls',
@@ -130,7 +131,7 @@ def build_report(audit) -> dict:
         else:
             before = change.get("before_value", change.get("before_byte"))
             after = change.get("after_value", change.get("after_byte"))
-        changes.append({"scene": change["scene"], "asset_id": change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
+        changes.append({"scene": change["scene"], "asset_id": change.get("branch_id") or change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         **({"frame_index": change["frame_index"], "object_index": change["object_index"],
@@ -480,7 +481,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             project._validate_movements(identifier, components["ScriptMovement"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
             edits["movements"][identifier] = components["ScriptMovement"]["entries"]
             components = {k: v for k, v in components.items() if k != "ScriptMovement"}
             if not components:
@@ -489,7 +490,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             project._validate_facing(identifier, components['ScriptFacing'])
             document = project._dialogue_document(identifier)
             scene_id = 'scene://' + document['scene']['name']
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
             edits['facings'][identifier] = components['ScriptFacing']['entries']
             components = {k:v for k,v in components.items() if k != 'ScriptFacing'}
             if not components:
@@ -498,7 +499,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             project._validate_flags(identifier, components["ScriptFlags"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
             edits["flags"][identifier] = components["ScriptFlags"]["entries"]
             components = {k: v for k, v in components.items() if k != "ScriptFlags"}
             if not components:
@@ -507,16 +508,25 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             project._validate_waits(identifier, components["ScriptWaits"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
             edits["waits"][identifier] = components["ScriptWaits"]["entries"]
             components = {k: v for k, v in components.items() if k != "ScriptWaits"}
+            if not components:
+                continue
+        branches = components.get("ScriptBranches")
+        if branches:
+            project._validate_branches(identifier, branches)
+            branch_document = project._dialogue_document(identifier)
+            branch_scene_id = branch_document["scene"]["semantic_id"]
+            scene_edits.setdefault(branch_scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})["branches"][identifier] = deepcopy(branches["entries"])
+            components = {key: value for key, value in components.items() if key != "ScriptBranches"}
             if not components:
                 continue
         if isinstance(components, dict) and "ScriptModelSelectors" in components:
             project._validate_model_selectors(identifier, components["ScriptModelSelectors"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
             edits["model_selectors"][identifier] = components["ScriptModelSelectors"]["entries"]
             components = {k: v for k, v in components.items() if k != "ScriptModelSelectors"}
             if not components:
@@ -525,7 +535,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             project._validate_transitions(identifier, components["Transitions"])
             document = project._dialogue_document(identifier)
             scene_id = "scene://" + document["scene"]["name"]
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
             edits["transitions"][identifier] = components["Transitions"]["entries"]
             components = {k: v for k, v in components.items() if k != "Transitions"}
             if not components:
@@ -544,7 +554,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 validate_run_id(identifier, run)
                 if not isinstance(text, str):
                     raise BuildError("Dialogue replacement must be text")
-            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+            edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
             edits["dialogues"][identifier] = dialogue["runs"]
             continue
         if identifier not in entity_lookup:
@@ -553,7 +563,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         if (not isinstance(components, dict) or not components or
                 set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue"}):
             raise BuildError(f"{identifier}: only authored Transform.position, initial appearance/animation and bounded Dialogue runs can be built")
-        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}})
+        edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
         record = actor["source_record"]["record_index"]
         if "Transform" in components:
             transform = components["Transform"]
@@ -733,7 +743,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             body = archive.read_entry(entry)
             stream_offset = carrier.payload_offset
             original_span = body[stream_offset:stream_offset + consumed]
-            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"]:
+            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
                 baseline = carrier.payload
                 changed, changes = baseline, []
             if edits["assignments"]:
@@ -760,7 +770,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                     if animation:
                         change.update(assignment_kind='ActorAnimation', animation_asset_id=animation['animation_asset_id'],
                                       assignment_source_record_sha256=animation['source_record_sha256'])
-            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"]:
+            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
@@ -892,6 +902,19 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                       record_index=int(change["owner_id"].rsplit("/", 1)[1]),
                                       scope="script-model-selector-only")
                     changes.extend(model_selector_changes)
+                if edits["branches"]:
+                    from importer.branch_authoring import load_branch_authoring_context
+                    branch_context = load_branch_authoring_context(project.disc_path, scene)
+                    requested = {}
+                    for owner, entries in edits["branches"].items():
+                        allowed = {row["semantic_id"] for row in branch_context.options(owner)["targets"]}
+                        if set(entries) - allowed or set(entries) & set(requested):
+                            raise BuildError("Branch is not uniquely owned by the verified source")
+                        requested.update(entries)
+                    changed, branch_changes = branch_context.patch_composed(changed, requested)
+                    for change in branch_changes:
+                        change.update(semantic_id=change["owner_id"], record_index=int(change["owner_id"].rsplit("/", 1)[1]))
+                    changes.extend(branch_changes)
                 if raw_man:
                     replacement = changed
                     sizes = {'original_encoded_size':len(original_span),'new_encoded_size':len(changed),
@@ -922,6 +945,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 after_layout = [(a.record_index,a.byte_offset,a.byte_length,a.local_count) for a in reopened.actors]
                 if reopened.partition_counts != carrier.parsed.partition_counts or before_layout != after_layout:
                     raise BuildError('Raw MAN edits changed record or partition layout')
+            if edits["branches"]:
+                for owner in edits["branches"]:
+                    if branch_context.inspect_owner(owner, after_man) != branch_context.inspect_owner(owner, changed):
+                        raise BuildError("Branch flow differs after MAN serialization readback")
             changed_offsets = {offset for change in changes for offset in range(
                 change["decoded_byte_offset"], change["decoded_byte_offset"] + change.get("byte_length", 1))}
             if any(a != b and n not in changed_offsets for n, (a, b) in enumerate(zip(before_man, after_man))):
@@ -994,6 +1021,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     }
     if any(o.get('source_kind')=='raw_streaming_man' for o in overlays):
         audit['validation']['raw_MAN_structural_round_trip'] = True
+    if any(row.get('scope') == 'script-branch-target-only' for row in audit_edits):
+        audit['validation']['script_branch_source_boundary_round_trip'] = True
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
     # Package identity follows emitted content, including no-op/cleared builds.
     # Separate immutable receipts retain each authored metadata context.
@@ -1041,7 +1070,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         feature_name = 'Authored scene data'
         description = 'Private fixed-width script movement targets and optional authored scene data.'
         feature_description = 'Apply verified MOVE_TO/NPC_RUN X/Z operands; execution and gameplay remain unverified.'
-    if any(c.get('scope') in ('script-flag-bit-only','script-wait-target-only','script-model-selector-only','script-facing-sector-only') for c in audit_edits):
+    if any(c.get('scope') in ('script-flag-bit-only','script-wait-target-only','script-model-selector-only','script-facing-sector-only','script-branch-target-only') for c in audit_edits):
         package_suffix = ' authored scene data'
         feature_name = 'Authored scene data'
     if any(c.get('scope') == 'TMD-vertex-normal-XYZ-only' for c in audit_edits):
@@ -1059,7 +1088,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         if has_appearance:
             feature_description += ' Initial assignments only; scripts may override appearance.'
         if has_dialogue:
-            feature_description += ' Dialogue: glyph edits only; no script control edits or relocation.'
+            feature_description += ' Dialogue: glyph edits preserve the source record layout.'
         if has_texture:
             feature_description += ' Textures: layout-compatible payloads; no resource relocation.'
     lines = [

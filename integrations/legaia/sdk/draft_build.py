@@ -129,15 +129,19 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     flags={}
     waits={}
     model_selectors={}
+    branches={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors'} if p2 else {'Transform','ActorAppearance','ActorAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptBranches','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
             raise ProjectError('Draft serialization currently composes only same-scene actor positions, appearances and dialogue')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
         if 'AnimationChannels' in components:
             project._validate_animation_override(identifier,components['AnimationChannels'])
             animations[identifier]=components['AnimationChannels']
+        if 'ScriptBranches' in components:
+            project._validate_branches(identifier, components['ScriptBranches'])
+            branches.update(components['ScriptBranches']['entries'])
         if 'ScriptMovement' in components:
             project._validate_movements(identifier,components['ScriptMovement'])
             movements.update(components['ScriptMovement']['entries'])
@@ -294,6 +298,12 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         model_selector_audit=[]
         if model_selector_context:
             candidate,model_selector_audit=model_selector_context.patch_appended(candidate,model_selectors)
+        branch_audit=[]
+        if branches:
+            from importer.branch_authoring import load_branch_authoring_context
+            branch_context=load_branch_authoring_context(project.disc_path,scene)
+            branch_context.patch(branches,original=source)
+            candidate,branch_audit=branch_context.patch_appended(candidate,branches)
         absolute=archive.entry(bundle.entry_index).start_lba*2048+bundle.table_offset
         span=locate_physical_span(archive,absolute)
         prot=archive.image.read_user(archive.node.extent_lba,0,archive.node.size,archive.node.size)
@@ -332,7 +342,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         actor=actor_audit,existing_actor_placement_changes=placement_audit,
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_dialogue_changes=dialogue_audit,
-        transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit,
+        branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit,
         final_man_sha256=sha256(candidate).hexdigest(),
         container=container_audit,gameplay_verified=False)
 

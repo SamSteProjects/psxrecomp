@@ -148,6 +148,9 @@ class EditorServer(ThreadingHTTPServer):
                 entity["components"]["Animation"]["preview_support"] = actor_animation_capabilities(actor, asset)
         state["capabilities"]["actor_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_animation_authoring"] = bool(self.project.disc_path)
+        from .script_branches import state_key as script_state_key
+        state['script_authoring_state_key'] = script_state_key(self.project)
+        state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
@@ -624,6 +627,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
+                 "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
@@ -660,6 +664,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route in ('/api/script-branches', '/api/script-branch-review'):
+                    expected = {'entity'} if route == '/api/script-branches' else {'entity', 'branch_id', 'value'}
+                    if set(body) != expected or not isinstance(body['entity'], str) or not body['entity']:
+                        raise ProjectError('Script branch inspection requires exact owner and destination fields')
+                    from .script_branches import snapshot, review
+                    self._json(200, snapshot(self.server.project, body['entity']) if route == '/api/script-branches' else review(self.server.project, body['entity'], body['branch_id'], body['value'])[0])
+                    return
                 if route == '/api/scene-catalog':
                     if set(body) != {'disc', 'offset', 'prefix'} or not isinstance(body['disc'], str) or not body['disc'].strip() or type(body['offset']) is not int or not 0 <= body['offset'] <= 65536 or not isinstance(body['prefix'], str) or len(body['prefix']) > 64:
                         raise ProjectError('Scene catalog requires a disc path, bounded integer offset and name prefix')
@@ -1601,6 +1612,10 @@ class EditorHandler(BaseHTTPRequestHandler):
         # Reject malformed field types before they reach filesystem/importer services.
         required_strings = {"/api/project/new": ("path",), "/api/project/open": ("path",),
                             "/api/import": ("disc",), "/api/scene": ("scene_id",)}
+        if route == '/api/command' and body.get('type') == 'set_branch':
+            if set(body) != {'type', 'entity', 'branch_id', 'value', 'review_key'}:
+                raise ProjectError('Branch Apply requires reviewed source identity and destination only')
+            required_strings[route] = ('entity', 'branch_id', 'review_key')
         if route == "/api/command" and body.get("type") == "layout_actor_placements":
             if set(body) != {'type', 'scene_id', 'actor_ids', 'layout', 'review_key'}:
                 raise ProjectError('Group layout accepts scene, actors, layout and reviewed identity only')

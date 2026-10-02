@@ -176,12 +176,22 @@ class ScriptInspectionTests(unittest.TestCase):
         self.assertEqual(sparse["operands"]["mode"], 8)
         self.assertEqual(sparse["operands"]["apply_trigger"], 0x1234)
 
-    def test_camera_absolute_jump_skips_payload_and_checks_targets(self):
+    def test_camera_apply_parameter_preserves_continuation_and_payload_bounds(self):
         report = inspect_record(b"\x45\xff\x08\0\x1fNo\0\x1fYes\0", 0)
-        self.assertEqual([d["text"] for d in report["dialogues"]], ["Yes"])
-        self.assertEqual(report["instructions"][0]["successors"], [{"pc": 8, "condition": "unconditional"}])
-        for data in (b"\x45\xc0", b"\x45\xc0\x00", b"\x45\xc0\xff\xff"):
+        row = report["instructions"][0]
+        self.assertEqual(row["mnemonic"], "CAMERA_APPLY")
+        self.assertEqual((row["operands"]["apply_trigger"], row["operands"]["mode"]), (8, 15))
+        self.assertEqual([d["text"] for d in report["dialogues"]], ["No", "Yes"])
+        self.assertEqual(row["successors"], [{"pc": 4, "condition": "encoded_continuation"}])
+        self.assertEqual(covered_bytes(report, 0, 13), [1] * 13)
+        for data in (b"\x45\xc0", b"\x45\xc0\x00"):
             self.assertEqual(inspect_record(data, 0)["status"], "partial")
+            self.assertEqual(inspect_record(data, 0)["instructions"], [])
+        negative = inspect_record(b"\x45\xc0\xff\xff", 0)
+        self.assertEqual(negative["status"], "decoded_supported_paths")
+        self.assertEqual(negative["instructions"][0]["operands"]["apply_trigger"], -1)
+        self.assertEqual(negative["instructions"][0]["successors"],
+                         [{"pc": 4, "condition": "encoded_continuation"}])
 
     def test_model_animation_unsigned_fields_and_all_new_menu_boundaries(self):
         model = b"\x4c\x81\x1f\xff\x80" + struct.pack("<HH", 65535, 32768)
@@ -205,18 +215,26 @@ class ScriptInspectionTests(unittest.TestCase):
                     self.assertEqual(truncated["instructions"], [])
                     self.assertEqual(truncated["dialogues"], [])
 
-    def test_field_ramp_jumps_select_encoded_path_and_reject_invalid_targets(self):
-        for sub, jump_ticks, fall_ticks in ((0x43, 0, 1), (0x44, 1, 0)):
-            for ticks, target in ((jump_ticks, 10), (fall_ticks, 10)):
-                data = bytes([0x4c, sub]) + struct.pack("<hH", target, ticks) + b"\x1fNo\0\x1fYes\0"
+    def test_field_ramps_preserve_continuation_and_reject_truncated_operands(self):
+        for sub in (0x43, 0x44):
+            for ticks in (0, 1):
+                data = bytes([0x4c, sub]) + struct.pack("<hH", 10, ticks) + b"\x1fNo\0\x1fYes\0"
                 report = inspect_record(data, 0)
                 self.assertFalse(report["stops"])
-                self.assertEqual(report["instructions"][0]["successors"][0]["pc"],
-                                 10 if ticks == jump_ticks else 6)
-                self.assertEqual([d["text"] for d in report["dialogues"]],
-                                 ["Yes"] if ticks == jump_ticks else ["No", "Yes"])
-            report = inspect_record(bytes([0x4c, sub]) + struct.pack("<hH", -1, jump_ticks), 0)
-            self.assertEqual(report["status"], "partial")
+                row = report["instructions"][0]
+                self.assertEqual(row["mnemonic"], "FIELD_RAMP")
+                self.assertEqual((row["operands"]["value"], row["operands"]["ticks"]), (10, ticks))
+                self.assertEqual(row["successors"], [{"pc": 6, "condition": "encoded_continuation"}])
+                self.assertEqual([d["text"] for d in report["dialogues"]], ["No", "Yes"])
+                self.assertEqual(covered_bytes(report, 0, len(data)), [1] * len(data))
+                for length in range(1, 6):
+                    truncated = inspect_record(data[:length], 0)
+                    self.assertEqual(truncated["status"], "partial")
+                    self.assertEqual(truncated["instructions"], [])
+                    self.assertEqual(truncated["dialogues"], [])
+            report = inspect_record(bytes([0x4c, sub]) + struct.pack("<hH", -1, 0), 0)
+            self.assertEqual(report["status"], "decoded_supported_paths")
+            self.assertEqual(report["instructions"][0]["operands"]["value"], -1)
         for sub in (0x49, 0x4e, 0x4f):
             report = inspect_record(bytes([0x4c, sub]) + b"\0\0\0\0\x1fOpaque\0", 0)
             self.assertEqual(report["dialogues"], [])

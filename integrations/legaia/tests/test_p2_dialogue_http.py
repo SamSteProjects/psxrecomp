@@ -34,7 +34,7 @@ class P2DialogueHTTP(unittest.TestCase):
                     return json.load(response)
             try:
                 flags = post("/api/scene-flags", {})
-                self.assertEqual(flags["reference_count"], 1249)
+                self.assertEqual(flags["reference_count"], 1339)
                 self.assertEqual(flags["coverage"]["script_count"], 91)
                 self.assertEqual(flags["scene_id"], "scene://town01")
                 self.assertTrue(all(group["runtime_binding"] == "unresolved" for group in flags["groups"]))

@@ -1,5 +1,5 @@
 export const operandOwnerContext=(state,owner)=>JSON.stringify((state.authored_assets??[]).find(row=>row.id===owner)?.authored??null);
-const COMPONENTS=['ScriptMovement','ScriptFacing','ScriptFlags','ScriptWaits','ScriptModelSelectors','Transitions'];
+const COMPONENTS=['ScriptBranches','ScriptMovement','ScriptFacing','ScriptFlags','ScriptWaits','ScriptModelSelectors','Transitions'];
 export function decodeOperandReview(value,file,owner,scene){
   const entries=value?.entries;
   if(value?.schema_version!=='legaia.script-operand-review.v1'||value.owner_id!==owner||value.scene_id!==scene||value.source_import_sha256!==file.source_import_sha256||file.owner_id!==owner||file.scene_id!==scene||file.schema_version!=='legaia.script-operand-file.v1'||!/^[0-9a-f]{64}$/.test(value.review_key)||!Array.isArray(entries)||entries.length>256||new Set(entries.map(row=>row.component+'|'+row.operand_id)).size!==entries.length||value.change_count!==entries.filter(row=>row.changed===true).length)throw new Error('Operand review differs from file or active script');
