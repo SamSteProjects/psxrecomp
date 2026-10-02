@@ -19,6 +19,8 @@ from .project import atomic_write, canonical
 
 def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, dict]:
     """Compose draft-bearing scenes without omitting authored input."""
+    if 'worldmap://legaia/menu' in project.overrides:
+        raise ProjectError('Experimental Export disc does not support global world-map landmarks; use normal Build')
     if draft_id is not None and (not isinstance(draft_id,str) or draft_id not in project.actor_drafts):
         raise ProjectError('Select an existing NPC draft')
     scene_ids={item['scene_id'] for item in project.actor_drafts.values()}

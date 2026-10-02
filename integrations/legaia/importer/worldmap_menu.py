@@ -4,6 +4,27 @@ import struct
 from .core import ImportError, validate_metadata_only
 from .pipeline import REFERENCE_COMMIT, _disc_context
 
+# Hashes of executing SCUS consumer windows. Keeping these separate from the
+# landmark payload qualifies edited source tables without accepting changed code.
+CONSUMER_WINDOWS = (
+    (139376, 112, '9e3bb811f9b8f120cc0a6d2b818c6bea51d04ce44b4444e0814ab665eede18fa'),
+    (134752, 52, '851a4033604f98bd1512114acfd31991dd2ecb8ce17a6da121fad8a663bc80c8'),
+    (133100, 20, '9bff2c21ead3be35a883e71dee68c580cf8a6f7e15032ba4064507dd58644ce1'),
+    (133288, 52, '9546ef02decb59fbd363619f8ef83d327e8367818fa71cd32df5426d606ca5a6'),
+    (185956, 56, 'b4f9cf72c7afddb13a75f5072eb90990d380d3153716a3f087adcc1ae6d900fe'),
+    (95400, 8, 'e5608cd2380010fb2871ded7707729adc7976bfaa8a441d7463fbdfca2b7d91a'),
+)
+
+
+def worldmap_field_evidence(executable: bytes) -> dict:
+    qualified = (len(executable) >= 0x800 and executable[:8] == b'PS-X EXE'
+                 and struct.unpack_from('<I', executable, 0x18)[0] == 0x80010000
+                 and all(hashlib.sha256(executable[offset:offset + length]).hexdigest() == expected
+                         for offset, length, expected in CONSUMER_WINDOWS))
+    return dict(name_index='retail_static_analysis' if qualified else 'reference_interpretation',
+                discovery_flag_index='retail_static_analysis' if qualified else 'reference_interpretation',
+                destination_scene_id='reference_interpretation', menu_position='reference_interpretation')
+
 
 def decode_worldmap_menu(executable: bytes) -> dict:
     if not isinstance(executable, bytes) or not 0x800 <= len(executable) <= 2*1024*1024 or executable[:8] != b'PS-X EXE':
@@ -36,9 +57,10 @@ def decode_worldmap_menu(executable: bytes) -> dict:
             'sha256':hashlib.sha256(executable).hexdigest(),'load_address':load,'table_file_offset':table_offset,
             'table_ram_address':0x80073A98,'name_table_file_offset':name_offset,'terminator_record_index':i},
             'names':names,'placements':records,'metadata_only':True,'runtime_state':'not_observed',
-            'limitations':['Positions are world-map menu pixels, not field or 3D world coordinates.',
-                           'Discovery flag indices use the reference fourth system-flag bank; current flags are not read.',
-                           'Consecutive duplicate names are retained as source records; runtime menu deduplication is not evaluated.',
+            'field_evidence':worldmap_field_evidence(executable),
+            'limitations':['X/Y are encoded bytes with a reference menu-pixel interpretation; executing draw consumers and 3D world coordinates are unverified.',
+                           'Discovery indices add32 to the encoded byte. Qualified retail consumers query a system bitmap; current flags are not read.',
+                           'Source rows remain distinct. The qualified executing walker deduplicates against the last accepted name; current discovery/activation is not evaluated.',
                            'Destination numeric IDs are not resolved to CDNAME labels or asserted reachable.']}
     validate_metadata_only(result)
     return result
@@ -79,6 +101,7 @@ def load_worldmap_asset_catalog(disc, scene: str) -> dict:
                        'source_record': deepcopy(report['source_record']),
                        'destination_label_source': deepcopy(report['destination_label_source']),
                        'reference_commit': report['reference_commit'], 'reference_path': report['reference_path'],
+                       'field_evidence': deepcopy(report['field_evidence']),
                        'runtime_state': 'not_observed'})
     result = {'schema_version': 'legaia.worldmap-asset-catalog.v1', 'assets': assets,
               'scope': 'global-worldmap-menu', 'metadata_only': True,

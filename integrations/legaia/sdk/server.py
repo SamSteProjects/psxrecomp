@@ -151,6 +151,9 @@ class EditorServer(ThreadingHTTPServer):
         from .script_branches import state_key as script_state_key
         state['script_authoring_state_key'] = script_state_key(self.project)
         state['capabilities']['script_branch_authoring'] = bool(self.project.disc_path)
+        from .worldmap_authoring import state_key as worldmap_state_key
+        state['worldmap_authoring_state_key'] = worldmap_state_key(self.project)
+        state['capabilities']['worldmap_authoring'] = bool(self.project.disc_path and self.project.imports)
         state["capabilities"]["actor_script_preview"] = bool(self.project.disc_path)
         state["capabilities"]["actor_candidate_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
@@ -628,6 +631,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
+                 "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
@@ -664,6 +668,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                 raise ProjectError("Command body must be an object")
             with self.server.command_lock:
                 route = urlsplit(self.path).path
+                if route in ('/api/worldmap-authoring', '/api/worldmap-authoring-review'):
+                    expected = set() if route == '/api/worldmap-authoring' else {'entity_id', 'values'}
+                    if set(body) != expected:
+                        raise ProjectError('World-map authoring requires the exact source row and values')
+                    from .worldmap_authoring import snapshot, review
+                    self._json(200, snapshot(self.server.project) if not body else
+                               review(self.server.project, body['entity_id'], body['values'])[0])
+                    return
                 if route in ('/api/script-branches', '/api/script-branch-review'):
                     expected = {'entity'} if route == '/api/script-branches' else {'entity', 'branch_id', 'value'}
                     if set(body) != expected or not isinstance(body['entity'], str) or not body['entity']:
@@ -1616,6 +1628,10 @@ class EditorHandler(BaseHTTPRequestHandler):
             if set(body) != {'type', 'entity', 'branch_id', 'value', 'review_key'}:
                 raise ProjectError('Branch Apply requires reviewed source identity and destination only')
             required_strings[route] = ('entity', 'branch_id', 'review_key')
+        if route == '/api/command' and body.get('type') == 'set_worldmap_menu':
+            if set(body) != {'type', 'entity_id', 'values', 'review_key'}:
+                raise ProjectError('World-map Apply requires reviewed source row, values and key only')
+            required_strings[route] = ('entity_id', 'review_key')
         if route == "/api/command" and body.get("type") == "layout_actor_placements":
             if set(body) != {'type', 'scene_id', 'actor_ids', 'layout', 'review_key'}:
                 raise ProjectError('Group layout accepts scene, actors, layout and reviewed identity only')

@@ -93,6 +93,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-model-selector-only': 'script model selectors',
         'script-facing-sector-only': 'script facing operands',
         'script-branch-target-only': 'script branch destinations',
+        'worldmap-menu-record-only': 'world-map landmarks',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'TMD-existing-layout-content': 'model faces, UVs and baked colors',
         'source-MAP-wall-bit-only': 'source collision walls',
@@ -131,7 +132,7 @@ def build_report(audit) -> dict:
         else:
             before = change.get("before_value", change.get("before_byte"))
             after = change.get("after_value", change.get("after_byte"))
-        changes.append({"scene": change["scene"], "asset_id": change.get("branch_id") or change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
+        changes.append({"scene": change["scene"], "asset_id": change.get("worldmap_placement_id") or change.get("branch_id") or change.get("model_selector_id", change.get("wait_id", change.get("flag_id", change.get("movement_id", change.get("transition_id", change.get("run_id", change["semantic_id"])))))),
                         "owner_id": change["semantic_id"],
                         "field": field, "before": before, "after": after,
                         **({"frame_index": change["frame_index"], "object_index": change["object_index"],
@@ -444,6 +445,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if identifier == 'worldmap://legaia/menu':
+            if not isinstance(components, dict) or set(components) != {'WorldMapMenu'}:
+                raise BuildError('Global world-map overrides require only the WorldMapMenu component')
+            project._validate_worldmap_menu(identifier, components['WorldMapMenu'])
+            continue
         if isinstance(components, dict) and 'RegionBounds' in components:
             value = project._validate_region_bounds(identifier, components['RegionBounds'])
             if value is not None:
@@ -625,6 +631,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     overlays = []
     audit_edits = []
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
+        from .worldmap_build import prepare_worldmap_overlay
+        worldmap_overlays, worldmap_changes = prepare_worldmap_overlay(project, _image, disc_hash)
+        overlays.extend(worldmap_overlays)
+        audit_edits.extend(worldmap_changes)
         from importer.model_authoring import model_shape_overlays
         model_assets, model_payloads = {}, {}
         for identifier, binding in sorted(getattr(project, 'model_overrides', {}).items()):
@@ -1023,6 +1033,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         audit['validation']['raw_MAN_structural_round_trip'] = True
     if any(row.get('scope') == 'script-branch-target-only' for row in audit_edits):
         audit['validation']['script_branch_source_boundary_round_trip'] = True
+    if any(row.get('scope') == 'worldmap-menu-record-only' for row in audit_edits):
+        audit['validation']['worldmap_menu_round_trip'] = True
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
     # Package identity follows emitted content, including no-op/cleared builds.
     # Separate immutable receipts retain each authored metadata context.
@@ -1091,6 +1103,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             feature_description += ' Dialogue: glyph edits preserve the source record layout.'
         if has_texture:
             feature_description += ' Textures: layout-compatible payloads; no resource relocation.'
+    if any(change.get('scope') == 'worldmap-menu-record-only' for change in audit_edits):
+        package_suffix = ' authored game data'
+        feature_name = 'Authored game data'
+        description = 'Private source-qualified world-map landmark records and supported authored game data.'
+        feature_description = 'Apply existing landmark menu fields and other audited changes; activation and gameplay remain unverified.'
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix, ensure_ascii=False)}",

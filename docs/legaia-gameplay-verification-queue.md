@@ -1,5 +1,27 @@
 # Deferred gameplay verification
 
+## Global landmark menu records - deferred
+
+Saved fixture: `local-output/sdk-20260909/worldmap-authoring-20261002/browser-project/`.
+Package: `local-output/sdk-20260909/worldmap-authoring-20261002/browser-project/Builds/a96da8f8cfabbc0c/legaia.sdk.0f096fa3c17d-0.1.0-a96da8f8cfabbc0c.psxmod`.
+SHA256: `08eb08fe22cb2aa10dc5e034932deb9529c2c706e594dbf617f0bb00135be680`.
+Row 0 Rim Elm encoded X changes 96 to 97; discovery index 32, destination 85
+(`map01`) and Y 25 stay retail. Fresh source and complete executable readback
+confirm only SCUS file byte 0x6429C differs. The 126-byte overlay retains all
+other rows and the terminator; names, padding, code and headers remain exact.
+The saved scene import matches a fresh disc import. Global/field Build
+composition, history, persistence, byte review and source navigation pass.
+
+Later compare stock/authored world-map menu drawing at matching story/discovery
+state. This one-unit edit is a small drawing probe under the reference pixel
+interpretation; the executing draw/travel consumers are not yet proved. Other
+future name/discovery/destination edits need separate visibility, duplicate
+suppression, destination and post-transition control checks. Do not infer a
+reachable scene from CDNAME membership. Name/discovery have static consumer
+evidence, without current flag values or runtime activation. No package installed
+or game launched. Experimental Export disc rejects this global component; use
+normal Build. See [workflow](legaia-worldmap-authoring.md).
+
 ## Authored primary trigger cells - deferred
 
 Saved fixture: `local-output/sdk-20260909/trigger-cells-20261002/project/`.

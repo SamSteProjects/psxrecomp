@@ -734,6 +734,10 @@ class ProjectService:
         from .script_branches import validate
         validate(self, identifier, value)
 
+    def _validate_worldmap_menu(self, identifier: str, value: dict) -> None:
+        from .worldmap_authoring import validate
+        validate(self, identifier, value)
+
     def _branch_context(self, identifier: str):
         from importer.branch_authoring import BranchAuthoringContext
         return BranchAuthoringContext(self._dialogue_context(identifier))
@@ -1487,6 +1491,10 @@ class ProjectService:
             return
         if command.get('type') == 'set_branch':
             from .script_branches import apply
+            apply(self, command)
+            return
+        if command.get('type') == 'set_worldmap_menu':
+            from .worldmap_authoring import apply
             apply(self, command)
             return
         if command.get('type') == 'import_script_operand_bundle':
@@ -2394,8 +2402,14 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells", "WorldMapMenu"}:
                 raise ProjectError("Unsupported authored component")
+            if 'WorldMapMenu' in components:
+                if set(components) != {'WorldMapMenu'}:
+                    raise ProjectError('Global world-map menu cannot contain field-actor components')
+                result._validate_worldmap_menu(identifier, components['WorldMapMenu'])
+                result.overrides[identifier] = deepcopy(components)
+                continue
             if 'RegionBounds' in components:
                 value = result._validate_region_bounds(identifier, components['RegionBounds'])
                 if value is not None:
@@ -2692,6 +2706,12 @@ class ProjectService:
     def authored_assets(self) -> list[dict]:
         """Project-wide authored references, independent of derived resource caches."""
         records = []
+        worldmap = self.overrides.get('worldmap://legaia/menu', {}).get('WorldMapMenu')
+        if worldmap:
+            records.append(dict(id='worldmap://legaia/menu', kind='worldmap', scene_id=None,
+                source_scene='Global menu', name='World-map landmarks',
+                changes=[f"Landmark records: {len(worldmap['entries'])} authored rows"],
+                authored={'WorldMapMenu': deepcopy(worldmap)}))
         for scene_id, document in sorted(self.imports.items()):
             environment = self.overrides.get(scene_id, {}).get("Environment")
             collision = self.overrides.get(scene_id, {}).get("Collision")
@@ -2818,7 +2838,7 @@ class ProjectService:
                                         "Position template"], "authored": deepcopy(template)})
         source_digests = {}
         for record in records:
-            if record['id'] not in self.overrides:
+            if record['id'] not in self.overrides or record['scene_id'] is None:
                 continue
             scene_id = record['scene_id']
             if scene_id not in source_digests:

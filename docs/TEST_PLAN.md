@@ -7,6 +7,32 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Source-qualified global landmark authoring (2026-10-02):** The world-map
+workspace edits the 20 existing SCUS menu records with separate Retail,
+Authored, Current and reviewed Proposed values. Existing name/discovery,
+CDNAME destination and encoded X/Y fields have a duplicate-safe 2D diagram,
+exact byte review, Apply/reset, Undo/Redo and Save/Open. Authored asset links and
+normal Build reports reopen the source row. Normal Build emits a guarded
+126-byte SCUS data overlay, with independent whole-executable reconstruction;
+field placement composition retains both overlays and unchanged imports.
+Experimental Export disc rejects this global component explicitly.
+
+Name and discovery consumers are now qualified by retail static analysis.
+Destination and X/Y meanings remain reference interpretations; drawing,
+travel, discovery activation and gameplay are not verified. The table has 20
+rows, terminator row 20 and two padding bytes before 16 immutable name slots.
+See [landmark authoring workflow and evidence](legaia-worldmap-authoring.md).
+
+Validation: 36 selected Python tests passed with the private retail disc and no
+skips; two Node suites, both changed-module syntax checks and 16 browser
+workflows passed. Browser page/HTTP errors and game-launch requests were zero.
+The saved browser package independently reconstructs the executable with only
+file byte 0x6429C changed 96-to97 (row 0 X), while fresh scene imports still match.
+Review exposes field changes, byte offsets and the candidate hash; draft gates,
+reset/history/persistence, 540px layout and Build-to-source navigation passed.
+Private proof is in `local-output/sdk-20260909/worldmap-authoring-20261002/`.
+The full SDK and gameplay acceptance remain incomplete.
+
 **Source-qualified field branch authoring (2026-10-02):** The script workspace
 now links a selectable source-flow diagram to disassembly and reviews existing
 JMP, conditional, bounding-box, flag-word and ordinary system-flag destinations.

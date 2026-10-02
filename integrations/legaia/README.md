@@ -4,6 +4,12 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+The global **World-map landmarks** workspace now authors existing SCUS menu
+records through reviewed Apply/reset, ordinary history and Save/Open, and normal
+Build. Source name/discovery consumers are statically qualified; destination and
+encoded X/Y meanings remain reference interpretations. Drawing, travel and
+gameplay acceptance are deferred. See [workflow and evidence](../../docs/legaia-worldmap-authoring.md).
+
 From the framework repository root:
 
 ```powershell
