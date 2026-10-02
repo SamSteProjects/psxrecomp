@@ -7,6 +7,21 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Imported project Asset Database (2026-10-02):** The primary browser uses
+source-qualified project inventories with retained shared memberships, scene
+filters, field search, pagination and canonical cross-scene inspectors. The
+Town01/Dolk2/map01 audit returns 3,637 identities and 3,703 memberships with
+explicit partial coverage. It preserves populated source/material caches,
+authored values, selection, Undo/Redo entries and saved files. Source freshness
+ignores ordinary navigation and rejects authored drift. The focused backend,
+HTTP dispatch checks total 18 passing Python tests. Two Node suites, both
+changed-module syntax checks and 19 integrated browser checks passed. Private
+evidence retains exact P2 owner/PC focus, canonical tool handoffs, authored
+invalidation/Undo, stale action rejection and reviewed 540px layout. Page/HTTP
+errors and game-launch requests were zero. This read-only inventory feature adds no
+gameplay edit or new gameplay verification requirement. Complete format and
+runtime coverage remain pending. See [workflow](legaia-project-assets.md).
+
 **Source-qualified global landmark authoring (2026-10-02):** The world-map
 workspace edits the 20 existing SCUS menu records with separate Retail,
 Authored, Current and reviewed Proposed values. Existing name/discovery,

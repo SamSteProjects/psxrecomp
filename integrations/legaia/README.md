@@ -4,6 +4,13 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+The primary Asset Database can explicitly refresh **Imported project resources**,
+filter a source scene, search every retained membership and page the inventory.
+Shared IDs keep separate source records; Details chooses a membership before
+opening existing inspectors. Discovery preserves project data and active caches.
+Coverage remains partial and does not imply runtime residency. See the
+[project asset workflow](../../docs/legaia-project-assets.md).
+
 The global **World-map landmarks** workspace now authors existing SCUS menu
 records through reviewed Apply/reset, ordinary history and Save/Open, and normal
 Build. Source name/discovery consumers are statically qualified; destination and

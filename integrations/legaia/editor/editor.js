@@ -42,6 +42,7 @@ import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {mountScriptFacing} from '/script-facing.js';
 import {mountScriptBranches} from '/script-branches.js';
 import {mountWorldmapAuthoring} from '/worldmap-authoring.js';
+import {mountProjectAssets,projectAssetVariant,qualifyProjectCatalogVariant} from '/project-assets.js';
 import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,MAX_REVIEW_BYTES} from '/runtime-review.js';
 import {mountActorPlacementBatch,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '/actor-placement-batch.js';
 const $ = (id) => document.getElementById(id);
@@ -51,6 +52,7 @@ const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 100
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
 let worldmapControls=null,worldmapDraftPending=false;
+let projectAssetControls=null;
 let sceneResourceSelection=null;
 let scenePlacementMode=false,scenePlacementBoxMode=false,scenePlacementSelection=[],scenePlacementKey=null,scenePlacementInspection=null,scenePlacementTool=null;
 let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null,actorGroupRangeAnchor=null,actorBoxMode=false;
@@ -602,6 +604,7 @@ function setBusy(value) {
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
+  assetPrevious.disabled=value||assetPage===0;assetNext.disabled=value||assetPage>=assetPages-1;
   document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||((button.dataset.animationEdit==='true'||button.dataset.inspectorEdit==='true')&&state.project?.mode!=='edit'));
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
   if($('npc-drafts-button'))$('npc-drafts-button').disabled=value;
@@ -614,7 +617,7 @@ function setBusy(value) {
   $('redo-button').disabled=value || worldmapDraftPending || !state.history?.can_redo;
   buildButton.disabled=value || worldmapDraftPending || !state.capabilities?.build || !canEdit();
   if($('build-review-button'))$('build-review-button').disabled=value||worldmapDraftPending||!state.capabilities?.build_review;
-  $('save-button').disabled=value||worldmapDraftPending;worldmapControls?.updateState();
+  $('save-button').disabled=value||worldmapDraftPending;worldmapControls?.updateState();projectAssetControls?.updateState();
   renderRunStatus();renderBuildStatus();
   document.querySelectorAll('[data-axis],[data-component-property]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
@@ -1193,13 +1196,19 @@ function renderHierarchy(){
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
-assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option><option value="flag">Flag references</option><option value="transition">Transitions</option><option value="collision">Collision</option><option value="trigger">Triggers</option><option value="region">Regions</option><option value="worldmap">World-map landmarks</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
+assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option><option value="flag">Flag references</option><option value="transition">Transitions</option><option value="collision">Collision</option><option value="trigger">Triggers</option><option value="region">Regions</option><option value="worldmap">World-map landmarks</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
 $('assets').before(assetTools);
-const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Textures are inspected with models. Scripts, dialogue, audio and standalone texture catalogs are not available here.</p>';$('assets').after(assetScope);
+const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Choose active scene resources or explicitly refresh imported project resources. Coverage and source memberships distinguish supported imported metadata from runtime state.</p>';$('assets').after(assetScope);
 mountScriptOperandBundle({after:assetTools,getState:()=>state,context:()=>JSON.stringify([resourceStateKey(),state.project?.mode,state.authored_assets]),canEdit:canEditDialogue,busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true)});
 const assetDetails=document.createElement('dialog');assetDetails.id='asset-details';document.body.append(assetDetails);
+let assetPage=0,assetPages=1,assetPageSignature=null;
+const assetPager=document.createElement('div');assetPager.className='dialog-actions';assetPager.dataset.assetPages='';assetPager.style.flexWrap='wrap';
+const assetPrevious=document.createElement('button'),assetNext=document.createElement('button'),assetPageStatus=document.createElement('span');
+assetPrevious.type=assetNext.type='button';assetPrevious.textContent='Previous assets';assetNext.textContent='Next assets';assetPageStatus.setAttribute('role','status');
+assetPager.append(assetPrevious,assetPageStatus,assetNext);$('assets').before(assetPager);assetPager.hidden=true;
+assetPrevious.onclick=()=>{if(busy||assetPage<=0)return;assetPage--;renderAssets();};assetNext.onclick=()=>{if(busy||assetNext.disabled)return;assetPage++;renderAssets();};
 $('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
-const assetSearchHelp=document.createElement('details');assetSearchHelp.id='asset-search-help';assetSearchHelp.innerHTML='<summary>Search filters</summary><p>Use name:, id:, type:, scene:, model:, confidence: or provenance:. Combine terms to narrow results; quote phrases and prefix a term with - to exclude it.</p><p>Examples: <code>type:model scene:town01 confidence:confirmed</code> · <code>name:&quot;Actor 0012&quot; -type:script</code>. Confidence searches recorded claims; a match does not confirm every property. Model filters include recorded imported and authored references, without proving runtime use. Resources cover the refreshed scene.</p>';assetTools.append(assetSearchHelp);
+const assetSearchHelp=document.createElement('details');assetSearchHelp.id='asset-search-help';assetSearchHelp.innerHTML='<summary>Search filters</summary><p>Use name:, id:, type:, scene:, model:, confidence: or provenance:. Combine terms to narrow results; quote phrases and prefix a term with - to exclude it.</p><p>Examples: <code>type:model scene:town01 confidence:confirmed</code> · <code>name:&quot;Actor 0012&quot; -type:script</code>. Confidence searches recorded claims; a match does not confirm every property. Model filters include recorded imported and authored references, without proving runtime use. Project scope searches all retained imported memberships; active scope covers the refreshed scene.</p>';assetTools.append(assetSearchHelp);
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
 const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key,state.scene_flag_state_key,state.scene_transition_state_key,state.scene_region_state_key,state.scene_trigger_state_key]);
 let flagResourceDialog=null,transitionResourceDialog=null;
@@ -1371,16 +1380,18 @@ async function refreshResources(){
   finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
 }
 function assetRecords(){
-  const records=new Map([
+  const projectScope=projectAssetControls?.scope()==='project';
+  const records=new Map((projectScope?projectAssetControls.records():[
     ...(state.assets ?? []).map(asset=>({id:asset.id,type:asset.kind ?? 'model',label:asset.name ?? asset.label ?? `Model ${asset.id.split('/').at(-1)}`,source:asset.source_record?.prot_entry_name ?? asset.scope ?? 'Imported',data:asset})),
     ...entities().map(actor=>({id:actor.id,type:'actor',label:actor.name ?? actor.id,source:state.scene?.name ?? state.scene?.id,sceneId:state.scene?.id,data:actor})),
     ...(state.scenes ?? []).map(scene=>({id:scene.id,type:'scene',label:scene.name ?? scene.id,source:scene.name ?? scene.id,data:scene})),
     ...resourceRecords.map(record=>({id:record.semantic_id,type:record.asset_kind,label:record.name ?? record.semantic_id,source:record.scope?.startsWith('global-')?record.scope:(record.source_record?.prot_entry_name ?? state.scene?.name),sceneId:state.scene?.id,data:record}))
-  ].map(record=>[record.id,record]));
+  ]).map(record=>[record.id,record]));
   for(const authored of state.authored_assets ?? []){
     if(typeof authored.id!=='string'||!['actor','model','texture','template','script','scene','worldmap'].includes(authored.kind))continue;
     const assetId=authored.kind==='script'?(authored.script_id ?? authored.id):authored.id,existing=records.get(assetId);
-    records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
+    if(projectScope&&projectAssetControls.filter()!=='all'&&!existing&&authored.scene_id!==projectAssetControls.filter())continue;
+    records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:existing?.projectMembership?existing.sceneId:authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
   }
   return [...records.values()];
 }
@@ -1403,9 +1414,19 @@ function showAssetDetails(record){
   assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
   $('asset-source-data').textContent=JSON.stringify(source,null,2);
+  if(record.projectMembership){
+    const membership=document.createElement('section'),label=document.createElement('label'),choice=document.createElement('select'),note=document.createElement('p');
+    membership.dataset.projectAssetMembership='';label.textContent='Imported source membership';choice.setAttribute('aria-label','Imported source membership');
+    for(const variant of record.projectMembership.variants){const option=document.createElement('option');option.value=variant.scene_id;option.textContent=(state.scenes??[]).find(scene=>scene.id===variant.scene_id)?.name??variant.scene_id;choice.append(option);}
+    choice.value=record.sceneId;choice.disabled=busy||record.projectMembership.variants.length<2||projectAssetControls?.filter()!=='all';
+    note.className='field-note';note.textContent='Each source membership retains its own recorded bindings and provenance. Choose a source before opening its inspector; membership does not prove runtime use.';
+    const key=record.projectMembership.sourceKey;
+    choice.onchange=()=>{if(busy||key!==state.project_assets_source_key||!projectAssetControls?.chooseVariant(record.id,choice.value))return;const next=assetRecords().find(item=>item.id===record.id);if(next){assetDetails.close();showAssetDetails(next);}};
+    label.append(choice);membership.append(label,note);$('asset-source-data').parentElement.before(membership);
+  }
   if(state.capabilities?.asset_references&&record.type!=='template'){
     const button=document.createElement('button');button.textContent='Inspect asset references…';button.id='inspect-asset-references';const key=state.asset_reference_source_key;
-    button.onclick=()=>{if(busy||key!==state.asset_reference_source_key)return;assetDetails.close();openAssetReferences({record,initialScope:record.sceneId&&record.sceneId!==state.scene?.id&&!['actor','model','scene'].includes(record.type)?'project':'active',getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onNavigate:async node=>{
+    button.onclick=()=>{if(busy||key!==state.asset_reference_source_key)return;assetDetails.close();openAssetReferences({record,initialScope:record.sceneId&&record.sceneId!==state.scene?.id?'project':'active',getState:()=>state,busy:()=>busy,onError:error=>notify(error.message,true),onNavigate:async node=>{
       if(!node.available||!(state.scenes??[]).some(scene=>scene.id===node.scene_id))throw new Error('Reference source scene is not imported.');
       if(node.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:node.scene_id}))return;
       if(!['actor','model','scene'].includes(node.kind))await refreshResources();
@@ -1498,8 +1519,25 @@ function showAssetDetails(record){
   }
   $('close-asset-details').onclick=()=>assetDetails.close();assetDetails.showModal();
 }
+function projectAssetContext(){return state.capabilities?.project_assets?{projectPath:state.project.path,sourceKey:state.project_assets_source_key,scenes:(state.scenes??[]).map(({id,name})=>({id,name})),activeSceneId:state.scene?.id??null}:null;}
+async function resolveProjectAsset(record){
+  if(!record.projectMembership)return record;
+  const variant=projectAssetVariant(record,projectAssetContext()),expected=record.projectMembership.sourceKey;
+  if(record.sceneId!==state.scene?.id&&!await api('/api/scene',{scene_id:record.sceneId}))return null;
+  if(expected!==state.project_assets_source_key)throw new Error('Project sources changed during navigation. Refresh project resources.');
+  if(variant.source_catalog_key!==null){
+    await refreshResources();
+    if(resourceKey!==resourceStateKey())throw new Error('The selected source catalog could not be verified. Refresh scene resources and retry.');
+    const fresh=resourceRecords.find(row=>row.semantic_id===record.id&&row.asset_kind===record.type);
+    qualifyProjectCatalogVariant(variant,fresh,state.scene_preview_source_key);
+  }
+  const current=assetRecords().find(row=>row.id===record.id);
+  if(!current?.projectMembership||current.sceneId!==variant.scene_id||current.projectMembership.sourceKey!==expected)throw new Error('The selected source membership is no longer current. Refresh project resources.');
+  return current;
+}
 async function activateAsset(record,action=null){
   if(busy)return;
+  try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
   if(action==='inspect-asset-trigger-cells'){await inspectTriggerCells(record);return;}
   if(record.type==='worldmap'){await worldmapControls?.open(record.id==='worldmap://legaia/menu'?null:record.id);return;}
@@ -1548,18 +1586,26 @@ function inspectTransitionResource(record){
 }
 function renderAssets(){
   synchronizeResources();
+  const projectScope=projectAssetControls?.scope()==='project';
   const list=$('assets'),category=$('asset-category').value;let query=[],searchError=null;try{query=parseAssetQuery($('asset-search').value);}catch(error){searchError=error.message;}
   $('asset-search').setAttribute('aria-invalid',String(!!searchError));
   assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor and partition-two scripts, dialogue, source-scoped flag reference groups, decoded transition assets and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
-  const records=assetRecords(),filtered=searchError?[]:records.filter(record=>(category==='all'||(category==='authored'?!!record.authoredRecord:record.type===category&&(category!=='actor'||record.sceneId===state.scene?.id)))&&assetMatchesQuery(record,query));
+  if(projectScope)assetScope.querySelector('p').textContent='Imported project resources retain each recorded source scene and its provenance. Choose a source membership in Details before opening a shared asset. Discovery verifies imported sources without changing project data. Partial or unavailable coverage is listed above; residency, reachability and current playback remain unobserved.';
+  const records=assetRecords(),filtered=searchError?[]:records.filter(record=>(category==='all'||(category==='authored'?!!record.authoredRecord:record.type===category&&(category!=='actor'||projectScope||record.sceneId===state.scene?.id)))&&assetMatchesQuery(record,query));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=searchError??`${filtered.length} / ${records.length} records`;
-  for(const record of filtered){
+  const pageSignature=JSON.stringify([projectScope,projectAssetControls?.filter(),state.project_assets_source_key,category,$('asset-search').value]);
+  if(pageSignature!==assetPageSignature){assetPage=0;assetPageSignature=pageSignature;}
+  const pages=Math.max(1,Math.ceil(filtered.length/128));assetPages=pages;assetPage=Math.min(assetPage,pages-1);
+  assetPager.hidden=!projectScope;assetPrevious.disabled=busy||assetPage===0;assetNext.disabled=busy||assetPage>=pages-1;
+  assetPageStatus.textContent=`Page ${assetPage+1} / ${pages} · ${filtered.length} matching assets`;
+  const visible=projectScope?filtered.slice(assetPage*128,(assetPage+1)*128):filtered;
+  for(const record of visible){
     const row=document.createElement('div');row.className='asset-result';
     const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
     card.disabled=busy;card.onclick=()=>activateAsset(record);
     const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
   }
-  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=searchError??(category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue','flag','transition','collision','trigger','region'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.');list.append(p);}
+  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=searchError??(category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):projectScope&&!projectAssetControls.sourceReport()?'Use Refresh project resources to verify the imported project inventory.':['texture','animation','script','dialogue','flag','transition','collision','trigger','region'].includes(category)&&!resourceKey&&!projectScope?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.');list.append(p);}
 }
 const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dialog';document.body.append(fieldDialog);
 const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
@@ -4084,3 +4130,8 @@ worldmapControls=mountWorldmapAuthoring({after:$('resource-refresh'),
   busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true),
   onDraftChange:pending=>{if(worldmapDraftPending===pending)return;worldmapDraftPending=pending;setBusy(busy);},
   onInspectDestination:label=>{if(busy||worldmapDraftPending)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}});
+
+const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
+projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
+  getUnavailableReason:()=>state.project_assets_unavailable_reason,
+  onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});

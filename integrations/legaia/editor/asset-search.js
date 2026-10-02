@@ -16,7 +16,7 @@ export function assetSearchIndex(record){
     if(typeof value==='string'){if(value.startsWith('asset://')&&value.includes('/models/'))models.push(value);return;}
     if(Array.isArray(value)){for(const item of value)visit(item,key);}else if(typeof value==='object'){for(const [name,item] of Object.entries(value))visit(item,name);}};
   visit(record);if(record.type==='model')models.push(record.id);
-  const fields={name:[record.label,data.name],id:[record.id],type:[record.type,data.asset_kind],scene:[record.sceneId,record.source,record.authoredRecord?.source_scene,data.source_record?.prot_entry_name],model:models,confidence:confidences,
+  const fields={name:[record.label,data.name],id:[record.id],type:[record.type,data.asset_kind],scene:[record.sceneId,record.source,record.authoredRecord?.source_scene,data.source_record?.prot_entry_name,...(record.projectMembership?.scene_ids??[])],model:models,confidence:confidences,
     provenance:[data.source_record,data.claims,components.RetailMetadata,record.authoredRecord?.source_record]};
   return Object.fromEntries([['all',values(record).toLowerCase()],...Object.entries(fields).map(([key,items])=>[key,items.map(values).join(' ').toLowerCase()])]);
 }

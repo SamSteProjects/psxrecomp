@@ -24,9 +24,12 @@ it. Provenance searches source records, claims and evidence metadata.
 
 Unknown field prefixes, missing values, unclosed quotes, more than 32 terms or
 more than 2048 characters show a search error and no results. Correcting the
-query restores results. Category filters still apply. Resources remain limited
-to the refreshed active scene; models and authored records retain existing
-project-wide scope. Search does not decode new resources or modify project data.
+query restores results. Category filters still apply. Active scope searches the
+refreshed scene; [imported project scope](legaia-project-assets.md) searches the
+explicitly refreshed project index. A `scene:` match includes every retained
+source membership of a shared ID, even when another membership is selected in
+Details. The source-scene selector restricts the displayed inventory and fixes
+its variant. Search does not decode new resources or modify project data.
 
 Validation on 2026-10-01: all 14 Node checks and all 17 editor module syntax
 checks passed. Retail-source browser verified field combinations, model-reference

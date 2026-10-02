@@ -10,4 +10,6 @@ assert.deepEqual(parseAssetQuery(''),[]);assert.deepEqual(parseAssetQuery('"unkn
 assert.deepEqual(parseAssetQuery('name:"say \\"hi\\""'),[{field:'name',text:'say "hi"',exclude:false}]);
 for(const query of ['name:','"unclosed','-','unknown:value','x'.repeat(2049),Array(33).fill('word').join(' ')])assert.throws(()=>parseAssetQuery(query),undefined,query);
 assert(!assetMatchesQuery({id:'asset',data:{}},parseAssetQuery('confidence:unknown')));assert(assetMatchesQuery({id:'asset',data:{}},parseAssetQuery('-confidence:confirmed')));
+const shared={...record,sceneId:'scene://town01',projectMembership:{scene_ids:['scene://town01','scene://map01']}};
+assert(assetMatchesQuery(shared,parseAssetQuery('scene:map01')));assert(!assetMatchesQuery(shared,parseAssetQuery('-scene:map01')));
 console.log('Asset field, phrase, URI, exclusion, recorded confidence, provenance, bounds and immutable-record checks passed.');

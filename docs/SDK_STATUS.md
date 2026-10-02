@@ -2,6 +2,28 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Imported project Asset Database (2026-10-02):** The primary asset browser now
+offers explicit project discovery, source-scene filtering, searches across all
+retained memberships, and pages of 128 rows. Shared IDs retain complete per-scene
+variants; Details selects one source membership before opening existing tools.
+Cross-scene derived inspection refreshes and compares that source catalog first.
+Discovery uses detached views and does not change imports, authored state,
+selection, history, saved files or active caches. Navigation retains the index;
+source or authored changes invalidate it and require a new refresh.
+
+The Town01/Dolk2/map01 source audit returns 3,637 unique identities and 3,703
+memberships, with all three inventories explicitly partial. Counts do not imply
+complete format coverage, runtime residency, actor spawning or gameplay parity.
+See [project asset workflow and limits](legaia-project-assets.md). Private
+evidence is under `local-output/sdk-20260909/project-assets-20261002/`.
+
+Validation: 18 selected Python tests, two Node suites, both changed-module syntax
+checks and 19 integrated browser checks passed. Source discovery preserves
+populated caches and saved files; exact P2 owner/PC focus and canonical tool
+handoffs passed. A private edit followed by Undo verifies invalidation and stale
+action rejection without Save/Build. Controls and the source inspector fit
+540px. Page/HTTP errors and game-launch requests were zero.
+
 **Source-qualified global landmark authoring (2026-10-02):** The world-map
 workspace edits the 20 existing SCUS menu records with separate Retail,
 Authored, Current and reviewed Proposed values. Existing name/discovery,
