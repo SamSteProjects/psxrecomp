@@ -542,6 +542,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/project-copy.js": ("project-copy.js", "text/javascript"),
                  "/scene-selection-sets.js": ("scene-selection-sets.js", "text/javascript"),
                  "/scene-placement-group.js": ("scene-placement-group.js", "text/javascript"),
+                 "/scene-placement-selection.js": ("scene-placement-selection.js", "text/javascript"),
                  "/environment-layout.js": ("environment-layout.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),

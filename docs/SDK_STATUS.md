@@ -2,6 +2,23 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Placement rectangle selection (2026-10-01):** Box select placements now
+selects visible imported actor and static-decoration meshes through one
+depth-tested renderer ID pass. Drag replaces the selection; Ctrl/Command adds,
+and an empty rectangle clears it. Hidden entities/layers, ground, NPC drafts and
+placed scenery are excluded. Results are canonical and bounded to128, with
+atomic rejection preserving the previous selection. Hierarchy and focused
+Inspector stay synchronized; the selection feeds existing mixed placement
+review and saved scene selections. Escape, camera, resize and stale source
+cancel gestures without a project command. Eleven focused Python checks passed
+in3.214s; all33 Node files and34 editor syntax checks passed. Actual2×-DPI
+pointer replacement/addition, single-actor focus, empty selection, both layer
+filters, cancellation and fresh review handoff passed with zero page errors;
+screenshot inspected. Saved bytes/history stayed unchanged. Private evidence:
+`local-output/sdk-20260909/scene-placement-box-20261001/`. No game launched.
+This selection-only feature introduces no new gameplay gate. Historical548
+predates it; the full SDK objective remains incomplete.
+
 **Mixed placement viewport handles (2026-10-01):** Retained Proposed
 actor/static-decoration groups now expose X/Z handles. Every drag snaps to a
 relative 64-unit offset, holding each displayed height and rotation; release

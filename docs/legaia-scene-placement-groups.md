@@ -1,5 +1,17 @@
 # Mixed scene placement groups
 
+Use **Box select placements** to drag a rectangle over visible imported actor
+and static-decoration meshes. Selection uses depth-tested pixels; hidden and
+fully occluded meshes are not selected. Drag replaces the group, Ctrl/Command adds,
+and Shift-drag pans. An empty rectangle clears the group. At most128 placements
+can be selected; an oversized result preserves the previous group. This tool
+requires loaded models in the Authored scene and excludes ground, NPC drafts
+and placed scenery. Escape, camera/viewport changes and stale source cancel the
+gesture. Selection changes no authored data or Undo history. The focused
+Inspector and hierarchy remain synchronized; use **Move scene placement group**
+for a mixed selection or **Saved scene selections** to retain its identities.
+
+
 In an authored imported field scene, choose **Select scene placements** and click
 imported actors and static decorations in the hierarchy or viewport to toggle
 membership. The focused object remains available in the Inspector; selected

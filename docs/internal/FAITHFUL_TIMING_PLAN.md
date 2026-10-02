@@ -213,6 +213,26 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Visible mixed placement rectangle selection
+
+Previous goal turn was progress: committed reviewed mixed viewport handles at
+`d1f22432`. Re-read both goal specifications and checked current source before
+this bounded offline editor workflow. Parent owns editor/server integration,
+architecture, docs and final verification; subagent owns only the new pure
+selection helper and its focused Node test. Box select placements uses existing
+bounded depth-tested ID picking for imported actors and static decorations,
+canonical replace/add selections up to128, synchronized hierarchy/Inspector,
+and existing review/saved-selection handoff. Escape/source/camera/resize guards
+withdraw gestures; no imported/authored data or runtime mechanisms changed.
+Eleven focused Python tests passed in3.214s; all33 Node tests and34 syntax checks
+passed. Actual2×-DPI retail browser pointers verified replace/Ctrl-add, empty
+clear, single-actor focus, both visibility layers, cancellation and review;
+zero page errors and unchanged saved bytes/history. Screenshot inspected.
+Private evidence: `local-output/sdk-20260909/scene-placement-box-20261001/`.
+No game launched. Gameplay remains deferred; no new gameplay gate for selection.
+Historical548 predates this feature. Full16-layer SDK acceptance remains open.
+
+
 ### 2026-10-01 — Mixed placement viewport X/Z handles
 
 Completed the next offline transform workflow: Proposed actor/static-decoration
