@@ -79,4 +79,16 @@ def inspector_schema():
     ]
     worldmap['notes']=['Menu pixels, not scene coordinates. Current discovery state and gameplay reachability are unobserved.']
     worldmap['actions'].append({'id':'inspect-landmark-destination','label':'Inspect destination source','capability':'worldmap_source_navigation','when':['data','destination_source_label']})
+    schema['components']['ProjectSettings']={
+        'label':'Project settings','layout':'read-only-properties',
+        'properties':[
+            {'id':'name','label':'Name','path':['name'],'type':'string','state':'authored-through-command','authoring':{'minimum_length':1,'maximum_length':120,'set_command':'rename_project'}},
+            {'id':'path','label':'Project folder','path':['path'],'type':'string','state':'read-only-project'},
+            {'id':'disc_path','label':'Retail source','path':['disc_path'],'type':'string','state':'read-only-source'},
+            {'id':'disc_identity','label':'Disc identity','path':['disc_identity'],'type':'string','state':'read-only-retail'},
+            {'id':'imported_scene_count','label':'Imported scenes','path':['imported_scene_count'],'type':'integer','state':'derived'},
+            {'id':'active_scene','label':'Active scene','path':['active_scene'],'type':'asset-reference','state':'derived'},
+            {'id':'mode','label':'Mode','path':['mode'],'type':'string','state':'editor-state'},
+        ],'actions':[{'id':'rename-project','label':'Rename project…','capability':'project_settings','requires_edit':True}],
+        'notes':['Rename changes project metadata and future package identity. Save persists it; Undo restores the previous name. Imported content and authored assets retain their identities.']}
     return schema

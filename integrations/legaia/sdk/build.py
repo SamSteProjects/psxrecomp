@@ -882,7 +882,7 @@ def _build_project(project, output_dir) -> dict:
             feature_description += ' Textures: layout-compatible payloads; no resource relocation.'
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
-        f"name = {json.dumps(project.name + package_suffix)}",
+        f"name = {json.dumps(project.name + package_suffix, ensure_ascii=False)}",
         'author = "Local SDK project"', f"description = {json.dumps(description)}",
         'license = "Private user-owned retail derivative; not for redistribution"', 'resolver = "declarative"',
         "", "[[target]]", 'game_id = "SCUS-94254"', f'disc_sha256 = "{disc_hash}"',

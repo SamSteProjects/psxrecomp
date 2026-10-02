@@ -1299,6 +1299,10 @@ class ProjectService:
     def command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'rename_project':
+            from .project_settings import rename
+            rename(self,command)
+            return
         if command.get('type') == 'import_script_operand_bundle':
             from .script_operand_bundle import apply
             apply(self,command)
@@ -1983,6 +1987,10 @@ class ProjectService:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
         entry = source.pop()
         value = deepcopy(entry[field])
+        if entry.get('target') == 'project_name':
+            self.name=value
+            target.append(entry)
+            return
         if entry.get('target') in ('entity_overrides','actor_draft_batch'):
             collection = self.actor_drafts if entry['target']=='actor_draft_batch' else self.overrides
             for identifier, components in value.items():
@@ -2519,7 +2527,8 @@ class ProjectService:
                                                          "limitations": ["Only verified plain-text runs are writable; controls and record boundaries remain fixed. Source capacity is rechecked on edit/build."]},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
-        return {"inspector_schema": inspector_schema(), "project": {"name": self.name, "path": str(self.root), "disc_path": self.disc_path, "dirty": self.dirty, "unsaved_sections": self.unsaved_sections, "mode": self.mode},
+        from .project_settings import view as project_settings
+        return {"inspector_schema": inspector_schema(), "project_settings": project_settings(self), "project": {"name": self.name, "path": str(self.root), "disc_path": self.disc_path, "dirty": self.dirty, "unsaved_sections": self.unsaved_sections, "mode": self.mode},
                 "placement_build_issues": self.placement_build_issues(),
                 "scene": {"id": self.active_scene, "name": document["scene"]["name"] if document else None, "entities": entities},
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
@@ -2541,5 +2550,5 @@ class ProjectService:
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
                                 "Build supports representable X/Z placements; authored height and facing cannot yet be serialized."],
-                "capabilities": {"project_navigation": True, "edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True,
+                "capabilities": {"project_settings": True, "project_navigation": True, "edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True,
                                  "live_mode": False, "build": False, "model_preview": False}}

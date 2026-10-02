@@ -3,6 +3,19 @@
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
 
+**Project settings inspector (2026-10-01):** Settings now uses SDK
+property/action metadata for name, folder, retail source identity, scene count,
+active scene and mode. Source/path values remain read-only. A validated rename
+command supports dirty tracking, one Undo/Redo, Save/Open, no-op and stale-name
+rejection without modifying imported content or authored assets. Browser proved
+one quoted Unicode rename, persistence/history, stale-form withdrawal and zero
+page errors; screenshot inspected and baseline restored. Independent reopen
+retained four drafts and normal no-draft builds preserved every game-data
+payload. The Unicode probe exposed invalid surrogate escapes in package TOML;
+manifest names now emit literal UTF-8 with valid escaping. Fourteen focused
+Python checks, all21 Node files and23 syntax checks passed. No game launched;
+checks postdate integrated475. See [Project settings](legaia-project-settings.md).
+
 **Latest integrated offline checkpoint (2026-10-01):** Retail-enabled
 Python discovery passed **475 tests in 279.577 seconds**, exit0, no skips, on
 unchanged clean committed source `9084e5454bd8e191f4f4b03e01f4c82497564619`.

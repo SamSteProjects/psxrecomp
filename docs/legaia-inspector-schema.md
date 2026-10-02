@@ -174,3 +174,25 @@ withdraw navigation. The previous bespoke landmark properties/buttons and
 redundant authored-open buttons for these types are removed. Card shortcuts
 remain. Specialized edit forms, full project settings and live actor identity
 are still separate work; this does not add runtime writes or serializers.
+
+
+## Project settings
+
+**Project settings inspector (2026-10-01):** Settings now uses SDK
+property/action metadata for name, folder, retail source identity, scene count,
+active scene and mode. Source/path values remain read-only. A validated rename
+command supports dirty tracking, one Undo/Redo, Save/Open, no-op and stale-name
+rejection without modifying imported content or authored assets. Browser proved
+one quoted Unicode rename, persistence/history, stale-form withdrawal and zero
+page errors; screenshot inspected and baseline restored. Independent reopen
+retained four drafts and normal no-draft builds preserved every game-data
+payload. The Unicode probe exposed invalid surrogate escapes in package TOML;
+manifest names now emit literal UTF-8 with valid escaping. Fourteen focused
+Python checks, all21 Node files and23 syntax checks passed. No game launched;
+checks postdate integrated475. See [Project settings](legaia-project-settings.md).
+
+The ProjectSettings contract defines read-only source/project properties and a
+registered Edit-only rename action. The bounded name adapter rejects arbitrary
+command metadata; ProjectService owns history and stale review validation.
+Project creation/opening and runtime launch configuration retain their existing
+workspaces.

@@ -1,3 +1,4 @@
+import {mountProjectSettings} from '/project-settings.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
@@ -554,6 +555,7 @@ function notify(message, error=false) {
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{$('toast').hidden=true;},error?8500:3200);
 }
 function setBusy(value) {
+  if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   busy=value;updateActorGroupSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
@@ -711,6 +713,7 @@ function authored(entity){return (entity.authored_components?.length??0)>0 || !!
 function showDialog(id){const d=$(id);d.querySelector('.dialog-error')?.replaceChildren();d.showModal();}
 document.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog').close()));
 $('project-button').onclick=()=>{ $('project-name-input').value=state.project?.name ?? 'Legaia project'; $('project-path-input').value=state.project?.path ?? '';showDialog('project-dialog'); };
+mountProjectSettings({after:$('project-button'),getState:()=>state,busy:()=>busy,api,onError:error=>notify(error.message,true)});
 for(const id of ['import-button','empty-import']) $(id).onclick=()=>{if(!$('disc-input').value)$('disc-input').value=state.project?.disc_path??'';showDialog('import-dialog');};
 $('project-form').onsubmit=async event=>{event.preventDefault();await api('/api/project/new',{name:$('project-name-input').value,path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project created.'});};
 $('open-project').onclick=async()=>{if(!$('project-path-input').reportValidity())return;await api('/api/project/open',{path:$('project-path-input').value},{dialog:$('project-dialog'),success:'Project opened.'});};

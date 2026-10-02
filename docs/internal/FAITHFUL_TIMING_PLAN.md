@@ -213,6 +213,21 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — SDK project settings and valid Unicode package names
+
+Added ProjectSettings metadata inspector with immutable source/path properties
+and Edit-only name adapter. Project rename command supports bounded valid Unicode,
+name/root review identity, no-op, dirty state, scalar Undo/Redo and Save/Open.
+Retail browser passed one quoted/non-BMP rename, history/persistence and stale
+form rejection, unchanged authored content, zero errors; baseline restored and
+screenshot inspected. Independent reopen retained four drafts; detached no-draft
+Build preserved every other payload and parsed renamed TOML. Fixed existing
+manifest surrogate-pair escaping exposed by the Unicode name probe. 14 focused
+Python checks, 21 Node files and23 editor syntax checks passed. Report/status/
+matrix/inspector and project settings guides updated. No game launched or disc
+installed; full goal incomplete, gameplay deferred. Postdates integrated475.
+
+
 ### 2026-10-01 — Integrated SDK checkpoint after raw ANM Build
 
 Retail-enabled discovery passed475 Python tests in279.577s (wall280.994),
