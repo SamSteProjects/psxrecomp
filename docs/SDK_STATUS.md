@@ -2,6 +2,20 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Central flag-reference assets (2026-10-02):** Source-scoped flag groups
+now appear in Asset Database search, a shared Inspector, and Active/Project
+script dependency graphs. The Inspector shows retail/authored/effective sites,
+coverage and exact-PC navigation for P1/P2 owners. A dedicated operand-state
+key invalidates stale annotations without changing geometry; project flag
+keys now include authored operands. Fresh Town01/Dolk2/map01 sources yielded
+899 groups/2,142 sites; source browsing preserves project/saved state.
+43 focused retail-enabled Python tests passed in20.085s;36 Node files and36
+syntax checks passed. Browser P1/P2 exact-PC navigation, operand layers,
+Undo/Redo/Save/Clear, stale-view closure and Active/Project references passed
+with no page or unexpected HTTP errors. Runtime variables, story names and
+unseen paths remain unresolved. See [flag asset workflow](legaia-flag-assets.md). Gameplay remains
+deferred; the full SDK/runtime objective is incomplete.
+
 **Initial animation assignment (2026-10-02):** The actor Inspector now offers
 source-verified same-model clip choices, explicit Review/Apply/Clear and witness
 preview. A separate ActorAnimation component preserves imported channel ownership,

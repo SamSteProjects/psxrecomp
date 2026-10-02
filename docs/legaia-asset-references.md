@@ -1,5 +1,12 @@
 # Asset dependencies and referenced-by navigation
 
+Flag assets now expose one `script_flag_reference` dependency per decoded PC,
+with the inverse source-script relationship under Referenced by. Both Active
+and Project scopes retain script/context/bank/retail-index identities and
+source-import/catalog provenance. Authored effective selectors stay separate
+from retail graph grouping; no runtime variable or story reachability is
+asserted. See [central flag assets](legaia-flag-assets.md).
+
 Shared field clips now expose `reference_pinned_model_clip` dependencies to
 their global models. Model Referenced by lists the inverse relationships. The
 eight supported pairs are party idle/walk for global slots 00f0–00f2 and the

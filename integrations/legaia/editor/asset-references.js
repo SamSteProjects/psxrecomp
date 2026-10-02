@@ -1,7 +1,8 @@
-const kinds=new Set(['scene','actor','model','texture','animation','script','dialogue','collision','trigger','region','worldmap']);
+const kinds=new Set(['scene','actor','model','texture','animation','script','dialogue','flag','collision','trigger','region','worldmap']);
 const relations=new Set(['scene_actor','scene_model_catalog','draft_donor','initial_model','effective_initial_model','actor_script_record','encoded_scene_change','script_dialogue_segment','initial_animation_binding','recorded_model_clip_binding','field_map_table_source','landmark_destination_source','static_material_texture_source']);
 relations.add('effective_initial_animation_binding');relations.add('draft_initial_animation_binding');relations.add('appearance_donor');
 relations.add('reference_pinned_model_clip');
+relations.add('script_flag_reference');
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 const identity=value=>typeof value==='string'&&value.length>0&&value.length<=1024;
 const canonicalScenes=(ids,minimum=1)=>Array.isArray(ids)&&ids.length>=minimum&&ids.length<=64&&ids.every(id=>identity(id)&&id.startsWith('scene://')&&id.length>8)&&new Set(ids).size===ids.length&&JSON.stringify(ids)===JSON.stringify([...ids].sort());
@@ -25,6 +26,11 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
   const edges=new Set();for(const [direction,rows] of [['incoming',value.incoming],['outgoing',value.outgoing]])for(const edge of rows){
     if(!hash(edge.id)||edges.has(edge.id)||!nodes.has(edge.source_id)||!nodes.has(edge.target_id)||!relations.has(edge.kind)||!['imported','effective','authored','decoded'].includes(edge.layer)||edge.runtime_binding!=='not_asserted'||!hash(edge.source_import_sha256)||!identity(edge.scene_id)||direction==='incoming'&&edge.target_id!==assetId||direction==='outgoing'&&edge.source_id!==assetId||edge.layer==='decoded'&&!hash(edge.source_catalog_key)||edge.pc!==undefined&&(!Number.isSafeInteger(edge.pc)||edge.pc<0))throw new Error('Invalid asset reference edge.');
     edges.add(edge.id);
+    if(Object.hasOwn(edge,'flag_reference_evidence')&&edge.kind!=='script_flag_reference')throw new Error('Flag evidence cannot assert another relationship.');
+    if(edge.kind==='script_flag_reference'){
+      const e=edge.flag_reference_evidence;
+      if(edge.layer!=='decoded'||nodes.get(edge.source_id).kind!=='script'||nodes.get(edge.target_id).kind!=='flag'||edge.pc===undefined||!exactKeys(e,['bank','index','scope','extended_target','grouping_layer','operation','mnemonic'])||!['local','global','context','system','extra'].includes(e.bank)||!Number.isSafeInteger(e.index)||e.index<0||e.index>(e.bank==='system'?65535:31)||!identity(e.scope)||e.grouping_layer!=='retail'||!['set','clear','test'].includes(e.operation)||!identity(e.mnemonic)||e.extended_target!==null&&(!Number.isSafeInteger(e.extended_target)||e.extended_target<0||e.extended_target>255)||edge.target_id!==`${edge.source_id.replace('script://','flag-reference://')}/${e.extended_target===null?'current':`extended-${e.extended_target}`}/${e.bank}/${e.index}`)throw new Error('Invalid source-scoped flag reference evidence.');
+    }
     if(edge.kind==='static_material_texture_source'){
       const e=edge.material_evidence;if(edge.layer!=='decoded'||nodes.get(edge.source_id).kind!=='model'||nodes.get(edge.target_id).kind!=='texture'||!e||!Number.isSafeInteger(e.material_index)||e.material_index<0||e.material_index>=32||!Number.isSafeInteger(e.tpage)||e.tpage<0||e.tpage>511||!Number.isSafeInteger(e.clut)||e.clut<0||e.clut>32767||!hash(e.model_source_sha256)||e.evidence!=='static_vram_addresses_not_runtime_residency'||!Array.isArray(e.uv_bounds)||e.uv_bounds.length!==4||e.uv_bounds.some(v=>!Number.isSafeInteger(v)||v<0||v>255)||e.uv_bounds[0]>e.uv_bounds[2]||e.uv_bounds[1]>e.uv_bounds[3])throw new Error('Invalid material address evidence.');
     }

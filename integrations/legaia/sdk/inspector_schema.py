@@ -65,6 +65,7 @@ def inspector_schema():
         'animation': ('AssetAnimation', 'Animation resource', 'animation_preview', 'inspect-asset-animation', 'Inspect animation bindings'),
         'script': ('AssetScript', 'Script resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect script'),
         'dialogue': ('AssetDialogue', 'Dialogue resource', 'actor_script_preview', 'inspect-asset-script', 'Inspect dialogue'),
+        'flag': ('AssetFlag', 'Flag reference group', 'scene_flags', 'inspect-asset-flag', 'Inspect flag reference sites'),
         'collision': ('AssetCollision', 'Collision resource', 'field_map_preview', 'inspect-asset-field', 'Inspect collision'),
         'trigger': ('AssetTrigger', 'Trigger resource', 'field_map_preview', 'inspect-asset-field', 'Inspect trigger'),
         'region': ('AssetRegion', 'Region resource', 'field_map_preview', 'inspect-asset-field', 'Inspect region'),
@@ -82,6 +83,19 @@ def inspector_schema():
             'notes': ['Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
+    flag=schema['components']['AssetFlag']
+    flag['properties'] += [
+        {'id':'script','label':'Source script','path':['data','script_id'],'type':'asset-reference','state':'read-only-retail'},
+        {'id':'bank','label':'Encoded bank','path':['data','bank'],'type':'string','state':'read-only-retail'},
+        {'id':'selector','label':'Retail selector','path':['data','index'],'type':'integer','state':'read-only-retail'},
+        {'id':'scope','label':'Dispatch scope','path':['data','scope'],'type':'string','state':'read-only-retail'},
+        {'id':'sites','label':'Decoded sites','path':['data','reference_count'],'type':'integer','state':'derived'},
+        {'id':'authored_sites','label':'Authored operands','path':['data','authored_reference_count'],'type':'integer','state':'derived'},
+        {'id':'runtime_binding','label':'Runtime binding','path':['data','runtime_binding'],'type':'string','state':'unresolved'},
+    ]
+    flag['notes']=['Groups retain one source script, dispatch context, bank and retail selector.',
+                   'Authored and effective operands are shown at individual sites. Matching selectors across scripts do not prove one runtime variable.',
+                   'Partial paths, unresolved bank widths and system selectors remain explicit. Current values and story names are unknown.']
     worldmap=schema['components']['AssetWorldmap']
     worldmap['properties'] += [
         {'id':'destination','label':'Destination source','path':['data','destination_source_label'],'fallback_paths':[['data','destination_scene_id']],'type':'string','state':'read-only-retail'},

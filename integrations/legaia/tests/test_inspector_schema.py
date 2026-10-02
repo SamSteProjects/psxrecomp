@@ -47,7 +47,7 @@ class InspectorSchema(unittest.TestCase):
 
     def test_asset_inspectors_are_detached_read_only_tool_groups(self):
         schema=inspector_schema()
-        self.assertEqual(set(schema['asset_inspectors']),{'actor','scene','template','worldmap','model','texture','animation','script','dialogue','collision','trigger','region'})
+        self.assertEqual(set(schema['asset_inspectors']),{'actor','scene','template','worldmap','model','texture','animation','script','dialogue','flag','collision','trigger','region'})
         for kind,identifier in schema['asset_inspectors'].items():
             definition=schema['components'][identifier]
             self.assertEqual(definition['layout'],'read-only-properties')

@@ -79,6 +79,7 @@ def refresh_resource_catalog(project) -> dict:
     # Remove stale metadata before attempting a new source read. A failed refresh
     # must never leave a prior catalog presented as the current verified result.
     project.assets.resource_catalogs.pop(project.active_scene, None)
+    flag_key = scene_flag_state_key(project)
     records, limitations = [], []
     with _disc_context(project.disc_path):
         _verify(project, document)
@@ -91,13 +92,35 @@ def refresh_resource_catalog(project) -> dict:
                 catalog = loader(project.disc_path, document["scene"]["name"])
                 records.extend(catalog["assets"])
                 limitations.extend(catalog.get("limitations", []))
+                if kind == 'Scripts and dialogue':
+                    from .flag_assets import build_flag_assets
+                    records.extend(build_flag_assets(catalog, _flag_edits(project, project.active_scene)))
             except RetailImportError as exc:
                 limitations.append(f"{kind} unavailable: {exc}")
-    if key != source_key(project):
+    if key != source_key(project) or flag_key != scene_flag_state_key(project):
         raise ProjectError("Resource source changed during discovery; refresh again")
     if len(records) > 4096:
         raise ProjectError("Resource catalog exceeds the bounded record budget")
-    return project.assets.register_resources(project.active_scene, key, records, limitations)
+    return project.assets.register_resources(project.active_scene, key, records, limitations, flag_state_key=flag_key)
+
+
+def scene_flag_state_key(project) -> str:
+    """Operand annotations have their own freshness key, separate from geometry."""
+    from .project import digest
+    scene = project.active_scene
+    return digest(dict(scene_id=scene, flags={owner: deepcopy(parts['ScriptFlags'])
+                  for owner, parts in project.overrides.items()
+                  if scene and owner.startswith(scene + '/') and 'ScriptFlags' in parts}))
+
+
+def project_flag_state_key(project) -> str:
+    """Project reference annotations include source and authored operand identity."""
+    from .project import digest
+    return digest(dict(project_path=str(project.root), disc_path=project.disc_path,
+                       imports=project.imports,
+                       flags={owner: deepcopy(parts['ScriptFlags'])
+                              for owner, parts in getattr(project, 'overrides', {}).items()
+                              if 'ScriptFlags' in parts}))
 
 
 def _flag_edits(project, scene_id):
@@ -231,24 +254,23 @@ def scene_flag_index(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from .flags import build_flag_index
     document, key = _scene(project)
+    flag_key = scene_flag_state_key(project)
     with _disc_context(project.disc_path):
         _verify(project, document)
         catalog = load_script_asset_catalog(project.disc_path, document["scene"]["name"])
         index = build_flag_index(catalog, _flag_edits(project, project.active_scene))
-    if key != source_key(project):
+    if key != source_key(project) or flag_key != scene_flag_state_key(project):
         raise ProjectError("Scene source changed during flag discovery; refresh again")
-    return {**index, "source_key": key}
+    return {**index, "source_key": key, "flag_state_key": flag_key}
 
 
 def project_flag_index(project) -> dict:
     """Inspect imported scenes without changing selection or inventing shared banks."""
-    import hashlib
-    from importer.core import canonical_json
     from importer.script_catalog import load_script_asset_catalog
     from .flags import build_flag_index
     if not project.disc_path or not project.imports or len(project.imports) > 64:
         raise ProjectError('Project flag discovery requires a disc and 1–64 imported scenes')
-    key = hashlib.sha256(canonical_json(project.imports).encode("utf-8")).hexdigest()
+    key = project_flag_state_key(project)
     authored_snapshot = deepcopy(getattr(project, "overrides", {}))
     groups, scenes = [], []
     authored_count = 0
@@ -273,8 +295,8 @@ def project_flag_index(project) -> dict:
                 coverage[field] += index['coverage'][field]
             scenes.append(dict(scene_id=scene_id,scene_name=name,status='verified',
                                reference_count=index['reference_count'],coverage=index['coverage']))
-    if key != hashlib.sha256(canonical_json(project.imports).encode("utf-8")).hexdigest():
-        raise ProjectError('Imported project sources changed during flag discovery')
+    if key != project_flag_state_key(project):
+        raise ProjectError('Project sources or flag operands changed during flag discovery')
     if authored_snapshot != getattr(project, 'overrides', {}):
         raise ProjectError('Authored project state changed during flag discovery')
     return dict(schema_version='legaia.project-flag-references.v1',read_only=True,

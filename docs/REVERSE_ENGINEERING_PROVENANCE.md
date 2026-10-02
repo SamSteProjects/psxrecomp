@@ -6,6 +6,15 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 central flag assets adapt the existing independent script catalog
+and source-preserving operand writer. Script/context/bank/retail-index identity,
+source hashes/locators and per-PC operations are retained; no reference code,
+new decoder coverage or runtime bank identity is introduced. Local/context,
+global, system-selector and extra-mask evidence remains at the existing pin.
+Fresh three-scene metadata and real operand history/persistence are verified;
+story meanings, current values and execution are unresolved. See
+[flag assets](legaia-flag-assets.md).
+
 The 2026-10-02 initial animation picker reuses independently implemented MAN
 assignment and scene ANM decoders. Fresh Town0b evidence qualifies actors0019
 and0049 sharing scene TMD0102: ANM records13/12, six channels,15/30frames.

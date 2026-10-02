@@ -2,6 +2,20 @@
 
 Current scene-editor status (2026-10-02):
 
+**Central flag-reference assets (2026-10-02):** Source-scoped flag groups
+now appear in Asset Database search, a shared Inspector, and Active/Project
+script dependency graphs. The Inspector shows retail/authored/effective sites,
+coverage and exact-PC navigation for P1/P2 owners. A dedicated operand-state
+key invalidates stale annotations without changing geometry; project flag
+keys now include authored operands. Fresh Town01/Dolk2/map01 sources yielded
+899 groups/2,142 sites; source browsing preserves project/saved state.
+43 focused retail-enabled Python tests passed in20.085s;36 Node files and36
+syntax checks passed. Browser P1/P2 exact-PC navigation, operand layers,
+Undo/Redo/Save/Clear, stale-view closure and Active/Project references passed
+with no page or unexpected HTTP errors. Runtime variables, story names and
+unseen paths remain unresolved. See [flag asset workflow](legaia-flag-assets.md). Gameplay remains
+deferred; the full SDK/runtime objective is incomplete.
+
 **Initial animation assignment (2026-10-02):** The actor Inspector now offers
 source-verified same-model clip choices, explicit Review/Apply/Clear and witness
 preview. A separate ActorAnimation component preserves imported channel ownership,
@@ -586,7 +600,8 @@ Log SHA256: `eed72436dcc91f0631446e3786abeb42a58964fa8e8bfd967c68a33967da7de4`.
 | Capability | Status and verified scope | Remaining work |
 | --- | --- | --- |
 | Script operand JSON files | FUNCTIONAL / OFFLINE. Source-bound authored entries across five supported numeric operand families, reviewed all-or-nothing Apply, one Undo/Redo, Save/Open, exact MAN readback and retail browser workflow. | Same imported owner/source only; no instruction/control-flow/dialogue transfer or clearing of omitted entries. Actual execution and gameplay deferred. |
-| SDK asset inspector tools | FUNCTIONAL / PARTIAL. All twelve catalog record types share SDK property/action metadata and explicit type-specific registered tool handlers: actor, scene, template, worldmap, model, texture, animation, script, dialogue, collision, trigger and region. Details navigation, previews/resource tools and busy/closed guards have Node/browser evidence; Python inspector contracts are included in514. | Specialized editing forms retain existing adapters; runtime/gameplay acceptance remains deferred. |
+| SDK asset inspector tools | FUNCTIONAL / PARTIAL. All thirteen catalog record types share SDK property/action metadata and explicit type-specific registered tool handlers: actor, scene, template, worldmap, model, texture, animation, script, dialogue, flag, collision, trigger and region. Details navigation, previews/resource tools and busy/closed guards have Node/browser evidence; Python inspector contracts are included in514. | Specialized editing forms retain existing adapters; runtime/gameplay acceptance remains deferred. |
+| Central flag-reference assets | FUNCTIONAL / SOURCE-SCOPED. Verified script/context/bank/retail-index groups share Asset Database search, metadata Inspector and per-PC script reference edges. Dedicated annotation keys cover Apply/Clear/Undo; active/project graph navigation and exact P1/P2 source inspection are supported. Fresh three-scene evidence covers899 groups/2,142 sites. | No runtime variable identity, story names, unvisited/controller paths or current values; existing flag source edits retain deferred gameplay acceptance. |
 | Actor group presets | FUNCTIONAL / OFFLINE. Position/appearance/combined preset review across2–128 active-scene imported actors, all-target source/compatibility validation, one atomic Apply/Undo/Redo and Save/Open. Focused tests, Node checks, retail browser and exact full MAN package readback passed. | Absolute saved axes may overlap targets; no instantiation or runtime/visibility/collision guarantees. Normal Build rejects projects containing drafts; gameplay deferred. |
 | Asset browser field search | FUNCTIONAL / OFFLINE. Name/ID/type/scene/model/confidence/provenance filters, phrases and exclusions with bounded strict syntax; imported/authored model users match recorded references. Node and retail browser checks passed, no actor changes or authoring commands. | Active-scene resource scope and existing category limits remain; no aggregate confidence or runtime-use inference. |
 | Mixed scene placement groups | FUNCTIONAL / OFFLINE. Dedicated actor/static-decoration selection,2–128 targets including at least one of each;64-unit X/Z offsets, source-bound table and retained Proposed/Current inspection. Fresh Apply merges actor and Environment changes into one Undo/Redo step and preserves unrelated overrides. Proposed X/Z handles now snap64 and re-review on release; rejection/pending cancellation and source/camera/resize guards preserve the verified draft. See [workflow](legaia-scene-placement-groups.md). | NPC drafts, placed scenery, Y/facing and runtime movement/visibility remain outside this tool. 47 focused Python checks, 31 Node files and 32 syntax checks passed; actual retail browser comparison/history/persistence/cancellation and exact mixed MAN/MAP package checks passed. The 548 checkpoint predates this change. |

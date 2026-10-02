@@ -82,7 +82,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -93,6 +93,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             value['effective_animation_evidence']=deepcopy(animation_evidence)
             value['source_catalog_key']=catalog['source_key']
         if reference_clip_evidence is not None:value['reference_clip_evidence']=deepcopy(reference_clip_evidence)
+        if flag_evidence is not None:value['flag_reference_evidence']=deepcopy(flag_evidence)
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -144,6 +145,16 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             target=record.get('script_id')
             if target in nodes:edge(target,identity,'script_dialogue_segment',scene,'decoded',record.get('pc'))
             else:unresolved+=1
+        elif kind=='flag':
+            from .flag_assets import validate_flag_asset
+            validate_flag_asset(record)
+            target=record['script_id']
+            if target not in nodes or nodes[target]['kind']!='script':
+                raise ProjectError('Flag reference has no verified source script')
+            for reference in record['references']:
+                proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
+                proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
+                edge(target,identity,'script_flag_reference',scene,'decoded',reference['pc'],flag_evidence=proof)
         elif kind=='animation':
             if identity in reference_clips:
                 evidence=reference_clips[identity];model=evidence['model_id']
@@ -254,7 +265,7 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
             if catalog.get('scene_id',scene)!=scene or not isinstance(catalog.get('records'),list):
                 raise ProjectError('Invalid project reference resource catalog')
             for record in catalog['records']:
-                if not isinstance(record,dict) or record.get('kind') not in ('texture','animation','script','dialogue','collision','trigger','region','worldmap'):
+                if not isinstance(record,dict) or record.get('kind') not in ('texture','animation','script','dialogue','collision','trigger','region','worldmap','flag'):
                     raise ProjectError('Invalid project reference resource type')
                 if record.get('name') is not None and (not isinstance(record['name'],str) or len(record['name'])>8192):
                     raise ProjectError('Invalid project reference resource label')

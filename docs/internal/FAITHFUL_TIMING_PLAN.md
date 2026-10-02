@@ -213,6 +213,23 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-02 — Central source-qualified flag assets
+
+The central resource model now includes flag-reference groups, shared Inspector
+metadata, exact P1/P2 instruction navigation and source-qualified per-PC graph
+edges. A separate authored-operand key closes stale views without changing the
+scene geometry key; project flag keys include authored annotations. Fresh
+Town01/Dolk2/map01 discovery covers899 groups/2,142 sites.43 focused Python
+tests and36 Node files/36 syntax checks pass. Imports, saved bytes and history
+remain isolated from discovery; real operand Undo/Redo/Save/Open passes.
+Final browser P1/P2 source navigation, operand history/persistence, stale-view
+closure and active/project graph pass with no page or unexpected HTTP errors.
+
+No core timing, runtime writes or game launch was added. Runtime variables,
+story state, unseen paths and authored gameplay behavior remain unresolved.
+The full SDK/runtime goal remains active, with manual gameplay deferred.
+See [flag asset workflow](../legaia-flag-assets.md).
+
 ### 2026-10-02 — Reviewed initial animation assignment
 
 **Initial animation assignment (2026-10-02):** The actor Inspector now offers

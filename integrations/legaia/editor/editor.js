@@ -15,6 +15,7 @@ import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
+import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
@@ -1152,7 +1153,7 @@ function renderHierarchy(){
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
-assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option><option value="collision">Collision</option><option value="trigger">Triggers</option><option value="region">Regions</option><option value="worldmap">World-map landmarks</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
+assetTools.innerHTML='<label class="asset-search-label"><input id="asset-search" type="search" placeholder="Search ID, type, scene, provenance…" aria-label="Search asset database"></label><select id="asset-category" aria-label="Asset category"><option value="all">All records</option><option value="authored">Authored assets</option><option value="model">Models</option><option value="actor">Actors in active scene</option><option value="scene">Imported scenes</option><option value="texture">Textures</option><option value="animation">Animations</option><option value="script">Scripts</option><option value="dialogue">Dialogue</option><option value="flag">Flag references</option><option value="collision">Collision</option><option value="trigger">Triggers</option><option value="region">Regions</option><option value="worldmap">World-map landmarks</option></select><span id="asset-results" role="status"></span><button id="resource-refresh">Refresh scene resources</button><span id="resource-status" role="status">Resource catalog has not been loaded.</span>';
 $('assets').before(assetTools);
 const assetScope=document.createElement('details');assetScope.className='asset-scope';assetScope.innerHTML='<summary>Catalog scope</summary><p>Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Textures are inspected with models. Scripts, dialogue, audio and standalone texture catalogs are not available here.</p>';$('assets').after(assetScope);
 mountScriptOperandBundle({after:assetTools,getState:()=>state,context:()=>JSON.stringify([resourceStateKey(),state.project?.mode,state.authored_assets]),canEdit:canEditDialogue,busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true)});
@@ -1160,7 +1161,8 @@ const assetDetails=document.createElement('dialog');assetDetails.id='asset-detai
 $('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
 const assetSearchHelp=document.createElement('details');assetSearchHelp.id='asset-search-help';assetSearchHelp.innerHTML='<summary>Search filters</summary><p>Use name:, id:, type:, scene:, model:, confidence: or provenance:. Combine terms to narrow results; quote phrases and prefix a term with - to exclude it.</p><p>Examples: <code>type:model scene:town01 confidence:confirmed</code> · <code>name:&quot;Actor 0012&quot; -type:script</code>. Confidence searches recorded claims; a match does not confirm every property. Model filters include recorded imported and authored references, without proving runtime use. Resources cover the refreshed scene.</p>';assetTools.append(assetSearchHelp);
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
-const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key]);
+const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key,state.scene_flag_state_key]);
+let flagResourceDialog=null;
 $('resource-refresh').onclick=refreshResources;
 const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);
 const projectTransitionsButton=document.createElement('button');projectTransitionsButton.id='project-transitions';projectTransitionsButton.textContent='Project transitions';transitionsButton.after(projectTransitionsButton);projectTransitionsButton.onclick=()=>openSceneTransitions(true);
@@ -1250,11 +1252,13 @@ const flagsButton=document.createElement('button');flagsButton.id='scene-flags';
 const projectFlagsButton=document.createElement('button');projectFlagsButton.id='project-flags';projectFlagsButton.textContent='Project flag references';flagsButton.after(projectFlagsButton);projectFlagsButton.onclick=()=>openFlagReferences(true);
 const flagsDialog=document.createElement('dialog');flagsDialog.id='scene-flags-dialog';document.body.append(flagsDialog);
 let flagsAbort=null;
+const flagContext=(projectWide=false)=>JSON.stringify([resourceStateKey(),projectWide?state.project_flag_state_key:null]);
 flagsDialog.addEventListener('close',()=>{if(flagsAbort){flagsAbort.abort();flagsAbort=null;setBusy(false);}flagsDialog.replaceChildren();});
 flagsButton.onclick=()=>openFlagReferences(false);
 async function openFlagReferences(projectWide=false){
   if(busy||!state.capabilities?.scene_flags)return;
-  const key=resourceStateKey(),controller=new AbortController();flagsAbort=controller;setBusy(true);
+  const key=flagContext(projectWide),controller=new AbortController();flagsAbort=controller;setBusy(true);
+  flagsDialog.dataset.projectWide=String(projectWide);flagsDialog.dataset.sourceContext=key;
   flagsDialog.innerHTML='<div class="dialog-heading"><h2>Flag references</h2><button aria-label="Close flag references">×</button></div><p class="flags-summary">Verifying scene scripts…</p><input type="search" aria-label="Search flag references" placeholder="Search bank, index, script or operation"><div class="flags-results"></div><p class="dialog-error" role="alert"></p>';
   flagsDialog.querySelector('h2').textContent=projectWide?'Project flag references':'Flag references';flagsDialog.querySelector('.flags-summary').textContent=projectWide?'Verifying imported scene scripts…':'Verifying scene scripts…';
   flagsDialog.querySelector('button').onclick=()=>flagsDialog.close();flagsDialog.showModal();
@@ -1262,7 +1266,7 @@ async function openFlagReferences(projectWide=false){
     const response=await fetch(projectWide?'/api/project-flags':'/api/scene-flags',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error??'Flag discovery failed');
     if(controller.signal.aborted||!flagsDialog.open)return;
-    if(key!==resourceStateKey()||(!projectWide&&(result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key))||(projectWide&&(result.project_path!==state.project?.path||JSON.stringify(result.scene_ids)!==JSON.stringify((state.scenes??[]).map(scene=>scene.id).sort())))||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>(projectWide?32768:16384))throw new Error('Flag references do not match the current scene source.');
+    if(key!==flagContext(projectWide)||(!projectWide&&(result.scene_id!==state.scene?.id||result.source_key!==state.scene_preview_source_key||result.flag_state_key!==state.scene_flag_state_key))||(projectWide&&(result.source_key!==state.project_flag_state_key||result.project_path!==state.project?.path||JSON.stringify(result.scene_ids)!==JSON.stringify((state.scenes??[]).map(scene=>scene.id).sort())))||result.read_only!==true||!Array.isArray(result.groups)||result.groups.length>(projectWide?32768:16384))throw new Error('Flag references do not match the current scene source.');
     const summary=flagsDialog.querySelector('.flags-summary'),list=flagsDialog.querySelector('.flags-results'),search=flagsDialog.querySelector('input');
     if(projectWide){const coverage=document.createElement('details');coverage.innerHTML='<summary>Imported scene coverage</summary>';appendResourceTable(coverage,['Scene','Status','References / reason'],result.scenes.map(scene=>[scene.scene_name,scene.status,scene.status==='verified'?String(scene.reference_count):scene.reason]),'No imported scenes.');list.before(coverage);}
     const captured=result.runtime_snapshot,snapshot=document.createElement('details');snapshot.innerHTML='<summary>Captured runtime node flags</summary>';list.before(snapshot);
@@ -1280,7 +1284,7 @@ async function openFlagReferences(projectWide=false){
         const row=document.createElement('section');row.className='resource-provenance';
         row.innerHTML=`<h3>${projectWide?escapeHTML(group.scene_name)+' · ':''}${escapeHTML(group.bank)} ${escapeHTML(group.index)} · ${escapeHTML(group.script_name)}</h3><p>${escapeHTML(group.scope)} · ${escapeHTML(resourceLabel(group.script_status))} · ${group.extended_target===null?'Current script context':`Unresolved extended target ${escapeHTML(group.extended_target)}`}</p><p>${group.references.map(ref=>`${escapeHTML(scriptOffset(ref.pc))}: ${escapeHTML(ref.mnemonic)} (${escapeHTML(resourceLabel(ref.status))}) · Retail ${escapeHTML(ref.retail_index??ref.index)} · Authored ${ref.authored_index==null?'none':escapeHTML(ref.authored_index)} · Effective ${escapeHTML(ref.effective_index??ref.index)}`).join(' · ')}</p><button>Inspect source script</button><details><summary>Source provenance and encoded operands</summary><pre></pre></details>`;
         row.querySelector('pre').textContent=JSON.stringify(group,null,2);
-        const inspect=async(pc=null)=>{if(busy||key!==resourceStateKey())return;flagsDialog.close();if(projectWide&&group.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:group.scene_id}))return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner,false,null,null,pc);};
+        const inspect=async(pc=null)=>{if(busy||key!==flagContext(projectWide))return;flagsDialog.close();if(projectWide&&group.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:group.scene_id}))return;const owner=group.partition===2?{id:group.owner_id,name:group.script_name,partitionTwo:true}:entities().find(entity=>entity.id===group.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}flagsDialog.close();openActorScript(owner,false,null,null,pc);};
         row.querySelector('button').onclick=()=>inspect();
         const references=document.createElement('div');references.className='dialog-actions';
         for(const ref of group.references){const button=document.createElement('button');button.textContent=`Inspect ${scriptOffset(ref.pc)} · ${ref.mnemonic}`;button.onclick=()=>inspect(ref.pc);references.append(button);}
@@ -1294,9 +1298,11 @@ async function openFlagReferences(projectWide=false){
   finally{if(flagsAbort===controller){flagsAbort=null;setBusy(false);}}
 };
 function synchronizeResources(){
+  if(flagsDialog.open&&flagsDialog.dataset.sourceContext!==flagContext(flagsDialog.dataset.projectWide==='true'))flagsDialog.close();
   if(textDialog.open&&textDialog.dataset.sourceContext!==textContextKey(textDialog.dataset.projectWide==='true'))textDialog.close();
   const current=resourceStateKey();
   if(resourceContextKey!==current){
+    if(flagResourceDialog?.open)flagResourceDialog.close();
     if(transitionsDialog.open)transitionsDialog.close();
     if(flagsDialog.open)flagsDialog.close();
     if(textDialog.open)textDialog.close();
@@ -1310,7 +1316,7 @@ function synchronizeResources(){
   textButton.hidden=!state.capabilities?.scene_text_search;textButton.disabled=busy||!state.capabilities?.scene_text_search;
   projectTextButton.hidden=!state.capabilities?.scene_text_search;projectTextButton.disabled=busy||!state.capabilities?.scene_text_search;
   $('resource-refresh').hidden=!state.capabilities?.resource_catalog;$('resource-refresh').disabled=busy||!state.capabilities?.resource_catalog;
-  $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue and field-map metadata.');
+  $('resource-status').textContent=!state.capabilities?.resource_catalog?'Resource catalog is unavailable in this service.':resourceError ?? (resourcePendingKey?'Verifying scene resources…':resourceKey?`${resourceRecords.length} verified resource records`:'Refresh to load textures, animations, scripts, dialogue, flag references and field-map metadata.');
 }
 async function refreshResources(){
   if(busy||!state.capabilities?.resource_catalog)return;
@@ -1321,7 +1327,8 @@ async function refreshResources(){
     const response=await fetch('/api/resource-catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:controller.signal});
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
     if(controller.signal.aborted||key!==resourceStateKey())return;
-    if(result.scene_id!==sceneId||result.source_key!==sourceKey||!Array.isArray(result.records)||result.records.length>4096||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','collision','trigger','region','worldmap'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
+    if(result.scene_id!==sceneId||result.source_key!==sourceKey||result.flag_state_key!==state.scene_flag_state_key||!Array.isArray(result.records)||result.records.length>4096||new Set(result.records.map(record=>record.semantic_id)).size!==result.records.length||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','flag','collision','trigger','region','worldmap'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
+    for(const record of result.records)if(record.asset_kind==='flag')decodeFlagResource(record);
     resourceLimitations=result.limitations ?? [];resourceRecords=[...new Map(result.records.map(record=>[record.semantic_id,{...record,catalog_limitations:result.limitations}])).values()];resourceKey=key;resourcePendingKey=null;renderAssets();
   }catch(error){if(error.name!=='AbortError'&&key===resourceStateKey()){resourceError=error.message;notify(error.message,true);}}
   finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
@@ -1475,13 +1482,22 @@ async function activateAsset(record){
   else if(record.type==='animation')openAnimationResource(record);
   else if(['collision','trigger','region'].includes(record.type))openFieldResource(record);
   else if(['script','dialogue'].includes(record.type))openScriptResource(record);
+  else if(record.type==='flag')inspectFlagResource(record);
   else showAssetDetails(record);
+}
+function inspectFlagResource(record){
+  if(busy||resourceKey!==resourceStateKey())return;
+  const context=resourceStateKey(),snapshot=JSON.stringify(record);
+  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
+  const data=decodeFlagResource(record.data),owner=data.partition===2?{id:data.owner_id,name:data.script_name,partitionTwo:true}:entities().find(entity=>entity.id===data.owner_id);
+  flagResourceDialog=openFlagResource({record,current,busy:()=>busy,canInspect:()=>!!owner&&state.capabilities?.actor_script_preview===true,
+    onInspect:async pc=>{if(!current()||busy||!owner)return false;await openActorScript(owner,false,null,null,pc);return true;},onError:error=>notify(error.message,true)});
 }
 function renderAssets(){
   synchronizeResources();
   const list=$('assets'),category=$('asset-category').value;let query=[],searchError=null;try{query=parseAssetQuery($('asset-search').value);}catch(error){searchError=error.message;}
   $('asset-search').setAttribute('aria-invalid',String(!!searchError));
-  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor and partition-two scripts, dialogue and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor and partition-two scripts, dialogue, source-scoped flag reference groups and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
   const records=assetRecords(),filtered=searchError?[]:records.filter(record=>(category==='all'||(category==='authored'?!!record.authoredRecord:record.type===category&&(category!=='actor'||record.sceneId===state.scene?.id)))&&assetMatchesQuery(record,query));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=searchError??`${filtered.length} / ${records.length} records`;
   for(const record of filtered){
@@ -1490,7 +1506,7 @@ function renderAssets(){
     card.disabled=busy;card.onclick=()=>activateAsset(record);
     const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
   }
-  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=searchError??(category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue','collision','trigger','region'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.');list.append(p);}
+  if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=searchError??(category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):['texture','animation','script','dialogue','flag','collision','trigger','region'].includes(category)&&!resourceKey?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.');list.append(p);}
 }
 const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dialog';document.body.append(fieldDialog);
 const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
