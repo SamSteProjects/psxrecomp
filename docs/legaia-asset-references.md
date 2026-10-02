@@ -1,5 +1,42 @@
 # Asset dependencies and referenced-by navigation
 
+**Reference scope** selects Active scene or Project. Active scene retains the
+original response and refresh behavior below. Project verifies every imported
+scene before decoding existing resource/material relationships in detached
+views. It preserves the project's active scene, selection, authored data,
+history, dirty state and Asset Database caches. Choosing a reference explicitly
+navigates to its supported source scene. Non-active derived assets can open
+Project scope directly from Asset Details.
+
+Shared stable IDs retain both `scene_ids` (recorded source memberships) and
+`navigable_scene_ids` (catalogs which can open the asset). Navigation uses the
+edge's source scene when navigable, otherwise the deterministic primary catalog.
+An external material provider does not become navigable just because another
+scene records a reference to it. Each scene reports its verified import hash,
+resource key, availability and limitations. Available means a catalog was
+returned; unsupported resource kinds and unresolved relationships remain
+explicit. Material diagnostic details select the first source scene in stable
+order; individual material edges retain their own scene and source evidence.
+
+The project response uses `legaia.project-asset-references.v1`. Request body:
+`{"asset_id":"stable ID","scope":"project"}`. Omit scope or use `active` for
+existing `legaia.asset-references.v1`. Unknown fields/scopes reject. Bounds remain
+1–64 imports,16384 nodes,32768 edges and4096 neighborhood edges, with8MiB per-scene
+assembled graphs and responses,32MiB accumulated decoded metadata/merged graph,
+and bounded coverage/limitations. Source identity includes the disc path; drift
+rejects discovery. Changing scope or closing aborts pending requests and ignores
+late responses. Project queries issue no authoring commands and do not save.
+
+Verification:20 focused retail-enabled Python checks/13.948s,33 Node files and34
+syntax checks. Fresh Town01/Dolk2/map01 graph checks preserve complete project and
+caches, independently match source hashes and12 shared material edges, and check
+script/dialogue/animation/landmark references. Browser Active/Project discovery,
+cross-scene navigation, pending Close/stale-source rejection and unchanged saved
+bytes passed with zero errors; screenshot inspected. Private evidence is in
+`local-output/sdk-20260909/project-asset-references-20261001/`. No game launched.
+The following active-scope details and historical evidence remain applicable:
+
+
 Asset Details → **Inspect asset references…** opens a read-only neighborhood of
 recorded relationships. Dependencies follows outgoing references; Referenced by
 follows incoming references. Selecting an available neighbor opens its Asset

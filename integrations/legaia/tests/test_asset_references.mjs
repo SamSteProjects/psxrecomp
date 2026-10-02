@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const code=await readFile(new URL('../editor/asset-references.js',import.meta.url),'utf8');
-const {decodeAssetReferences}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {decodeAssetReferences,assetReferenceNavigationNode}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const hash='a'.repeat(64),root='scene://fixture',actor=root+'/actors/0001';
 const value={schema_version:'legaia.asset-references.v1',asset_id:root,source_key:hash,read_only:true,nodes:[{id:root,kind:'scene',scene_id:root,label:'Fixture',available:true},{id:actor,kind:'actor',scene_id:root,label:'Actor 0001',available:true}],incoming:[],outgoing:[{id:'b'.repeat(64),source_id:root,target_id:actor,kind:'scene_actor',scene_id:root,layer:'imported',runtime_binding:'not_asserted',source_import_sha256:hash}],coverage:{verified_scene_ids:[root],resource_scene_id:root,unresolved_reference_count:1},limitations:['Recorded source only']};
 const result=decodeAssetReferences(value,root,hash);result.nodes[0].label='Detached';assert.equal(value.nodes[0].label,'Fixture');
@@ -11,3 +11,28 @@ const material=structuredClone(value);material.asset_id='asset://model';material
 for(const mutate of [v=>v.outgoing[0].material_evidence.tpage=512,v=>v.outgoing[0].material_evidence.uv_bounds=[2,0,1,1],v=>v.outgoing[0].material_evidence.model_source_sha256='bad',v=>v.outgoing[0].material_evidence.evidence='live',v=>v.material_diagnostics={model_id:v.asset_id,materials:[{status:'confirmed'}]}]){const bad=structuredClone(material);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,bad.asset_id,hash));}
 const clip=structuredClone(value);clip.asset_id=actor;clip.nodes[0]={id:actor,kind:'actor',scene_id:root,label:'Actor',available:true};clip.nodes[1]={id:'animation://fixture/0',kind:'animation',scene_id:root,label:'Clip',available:true};Object.assign(clip.outgoing[0],{source_id:actor,target_id:'animation://fixture/0',kind:'effective_initial_animation_binding',layer:'effective',source_catalog_key:hash,effective_animation_evidence:{donor_entity_id:actor,model_id:'asset://fixture/0',initial_animation_id:2}});decodeAssetReferences(clip,actor,hash);
 for(const mutate of [v=>v.outgoing[0].layer='live',v=>v.outgoing[0].effective_animation_evidence.initial_animation_id=0,v=>v.outgoing[0].effective_animation_evidence.model_id='',v=>v.outgoing[0].source_catalog_key='bad']){const bad=structuredClone(clip);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,actor,hash));}
+
+const other='scene://other',catalogKey='d'.repeat(64),otherHash='e'.repeat(64),otherCatalog='f'.repeat(64);
+const project=structuredClone(material);project.schema_version='legaia.project-asset-references.v1';
+project.coverage={verified_scene_ids:[root,other],resource_scene_id:root,unresolved_reference_count:0,scenes:[{scene_id:root,source_import_sha256:hash,status:'available',resource_source_key:catalogKey,reason:null,limitations:[]},{scene_id:other,source_import_sha256:otherHash,status:'available',resource_source_key:otherCatalog,reason:null}]};
+for(const node of project.nodes){node.scene_ids=[root,other];node.navigable_scene_ids=[root,other];}
+project.outgoing[0].source_catalog_key=catalogKey;
+project.outgoing.push({...structuredClone(project.outgoing[0]),id:'1'.repeat(64),scene_id:other,source_import_sha256:otherHash,source_catalog_key:otherCatalog});
+const shared=decodeAssetReferences(project,project.asset_id,hash,'project');assert.deepEqual(shared.nodes[1].scene_ids,[root,other]);shared.nodes[1].scene_ids.pop();assert.equal(project.nodes[1].scene_ids.length,2);
+assert.throws(()=>decodeAssetReferences(project,project.asset_id,hash));assert.throws(()=>decodeAssetReferences(value,root,hash,'project'));assert.throws(()=>decodeAssetReferences(value,root,hash,'all'));
+for(const mutate of [v=>v.source_key='0'.repeat(64),v=>v.coverage.scenes.reverse(),v=>v.coverage.scenes.pop(),v=>v.coverage.scenes[0].source_import_sha256='bad',v=>v.coverage.scenes[0].resource_source_key='bad',v=>v.coverage.scenes[0].reason='unexpected',v=>v.coverage.scenes[0].status='partial',v=>v.coverage.scenes[0].limitations='invalid',v=>v.nodes[0].scene_ids.reverse(),v=>v.nodes[0].scene_ids.push(root),v=>v.nodes[0].scene_ids=[],v=>v.nodes[0].scene_id='scene://unknown',v=>v.nodes[0].scene_ids=[root,'scene://unknown'],v=>v.outgoing[1].source_import_sha256=hash,v=>v.outgoing[1].source_catalog_key=catalogKey,v=>v.nodes[0].scene_ids=[root],v=>{v.coverage.scenes[1].status='unavailable';v.coverage.scenes[1].reason='Unavailable decoder';v.coverage.scenes[1].resource_source_key=null;}]){const bad=structuredClone(project);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,bad.asset_id,hash,'project'));}
+// Imported membership remains navigable when only its derived resource catalog is unavailable.
+const partial=structuredClone(value);partial.schema_version='legaia.project-asset-references.v1';for(const node of partial.nodes){node.scene_ids=[root];node.navigable_scene_ids=[root];}partial.coverage.scenes=[{scene_id:root,source_import_sha256:hash,status:'unavailable',resource_source_key:null,reason:'Resource decoder unavailable'}];decodeAssetReferences(partial,root,hash,'project');
+for(const mutate of [v=>v.coverage.scenes[0].reason='',v=>v.coverage.scenes[0].resource_source_key=hash,v=>v.outgoing[0].source_import_sha256=otherHash]){const bad=structuredClone(partial);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,root,hash,'project'));}
+const external=structuredClone(partial);external.nodes[1]={id:'scene://external',kind:'scene',scene_id:'scene://external',scene_ids:['scene://external'],navigable_scene_ids:[],label:'External scene',available:false};external.outgoing[0].target_id='scene://external';external.outgoing[0].kind='encoded_scene_change';external.outgoing[0].layer='imported';decodeAssetReferences(external,root,hash,'project');
+console.log('project asset reference decoder: shared membership, per-scene provenance, partial coverage and stale/scope rejection passed');
+
+const sharedPartial=structuredClone(project);sharedPartial.nodes[1].navigable_scene_ids=[other];sharedPartial.nodes[1].scene_id=other;decodeAssetReferences(sharedPartial,sharedPartial.asset_id,hash,'project');
+assert.equal(sharedPartial.nodes[1].scene_ids.includes(root),true);assert.equal(sharedPartial.nodes[1].navigable_scene_ids.includes(root),false);
+for(const mutate of [v=>v.nodes[1].navigable_scene_ids=[],v=>v.nodes[1].navigable_scene_ids=[other,root],v=>v.nodes[1].navigable_scene_ids=[other,other],v=>v.nodes[1].navigable_scene_ids=['scene://unknown'],v=>v.nodes[1].scene_id=root,v=>v.nodes[1].available=false,v=>delete v.nodes[1].navigable_scene_ids]){const bad=structuredClone(sharedPartial);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,bad.asset_id,hash,'project'));}
+console.log('project asset reference navigation: membership does not imply local catalog availability');
+
+assert.equal(assetReferenceNavigationNode(sharedPartial.nodes[1],sharedPartial.outgoing[0],'project').scene_id,other);
+assert.equal(assetReferenceNavigationNode(sharedPartial.nodes[1],sharedPartial.outgoing[1],'project').scene_id,other);
+assert.equal(assetReferenceNavigationNode(project.nodes[1],project.outgoing[1],'project').scene_id,other);
+assert.equal(assetReferenceNavigationNode(project.nodes[1],project.outgoing[1]).scene_id,root);

@@ -213,6 +213,31 @@ on a fixed region -> next.
 
 ## 5. Status / Log (update every session)
 
+### 2026-10-01 — Project-wide derived asset reference workflow
+
+Previous implementation turn made progress; interrupted follow-up completed
+browser evidence. The latest interruption stopped before documentation/commit,
+so this turn revalidated the preserved terminal/browser receipts and completed
+the available save step. Parent owns specification, server/editor integration,
+performance correction and central verification; isolated agents own backend
+assembly/tests and reference dialog/decoder tests respectively. Project scope
+uses detached fresh scene catalogs with exact scene-qualified edge provenance,
+separate shared-ID source/navigation memberships, explicit partial/unavailable
+coverage and bounded metadata. Parent source hashing memo removes repeated full
+import serialization within an assembly call; fresh reports remain identical.
+20 focused retail-enabled Python tests passed/13.948s,33 Node and34 syntax checks
+passed and captured hashes match final source. Fresh Town01/Dolk2/map01 check
+passed/21.566s with12 material edges and complete project/cache/file preservation;
+script, dialogue, animation and world-map references/source hashes independently
+checked. Actual browser HTTP Active/Project scope, cross-scene source navigation,
+Close/late and stale-source checks passed with zero errors; screenshot inspected.
+Private evidence: `local-output/sdk-20260909/project-asset-references-20261001/`.
+Temporary browser is terminal. Temporary server handle missing after interruption;
+authoritative port4445 check confirms no listener. No game launched. Historical
+565 checkpoint predates this workflow. No new gameplay gate for read-only
+inspection; full16-layer SDK/runtime/Live acceptance remains incomplete.
+
+
 ### 2026-10-01 — Integrated565 SDK checkpoint
 
 Previous goal turn was progress: committed visible mixed rectangle selection at

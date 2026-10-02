@@ -2,6 +2,29 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Project-wide asset references (2026-10-01):** Asset Details → Inspect
+asset references now offers Active scene and Project scopes. Project discovery
+freshly verifies all imported scenes and assembles existing decoded relationships
+through detached scene/catalog views, preserving project state and caches. Shared
+stable IDs retain source memberships separately from navigable catalogs, with
+scene-qualified edges and deterministic cross-scene navigation. Coverage exposes
+source hashes, partial-catalog limitations and explicit unavailable reasons;
+recorded relationships do not establish runtime residency or reachability.
+Scope/Close cancellation and stale-source guards prevent late results. Strict
+HTTP shapes and bounded graphs/metadata retain the existing active response.
+Twenty focused retail-enabled Python tests passed in13.948s; all33 Node files
+and34 syntax checks passed with hashes matched to final source. Fresh Town01,
+Dolk2 and map01 discovery checked actor/script/dialogue/animation/world-map links,
+12 shared-model material edges and exact source hashes; complete project/cache
+and saved bytes stayed unchanged. This final retail check took21.566s. Per-call
+import-hash reuse produces an identical report to the earlier repeated-hashing
+implementation. Actual browser Active/Project HTTP responses, three-scene scope,
+source navigation, pending Close and stale-source rejection passed with zero
+page errors; screenshot inspected. Private evidence:
+`local-output/sdk-20260909/project-asset-references-20261001/`.
+No game launched. This read-only feature needs no new gameplay gate. The565
+checkpoint predates it; full SDK/runtime acceptance remains incomplete.
+
 **Integrated offline checkpoint (2026-10-01):** Full retail-enabled SDK
 regression passed565 Python tests in250.658s (252.001s wall time), exit0 with no
 skips, on unchanged clean source `43994eb25f5125da4378f2cb970b311931745bf9`.

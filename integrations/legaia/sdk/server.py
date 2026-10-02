@@ -854,9 +854,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,export_file(self.server.project))
                     return
                 if route == '/api/asset-references':
-                    if set(body)!={'asset_id'}:raise ProjectError('Asset references require stable asset ID only')
-                    from .asset_references import inspect
-                    self._json(200,inspect(self.server.project,body['asset_id']))
+                    if set(body) not in ({'asset_id'}, {'asset_id','scope'}):raise ProjectError('Asset references require a stable asset ID and optional scope')
+                    scope=body.get('scope','active')
+                    if scope not in ('active','project'):raise ProjectError('Asset reference scope must be active or project')
+                    from .asset_references import inspect,inspect_project
+                    self._json(200,(inspect_project if scope=='project' else inspect)(self.server.project,body['asset_id']))
                     return
                 if route == '/api/build-review':
                     if body:raise ProjectError('Build review takes no fields')
