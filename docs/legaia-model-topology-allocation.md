@@ -1,8 +1,10 @@
 # General model topology allocation work
 
 The new allocation reader reports qualified native packet/vector extents for
-Retail and Current. It is available through `sdk.model_allocation.source` and is
-not yet connected to the Inspector. It does not allocate or edit bytes.
+Retail and Current. In the model viewer, choose **Inspect native allocation**,
+then select **Allocation layer** and **Model object**. **Stored packet groups**
+expands the group counts, offsets and packet strides. The dialog is also backed
+by `sdk.model_allocation.source`. It does not allocate or edit bytes.
 
 Each object's report identifies group offsets, counts and packet strides; the
 explicit terminal word; the primitive-stream boundary; and vector-array extents.
@@ -27,8 +29,22 @@ rewritten consistently, and carrier neighbors must remain independently verified
 The current same-length content and Retail-removal bindings cannot represent that
 change. Removal-derived spare space alone is not a general allocation solution.
 
-The next integration is the read-only allocation Inspector, followed by a new
-geometry binding and source-bound relocation codec. Review/Apply, history,
+The allocation Inspector is connected and source-qualified. The next implementation
+is a new geometry binding and source-bound relocation codec. Review/Apply, history,
 Save/Open, preview, GLB and normal Build need that same identity model. Native
 appearance, pose/culling and shared-instance acceptance remain later gameplay
 checks; successful source inspection is not evidence for those behaviors.
+
+
+Inspector validation checks detached metadata, source hashes and identity,
+stream/terminator/tail equations, group continuity/count sums, vector extents
+and global span overlap. Retail and Current are checked independently, so the
+read-only metadata model does not assume equal byte lengths for future relocation.
+Stale or late requests cannot populate another source context. Closing aborts
+inspection and releases its busy state. The HTTP endpoint accepts only model
+identity and current source key; it offers no Apply or allocation command.
+
+Six actual retail browser/HTTP checks verified all four Retail/Current objects,
+packet-group disclosure,540px layout, source agreement and invalid requests.
+Project files, authored state and history remained unchanged. Private UI proof:
+`local-output/sdk-20260909/model-allocation-inspector-20261003/parent/`.

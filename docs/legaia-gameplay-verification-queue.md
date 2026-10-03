@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Model allocation Inspector (2026-10-03): read-only Retail/Current extent
+inspection adds no gameplay gate. The source endpoint and editor dialog are
+connected; general new faces, authored topology identities and relocation
+remain offline implementation work. No geometry or allocation was authored,
+installed or played by this checkpoint.
+
 Model allocation foundation (2026-10-03): extent inspection adds no gameplay
 gate and authors no geometry. General new faces remain unimplemented. Offline
 work still needs authored-face identities, model/carrier relocation, Inspector
