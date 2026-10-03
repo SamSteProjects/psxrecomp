@@ -6,6 +6,15 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 world walk-ground importer follows the pinned kingdom-bundle and
+field_objects::build_walk_heightfield conventions. Independent raw retail
+qualification verifies canonical/overlapping PROT carriers, complete MAP spans,
+slot-2 MAN floor LUTs and slot-0 TIM packs. Ordered source geometry, UVs and cell
+selectors match all three kingdoms. Static atlas matching retains missing
+palettes explicitly. No guessed mesh placement, menu-to-world mapping, overview
+geometry or runtime parity is claimed; the reference pin remains unchanged.
+Private evidence: `local-output/sdk-20260909/worldmap-geometry-20261002/`.
+
 The 2026-10-02 normal-reference extension uses the same independently qualified
 lit packet offsets and eight-byte SVECTOR table bounds. Blender flat/Gouraud
 rewiring changes only the selected reference byte, preserves the complete

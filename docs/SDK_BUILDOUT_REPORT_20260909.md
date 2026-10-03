@@ -8,6 +8,27 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**World-map walk-ground workspace (2026-10-02):** The editor's **World ground**
+resource action now opens source-backed textured 3D ground for map01, map02 and
+map03 through the shared scene renderer. The importer qualifies the overlapping
+kingdom carriers, exact 0x12000 MAP footprint, slot-2 MAN floor LUT and slot-0
+TIM atlas. Orbit/zoom, Frame ground, Top view, Wireframe and source details are
+read-only; source changes withdraw retained geometry and closing pending reads
+releases controls. Imported field selection, authored state, history and Build
+files remain unchanged. Source Y-down coordinates flip only at the renderer.
+Overview/MAPDSIP, placed world objects, sky/fog and runtime parity remain pending.
+See [world-ground workflow](legaia-worldmap-geometry.md).
+
+Validation: six focused Python cases passed with the private retail disc (no
+skips), plus Node source/geometry/texture guards and frontend syntax checks.
+Independent readback matches every ordered vertex, triangle, UV and visible-cell
+selector in all three kingdoms. Visible cells are 16,251/16,381/16,374; source
+texture coverage is 23/23, 17/18 and 15/16. Missing palettes stay explicit, without
+fallback textures. Eight browser checks cover actual three-kingdom rendering,
+camera controls, 540px layout, stale withdrawal, pending-close and unchanged
+project files. No game was launched, no disc output written. Private proof:
+`local-output/sdk-20260909/worldmap-geometry-20261002/`.
+
 **Source-bound GLB normal-reference editing (2026-10-02):** Fresh profile v5
 adds `_LEGAIA_SOURCE_NORMAL_INDEX` for selecting an existing normal within the
 source object. Immutable corners retain packet ownership; flat references and

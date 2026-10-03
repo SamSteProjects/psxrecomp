@@ -4,6 +4,13 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+Use **World ground** near the resource controls to inspect textured retail
+walk-ground geometry for map01/map02/map03. Orbit, zoom, frame, top view and
+wireframe preserve the current field project. Source hashes and partial texture
+coverage are inspectable; this does not establish overview geometry, placed
+world objects or gameplay parity. See the
+[world-ground workflow](../../docs/legaia-worldmap-geometry.md).
+
 Fresh external model GLB exports now use profile v5. Reconnect existing lit
 face normals through `_LEGAIA_SOURCE_NORMAL_INDEX`, copying the chosen source
 normal's raw XYZ into all corresponding aliases. Review and Apply retain

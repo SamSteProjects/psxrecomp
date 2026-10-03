@@ -6,6 +6,15 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`importer/worldmap_geometry.py` resolves canonical walk kingdom MAP/MAN/TIM
+carriers and derives the full source floor-nibble surface with existing terrain
+math. `sdk/worldmap_geometry.py` qualifies the current project source key, returns
+bounded geometry/texture data and never authors state. The World ground workspace
+uses `SceneRenderer` with a display-only Y flip and no placement overrides.
+Selection changes clear retained kingdoms; source/mode changes withdraw results.
+Menu coordinates, runtime actors and unplaced mesh pools are not interpreted as
+world transforms. See [world ground](legaia-worldmap-geometry.md).
+
 Model GLB profile v5 resolves existing normal reference IDs through immutable
 packet corners. `model_normal_references.py` qualifies aligned SVECTOR offsets
 and object table bounds. The replacement writer admits these words only with

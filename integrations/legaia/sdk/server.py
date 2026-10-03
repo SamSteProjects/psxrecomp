@@ -159,6 +159,7 @@ class EditorServer(ThreadingHTTPServer):
         from .worldmap_authoring import state_key as worldmap_state_key
         state['worldmap_authoring_state_key'] = worldmap_state_key(self.project)
         state['capabilities']['worldmap_authoring'] = bool(self.project.disc_path and self.project.imports)
+        state['capabilities']['worldmap_geometry'] = bool(self.project.disc_path and self.project.imports)
         from .project_assets import source_key as project_assets_source_key
         state['project_assets_source_key'] = None
         state['project_assets_unavailable_reason'] = None
@@ -710,6 +711,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
+                 "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
@@ -758,6 +760,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Project resource discovery accepts only an empty object')
                     from .project_assets import inspect
                     self._json(200, inspect(self.server.project))
+                    return
+                if route == '/api/worldmap-geometry':
+                    if set(body) != {'scene', 'source_key'}:
+                        raise ProjectError('World ground inspection accepts only scene and source_key')
+                    from .worldmap_geometry import inspect
+                    self._json(200, inspect(self.server.project, body['scene'], body['source_key']))
                     return
                 if route in ('/api/worldmap-authoring', '/api/worldmap-authoring-review'):
                     expected = set() if route == '/api/worldmap-authoring' else {'entity_id', 'values'}

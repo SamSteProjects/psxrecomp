@@ -47,6 +47,7 @@ import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {mountScriptFacing} from '/script-facing.js';
 import {mountScriptBranches} from '/script-branches.js';
 import {mountWorldmapAuthoring} from '/worldmap-authoring.js';
+import {mountWorldmapGeometry} from '/worldmap-geometry.js';
 import {mountProjectAssets,projectAssetVariant,qualifyProjectCatalogVariant} from '/project-assets.js';
 import {captureRuntimeReview,parseRuntimeReview,compareRuntimeReviews,MAX_REVIEW_BYTES} from '/runtime-review.js';
 import {mountActorPlacementBatch,toggleActorGroupSelection,mergeActorGroupSelection,actorGroupRange} from '/actor-placement-batch.js';
@@ -58,7 +59,7 @@ let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabi
 let busy = false, toastTimer, lastSceneId, grid = true;
 let sceneAnimationController=null;
 let sceneAnimationWriteGuard=false;
-let worldmapControls=null,worldmapDraftPending=false;
+let worldmapControls=null,worldmapGeometryControls=null,worldmapDraftPending=false;
 let projectAssetControls=null;
 let sceneResourceSelection=null;
 let scenePlacementMode=false,scenePlacementBoxMode=false,scenePlacementSelection=[],scenePlacementKey=null,scenePlacementInspection=null,scenePlacementTool=null;
@@ -621,6 +622,7 @@ function setBusy(value) {
   if($('export-npc-drafts'))$('export-npc-drafts').disabled=value||!canEdit();
   if($('export-project-button'))$('export-project-button').disabled=value||!canEdit();
   draftOutputReview.updateState();
+  worldmapGeometryControls?.updateState();
   document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#draft-donor-form select,#draft-donor-form button,#duplicate-npc-draft,#repeat-npc-draft,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || worldmapDraftPending || !state.history?.can_undo;
@@ -4265,6 +4267,8 @@ worldmapControls=mountWorldmapAuthoring({after:$('resource-refresh'),
   busy:()=>busy,setBusy,api,onError:error=>notify(error.message,true),
   onDraftChange:pending=>{if(worldmapDraftPending===pending)return;worldmapDraftPending=pending;setBusy(busy);},
   onInspectDestination:label=>{if(busy||worldmapDraftPending)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}});
+
+worldmapGeometryControls=mountWorldmapGeometry({after:$('resource-refresh'),getState:()=>state,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});
 
 const projectAssetHost=document.createElement('div');projectAssetHost.style.gridColumn='1 / -1';assetTools.prepend(projectAssetHost);
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
