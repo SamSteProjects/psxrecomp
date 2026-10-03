@@ -161,6 +161,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['worldmap_authoring'] = bool(self.project.disc_path and self.project.imports)
         state['capabilities']['worldmap_geometry'] = bool(self.project.disc_path and self.project.imports)
         state['capabilities']['worldmap_export'] = bool(self.project.disc_path and self.project.imports)
+        state['capabilities']['worldmap_placements'] = bool(self.project.disc_path and self.project.imports)
         from .project_assets import source_key as project_assets_source_key
         state['project_assets_source_key'] = None
         state['project_assets_unavailable_reason'] = None
@@ -717,6 +718,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),
                  "/worldmap-geometry.js": ("worldmap-geometry.js", "text/javascript"),
+                 "/worldmap-placement-editor.js": ("worldmap-placement-editor.js", "text/javascript"),
                  "/worldmap-scene.js": ("worldmap-scene.js", "text/javascript"),
                  "/project-assets.js": ("project-assets.js", "text/javascript"),
                  "/script-facing.js": ("script-facing.js", "text/javascript"),
@@ -772,6 +774,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('World ground inspection accepts only scene and source_key')
                     from .worldmap_geometry import inspect
                     self._json(200, inspect(self.server.project, body['scene'], body['source_key']))
+                    return
+                if route in ('/api/worldmap-placements','/api/worldmap-placement-review'):
+                    expected={'scene','source_key'} | ({'record_id','values','shared_record'} if route.endswith('-review') else set())
+                    if set(body)!=expected:
+                        raise ProjectError('World placement inspection requires exact source scope and reviewed transform fields')
+                    from .worldmap_placements import snapshot,review
+                    result=(review(self.server.project,body['scene'],body['source_key'],body['record_id'],body['values'],body['shared_record'])[0]
+                        if route.endswith('-review') else snapshot(self.server.project,body['scene'],body['source_key']))
+                    self._json(200,result)
                     return
                 if route == '/api/export/worldmap':
                     selected = body.get('scope') == 'selected'

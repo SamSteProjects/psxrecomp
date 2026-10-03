@@ -103,6 +103,7 @@ def package_change_kinds(edits) -> list[str]:
         'shared-scene-animation-record': 'animation channels',
         'source-man-donor-append-candidate': 'source NPC candidates',
         'source-man-draft-composed-overrides': 'NPC scene operand composition',
+        'worldmap-source-record-transform-only': 'world source placement transforms',
     }
     return sorted({('initial actor animation' if edit.get('assignment_kind') == 'ActorAnimation' and edit.get('field') == 'animation_id' else labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data')) for edit in edits})
 
@@ -454,6 +455,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(components, dict) and 'WorldMapPlacements' in components:
+            from .worldmap_placements import validate
+            if set(components) != {'WorldMapPlacements'}:
+                raise BuildError('World placement owner accepts only its source transform component')
+            validate(project,identifier,components['WorldMapPlacements'])
+            continue
         if identifier == 'worldmap://legaia/menu':
             if not isinstance(components, dict) or set(components) != {'WorldMapMenu'}:
                 raise BuildError('Global world-map overrides require only the WorldMapMenu component')
@@ -1036,6 +1043,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 if _hash(original) != overlay.get("expected_sha256") or original == payload:
                     raise BuildError("Texture overlay disagrees with the original disc span")
                 overlays.append({**overlay, "file": f"assets/{scene}-texture-{offset:08x}.bin"})
+    from .worldmap_placements import build as build_world_placements
+    audit_edits.extend(build_world_placements(project,overlays))
     build_kind = "authored" if overlays else "retail"
     ordered = sorted(overlays, key=lambda item: item["offset"])
     if any(a["offset"] + a["size"] > b["offset"] for a, b in zip(ordered, ordered[1:])):
@@ -1134,6 +1143,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         feature_name = 'Authored game data'
         description = 'Private source-qualified world-map landmark records and supported authored game data.'
         feature_description = 'Apply existing landmark menu fields and other audited changes; activation and gameplay remain unverified.'
+    if any(row.get('scope') == 'worldmap-source-record-transform-only' for row in audit_edits):
+        package_suffix = ' authored world source placements'
+        feature_name = 'Authored world source placement transforms'
+        description = 'Private source-qualified world object record offsets and yaw, plus supported authored scene data.'
+        feature_description += ' World transforms are source spawn seeds; script-driven resting positions, visibility and gameplay are unverified.'
     if npc_candidates:
         package_suffix = ' source NPC candidates'
         feature_name = 'Source NPC candidates and authored scene data'

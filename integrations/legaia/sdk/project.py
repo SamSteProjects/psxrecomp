@@ -228,7 +228,7 @@ class ProjectService:
         document = self._document()
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
-                  "authored": "Actor and dialogue edits", "actor_templates": "Actor presets",
+                  "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_overrides": "Texture replacements", "model_overrides": "Model content",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views"}
         return [label for key, label in labels.items()
@@ -1507,6 +1507,10 @@ class ProjectService:
             from .worldmap_authoring import apply
             apply(self, command)
             return
+        if command.get('type') == 'set_worldmap_placement':
+            from .worldmap_placements import apply
+            apply(self, command)
+            return
         if command.get('type') == 'import_script_operand_bundle':
             from .script_operand_bundle import apply
             apply(self,command)
@@ -2416,8 +2420,15 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells", "WorldMapMenu"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
+            if 'WorldMapPlacements' in components:
+                from .worldmap_placements import validate
+                if set(components) != {'WorldMapPlacements'}:
+                    raise ProjectError('World placements cannot contain field-actor components')
+                validate(result, identifier, components['WorldMapPlacements'])
+                result.overrides[identifier] = deepcopy(components)
+                continue
             if 'WorldMapMenu' in components:
                 if set(components) != {'WorldMapMenu'}:
                     raise ProjectError('Global world-map menu cannot contain field-actor components')
@@ -2720,6 +2731,12 @@ class ProjectService:
     def authored_assets(self) -> list[dict]:
         """Project-wide authored references, independent of derived resource caches."""
         records = []
+        for identifier, components in sorted(self.overrides.items()):
+            if 'WorldMapPlacements' in components:
+                binding=components['WorldMapPlacements']
+                records.append(dict(id=identifier,kind='worldmap',scene_id=None,source_scene=binding['scene'],
+                    name=f"{binding['scene']} source placements",changes=[f"Source transform records: {len(binding['entries'])}"],
+                    authored={'WorldMapPlacements':deepcopy(binding)}))
         worldmap = self.overrides.get('worldmap://legaia/menu', {}).get('WorldMapMenu')
         if worldmap:
             records.append(dict(id='worldmap://legaia/menu', kind='worldmap', scene_id=None,
