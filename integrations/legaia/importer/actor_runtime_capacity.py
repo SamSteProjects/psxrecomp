@@ -12,6 +12,8 @@ FUNCTIONS = (
     (0x80020DE0, 424, '7bfae4a45186c97b837e81300c1752077df44c829ec76bc310194bcb812a88aa'),
     (0x80024C88, 116, '6123402c96d799e6c8b6fa24301323ad99643fa0778cbd850a923926eef35429'),
     (0x8003A1E4, 888, 'e4514f0e4eb2743bf8521e958a5bdce5e923b686005ab21635b2ddbe2faecb2b'),
+    (0x8003A55C, 1144, '6414981beba670dcf6f86da8edb5f504fafbc6fa31c8a3650535a229263f5aa7'),
+    (0x8003AB2C, 640, '640253d95ffd1f3d8f5f449f1530ff498f76b5ad2ec88ea921829d2aa8788584'),
     (0x8003AEB0, 3416, 'fb7b106032f9fe83aea53481f855ea2cbf383fd42ae39973541738c59ba7bf05'),
 )
 
@@ -35,7 +37,22 @@ def qualify_actor_pool(executable):
     step = struct.unpack_from('<h', executable, 2048 + 0x80020404 - base)[0]
     return dict(schema_version='legaia.actor-pool-source.v1', executable_sha256=EXECUTABLE_SHA256,
                 node_capacity=highest + 1, node_stride=-step, functions=witnesses,
-                evidence='retail_static_instruction_paths', gameplay_verified=False)
+                evidence='retail_static_instruction_paths', gameplay_verified=False,
+                setup_allocation_sites=[
+                    dict(call_address='0x8003B894', role='initial_anchor', condition='unconditional'),
+                    dict(call_address='0x8003B8D4', role='partition_1_actors',
+                         condition='initial_placement_branch_records_1_through_N1_minus_1'),
+                    dict(call_address='0x8003A70C', role='scenery_actors',
+                         condition='descriptor_flag_4_valid_anchor_and_nonzero_overlay_lookup',
+                         script_execution_before_later_allocations=True),
+                    dict(call_address='0x8003B94C', role='setup_object', condition='unconditional',
+                         allocation_failure_null_guard=True),
+                    dict(call_address='0x8003ABAC', role='global_script_context', condition='unconditional',
+                         allocation_failure_null_guard=False),
+                    dict(call_address='0x8003BB80', role='conditional_setup_object',
+                         condition='scene_data_byte_and_runtime_flag_0x20',
+                         allocation_failure_null_guard=True),
+                ])
 
 
 def assess_initial_placement_capacity(profile, partition_counts):
@@ -56,4 +73,6 @@ def assess_initial_placement_capacity(profile, partition_counts):
                 initial_placement_minimum_nodes=minimum,
                 remaining_after_placement_lower_bound=profile['node_capacity'] - minimum,
                 other_scene_and_script_demand='unverified', runtime_allocation_verified=False,
+                later_setup_allocation_attempts=2,
+                later_setup_attempts_are_additive_capacity=False,
                 interpretation='Lower-bound rejection only; remaining slots are not a safe additional-NPC budget.')

@@ -16,6 +16,8 @@ class ActorPoolAssessmentTests(TestCase):
             self.assertEqual(result['remaining_after_placement_lower_bound'], remaining)
             self.assertFalse(result['runtime_allocation_verified'])
             self.assertEqual(result['other_scene_and_script_demand'], 'unverified')
+            self.assertEqual(result['later_setup_allocation_attempts'], 2)
+            self.assertFalse(result['later_setup_attempts_are_additive_capacity'])
         with self.assertRaisesRegex(ImportError, 'at least 144 nodes'):
             assess_initial_placement_capacity(self.profile(), [36, 144, 39])
         for counts in ([36, True, 39], [36, -1, 39], [36, 54], [36, 32768, 39]):
@@ -29,6 +31,11 @@ class ActorPoolAssessmentTests(TestCase):
             executable = image.read_file(image.find('SCUS_942.54'))
         profile = qualify_actor_pool(executable)
         self.assertEqual((profile['node_capacity'], profile['node_stride']), (143, 216))
-        self.assertEqual(len(profile['functions']), 7)
+        self.assertEqual(len(profile['functions']), 9)
+        paths = {entry['role']: entry for entry in profile['setup_allocation_sites']}
+        self.assertEqual(len(paths), 6)
+        self.assertTrue(paths['scenery_actors']['script_execution_before_later_allocations'])
+        self.assertFalse(paths['global_script_context']['allocation_failure_null_guard'])
+        self.assertTrue(paths['setup_object']['allocation_failure_null_guard'])
         altered = bytearray(executable); altered[2048] ^= 1
         with self.assertRaises(ImportError): qualify_actor_pool(bytes(altered))

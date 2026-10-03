@@ -147,6 +147,9 @@ class RetailNPCPackage(unittest.TestCase):
             self.assertEqual(pool['source']['node_capacity'], 143)
             self.assertEqual(pool['initial_placement_minimum_nodes'], 54)
             self.assertFalse(pool['runtime_allocation_verified'])
+            self.assertEqual(pool['later_setup_allocation_attempts'], 2)
+            self.assertFalse(pool['later_setup_attempts_are_additive_capacity'])
+            self.assertEqual(len(pool['source']['setup_allocation_sites']), 6)
             physical = metadata['physical_owner']
             with _disc_context(project.disc_path) as (_, _, mapping, archive):
                 start, end = _bounded_scene_range(archive, mapping, 'town01')

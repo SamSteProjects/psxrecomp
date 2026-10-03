@@ -21,7 +21,7 @@ The pinned reference stays `d6e64c68ede25813d35db20980da82a1a025549b`;
 | `0x8003A1E4`,888 bytes | Selects the partition-1 record, initializes source placement/context/entry PC and dereferences the allocation result without a null guard. Context ID is partition0 count plus record index. |
 | `0x8003AEB0`,3416 bytes | Reads signed counts at MAN offsets `0x22/0x24/0x26`; allocates an anchor, then loops record indices1..N1−1 in the initial-placement branch. |
 
-Production qualification checks the complete executable hash, bounded load image and all seven complete function hashes before deriving pool constants. Unknown executables reject this NPC normal-Build path rather than receiving assumed capacity. No runtime pool expansion, renderer fix or actor scheduling repair is inferred or installed.
+Production qualification checks the complete executable hash, bounded load image and all nine complete function hashes before deriving pool constants. Unknown executables reject this NPC normal-Build path rather than receiving assumed capacity. No runtime pool expansion, renderer fix or actor scheduling repair is inferred or installed.
 
 ## Offline verification, 2026-10-03
 
@@ -37,3 +37,15 @@ The one-draft Town01 candidate changes counts `[36,53,39]` to `[36,54,39]`. Its5
 Private ready and blocked fixtures/scripts are under
 `local-output/sdk-20260909/npc-runtime-source-20261003/parent/`.
 The owned browser and loopback server are closed. No game, install or full-disc export ran. Native spawn completion, scenery/script demand, visibility, collision, dialogue and lifecycle behavior remain deferred.
+
+## Shared consumers qualified on 2026-10-03
+
+Build audit evidence now names six allocation paths in the qualified executable. The additional complete function witnesses are `0x8003A55C` (1144 bytes, SHA256 `6414981beba670dcf6f86da8edb5f504fafbc6fa31c8a3650535a229263f5aa7`) and `0x8003AB2C` (640 bytes, SHA256 `640253d95ffd1f3d8f5f449f1530ff498f76b5ad2ec88ea921829d2aa8788584`).
+
+Scenery allocation at `0x8003A70C` requires descriptor flag4, an in-bounds anchor and a nonzero result from overlay lookup `0x801D5630`. The source MAP decoder's placement count alone cannot establish that demand. Scenery initialization can execute script instructions through `0x801DE840` before later setup allocations.
+
+Setup calls the same pool allocator unconditionally at `0x8003B94C`; its failure result has a null guard. It then calls `0x8003AB2C`, which allocates a global script context at `0x8003ABAC` and later dereferences it without a null guard. A further allocation at `0x8003BB80` depends on scene data and runtime flag0x20. The examined `0x8003A9D4` path attaches script metadata to existing nodes and has no allocator call.
+
+The two unconditional later allocation attempts are recorded separately in `actor_pool_evidence`. They are **not** added to the initial-placement minimum: intervening script execution, allocation release and other consumers have not been qualified sufficiently to prove simultaneous demand. Review Build now explains this distinction. The 143-slot rejection boundary and authored payload serialization stay the same. Native scene completion remains deferred.
+
+Private expanded instruction qualification is under `local-output/sdk-20260909/npc-runtime-source-20261003/research/qualify-consumers.py`. Every available sibling annotation matches the actual retail executable; complete source spans remain the authority. This audit ran without a game or Ghidra instance.
