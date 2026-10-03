@@ -40,8 +40,10 @@ parity are outside this lane. See the
 
 Use **Review NPC output** after saving NPC drafts and supported source-facing
 edits to inspect their serialized composition and relocated byte offsets. Review
-writes no disc/package or history and launches no game. Normal Build still
-rejects NPC drafts; runtime acceptance is deferred. See the
+writes no disc/package or history and launches no game. Normal Build now includes
+qualified compressed MAN candidates that fit their original stream; streaming and
+oversized additions remain rejected, and runtime acceptance is deferred. See the
+[NPC Build boundaries](../../docs/legaia-npc-build-candidates.md) and
 [draft facing workflow](../../docs/legaia-draft-facing.md).
 
 Use **Preview scene animations** in the viewport to play all eligible initial

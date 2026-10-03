@@ -22,7 +22,9 @@ then be renamed, moved, given another donor or deleted independently.
 
 ## Build and runtime boundaries
 
-Normal Build rejects projects containing NPC drafts. Experimental export uses the existing donor,
+Normal Build includes compressed MAN source candidates that fit the original consumed
+stream; streaming and oversized additions remain rejected. See [candidate boundaries](legaia-npc-build-candidates.md).
+Experimental export uses the existing donor,
 MAN append, script-reference and archive checks. Repetition adds no new spawn or
 scheduling semantics. Copied source scripts can retain story-specific behavior;
 partial decoder coverage, runtime initialization, visibility and collision remain

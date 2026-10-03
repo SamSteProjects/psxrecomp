@@ -1,7 +1,8 @@
 # Native actor candidates
 
-Native actor creation is a development prototype. It is not connected to project
-Build and does not establish that an added record will spawn or behave correctly.
+Native actor creation remains source-qualified candidate work. Fixed-span compressed
+MAN candidates can enter normal Build; this does not establish that an added record
+will spawn or behave correctly. See [normal Build boundaries](legaia-npc-build-candidates.md).
 Existing NPC coordinates must not be moved merely because interior geometry is
 absent from the viewport.
 
@@ -18,8 +19,9 @@ spawning. Effective donor preview may include overrides that the retail-donor
 candidate serializer excludes, as reported in the preview evidence.
 
 Drafts participate in dirty tracking and build snapshot identity. Changed scene
-reimports cannot reinterpret active drafts or their undo history. Playable Build
-currently rejects projects containing drafts explicitly, rather than omitting them.
+reimports cannot reinterpret active drafts or their undo history. Normal Build
+includes qualified compressed MAN drafts and rejects unsupported streaming or
+oversized candidates explicitly, rather than omitting them.
 
 `importer.man_actor_structure.append_actor_candidate` takes immutable decoded MAN
 bytes, their SHA-256, and an existing partition-1 donor index. It appends a donor

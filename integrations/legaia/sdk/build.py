@@ -101,6 +101,8 @@ def package_change_kinds(edits) -> list[str]:
         'source-MAP-region-bounds-only': 'source region bounds',
         'source-MAP-trigger-cell-only': 'source trigger cells',
         'shared-scene-animation-record': 'animation channels',
+        'source-man-donor-append-candidate': 'source NPC candidates',
+        'source-man-draft-composed-overrides': 'NPC scene operand composition',
     }
     return sorted({('initial actor animation' if edit.get('assignment_kind') == 'ActorAnimation' and edit.get('field') == 'animation_id' else labels.get(edit.get('scope', 'initial-man-placement-only'), 'other audited scene data')) for edit in edits})
 
@@ -146,11 +148,15 @@ def build_report(audit) -> dict:
                            if field == 'model.shape' and 'coordinate_changes' in change else {}),
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
-                        "scope": change.get("scope", "initial-man-placement-only")})
+                        "scope": change.get("scope", "initial-man-placement-only"),
+                        **({'composition_changes': deepcopy(change['composition_changes'])}
+                           if 'composition_changes' in change else {})})
     return {"schema_version": "legaia.build-report.v1", "changes": changes,
             "validation": dict(audit["validation"]), "change_count": len(changes),
             "scene_count": len({change["scene"] for change in changes}),
-            "overlay_bytes": sum(overlay["size"] for overlay in audit["overlays"])}
+            "overlay_bytes": sum(overlay["size"] for overlay in audit["overlays"]),
+            **({'npc_candidates': deepcopy(audit['npc_candidates'])}
+               if audit.get('npc_candidates') else {})}
 
 
 def _merge_dialogue_patch(baseline, working, dialogue, changes, expected_runs, previous_changes):
@@ -430,8 +436,10 @@ def build_project(project, output_dir: Path | str | None = None) -> dict:
 
 
 def _build_project(project, output_dir, *, review_only=False) -> dict:
-    if getattr(project, 'actor_drafts', {}):
-        raise BuildError('New NPC drafts are not yet connected to playable Build; remove drafts before building existing overrides')
+    draft_scenes = set()
+    for identifier, draft in getattr(project, 'actor_drafts', {}).items():
+        project._validate_actor_draft(identifier, draft)
+        draft_scenes.add(draft['scene_id'])
     if not project.disc_path:
         raise BuildError("Build requires the project's verified user-owned retail disc")
     if not project.imports:
@@ -620,6 +628,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             raise BuildError("Texture override requires a verified private TIM binding and imported source scene")
         texture_edits.setdefault(binding["source_scene_id"], {})[identifier] = binding
 
+    for scene_id in sorted(draft_scenes):
+        scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {},
+            "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {},
+            "model_selectors": {}, "branches": {}})
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
     for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits) | set(collision_edits) | set(region_edits)) or project.imports:
@@ -631,6 +643,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     input_key = authored_state_key(project)
     overlays = []
     audit_edits = []
+    npc_candidates = {}
     with _disc_context(project.disc_path) as (_image, disc_hash, mapping, archive):
         from .worldmap_build import prepare_worldmap_overlay
         worldmap_overlays, worldmap_changes = prepare_worldmap_overlay(project, _image, disc_hash)
@@ -746,6 +759,13 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             scene = document["scene"]["name"]
             if document["source"]["disc_identity"] != "sha256:" + disc_hash:
                 raise BuildError(f"Source disc identity does not match {scene_id}")
+            if scene_id in draft_scenes:
+                from .npc_build import prepare_npc_overlays
+                candidate_overlays, candidate_edits, metadata = prepare_npc_overlays(project, scene_id, archive)
+                overlays.extend(candidate_overlays)
+                audit_edits.extend(candidate_edits)
+                npc_candidates[scene_id] = metadata
+                continue
             start, end = _bounded_scene_range(archive, mapping, scene)
             carrier = read_man_source(archive, start, end, scene)
             raw_man = carrier.kind == 'raw_streaming_man'
@@ -1032,6 +1052,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     }
     if any(o.get('source_kind')=='raw_streaming_man' for o in overlays):
         audit['validation']['raw_MAN_structural_round_trip'] = True
+    if npc_candidates:
+        audit['npc_candidates'] = npc_candidates
+        audit['validation'].update(npc_source_structural_round_trip=True,
+                                  npc_gameplay='not_run', npc_reference_coverage='reached_decoded_paths_only',
+                                  npc_allocation_and_scheduling='unverified')
     if any(row.get('scope') == 'script-branch-target-only' for row in audit_edits):
         audit['validation']['script_branch_source_boundary_round_trip'] = True
     if any(row.get('scope') == 'worldmap-menu-record-only' for row in audit_edits):
@@ -1109,6 +1134,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         feature_name = 'Authored game data'
         description = 'Private source-qualified world-map landmark records and supported authored game data.'
         feature_description = 'Apply existing landmark menu fields and other audited changes; activation and gameplay remain unverified.'
+    if npc_candidates:
+        package_suffix = ' source NPC candidates'
+        feature_name = 'Source NPC candidates and authored scene data'
+        description = 'Private fixed-span MAN donor candidates and supported authored scene data. Native spawning and behavior are unverified.'
+        feature_description += ' NPC additions are source-structural candidates: allocation, scheduling, opaque script references and gameplay require verification.'
     lines = [
         "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix, ensure_ascii=False)}",

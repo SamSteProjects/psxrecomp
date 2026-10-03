@@ -66,7 +66,7 @@ class ActorDraftTests(unittest.TestCase):
             p.save();q=ProjectService.open(p.root)
             self.assertEqual(q.actor_drafts,p.actor_drafts);self.assertFalse(q.dirty)
             self.assertEqual(q.imports[original['scene']['semantic_id']],original)
-            with self.assertRaisesRegex(BuildError,'drafts'):
+            with self.assertRaisesRegex(BuildError,'disc'):
                 _build_project(q,None)
             q.command({'type':'delete_actor_draft','entity_id':identifier})
             self.assertFalse(q.actor_drafts);q.undo();self.assertIn(identifier,q.actor_drafts)
