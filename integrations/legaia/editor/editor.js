@@ -16,6 +16,7 @@ import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js'
 import {rescaleStoredNormal} from '/model-normal-length.js';
 import {mountNormalUsers,decodeNormalUsers} from '/model-normal-users.js';
 import {validateNormalRetarget} from '/normal-retarget.js';
+import {qualifySourceNormals,rigidFrameNormals} from '/source-normal-view.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -4286,17 +4287,25 @@ function fitModelObject(){
 $('model-object').onchange=fitModelObject;
 $('model-wireframe').onchange=drawModel;
 const modelShading=document.createElement('select');modelShading.id='model-shading-mode';modelShading.setAttribute('aria-label','Model shading');for(const [value,text] of [['surface','Textures and stored colors'],['source-normals','Source normal directions']]){const option=document.createElement('option');option.value=value;option.textContent=text;modelShading.append(option);}const modelShadingLabel=document.createElement('label');modelShadingLabel.textContent='View ';modelShadingLabel.append(modelShading);$('model-wireframe').closest('label').after(modelShadingLabel);const modelNormalNote=document.createElement('p');modelNormalNote.id='model-normal-note';modelNormalNote.setAttribute('role','status');$('model-description').after(modelNormalNote);modelShading.onchange=()=>{updateModelNormalView();drawModel();};
+const modelNormalFrameCache=new WeakMap();
+function modelNormalPreview(){
+  if(!model)return null;
+  if(!model.frames?.length){try{return qualifySourceNormals(model)?model:null;}catch{return null;}}
+  const cached=modelNormalFrameCache.get(model);if(cached?.frame===animationFrame)return cached.preview;
+  let preview=null;try{preview={...rigidFrameNormals(model,model.frames[animationFrame]),triangles:model.triangles};}catch{/* Unknown poses retain surface shading. */}
+  modelNormalFrameCache.set(model,{frame:animationFrame,preview});return preview;
+}
 function updateModelNormalView(){
-  const available=model?.normal_preview?.status==='source_unposed'&&model.normal_preview.coordinate_system==='retail_tmd_object_local'&&model.posed===false&&!model.frames?.length&&Array.isArray(model.triangle_normals)&&model.triangle_normals.length===model.triangles.length;
+  const available=modelNormalPreview()!==null;
   modelShading.querySelector('[value="source-normals"]').disabled=!available;if(!available)modelShading.value='surface';
-  if(!available){modelNormalNote.textContent=model?.frames?.length||model?.posed?'Source normal directions are unavailable for animated poses; transformed normals are not qualified.':'Source normal directions are unavailable for this preview.';return;}
+  if(!available){modelNormalNote.textContent=model?.frames?.length||model?.posed?'Source normal directions are unavailable for this pose; rigid object channels are not qualified.':'Source normal directions are unavailable for this preview.';return;}
   const object=modelObject(),rows=object?model.triangle_normals.slice(object.triangle_start,object.triangle_start+object.triangle_count):[],lit=rows.filter(row=>row!==null).length,zero=rows.reduce((sum,row)=>sum+(row?.filter(v=>v.every(n=>n===0)).length??0),0);
-  modelNormalNote.textContent=`${lit}/${rows.length} triangles have source normal references · ${zero} zero-vector corners · ${model.normal_preview.invalid_triangles} invalid source triangles in full model · ${modelShading.value==='source-normals'?'Direction colors: red X, green display Y, blue Z. Gray means unlit, zero or unavailable.':'Source normal directions can be inspected separately from textures and stored colors.'} · Retail lighting is not reconstructed.`;
+  modelNormalNote.textContent=`${lit}/${rows.length} triangles have source normal references · ${zero} zero-vector corners · ${model.normal_preview.invalid_triangles} invalid source triangles in full model · ${modelShading.value==='source-normals'?'Direction colors: red X, green display Y, blue Z. Gray means unlit, zero or unavailable.':'Source normal directions can be inspected separately from textures and stored colors.'}${model.frames?.length?' · Current frame uses analytic Rz × Ry × Rx rigid rotations; translation does not affect directions.':''} · Retail lighting is not reconstructed.`;
 }
 
 function modelRenderView(width,height){
   const c=Math.cos(modelView.yaw),s=Math.sin(modelView.yaw),cp=Math.cos(modelView.pitch),sp=Math.sin(modelView.pitch);
-  return {normalDiagnostic:modelShading.value==='source-normals'&&!model?.frames?.length&&model?.posed===false,width,height,positions:new Map(),grid:false,wireframe:$('model-wireframe').checked,camera:{target:{x:modelView.center[0],y:-modelView.center[1],z:modelView.center[2]},distance:modelView.radius*4/modelView.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}};
+  return {normalDiagnostic:modelShading.value==='source-normals'&&modelNormalPreview()!==null,width,height,positions:new Map(),grid:false,wireframe:$('model-wireframe').checked,camera:{target:{x:modelView.center[0],y:-modelView.center[1],z:modelView.center[2]},distance:modelView.radius*4/modelView.zoom*.9/1.3},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}};
 }
 function inspectModelVertex(event){
   if(!event.shiftKey||!$('model-wireframe').checked||busy||shapeDraft||model?.frames?.length||state.project.mode!=='edit'||!state.capabilities?.model_shape_authoring)return;
@@ -4316,14 +4325,14 @@ function drawModel(){
   const rect=modelCanvas.getBoundingClientRect(),w=rect.width,h=rect.height;if(!w||!h)return;
   const object=modelObject();if(!object)return;
   try{
-    const choice=$('model-object').value,vertices=frameVertices();
+    updateModelNormalView();
+    const choice=$('model-object').value,vertices=frameVertices(),start=object.triangle_start,end=start+object.triangle_count,changed=modelRenderSource!==model||modelRenderObject!==choice||modelRenderFrame!==animationFrame,normalPreview=changed?modelNormalPreview():null,normalSlice=normalPreview?{...normalPreview,triangles:model.triangles.slice(start,end),triangle_normals:normalPreview.triangle_normals.slice(start,end)}:undefined;
     if(modelRenderSource!==model||modelRenderObject!==choice){
-      const start=object.triangle_start,end=start+object.triangle_count;
-      const preview={...model,vertices,triangles:model.triangles.slice(start,end),triangle_colors:model.triangle_colors?.slice(start,end),triangle_uvs:model.triangle_uvs?.slice(start,end),triangle_materials:model.triangle_materials?.slice(start,end),triangle_normals:model.triangle_normals?.slice(start,end)};
+      const preview={...model,...normalSlice,vertices,triangles:model.triangles.slice(start,end),triangle_colors:model.triangle_colors?.slice(start,end),triangle_uvs:model.triangle_uvs?.slice(start,end),triangle_materials:model.triangle_materials?.slice(start,end),triangle_normals:normalSlice?.triangle_normals??model.triangle_normals?.slice(start,end)};
       const failures=modelRenderer.load({assets:[{geometry_key:'model-view',preview}],entities:[{entity_id:'model-view',geometry_key:'model-view',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});
       if(failures.length)throw new Error(failures.join('; '));
       modelRenderSource=model;modelRenderObject=choice;modelRenderFrame=animationFrame;
-    }else if(modelRenderFrame!==animationFrame){if(modelRenderer.updateVertices('model-view',vertices))modelRenderFrame=animationFrame;}
+    }else if(modelRenderFrame!==animationFrame){if(modelRenderer.updateVertices('model-view',vertices,normalSlice))modelRenderFrame=animationFrame;}
     modelRenderer.draw(modelRenderView(w,h));
   }catch(error){$('model-error').textContent=String(error.message);}
 }
