@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Scene-register/callback source checkpoint (2026-10-03): inspection adds no
+immediate gameplay gate. Later runtime observation must establish the scene
+register effects and callback8003C7EC behavior independently of encoded fixed
+continuations, including map01 P2 record0038 PC110 / record0039 PC687. No
+register operand was authored or callback executed by the editor.
+
 MENU8 source-coverage checkpoint (2026-10-03): offline inspection adds no
 immediate gameplay gate. Later native actor-allocation verification must establish
 acquisition/resumption and child ownership/execution independently of static

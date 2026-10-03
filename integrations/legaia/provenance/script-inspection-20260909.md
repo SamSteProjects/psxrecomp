@@ -1,5 +1,20 @@
 # Read-only actor script and dialogue inspection
 
+Scene-register/callback evidence (2026-10-03): unchanged hashed PROT897.
+Table801CED78→801E0C0C reads byte operands0/1/2 at801E0C14/20/2C,
+stores zero-extended values into scene halfwords10/12/14 at801E0C1C/28/38,
+and advances adjusted PC4 at801E0C30. No target word exists.
+OuterE table801CF030→801E34CC calls8003C7EC, adds2 to adjusted PC in
+its delay slot801E34D0, then returns advanced s8 at801E34D8. The pinned
+nibble_e.rs description of a halt is superseded by these executing words.
+Callback effects and scene-register runtime meaning remain unresolved.
+Neither handler is invoked or given an operand serializer by inspection.
+Fresh map01 P2 record0038 PC110 contains4F01385A at decoded6873;
+record0039 PC687 contains4CEA at decoded7983. Full carrier/record comparison
+and actual browser source inspection agree on both boundaries. Remaining
+map01 catalog stops are choice-pager boundaries; this is not proof of full
+world-map overlay coverage or runtime branch execution.
+
 MENU8 allocator and fixed-write evidence (2026-10-03): unchanged hashed PROT897
 and SCUS, recorded below. Tables801CEF48/50/58/6C dispatch80/82/84/89 to
 801E1ECC/206C/2134/22C8. MENU80 success first advances3 at801E1F78; it then

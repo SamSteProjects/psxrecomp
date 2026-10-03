@@ -1,5 +1,10 @@
 # Script source-flow overview
 
+Scene-register writes (opcode4F) and field callback MENUEA (2026-10-03) expose
+verified fixed continuations without editable target words. Callback effects and
+runtime scene/register meaning remain unknown. A continuation after a native call
+does not establish which story path executes or when its effects become visible.
+
 MENU80 allocator coverage (2026-10-03) treats the full native child payload list
 as one owned instruction span. Child payload PCs are operand locations, not parent
 instruction/dialogue boundaries or editable destinations. The acquisition success

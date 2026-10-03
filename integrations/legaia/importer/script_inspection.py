@@ -530,6 +530,12 @@ def _instruction(data: bytes, pc: int) -> dict:
                             uses_frame_delta=sub in (0xCB, 0xCC) and raw == 0xFFFF)
             else:
                 args["values"] = list(data[operand + 1:operand + size])
+        elif sub == 0xEA:
+            # Retail table801CF030 ->801E34CC calls8003C7EC and adds2
+            # to PC in its delay slot, then returns advanced s8. Pinned halt is false.
+            size, mnemonic = 1, "FIELD_CALLBACK_C7EC"
+            args = {"sub_op": sub, "callback_address": "0x8003C7EC",
+                    "runtime_effect": "not_evaluated"}
         elif sub in (0xED, 0xE8):
             # Pinned d6e64c68 engine-vm/field/step/menu_ctrl/nibble_e.rs
             # op_4c_ne, blob 61ad972bd5455bdb84b1ab376f6ad959cb23190b:
@@ -567,6 +573,14 @@ def _instruction(data: bytes, pc: int) -> dict:
                             runtime_effect="not_evaluated")
         else:
             raise ImportError(f"unsupported MENU_CTRL sub-op 0x{sub:02x}")
+    elif op == 0x4F:
+        # Retail801E0C0C reads three bytes, zero-extends into scene
+        # halfwords10/12/14, then advances adjusted PC4. Not a jump.
+        size, mnemonic = 3, "SCENE_REGISTER_WRITE"
+        need(size)
+        args = {"values": list(data[operand:operand + size]),
+                "field_offsets": ["0x10", "0x12", "0x14"],
+                "runtime_scene": "not_observed", "runtime_effect": "not_evaluated"}
     elif op == 0x4E:
         # Retail PROT897 801E0A04..0C08: selector, source/comparison
         # nibbles, signed threshold, relative target word at operand+4.
