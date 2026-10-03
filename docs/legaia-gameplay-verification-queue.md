@@ -1,5 +1,37 @@
 # Deferred gameplay verification
 
+## World source placement transforms - deferred
+
+Saved fixture: `local-output/sdk-20260909/worldmap-placement-authoring-20261002/parent/browser-project/`.
+Latest package SHA256: `89b1be7633bd5911afd39bce3dcea41ea8723370f7f96535c11ace76dab1bb56`.
+Map01 record0477 retains its source cell/anchor/model/flags and changes X offset
+from0 to1024 and yaw from512 to1536; only complete MAP bytes15265/15275 differ.
+The record serves57 qualified source cells. Independent source reconstruction,
+package readback and editor Current/Proposed pixels/matrices agree. No install
+or game launch ran; the feature remains disabled by default.
+
+Later compare retail/authored map01 at matching story state. Check source-seed
+offset/yaw visibility, affected instances, scripted initialization/resting transforms,
+collision and travel behavior; then revert and compare again. Scripts may overwrite
+these seeds or suppress them. An authored viewport cannot establish runtime parity.
+See [workflow and source limits](legaia-worldmap-placement-authoring.md).
+
+## Fixed-span source NPC candidates - deferred
+
+Saved fixture: `local-output/sdk-20260909/npc-normal-build-20261002/parent/browser-project/`.
+Package SHA256: `0e3f6dd4ef175db810ff9b3283432ef3459a429991ba370c3254b996fb4c1d30`.
+Town01 donor11 is cloned as record53 at X3008/Z5440, with existing donor placement
+and facing edits composed separately. Decoded MAN grows45338 to45917 bytes;
+optimal compression occupies24856 within the original24894-byte stream. Only
+that original stream and its four-byte size word change; pointers, neighboring
+payloads, physical carrier and TOC stay exact. No package was installed or game
+launched, and the candidate feature is disabled by default.
+
+Later verify native allocation, record initialization, actual spawning/position,
+script scheduling, dialogue, collision, transitions and save/reload behavior.
+Reached decoded spawn-reference rebasing does not prove opaque script paths or
+valid new-actor runtime identity. See [candidate boundaries](legaia-npc-build-candidates.md).
+
 ## Global landmark menu records - deferred
 
 Saved fixture: `local-output/sdk-20260909/worldmap-authoring-20261002/browser-project/`.
