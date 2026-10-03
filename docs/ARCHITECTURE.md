@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`sdk/animation_glb.py` resolves qualified assigned pose/model witnesses while keeping the selected actor identity distinct from imported shared-clip contribution ownership. V2 sidecars encode both witnesses; exact regenerated binding and source-key checks gate review/Apply. The existing AnimationChannels command targets the named clip owner, preserving other components and contributors. Unassigned v1 sidecars retain their exact format.
+
 `editor/worldmap-placement-yaw.js` converts pointer positions through the frozen horizontal-plane homogeneous projection, unwraps consecutive angles, and snaps/wraps encoded source yaw. Its SVG ring owns temporary gesture state only. The placement editor combines mutually exclusive translation/yaw tools under the same draft restoration and reviewed Apply boundary. Existing source serializers, Build composition and exports remain authoritative.
 
 `editor/worldmap-placement-gizmo.js` owns only temporary projected-axis pointer gestures and signed source-offset snapping. `worldmap-placement-editor.js` binds its frozen source/camera/viewport context to the existing source-qualified record inspector, previews all shared instances, and restores drafts/reviews on cancellation. No gesture writes project state; reviewed Apply uses the normal WorldMapPlacements command. Dialog cancellation releases busy state only for its owned request.

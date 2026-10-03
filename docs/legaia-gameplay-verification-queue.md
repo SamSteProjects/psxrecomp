@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+## Assigned animation GLB - deferred
+
+Saved fixture: `local-output/sdk-20260909/assigned-animation-glb-20261002/parent/browser-project/`.
+Package SHA256: `2d9eaec92f5076624af50f568c6494cd2f01b4b3b27b7f39becb60f2b3ad0aa7`.
+Town0b actor0019 has initial clip0012 via witness0049, retains its original
+clip0013 X contribution, and adds frame0/object0 X=1 to witness0049's clip0012.
+Independent complete payload readback changes only ANM bytes8880/10336 and MAN
+byte9471 against retail. Later compare original/assigned clips at matching
+story state, all known shared users, script-driven clip changes, actual timing,
+pose suitability and revert behavior. No gameplay acceptance is inferred from
+the browser pose or package. See [owner semantics](legaia-assigned-animation-glb.md).
+
 ## World source placement transforms - deferred
 
 Additional yaw-ring fixture: `local-output/sdk-20260909/worldmap-placement-yaw-20261002/parent/browser-project/`. Package SHA256 `4a953cf8acfb12105dd121b7c3f6416f9469bfa00907ef4c2999d4e9bc9de6bf`. Record0477 retains X1280/Y256/Z256 with yaw448 across57 source seeds. Independent full MAP readback proves the two yaw-byte changes alongside the prior offsets. Pointer rotation, cancellation, history, persistence and Build pass offline; use matching story-state retail/authored gameplay comparisons below to check visibility, resting transforms, collision and script overrides.

@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+Assigned actor poses now support source-bound GLB interchange with an explicit shared-clip owner. Existing actor contributions and assignments remain separate. See [assigned animation GLB](../../docs/legaia-assigned-animation-glb.md).
+
 **World placements** includes a source-yaw rotation ring, encoded-unit snapping and cancellable shared-record previews. Review and Apply retain the existing command/Build workflow. See [source yaw ring](../../docs/legaia-worldmap-placement-yaw.md).
 
 **World placements** now includes cancellable source X/Y/Z translation handles, snapping and Frame anchor. Dragging retains a draft for Review; Apply alone changes authored state. See [world translation handles](../../docs/legaia-worldmap-placement-gizmo.md).

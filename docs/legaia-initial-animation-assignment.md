@@ -88,3 +88,5 @@ the actual Town0b scene and actor/script branch, check whether scripts replace
 the initial clip, inspect visual suitability and interaction/progression, and
 check scene entry/exit. The historical565-test checkpoint predates this feature;
 the full modern SDK and runtime parity objective remains incomplete.
+
+[Assigned animation GLB authoring](legaia-assigned-animation-glb.md) now edits the qualified assigned shared clip through its explicit imported witness owner. Existing original-clip contributions and assignments remain separate.

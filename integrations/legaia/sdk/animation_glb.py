@@ -28,13 +28,19 @@ def _snapshot(project, entity_id: str, fps: float) -> dict:
                   if item['semantic_id'] == entity_id), None)
     if actor is None:
         raise ProjectError('Animation GLB authoring requires an imported actor in the active scene')
-    if any(name in project.overrides.get(entity_id, {}) for name in ('ActorAppearance', 'ActorAnimation')):
-        raise ProjectError('GLB authoring currently uses the imported initial clip; revert the appearance or initial animation assignment first')
     key = source_key(project)
     if not key:
         raise ProjectError('Animation GLB authoring requires a verified scene source')
     with _disc_context(project.disc_path):
-        options = project.animation_authoring_options(entity_id)
+        assigned = any(name in project.overrides.get(entity_id, {})
+                       for name in ('ActorAppearance', 'ActorAnimation'))
+        model_source = actor
+        if assigned:
+            from .actor_animation import source_actor
+            model_source = project.appearance_source_actor(entity_id, verify_disc=True)
+            actor = source_actor(project, entity_id, verify_disc=True)
+        channel_owner = actor['semantic_id']
+        options = project.animation_authoring_options(channel_owner)
         source_binding = options['binding']
         catalog = load_scene_actor_animation_catalog(project.disc_path, document['scene']['name'])
         asset = next(item for item in document['assets']['models']
@@ -63,10 +69,15 @@ def _snapshot(project, entity_id: str, fps: float) -> dict:
             'coordinate_conversion': '[x,-y,z]; rigid Rz*Ry*Rx',
             'node_names': [f'object-{index}' for index in range(decoded['bone_count'])],
         }
+        if assigned:
+            binding.update(schema_version='legaia.animation-glb-binding.v2',
+                           channel_owner_entity_id=channel_owner,
+                           model_source_entity_id=model_source['semantic_id'])
     if source_key(project) != key:
         raise ProjectError('Project changed while verifying the animation export')
     return dict(binding=binding, actor=actor, asset=asset, catalog=catalog,
-                retail=retail, effective=effective, owners=owners, start=start)
+                retail=retail, effective=effective, owners=owners, start=start,
+                channel_owner=channel_owner)
 
 
 def _current(project, binding: dict) -> None:
@@ -79,6 +90,7 @@ def export_clip(project, entity_id: str, fps: float) -> tuple[dict, dict, dict]:
     snapshot = _snapshot(project, entity_id, fps)
     animation = snapshot['catalog'].authored_bank_preview(
         snapshot['actor'], snapshot['asset'], snapshot['owners'])
+    animation['entity_id'] = entity_id
     _current(project, snapshot['binding'])
     return animation, deepcopy(snapshot['asset']), deepcopy(snapshot['binding'])
 
@@ -95,7 +107,8 @@ def _axes(value: dict | None) -> dict:
 def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[dict, dict, dict]:
     from importer.animation import decode_animation_record
     from importer.animation_glb import import_animation_glb
-    if not isinstance(binding, dict) or binding.get('schema_version') != 'legaia.animation-glb-binding.v1':
+    if not isinstance(binding, dict) or binding.get('schema_version') not in (
+            'legaia.animation-glb-binding.v1', 'legaia.animation-glb-binding.v2'):
         raise ProjectError('Choose the SDK animation export binding JSON sidecar')
     snapshot = _snapshot(project, entity_id, binding.get('clip_fps'))
     # JavaScript JSON serialization writes an integral 15.0 as 15. Preserve
@@ -106,7 +119,8 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[di
     binding = snapshot['binding']
     candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'])
     retail = decode_animation_record(snapshot['retail'])
-    before = _axes(snapshot['owners'].get(entity_id))
+    channel_owner = snapshot['channel_owner']
+    before = _axes(snapshot['owners'].get(channel_owner))
     after = dict(before)
     for row in analysis['changes']:
         field, axis = row['field'].split('.')
@@ -124,9 +138,9 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[di
                  edits=list(edits.values()))
     proposed_owners = deepcopy(snapshot['owners'])
     if edits:
-        proposed_owners[entity_id] = value
+        proposed_owners[channel_owner] = value
     else:
-        proposed_owners.pop(entity_id, None)
+        proposed_owners.pop(channel_owner, None)
     bank, _ = snapshot['catalog'].authored_bank(proposed_owners)
     if bank[snapshot['start']:snapshot['start'] + len(candidate)] != candidate:
         raise ProjectError('Another actor owns a retained shared axis; resolve its contribution before importing this change')
@@ -140,15 +154,19 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict) -> tuple[di
         effective_record_sha256=binding['effective_record_sha256'],
         ownership=dict(actor_axis_count_before=len(before), actor_axis_count_after=len(after),
             other_contributors=sorted(owner for owner, contribution in snapshot['owners'].items()
-                                      if owner != entity_id and contribution['animation_id'] == binding['animation_id'])),
+                                      if owner != channel_owner and contribution['animation_id'] == binding['animation_id'])),
         limitations=['Existing rigid-object channels and frame count only; mesh edits are ignored.',
                      'The selected interchange rate does not establish retail playback timing.',
                      'Translation is rounded to source integers; Euler rotations use the existing eight-bit angle lattice.',
                      'Normal Build retains source capacities; runtime playback remains unverified.'])
+    if binding['schema_version'] == 'legaia.animation-glb-binding.v2':
+        report['ownership']['channel_owner_entity_id'] = channel_owner
+        report['limitations'].append(
+            f'Channel edits belong to imported clip witness {channel_owner}; all users of this shared clip are affected. Initial model/clip assignments remain separate.')
     report['review_key'] = digest(dict(binding=binding, glb_sha256=glb_hash,
                                      candidate_sha256=candidate_hash, proposed_value=value))
-    command = (dict(type='set_animation_channels', entity_id=entity_id, value=value) if edits else
-               dict(type='clear_animation_channels', entity_id=entity_id))
+    command = (dict(type='set_animation_channels', entity_id=channel_owner, value=value) if edits else
+               dict(type='clear_animation_channels', entity_id=channel_owner))
     snapshot['proposed_owners'] = proposed_owners
     _current(project, binding)
     return snapshot, command, report
@@ -162,6 +180,7 @@ def pose_import(project, entity_id: str, content: bytes, binding: dict) -> tuple
     snapshot, _, report = _prepare(project, entity_id, content, binding)
     animation = snapshot['catalog'].authored_bank_preview(
         snapshot['actor'], snapshot['asset'], snapshot['proposed_owners'])
+    animation['entity_id'] = entity_id
     animation['representation'] = 'file_preview'
     animation['proposal'] = report
     _current(project, binding)

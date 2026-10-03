@@ -40,8 +40,8 @@ review also binds the uploaded GLB hash and quantized candidate hash; Apply
 recomputes that review before issuing a command.
 
 The candidate is compared with the effective exported clip. Unchanged axes keep
-their existing ownership. Changed axes update this actor's contribution; values
-returned to retail remove this actor's entry. Other actors' entries remain
+their existing ownership. Changed axes update the binding's clip-owner contribution; values
+returned to retail remove that owner's entry. Other actors' entries remain
 unchanged. Shared-bank composition must reproduce the candidate exactly, so a
 conflicting edit or a requested clear masked by another contributor rejects.
 A no-op GLB creates no history entry and cannot silently clear existing edits.
@@ -59,9 +59,10 @@ reports translation and angular error; unsupported or excessive error rejects.
 
 This imports existing rigid-object translation/rotation channels. It does not
 import mesh/material changes, anatomical skinning, arbitrary retargeting, new
-object counts, record allocation or new frame counts. Initial appearance and
-animation assignment overrides must be reverted before this original-binding
-workflow is used. The selected interchange rate is not verified retail cadence.
+object counts, record allocation or new frame counts. Qualified initial appearance
+and animation assignments now use [v2 witness bindings](legaia-assigned-animation-glb.md),
+with the shared clip owner explicit before Apply. Unassigned actors retain v1
+bindings. The selected interchange rate is not verified retail cadence.
 
 Input is bounded to a 32 MiB GLB, 128 KiB binding JSON, 4096 source channels,
 64 rigid objects and one million decoded animation components.
