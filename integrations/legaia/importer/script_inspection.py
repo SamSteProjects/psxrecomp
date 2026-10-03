@@ -547,6 +547,17 @@ def _instruction(data: bytes, pc: int) -> dict:
                             uses_frame_delta=sub in (0xCB, 0xCC) and raw == 0xFFFF)
             else:
                 args["values"] = list(data[operand + 1:operand + size])
+        elif sub == 0xE2:
+            # Retail801E30E4 reads a signed halfword at+1, stores it at
+            # 8007BA78, sets8007B83C=26, and returns PC+6. The final two
+            # operand bytes are consumed but not read by this handler.
+            size, mnemonic = 5, "FMV_TRIGGER_REQUEST"
+            need(size)
+            args = {"sub_op": sub,
+                    "fmv_id_signed": struct.unpack_from("<h", data, operand + 1)[0],
+                    "trailing_bytes": list(data[operand + 3:operand + 5]),
+                    "native_writes": {"0x8007BA78": "fmv_id_signed", "0x8007B83C": 26},
+                    "runtime_effect": "not_evaluated"}
         elif sub == 0xE3:
             # Retail801E3108 resolves selector+1, copies actor fields into
             # current s5 (not camera -> resolved actor), then advances3.

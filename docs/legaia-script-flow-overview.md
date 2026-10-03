@@ -1,5 +1,11 @@
 # Script source-flow overview
 
+MENUE2 FMV requests (2026-10-03) expose the signed request ID, two
+consumed trailing bytes and a fixed encoded continuation. The trailing bytes
+are retained without semantic labels. Native request-global writes are source
+facts; an outgoing edge does not prove movie activation, playback or return.
+No FMV operand writer or playback action is added by this inspection feature.
+
 MENUE3 actor-state-copy coverage (2026-10-03) exposes a fixed encoded
 continuation and the native resolved-actor-to-dispatch-context direction.
 A missing lookup skips the field copy; context post-updates still run.

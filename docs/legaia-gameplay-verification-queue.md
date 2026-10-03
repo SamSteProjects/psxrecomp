@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+FMV request source checkpoint (2026-10-03): inspection adds no immediate
+gameplay gate. Later runtime verification must establish ID-to-movie mapping,
+request activation, playback stability and return behavior independently of
+static PC advancement, including Town01 P2 record0025 PC1804's ID1 request.
+Two trailing bytes are consumed but their purpose remains unknown. No movie
+request was authored, played or installed during this checkpoint.
+
 Actor-state-copy source checkpoint (2026-10-03): no immediate gameplay gate
 is added. Later live observation must independently correlate MENUE3 selectors
 and dispatch contexts to actors, establish copied field meaning and check

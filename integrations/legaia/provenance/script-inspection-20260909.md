@@ -1,5 +1,24 @@
 # Read-only actor script and dialogue inspection
 
+FMV request evidence (2026-10-03): unchanged hashed PROT897 and SCUS.
+Table801CF010 dispatches E2 to801E30E4; call8003CE9C reads operand+1
+(delay slot801E30E8). The SCUS loader packs low/high bytes and sign-extends
+via SLL16 / SRA16 at8003CEAC/CEB4. PC advances6 at801E30EC.
+801E30F4 stores the returned halfword to8007BA78;801E30FC loads26 and
+801E3104 stores it to8007B83C in the jump delay slot.801E3100 jumps to
+801E3624, which returns advanced s8. No instruction in this handler reads
+operand+3/+4, although both belong to its six-byte ordinary extent (extended7).
+Pinned nibble_e.rs reads the same ID but its truncation guard only requires
+three payload bytes; inspection requires the full five-byte payload to avoid
+accepting incomplete instructions. It does not label unread bytes as parameters.
+Town01 P2 record0025 PC1804 contains4CE201000000 at decoded offset44355;
+record SHA256 e99ea95a92c44ced1f884ed122bac6d8ea34db76939093b87eda14ccb68b4cc3.
+Fresh complete carrier/record reconstruction confirms that extent andPC1810.
+The catalog has204 supported-path instructions/28 dialogues/no stops for this
+owner. Two browser checks preserve files/history/authored state; no request is
+executed and no request-ID editor exists. Movie activation and playback remain
+runtime-unverified. Private proof: `local-output/sdk-20260909/fmv-trigger-20261003/parent/`.
+
 Actor-state-copy evidence (2026-10-03): unchanged PROT897 SHA256
 216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b,
 load base801CE818 and unchanged Andrew pin d6e64c68ede25813d35db20980da82a1a025549b.
