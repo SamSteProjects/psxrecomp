@@ -45,3 +45,5 @@ pending-close cancellation and exact project/Build file hashes. Screenshots and
 the combined proof are private under the milestone `parent/` evidence folder.
 
 The inspection now supports [source scene and selected-entity GLB export](legaia-worldmap-export.md) with the same geometry, transforms and confidence limits.
+
+The separate [World placements authoring workspace](legaia-worldmap-placement-authoring.md) now supports reviewed source-record offsets/yaw and normal Build. This inspection and source GLB export retain their retail-source scope.

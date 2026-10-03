@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+Use **World placements** to inspect and edit qualified kingdom source-record offsets and yaw with shared-record scope, Current/Proposed viewport comparison, reviewed Apply, history, Save/Open and normal Build. Source seeds do not establish runtime resting positions or visibility. See [world placement authoring](../../docs/legaia-worldmap-placement-authoring.md).
+
 In **World ground**, use **Export source scene GLB** to download terrain and visible source model seeds, or **Export selected GLB** for the chosen source entity. Hiding placements exports ground alone. Source coordinates and provenance stay attached; runtime resting positions and visibility remain unknown. See [world-source export](../../docs/legaia-worldmap-export.md).
 
 **Rotate scenery group…** now offers source yaw deltas 0–4095 as well as quarter turns. Review shows the rounded source X/Z positions and updated yaws before one-step Apply. Proposed/Current comparison, history, Save/Open and normal Build remain connected; gameplay acceptance can be deferred. See the [group rotation workflow](../../docs/legaia-scenery-group-rotation.md).
