@@ -18,6 +18,7 @@ MAX_MODEL_BYTES = 4 * 1024 * 1024
 MAX_OBJECTS = 1024
 MAX_VERTICES = 100_000
 MAX_PRIMITIVES = 100_000
+MAX_NORMAL_DIAGNOSTICS = 128
 
 
 def _range(data: bytes, offset: int, length: int, label: str) -> None:
@@ -63,12 +64,15 @@ def decode_tmd(data: bytes) -> dict[str, Any]:
         "schema_version": "legaia.model-preview.v1",
         "coordinate_system": "retail_tmd_object_local", "posed": False,
         "vertices": [], "triangles": [], "triangle_colors": [],
-        "triangle_uvs": [], "triangle_materials": [], "objects": [],
+        "triangle_uvs": [], "triangle_materials": [], "triangle_normals": [], "objects": [],
         "materials": [], "diagnostics": [],
+        "normal_preview": {"coordinate_system": "retail_tmd_object_local", "status": "source_unposed",
+                           "lit_triangles": 0, "unlit_triangles": 0, "invalid_triangles": 0, "zero_corners": 0},
         "reference_commit": REFERENCE_COMMIT,
     }
     material_ids: dict[tuple, int] = {}
     primitive_total = 0
+    normal_diagnostics = 0
     for index in range(object_count):
         vert, vertex_count, normal, normal_count, prim, claimed, opaque = struct.unpack_from(
             "<7I", data, 12 + index * 28)
@@ -138,12 +142,38 @@ def decode_tmd(data: bytes) -> dict[str, Any]:
                     material_ids[material_key] = len(result["materials"])
                     result["materials"].append(dict(zip(
                         ("textured", "clut", "tpage", "semi_transparent"), material_key)))
+                normals = None
+                normal_error = None
+                if not baked:
+                    normal_offset = ((18 if corners == 3 else 20) if gouraud
+                                     else (12 if corners == 3 else 20))
+                    normal_operands = corners if gouraud else 1
+                    if normal_offset + normal_operands * 2 > stride:
+                        normal_error = "normal_operands_exceed_stride"
+                    else:
+                        raw_normals = struct.unpack_from(f"<{normal_operands}H", data, base + normal_offset)
+                        if any(raw % 8 or raw // 8 >= normal_count for raw in raw_normals):
+                            normal_error = "invalid_normal_offsets"
+                        else:
+                            normals = [list(struct.unpack_from('<hhh', data, normal + raw)) for raw in raw_normals]
+                            if not gouraud:
+                                normals *= corners
+                    if normal_error and normal_diagnostics < MAX_NORMAL_DIAGNOSTICS:
+                        result['diagnostics'].append(dict(kind='source_normal_visual_unavailable',
+                            object_index=index, primitive_byte_offset=base, reason=normal_error))
+                        normal_diagnostics += 1
                 # PSX quad order uses the v1-v2 diagonal.
                 for corners_used in ((0, 1, 2), (1, 3, 2)) if corners == 4 else ((0, 1, 2),):
                     result["triangles"].append([indices[n] for n in corners_used])
                     result["triangle_colors"].append([colors[n] for n in corners_used])
                     result["triangle_uvs"].append([uvs[n] for n in corners_used] if uvs else None)
                     result["triangle_materials"].append(material_ids[material_key])
+                    triangle_normals = [list(normals[n]) for n in corners_used] if normals is not None else None
+                    result['triangle_normals'].append(triangle_normals)
+                    coverage = result['normal_preview']
+                    coverage['unlit_triangles' if baked else 'invalid_triangles' if normal_error else 'lit_triangles'] += 1
+                    if triangle_normals is not None:
+                        coverage['zero_corners'] += sum(vector == [0, 0, 0] for vector in triangle_normals)
             primitive_total += count
             object_primitives += count
             position = next_group

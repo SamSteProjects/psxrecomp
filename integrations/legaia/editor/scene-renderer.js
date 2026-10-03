@@ -1,4 +1,5 @@
 // SDK geometry only: no retail format, address, pose or scale interpretation.
+import {sourceNormalMatrix,qualifySourceNormals} from './source-normal-view.js';
 const IDENTITY=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const columnMajor=matrix=>new Float32Array([0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15].map(i=>matrix[i]));
@@ -44,20 +45,22 @@ export class SceneRenderer {
     const shader=(type,source)=>{const item=gl.createShader(type);gl.shaderSource(item,source);gl.compileShader(item);if(!gl.getShaderParameter(item,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(item);gl.deleteShader(item);throw new Error(message);}return item;};
     let vertex=null,fragment=null;
     try{
-    vertex=shader(gl.VERTEX_SHADER,`attribute vec3 a_position;attribute vec3 a_color;attribute vec2 a_uv;
-      uniform mat4 u_view;uniform mat4 u_model;varying vec3 v_color;varying vec2 v_uv;
-      void main(){gl_Position=u_view*u_model*vec4(a_position,1.0);v_color=a_color;v_uv=a_uv;}`);
-    fragment=shader(gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 v_color;varying vec2 v_uv;
+    vertex=shader(gl.VERTEX_SHADER,`attribute vec3 a_position;attribute vec3 a_color;attribute vec2 a_uv;attribute vec3 a_normal;
+      uniform mat4 u_view;uniform mat4 u_model;uniform mat3 u_normalMatrix;varying vec3 v_color;varying vec2 v_uv;varying vec3 v_normal;
+      void main(){gl_Position=u_view*u_model*vec4(a_position,1.0);v_color=a_color;v_uv=a_uv;vec3 n=u_normalMatrix*a_normal;float len=length(n);v_normal=len>0.000001?n/len:vec3(0.0);}`);
+    fragment=shader(gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 v_color;varying vec2 v_uv;varying vec3 v_normal;
       uniform sampler2D u_texture;uniform bool u_textured;uniform bool u_picking;uniform vec3 u_pick;uniform bool u_semi;uniform int u_pass;
-      void main(){vec4 color=vec4(v_color,1.0);bool semi=u_semi;if(u_textured){vec4 texel=texture2D(u_texture,v_uv);if(texel.a<0.01)discard;color.rgb*=texel.rgb;semi=semi&&texel.a<0.75;}
+      uniform bool u_normalDiagnostic;
+      void main(){vec4 color=vec4(v_color,1.0);bool semi=u_semi;if(u_textured){vec4 texel=texture2D(u_texture,v_uv);if(texel.a<0.01)discard;if(!u_normalDiagnostic)color.rgb*=texel.rgb;semi=semi&&texel.a<0.75;}
+      if(u_normalDiagnostic){float len=length(v_normal);color.rgb=len>0.000001?v_normal/len*0.5+0.5:vec3(0.5);}
       if(!u_picking&&((u_pass==0&&semi)||(u_pass==1&&!semi)))discard;
       gl_FragColor=u_picking?vec4(u_pick,1.0):color;}`);
     this.program=gl.createProgram();gl.attachShader(this.program,vertex);gl.attachShader(this.program,fragment);gl.linkProgram(this.program);
     if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
     }catch(error){if(this.program)gl.deleteProgram(this.program);this.program=null;throw error;}
     finally{if(vertex)gl.deleteShader(vertex);if(fragment)gl.deleteShader(fragment);}
-    this.locations={};for(const name of ['position','color','uv'])this.locations[name]=gl.getAttribLocation(this.program,'a_'+name);
-    for(const name of ['view','model','texture','textured','picking','pick','semi','pass'])this.locations[name]=gl.getUniformLocation(this.program,'u_'+name);
+    this.locations={};for(const name of ['position','color','uv','normal'])this.locations[name]=gl.getAttribLocation(this.program,'a_'+name);
+    for(const name of ['view','model','texture','textured','picking','pick','semi','pass','normalMatrix','normalDiagnostic'])this.locations[name]=gl.getUniformLocation(this.program,'u_'+name);
     this.gridBuffer=gl.createBuffer();this.gridKey=null;this.gridCount=0;this.pickTarget=null;
     this.whiteTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.whiteTexture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
@@ -66,7 +69,7 @@ export class SceneRenderer {
 
   clear(){
     const gl=this.gl;
-    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
+    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.normalBuffer)gl.deleteBuffer(batch.normalBuffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
     this.meshes.clear();this.instances=[];this.scene=null;
     if(!this.lost){gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);}
   }
@@ -86,6 +89,7 @@ export class SceneRenderer {
     const gl=this.gl,vertices=preview?.vertices,triangles=preview?.triangles;
     if(!Array.isArray(vertices)||!Array.isArray(triangles)||!vertices.length||!triangles.length||vertices.length>100000||triangles.length>100000)throw new Error('Model geometry is empty or exceeds scene preview bounds.');
     if(vertices.some(v=>!Array.isArray(v)||v.length!==3||!v.every(finite)))throw new Error('Model has invalid vertex coordinates.');
+    const normalQualified=qualifySourceNormals(preview);
     const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
     for(const vertex of vertices)for(let axis=0;axis<3;axis++){min[axis]=Math.min(min[axis],vertex[axis]);max[axis]=Math.max(max[axis],vertex[axis]);}
     const textureData=new Map((preview.textures??[]).filter(t=>t.status==='address_match'&&t.rgba_base64).map(t=>[t.material_index,t]));
@@ -93,13 +97,14 @@ export class SceneRenderer {
     for(let index=0;index<triangles.length;index++){
       const triangle=triangles[index],material=preview.triangle_materials?.[index]??-1;
       if(!Array.isArray(triangle)||triangle.length!==3||triangle.some(v=>!Number.isInteger(v)||v<0||v>=vertices.length))throw new Error('Model has an invalid triangle index.');
-      if(!groups.has(material)){const group=[];group.vertexIndices=[];groups.set(material,group);}
+      if(!groups.has(material)){const group=[];group.vertexIndices=[];group.normals=[];groups.set(material,group);}
       const data=groups.get(material),texture=textureData.get(material),uvs=preview.triangle_uvs?.[index],colors=preview.triangle_colors?.[index];
       for(let corner=0;corner<3;corner++){
         const raw=Array.isArray(colors?.[corner])&&colors[corner].length>=3?colors[corner]:[153,187,167],color=raw.slice(0,3).map(value=>finite(value)?Math.max(0,value)/(texture?128:255):.6);
         const uv=texture&&Array.isArray(uvs?.[corner])?[(uvs[corner][0]-texture.uv_origin[0]+.5)/texture.width,(uvs[corner][1]-texture.uv_origin[1]+.5)/texture.height]:[0,0];
         if(texture&&(!Array.isArray(uvs?.[corner])||!uv.every(finite)))throw new Error('Matched texture has invalid UV coordinates.');
         data.push(...vertices[triangle[corner]],...color,...uv);data.vertexIndices.push(triangle[corner]);
+        if(normalQualified)data.normals.push(...(preview.triangle_normals[index]?.[corner]??[0,0,0]));
       }
     }
     const batches=[];
@@ -109,6 +114,7 @@ export class SceneRenderer {
         if(blend&&(!Number.isInteger(blend.mode)||blend.mode<0||blend.mode>3||typeof blend.enabled!=='boolean'))throw new Error('Invalid material blend metadata.');
         const batch={buffer:gl.createBuffer(),data:new Float32Array(data),vertexIndices:data.vertexIndices,count:data.length/8,texture:null,semi:blend?.enabled===true,blendMode:blend?.mode??0};batches.push(batch);
         gl.bindBuffer(gl.ARRAY_BUFFER,batch.buffer);gl.bufferData(gl.ARRAY_BUFFER,batch.data,gl.DYNAMIC_DRAW);
+        if(normalQualified){batch.normalBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,batch.normalBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data.normals),gl.STATIC_DRAW);}
         const texture=textureData.get(material);
         if(texture){
           if(!Number.isInteger(texture.width)||!Number.isInteger(texture.height)||texture.width<1||texture.height<1||texture.width*texture.height>1048576)throw new Error('Texture dimensions exceed scene preview bounds.');
@@ -127,8 +133,8 @@ export class SceneRenderer {
           gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
         }
       }
-    }catch(error){for(const batch of batches){gl.deleteBuffer(batch.buffer);if(batch.texture)gl.deleteTexture(batch.texture);}throw error;}
-    return {batches,min,max,vertexCount:vertices.length};
+    }catch(error){for(const batch of batches){gl.deleteBuffer(batch.buffer);if(batch.normalBuffer)gl.deleteBuffer(batch.normalBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}throw error;}
+    return {batches,min,max,vertexCount:vertices.length,normalQualified};
   }
 
   updateVertices(key,vertices){
@@ -141,7 +147,7 @@ export class SceneRenderer {
       this.gl.bindBuffer(this.gl.ARRAY_BUFFER,batch.buffer);this.gl.bufferSubData(this.gl.ARRAY_BUFFER,0,batch.data);
       batch.wireDirty=true;
     }
-    mesh.min=min;mesh.max=max;const asset=this.scene?.assets.find(item=>item.geometry_key===key);if(asset)asset.preview={...asset.preview,vertices};return true;
+    mesh.min=min;mesh.max=max;mesh.normalQualified=false;const asset=this.scene?.assets.find(item=>item.geometry_key===key);if(asset)asset.preview={...asset.preview,vertices,posed:true};return true;
   }
 
   hasEntity(identifier){return !this.lost&&this.instances.some(item=>item.entity_id===identifier);}
@@ -177,14 +183,17 @@ export class SceneRenderer {
     return columnMajor([a*r.x,a*r.y,a*r.z,-a*dot(origin,r),b*u.x,b*u.y,b*u.z,-b*dot(origin,u),c*f.x,c*f.y,c*f.z,d-c*dot(origin,f),f.x,f.y,f.z,-dot(origin,f)]);
   }
 
-  bind(buffer){
+  bind(buffer,normalBuffer=null){
     const gl=this.gl,l=this.locations;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
     for(const [name,size,offset] of [['position',3,0],['color',3,12],['uv',2,24]]){gl.enableVertexAttribArray(l[name]);gl.vertexAttribPointer(l[name],size,gl.FLOAT,false,32,offset);}
+    if(normalBuffer){gl.bindBuffer(gl.ARRAY_BUFFER,normalBuffer);gl.enableVertexAttribArray(l.normal);gl.vertexAttribPointer(l.normal,3,gl.FLOAT,false,12,0);}
+    else{gl.disableVertexAttribArray(l.normal);gl.vertexAttrib3f(l.normal,0,0,0);}
   }
 
   draw(view,picking=false){
     if(this.lost||!view.width||!view.height)return;
     validateTransforms(view.transforms);
+    if(view.normalDiagnostic!==undefined&&typeof view.normalDiagnostic!=='boolean')throw new Error('Invalid source normal diagnostic mode.');
     const gl=this.gl,l=this.locations,dpr=Math.min(2,window.devicePixelRatio||1),w=Math.max(1,Math.round(view.width*dpr)),h=Math.max(1,Math.round(view.height*dpr));
     if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
     if(picking)this.preparePick(w,h);else gl.bindFramebuffer(gl.FRAMEBUFFER,null);
@@ -194,7 +203,11 @@ export class SceneRenderer {
     const drawInstance=(index,pass)=>{
       const instance=this.instances[index],mesh=this.meshes.get(instance.geometry_key),id=index+1;
       if(view.hiddenEntities?.has(instance.entity_id))return;
-      gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions,view.transforms)));gl.uniform3f(l.pick,(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255);
+      const matrix=this.matrix(instance,view.positions,view.transforms),diagnostic=!picking&&view.normalDiagnostic===true;
+      gl.uniformMatrix4fv(l.model,false,columnMajor(matrix));gl.uniform3f(l.pick,(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255);
+      const normalMatrix=diagnostic&&mesh.normalQualified?sourceNormalMatrix(matrix):null;
+      const normalScale=normalMatrix?Math.max(...normalMatrix.map(Math.abs)):1;
+      gl.uniformMatrix3fv(l.normalMatrix,false,new Float32Array(normalMatrix?[0,3,6,1,4,7,2,5,8].map(i=>normalMatrix[i]/normalScale):[0,0,0,0,0,0,0,0,0]));gl.uniform1i(l.normalDiagnostic,diagnostic);
       gl.uniform1i(l.pass,pass);
       for(const batch of mesh.batches){
         if(pass===1&&!batch.semi)continue;
@@ -203,7 +216,7 @@ export class SceneRenderer {
           gl.blendEquationSeparate(mode===2?gl.FUNC_REVERSE_SUBTRACT:gl.FUNC_ADD,gl.FUNC_ADD);
           gl.blendFuncSeparate(mode===0||mode===3?gl.CONSTANT_ALPHA:gl.ONE,mode===0?gl.CONSTANT_ALPHA:gl.ONE,gl.ONE,gl.ZERO);
         }
-        this.bind(batch.buffer);gl.uniform1i(l.semi,batch.semi);gl.uniform1i(l.textured,!!batch.texture);gl.bindTexture(gl.TEXTURE_2D,batch.texture??this.whiteTexture);gl.drawArrays(gl.TRIANGLES,0,batch.count);
+        this.bind(batch.buffer,diagnostic?batch.normalBuffer:null);gl.uniform1i(l.semi,batch.semi);gl.uniform1i(l.textured,!!batch.texture);gl.bindTexture(gl.TEXTURE_2D,batch.texture??this.whiteTexture);gl.drawArrays(gl.TRIANGLES,0,batch.count);
       }
     };
     for(let index=0;index<this.instances.length;index++)drawInstance(index,0);
@@ -217,7 +230,7 @@ export class SceneRenderer {
       gl.enable(gl.BLEND);gl.depthMask(false);for(const item of order)drawInstance(item.index,1);
       gl.disable(gl.BLEND);gl.depthMask(true);gl.blendEquation(gl.FUNC_ADD);
     }
-    gl.uniform1i(l.semi,false);gl.uniform1i(l.pass,0);
+    gl.uniform1i(l.semi,false);gl.uniform1i(l.pass,0);gl.uniform1i(l.normalDiagnostic,false);
     if(!picking&&view.wireframe)this.drawWireframe(view);
     if(!picking&&view.grid)this.drawGrid(view);
   }
@@ -235,7 +248,7 @@ export class SceneRenderer {
   drawWireframe(view){
     validateTransforms(view.transforms);
     const gl=this.gl,l=this.locations;
-    gl.uniform1i(l.textured,false);
+    gl.uniform1i(l.textured,false);gl.uniform1i(l.normalDiagnostic,false);
     // A diagnostic overlay shows every decoded edge, including hidden edges.
     gl.disable(gl.DEPTH_TEST);gl.depthMask(false);
     try{
@@ -259,6 +272,7 @@ export class SceneRenderer {
 
   drawGrid(view){
     const gl=this.gl,l=this.locations,spacing=10**Math.floor(Math.log10(view.camera.distance/7)),half=spacing*12,cx=Math.round(view.camera.target.x/spacing)*spacing,cz=Math.round(view.camera.target.z/spacing)*spacing,key=[spacing,cx,cz].join('/');
+    gl.uniform1i(l.normalDiagnostic,false);
     if(key!==this.gridKey){
       const data=[],add=(x,z)=>data.push(x,0,z,.16,.23,.24,0,0);
       for(let i=-12;i<=12;i++){add(cx+i*spacing,cz-half);add(cx+i*spacing,cz+half);add(cx-half,cz+i*spacing);add(cx+half,cz+i*spacing);}

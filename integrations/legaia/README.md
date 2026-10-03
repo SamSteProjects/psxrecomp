@@ -375,3 +375,5 @@ without scalar coordinates retain model-level navigation.
 Scenery viewport source-Y rotation now supports individual decorations and explicitly enabled shared transforms, preview cancellation, snapping, history and normal Build. See [workflow](../../docs/legaia-scenery-rotation-gizmo.md); runtime acceptance remains deferred.
 
 Selected static decorations now support reviewed source-layout/source-yaw quarter turns around a selected anchor, Proposed/Current comparison, atomic history and normal Build. See [group rotation](../../docs/legaia-scenery-group-rotation.md); gameplay acceptance is deferred.
+
+Static Model shading offers a source-normal direction diagnostic for qualified lit TMD corners, including authored normal vectors/references. Animated poses keep the default surface view. See [normal diagnostic](../../docs/legaia-model-source-normals.md); this does not reconstruct retail lighting.

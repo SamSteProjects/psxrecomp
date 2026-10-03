@@ -200,3 +200,5 @@
 .transition-entry-layers th,.transition-entry-layers td{text-align:left;padding:6px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .transition-graph-coverage{margin:18px 0;font-size:12px}
 @media(max-width:720px){.transition-graph-body{grid-template-columns:minmax(0,1fr)}.transition-scene-list{max-height:130px;flex-direction:row;flex-wrap:wrap}.transition-scene-list>button{flex:1 1 130px}.transition-graph-svg{height:330px}}
+
+#model-dialog .model-controls{flex-wrap:wrap;justify-content:flex-start;gap:10px}#model-dialog .model-controls label{min-width:0;max-width:100%}#model-dialog .model-controls select{min-width:0;max-width:min(240px,100%)}#model-normal-note{font-size:10px;line-height:1.7;overflow-wrap:anywhere}

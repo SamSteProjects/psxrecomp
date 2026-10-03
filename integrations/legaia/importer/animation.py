@@ -190,7 +190,7 @@ def load_animation_preview(disc: Any, asset: dict[str, Any], clip_id: str = "idl
     if decoded["frame_count"] * vertex_count > MAX_POSED_VERTICES:
         raise ImportError("animation posed-vertex budget exceeded")
     geometry["vertices"] = geometry["vertices"][:vertex_count]
-    for key in ("triangles", "triangle_colors", "triangle_uvs", "triangle_materials"):
+    for key in ("triangles", "triangle_colors", "triangle_uvs", "triangle_materials", "triangle_normals"):
         geometry[key] = geometry[key][:triangle_count]
     geometry["objects"] = objects
     if slot < 3:

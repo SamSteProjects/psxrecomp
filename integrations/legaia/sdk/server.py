@@ -709,6 +709,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/actor-placement-batch.js": ("actor-placement-batch.js", "text/javascript"),
                  "/editor.css": ("editor.css", "text/css"),
                  "/scene-renderer.js": ("scene-renderer.js", "text/javascript"),
+                 "/source-normal-view.js": ("source-normal-view.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),

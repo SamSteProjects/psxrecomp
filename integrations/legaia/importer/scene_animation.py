@@ -136,7 +136,7 @@ class SceneActorAnimationCatalog:
             vertex_count = sum(obj["vertex_count"] for obj in objects)
             triangle_count = sum(obj["triangle_count"] for obj in objects)
             geometry["vertices"] = geometry["vertices"][:vertex_count]
-            for key in ("triangles", "triangle_colors", "triangle_uvs", "triangle_materials"):
+            for key in ("triangles", "triangle_colors", "triangle_uvs", "triangle_materials", "triangle_normals"):
                 if key in geometry:
                     geometry[key] = geometry[key][:triangle_count]
             geometry.setdefault("diagnostics", []).append({

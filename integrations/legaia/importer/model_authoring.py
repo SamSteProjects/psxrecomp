@@ -51,8 +51,9 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
         result['textures'] = []
         result.pop('texture_catalog', None)
         result.pop('texture_scope', None)
-    for key in ('triangles', 'triangle_colors', 'triangle_uvs', 'triangle_materials'):
+    for key in ('triangles', 'triangle_colors', 'triangle_uvs', 'triangle_materials', 'triangle_normals'):
         result[key] = deepcopy(shape[key][:triangle_count])
+    result['normal_preview'] = deepcopy(shape['normal_preview'])
     transforms = result.get('pose', {}).get('object_transforms')
     if result.get('posed') and transforms is None and not result.get('frames'):
         raise ImportError('Shape preview requires explicit pose transforms')

@@ -410,6 +410,10 @@ class ScenePreviewService:
                             }
                         else:
                             pose_kind = "single_object_static"
+                    if pose_kind not in ("single_object_static", "reference_clipless_multipart_static"):
+                        # Static source normals have not been posed through these channels.
+                        preview.pop("triangle_normals", None)
+                        preview.pop("normal_preview", None)
                     count = len(preview.get("triangles", []))
                     bytes_used = sum((len(t.get("rgba_base64", "")) + len(t.get("stp_base64", ""))) * 3 // 4 for t in preview.get("textures", []))
                     if len(assets) >= MAX_GEOMETRIES or triangle_count + count > MAX_TRIANGLES or texture_bytes + bytes_used > MAX_TEXTURE_BYTES:
