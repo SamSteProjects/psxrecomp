@@ -11,6 +11,31 @@ from test_project_workflow import synthetic_scene
 RECT=dict(row_start=1,row_end=2,column_start=0,column_end=1,quadrant='all',blocked=True)
 
 class WallRectangle(unittest.TestCase):
+ def test_retail_operation_restores_mixed_bits_only_in_selection(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=ProjectService(Path(d));p.import_metadata(synthetic_scene());source=bytearray([0x0a])*0x12000
+   source[0x4080]=0x5a;source[0x4081]=0xaa;source=bytes(source)
+   rectangle=dict(row_start=1,row_end=1,column_start=0,column_end=1,quadrant='all',blocked='retail')
+   edits=[dict(row=1,column=c,quadrant=q,blocked=not bool(source[0x4080+c]&(16<<q))) for c in range(2) for q in range(4)]
+   outside=dict(row=3,column=0,quadrant=0,blocked=True)
+   with patch.object(ProjectService,'_environment_source',return_value=source):
+    p.command(dict(type='set_collision_walls',entity_id=p.active_scene,value=dict(source_sha256=sha256(source).hexdigest(),edits=edits+[outside])));before=deepcopy(p.overrides)
+    partial=review(p,p.active_scene,{**rectangle,'quadrant':0})
+    self.assertEqual(len(partial['value']['edits']),7)
+    partial_map=patch_collision_walls(source,partial['source_sha256'],partial['value']['edits'])[0]
+    for at in (0x4080,0x4081):
+     self.assertEqual(partial_map[at]&0x10,source[at]&0x10)
+     self.assertEqual(partial_map[at]&0xe0,(~source[at])&0xe0)
+    result=review(p,p.active_scene,rectangle);self.assertEqual(result['effective_change_count'],8)
+    self.assertEqual({row['proposed'] for row in result['rows']},{False,True})
+    self.assertTrue(all(row['proposed']==row['retail'] for row in result['rows']))
+    p.command(dict(type='apply_collision_rectangle',entity_id=p.active_scene,rectangle=rectangle,review_key=result['review_key']))
+    self.assertEqual(p.overrides[p.active_scene]['Collision']['edits'],[outside])
+    restored=patch_collision_walls(source,result['source_sha256'],result['value']['edits'])[0]
+    self.assertEqual({i for i,(a,b) in enumerate(zip(source,restored)) if a!=b},{0x4180})
+    self.assertTrue(all((a&15)==(b&15) for a,b in zip(source,restored)))
+    p.undo();self.assertEqual(p.overrides,before);p.redo();self.assertEqual(ProjectService.open(p.save()).overrides,p.overrides)
+    self.assertFalse(review(p,p.active_scene,rectangle)['project_change'])
  def test_atomic_history_preserved_outside_bits_and_retail_restore(self):
   with tempfile.TemporaryDirectory() as d:
    p=ProjectService(Path(d));p.import_metadata(synthetic_scene());source=bytes([0x0a])*0x12000

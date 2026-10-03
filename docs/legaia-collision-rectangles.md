@@ -3,7 +3,7 @@
 Refresh scene resources, open the collision asset, and choose **Edit source wall
 bits**, then **Edit wall rectangle…**. Apply or discard a pending single-cell edit
 before entering the rectangle tool. Enter inclusive first/last row and column,
-choose one quadrant or all four, and choose the proposed Blocked value.
+choose one quadrant or all four, then select **Set wall bits** and the proposed Blocked value, or **Restore retail walls**. Restoration uses each selected bit's own verified retail value, including mixed blocked/unblocked cells; it preserves authored bits outside the selected area.
 
 **Review rectangle** displays separate retail/current/proposed bits and counts
 effective changes and the total resulting authored override. The table shows up
@@ -141,3 +141,13 @@ scenery binding remain unchanged. Private copied-project path is recorded in
 `local-output/sdk-20260909/wall-viewport-20261001/prepared.json`; browser/test/ZIP
 proofs share that directory. No game launched. This feature postdates integrated548;
 walkability, runtime paints/blockers and full16-layer acceptance remain open.
+
+## Retail restoration evidence, 2026-10-03
+
+**Restore retail walls** sets each selected bit to its own verified source value rather than clearing the whole selection. It removes the selected authored wall overrides and preserves outside bits; a single quadrant can be restored while retaining others. The existing bounded rectangle request accepts `blocked: "retail"` alongside the prior boolean paint values. Source review hashes include this operation, and Apply re-qualifies the same request through the existing wall override command. Floor tiers and unknown MAP bytes remain source-owned. The Blocked checkbox is hidden for restoration to avoid suggesting one uniform value.
+
+Five focused Python cases pass with private input and no skips, including mixed source patterns, exact outside-bit/floor preservation, Undo/Redo, persistence, bounds/drift/budget rejection and existing retail package regression. Both rectangle and viewport Node guard suites pass. Eight actual browser checks pass through operation-change withdrawal, mixed retail values, Proposed/Return,540px layout, one Apply, Undo/Redo, Save/reload, no-op disabled Apply and normal Build. The screenshot is inspected; no page errors or game requests occur.
+
+Independent full MAP construction/readback matches all73,728 bytes. The restored Town01 row2/column13 retains its mixed retail quadrants; the only remaining changed byte is32767 (`0x7FFF`), whose deliberately retained outside quadrant bit is XOR0x10. Every low floor nibble matches source. Package SHA256: `143ca9497ec65065a56765605cedc07ff4e7f782335019c1880399ebeaf8b036`.
+
+Private fixture, browser proof, screenshot and readback are under `local-output/sdk-20260909/wall-retail-restore-20261003/parent/`. Owned browser/server handles are terminal. No game, dependency installation or full-disc export ran; native collision and movement behavior remain deferred.

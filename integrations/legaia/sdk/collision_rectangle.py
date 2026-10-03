@@ -12,7 +12,7 @@ def review(project,scene,rectangle):
     for key,low,high in [('row_start',1,127),('row_end',1,127),('column_start',0,127),('column_end',0,127)]:
         if type(rectangle[key]) is not int or not low<=rectangle[key]<=high:raise ProjectError('Wall rectangle bounds are outside the canonical grid')
     q=rectangle['quadrant']
-    if not (q=='all' or type(q) is int and 0<=q<=3) or type(rectangle['blocked']) is not bool:raise ProjectError('Invalid rectangle quadrant or blocked value')
+    if not (q=='all' or type(q) is int and 0<=q<=3) or not (type(rectangle['blocked']) is bool or rectangle['blocked']=='retail'):raise ProjectError('Invalid rectangle quadrant or blocked value')
     if rectangle['row_start']>rectangle['row_end'] or rectangle['column_start']>rectangle['column_end']:raise ProjectError('Wall rectangle bounds must be ordered')
     quadrants=range(4) if q=='all' else [q]
     count=(rectangle['row_end']-rectangle['row_start']+1)*(rectangle['column_end']-rectangle['column_start']+1)*len(quadrants)
@@ -25,7 +25,7 @@ def review(project,scene,rectangle):
         for column in range(rectangle['column_start'],rectangle['column_end']+1):
             offset=0x4000+row*128+column
             for quadrant in quadrants:
-                retail=bool(original[offset]&(16<<quadrant));current=bool(effective[offset]&(16<<quadrant));blocked=rectangle['blocked'];key=(row,column,quadrant)
+                retail=bool(original[offset]&(16<<quadrant));current=bool(effective[offset]&(16<<quadrant));blocked=retail if rectangle['blocked']=='retail' else rectangle['blocked'];key=(row,column,quadrant)
                 if blocked==retail:merged.pop(key,None)
                 else:merged[key]=dict(row=row,column=column,quadrant=quadrant,blocked=blocked)
                 rows.append(dict(row=row,column=column,quadrant=quadrant,retail=retail,effective=current,proposed=blocked))
