@@ -1,3 +1,4 @@
+import {environmentYawMatrix,yawFromDrag,environmentRotationCommand} from '/environment-rotation.js';
 import {mountBuildReview} from '/build-review.js';
 import {mountDraftOutputReview} from '/draft-review.js';
 import {mountBuildHistory} from '/build-history.js';
@@ -67,6 +68,7 @@ let actorGroupInspection=null,actorGroupSelection=[],actorGroupSelectionKey=null
 const canvas = $('viewport'), ctx = canvas.getContext('2d');
 const transformTools=document.createElement('div');transformTools.className='transform-tools';
 transformTools.innerHTML='<label><input id="transform-snap" type="checkbox"> Snap moves</label><label>Step <select id="transform-snap-step" aria-label="Transform snap step"><option value="16">16 units</option><option value="64" selected>64 units</option><option value="256">256 units</option><option value="1024">1024 units</option></select></label><span id="transform-drag-status" role="status">X/Z moves · snap aligns to scene origin</span>';
+const sceneryTool=document.createElement('select');sceneryTool.id='scenery-transform-tool';sceneryTool.setAttribute('aria-label','Scenery transform tool');for(const [value,text] of [['move','Move'],['yaw','Rotate scenery Y']]){const option=document.createElement('option');option.value=value;option.textContent=text;sceneryTool.append(option);}const yawSnap=document.createElement('input');yawSnap.type='checkbox';yawSnap.checked=true;yawSnap.id='scenery-yaw-snap';const yawLabel=document.createElement('label');yawLabel.textContent='Snap yaw ';yawLabel.append(yawSnap);const yawStep=document.createElement('select');yawStep.id='scenery-yaw-step';yawStep.setAttribute('aria-label','Scenery yaw snap step');for(const [value,text] of [[16,'16 units'],[64,'64 units'],[256,'256 units (22.5°)'],[1024,'1024 units (90°)']]){const option=document.createElement('option');option.value=String(value);option.textContent=text;yawStep.append(option);}yawStep.value='256';transformTools.prepend(sceneryTool,yawLabel,yawStep);for(const control of [sceneryTool,yawSnap,yawStep])control.onchange=()=>{cancelViewportGesture();draw();};
 $('viewport-wrap').before(transformTools);
 function snappedTransformCoordinate(value,step){return Math.round(value/(step||1))*(step||1);}
 const camera = {projection:'perspective',yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
@@ -712,6 +714,21 @@ function movableSelection(){
   if(!environment.entity_id.includes('/decorations/')&&!(sharedEnvironmentMove?.id===environment.entity_id&&sharedEnvironmentMove?.key===resourceStateKey()))return null;
   return {id:environment.entity_id,components:{Transform:{effective:{position:environment.position}}}};
 }
+function rotationSelection(){
+  const item=selectedEnvironment();if(sceneryTool.value!=='yaw'||busy||!item||!movableSelection()||!canEdit()||!scenePreviewCurrent()||!sceneModelsReady()||sceneRepresentation!=='authored'||scenePose||shapeDraft||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||scenePlacementMode||wallSelectMode||wallInspection||pickScriptTargets||pickRuntimeNodes||fieldSpatialPick||environmentGroupSelection.length>1||hiddenSceneEntities().has(item.entity_id))return null;
+  try{environmentYawMatrix(item,item.effective_transform?.rotation_psx.y??item.source_record.imported_transform.rotation_psx.y);return item;}catch{return null;}
+}
+function yawPreviewTransforms(){
+  const transforms=new Map();if(!draft?.sceneryYaw||drag?.type!=='environment-yaw'||!transformGestureCurrent(drag))return transforms;
+  const item=drag.rotationItem,binding=drag.rotationBinding,shared=drag.rotationShared;
+  for(const row of environmentEntities()){
+    if(shared?row.source_record?.object_record_index!==item.source_record.object_record_index:row.entity_id!==item.entity_id)continue;
+    const cell=(row.source_record.source_record.grid_byte_offset-0x8000)/2;
+    if(shared&&binding?.instances?.find(e=>e.cell_index===cell)?.rotation_psx?.y!==undefined)continue;
+    transforms.set(row.entity_id,environmentYawMatrix(row,draft.yaw));
+  }return transforms;
+}
+function previewBounds(id,hidden=new Set()){const view=sceneView();return sceneRenderer.bounds(view.positions,id,hidden,view.transforms);}
 async function moveDecoration(identifier,axis,worldValue){
   if(sceneRepresentation!=='authored')return;
   const item=selectedEnvironment();if(!scenePreviewCurrent()||!item||item.entity_id!==identifier)return;
@@ -1138,7 +1155,7 @@ function render(){
 function activeScenePreview(){return scenePreview&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&sceneProjectPath===state.project?.path&&scenePreview.scene_id===state.scene?.id&&scenePreview.representation===sceneRepresentation?scenePreview:null;}
 function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===sceneRequestKey()&&!sceneError;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
-function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const proposed=sceneryGroupPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(scenePlacementInspection?.layer==='proposed')for(const row of scenePlacementInspection.report.targets){const proposed=scenePlacementPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(draft&&!draft.group)positions.set(draft.id,draft.position);return {camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
+function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const proposed=sceneryGroupPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(scenePlacementInspection?.layer==='proposed')for(const row of scenePlacementInspection.report.targets){const proposed=scenePlacementPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(draft&&!draft.group&&!draft.sceneryYaw)positions.set(draft.id,draft.position);return {transforms:yawPreviewTransforms(),camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
   if($('texture-scene-uses'))$('texture-scene-uses').disabled=busy||!scenePreviewCurrent();
   comparisonNotice.hidden=sceneRepresentation!=='retail';
@@ -2614,9 +2631,9 @@ function renderInspector(){
     $('frame-environment').onclick=frameEnvironment;
     if(source.record_offset&&source.source_record?.map_sha256){
       if(!environment.entity_id.includes('/decorations/')){
-        const enable=document.createElement('button');enable.id='enable-shared-move';enable.textContent='Enable shared move handles';
+        const enable=document.createElement('button');enable.id='enable-shared-move';enable.textContent='Enable shared transform handles';
         enable.disabled=busy||!canEdit()||sceneRepresentation!=='authored'||!scenePreviewCurrent();
-        enable.onclick=()=>{if(!canEdit()||!scenePreviewCurrent()||selectedEnvironment()?.entity_id!==environment.entity_id)return;sharedEnvironmentMove={id:environment.entity_id,key:resourceStateKey()};enable.textContent='Shared move handles enabled';notify('X/Z handles affect every use of this placement record. Undo restores the edit.');draw();};
+        enable.onclick=()=>{if(!canEdit()||!scenePreviewCurrent()||selectedEnvironment()?.entity_id!==environment.entity_id)return;sharedEnvironmentMove={id:environment.entity_id,key:resourceStateKey()};enable.textContent='Shared transform handles enabled';notify('X/Z and yaw handles affect every use of this placement record unless individually overridden. Undo restores the edit.');draw();};
         $('frame-environment').after(enable);
       }
       const scopes=environment.entity_id.includes('/decorations/')?['shared','instance']:['shared'];
@@ -3392,7 +3409,7 @@ function frame(entity){
   }
   const points=entity?[position(entity)]:(sceneLayers.actors?entities().filter(e=>!hiddenSceneEntities().has(e.id)).map(position):[]);
   const hasMesh=sceneModelsReady()&&(!entity||sceneRenderer.hasEntity(entity.id));
-  if(hasMesh)points.push(...sceneRenderer.bounds(sceneView().positions,entity?.id,hiddenSceneEntities()));
+  if(hasMesh)points.push(...previewBounds(entity?.id,hiddenSceneEntities()));
   if(!points.length){camera.target={x:0,y:0,z:0};camera.distance=2000;draw();return;}
   const min={x:Infinity,y:Infinity,z:Infinity},max={x:-Infinity,y:-Infinity,z:-Infinity};
   for(const p of points)for(const axis of ['x','y','z']){min[axis]=Math.min(min[axis],p[axis]);max[axis]=Math.max(max[axis],p[axis]);}
@@ -3441,8 +3458,8 @@ function drawObservedCandidates(){
 function drawEnvironmentSelection(){
   const item=selectedEnvironment();
   if(!item||!sceneModelsReady()||hiddenSceneEntities().has(item.entity_id))return;
-  if(environmentGroupSelection.length>1){ctx.save();ctx.setLineDash([5,3]);for(const id of environmentGroupSelection){const bounds=sceneRenderer.bounds(sceneView().positions,id);if(hiddenSceneEntities().has(id)||bounds.length!==8)continue;for(let corner=0;corner<8;corner++)for(const bit of [1,2,4])if(!(corner&bit))line(bounds[corner],bounds[corner|bit],'#68f0ac',1.5);}ctx.restore();}
-  const corners=sceneRenderer.bounds(sceneView().positions,item.entity_id);
+  if(environmentGroupSelection.length>1){ctx.save();ctx.setLineDash([5,3]);for(const id of environmentGroupSelection){const bounds=previewBounds(id);if(hiddenSceneEntities().has(id)||bounds.length!==8)continue;for(let corner=0;corner<8;corner++)for(const bit of [1,2,4])if(!(corner&bit))line(bounds[corner],bounds[corner|bit],'#68f0ac',1.5);}ctx.restore();}
+  const corners=previewBounds(item.entity_id);
   if(corners.length!==8)return;
   ctx.save();
   // A dashed bounds overlay identifies the selection without implying that
@@ -3459,6 +3476,7 @@ function drawEnvironmentSelection(){
 }
 function scenePlacementBoxCurrent(gesture){return !busy&&scenePlacementMode&&scenePlacementBoxMode&&canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!wallSelectMode&&!wallInspection&&!pickScriptTargets&&!pickRuntimeNodes&&gesture.sourceKey===state.project_copy_source_key&&gesture.context===resourceStateKey()&&gesture.cameraRevision===cameraRevision&&gesture.width===width&&gesture.height===height;}
 function draw(){
+  if(drag?.type==='environment-yaw'&&!transformGestureCurrent(drag)){cancelViewportGesture();return;}
   if(drag?.type==='scene-placement-box'&&!scenePlacementBoxCurrent(drag)){cancelViewportGesture();return;}
   if(drag?.type==='scene-placement-group-transform'&&!transformGestureCurrent(drag)){cancelViewportGesture();return;}
   updateScenePlacementSelection();
@@ -3496,7 +3514,7 @@ function draw(){
       if(canEdit()&&sceneRepresentation==='authored'&&!scenePlacementMode&&!scenePlacementInspection&&!actorGroupInspection&&!actorGroupSelection.length){const length=camera.distance*.085;for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});}}
     }
   }
-  if(sceneModelsReady()&&scenePlacementSelection.length){ctx.save();ctx.setLineDash([5,3]);for(const id of scenePlacementSelection){if(hiddenSceneEntities().has(id))continue;const actor=entities().some(e=>e.id===id);if(actor?!sceneLayers.actors:!sceneLayers.scenery)continue;const corners=sceneRenderer.bounds(sceneView().positions,id);if(corners.length!==8)continue;for(let corner=0;corner<8;corner++)for(const bit of [1,2,4])if(!(corner&bit))line(corners[corner],corners[corner|bit],'#8bd7e8',1.5);}ctx.restore();}
+  if(sceneModelsReady()&&scenePlacementSelection.length){ctx.save();ctx.setLineDash([5,3]);for(const id of scenePlacementSelection){if(hiddenSceneEntities().has(id))continue;const actor=entities().some(e=>e.id===id);if(actor?!sceneLayers.actors:!sceneLayers.scenery)continue;const corners=previewBounds(id);if(corners.length!==8)continue;for(let corner=0;corner<8;corner++)for(const bit of [1,2,4])if(!(corner&bit))line(corners[corner],corners[corner|bit],'#8bd7e8',1.5);}ctx.restore();}
   drawEnvironmentSelection();drawCoordinateProbe();drawScriptTargets();
   if(actorGroupInspection){
     for(const id of actorGroupInspection.positions.keys()){
@@ -3529,13 +3547,19 @@ function draw(){
     }
   }
   const scenery=selectedEnvironment(),movable=movableSelection();
-  if((scenery||selectedNpcDraft())&&movable&&canEdit()){
+  if(((scenery&&sceneryTool.value==='move')||selectedNpcDraft())&&movable&&canEdit()){
     const world=draft?.id===movable.id?draft.position:position(movable),p=project(world),length=camera.distance*.085;
     if(p)for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){
       const end={...world,[axis]:world[axis]+length},q=project(end);if(!q)continue;
       line(world,end,color,2);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,4,0,Math.PI*2);ctx.fill();
       ctx.font='bold 10px "Segoe UI",sans-serif';ctx.fillText(axis.toUpperCase(),q.x+7,q.y+3);handles.push({axis,x:q.x,y:q.y,start:p});
     }
+  }
+  const rotating=rotationSelection();
+  if(rotating){
+    const pivot=rotating.display_position,radius=camera.distance*.085,points=[];ctx.save();ctx.strokeStyle='#8bd6a1';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<=64;i++){const a=i*Math.PI/32,q=project({x:pivot.x+Math.sin(a)*radius,y:pivot.y,z:pivot.z+Math.cos(a)*radius});if(!q){points.push(null);continue;}points.push(q);if(i===0||!points[i-1])ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);if(i<64)handles.push({sceneryYaw:true,axis:'y',x:q.x,y:q.y,start:project(pivot)});}ctx.stroke();
+    const yaw=draft?.sceneryYaw?draft.yaw:rotating.effective_transform?.rotation_psx.y??rotating.source_record.imported_transform.rotation_psx.y,a=yaw*Math.PI*2/4096,tip={x:pivot.x+Math.sin(a)*radius,y:pivot.y,z:pivot.z+Math.cos(a)*radius};line(pivot,tip,'#f4ce83',2);const q=project(tip);if(q){ctx.fillStyle='#f4ce83';ctx.font='bold 11px "Segoe UI",sans-serif';ctx.fillText(`Yaw ${yaw} · ${rotating.entity_id.includes('/decorations/')?'individual':'shared'}`,q.x+8,q.y-8);}ctx.restore();
   }
   drawRuntimeNodeLayer();drawObservedCandidates();
   if(['actor-box','scene-placement-box'].includes(drag?.type)&&drag.moved){ctx.save();ctx.fillStyle='#8bd7e820';ctx.strokeStyle='#8bd7e8';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.fillRect(drag.start.x,drag.start.y,drag.last.x-drag.start.x,drag.last.y-drag.start.y);ctx.strokeRect(drag.start.x,drag.start.y,drag.last.x-drag.start.x,drag.last.y-drag.start.y);ctx.restore();}
@@ -3551,6 +3575,7 @@ function cancelViewportGesture(){
   wallSelection=null;$('transform-drag-status').textContent='Move cancelled';draw();
 }
 function transformGestureCurrent(gesture){
+  if(gesture.type==='environment-yaw'){const rect=canvas.getBoundingClientRect();return !!rotationSelection()&&selectedEnvironment()?.entity_id===gesture.entity&&gesture.context===resourceStateKey()&&gesture.sourceKey===state.project_copy_source_key&&gesture.cameraRevision===cameraRevision&&gesture.width===width&&gesture.height===height&&gesture.rotationItem===selectedEnvironment()&&gesture.rotationBinding===activeScenePreview()?.environment_authoring&&gesture.yawSnap===(yawSnap.checked?Number(yawStep.value):1)&&gesture.width===rect.width&&gesture.height===rect.height;}
   if(gesture.type==='scene-placement-group-transform'){
     const center=scenePlacementCenter(false);
     return canEdit()&&scenePreviewCurrent()&&sceneModelsReady()&&sceneRepresentation==='authored'&&gesture.width===width&&gesture.height===height&&gesture.cameraRevision===cameraRevision&&scenePlacementInspection?.layer==='proposed'&&scenePlacementInspection.report===gesture.proposal&&gesture.sourceKey===state.project_copy_source_key&&gesture.context===resourceStateKey()&&center&&['x','y','z'].every(axis=>center[axis]===gesture.original[axis]);
@@ -3568,6 +3593,7 @@ function transformGestureCurrent(gesture){
     ['x','y','z'].every(axis=>position(entity)[axis]===gesture.original[axis]);
 }
 window.addEventListener('blur',cancelViewportGesture);
+window.addEventListener('resize',cancelViewportGesture);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelViewportGesture();});
 canvas.addEventListener('pointerdown',event=>{
   pendingEntityFrame=null;
@@ -3576,7 +3602,8 @@ canvas.addEventListener('pointerdown',event=>{
   const placementBox=scenePlacementBoxMode&&!scenePlacementHost.querySelector('[data-mixed-box]').disabled&&event.button===0&&!event.shiftKey&&!event.altKey;
   const box=placementBox||actorBoxMode&&!actorBoxButton.disabled&&event.button===0&&!event.shiftKey&&!event.altKey;
   const handle=!box && event.button===0 && !event.ctrlKey && !event.metaKey && !pickScriptTargets && !fieldSpatialPick && (entity||groupProposalCenter()||sceneryGroupCenter()||scenePlacementCenter()) && canEdit()?handles.find(h=>Math.hypot(h.x-p.x,h.y-p.y)<12):null;
-  drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,extendSelection:event.ctrlKey||event.metaKey,cameraRevision,representation:sceneRepresentation,type:box?(placementBox?'scene-placement-box':'actor-box'):handle?(handle.scenePlacementGroup?'scene-placement-group-transform':handle.sceneryGroup?'environment-group-transform':handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.scenePlacementGroup?scenePlacementCenter(false):handle?.sceneryGroup?sceneryGroupCenter(false):handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.scenePlacementGroup?scenePlacementInspection.report:handle?.sceneryGroup?environmentGroupInspection.report:handle?.group?actorGroupInspection.proposal:null,sourceKey:state.project_copy_source_key,width,height,snapStep:handle?.scenePlacementGroup||handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
+  drag={pointerId:event.pointerId,context:resourceStateKey(),start:p,last:p,moved:false,extendSelection:event.ctrlKey||event.metaKey,cameraRevision,representation:sceneRepresentation,type:box?(placementBox?'scene-placement-box':'actor-box'):handle?(handle.sceneryYaw?'environment-yaw':handle.scenePlacementGroup?'scene-placement-group-transform':handle.sceneryGroup?'environment-group-transform':handle.group?'group-transform':'transform'):event.button===2||event.button===1||event.shiftKey?'pan':'orbit',handle,entity:entity?.id,original:handle?.scenePlacementGroup?scenePlacementCenter(false):handle?.sceneryGroup?sceneryGroupCenter(false):handle?.group?groupProposalCenter(false):entity?position(entity):null,proposal:handle?.scenePlacementGroup?scenePlacementInspection.report:handle?.sceneryGroup?environmentGroupInspection.report:handle?.group?actorGroupInspection.proposal:null,sourceKey:state.project_copy_source_key,width,height,snapStep:handle?.scenePlacementGroup||handle?.group?64:$('transform-snap').checked?Number($('transform-snap-step').value):1};
+  if(handle?.sceneryYaw){drag.rotationItem=selectedEnvironment();drag.rotationBinding=activeScenePreview().environment_authoring;drag.rotationShared=!drag.rotationItem.entity_id.includes('/decorations/');drag.originalYaw=drag.rotationItem.effective_transform?.rotation_psx.y??drag.rotationItem.source_record.imported_transform.rotation_psx.y;drag.yawSnap=yawSnap.checked?Number(yawStep.value):1;}
   if(handle)drag.ground=groundAt(p.x,p.y,drag.original.y);
   if(handle&&state.actor_drafts?.[entity?.id])drag.snapStep=64;
   canvas.classList.add('dragging');
@@ -3585,7 +3612,8 @@ canvas.addEventListener('pointermove',event=>{
   if(!drag||event.pointerId!==drag.pointerId)return;const p=pointer(event),dx=p.x-drag.last.x,dy=p.y-drag.last.y;
   if(Math.hypot(p.x-drag.start.x,p.y-drag.start.y)>3)drag.moved=true;
   if(drag.moved){
-    if(['transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)){if(!transformGestureCurrent(drag)){cancelViewportGesture();return;}const point=groundAt(p.x,p.y,drag.original.y);if(point&&drag.ground){const axis=drag.handle.axis,group=['group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type),amount=snappedTransformCoordinate(point[axis]-drag.ground[axis],drag.snapStep);draft={id:drag.entity,group,sceneryGroup:drag.type==='environment-group-transform',scenePlacementGroup:drag.type==='scene-placement-group-transform',groupAmount:amount,position:{...drag.original,[axis]:group?drag.original[axis]+amount:snappedTransformCoordinate(drag.original[axis]+point[axis]-drag.ground[axis],drag.snapStep)}};}}
+    if(drag.type==='environment-yaw'){if(!transformGestureCurrent(drag)){cancelViewportGesture();return;}const point=groundAt(p.x,p.y,drag.original.y);try{if(!point||!drag.ground)throw new Error('Yaw requires a stable X/Z plane.');const yaw=yawFromDrag(drag.ground,point,drag.original,drag.originalYaw,drag.yawSnap);draft={id:drag.entity,sceneryYaw:true,yaw,position:drag.original};$('transform-drag-status').textContent=`${drag.rotationShared?'Shared':'Individual'} yaw ${yaw} (${format(yaw*360/4096)}°) · ${drag.yawSnap>1?'Snap '+drag.yawSnap+' angle units':'Integer angle'} · Release to apply`;}catch(error){draft=null;$('transform-drag-status').textContent=error.message;}}
+    else if(['transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)){if(!transformGestureCurrent(drag)){cancelViewportGesture();return;}const point=groundAt(p.x,p.y,drag.original.y);if(point&&drag.ground){const axis=drag.handle.axis,group=['group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type),amount=snappedTransformCoordinate(point[axis]-drag.ground[axis],drag.snapStep);draft={id:drag.entity,group,sceneryGroup:drag.type==='environment-group-transform',scenePlacementGroup:drag.type==='scene-placement-group-transform',groupAmount:amount,position:{...drag.original,[axis]:group?drag.original[axis]+amount:snappedTransformCoordinate(drag.original[axis]+point[axis]-drag.ground[axis],drag.snapStep)}};}}
     else if(drag.type==='wall-rectangle'){if(!wallGestureCurrent(drag)){cancelViewportGesture();return;}try{wallSelection=wallRectangleAt(drag,p);$('transform-drag-status').textContent=`Source wall rows ${wallSelection.row_start}–${wallSelection.row_end}, columns ${wallSelection.column_start}–${wallSelection.column_end} · Y=0 reference plane · Release to review`;}catch(error){wallSelection=null;$('transform-drag-status').textContent=error.message;}}
     else if(drag.type==='scene-placement-box'){if(!scenePlacementBoxCurrent(drag)){cancelViewportGesture();return;}drag.last=p;$('transform-drag-status').textContent='Visible placement pixels · Release to select; Ctrl/Command adds';}
     else if(drag.type==='actor-box'){drag.last=p;}
@@ -3598,7 +3626,7 @@ canvas.addEventListener('pointermove',event=>{
 });
 canvas.addEventListener('pointerup',async event=>{
   if(!drag||event.pointerId!==drag.pointerId)return;
-  if(['transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
+  if(['environment-yaw','transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)&&(busy||!transformGestureCurrent(drag))){cancelViewportGesture();return;}
   const finished=drag,p=pointer(event),edit=draft;drag=null;draft=null;canvas.classList.remove('dragging');$('transform-drag-status').textContent='X/Z moves · snap aligns to scene origin';
   if(finished.type==='wall-rectangle'){wallSelection=null;wallSelectMode=false;updateFieldToggle();if(wallGestureCurrent(finished)){try{wallRectangleTool.open(wallRectangleAt(finished,p));}catch(error){notify(error.message,true);}}draw();return;}
   if(finished.type==='scene-placement-box'){
@@ -3619,6 +3647,7 @@ canvas.addEventListener('pointerup',async event=>{
   else if(finished.type==='scene-placement-group-transform'&&edit){draw();await scenePlacementTool.moveProposal(finished.handle.axis,edit.groupAmount,finished.proposal.review_key);}
   else if(finished.type==='environment-group-transform'&&edit){draw();await environmentGroupTool.moveProposal(finished.handle.axis,edit.groupAmount,finished.proposal.review_key);}
   else if(finished.type==='group-transform'&&edit){const axis=finished.handle.axis;await actorBatchTool.moveProposal(axis,edit.groupAmount,finished.proposal.review_key);}
+  else if(finished.type==='environment-yaw'&&edit){draw();if(edit.yaw!==finished.originalYaw){try{await api('/api/command',environmentRotationCommand(state.scene.id,finished.rotationItem,finished.rotationBinding,edit.yaw,finished.rotationShared));}catch(error){notify(error.message,true);}}}
   else if(finished.type==='transform' && edit){const axis=finished.handle.axis;if(edit.position[axis]!==finished.original[axis]){if(state.actor_drafts?.[finished.entity])await api('/api/command',{type:'set_actor_draft_position',entity_id:finished.entity,position:{...state.actor_drafts[finished.entity].position,[axis]:edit.position[axis]}});else if(finished.entity.startsWith('environment://'))await moveDecoration(finished.entity,axis,edit.position[axis]);else await api('/api/command',{type:'set_transform',entity_id:finished.entity,position:{[axis]:edit.position[axis]}});}}
   else if(!finished.moved && event.button===0){
     if(fieldSpatialPick&&fieldSpatialVisible&&fieldSpatialCurrent()&&finished.context===resourceStateKey()){
@@ -3758,7 +3787,7 @@ function sceneShapeProposalDocument(base,report,entityId){
 }
 function frameShapeProposal(report,entityId){
   if(report.instance_scope!=='all_model_instances'){const target=scenePreview.entities.find(e=>e.entity_id===entityId);frame({id:entityId,components:{Transform:{imported:{position:target.position}}}});return;}
-  const points=report.proposal_instances.flatMap(row=>sceneRenderer.bounds(sceneView().positions,row.entity_id,hiddenSceneEntities()));
+  const points=report.proposal_instances.flatMap(row=>previewBounds(row.entity_id,hiddenSceneEntities()));
   if(!points.length)return;
   const min={x:Infinity,y:Infinity,z:Infinity},max={x:-Infinity,y:-Infinity,z:-Infinity};
   for(const point of points)for(const axis of ['x','y','z']){min[axis]=Math.min(min[axis],point[axis]);max[axis]=Math.max(max[axis],point[axis]);}

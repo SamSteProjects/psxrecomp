@@ -3,6 +3,12 @@ const IDENTITY=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 const columnMajor=matrix=>new Float32Array([0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15].map(i=>matrix[i]));
 const dot=(a,b)=>a.x*b.x+a.y*b.y+a.z*b.z;
+const affine=matrix=>Array.isArray(matrix)&&matrix.length===16&&matrix.every(finite)&&matrix[12]===0&&matrix[13]===0&&matrix[14]===0&&matrix[15]===1;
+function validateTransforms(transforms){
+  if(transforms===undefined)return;
+  if(!(transforms instanceof Map)||transforms.size>2048)throw new Error('Invalid scene transform overrides');
+  for(const [id,matrix] of transforms)if(typeof id!=='string'||!affine(matrix))throw new Error('Invalid finite affine scene transform override');
+}
 
 export function transformPoint(matrix,point){
   return {x:matrix[0]*point.x+matrix[1]*point.y+matrix[2]*point.z+matrix[3],
@@ -140,17 +146,21 @@ export class SceneRenderer {
 
   hasEntity(identifier){return !this.lost&&this.instances.some(item=>item.entity_id===identifier);}
 
-  matrix(instance,positions){
-    const result=instance.model_to_scene.slice(),position=positions.get(instance.entity_id);
+  matrix(instance,positions,transforms){
+    if(transforms!==undefined&&!(transforms instanceof Map))throw new Error('Invalid scene transform overrides');
+    const override=transforms?.get(instance.entity_id);
+    if(override!==undefined&&!affine(override))throw new Error('Invalid finite affine scene transform override');
+    const result=(override??instance.model_to_scene).slice(),position=positions.get(instance.entity_id);
     if(position){result[3]=position.x;result[7]=position.y;result[11]=position.z;}return result;
   }
 
-  bounds(positions,identifier=null,hiddenEntities=new Set()){
+  bounds(positions,identifier=null,hiddenEntities=new Set(),transforms){
+    validateTransforms(transforms);
     const points=[];
     for(const instance of this.instances){
       if(hiddenEntities.has(instance.entity_id))continue;
       if(identifier&&instance.entity_id!==identifier)continue;
-      const mesh=this.meshes.get(instance.geometry_key),matrix=this.matrix(instance,positions);
+      const mesh=this.meshes.get(instance.geometry_key),matrix=this.matrix(instance,positions,transforms);
       for(let corner=0;corner<8;corner++)points.push(transformPoint(matrix,{x:(corner&1?mesh.max:mesh.min)[0],y:(corner&2?mesh.max:mesh.min)[1],z:(corner&4?mesh.max:mesh.min)[2]}));
     }
     return points;
@@ -174,6 +184,7 @@ export class SceneRenderer {
 
   draw(view,picking=false){
     if(this.lost||!view.width||!view.height)return;
+    validateTransforms(view.transforms);
     const gl=this.gl,l=this.locations,dpr=Math.min(2,window.devicePixelRatio||1),w=Math.max(1,Math.round(view.width*dpr)),h=Math.max(1,Math.round(view.height*dpr));
     if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
     if(picking)this.preparePick(w,h);else gl.bindFramebuffer(gl.FRAMEBUFFER,null);
@@ -183,7 +194,7 @@ export class SceneRenderer {
     const drawInstance=(index,pass)=>{
       const instance=this.instances[index],mesh=this.meshes.get(instance.geometry_key),id=index+1;
       if(view.hiddenEntities?.has(instance.entity_id))return;
-      gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions)));gl.uniform3f(l.pick,(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255);
+      gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions,view.transforms)));gl.uniform3f(l.pick,(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255);
       gl.uniform1i(l.pass,pass);
       for(const batch of mesh.batches){
         if(pass===1&&!batch.semi)continue;
@@ -200,7 +211,7 @@ export class SceneRenderer {
       // Editor depth approximation: opaque first, then blended instances back
       // to front. This does not reconstruct retail ordering-table submission.
       const order=this.instances.map((instance,index)=>{
-        const mesh=this.meshes.get(instance.geometry_key),center=transformPoint(this.matrix(instance,view.positions),{x:(mesh.min[0]+mesh.max[0])/2,y:(mesh.min[1]+mesh.max[1])/2,z:(mesh.min[2]+mesh.max[2])/2});
+        const mesh=this.meshes.get(instance.geometry_key),center=transformPoint(this.matrix(instance,view.positions,view.transforms),{x:(mesh.min[0]+mesh.max[0])/2,y:(mesh.min[1]+mesh.max[1])/2,z:(mesh.min[2]+mesh.max[2])/2});
         return {index,depth:dot(center,view.basis.forward)};
       }).sort((a,b)=>b.depth-a.depth||a.index-b.index);
       gl.enable(gl.BLEND);gl.depthMask(false);for(const item of order)drawInstance(item.index,1);
@@ -222,6 +233,7 @@ export class SceneRenderer {
   }
 
   drawWireframe(view){
+    validateTransforms(view.transforms);
     const gl=this.gl,l=this.locations;
     gl.uniform1i(l.textured,false);
     // A diagnostic overlay shows every decoded edge, including hidden edges.
@@ -229,7 +241,7 @@ export class SceneRenderer {
     try{
       for(const instance of this.instances){
         if(view.hiddenEntities?.has(instance.entity_id))continue;
-        gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions)));
+        gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions,view.transforms)));
         for(const batch of this.meshes.get(instance.geometry_key).batches){
           if(!batch.wireBuffer){batch.wireBuffer=gl.createBuffer();batch.wireDirty=true;}
           if(batch.wireDirty){

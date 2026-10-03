@@ -639,3 +639,7 @@ material assignments. Positions remain owned by the selected source vertex ID.
 The service and registered model inspector reuse exact replacement audits,
 posed preview, commands, persistence and normal Build. Legacy profiles retain
 their own supported field sets; no new packet/vector allocation is inferred.
+
+## Scenery yaw milestone — 2026-10-02
+
+Scenery yaw gestures use pure source-frame rotation/command helpers and finite affine renderer overrides. GPU instances and imported transforms remain immutable during pointer motion. Pointer release submits the existing Environment command. Source/context/camera/layer guards and current canvas bounds cancel stale gestures; window resize also cancels before release. Shared descriptor previews respect explicit individual yaw overrides. No separate serialization or patch writer is introduced. See [workflow and evidence](legaia-scenery-rotation-gizmo.md).

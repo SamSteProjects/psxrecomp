@@ -465,3 +465,7 @@ aliases of a quad corner and change only byte434 (136 to0); vertex coordinates
 and the authored RGB/material baseline remain exact. No new vector/packet
 allocation or runtime acceptance is inferred. See [workflow](legaia-model-glb-faces.md)
 and private `local-output/sdk-20260909/model-glb-faces-20261002/research/qualification-proof.json`.
+
+## Scenery yaw milestone — 2026-10-02
+
+Field descriptor yaw is the unsigned halfword at record*32+10. Source rotation order Rz*Ry*Rx precedes a single display Y reflection. Independent compound/signed-axis matrices match the preview helper. Town01 immutable MAP SHA256 60ecaa14978708f8696d60c12f6e98a88cdb19c2e63c7cae8f1c967a1214eb3b; composed package changes only allocated descriptor5 byte171 0→4 and shared descriptor218 byte6987 8→12 against the saved Collision/offset fixture. Source records, grid flags, other axes and prior edits remain intact. Private research and package evidence are retained; gameplay acceptance is deferred. See [workflow and evidence](legaia-scenery-rotation-gizmo.md).

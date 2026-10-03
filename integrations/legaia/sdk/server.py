@@ -684,6 +684,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/scene-placement-group.js": ("scene-placement-group.js", "text/javascript"),
                  "/scene-placement-selection.js": ("scene-placement-selection.js", "text/javascript"),
                  "/environment-layout.js": ("environment-layout.js", "text/javascript"),
+                 "/environment-rotation.js": ("environment-rotation.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),

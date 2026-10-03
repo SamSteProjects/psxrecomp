@@ -371,3 +371,5 @@ links. They check the model hashes, open its authored view, and select that exac
 vector in the Inspector. Multiple audited axes for one vector share a link.
 The bounded report display offers links for its displayed changes; older reports
 without scalar coordinates retain model-level navigation.
+
+Scenery viewport source-Y rotation now supports individual decorations and explicitly enabled shared transforms, preview cancellation, snapping, history and normal Build. See [workflow](../../docs/legaia-scenery-rotation-gizmo.md); runtime acceptance remains deferred.

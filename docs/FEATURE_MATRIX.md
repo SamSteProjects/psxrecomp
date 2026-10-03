@@ -1800,3 +1800,7 @@ Includes SDK animation/preset actions and saved scene views; supersedes the
 browser/package/rendered evidence. Native runtime and gameplay remain deferred.
 Private evidence: `local-output/sdk-20260909/sdk-regression-20261001-scene-views.log/.json`
 and `node-checks-20261001-scene-views.json`. No game launched.
+
+## Scenery yaw milestone — 2026-10-02
+
+Scenery source-Y viewport rotation is implemented offline: individual decoration and explicitly enabled shared descriptor scopes, absolute-angle snapping, temporary preview, history, Save/Open and normal Build. Twelve browser checks, an actor movement regression, ten Python cases and Node guards passed. Runtime appearance, script resting transforms and collision acceptance remain unverified. See [workflow and evidence](legaia-scenery-rotation-gizmo.md).

@@ -8,6 +8,10 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Scenery viewport yaw handles (2026-10-02):** Rotate scenery Y previews source-bound transforms without project writes during a drag. Individual static decorations retain cell ownership; placed scenery requires explicit shared-transform enable. Absolute-angle snapping, Undo/Redo, Save/Open and normal Build use the existing Environment command/writer. Resize, Escape and stale-source changes cancel previews; actor movement remains available. Preview uses source `Rz * Ry * Rx` and one display Y reflection.
+
+Validation: ten focused Python cases passed with the private retail disc (no skips), the Node rotation guard suite and frontend syntax checks passed, and twelve integrated browser checks plus an actor-handle regression passed. Independent package readback changes only yaw bytes171 (0→4) and6987 (8→12), preserving prior Collision, offsets, grid ownership and other axes. No game was launched or disc output written. Runtime visibility, scripts and collision acceptance remain deferred. See [scenery yaw workflow](legaia-scenery-rotation-gizmo.md). Private proof: `local-output/sdk-20260909/scenery-yaw-20261002/`.
+
 **Source-bound GLB material editing (2026-10-02):** Fresh profile v6 adds
 `_LEGAIA_SOURCE_MATERIAL` for full stored CLUT/TPage words and shared group ABE.
 Exact integer primitive aliases and whole-group transparency aliases must agree.

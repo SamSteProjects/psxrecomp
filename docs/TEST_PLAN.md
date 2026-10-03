@@ -1094,3 +1094,7 @@ fixtures cover compressed Town01 and raw-stream Dolk2 animation banks. Browser
 checks exercise the actual dialog and history workflow without any game request.
 Gameplay clip selection and retail cadence remain deferred. See
 [animation GLB workflow](legaia-animation-glb.md).
+
+## Scenery yaw milestone — 2026-10-02
+
+Scenery yaw milestone: ten focused Python cases (no skips), Node matrix/drag/scope guards, frontend syntax, twelve actual browser checks and one actor-handle regression passed. Browser cases cover individual/shared pointer drags, history, Save/Open, Escape/resize/source cancellation, Retail layer, narrow layout and normal Build. Resize assertions count command requests after cancellation to avoid async false positives. Independent package readback verifies exact bytes171/6987 and preservation of prior Collision/offset edits. Manual gameplay remains deferred for visibility, scripts and collision acceptance. See [workflow and evidence](legaia-scenery-rotation-gizmo.md).
