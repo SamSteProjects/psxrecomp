@@ -1,7 +1,12 @@
 const escape=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const at=(value,path)=>path.reduce((item,key)=>item?.[key],value);
 const propertyValue=(value,p)=>[p.path,...(p.fallback_paths??[])].map(path=>at(value,path)).find(item=>item!==null&&item!==undefined)??p.empty_label??'—';
-const propertyRow=(p,value)=>`<div class="property"><span>${escape(p.label)}</span><code>${escape(propertyValue(value,p))}</code></div>`;
+export const navigableComponentReference=(value,type)=>['asset-reference','entity-reference'].includes(type)&&typeof value==='string'&&value.length<=1024&&/^[a-z][a-z0-9-]*:\/\/[^\s\x00-\x20\x7f<>"']+$/.test(value);
+const propertyRow=(p,value,navigation=false,layer='')=>{
+  const target=propertyValue(value,p),label=[layer,p.label].filter(Boolean).join(' ');
+  const content=navigation&&navigableComponentReference(target,p.type)?`<button type="button" data-component-reference="${escape(target)}" data-reference-type="${escape(p.type)}" aria-label="Inspect ${escape(label)} reference: ${escape(target)}"><code>${escape(target)}</code></button>`:`<code>${escape(target)}</code>`;
+  return `<div class="property"><span>${escape(p.label)}</span>${content}</div>`;
+};
 const notes=definition=>(definition.notes??[]).map(note=>`<p class="field-note">${escape(note)}</p>`).join('');
 export function componentDefinition(schema,id){
   if(schema?.schema_version!=='legaia.inspector-schema.v1'||schema.live_writes!==false)throw new Error('Unsupported inspector schema');
@@ -9,12 +14,12 @@ export function componentDefinition(schema,id){
   if(!definition||!Array.isArray(definition.properties)||definition.properties.length>32||new Set(definition.properties.map(p=>p.id)).size!==definition.properties.length)throw new Error('Invalid inspector component definition');
   return definition;
 }
-export function renderComponentProperties(schema,id,component,editable=false){
+export function renderComponentProperties(schema,id,component,editable=false,referenceNavigation=false){
   const definition=componentDefinition(schema,id);
-  if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(p,component)).join('')+notes(definition);
+  if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(p,component,referenceNavigation)).join('')+notes(definition);
   if(definition.layout==='layered-properties'){
     if(!Array.isArray(definition.layers)||definition.layers.length>8||new Set(definition.layers.map(row=>row.id)).size!==definition.layers.length)throw new Error('Invalid property layers');
-    return definition.layers.map(layer=>`<div class="appearance-layer" data-property-layer="${escape(layer.id)}"><h4>${escape(layer.label)}</h4>${definition.properties.filter(p=>p.layers?.includes(layer.id)).map(p=>propertyRow(p,component[layer.id])).join('')}</div>`).join('')+notes(definition);
+    return definition.layers.map(layer=>`<div class="appearance-layer" data-property-layer="${escape(layer.id)}"><h4>${escape(layer.label)}</h4>${definition.properties.filter(p=>p.layers?.includes(layer.id)).map(p=>propertyRow(p,component[layer.id],referenceNavigation,layer.label)).join('')}</div>`).join('')+notes(definition);
   }
   if(definition.layout!=='layered-number'||JSON.stringify(definition.layers)!==JSON.stringify(['imported','authored','effective']))throw new Error('Unsupported property layout');
   let html='<div class="transform-table"><span></span><span class="column-title">Imported</span><span class="column-title">Authored</span><span class="column-title">Effective</span>';

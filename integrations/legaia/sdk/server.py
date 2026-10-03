@@ -713,6 +713,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/model-material-donor.js': ('model-material-donor.js', 'text/javascript'),
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
+                 "/component-references.js": ("component-references.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
                  "/actor-preset-review.js": ("actor-preset-review.js", "text/javascript"),

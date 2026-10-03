@@ -25,6 +25,7 @@ import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
+import {bindComponentReferences} from '/component-references.js';
 import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
 import {decodeTransitionResource,openTransitionResource} from '/transition-resource.js';
 import {decodeFieldSpatial,drawFieldSpatial,hitFieldSpatial,fieldSpatialFrame} from '/field-spatial.js';
@@ -1442,8 +1443,8 @@ async function refreshResources(){
   }catch(error){if(error.name!=='AbortError'&&key===resourceStateKey()){resourceError=error.message;notify(error.message,true);}}
   finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
 }
-function assetRecords(){
-  const projectScope=projectAssetControls?.scope()==='project';
+function assetRecords(activeOnly=false){
+  const projectScope=!activeOnly&&projectAssetControls?.scope()==='project';
   const records=new Map((projectScope?projectAssetControls.records():[
     ...(state.assets ?? []).map(asset=>({id:asset.id,type:asset.kind ?? 'model',label:asset.name ?? asset.label ?? `Model ${asset.id.split('/').at(-1)}`,source:asset.source_record?.prot_entry_name ?? asset.scope ?? 'Imported',data:asset})),
     ...entities().map(actor=>({id:actor.id,type:'actor',label:actor.name ?? actor.id,source:state.scene?.name ?? state.scene?.id,sceneId:state.scene?.id,data:actor})),
@@ -1453,6 +1454,7 @@ function assetRecords(){
   for(const authored of state.authored_assets ?? []){
     if(typeof authored.id!=='string'||!['actor','model','texture','template','script','scene','worldmap'].includes(authored.kind))continue;
     const assetId=authored.kind==='script'?(authored.script_id ?? authored.id):authored.id,existing=records.get(assetId);
+    if(activeOnly&&!existing&&authored.scene_id&&authored.scene_id!==state.scene?.id)continue;
     if(projectScope&&projectAssetControls.filter()!=='all'&&!existing&&authored.scene_id!==projectAssetControls.filter())continue;
     records.set(assetId,{...(existing ?? {id:assetId,type:authored.kind,label:authored.name ?? authored.id,source:authored.source_scene ?? authored.scene_id ?? 'Project library',data:{source_record:authored.source_record}}),sceneId:existing?.projectMembership?existing.sceneId:authored.scene_id,authored:authored.authored ?? {},changes:authored.changes ?? [],authoredRecord:authored});
   }
@@ -1472,7 +1474,7 @@ function initialAssetUsage(record,modelReferences){
   }
   return [...references.values()];
 }
-function showAssetDetails(record){
+function showAssetDetails(record,lookup=()=>assetRecords()){
   const isAuthored=!!record.authoredRecord,inspectorId=assetInspectorDefinition(state.inspector_schema,record);
   assetDetails.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-asset-details" aria-label="Close asset details">×</button></div>${inspectorId?'':property('Stable ID',record.id)+property('Record type',record.type)+property(record.data?.scope?.startsWith('global-')?'Source scope':'Source scene',record.authoredRecord?.source_scene ?? record.source)}${isAuthored?`<section class="asset-authored-details"><h3>Authored project settings</h3><p>${escapeHTML(record.changes.join(' · ') || 'Authored project metadata')}</p><pre class="diagnostic-detail" id="asset-authored-data"></pre><button id="open-authored-asset">${record.type==='template'?'Open template library':record.type==='texture'?'Inspect texture':record.type==='model'?'Inspect authored model':record.type==='script'?'Open script workspace':record.type==='scene'?'Open scene':'Select actor'}${record.type!=='template'&&record.sceneId!==state.scene?.id?' in source scene':''}</button></section>`:''}<details ${isAuthored?'':'open'}><summary>${isAuthored?'Imported source provenance':'SDK source and provenance'}</summary><pre id="asset-source-data" class="diagnostic-detail"></pre></details>`;
   const source=isAuthored?(record.authoredRecord.source_record ?? record.data?.source_record ?? record.data?.components?.RetailMetadata ?? {note:'No additional imported provenance is attached to this authored record.'}):record.data;
@@ -1499,7 +1501,7 @@ function showAssetDetails(record){
   if(inspectorId){
     const section=document.createElement('section');section.dataset.assetInspector=record.type;
     const context=resourceStateKey(),snapshot=JSON.stringify(record),contract=JSON.stringify([state.inspector_schema,state.capabilities]);
-    const current=()=>assetDetails.open&&context===resourceStateKey()&&contract===JSON.stringify([state.inspector_schema,state.capabilities])&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
+    const current=()=>assetDetails.open&&context===resourceStateKey()&&contract===JSON.stringify([state.inspector_schema,state.capabilities])&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
     mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,
       activate:async (item,action)=>{if(!current())return;assetDetails.close();if(action==='inspect-landmark-destination'){const label=item.data?.destination_source_label;if(!label)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}else await activateAsset(item,action);},onError:error=>notify(error.message,true)});
     $('asset-source-data').parentElement.before(section);
@@ -1629,7 +1631,7 @@ async function activateAsset(record,action=null){
 function inspectFlagResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
   const context=resourceStateKey(),snapshot=JSON.stringify(record);
-  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
+  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
   const data=decodeFlagResource(record.data),owner=data.partition===2?{id:data.owner_id,name:data.script_name,partitionTwo:true}:entities().find(entity=>entity.id===data.owner_id);
   flagResourceDialog=openFlagResource({record,current,busy:()=>busy,canInspect:()=>!!owner&&state.capabilities?.actor_script_preview===true,
     onInspect:async pc=>{if(!current()||busy||!owner)return false;await openActorScript(owner,false,null,null,pc);return true;},onError:error=>notify(error.message,true)});
@@ -1637,7 +1639,7 @@ function inspectFlagResource(record){
 function inspectTransitionResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
   const context=resourceStateKey(),snapshot=JSON.stringify(record);
-  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
+  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
   try{
     const data=decodeTransitionResource(record.data),owner=data.partition===2?{id:data.owner_id,name:data.script_name,partitionTwo:true}:entities().find(entity=>entity.id===data.owner_id);
     const canNavigate=target=>state.capabilities?.project_navigation===true&&(state.scenes??[]).some(scene=>scene.id===target);
@@ -2739,10 +2741,10 @@ function renderInspector(){
   else if(actorPreview?.preview_height_status==='unresolved_no_source_surface'){html+='<section class="component"><h3>Preview elevation <small>Unresolved</small></h3><p class="field-note">No displayed source-ground cell exists at this placement. The mesh uses the preview ground plane; this is not a measured game height. Inspect a live sample to compare runtime placement.</p></section>';}
 
 
-  if(state.capabilities?.actor_appearance && components.ActorAppearance){const appearance=components.ActorAppearance;html+=`<section class="component appearance-component"><h3>${escapeHTML(state.inspector_schema.components.ActorAppearance.label)} <small>${escapeHTML(state.inspector_schema.components.ActorAppearance.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'ActorAppearance',appearance)}${componentActions('ActorAppearance')}<details><summary>Appearance evidence and limits</summary><pre>${escapeHTML(JSON.stringify(appearance,null,2))}</pre></details></section>`;}
-  if(components.ActorAnimation)html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.ActorAnimation.label)}</h3>${renderComponentProperties(state.inspector_schema,'ActorAnimation',components.ActorAnimation)}${components.ActorAnimation.authored?.animation_asset_id?property('Authored source SHA-256',components.ActorAnimation.authored.source_record_sha256):''}<p class="field-note">Capture an authored assignment in Actor templates to reuse its observed clip witness. Initial MAN header only; animation channel ownership remains unchanged.</p>${componentActions('ActorAnimation')}</section>`;
+  if(state.capabilities?.actor_appearance && components.ActorAppearance){const appearance=components.ActorAppearance;html+=`<section class="component appearance-component"><h3>${escapeHTML(state.inspector_schema.components.ActorAppearance.label)} <small>${escapeHTML(state.inspector_schema.components.ActorAppearance.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'ActorAppearance',appearance,false,true)}${componentActions('ActorAppearance')}<details><summary>Appearance evidence and limits</summary><pre>${escapeHTML(JSON.stringify(appearance,null,2))}</pre></details></section>`;}
+  if(components.ActorAnimation)html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.ActorAnimation.label)}</h3>${renderComponentProperties(state.inspector_schema,'ActorAnimation',components.ActorAnimation,false,true)}${components.ActorAnimation.authored?.animation_asset_id?property('Authored source SHA-256',components.ActorAnimation.authored.source_record_sha256):''}<p class="field-note">Capture an authored assignment in Actor templates to reuse its observed clip witness. Initial MAN header only; animation channel ownership remains unchanged.</p>${componentActions('ActorAnimation')}</section>`;
   if(state.capabilities.authored_transform_templates)html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.ActorPresets.label)} <small>${escapeHTML(state.inspector_schema.components.ActorPresets.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'ActorPresets',{})}${componentActions('ActorPresets')}</section>`;
-  if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${renderComponentProperties(state.inspector_schema,'ModelRenderer',model)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${componentActions('ModelRenderer')}</section>`;}
+  if(components.ModelRenderer){const model=components.ModelRenderer;html+=`<section class="component"><h3>Model renderer <small>Imported reference</small></h3>${renderComponentProperties(state.inspector_schema,'ModelRenderer',model,false,true)}<p class="field-note">Scene meshes use supported SDK poses. Unresolved objects stay as placement markers; individual assets can be inspected separately.</p>${componentActions('ModelRenderer')}</section>`;}
   if(components.Animation)html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.Animation.label)}</h3>${renderComponentProperties(state.inspector_schema,'Animation',components.Animation)}<p class="field-note">${components.Animation.preview_support?.supported?'Imported association is eligible for decoding. Preview verifies the source; retail playback timing and live animation remain unknown.':escapeHTML(components.Animation.preview_support?.reason ?? 'No supported imported animation association is available for this actor.')}</p>${componentActions('Animation')}</section>`;
   if(components.RuntimeCorrelation){const correlation=components.RuntimeCorrelation;html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.RuntimeCorrelation.label)} <small>${escapeHTML(state.inspector_schema.components.RuntimeCorrelation.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'RuntimeCorrelation',correlation)}${runtimeCandidateSummary(correlation,entity.id)}${renderComponentDetails(state.inspector_schema,'RuntimeCorrelation',correlation)}</section>`;}
   if(components.RetailMetadata){const retail=components.RetailMetadata;html+=`<section class="component"><h3>${escapeHTML(state.inspector_schema.components.RetailMetadata.label)} <small>${escapeHTML(state.inspector_schema.components.RetailMetadata.units)}</small></h3>${renderComponentProperties(state.inspector_schema,'RetailMetadata',retail)}${renderComponentDetails(state.inspector_schema,'RetailMetadata',retail)}</section>`;}
@@ -2751,13 +2753,14 @@ function renderInspector(){
   for(const [id,value] of Object.entries(components)){
     const definition=state.inspector_schema?.components?.[id];
     if(!definition||renderedComponents.includes(id))continue;
-    html+=`<section class="component"><h3>${escapeHTML(definition.label??id)} <small>${escapeHTML(definition.units??'')}</small></h3>${renderComponentProperties(state.inspector_schema,id,value,false)}${componentActions(id)}${renderComponentDetails(state.inspector_schema,id,value)}</section>`;
+    html+=`<section class="component"><h3>${escapeHTML(definition.label??id)} <small>${escapeHTML(definition.units??'')}</small></h3>${renderComponentProperties(state.inspector_schema,id,value,false,true)}${componentActions(id)}${renderComponentDetails(state.inspector_schema,id,value)}</section>`;
     renderedComponents.push(id);
   }
   html+=renderUnregisteredComponents(state.inspector_schema,components,renderedComponents);
   $('inspector').innerHTML=html;
   bindComponentActions($('inspector'),actorActions,{current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id,editable:canEdit,busy:()=>busy,onError:error=>notify(error.message,true)});
   const inspectorContext=resourceStateKey();
+  bindComponentReferences($('inspector'),{current:()=>inspectorContext===resourceStateKey()&&selected()?.id===entity.id,busy:()=>busy,records:()=>assetRecords(true),discover:()=>refreshResources(),open:record=>showAssetDetails(record,()=>assetRecords(true)),onError:error=>notify(error.message,true)});
   $('inspector').querySelectorAll('[data-component-property]').forEach(input=>input.addEventListener('change',async()=>{
     if(busy||!canEdit()||inspectorContext!==resourceStateKey()||selected()?.id!==entity.id)return;
     try{await api('/api/command',propertyCommand(state.inspector_schema,'Transform',input.dataset.componentProperty,entity.id,input.value));}
