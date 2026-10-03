@@ -3,8 +3,8 @@
 glTF 2.0 GLB/accessor semantics follow the Khronos specification. Source TMD
 packet offsets are owned by model_primitives, pinned to Andrew's d6e64c68.
 Positions, existing face references, UV bytes and source-bound baked RGB are
-imported along with qualified stored normal XYZ. Normal references, material
-words, allocation, vector padding and opaque source bytes survive.
+imported along with qualified stored normals, normal references and masked
+source material words. Allocation, vector padding and opaque bytes survive.
 """
 from __future__ import annotations
 
@@ -34,19 +34,23 @@ LEGACY_PROFILE_SCHEMA = 'legaia.model-glb-profile.v1'
 RGB_PROFILE_SCHEMA = 'legaia.model-glb-profile.v2'
 REFERENCE_PROFILE_SCHEMA = 'legaia.model-glb-profile.v3'
 NORMAL_PROFILE_SCHEMA = 'legaia.model-glb-profile.v4'
-PROFILE_SCHEMA = 'legaia.model-glb-profile.v5'
+NORMAL_REFERENCE_PROFILE_SCHEMA = 'legaia.model-glb-profile.v5'
+PROFILE_SCHEMA = 'legaia.model-glb-profile.v6'
+MATERIAL_ID = '_LEGAIA_SOURCE_MATERIAL'
 NORMAL_INDEX_ID = '_LEGAIA_SOURCE_NORMAL_INDEX'
 NORMAL_ID = '_LEGAIA_SOURCE_NORMAL'
 NORMAL_SENTINEL = (32768, 32768, 32768)
 LIMITATIONS = [
     'Positions, stored UVs, baked RGB, stored normals and existing vertex references within the source object and packet layout.',
-    'Normal indices select existing object-local normal slots; vector padding, material, image, command and opaque source bytes are retained.',
+    'Normal indices select existing object-local normal slots; vector padding, image, command and opaque source bytes are retained.',
     'Edit raw byte-domain baked RGB through _LEGAIA_SOURCE_RGB; display COLOR_0 is not imported.',
     'Edit stored signed-i16 normal XYZ through _LEGAIA_SOURCE_NORMAL in retail [x,y,z] axes, without the POSITION Y flip or normalization; display NORMAL is ignored.',
     'Unlit corners retain normal XYZ sentinel [32768,32768,32768] and normal index -1; no normal tables or slots are allocated.',
     'No added or removed faces, skinning, animation, hierarchy or unapplied object transforms are imported.',
     'Keep all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
+    'Edit exact stored CLUT/TPage words and shared group ABE through _LEGAIA_SOURCE_MATERIAL; reserved CLUT, TPage ABR and reserved bits survive. Untextured words remain -1.',
+    'Material edits retain source UV crop conversion; fresh candidate previews reassociate textures. Display materials and images are not edit authority.',
 ]
 
 
@@ -164,6 +168,8 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
                                 'count': len(values), 'type': 'SCALAR' if width == 1 else f'VEC{width}'})
         return index
 
+    from .model_glb_materials import material_bindings
+    source_material_bindings = material_bindings(effective_tmd, inspection)
     textures = {item['material_index']: item for item in preview.get('textures', [])}
     crops = []
     for index, material in enumerate(geometry['materials']):
@@ -180,7 +186,7 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
         for primitive in doc['meshes'][node['mesh']]['primitives']:
             material = primitive['material']
             crop = crops[material]
-            ids, corners, uv, colors, normals, normal_indices = [], [], [], [], [], []
+            ids, corners, uv, colors, normals, normal_indices, materials = [], [], [], [], [], [], []
             for row in triangles[object_index]:
                 if row['material'] != material:
                     continue
@@ -188,6 +194,7 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
                     ids.append([row['vertices'][c]])
                     corners.append([row['corners'][c]])
                     source_row = row['primitive']
+                    materials.append(source_material_bindings[object_index, source_row['primitive_index']])
                     source_corner = row['corners'][c] % 4
                     normal_index = normal_bindings[object_index, source_row['primitive_index']][source_corner]
                     normal_indices.append([normal_index if normal_index is not None else -1])
@@ -206,17 +213,18 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
             attrs[COLOR_ID] = accessor(colors, 3)
             attrs[NORMAL_ID] = accessor(normals, 3)
             attrs[NORMAL_INDEX_ID] = accessor(normal_indices, 1)
+            attrs[MATERIAL_ID] = accessor(materials, 3)
             # Also carry UVs when texture association is unresolved. Ownership
             # follows source corner IDs, never external material assignments.
             if uv:
                 attrs['TEXCOORD_0'] = accessor(uv, 2)
     profile = {'schema_version': PROFILE_SCHEMA, 'effective_sha256': sha256(effective_tmd).hexdigest(),
                'coordinate_conversion': '[x,-y,z]; reverse triangle winding',
-               'attributes': {'vertex': VERTEX_ID, 'corner': CORNER_ID, 'color': COLOR_ID, 'normal': NORMAL_ID, 'normal_index': NORMAL_INDEX_ID},
+               'attributes': {'vertex': VERTEX_ID, 'corner': CORNER_ID, 'color': COLOR_ID, 'normal': NORMAL_ID, 'normal_index': NORMAL_INDEX_ID, 'material': MATERIAL_ID},
                'objects': [{'object_index': obj['object_index'], 'vertex_count': obj['vertex_count'],
                             'primitive_count': len(obj['primitives']),
                             'triangle_count': len(triangles[obj['object_index']])} for obj in inspection['objects']],
-               'uv_crops': crops, 'imported_fields': ['vertex_xyz', 'primitive_uv', 'primitive_rgb', 'primitive_vertex_indices', 'normal_xyz', 'primitive_normal_indices']}
+               'uv_crops': crops, 'imported_fields': ['vertex_xyz', 'primitive_uv', 'primitive_rgb', 'primitive_vertex_indices', 'normal_xyz', 'primitive_normal_indices', 'primitive_material_words']}
     return _write_glb(doc, bytes(binary)), profile
 
 
@@ -278,10 +286,11 @@ def _profile(profile, data, inspection, geometry, triangles):
     expected_objects = [{'object_index': obj['object_index'], 'vertex_count': obj['vertex_count'],
                          'primitive_count': len(obj['primitives']),
                          'triangle_count': len(triangles[obj['object_index']])} for obj in inspection['objects']]
-    normal_references_enabled = profile['schema_version'] == PROFILE_SCHEMA
-    normals_enabled = profile['schema_version'] in (PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA)
-    references_enabled = profile['schema_version'] in (PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA)
-    color_enabled = profile['schema_version'] in (PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA, RGB_PROFILE_SCHEMA)
+    materials_enabled = profile['schema_version'] == PROFILE_SCHEMA
+    normal_references_enabled = profile['schema_version'] in (PROFILE_SCHEMA, NORMAL_REFERENCE_PROFILE_SCHEMA)
+    normals_enabled = profile['schema_version'] in (PROFILE_SCHEMA, NORMAL_REFERENCE_PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA)
+    references_enabled = profile['schema_version'] in (PROFILE_SCHEMA, NORMAL_REFERENCE_PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA)
+    color_enabled = profile['schema_version'] in (PROFILE_SCHEMA, NORMAL_REFERENCE_PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA, RGB_PROFILE_SCHEMA)
     expected_attributes = {'vertex': VERTEX_ID, 'corner': CORNER_ID}
     expected_fields = ['vertex_xyz', 'primitive_uv']
     if color_enabled:
@@ -295,7 +304,10 @@ def _profile(profile, data, inspection, geometry, triangles):
     if normal_references_enabled:
         expected_attributes['normal_index'] = NORMAL_INDEX_ID
         expected_fields.append('primitive_normal_indices')
-    if (profile['schema_version'] not in (PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA, RGB_PROFILE_SCHEMA, LEGACY_PROFILE_SCHEMA) or profile['effective_sha256'] != sha256(data).hexdigest() or
+    if materials_enabled:
+        expected_attributes['material'] = MATERIAL_ID
+        expected_fields.append('primitive_material_words')
+    if (profile['schema_version'] not in (PROFILE_SCHEMA, NORMAL_REFERENCE_PROFILE_SCHEMA, NORMAL_PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA, RGB_PROFILE_SCHEMA, LEGACY_PROFILE_SCHEMA) or profile['effective_sha256'] != sha256(data).hexdigest() or
             profile['coordinate_conversion'] != '[x,-y,z]; reverse triangle winding' or
             profile['attributes'] != expected_attributes or
             profile['imported_fields'] != expected_fields or profile['objects'] != expected_objects):
@@ -314,13 +326,13 @@ def _profile(profile, data, inspection, geometry, triangles):
         for axis, dimension in enumerate(('width', 'height')):
             _integer(origin[axis], 0, 255, 'UV origin')
             _integer(crop[dimension], 1, 256 - origin[axis], 'UV dimension')
-    return crops, color_enabled, references_enabled, normals_enabled, normal_references_enabled
+    return crops, color_enabled, references_enabled, normals_enabled, normal_references_enabled, materials_enabled
 
 
 def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tuple[bytes, dict]:
-    """Recover source positions/UVs/RGB/references/normals from IDs; reject topology and alias conflicts."""
+    """Recover qualified source mesh/material fields; reject topology and alias conflicts."""
     inspection, vectors, geometry, triangles = _source(effective_tmd)
-    crops, color_enabled, references_enabled, normals_enabled, normal_references_enabled = _profile(profile, effective_tmd, inspection, geometry, triangles)
+    crops, color_enabled, references_enabled, normals_enabled, normal_references_enabled, materials_enabled = _profile(profile, effective_tmd, inspection, geometry, triangles)
     normal_bindings, _stored_normals = _normal_bindings(effective_tmd, inspection) if normals_enabled else ({}, {})
     doc, binary = _read_glb(content)
     if doc.get('animations') or doc.get('skins') or doc.get('cameras'):
@@ -341,6 +353,9 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
     result = bytearray(effective_tmd)
     positions, uv_values, color_values, reference_values = {}, {}, {}, {}
     normal_values, normal_reference_values = {}, {}
+    from .model_glb_materials import material_bindings, apply_material_values
+    source_material_bindings = material_bindings(effective_tmd, inspection)
+    material_values, group_values = {}, {}
     seen_objects, seen_meshes = set(), set()
     quantization = dict(vertex_max_error=0.0, uv_max_error=0.0,
                         color_max_error=0.0, quantized_component_count=0)
@@ -422,6 +437,40 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
             normal_ids = reader.read(attrs.get(NORMAL_INDEX_ID), 1, 'source normal IDs') if normal_references_enabled else None
             if normal_ids is not None and len(normal_ids) != len(values):
                 raise ImportError('Model GLB source normal ID count differs from its positions')
+            materials = reader.read(attrs.get(MATERIAL_ID), 3, 'source materials') if materials_enabled or MATERIAL_ID in attrs else None
+            if materials is not None:
+                if len(materials) != len(values):
+                    raise ImportError('Model GLB source material count differs from its positions')
+                for material_value, corner_value, vertex_value in zip(materials, corner_ids, vertex_ids):
+                    owner, vertex = corner_value[0], vertex_value[0]
+                    if owner != int(owner) or int(owner) not in source_corners or vertex != int(vertex):
+                        raise ImportError('Model GLB source material identity is invalid')
+                    row, corner = source_corners[int(owner)]
+                    if references_enabled:
+                        _integer(int(vertex), 0, min(8191, inspection['objects'][identity]['vertex_count'] - 1), 'source material vertex reference')
+                    elif int(vertex) != row['vertices'][corner]:
+                        raise ImportError('Model GLB source material vertex identity conflicts with its corner')
+                    key = identity, row['primitive_index']
+                    source_words = source_material_bindings[key]
+                    if any(v != int(v) for v in material_value):
+                        raise ImportError('Model GLB source material components must be exact integers')
+                    words = tuple(int(v) for v in material_value)
+                    _integer(words[2], 0, 1, 'source group ABE')
+                    if source_words[0] == -1:
+                        if words[:2] != (-1, -1):
+                            raise ImportError('Model GLB untextured material sentinel must remain unchanged')
+                    else:
+                        for value in words[:2]:
+                            _integer(value, 0, 65535, 'source material word')
+                    if not materials_enabled and words != source_words:
+                        raise ImportError('Legacy model GLB profile retains source material words and group ABE')
+                    if key in material_values and material_values[key] != words[:2]:
+                        raise ImportError('Model GLB source primitive material copies disagree')
+                    material_values[key] = words[:2]
+                    group_key = identity, row['group_index']
+                    if group_key in group_values and group_values[group_key] != words[2]:
+                        raise ImportError('Model GLB shared source group ABE copies disagree')
+                    group_values[group_key] = words[2]
             if normals_enabled:
                 for index, (normal_value, corner_value) in enumerate(zip(normals, corner_ids)):
                     owner = corner_value[0]
@@ -553,23 +602,30 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
         for field, _width in _normal_field_locations(effective_tmd, inspection):
             key = field['object_index'], field['primitive_index'], field['corner_index']
             struct.pack_into('<H', result, field['byte_offset'], normal_reference_values[key] * 8)
+    if materials_enabled:
+        for offset, content in apply_material_values(effective_tmd, inspection, source_material_bindings, material_values, group_values):
+            result[offset:offset + len(content)] = content
     candidate, changes = replace_model_content(effective_tmd, sha256(effective_tmd).hexdigest(), bytes(result),
-                                               allow_normal_references=normal_references_enabled)
+                                               allow_normal_references=normal_references_enabled,
+                                               allow_materials=materials_enabled)
     if len(changes) > 65536:
         raise ImportError('Model GLB changes exceed the source audit budget')
     quantization['quantized_component_count'] = len(quantized_keys)
-    if normal_references_enabled:
+    if materials_enabled:
         limitations = list(LIMITATIONS)
+    elif normal_references_enabled:
+        limitations = ['Legacy v5 retains source material words and group ABE.', *LIMITATIONS[:8]]
     elif normals_enabled:
         limitations = ['Legacy v4 imports stored normal XYZ but retains source normal references.',
                         LIMITATIONS[2], LIMITATIONS[3],
-                        'Unlit corners retain normal XYZ sentinel [32768,32768,32768].', *LIMITATIONS[5:]]
+                        'Unlit corners retain normal XYZ sentinel [32768,32768,32768].', *LIMITATIONS[5:8],
+                        'Legacy profiles retain source material words and group ABE.']
     else:
         label = ('Legacy v3 imports positions, UVs, RGB and vertex references; stored normals are retained.'
                  if references_enabled else
                  'Legacy v2 imports positions, stored UVs and baked RGB; vertex references and stored normals are retained.'
                  if color_enabled else
                  'Legacy v1 imports positions and stored UVs only; RGB, vertex references and stored normals are retained.')
-        limitations = [label, *LIMITATIONS[5:]]
+        limitations = [label, *LIMITATIONS[5:8], 'Legacy profiles retain source material words and group ABE.']
     return candidate, {'quantization': quantization, 'limitations': limitations,
                        'changed_field_count': len(changes)}

@@ -49,7 +49,7 @@ Material changes use the versioned `tmd-content-v2` binding. Legacy `tmd-content
 
 Normal Build uses the existing source model carrier, exact preimage guards, member readback and allocation/compressed-span fit checks. It emits source-linked CLUT/TPage/group-command audit rows. Other pack members and opaque neighboring bytes remain unchanged; an edit that cannot fit is rejected. Building a package does not launch the game or verify appearance.
 
-The face editor and source-bound GLB mesh workflow can continue from the effective material state. Export a fresh GLB/binding after a material edit. GLB import retains effective material words, group command bytes, source normals, RGB and texture images; it still imports only qualified positions and UVs. See [model GLB workflow](legaia-model-glb.md) and [texture authoring](legaia-sdk/texture-authoring.md).
+The face editor and source-bound GLB mesh workflow can continue from the effective material state. Export a fresh GLB/binding after a material edit. Fresh GLB profile v6 can edit these same qualified material fields through explicit source attributes while retaining reserved bits, source ABR and opaque bytes. Shader/material assignments and image pixels remain separate. See [material GLB editing](legaia-model-glb-materials.md). See [model GLB workflow](legaia-model-glb.md) and [texture authoring](legaia-sdk/texture-authoring.md).
 
 ## Private independent evidence
 

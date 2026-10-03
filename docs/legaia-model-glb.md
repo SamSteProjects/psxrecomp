@@ -1,7 +1,8 @@
 # Source-bound model GLB editing
 
 The model GLB workflow imports existing object-local vertex positions, UV
-coordinates, qualified baked RGB and existing polygon vertex references into the SDK's normal model replacement path. It complements
+coordinates, qualified baked RGB, existing vertex/normal references, stored
+normal XYZ and qualified material fields into the SDK's normal model replacement path. It complements
 animation GLB editing: mesh edits change the model asset, while animation edits
 change rigid pose channels. Actor placement and source mesh coordinates remain
 separate. Shared model edits can affect several recorded instances.
@@ -72,10 +73,14 @@ The source profile supplies UV conversion for the represented material; an
 unmatched texture is not evidence that its source UVs can be guessed from a
 different image.
 
-`COLOR_0`, shader/material edits and image pixels are not imported. Use the profile v2 raw `_LEGAIA_SOURCE_RGB` attribute to edit existing baked RGB
+`COLOR_0`, shader/material assignments and image pixels are not imported.
+Fresh profile v6 accepts explicit source material words through
+`_LEGAIA_SOURCE_MATERIAL`; see [material GLB editing](legaia-model-glb-materials.md). Use the profile v2 raw `_LEGAIA_SOURCE_RGB` attribute to edit existing baked RGB
 (see [RGB workflow](legaia-model-glb-rgb.md)); display color remains separate.
-Source normal tables, primitive vertex references, material words,
-packet counts, vector padding and opaque bytes stay unchanged. Blender may
+Packet counts, vector padding, source allocation and opaque bytes stay unchanged.
+Existing normal words and references use the source-bound profiles documented
+in [normal editing](legaia-model-glb-normals.md) and
+[normal references](legaia-model-glb-normal-references.md). Blender may
 generate render normals, but those are not identities for TMD normal-table
 entries. Use the existing model face/color editor or texture authoring workflow
 for their supported source fields. This lane does not add objects, topology,
@@ -137,5 +142,6 @@ are documented in [the RGB workflow](legaia-model-glb-rgb.md). The original
 positions/UV milestone below remains historical evidence for its own source.
 
 Fresh profile v3 also supports [existing face rewiring](legaia-model-glb-faces.md).
-Normal tables, new polygons, source allocation and material words remain outside
-GLB import. Earlier position/UV and RGB milestones retain their dated evidence.
+Fresh profiles v4/v5 add existing normal words and references, and v6 adds
+qualified CLUT/TPage/group ABE words. New polygons and source allocation remain
+outside GLB import. Earlier position/UV and RGB milestones retain their dated evidence.

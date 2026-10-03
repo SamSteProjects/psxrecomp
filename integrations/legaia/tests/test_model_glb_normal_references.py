@@ -45,6 +45,8 @@ def rewire(content, new_id, xyz, *, primitive_index=0, corner=2, gouraud=True,
 def v4_profile(profile):
     legacy = deepcopy(profile)
     legacy['schema_version'] = 'legaia.model-glb-profile.v4'
+    del legacy['attributes']['material']
+    legacy['imported_fields'].remove('primitive_material_words')
     del legacy['attributes']['normal_index']
     legacy['imported_fields'].remove('primitive_normal_indices')
     return legacy
@@ -56,7 +58,7 @@ class ModelGlbNormalReferenceTests(unittest.TestCase):
             with self.subTest(flags=hex(flags)):
                 source = lit_source(flags)
                 glb, profile = export_model_glb(source, decode_tmd(source))
-                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v5')
+                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v6')
                 self.assertEqual(profile['attributes']['normal_index'], INDEX)
                 self.assertEqual(import_model_glb(source, glb, profile)[0], source)
                 row = inspect_model_primitives(source)['objects'][0]['primitives'][0]

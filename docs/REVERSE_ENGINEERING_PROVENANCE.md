@@ -6,6 +6,15 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 material GLB extension uses the existing independently qualified
+CLUT/TPage/group ABE source fields and masks. Actual Blender attribute readback
+and independent byte comparisons verify indexed selector edits, TPage column
+edits and untextured sentinels without source layout growth. Normal-reference
+and stored normal edits survive composition and package readback. The reference
+pin is unchanged; runtime blend mode and appearance are not inferred from the
+source ABE or shader. Private proof:
+`local-output/sdk-20260909/model-glb-materials-20261002/research/`.
+
 The 2026-10-02 sparse world placement extension follows the same pinned
 field_objects source gates, source XYZ/yaw and direct kingdom model dictionary
 slots. An independent MAP walker qualifies all 301/272/236 seeds; raw TMD object

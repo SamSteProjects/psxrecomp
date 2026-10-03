@@ -2,6 +2,29 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Source-bound GLB material editing (2026-10-02):** Fresh profile v6 adds
+`_LEGAIA_SOURCE_MATERIAL` for full stored CLUT/TPage words and shared group ABE.
+Exact integer primitive aliases and whole-group transparency aliases must agree.
+Qualified masks preserve reserved CLUT bits, source ABR, other mode bits, row
+commands and allocation. Untextured CLUT/TPage retain -1; group ABE remains
+editable. Existing source positions, UV/RGB, normals and references compose;
+legacy profiles retain their earlier field permissions. Review/Proposed
+inspection/Apply/history/Save/Build use the normal model replacement workflow.
+Shader assignments and texture images are separate; static associations may
+remain partial. Retail blend/appearance acceptance remains deferred. See
+[material GLB workflow](legaia-model-glb-materials.md).
+
+Validation: 44 focused Python cases passed with the private retail disc (no
+skips), two Node guard suites and frontend syntax checks. Actual Blender 5.2.2
+no-op roundtrips are byte-exact; independent CLUT/group ABE, TPage and untextured
+sentinel proofs change only bytes131/138, byte142 and byte299 respectively.
+Twelve integrated browser checks cover fresh exports, no-op, reviewed source
+fields, Proposed/Return, 540px layout, Apply/history/Save/stale withdrawal and
+normal Build. Reopened package readback retains prior normal-reference/XYZ
+bytes2940/3332 and adds only material bytes131/138, preserving neighboring data
+and the 154,547-byte compressed capacity. No game was launched and no disc output written.
+Private proof: `local-output/sdk-20260909/model-glb-materials-20261002/`.
+
 **World-map source placement inspection (2026-10-02):** **World ground** now
 opens a source scene with 301/272/236 sparse model placements in map01/map02/map03.
 The hierarchy, mesh picking, Frame selected and Source model placements toggle

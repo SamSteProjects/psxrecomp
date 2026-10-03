@@ -3,7 +3,7 @@ import {webcrypto} from 'node:crypto';
 import {modelGlbContext,decodeModelGlbBinding,decodeModelGlbReview,decodeModelGlbPosePreview,openModelGlbEditor} from '../editor/model-glb.js';
 
 const h=letter=>letter.repeat(64),assetId='asset://town01/models/scene-tmd/0000',context={projectPath:'C:/private/model-project',sceneId:'scene://town01',mode:'edit',sourceKey:h('f')};
-const binding=()=>({schema_version:'legaia.model-glb-binding.v1',asset_id:assetId,scene_id:context.sceneId,source_sha256:h('b'),effective_sha256:h('a'),project_source_key:context.sourceKey,profile:{schema_version:'legaia.model-glb-profile.v5',source_layout:{objects:1,vertex_aliases:[[0,0],[0,1]]},qualification:'Server regenerated source profile'}});
+const binding=()=>({schema_version:'legaia.model-glb-binding.v1',asset_id:assetId,scene_id:context.sceneId,source_sha256:h('b'),effective_sha256:h('a'),project_source_key:context.sourceKey,profile:{schema_version:'legaia.model-glb-profile.v6',source_layout:{objects:1,vertex_aliases:[[0,0],[0,1]]},qualification:'Server regenerated source profile'}});
 const json=new TextEncoder().encode('{"asset":{"version":"2.0"}}  '),bytes=new Uint8Array(20+json.length),view=new DataView(bytes.buffer);view.setUint32(0,0x46546c67,true);view.setUint32(4,2,true);view.setUint32(8,bytes.length,true);view.setUint32(12,json.length,true);view.setUint32(16,0x4e4f534a,true);bytes.set(json,20);
 const contentBase64=Buffer.from(bytes).toString('base64'),glbHash=Buffer.from(await webcrypto.subtle.digest('SHA-256',bytes)).toString('hex');
 const vertex=(before=0,after=3)=>({object_index:0,kind:'vertex',vector_index:0,axis:'x',byte_offset:64,before_value:before,after_value:after});

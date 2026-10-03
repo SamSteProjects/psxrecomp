@@ -67,6 +67,8 @@ def lit_source(flags):
 def legacy_profile(profile, version):
     profile = deepcopy(profile)
     profile['schema_version'] = f'legaia.model-glb-profile.v{version}'
+    del profile['attributes']['material']
+    profile['imported_fields'].remove('primitive_material_words')
     del profile['attributes']['normal_index']
     profile['imported_fields'].remove('primitive_normal_indices')
     del profile['attributes']['normal']
@@ -87,7 +89,7 @@ class ModelGlbNormalTests(unittest.TestCase):
                 geometry = decode_tmd(source)
                 untouched = deepcopy(geometry)
                 glb, profile = export_model_glb(source, geometry)
-                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v5')
+                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v6')
                 self.assertEqual(profile['attributes']['normal'], NORMAL)
                 self.assertIn('normal_xyz', profile['imported_fields'])
                 self.assertEqual(import_model_glb(source, glb, profile)[0], source)

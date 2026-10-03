@@ -6,6 +6,15 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Model GLB profile v6 resolves explicit material tuples through source corner
+identities, not external shader assignments. `model_glb_materials.py` reuses the
+qualified semantic writer and masked field locations; primitive CLUT/TPage and
+whole-group ABE aliases must agree. Material spans compose with existing vector
+and reference edits. The SDK regenerates bindings, rebuilds candidate material
+associations and reviews exact source fields before the normal replacement
+command. Legacy profiles retain material words. See
+[material interchange](legaia-model-glb-materials.md).
+
 `importer/worldmap_placements.py` qualifies sparse MAP gates, direct slot-1
 model dictionary references and raw source seed transforms. The geometry v2
 loader retains the ground preview and adds shared model assets and immutable

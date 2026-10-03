@@ -13,7 +13,14 @@ positions, runtime visibility, overview geometry or gameplay parity. See the
 [world-ground workflow](../../docs/legaia-worldmap-geometry.md) and
 [placement workflow](../../docs/legaia-worldmap-placements.md).
 
-Fresh external model GLB exports now use profile v5. Reconnect existing lit
+Fresh external model GLB exports now use profile v6. Edit exact source
+CLUT/TPage/group ABE through `_LEGAIA_SOURCE_MATERIAL`, keeping primitive aliases
+and whole-group transparency values consistent. Review reports qualified masks;
+Apply/history/Save/Build use the ordinary source-bound replacement path. Shader
+assignments and texture images remain separate. See the
+[material GLB workflow](../../docs/legaia-model-glb-materials.md).
+
+Profile v5 introduced normal references. Reconnect existing lit
 face normals through `_LEGAIA_SOURCE_NORMAL_INDEX`, copying the chosen source
 normal's raw XYZ into all corresponding aliases. Review and Apply retain
 source ownership; changed references persist as `tmd-content-v3`. Older content

@@ -237,7 +237,7 @@ class ModelGLBServiceTests(unittest.TestCase):
 
     def export_boundary(self, effective, preview):
         self.exports.append(deepcopy(preview))
-        return b'qualified-glb-boundary-mock', dict(schema_version='legaia.model-glb-profile.v5',
+        return b'qualified-glb-boundary-mock', dict(schema_version='legaia.model-glb-profile.v6',
                                                    effective_sha256=sha256(effective).hexdigest())
 
     def import_boundary(self, effective, content, profile):
