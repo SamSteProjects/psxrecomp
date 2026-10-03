@@ -9,6 +9,30 @@ import struct
 from .core import ImportError
 
 
+def normal_users(data, object_index, normal_index):
+    """Existing stored reference operands in one qualified object's normal table."""
+    from .model_primitives import _qualified_model
+    inspection, _ = _qualified_model(data)
+    if type(object_index) is not int or not 0 <= object_index < len(inspection['objects']):
+        raise ImportError('Choose an existing model object')
+    count = struct.unpack_from('<I', data, 24 + object_index * 28)[0]
+    if type(normal_index) is not int or not 0 <= normal_index < count:
+        raise ImportError('Choose an existing stored normal vector')
+    primitives = {row['primitive_index']: row for row in inspection['objects'][object_index]['primitives']}
+    users = []
+    for field, _ in _normal_field_locations(data, inspection):
+        if field['object_index'] != object_index or struct.unpack_from('<H', data, field['byte_offset'])[0] != normal_index * 8:
+            continue
+        primitive = primitives[field['primitive_index']]
+        users.append(dict(field, normal_index=normal_index,
+                          corner_count=primitive['corner_count'],
+                          sharing='gouraud_corner' if primitive['gouraud'] else 'flat_all_corners',
+                          affected_corners=[field['corner_index']] if primitive['gouraud'] else list(range(primitive['corner_count']))))
+        if len(users) > 4096:
+            raise ImportError('Normal reference usage exceeds 4096 qualified operands')
+    return users
+
+
 def _normal_field_locations(data, inspection):
     """Yield the distinct stored normal reference words, including flat owners."""
     for obj in inspection['objects']:

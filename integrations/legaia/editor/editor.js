@@ -14,6 +14,7 @@ import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mergeScenePlacementSelection} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {rescaleStoredNormal} from '/model-normal-length.js';
+import {mountNormalUsers} from '/model-normal-users.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -3982,7 +3983,7 @@ async function openModelVectors(initial=null){
         if(!response.ok||report.error)throw new Error(report.error||'Scene proposal failed');
         if(report.entity_id!==entityId||report.asset_id!==asset||report.project_source_key!==scenePreview.project_source_key||report.proposed_sha256!==inspected.proposed_sha256)throw new Error('Scene proposal differs from inspected geometry');
         stopScenePosePlayback();const isolated=sceneShapeProposalDocument(scenePreview,report,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
-        const returnToVectors=()=>{if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey)return false;$('model-dialog').showModal();vectorDialog.showModal();return true;};
+        const returnToVectors=()=>{if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey)return false;$('model-dialog').showModal();vectorDialog.showModal();normalUsers.refresh();return true;};
         scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:report.preview,returnToFile:returnToVectors,name:'Proposed shape · not applied'};
         scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed shape · not applied · ${sceneShapeProposalLabel(report,entityId)} · ${inspected.operation}`;
         configureSceneInspectionComparison(isolated.document);
@@ -3992,6 +3993,9 @@ async function openModelVectors(initial=null){
       }catch(error){if(currentContext()){clearScenePose();form.querySelector('[data-error]').textContent=error.message;draw();}}finally{setBusy(false);}
     };
 
+    const normalUsersSourceKey=state.scene_preview_source_key;
+    const normalUsers=mountNormalUsers({host:form,assetId:asset,expectedSha:source.effective_sha256,sourceKey:normalUsersSourceKey,getSelection:()=>kind.value==='normals'&&valid?{object_index:Number(object.value),normal_index:Number(index.value)}:null,isCurrent:()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled&&state.scene_preview_source_key===normalUsersSourceKey,onSelect:async row=>{vectorDialog.close();await inspectModelPrimitives(row);}});
+    for(const type of ['input','change'])form.addEventListener(type,()=>normalUsers.refresh());
     const currentContext=()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled;
     const invalidateProposal=()=>{proposalRequest++;proposalReport=null;proposal.hidden=true;};
     const drawProposal=()=>{
@@ -4011,7 +4015,7 @@ async function openModelVectors(initial=null){
     objectProposalCanvas.onpointermove=event=>{if(!proposalDrag||!proposalView)return;proposalView.yaw+=(event.clientX-proposalDrag.x)*.009;proposalView.pitch+=(event.clientY-proposalDrag.y)*.009;proposalDrag={x:event.clientX,y:event.clientY};drawProposal();};
     objectProposalCanvas.onpointerup=objectProposalCanvas.onpointercancel=()=>proposalDrag=null;
     objectProposalCanvas.onwheel=event=>{event.preventDefault();if(proposalView){proposalView.zoom=Math.max(.15,Math.min(2.5,proposalView.zoom*Math.exp(-event.deltaY*.001)));drawProposal();}};
-    vectorDialog.onclose=invalidateProposal;
+    vectorDialog.onclose=()=>{invalidateProposal();normalUsers.close();};
     // A proposal is tied to exact inputs. No old preview remains visible after a draft changes.
     for(const type of ['input','change'])form.addEventListener(type,event=>{if(event.target!==proposal.querySelector('select')&&event.target!==instanceSelect)invalidateProposal();});
     form.querySelector('[data-retail-vector]').addEventListener('click',invalidateProposal);
@@ -4046,7 +4050,7 @@ async function openModelVectors(initial=null){
       if(await api('/api/model-vector',{asset_id:asset,object_index:Number(object.value),kind:kind.value,vector_index:Number(index.value),values:xyz.map(input=>Number(input.value)),expected_sha256:source.effective_sha256},{dialog:vectorDialog,success:'Model vector updated. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}
     };
     if(initial){const k=initial.kind==='vertex'?'vertices':initial.kind==='normal'?'normals':null;if(!k||!Number.isInteger(initial.object_index)||!Number.isInteger(initial.vector_index)||!document.objects[initial.object_index]?.[k]?.[initial.vector_index])throw new Error('The reported vector is unavailable in this model.');object.value=String(initial.object_index);kind.value=k;index.value=String(initial.vector_index);}
-    load();previewOffset();previewRotation();previewScale();vectorDialog.showModal();
+    load();previewOffset();previewRotation();previewScale();previewNormalLength();vectorDialog.showModal();normalUsers.refresh();
   }catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
 }
 $('shape-vectors').onclick=()=>openModelVectors();

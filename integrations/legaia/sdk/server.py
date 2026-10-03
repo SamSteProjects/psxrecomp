@@ -693,6 +693,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
+                 "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
@@ -1016,6 +1017,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Normal rescaling requires model, object, length and inspected hash')
                     self.server.project.rescale_model_normals(body['asset_id'],body['object_index'],body['length'],body['expected_sha256'])
                     self._json(200,self.server.state())
+                    return
+                if route == '/api/model-normal-users':
+                    if set(body) != {'asset_id','object_index','normal_index','expected_sha256','source_key'}:
+                        raise ProjectError('Normal users require model, object, vector, inspected hash and source key only')
+                    from .model_normal_users import inspect
+                    self._json(200,inspect(self.server.project,body['asset_id'],body['object_index'],body['normal_index'],body['expected_sha256'],body['source_key']))
                     return
                 if route == '/api/model-object-translation':
                     if set(body) != {'asset_id','object_index','offset','expected_sha256'} or not isinstance(body['asset_id'], str):
