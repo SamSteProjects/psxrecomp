@@ -469,3 +469,7 @@ and private `local-output/sdk-20260909/model-glb-faces-20261002/research/qualifi
 ## Scenery yaw milestone — 2026-10-02
 
 Field descriptor yaw is the unsigned halfword at record*32+10. Source rotation order Rz*Ry*Rx precedes a single display Y reflection. Independent compound/signed-axis matrices match the preview helper. Town01 immutable MAP SHA256 60ecaa14978708f8696d60c12f6e98a88cdb19c2e63c7cae8f1c967a1214eb3b; composed package changes only allocated descriptor5 byte171 0→4 and shared descriptor218 byte6987 8→12 against the saved Collision/offset fixture. Source records, grid flags, other axes and prior edits remain intact. Private research and package evidence are retained; gameplay acceptance is deferred. See [workflow and evidence](legaia-scenery-rotation-gizmo.md).
+
+## Scenery group rotation — 2026-10-02
+
+Positive source-Y quarter turns rotate X/Z displacement as (dx,dz)→(dz,-dx), and add1024 modulo4096 to effective source yaw. Raw high-turn source words normalize only in the displayed angle; zero turns preserve exact bytes/metadata. Source194 and immutable MAP SHA256 60ecaa14978708f8696d60c12f6e98a88cdb19c2e63c7cae8f1c967a1214eb3b remain intact. In the saved Town01 fixture, allocated descriptors5/8 change only bytes171/256/260/261/267. Full Build MAP SHA256 b4ad68e759310e4b7889b2d719c8b5baa60a23076d94824a17afd090efd56175 includes preserved Collision. Independent expanded matrices and ZIP member readback match the browser output; runtime semantics remain unaccepted. See [workflow](legaia-scenery-group-rotation.md).

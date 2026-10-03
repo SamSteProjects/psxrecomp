@@ -685,6 +685,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/scene-placement-selection.js": ("scene-placement-selection.js", "text/javascript"),
                  "/environment-layout.js": ("environment-layout.js", "text/javascript"),
                  "/environment-rotation.js": ("environment-rotation.js", "text/javascript"),
+                 "/environment-rotation-group.js": ("environment-rotation-group.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
@@ -1156,6 +1157,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route == '/api/environment-layout-review':
                     if set(body)!={'entity_id','entity_ids','operation'}:raise ProjectError('Scenery layout review requires scene, selected identities and operation only')
                     from .environment_layout import review
+                    self._json(200,review(self.server.project,body['entity_id'],body['entity_ids'],body['operation']))
+                    return
+                if route == '/api/environment-rotation-group-review':
+                    if set(body)!={'entity_id','entity_ids','operation'}:raise ProjectError('Scenery rotation review requires scene, selected identities and operation only')
+                    from .environment_rotation_group import review
                     self._json(200,review(self.server.project,body['entity_id'],body['entity_ids'],body['operation']))
                     return
                 if route == '/api/environment-group-review':

@@ -643,3 +643,7 @@ their own supported field sets; no new packet/vector allocation is inferred.
 ## Scenery yaw milestone — 2026-10-02
 
 Scenery yaw gestures use pure source-frame rotation/command helpers and finite affine renderer overrides. GPU instances and imported transforms remain immutable during pointer motion. Pointer release submits the existing Environment command. Source/context/camera/layer guards and current canvas bounds cancel stale gestures; window resize also cancels before release. Shared descriptor previews respect explicit individual yaw overrides. No separate serialization or patch writer is introduced. See [workflow and evidence](legaia-scenery-rotation-gizmo.md).
+
+## Scenery group rotation — 2026-10-02
+
+The scenery rotation-group service composes source-qualified per-cell position and yaw overrides through the existing Environment writer. Review keys bind selection, selected anchor, quarter-turn operation and current source/project key. Source layout uses exact integer quarter turns; source yaw is a scalar edit retaining X/Z angles. The renderer previews both full matrices and position overrides without imported/GPU mutation; framing, picking and outlines share the result. One ordinary Environment command owns Apply/history/persistence/build. Closed pending reviews and stale source withdraw retained inspection. See [workflow](legaia-scenery-group-rotation.md).

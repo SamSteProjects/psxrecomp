@@ -1722,6 +1722,10 @@ class ProjectService:
             from .environment_layout import apply
             apply(self,command)
             return
+        if command.get('type')=='apply_environment_rotation_group':
+            from .environment_rotation_group import apply
+            apply(self,command)
+            return
         if command.get('type')=='apply_environment_group':
             from .environment_group import apply
             apply(self,command)

@@ -1,0 +1,21 @@
+# Rotate a scenery group
+
+Select two through 128 static decorations from the same field scene in Edit mode, then choose **Rotate scenery group…**. Choose a selected decoration in **Scenery rotation anchor** and a value in **Scenery group quarter turns**. The default is one quarter turn. **Review rotation** lists the Retail, Current, and Proposed X/Z positions and source yaws for each member.
+
+The anchor retains its current X/Z position, but its yaw rotates with the group. A positive quarter turn maps the displacement `(dx,dz)` to `(dz,-dx)` around that anchor and adds 1024 to each yaw, wrapping into 0–4095. Two or three turns repeat the same operation; zero turns preserves exact authored metadata and creates no history entry. Source yaw uses 4096 units per complete turn.
+
+Use **Inspect proposed rotation** and **Inspect current rotation** to compare the reviewed group in the viewport. Inspection does not apply edits. **Return to rotation review** returns to the dialog, and **Restore rotation preview** restores the authored view. Changing selection, scene, source state, or operation withdraws a stale proposal. **Apply rotation** verifies the current review key and records the complete group as one ordinary command and one Undo step.
+
+Undo/Redo and Save/Open use the existing Environment component. A normal Build source-verifies the retail MAP, applies shared edits first, and then creates the selected cell-local descriptors. Existing shared yaw and per-cell yaw are included when computing Current values. The operation retains source Y offsets, X/Z rotation angles, descriptor flags, model selection, padding, collision edits, unselected instance overrides, and shared descriptors. Capacity and signed offset range failures reject the whole proposal.
+
+This tool supports static decoration instances only. Spawned placed objects and reserved MAP identities are excluded. Geometry inspection is an offline source preview: script visibility, collision acceptance, exact GTE rounding, and gameplay remain unverified. A package can be prepared and inspected without launching the game, so manual gameplay verification may be deferred.
+
+## Verification
+
+`test_environment_rotation_group.py` covers all quarter turns, unsigned source-angle normalization, inherited and individual yaw, independent cloned-record byte readback, preserved components, atomic history, Save/Open, zero-turn metadata preservation, strict operations, stale source/project guards, capacity and range rejection, and the loopback HTTP Review/Apply boundary. `test_environment_rotation_group.mjs` independently checks retained-report identity, pivot arithmetic, yaw wrapping, exact selection, malformed reports, and zero-turn guards.
+
+Private retail proof is under `local-output/sdk-20260909/scenery-group-yaw-20261002/research/`. `prepare.py` copies the saved Town01 scenery fixture and reads current positions directly from the independently patched MAP. Decorations 01833 and 02089 begin at source X/Z `[5577,2048]` and `[5577,2208]`, both yaw 64. Anchoring 01833 and applying one turn proposes `[5577,2048]` and `[5737,2048]`, both yaw 1088. Their existing allocated descriptors are 5 and 8; the source descriptor 194 remains unchanged.
+
+Only candidate bytes 171, 256, 260, 261, and 267 differ from the authored baseline: the first yaw, the second X/Z offsets, and its yaw. Exact readback verifies source Y, other rotation axes, grid high flags, and every other descriptor byte. A separate private applied-project copy proves one-command Undo/Redo, Save/Open, and normal Build. The package's complete 73728-byte MAP is compared with the expected rotation bytes plus the preserved collision bit. The baseline browser fixture and retail input remain unchanged. No game was launched and no disc image was exported.
+
+Parent integration passed twelve actual browser scenarios, two Node guard suites, seven focused Python cases (no skips) and syntax checks. Proposed matrices match independent expanded source rotations; full normal-Build MAP ZIP readback matches the independent candidate plus preserved Collision. A separate540px bounds/visual check verifies wrapping controls and distinct anchor cell labels. Parent proof/screenshots are private under `parent/`; no game or disc export ran.
