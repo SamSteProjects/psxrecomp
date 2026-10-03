@@ -692,6 +692,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
+                 "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
@@ -1008,6 +1009,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'asset_id','object_index','percent','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Object scale requires model, object, percent and inspected hash')
                     self.server.project.scale_model_object(body['asset_id'],body['object_index'],body['percent'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
+                if route == '/api/model-object-normal-length':
+                    if set(body) != {'asset_id','object_index','length','expected_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Normal rescaling requires model, object, length and inspected hash')
+                    self.server.project.rescale_model_normals(body['asset_id'],body['object_index'],body['length'],body['expected_sha256'])
                     self._json(200,self.server.state())
                     return
                 if route == '/api/model-object-translation':

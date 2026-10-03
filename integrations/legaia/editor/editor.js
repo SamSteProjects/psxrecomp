@@ -13,6 +13,7 @@ import {mountSceneSelectionSets,decodeSavedSceneSelection} from '/scene-selectio
 import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mergeScenePlacementSelection} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
+import {rescaleStoredNormal} from '/model-normal-length.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -3952,6 +3953,11 @@ async function openModelVectors(initial=null){
     const previewScale=()=>{const obj=document.objects[Number(object.value)],percent=Number(scalePercent.value),valid=scalePercent.value!==''&&scalePercent.checkValidity(),fits=valid&&(obj?.vertices??[]).every(vector=>vector.every(value=>{const scaled=scaleVertex(value,percent);return scaled>=-32768&&scaled<=32767;}));scaling.querySelector('[data-scale-report]').textContent=object.disabled?'Apply or discard the vector draft first.':!valid?'Enter an integer percent from 1 to 1000.':!fits?'Scale exceeds signed16 vertex values; nothing will be applied.':`${obj?.vertices.length??0} vertices · ${percent}% around the source-local origin · Normals unchanged`;scaling.querySelector('[data-scale]').disabled=object.disabled||!obj?.vertices.length||!fits;};
     form.addEventListener('click',previewScale);form.addEventListener('input',previewScale);form.addEventListener('change',previewScale);scaling.ontoggle=previewScale;
     scaling.querySelector('[data-scale]').onclick=async()=>{if(busy||object.disabled)return;previewScale();if(scaling.querySelector('[data-scale]').disabled)return;if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id]))return;if(await api('/api/model-object-scale',{asset_id:asset,object_index:Number(object.value),percent:Number(scalePercent.value),expected_sha256:source.effective_sha256},{dialog:vectorDialog,success:'Model object scaled. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}};
+    const normalLengthTool=window.document.createElement('details');normalLengthTool.innerHTML='<summary>Rescale stored normals in this object</summary><p>Retain each nonzero direction, with nearest-integer signed source coordinates. Zero normals stay zero; geometry, normal references and other objects stay unchanged. Encoded length alone does not establish retail lighting.</p><label>Target encoded length<input type="number" min="1" max="32767" step="1" value="4096" aria-label="Object normal length"></label><p data-normal-length-report></p><button type="button" data-normal-length>Apply normal rescaling</button>';scaling.after(normalLengthTool);
+    const normalLengthInput=normalLengthTool.querySelector('input');
+    const previewNormalLength=()=>{const normals=document.objects[Number(object.value)]?.normals??[],length=Number(normalLengthInput.value);let changed=0,validLength=true;try{for(const vector of normals){const scaled=rescaleStoredNormal(vector,length);changed+=scaled.some((v,a)=>v!==vector[a]);}}catch{validLength=false;}normalLengthTool.querySelector('[data-normal-length-report]').textContent=object.disabled?'Apply or discard the vector draft first.':!validLength?'Enter an integer encoded length1–32767.':`${normals.length} stored normals · ${normals.filter(v=>v.every(a=>a===0)).length} zero vectors retained · ${changed} changed vectors`;normalLengthTool.querySelector('[data-normal-length]').disabled=object.disabled||!validLength||!changed;};
+    for(const type of ['click','input','change'])form.addEventListener(type,previewNormalLength);normalLengthTool.ontoggle=previewNormalLength;
+    normalLengthTool.querySelector('[data-normal-length]').onclick=async()=>{if(busy||object.disabled)return;previewNormalLength();if(normalLengthTool.querySelector('[data-normal-length]').disabled||!currentContext())return;if(await api('/api/model-object-normal-length',{asset_id:asset,object_index:Number(object.value),length:Number(normalLengthInput.value),expected_sha256:source.effective_sha256},{dialog:vectorDialog,success:'Stored model normals rescaled. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}};
     const proposal=window.document.createElement('section');proposal.hidden=true;proposal.innerHTML='<h3>Object transform preview · not applied</h3><p data-proposal-status></p><label>Preview layer<select aria-label="Object preview layer"><option value="proposed">Proposed</option><option value="current">Inspected current</option></select></label><p>Drag to orbit · Scroll to zoom · Object-local Y-down coordinates. Both layers share camera framing. Preview does not change history or saved assets; Apply remains explicit.</p>';
     if(!objectProposalCanvas){objectProposalCanvas=window.document.createElement('canvas');objectProposalCanvas.style.cssText='display:block;width:100%;height:300px;touch-action:none';objectProposalCanvas.setAttribute('aria-label','Object transform preview');}
     proposal.append(objectProposalCanvas);form.append(proposal);
@@ -3996,7 +4002,7 @@ async function openModelVectors(initial=null){
     const loadProposal=()=>{
       if(!proposalReport||!currentContext())return;
       const data=proposalReport[proposal.querySelector('select').value==='current'?'current_preview':'preview'],obj=data.objects[proposalReport.object_index];
-      const preview={...data,triangles:data.triangles.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_colors:data.triangle_colors?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_uvs:data.triangle_uvs?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_materials:data.triangle_materials?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count)};
+      const preview={...data,triangles:data.triangles.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_colors:data.triangle_colors?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_uvs:data.triangle_uvs?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_materials:data.triangle_materials?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count),triangle_normals:data.triangle_normals?.slice(obj.triangle_start,obj.triangle_start+obj.triangle_count)};
       const failures=objectProposalRenderer.load({assets:[{geometry_key:'object-proposal',preview}],entities:[{entity_id:'object-proposal',geometry_key:'object-proposal',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});
       if(failures.length)throw new Error(failures.join('; '));drawProposal();
     };
@@ -4013,8 +4019,9 @@ async function openModelVectors(initial=null){
     for(const [container,operation,applySelector,getValues,refresh] of [
       [translation,'translation','[data-translate]',()=>({offset:offsetValues()}),previewOffset],
       [rotation,'rotation','[data-rotate]',()=>({axis:rotationAxis.value,quarter_turns:Number(turnControl.value)}),previewRotation],
-      [scaling,'scale','[data-scale]',()=>({percent:Number(scalePercent.value)}),previewScale]]){
-      const button=window.document.createElement('button');button.type='button';button.textContent='Preview object '+operation;container.append(button);
+      [scaling,'scale','[data-scale]',()=>({percent:Number(scalePercent.value)}),previewScale],
+      [normalLengthTool,'normal_length','[data-normal-length]',()=>({length:Number(normalLengthInput.value)}),previewNormalLength]]){
+      const button=window.document.createElement('button');button.type='button';button.textContent=operation==='normal_length'?'Preview normal rescaling':'Preview object '+operation;container.append(button);
       button.onclick=async()=>{
         refresh();if(busy||!currentContext()||container.querySelector(applySelector).disabled)return;
         const request=++proposalRequest;proposalReport=null;proposal.hidden=true;form.querySelector('[data-error]').textContent='';setBusy(true);
@@ -4028,7 +4035,7 @@ async function openModelVectors(initial=null){
           const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
           for(const data of [report.preview,report.current_preview]){const obj=data.objects[report.object_index];for(const v of data.vertices.slice(obj.vertex_start,obj.vertex_start+obj.vertex_count))for(let a=0;a<3;a++){min[a]=Math.min(min[a],v[a]);max[a]=Math.max(max[a],v[a]);}}
           proposalView={center:min.map((v,a)=>(v+max[a])/2),radius:Math.max(1,Math.hypot(...max.map((v,a)=>v-min[a]))/2),yaw:.6,pitch:.4,zoom:1};
-          report.values=getValues();proposalReport=report;proposal.hidden=false;updateProposalInstances();proposal.querySelector('select').value='proposed';proposal.querySelector('[data-proposal-status]').textContent=`Object ${report.object_index} · ${operation} · ${report.changes_from_current.length} scalar changes from inspected current · not applied`;
+          report.values=getValues();proposalReport=report;proposal.hidden=false;updateProposalInstances();proposal.querySelector('select').value='proposed';proposal.querySelector('[data-proposal-status]').textContent=`Object ${report.object_index} · ${operation==='normal_length'?'Normal rescaling':operation} · ${report.changes_from_current.length} scalar changes from inspected current · not applied`;
           proposal.scrollIntoView({block:'nearest'});loadProposal();
         }catch(error){if(request===proposalRequest&&currentContext()){form.querySelector('[data-error]').textContent=error.message;invalidateProposal();}}finally{setBusy(false);}
       };

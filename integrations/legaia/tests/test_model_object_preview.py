@@ -19,6 +19,8 @@ class ModelObjectPreviewTests(unittest.TestCase):
         cases=[('translation',{'offset':[2,-3,4]},translate_shape_object(source,source,digest,0,[2,-3,4])),
                ('rotation',{'axis':'z','quarter_turns':1},rotate_shape_object(source,source,digest,0,'z',1)),
                ('scale',{'percent':125},scale_shape_object(source,source,digest,0,125))]
+        from importer.model_normal_length import rescale_object_normals
+        cases.append(('normal_length',{'length':2048},rescale_object_normals(source,source,digest,0,2048)))
         for op,values,expected in cases:
             result=ProjectService.preview_model_object(project,'model',0,op,values,digest)
             self.assertEqual(result['preview'],decode_tmd(expected))

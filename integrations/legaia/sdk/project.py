@@ -1372,6 +1372,7 @@ class ProjectService:
     def _prepare_model_object(self, asset_id: str, object_index: int, operation: str,
                               values: dict, expected_sha256: str) -> tuple[bytes, dict]:
         from importer.model_json import translate_shape_object, rotate_shape_object, scale_shape_object
+        from importer.model_normal_length import rescale_object_normals
         from importer.assets import decode_tmd
         if self.mode != 'edit':
             raise ProjectError('Model object preview requires Edit mode')
@@ -1387,8 +1388,10 @@ class ProjectService:
             replacement = rotate_shape_object(*args, values['axis'], values['quarter_turns'])
         elif operation == 'scale' and set(values) == {'percent'}:
             replacement = scale_shape_object(*args, values['percent'])
+        elif operation == 'normal_length' and set(values) == {'length'}:
+            replacement = rescale_object_normals(*args, values['length'])
         else:
-            raise ProjectError('Choose translation, rotation or scale with exact operation fields')
+            raise ProjectError('Choose translation, rotation, scale or normal_length with exact operation fields')
         report = self.preview_model_file(asset_id, replacement)
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
@@ -1398,6 +1401,13 @@ class ProjectService:
     def preview_model_object(self, asset_id: str, object_index: int, operation: str,
                              values: dict, expected_sha256: str) -> dict:
         return self._prepare_model_object(asset_id, object_index, operation, values, expected_sha256)[1]
+
+    def rescale_model_normals(self, asset_id: str, object_index: int, length: int,
+                             expected_sha256: str) -> None:
+        replacement, report = self._prepare_model_object(asset_id, object_index, 'normal_length',
+                                                          {'length': length}, expected_sha256)
+        if report['changes_from_current']:
+            self.set_model_replacement(asset_id, replacement)
 
     def preview_model_file(self, asset_id: str, content: bytes, format: str = 'tmd') -> dict:
         return self._prepare_model_file(asset_id, content, format)[1]
