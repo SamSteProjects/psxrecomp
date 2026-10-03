@@ -7,6 +7,27 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**World-map source placement inspection (2026-10-02):** **World ground** now
+opens a source scene with 301/272/236 sparse model placements in map01/map02/map03.
+The hierarchy, mesh picking, Frame selected and Source model placements toggle
+expose stable entity IDs, MAP cells, record hashes, dictionary slots and source
+XYZ. Column-major source yaw/translation becomes a row-major renderer transform
+with one display Y flip. The ground asset and source coordinates remain unchanged.
+This is read-only; source changes withdraw geometry and pending-close cancels reads.
+Runtime visibility, script-adjusted resting positions and animation remain
+unverified. Model textures are partially resolved and missing associations stay
+explicit. See [placement workflow](legaia-worldmap-placements.md).
+
+Validation: eleven focused Python cases passed with the private retail disc
+(no skips), plus ground and placement Node guards and frontend syntax checks.
+Independent raw-source comparisons match every seed position, rotation, record
+hash, model slot, loaded model topology and source-member hash in all kingdoms;
+ground geometry remains unchanged. Nine integrated browser checks cover actual
+rendering, hierarchy/coordinates, mesh picking, toggles, camera controls, 540px
+layout, source withdrawal, pending-close and exact saved project/Build file hashes.
+No game was launched or disc output written. Private proof:
+`local-output/sdk-20260909/worldmap-placements-20261002/`.
+
 **World-map walk-ground workspace (2026-10-02):** The editor's **World ground**
 resource action now opens source-backed textured 3D ground for map01, map02 and
 map03 through the shared scene renderer. The importer qualifies the overlapping
@@ -15,7 +36,7 @@ TIM atlas. Orbit/zoom, Frame ground, Top view, Wireframe and source details are
 read-only; source changes withdraw retained geometry and closing pending reads
 releases controls. Imported field selection, authored state, history and Build
 files remain unchanged. Source Y-down coordinates flip only at the renderer.
-Overview/MAPDSIP, placed world objects, sky/fog and runtime parity remain pending.
+Overview/MAPDSIP, script-managed resting transforms, sky/fog and runtime parity remain pending.
 See [world-ground workflow](legaia-worldmap-geometry.md).
 
 Validation: six focused Python cases passed with the private retail disc (no

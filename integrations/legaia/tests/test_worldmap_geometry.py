@@ -104,7 +104,7 @@ class RetailWorldmapGeometryTests(unittest.TestCase):
             before = (sha256(data).hexdigest(), sha256(raw).hexdigest(), sha256(man).hexdigest())
             report = load_worldmap_geometry(disc, scene)
             preview = report['preview']
-            self.assertEqual(report['schema_version'], 'legaia.worldmap-geometry.v1')
+            self.assertEqual(report['schema_version'], 'legaia.worldmap-geometry.v2')
             self.assertEqual(report['semantic_id'], f'asset://{scene}/worldmap/walk-ground')
             self.assertEqual(report['scene'], scene)
             self.assertEqual(preview['vertices'], expected_positions(data, lut))

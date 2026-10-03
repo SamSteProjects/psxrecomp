@@ -19,9 +19,15 @@ def inspect(project, scene, expected_key):
     if expected_key != key:
         raise ProjectError('World ground source inputs changed; inspect the current project again')
     result = deepcopy(load_worldmap_geometry(project.disc_path, scene))
-    preview = result['preview']
+    previews = [result['preview']] + [asset['preview'] for asset in result.get('scene_graph', {}).get('assets', [])]
+    seen = set()
     used = 0
-    for texture in preview.get('textures', []):
+    textures = []
+    for preview in previews:
+        if id(preview) not in seen:
+            seen.add(id(preview))
+            textures.extend(preview.get('textures', []))
+    for texture in textures:
         for raw, encoded in (('rgba', 'rgba_base64'), ('stp', 'stp_base64')):
             content = texture.pop(raw, None)
             if content is not None:

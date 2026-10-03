@@ -6,6 +6,15 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 sparse world placement extension follows the same pinned
+field_objects source gates, source XYZ/yaw and direct kingdom model dictionary
+slots. An independent MAP walker qualifies all 301/272/236 seeds; raw TMD object
+and packet readback matches all loaded topology and source member hashes. Source
+transforms do not establish runtime resting positions or visibility. Ground
+geometry and the reference pin remain unchanged; partial model texture coverage
+is explicit. Private proof:
+`local-output/sdk-20260909/worldmap-placements-20261002/research/`.
+
 The 2026-10-02 world walk-ground importer follows the pinned kingdom-bundle and
 field_objects::build_walk_heightfield conventions. Independent raw retail
 qualification verifies canonical/overlapping PROT carriers, complete MAP spans,

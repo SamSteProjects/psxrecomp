@@ -190,4 +190,10 @@ def load_worldmap_geometry(disc, scene='map01'):
                                                pack_slot=slot, byte_offset=at, byte_length=tim.byte_length,
                                                decoded_member_sha256=sha256(tim_pack[at:at+tim.byte_length]).hexdigest())))
         catalog.diagnostics.append('Only source kingdom atlas TIMs are associated; non-TIM CLUT strips and runtime palette walkers are not synthesized.')
-        return decode_worldmap_geometry(map_data, man, catalog, scene=scene, source_record=source)
+        result = decode_worldmap_geometry(map_data, man, catalog, scene=scene, source_record=source)
+        from .worldmap_placements import build_worldmap_scene_graph
+        model_pack, model_source = _slot(bundle, raw, 1)
+        model_source.update(disc_sha256=digest, prot_entry_index=index, bundle_table_offset=offset)
+        result['scene_graph'] = build_worldmap_scene_graph(result, map_data, model_pack, model_source, catalog)
+        result['schema_version'] = 'legaia.worldmap-geometry.v2'
+        return result

@@ -1,6 +1,6 @@
 # Inspecting source world-map walk ground
 
-The editor's **World ground** button opens the read-only **World-map walk ground** dialog. Choose a **World kingdom** (`map01`, `map02`, or `map03`) and select **Inspect kingdom**. The viewport uses the same SceneRenderer as the field editor. Drag to orbit, use the wheel to zoom, and use **Frame ground**, **Top view**, and **Wireframe** to inspect the surface. Expand **Source provenance and limitations** for the qualified source spans and coverage.
+The editor's **World ground** button opens the read-only **World-map source scene** dialog. Choose a **World kingdom** (`map01`, `map02`, or `map03`) and select **Inspect kingdom**. The viewport uses the same SceneRenderer as the field editor. Drag to orbit, use the wheel to zoom, and use **Frame ground**, **Top view**, and **Wireframe** to inspect the surface. Expand **Source provenance and limitations** for the qualified source spans and coverage.
 
 This displays the source walk-visible ground heightfield for Drake, Sebucus, and Karisto. It does not import another scene, write authored overrides, change project history, start the game, or replace the current field scene. Source changes withdraw the stale inspection. World-map landmark menu X/Y bytes are not interpreted as 3D positions.
 
@@ -25,3 +25,8 @@ Private evidence under `local-output/sdk-20260909/worldmap-geometry-20261002/ret
 For map01, the exact MAP SHA256 is `d29209df2b99b54182fdd029515bb89b7ca8fd47ac8bee2e128332608e925ea4`. Its source floor table is `[1,48,96,128,192,240,288,336,384,432,480,528,576,624,672,720]`; source ground bounds are `[0,-576,0]` through `[16384,-1,16256]`.
 
 The current surface is a reference heightfield. It does not reproduce the complete retail ground emitter, per-story object placement, script visibility, collision deformation, ocean animation, special world overlay mesh semantics, or the separate overview resource. Landmark TMDs, decorations, and live actor placement are separate consumers and are not guessed into this viewport. Source geometry inspection does not establish full world-map rendering parity. No game was launched for this evidence; visual gameplay acceptance remains deferred.
+
+Source model seeds now share this viewport. Use **Source model placements**, the
+source entity hierarchy and **Frame selected** to inspect their immutable XYZ.
+See [sparse placements](legaia-worldmap-placements.md) for provenance, model
+texture coverage and the limits on runtime visibility and resting transforms.

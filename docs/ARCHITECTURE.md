@@ -6,6 +6,15 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`importer/worldmap_placements.py` qualifies sparse MAP gates, direct slot-1
+model dictionary references and raw source seed transforms. The geometry v2
+loader retains the ground preview and adds shared model assets and immutable
+source entities. `editor/worldmap-scene.js` validates source ownership, finite
+geometry, texture and graph budgets, then transposes source matrices and flips
+Y once for the shared renderer. Hierarchy/picking are local inspection state;
+no authored field selection or overrides change. Script-driven visibility and
+resting transforms stay unknown. See [placements](legaia-worldmap-placements.md).
+
 `importer/worldmap_geometry.py` resolves canonical walk kingdom MAP/MAN/TIM
 carriers and derives the full source floor-nibble surface with existing terrain
 math. `sdk/worldmap_geometry.py` qualifies the current project source key, returns
