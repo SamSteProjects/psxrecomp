@@ -3995,7 +3995,7 @@ async function openModelVectors(initial=null){
 
     const normalUsersSourceKey=state.scene_preview_source_key;
     const normalUsers=mountNormalUsers({host:form,assetId:asset,expectedSha:source.effective_sha256,sourceKey:normalUsersSourceKey,getSelection:()=>kind.value==='normals'&&valid?{object_index:Number(object.value),normal_index:Number(index.value)}:null,isCurrent:()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled&&state.scene_preview_source_key===normalUsersSourceKey,onSelect:async row=>{vectorDialog.close();await inspectModelPrimitives(row);}});
-    for(const type of ['input','change'])form.addEventListener(type,()=>normalUsers.refresh());
+    for(const type of ['input','change','click'])form.addEventListener(type,()=>normalUsers.refresh());
     const currentContext=()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled;
     const invalidateProposal=()=>{proposalRequest++;proposalReport=null;proposal.hidden=true;};
     const drawProposal=()=>{
@@ -4058,11 +4058,12 @@ let modelPrimitiveEditor=null;
 const primitiveContext=()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key});
 async function inspectModelPrimitives(initial=null){
   if(busy||!modelAssetId||shapeDraft||state.project.mode!=='edit')return;
-  const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);let applied=false;
+  const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);let applied=false,normalNavigation=false;
   modelPrimitiveEditor?.dispose();
   modelPrimitiveEditor=await openModelPrimitiveEditor({assetId:asset,initial:initial?{object_index:initial.object_index,primitive_index:initial.primitive_index}:null,getContext:primitiveContext,busy:()=>busy,setBusy,
     onError:error=>notify(error.message??String(error),true),
     onApplied:next=>{applied=true;state=next;render();notify('Model faces updated. Save project to persist.');},
+    onInspectNormal:async(target,source)=>{if(busy||asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||source.project_source_key!==state.scene_preview_source_key)return false;normalNavigation=true;modelPrimitiveEditor?.dispose();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||source.project_source_key!==state.scene_preview_source_key)return false;await openModelVectors(target);return true;},
     onScenePreview:async(report,edits,source,{returnToEditor})=>{
       if(!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePreview.project_source_key!==source.project_source_key)throw new Error('Load the current authored scene before inspecting proposed faces.');
       const instances=scenePreview.entities.filter(e=>e.asset_id===asset&&e.renderable);
@@ -4083,7 +4084,7 @@ async function inspectModelPrimitives(initial=null){
     }});
   if(!modelPrimitiveEditor)return;
   const owned=modelPrimitiveEditor;
-  owned.dialog.addEventListener('close',()=>{if(owned.dialog.dataset.sceneInspection==='true')return;if(applied&&context===JSON.stringify([state.project.path,state.scene.id])&&modelAssetId===asset)setTimeout(()=>{if(!busy&&$('model-dialog').open)openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');},0);});
+  owned.dialog.addEventListener('close',()=>{if(owned.dialog.dataset.sceneInspection==='true')return;if(!normalNavigation&&applied&&context===JSON.stringify([state.project.path,state.scene.id])&&modelAssetId===asset)setTimeout(()=>{if(!busy&&$('model-dialog').open)openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');},0);});
 }
 $('shape-primitives').onclick=()=>inspectModelPrimitives();
 
