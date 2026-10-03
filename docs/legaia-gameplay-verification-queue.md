@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+## Value-comparison branch runtime - deferred
+
+Offline fixture: `local-output/sdk-20260909/inventory-branches-20261003/parent/service-project/`.
+Map01 P2 record0009 PC52 retargets VALUE_COMPARE_BRANCH PC111→14.
+Package SHA256 `bde95688550c4a382485ac426f08a90a0a797c2e553b9d05e9b3f7dd9039e611`.
+Review/history/Save/Open/Build and whole decoded-MAN comparison pass; only
+encoded destination offsets3006/3007 differ. This is a serializer fixture,
+not an accepted story change. Later verify branch activation, runtime comparison
+values and MENU49 field/ramp behavior against a retail baseline. Random/scaled
+conditions need separate runtime evidence. No package was installed or played;
+offline SDK work can continue.
+
 STATE_RESUME coverage checkpoint (2026-10-03): fixed completion-boundary
 inspection passes offline and adds no immediate gameplay gate. Later menu-state
 verification must establish activation, suspension and completion independently

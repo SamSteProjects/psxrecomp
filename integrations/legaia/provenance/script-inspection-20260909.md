@@ -1,5 +1,26 @@
 # Read-only actor script and dialogue inspection
 
+Retail value-comparison and MENU49 evidence (2026-10-03): unchanged hashed
+PROT897/SCUS sources, recorded below. Opcode4E table801CED74→801E0A04 dispatches
+source0..B through801CEE30; C..F retain initialized zero state/threshold.
+Compare0/1 use signed SLT at801E0BB0/0BA4; other modes leave the branch false.
+Short thresholds call signed helper8003CE9C (SLL16/SRA16 at8003CEAC/CEB4).
+Bank A/B pack the low threshold word at operand+2 and high at+6; their false
+path advances9 rather than7. Taken paths read unsigned target word+4/+5 and
+return adjusted PC+5+word through801E35FC/3604, wrapping at the existing16-bit
+PC consumers. Scaling sources0/1 multiply the runtime factor by signed16 input,
+retain low32 bits and divide toward zero by256. No runtime comparison executes.
+The pinned source's unsigned16 short thresholds are superseded by these words.
+
+MENU49 outer4 table801CEE70→801E1138 advances6; inner table801CEF1C→801E1480.
+Story-word masks01000000/02000000 choose field4A/global-delta write/ramp paths.
+All zero-tick writes return through801E3624. Nonzero ramp exits801E175C/205C
+call8003C5F0 and return advanced s8 through801E1768/2068, not the original PC.
+The pinned sub9 yield description is superseded; native signed value/tick words
+are preserved. World-map/actor/story state and field-ramp appearance remain
+runtime-unverified. Independent package readback changes only one target word
+in map01 P2 record0009; no source pin, game process or disc installation changes.
+
 Fixed STATE_RESUME completion evidence (2026-10-03): unchanged hashed PROT897
 (as recorded below), dispatch table801CED60→801E08C4, reads external slot8007B450.
 Completed sentinel1 routes sub1/3/7 to801E00B8 (adjusted PC+3), sub2/4 to801E212C

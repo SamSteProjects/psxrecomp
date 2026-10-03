@@ -110,6 +110,35 @@ class ScriptBranchWorkflow(unittest.TestCase):
             self.assertEqual(len(result['report']['changes']), 1)
             self.assertEqual(result['report']['changes'][0]['scope'], 'script-branch-target-only')
 
+    def test_retail_value_compare_man_preserves_threshold_and_field_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            p = self.project(directory, 'map01')
+            imported = deepcopy(p.imports)
+            owner = 'scene://map01/scripts/man-p2/0009'
+            identifier = 'script://map01/scripts/man-p2/0009/branch/0034'
+            initial = snapshot(p, owner)
+            self.assertTrue(initial['supported'], initial.get('reason'))
+            row = next(r for r in initial['targets'] if r['semantic_id'] == identifier)
+            self.assertEqual((row['mnemonic'], row['target_pc'], row['operand_pc']),
+                             ('VALUE_COMPARE_BRANCH', 111, 57))
+            self.assertTrue(any(r['mnemonic'] == 'FIELD_4A_STATE_WRITE'
+                                for r in initial['source_report']['instructions']))
+            reviewed = self.apply(p, owner, identifier, {'target_pc': 14})
+            self.assertEqual(reviewed['review']['audit'][0]['changed_byte_offsets'], [3006, 3007])
+            authored = deepcopy(p.overrides)
+            p.undo(); self.assertNotIn('ScriptBranches', p.overrides.get(owner, {}))
+            p.redo(); self.assertEqual(p.overrides, authored)
+            p.save(); q = ProjectService.open(p.root)
+            self.assertEqual(q.overrides, authored)
+            self.assertEqual(q.imports, imported)
+            original, decoded, result, _ = self.readback(q, 'map01')
+            # Native word base PC57, target14: delta -43 encoded D5FF.
+            self.assertEqual(original[3006:3008], bytes.fromhex('3600'))
+            expected = bytearray(original); expected[3006:3008] = bytes.fromhex('d5ff')
+            self.assertEqual(decoded, expected)
+            self.assertEqual(len(result['report']['changes']), 1)
+            self.assertEqual(result['report']['changes'][0]['scope'], 'script-branch-target-only')
+
     def test_raw_streaming_build_exact_words_and_operand_file_bundle(self):
         from sdk.script_operand_files import export_file, review as file_review
         from sdk.script_operand_bundle import export_file as bundle_export, review as bundle_review

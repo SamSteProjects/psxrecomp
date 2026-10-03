@@ -235,7 +235,7 @@ class ScriptInspectionTests(unittest.TestCase):
             report = inspect_record(bytes([0x4c, sub]) + struct.pack("<hH", -1, 0), 0)
             self.assertEqual(report["status"], "decoded_supported_paths")
             self.assertEqual(report["instructions"][0]["operands"]["value"], -1)
-        for sub in (0x49, 0x4e, 0x4f):
+        for sub in (0x4e, 0x4f):
             report = inspect_record(bytes([0x4c, sub]) + b"\0\0\0\0\x1fOpaque\0", 0)
             self.assertEqual(report["dialogues"], [])
             self.assertEqual(report["status"], "partial")

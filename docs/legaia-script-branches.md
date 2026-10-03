@@ -47,6 +47,7 @@ record lengths and MAN pointers remain source-owned. For `p = pc + header_length
 | FLAG_WORD_BRANCH0x4C/A0..A2 | p+2 | Ordinary or extended |
 | FIELD_68_BRANCH0x4C/8C | p+1 | Ordinary or extended |
 | ACTOR_SEARCH_BRANCH0x4C/8D | p+3 | Ordinary or extended |
+| VALUE_COMPARE_BRANCH0x4E, source0..B/compare0..1 | p+4 | Ordinary or extended |
 
 All targets are `(word_base + delta) & 65535`; the emitted word is
 `(target_pc - word_base) & 65535`. Retail callers sign-extend the returned PC
@@ -56,6 +57,10 @@ LFLAG/GFLAG/CFLAG TEST instructions are wait gates without destination words.
 FIELD_68_BRANCH labels zero/nonzero field0x68 paths. ACTOR_SEARCH_BRANCH preserves
 its character selector and marker; empty or unmatched searches fall through.
 Neither family observes runtime values or establishes actor identity.
+VALUE_COMPARE_BRANCH retains its selector, source/comparison mode and signed
+threshold, including the bank high word after the branch destination.
+Default sourcesC..F and comparison modes2..F have no editable branch edge.
+Encoded field/slot/bank sources do not establish runtime values or asset identity.
 
 Existing dialogue and operand writers first qualify their independent retail
 spans. Branch words compose last over those authored values, with exact source

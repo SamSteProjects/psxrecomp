@@ -334,7 +334,18 @@ def _instruction(data: bytes, pc: int) -> dict:
         elif 0x30 <= sub <= 0x3F:
             size, mnemonic = 1, "FIELD_STATE_CONTROL"
             args = {"sub_op": sub, "can_yield": sub in (0x30, 0x31, 0x37)}
-        elif 0x40 <= sub <= 0x4D and sub != 0x49:
+        elif sub == 0x49:
+            # Retail outer4 advances adjusted PC6 before sub9. All
+            # flag-selected field4A/global-delta writes and ramp exits
+            # return that advanced PC, including 801E175C and205C.
+            # The pinned sub9 Yield descriptions disagree with retail.
+            size, mnemonic = 5, "FIELD_4A_STATE_WRITE"
+            need(size)
+            args = {"sub_op": sub, "value": struct.unpack_from("<h", data, operand + 1)[0],
+                    "ticks_signed": struct.unpack_from("<h", data, operand + 3)[0],
+                    "runtime_field_mode": "story_word_bits_24_25_not_observed",
+                    "runtime_effect": "not_evaluated", "can_yield": False}
+        elif 0x40 <= sub <= 0x4D:
             # Retail 801E1138 adds 6 to the adjusted opcode PC. Sub43/44
             # handlers 801E1234/126C write or ramp ctx24/28 and preserve that
             # continuation. The pinned nibble_3_4.rs invents absolute jumps.
@@ -504,6 +515,42 @@ def _instruction(data: bytes, pc: int) -> dict:
                             runtime_effect="not_evaluated")
         else:
             raise ImportError(f"unsupported MENU_CTRL sub-op 0x{sub:02x}")
+    elif op == 0x4E:
+        # Retail PROT897 801E0A04..0C08: selector, source/comparison
+        # nibbles, signed threshold, relative target word at operand+4.
+        # Bank sources A/B add a high threshold word after the target.
+        # Default sources C..F and comparison modes2..F never branch.
+        need(2)
+        selector, mode = data[operand:operand + 2]
+        source, comparison = mode >> 4, mode & 15
+        size = 8 if source in (10, 11) else 6
+        need(size)
+        low = struct.unpack_from("<H", data, operand + 2)[0]
+        threshold = struct.unpack_from("<h", data, operand + 2)[0]
+        if size == 8:
+            threshold = struct.unpack_from("<i", struct.pack("<HH", low,
+                        struct.unpack_from("<H", data, operand + 6)[0]))[0]
+        delta = struct.unpack_from("<H", data, operand + 4)[0]
+        target = (operand + 4 + delta) & 0xFFFF
+        sources = {0: "character_field_6ce_scaled_by_6cc",
+                   1: "character_field_6d2_scaled_by_6d0", 2: "character_level_6f8",
+                   3: "bank_8008459c", 4: "bios_random_low_byte",
+                   5: "slot_table_0", 6: "slot_table_1", 7: "slot_table_2", 8: "slot_table_3",
+                   9: "bank_800845a4", 10: "bank_8008459c", 11: "bank_800845a4"}
+        args = {"selector": selector, "source_mode": source, "comparison_mode": comparison,
+                "value_source": sources.get(source, "zero_default"),
+                "threshold": threshold, "threshold_width": 32 if size == 8 else 16,
+                "threshold_scaling": "runtime_factor_mul_i32_div256_toward_zero" if source < 2 else "none",
+                "delta_u16": delta, "encoded_target": target, "runtime_value": "not_observed"}
+        enabled = source < 12 and comparison in (0, 1)
+        mnemonic = "VALUE_COMPARE_BRANCH" if enabled else "VALUE_COMPARE_CONTINUE"
+        if enabled:
+            args["comparison"] = "value_lt_threshold" if comparison == 0 else "threshold_lt_value"
+            branches = [{"pc": target, "condition": "comparison_true"},
+                        {"pc": operand + size, "condition": "comparison_false"}]
+        else:
+            branches = [{"pc": operand + size,
+                         "condition": "source_default_no_branch" if source >= 12 else "comparison_mode_no_branch"}]
     elif 0x50 <= op <= 0x7F:
         # Retail 801E3568 routes the complete raw 5x/6x/7x range. It reads
         # index at s0+1 and TEST delta at s0+2/+3. Extended prelude adjusts
