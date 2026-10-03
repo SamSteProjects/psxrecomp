@@ -565,3 +565,14 @@ export and model-preview decoration. `editor/animation-glb.js` owns explicit
 file selection, review freshness and dialog lifecycle. Apply uses ordinary
 `AnimationChannels` commands; no new persistence or runtime writer is introduced.
 See [animation GLB workflow](legaia-animation-glb.md).
+
+## Source-bound GLB RGB interchange
+
+Model profile v2 exports a raw float-vector RGB attribute per existing source
+color slot, separately from render `COLOR_0`. The importer owns exact packet
+locations, shared flat/Gouraud identities and no-RGB sentinels. The model service
+rebuilds the binding from effective source bytes and restricts pending changes
+to positions, UVs and baked RGB; the registered model tool reuses Review, posed
+inspection, normal replacement history, persistence and Build. Legacy v1 codec
+profiles retain their original positions/UV behavior. No runtime lighting or
+new packet allocation is inferred.

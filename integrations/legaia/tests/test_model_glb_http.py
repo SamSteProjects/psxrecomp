@@ -14,7 +14,7 @@ from unittest.mock import patch
 from importer.assets import decode_tmd
 from importer.model_primitives import inspect_model_primitives
 from sdk.project import ProjectService
-from test_model_glb_workflow import move_exported_source_vertex
+from test_model_glb_workflow import move_exported_source_vertex, move_exported_source_rgb
 from test_model_primitive_workflow import http_server
 
 
@@ -178,6 +178,9 @@ class ModelGlbRetailHttpTests(unittest.TestCase):
                     dx = 1 if old_x < 32767 else -1
                     edited = move_exported_source_vertex(raw, dx=dx)
                     edited = move_source_corner_uv(edited, binding['profile'], delta=uv_delta)
+                    self.assertIsNotNone(row['colors'])
+                    color_delta = .75 if row['colors'][0][0] < 255 else -.75
+                    edited = move_exported_source_rgb(edited, gouraud=row['gouraud'], delta=color_delta)
                     proposed = bytearray(retail)
                     struct.pack_into('<h', proposed, vertex_at, old_x + dx)
                     # Town01's first verified 0x21 packet stores first U at
@@ -186,16 +189,17 @@ class ModelGlbRetailHttpTests(unittest.TestCase):
                     uv_at = row['byte_offset'] + 4
                     self.assertEqual(retail[uv_at], row['uvs'][0][0])
                     proposed[uv_at] += uv_delta
+                    proposed[row['byte_offset']] += 1 if color_delta > 0 else -1
                     proposed = bytes(proposed)
                     edited_body = {**body, 'content_base64': base64.b64encode(edited).decode('ascii')}
                     status, review = post('/api/model-glb-preview', edited_body)
                     self.assertEqual(status, 200, review)
                     self.assertEqual(review['proposed_sha256'], sha256(proposed).hexdigest())
                     self.assertEqual(review['glb_sha256'], sha256(edited).hexdigest())
-                    self.assertEqual(len(review['pending_changes']), 2)
+                    self.assertEqual(len(review['pending_changes']), 3)
                     self.assertEqual({(entry['kind'], entry.get('field'))
-                                      for entry in review['pending_changes']}, {('vertex', None), ('primitive', 'uv')})
-                    self.assertEqual(review['quantization']['color_max_error'], 0)
+                                      for entry in review['pending_changes']}, {('vertex', None), ('primitive', 'uv'), ('primitive', 'color')})
+                    self.assertAlmostEqual(review['quantization']['color_max_error'], .25)
                     self.assertFalse(review['project_changed'])
                     self.assertFalse(review['gameplay_verified'])
                     self.assertEqual(authored_snapshot(project), before)

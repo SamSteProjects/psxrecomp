@@ -1,7 +1,7 @@
 # Source-bound model GLB editing
 
-The model GLB workflow imports existing object-local vertex positions and UV
-coordinates into the SDK's normal model replacement path. It complements
+The model GLB workflow imports existing object-local vertex positions, UV
+coordinates and qualified baked RGB into the SDK's normal model replacement path. It complements
 animation GLB editing: mesh edits change the model asset, while animation edits
 change rigid pose channels. Actor placement and source mesh coordinates remain
 separate. Shared model edits can affect several recorded instances.
@@ -72,8 +72,9 @@ The source profile supplies UV conversion for the represented material; an
 unmatched texture is not evidence that its source UVs can be guessed from a
 different image.
 
-`COLOR_0`, shader/material edits and image pixels are not imported. Effective
-baked RGB, source normal tables, primitive vertex references, material words,
+`COLOR_0`, shader/material edits and image pixels are not imported. Use the profile v2 raw `_LEGAIA_SOURCE_RGB` attribute to edit existing baked RGB
+(see [RGB workflow](legaia-model-glb-rgb.md)); display color remains separate.
+Source normal tables, primitive vertex references, material words,
 packet counts, vector padding and opaque bytes stay unchanged. Blender may
 generate render normals, but those are not identities for TMD normal-table
 entries. Use the existing model face/color editor or texture authoring workflow
@@ -130,3 +131,7 @@ These tiny edits establish byte integrity; they do not establish perceptible
 gameplay appearance. Later manual acceptance must use matching source/build
 provenance and check model/UV rendering and shared instances. Arbitrary topology,
 general material replacement, runtime lighting and full SDK parity remain pending.
+
+Profile v2 RGB support and later flat/Gouraud Blender, browser and Build evidence
+are documented in [the RGB workflow](legaia-model-glb-rgb.md). The original
+positions/UV milestone below remains historical evidence for its own source.

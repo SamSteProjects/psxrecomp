@@ -393,3 +393,14 @@ signed >=0xF0 high-pool dispatch and primitive state writes. Independent source
 patching preserves every other byte and extended context. Pool-to-asset resolution
 and mesh restaging are not asserted. Source/retail/browser/output evidence and
 limits are recorded in [the guide](legaia-script-model-selectors.md).
+
+## Source-bound GLB baked RGB (2026-10-02)
+
+Pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b`
+`crates/tmd/src/descriptor.rs` and `crates/tmd/src/legaia_prims.rs` qualify flat
+shared and Gouraud per-corner RGB words, command/padding exclusion and no-RGB
+textured lit rows. Independent retail byte masks and Blender 5.2.2 round trips
+change only flat byte300 or Gouraud byte460. The authored material baseline is
+retained. Profile v2 raw attributes are SDK interchange metadata, not retail
+format facts or runtime lighting evidence. See [workflow](legaia-model-glb-rgb.md)
+and private `local-output/sdk-20260909/model-glb-rgb-20261002/research/qualification-proof.json`.

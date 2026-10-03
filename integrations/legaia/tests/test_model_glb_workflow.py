@@ -60,6 +60,14 @@ def uv_edit(source):
         dict(object_index=0, primitive_index=0, uvs=uvs)])[0]
 
 
+def color_edit(source):
+    row = inspect_model_primitives(source)['objects'][0]['primitives'][0]
+    colors = deepcopy(row['colors'])
+    colors[0][0] += 1
+    return patch_model_primitives(source, sha256(source).hexdigest(), [
+        dict(object_index=0, primitive_index=0, colors=colors)])[0]
+
+
 def move_exported_source_vertex(content, object_index=0, vertex_index=0, dx=1.0):
     """Edit every displayed copy of one source vertex in the actual GLB.
 
@@ -109,6 +117,42 @@ def move_exported_source_vertex(content, object_index=0, vertex_index=0, dx=1.0)
     return bytes(result)
 
 
+def move_exported_source_rgb(content, primitive_index=0, slot=0, gouraud=False, delta=1):
+    """Edit raw RGB by independently reading source corner and RGB accessors."""
+    json_length = struct.unpack_from('<I', content, 12)[0]
+    document = json.loads(content[20:20 + json_length])
+    binary_start = 28 + json_length
+    result = bytearray(content)
+    node = next(row for row in document['nodes'] if row.get('name') == 'object-0')
+    changed = set()
+
+    def offsets(index, shape, width):
+        accessor = document['accessors'][index]
+        if accessor['componentType'] != 5126 or accessor['type'] != shape or accessor.get('sparse'):
+            raise AssertionError('Expected nonsparse FLOAT SDK attributes')
+        view = document['bufferViews'][accessor['bufferView']]
+        start = binary_start + view.get('byteOffset', 0) + accessor.get('byteOffset', 0)
+        return [start + i * view.get('byteStride', width) for i in range(accessor['count'])]
+
+    for primitive in document['meshes'][node['mesh']]['primitives']:
+        attrs = primitive['attributes']
+        identities = offsets(attrs['_LEGAIA_SOURCE_CORNER'], 'SCALAR', 4)
+        colors = offsets(attrs['_LEGAIA_SOURCE_RGB'], 'VEC3', 12)
+        if len(identities) != len(colors):
+            raise AssertionError('Source corner/RGB counts differ')
+        for identity_at, color_at in zip(identities, colors):
+            corner_id = struct.unpack_from('<f', content, identity_at)[0]
+            if int(corner_id) // 4 == primitive_index and (not gouraud or int(corner_id) % 4 == slot) and color_at not in changed:
+                value = struct.unpack_from('<f', content, color_at)[0]
+                if value < 0:
+                    raise AssertionError('Target has no stored RGB')
+                struct.pack_into('<f', result, color_at, value + delta)
+                changed.add(color_at)
+    if not changed:
+        raise AssertionError('Export omitted the expected RGB slot')
+    return bytes(result)
+
+
 class ModelGLBServiceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='model-glb-service-')
@@ -145,7 +189,7 @@ class ModelGLBServiceTests(unittest.TestCase):
 
     def export_boundary(self, effective, preview):
         self.exports.append(deepcopy(preview))
-        return b'qualified-glb-boundary-mock', dict(schema_version='legaia.model-glb-profile.v1',
+        return b'qualified-glb-boundary-mock', dict(schema_version='legaia.model-glb-profile.v2',
                                                    effective_sha256=sha256(effective).hexdigest())
 
     def import_boundary(self, effective, content, profile):
@@ -154,6 +198,8 @@ class ModelGLBServiceTests(unittest.TestCase):
             candidate = vertex_edit(effective)
         elif content == b'edit-uv':
             candidate = uv_edit(effective)
+        elif content == b'edit-color':
+            candidate = color_edit(effective)
         elif content == b'edit-packet':
             candidate = packet_edit(effective)
         elif content == b'retail':
@@ -254,6 +300,7 @@ class ModelGLBServiceTests(unittest.TestCase):
         before = self.state()
         malformed = [{**binding, 'extra': True}, {**binding, 'asset_id': 'asset://foreign/model'},
                      {**binding, 'effective_sha256': '0' * 64},
+                     {**binding, 'profile': {**binding['profile'], 'schema_version': 'legaia.model-glb-profile.v1'}},
                      {**binding, 'profile': {**binding['profile'], 'unexpected': 'payload'}}]
         for value in malformed:
             with self.subTest(binding=value), self.assertRaises(ProjectError):
@@ -282,6 +329,30 @@ class ModelGLBServiceTests(unittest.TestCase):
             model_glb.apply_import(self.project, ASSET, b'edit-vertex', binding, report['review_key'])
         self.assertEqual(self.state(), changed)
 
+    def test_raw_rgb_review_apply_history_and_save_preserve_other_fields(self):
+        self.project.set_model_vector(ASSET, 0, 'normals', 0, [1, 4096, 0], sha256(self.source).hexdigest())
+        current = self.effective()
+        _, binding, _ = model_glb.export_model(self.project, ASSET)
+        before = self.state()
+        self.analysis['quantization'] = dict(ZERO_QUANTIZATION, color_max_error=.25,
+                                              quantized_component_count=1)
+        candidate, report = model_glb.pose_import(self.project, ASSET, b'edit-color', binding)
+        self.assertEqual(self.state(), before)
+        self.assertEqual(report['quantization']['color_max_error'], .25)
+        self.assertEqual([(row['kind'], row.get('field'), row.get('axis'))
+                          for row in report['pending_changes']], [('primitive', 'color', 'r')])
+        self.assertEqual(candidate, color_edit(current))
+        self.assertEqual(candidate[-8:], current[-8:])
+        self.assertEqual(sum(a != b for a, b in zip(current, candidate)), 1)
+        model_glb.apply_import(self.project, ASSET, b'edit-color', binding, report['review_key'])
+        self.assertEqual(len(self.project.undo_stack), 2)
+        self.project.undo()
+        self.assertEqual(self.effective(), current)
+        self.project.redo()
+        restored = ProjectService.open(self.project.save())
+        self.assertEqual(self.effective(restored), candidate)
+        self.assertEqual(restored.imports, self.imported)
+
     def test_source_owned_bytes_quantization_and_report_budgets_reject(self):
         _, binding, _ = model_glb.export_model(self.project, ASSET)
         before = self.state()
@@ -291,6 +362,8 @@ class ModelGLBServiceTests(unittest.TestCase):
             self.assertEqual(self.state(), before)
         for value in ({}, {**ZERO_QUANTIZATION, 'uv_max_error': float('nan')},
                       {**ZERO_QUANTIZATION, 'vertex_max_error': -1},
+                      {**ZERO_QUANTIZATION, 'color_max_error': float('inf')},
+                      {**ZERO_QUANTIZATION, 'color_max_error': -1},
                       {**ZERO_QUANTIZATION, 'quantized_component_count': True},
                       {**ZERO_QUANTIZATION, 'quantized_component_count': 65537}):
             self.analysis['quantization'] = value
@@ -348,14 +421,21 @@ class ModelGLBRetailWorkflow(unittest.TestCase):
                 self.assertEqual(noop['pending_changes'], [])
                 self.assertEqual(noop['changes'], [])
                 edited_glb = move_exported_source_vertex(glb)
+                row = inspect_model_primitives(original)['objects'][0]['primitives'][0]
+                self.assertIsNotNone(row['colors'])
+                color_delta = .75 if row['colors'][0][0] < 255 else -.75
+                edited_glb = move_exported_source_rgb(edited_glb, gouraud=row['gouraud'], delta=color_delta)
                 candidate, review = model_glb.pose_import(project, asset['semantic_id'], edited_glb, binding)
                 vertex_at = 12 + struct.unpack_from('<I', original, 12)[0]
                 expected = bytearray(original)
                 struct.pack_into('<h', expected, vertex_at,
                                  struct.unpack_from('<h', original, vertex_at)[0] + 1)
+                expected[row['byte_offset']] += 1 if color_delta > 0 else -1
                 self.assertEqual(candidate, bytes(expected))
-                self.assertEqual(len(review['pending_changes']), 1)
-                self.assertEqual(review['pending_changes'][0]['kind'], 'vertex')
+                self.assertEqual(len(review['pending_changes']), 2)
+                self.assertEqual({(entry['kind'], entry.get('field')) for entry in review['pending_changes']},
+                                 {('vertex', None), ('primitive', 'color')})
+                self.assertAlmostEqual(review['quantization']['color_max_error'], .25)
                 model_glb.apply_import(project, asset['semantic_id'], edited_glb, binding, review['review_key'])
                 self.assertEqual(len(project.undo_stack), 1)
                 project.undo()

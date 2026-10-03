@@ -26,8 +26,9 @@ QUANTIZATION_KEYS = {'vertex_max_error', 'uv_max_error', 'color_max_error',
                      'quantized_component_count'}
 LIMITATIONS = [
     'Existing object, vertex and primitive layout only; no insertion or allocation.',
-    'Effective face references, RGB, normals, material words, texture images and opaque bytes remain unchanged.',
-    'Source vertex coordinates and UVs are rounded to their existing integer domains.',
+    'Effective face references, normals, material words, texture images and opaque bytes remain unchanged.',
+    'Source vertex coordinates, UVs and qualified raw RGB attributes are rounded to their existing integer domains.',
+    'RGB edits use _LEGAIA_SOURCE_RGB in the raw 0..255 byte domain; display COLOR_0 and shader colors are ignored.',
     'The profile and binding describe this exact effective export; export again after project changes.',
     'Normal Build retains source capacities; gameplay remains unverified.',
 ]
@@ -57,8 +58,6 @@ def _quantization(analysis: dict) -> dict:
     for key in QUANTIZATION_KEYS - {'quantized_component_count'}:
         if type(value[key]) not in (int, float) or not math.isfinite(value[key]) or value[key] < 0:
             raise ProjectError('Model GLB quantization errors must be finite nonnegative numbers')
-    if value['color_max_error'] != 0:
-        raise ProjectError('Model GLB interchange cannot quantize or alter effective RGB')
     count = value['quantized_component_count']
     if type(count) is not int or not 0 <= count <= MAX_AUDIT_ROWS:
         raise ProjectError('Model GLB quantized component count exceeds its bounded report')
@@ -160,7 +159,7 @@ def _snapshot(project, asset_id: str) -> dict:
         preview = _texture_preview(project, asset, preview)
         glb, profile = export_model_glb(effective, preview)
         _content(glb)
-        if not isinstance(profile, dict) or profile.get('schema_version') != 'legaia.model-glb-profile.v1':
+        if not isinstance(profile, dict) or profile.get('schema_version') != 'legaia.model-glb-profile.v2':
             raise ProjectError('Model GLB exporter returned an invalid source profile')
         _json_size(profile, MAX_PROFILE_BYTES, 'Model GLB profile')
         binding = dict(schema_version='legaia.model-glb-binding.v1', asset_id=asset_id,
@@ -185,12 +184,12 @@ def _audits(snapshot: dict, candidate: bytes) -> tuple[list, list]:
     _, pending = replace_model_content(snapshot['effective'], snapshot['binding']['effective_sha256'], candidate)
     if len(changes) > MAX_AUDIT_ROWS or len(pending) > MAX_AUDIT_ROWS:
         raise ProjectError('Model GLB changes exceed the bounded review audit')
-    # Earlier source editors may have changed normals, face references or RGB.
-    # This interchange retains those effective bytes, and imports positions/UV
-    # only. COLOR_0 from a Blender re-export is not a qualified RGB preimage.
+    # Earlier source editors may have changed normals or face references. Keep
+    # those effective bytes; only source-qualified positions, UVs and raw RGB
+    # attributes can add pending changes. Display COLOR_0 is not an RGB preimage.
     if any(row['kind'] != 'vertex' and
-           not (row['kind'] == 'primitive' and row['field'] == 'uv') for row in pending):
-        raise ProjectError('Model GLB import changed source-owned face references, RGB or normals')
+           not (row['kind'] == 'primitive' and row['field'] in ('uv', 'color')) for row in pending):
+        raise ProjectError('Model GLB import changed source-owned face references or normals')
     return changes, pending
 
 

@@ -8,6 +8,25 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Raw RGB model GLB editing (2026-10-02):** The existing external model workflow
+now imports qualified baked RGB through `_LEGAIA_SOURCE_RGB` in the raw 0..255
+byte domain. Profile v2 binds each flat/shared or Gouraud/corner color to its
+source packet; duplicate aliases must agree, and packets without stored RGB
+retain explicit -1 sentinels. Review exposes exact fields and rounding error
+before ordinary Apply/history/persistence/Build. Display `COLOR_0`, shader colors,
+normals, references, material words and allocation remain outside this lane.
+Fresh exports use v2; the codec retains legacy v1 positions/UV behavior. Existing
+bindings require a fresh export for SDK Apply. See [RGB workflow](legaia-model-glb-rgb.md).
+
+Validation: 18 focused Python cases passed with the private retail disc (no
+skips), plus the Node workflow and frontend syntax checks. Twelve browser checks
+cover no-op, exact RGB Review, proposed model, 540px layout, file invalidation,
+Apply, Undo/Redo, Save, Build and stale-source rejection. Actual Blender 5.2.2
+round trips flat and Gouraud edits exactly. The saved Dolk2 Build adds only byte
+300 (24 to 25) to the two existing material bytes, preserving decoded neighbors
+and the 118,461-byte compressed capacity. No game was launched; runtime lighting
+and appearance remain deferred. Private proof: `local-output/sdk-20260909/model-glb-rgb-20261002/`.
+
 **Coordinated scene animation:** Play/Pause and scrubbing now animate eligible
 actors in the central viewport using shared source-qualified tracks. Stop restores
 the exact canonical scene; sampling preserves placement/materials/history and

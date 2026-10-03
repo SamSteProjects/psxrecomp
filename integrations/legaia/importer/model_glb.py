@@ -2,7 +2,7 @@
 
 glTF 2.0 GLB/accessor semantics follow the Khronos specification. Source TMD
 packet offsets are owned by model_primitives, pinned to Andrew's d6e64c68.
-Only positions and stored UV bytes are imported. Colors, normals, material
+Positions, stored UV bytes and source-bound baked RGB are imported. Normals, material
 words, primitive references, allocation and all opaque source bytes survive.
 """
 from __future__ import annotations
@@ -28,10 +28,13 @@ MAX_CORNERS = 300000
 MAX_COMPONENTS = 4000000
 VERTEX_ID = '_LEGAIA_SOURCE_VERTEX'
 CORNER_ID = '_LEGAIA_SOURCE_CORNER'
-PROFILE_SCHEMA = 'legaia.model-glb-profile.v1'
+COLOR_ID = '_LEGAIA_SOURCE_RGB'
+LEGACY_PROFILE_SCHEMA = 'legaia.model-glb-profile.v1'
+PROFILE_SCHEMA = 'legaia.model-glb-profile.v2'
 LIMITATIONS = [
-    'Positions and stored UVs only, within the existing object and packet layout.',
-    'Color, normal, material, image, face-reference and opaque source bytes are retained.',
+    'Positions, stored UVs and baked RGB only, within the existing object and packet layout.',
+    'Normals, material, image, face-reference, command and opaque source bytes are retained.',
+    'Edit raw byte-domain baked RGB through _LEGAIA_SOURCE_RGB; display COLOR_0 is not imported.',
     'No topology, skinning, animation, hierarchy or unapplied object transforms are imported.',
     'Keep all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
@@ -138,13 +141,17 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
         for primitive in doc['meshes'][node['mesh']]['primitives']:
             material = primitive['material']
             crop = crops[material]
-            ids, corners, uv = [], [], []
+            ids, corners, uv, colors = [], [], [], []
             for row in triangles[object_index]:
                 if row['material'] != material:
                     continue
                 for c in (0, 2, 1):
                     ids.append([row['vertices'][c]])
                     corners.append([row['corners'][c]])
+                    source_row = row['primitive']
+                    source_corner = row['corners'][c] % 4
+                    colors.append(source_row['colors'][source_corner if source_row['gouraud'] else 0]
+                                  if source_row['colors'] is not None else [-1, -1, -1])
                     if crop['textured']:
                         point = geometry['triangle_uvs'][row['triangle_index']][c]
                         uv.append([(point[i] - crop['uv_origin'][i] + .5) / crop[axis]
@@ -154,17 +161,18 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
                 raise ImportError('Model exporter changed its source corner ordering')
             attrs[VERTEX_ID] = accessor(ids, 1)
             attrs[CORNER_ID] = accessor(corners, 1)
+            attrs[COLOR_ID] = accessor(colors, 3)
             # Also carry UVs when texture association is unresolved. Ownership
             # follows source corner IDs, never external material assignments.
             if uv:
                 attrs['TEXCOORD_0'] = accessor(uv, 2)
     profile = {'schema_version': PROFILE_SCHEMA, 'effective_sha256': sha256(effective_tmd).hexdigest(),
                'coordinate_conversion': '[x,-y,z]; reverse triangle winding',
-               'attributes': {'vertex': VERTEX_ID, 'corner': CORNER_ID},
+               'attributes': {'vertex': VERTEX_ID, 'corner': CORNER_ID, 'color': COLOR_ID},
                'objects': [{'object_index': obj['object_index'], 'vertex_count': obj['vertex_count'],
                             'primitive_count': len(obj['primitives']),
                             'triangle_count': len(triangles[obj['object_index']])} for obj in inspection['objects']],
-               'uv_crops': crops, 'imported_fields': ['vertex_xyz', 'primitive_uv']}
+               'uv_crops': crops, 'imported_fields': ['vertex_xyz', 'primitive_uv', 'primitive_rgb']}
     return _write_glb(doc, bytes(binary)), profile
 
 
@@ -226,10 +234,16 @@ def _profile(profile, data, inspection, geometry, triangles):
     expected_objects = [{'object_index': obj['object_index'], 'vertex_count': obj['vertex_count'],
                          'primitive_count': len(obj['primitives']),
                          'triangle_count': len(triangles[obj['object_index']])} for obj in inspection['objects']]
-    if (profile['schema_version'] != PROFILE_SCHEMA or profile['effective_sha256'] != sha256(data).hexdigest() or
+    color_enabled = profile['schema_version'] == PROFILE_SCHEMA
+    expected_attributes = {'vertex': VERTEX_ID, 'corner': CORNER_ID}
+    expected_fields = ['vertex_xyz', 'primitive_uv']
+    if color_enabled:
+        expected_attributes['color'] = COLOR_ID
+        expected_fields.append('primitive_rgb')
+    if (profile['schema_version'] not in (PROFILE_SCHEMA, LEGACY_PROFILE_SCHEMA) or profile['effective_sha256'] != sha256(data).hexdigest() or
             profile['coordinate_conversion'] != '[x,-y,z]; reverse triangle winding' or
-            profile['attributes'] != {'vertex': VERTEX_ID, 'corner': CORNER_ID} or
-            profile['imported_fields'] != ['vertex_xyz', 'primitive_uv'] or profile['objects'] != expected_objects):
+            profile['attributes'] != expected_attributes or
+            profile['imported_fields'] != expected_fields or profile['objects'] != expected_objects):
         raise ImportError('Model GLB profile differs from the effective source layout')
     crops = _array(profile['uv_crops'], 'source UV crops', 256)
     if len(crops) != len(geometry['materials']):
@@ -245,13 +259,13 @@ def _profile(profile, data, inspection, geometry, triangles):
         for axis, dimension in enumerate(('width', 'height')):
             _integer(origin[axis], 0, 255, 'UV origin')
             _integer(crop[dimension], 1, 256 - origin[axis], 'UV dimension')
-    return crops
+    return crops, color_enabled
 
 
 def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tuple[bytes, dict]:
-    """Recover source positions/UVs from IDs; reject topology and alias conflicts."""
+    """Recover source positions/UVs/baked RGB from IDs; reject topology and alias conflicts."""
     inspection, vectors, geometry, triangles = _source(effective_tmd)
-    crops = _profile(profile, effective_tmd, inspection, geometry, triangles)
+    crops, color_enabled = _profile(profile, effective_tmd, inspection, geometry, triangles)
     doc, binary = _read_glb(content)
     if doc.get('animations') or doc.get('skins') or doc.get('cameras'):
         raise ImportError('Model GLB authoring does not import animation, skinning or cameras')
@@ -269,7 +283,7 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
         raise ImportError('Model GLB object count differs from the source')
     reader = _Accessors(doc, binary)
     result = bytearray(effective_tmd)
-    positions, uv_values = {}, {}
+    positions, uv_values, color_values = {}, {}, {}
     seen_objects, seen_meshes = set(), set()
     quantization = dict(vertex_max_error=0.0, uv_max_error=0.0,
                         color_max_error=0.0, quantized_component_count=0)
@@ -340,6 +354,32 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
             uv = reader.read(attrs['TEXCOORD_0'], 2, 'UVs') if 'TEXCOORD_0' in attrs else None
             if uv is not None and len(uv) != len(values):
                 raise ImportError('Model GLB UV count differs from its positions')
+            colors = reader.read(attrs.get(COLOR_ID), 3, 'source RGB') if color_enabled else None
+            if colors is not None and len(colors) != len(values):
+                raise ImportError('Model GLB source RGB count differs from its positions')
+            if color_enabled:
+                # Validate every attribute row, including unused indexed seam
+                # copies, so an ignored index cannot hide an RGB alias conflict.
+                for rgb_value, corner_value, vertex_value in zip(colors, corner_ids, vertex_ids):
+                    corner_id, vertex_id = corner_value[0], vertex_value[0]
+                    if (corner_id != int(corner_id) or vertex_id != int(vertex_id) or
+                            int(corner_id) not in source_corners):
+                        raise ImportError('Model GLB source RGB identity values are invalid')
+                    row, corner = source_corners[int(corner_id)]
+                    if int(vertex_id) != row['vertices'][corner]:
+                        raise ImportError('Model GLB source RGB vertex identity conflicts with its corner')
+                    if row['colors'] is None:
+                        if tuple(rgb_value) != (-1, -1, -1):
+                            raise ImportError('Model GLB unbaked RGB sentinel must remain unchanged')
+                    else:
+                        slot = corner if row['gouraud'] else 0
+                        rgb = tuple(quantize(v, 0, 255, 'color',
+                                    ('color', identity, row['primitive_index'], slot, axis))
+                                    for axis, v in enumerate(rgb_value))
+                        color_key = identity, row['primitive_index'], slot
+                        if color_key in color_values and color_values[color_key] != rgb:
+                            raise ImportError('Model GLB duplicate source RGB copies disagree after quantization')
+                        color_values[color_key] = rgb
             indices = [row[0] for row in reader.read(primitive['indices'], 1, 'indices', True)] if 'indices' in primitive else list(range(len(values)))
             if len(indices) % 3:
                 raise ImportError('Model GLB triangle index count is incomplete')
@@ -390,9 +430,14 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
             key = field['object_index'], field['primitive_index'] * 4 + field['corner_index']
             point = uv_values[key]
             result[field['byte_offset']] = point[0 if field['axis'] == 'u' else 1]
+        elif color_enabled and field.get('field') == 'color':
+            key = field['object_index'], field['primitive_index'], field['corner_index']
+            result[field['byte_offset']] = color_values[key]['rgb'.index(field['axis'])]
     candidate, changes = replace_model_content(effective_tmd, sha256(effective_tmd).hexdigest(), bytes(result))
     if len(changes) > 65536:
         raise ImportError('Model GLB changes exceed the source audit budget')
     quantization['quantized_component_count'] = len(quantized_keys)
-    return candidate, {'quantization': quantization, 'limitations': list(LIMITATIONS),
+    return candidate, {'quantization': quantization, 'limitations': list(LIMITATIONS) if color_enabled else [
+                           'Legacy v1 imports positions and stored UVs only; baked RGB is retained.',
+                           *LIMITATIONS[3:]],
                        'changed_field_count': len(changes)}

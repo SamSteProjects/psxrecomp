@@ -7,7 +7,7 @@ import unittest
 from importer.animation_glb import _read_glb
 from importer.assets import decode_tmd
 from importer.core import ImportError
-from importer.model_glb import (VERTEX_ID, CORNER_ID, export_model_glb,
+from importer.model_glb import (VERTEX_ID, CORNER_ID, COLOR_ID, export_model_glb,
                                 import_model_glb, _write_glb)
 from importer.model_primitives import inspect_model_primitives
 from test_model_primitives import synthetic
@@ -42,6 +42,77 @@ class ModelGlbTests(unittest.TestCase):
                 self.assertEqual(candidate, source)
                 self.assertEqual(report['changed_field_count'], 0)
                 self.assertEqual(preview, before)
+                legacy = deepcopy(profile)
+                legacy['schema_version'] = 'legaia.model-glb-profile.v1'
+                del legacy['attributes']['color']
+                legacy['imported_fields'].remove('primitive_rgb')
+                self.assertEqual(import_model_glb(source, glb, legacy)[0], source)
+
+    def test_baked_rgb_exact_byte_masks_and_shared_aliases(self):
+        for flags in (0x18, 0x1a, 0x1c, 0x1e, 0x20, 0x22, 0x24, 0x26):
+            with self.subTest(flags=hex(flags)):
+                source = synthetic(((flags,),), count=1)
+                glb, profile = export_model_glb(source, decode_tmd(source))
+                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v2')
+                row = inspect_model_primitives(source)['objects'][0]['primitives'][0]
+                expected = bytearray(source)
+                for slot in range(len(row['colors'])):
+                    expected[row['byte_offset'] + slot * 4] += 3
+                def edit(doc, binary):
+                    for mesh in doc['meshes']:
+                        for primitive in mesh['primitives']:
+                            for at, rgb in rows(doc, binary, primitive, COLOR_ID):
+                                struct.pack_into('<f', binary, at, rgb[0] + 3.25)
+                candidate, report = import_model_glb(source, rewrite(glb, edit), profile)
+                self.assertEqual(candidate, bytes(expected))
+                self.assertEqual(report['quantization']['color_max_error'], .25)
+                self.assertEqual(report['quantization']['quantized_component_count'], len(row['colors']))
+
+    def test_source_rgb_required_finite_bounded_and_aliases_consistent(self):
+        for flags in (0x22, 0x26):
+            source = synthetic(((flags,),), count=1)
+            glb, profile = export_model_glb(source, decode_tmd(source))
+            def missing(doc, binary):
+                del doc['meshes'][0]['primitives'][0]['attributes'][COLOR_ID]
+            def count(doc, binary):
+                primitive = doc['meshes'][0]['primitives'][0]
+                doc['accessors'][primitive['attributes'][COLOR_ID]]['count'] -= 1
+            def change(value):
+                def edit(doc, binary):
+                    primitive = doc['meshes'][0]['primitives'][0]
+                    # Corner 2 appears in both triangles, also aliasing flat RGB.
+                    for (at, rgb), (_, corner) in zip(rows(doc, binary, primitive, COLOR_ID),
+                                                       rows(doc, binary, primitive, CORNER_ID)):
+                        if corner[0] == 2:
+                            struct.pack_into('<f', binary, at, value(rgb[0]))
+                            break
+                return edit
+            for edit in (missing, count, change(lambda v: v + 1), change(lambda v: float('nan')),
+                         change(lambda v: float('inf')), change(lambda v: -0.25), change(lambda v: 255.25)):
+                with self.subTest(flags=hex(flags), edit=edit), self.assertRaises(ImportError):
+                    import_model_glb(source, rewrite(glb, edit), profile)
+
+    def test_unbaked_rgb_sentinel_and_legacy_profile_compatibility(self):
+        for flags in (0x10, 0x12, 0x14, 0x16, 0x22, 0x26):
+            source = synthetic(((flags,),), count=1)
+            glb, profile = export_model_glb(source, decode_tmd(source))
+            def edit(doc, binary):
+                primitive = doc['meshes'][0]['primitives'][0]
+                for at, _ in rows(doc, binary, primitive, COLOR_ID):
+                    struct.pack_into('<3f', binary, at, 1, 2, 3)
+            if flags < 0x18:
+                with self.assertRaises(ImportError):
+                    import_model_glb(source, rewrite(glb, edit), profile)
+            legacy = deepcopy(profile)
+            legacy['schema_version'] = 'legaia.model-glb-profile.v1'
+            del legacy['attributes']['color']
+            legacy['imported_fields'].remove('primitive_rgb')
+            def remove(doc, binary):
+                for mesh in doc['meshes']:
+                    for primitive in mesh['primitives']:
+                        del primitive['attributes'][COLOR_ID]
+            self.assertEqual(import_model_glb(source, rewrite(glb, remove), legacy)[0], source)
+            self.assertEqual(import_model_glb(source, rewrite(glb, edit), legacy)[0], source)
 
     def test_quad_seam_edits_have_exact_source_byte_mask_and_preserve_unused_vertex(self):
         source = synthetic(((0x22,),))
