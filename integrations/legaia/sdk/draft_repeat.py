@@ -39,7 +39,7 @@ def preview(project, request):
             'review_key':review,'copies':copies,
             'limitations':['Project-local drafts inherit only the original retail donor binding.',
                            'Script scheduling, collision, visibility and runtime spawning remain unverified.',
-                           'Normal Build rejects projects containing NPC drafts; experimental export retains its existing gates.']}
+                           'Normal Build accepts source-qualified compressed MAN candidates that fit their original stream and actor-pool lower bound. Scenery/script capacity and gameplay remain unverified; experimental export retains separate gates.']}
 
 def proposal_view(project, report):
     if preview(project,report['request'])!=report:

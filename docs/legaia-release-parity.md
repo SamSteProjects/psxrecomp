@@ -1,5 +1,12 @@
 # Legaia stability and release parity
 
+**NPC authoring capacity evidence - 2026-10-03:** Retail static instructions and a
+bounded isolated execution fixture establish143 pooled216-byte actor slots and
+zero-on-exhaustion. Normal source NPC Build now rejects unavoidable initial
+placement overflow. This is an authoring check, not a missing release runtime
+patch or a gameplay allocation repair. Existing runtime fix/acceptance boundaries
+below stay unchanged. See [pool source proof](legaia-npc-actor-pool.md).
+
 **Read-only inclusion audit — 2026-10-01:** Current split-output discovery,
 body-change propagation, content-hash staging, restore memo invalidation, CD/XA
 and synchronized audio diagnostics remain present. Current main.cpp SHA256

@@ -23,5 +23,6 @@ def review(project):
                 limitations=['This review serializes all supported authored inputs without writing package files. NPC candidates require compressed MAN data that fits the original consumed source span; streaming or oversized candidates are rejected.',
                              'An assessment failure stops serialization; later changes are not claimed to have passed.',
                              'Archive packing, filesystem write capacity/permissions, installation and interactive gameplay are not tested here.',
+                             'NPC candidates qualify the retail 143-slot actor pool and reject unavoidable initial-placement overflow. Scenery, other channels and later script demand remain unverified; remaining slots are not a safe NPC budget.',
                              'Passing serialization proves package fit only. Native NPC allocation, spawning, scheduling and opaque script references remain unverified.',
                              'Script behavior, runtime actor identity, collision and animation suitability require deferred gameplay verification.'])

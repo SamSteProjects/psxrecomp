@@ -1,5 +1,16 @@
 # Deferred gameplay verification
 
+## NPC source capacity - deferred gameplay
+
+Latest ready fixture: `local-output/sdk-20260909/npc-runtime-source-20261003/parent/browser-project/`.
+Package SHA256 `e8907db2b03619303d72cf3e09fbe2ac82bff7815534733d15c9337a00443c06`.
+The existing Town01 candidate retains its exact MAN bytes and now records a54-node
+initial-placement lower bound against the qualified143-slot pool. Other consumers
+remain unknown. The91-draft blocked fixture is a rejection proof and must not be
+installed. Later verify actual available slots, initialization, native identity,
+visibility, scripts, collision/dialogue and lifecycle on the disabled ready candidate
+when gameplay verification resumes. See [source evidence](legaia-npc-actor-pool.md).
+
 ## Imported material binding selection - deferred
 
 Additional group-copy fixture: `local-output/sdk-20260909/material-group-binding-20261002/parent/browser-project/`.

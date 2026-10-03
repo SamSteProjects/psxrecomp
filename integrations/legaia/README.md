@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+Normal NPC Review Build checks the qualified retail actor-pool lower bound before encoding. Overflow blocks Build and retains drafts; other runtime consumers remain unknown. See [pool evidence](../../docs/legaia-npc-actor-pool.md).
+
 The material editor can browse imported models and copy a qualified Current texture binding into one primitive or all textured primitives in a target group. Review/Apply retain target UVs, geometry and blend flags. See [source-binding picker](../../docs/legaia-material-binding-picker.md).
 
 Assigned actor poses now support source-bound GLB interchange with an explicit shared-clip owner. Existing actor contributions and assignments remain separate. See [assigned animation GLB](../../docs/legaia-assigned-animation-glb.md).

@@ -3,7 +3,7 @@
 Saved donor-based NPC drafts can enter **Review Build** and **Build** when their
 scene uses a qualified compressed MAN container and the composed candidate fits
 the original consumed compressed stream. This is source packaging support;
-native allocation, spawning, scheduling and opaque script paths remain unverified.
+native allocation, spawning, scheduling and opaque script paths remain unverified. Normal Build also qualifies the [retail actor-pool lower bound](legaia-npc-actor-pool.md) and rejects unavoidable initial-placement overflow before compression; other consumers and safe headroom remain unknown.
 
 Review includes all supported authored inputs. Its v2 result counts requested
 NPC candidates, keeps excluded count at zero and reports failed serialization

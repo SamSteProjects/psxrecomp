@@ -50,6 +50,25 @@ def fixture(candidate=b'a' * 130):
 
 
 class NPCBuildGuards(unittest.TestCase):
+    def setUp(self):
+        # These fixtures isolate compressed carrier ownership, not executable/MAN decoding.
+        helper = patch('sdk.npc_build.actor_pool_assessment', return_value={
+            'runtime_allocation_verified': False, 'other_scene_and_script_demand': 'unverified'})
+        self.pool = helper.start()
+        self.addCleanup(helper.stop)
+
+    def test_actor_pool_failure_rejects_before_encoding_without_mutation(self):
+        from importer.core import ImportError
+        project, archive, prot, source, _, audit = fixture()
+        before = deepcopy(project.__dict__)
+        self.pool.side_effect = ImportError('NPC initial placement demand is at least 144 nodes but the retail actor pool has only 143')
+        with patch('sdk.npc_build._prepare_draft_scene', return_value=(prot, audit)), patch('sdk.npc_build.compress_lzs') as encode:
+            with self.assertRaisesRegex(ImportError, 'at least 144 nodes'):
+                prepare_npc_overlays(project, 'scene://fixture', archive)
+        encode.assert_not_called()
+        self.assertEqual(project.__dict__, before)
+        self.assertNotIn('actor_pool_evidence', audit)
+
     def test_two_fixed_claims_change_size_and_stream_only(self):
         project, archive, prot, source, candidate, audit = fixture()
         key = authored_state_key(project)
@@ -124,6 +143,10 @@ class RetailNPCPackage(unittest.TestCase):
             built = build_project(project, Path(output)/'Build')
             audit = json.loads(Path(built['audit']).read_text())
             metadata = audit['npc_candidates']['scene://town01']
+            pool = metadata['draft_audit']['actor_pool_evidence']
+            self.assertEqual(pool['source']['node_capacity'], 143)
+            self.assertEqual(pool['initial_placement_minimum_nodes'], 54)
+            self.assertFalse(pool['runtime_allocation_verified'])
             physical = metadata['physical_owner']
             with _disc_context(project.disc_path) as (_, _, mapping, archive):
                 start, end = _bounded_scene_range(archive, mapping, 'town01')

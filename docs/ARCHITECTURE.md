@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`importer/actor_runtime_capacity.py` qualifies the complete source SCUS/load image and retail function hashes before deriving the static actor-pool bound. `sdk/npc_build.py` assesses appended MAN counts before encoding and includes source evidence in normal package audits. The lower bound rejects guaranteed overflow; it does not resolve scenery/script demand or enable native gameplay acceptance.
+
 `sdk/model_materials.py` exposes a bounded, read-only AssetDB model catalog tied to the active scene source key. `editor/model-material-donor.js` qualifies its DTO and extracts only semantic page/depth/indexed CLUT values from a qualified Current model snapshot. The existing material editor owns requests, draft capture, review and Apply; copied values create no donor runtime dependency or new serialization family. Target geometry, UVs and blend flags retain existing ownership. Packet-group copy constructs source-qualified primitive diffs in a separate candidate draft map, validates the whole resulting batch and budget, then replaces drafts atomically. It preserves group and unrelated primitive contributions.
 
 `sdk/animation_glb.py` resolves qualified assigned pose/model witnesses while keeping the selected actor identity distinct from imported shared-clip contribution ownership. V2 sidecars encode both witnesses; exact regenerated binding and source-key checks gate review/Apply. The existing AnimationChannels command targets the named clip owner, preserving other components and contributors. Unassigned v1 sidecars retain their exact format.

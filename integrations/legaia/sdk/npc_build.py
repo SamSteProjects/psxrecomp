@@ -20,6 +20,14 @@ MAX_CANDIDATE_BYTES = 4 * 1024 * 1024
 MAX_PROT_BYTES = 256 * 1024 * 1024
 
 
+def actor_pool_assessment(archive, candidate):
+    from importer.actor_runtime_capacity import qualify_actor_pool, assess_initial_placement_capacity
+    from importer.man_layout import read_man_layout
+    executable = archive.image.read_file(archive.image.find('SCUS_942.54'))
+    return assess_initial_placement_capacity(qualify_actor_pool(executable),
+                                              read_man_layout(candidate)['partition_counts'])
+
+
 def _public(value):
     """Audit metadata only: keep semantic evidence, never payloads/private paths."""
     if isinstance(value, dict):
@@ -87,6 +95,7 @@ def prepare_npc_overlays(project, scene_id, archive):
     original, consumed = decompress_lzs(container[start:end], descriptor.size)
     if sha256(original).hexdigest() != request['source_man_sha256']:
         raise ProjectError('NPC Build decoded MAN source changed')
+    audit['actor_pool_evidence'] = actor_pool_assessment(archive, candidate)
     encoded = compress_lzs(candidate)
     greedy_size = len(encoded)
     strategy = 'greedy_lzs'
