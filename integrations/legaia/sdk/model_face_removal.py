@@ -2,7 +2,7 @@
 from hashlib import sha256
 import json
 from importer.assets import decode_tmd
-from importer.model_face_removal import remove_faces, FORMAT
+from importer.model_face_removal import remove_faces, restore_faces, FORMAT
 from .project import ProjectError
 from .scene_preview import source_key
 from importer.model_primitives import inspect_model_primitives
@@ -21,18 +21,19 @@ def source(project, asset_id, expected_key):
     binding = project.model_overrides.get(asset_id)
     effective = project.read_model_replacement(asset_id, binding) if binding else original
     objects = inspect_model_primitives(effective)['objects']
-    report = dict(schema_version='legaia.model-face-removal-source.v1', asset_id=asset_id,
+    report = dict(schema_version='legaia.model-face-removal-source.v2', asset_id=asset_id,
                   source_sha256=sha256(original).hexdigest(), effective_sha256=sha256(effective).hexdigest(),
                   project_source_key=expected_key, objects=[dict(object_index=obj['object_index'],
                   vertex_count=obj['vertex_count'], primitives=[dict(primitive_index=row['primitive_index'],
                   corner_count=row['corner_count']) for row in obj['primitives']]) for obj in objects],
                   removed_faces=binding['removed_faces'] if binding and binding['format'] == FORMAT else [])
+    report['retail_objects'] = [dict(object_index=obj['object_index'], vertex_count=obj['vertex_count'], primitives=[dict(primitive_index=row['primitive_index'], corner_count=row['corner_count']) for row in obj['primitives']]) for obj in inspect_model_primitives(original)['objects']]
     if source_key(project) != expected_key:
         raise ProjectError('Project changed during face removal inspection')
     return _budget(report, 4 * 1024 * 1024)
 
 
-def prepare(project, asset_id, selections, expected_sha256, expected_key):
+def prepare(project, asset_id, selections, expected_sha256, expected_key, *, restore=False):
     if project.mode != 'edit' or not expected_key or source_key(project) != expected_key:
         raise ProjectError('Face removal requires the current Edit source scene')
     original = project._model_source(asset_id, project.active_scene)
@@ -41,8 +42,8 @@ def prepare(project, asset_id, selections, expected_sha256, expected_key):
     if sha256(effective).hexdigest() != expected_sha256:
         raise ProjectError('Model changed since face removal inspection')
     previous = binding['removed_faces'] if binding and binding['format'] == FORMAT else []
-    candidate, removed = remove_faces(original, effective, previous, selections)
-    report = dict(schema_version='legaia.model-face-removal.v1', asset_id=asset_id,
+    candidate, removed = (restore_faces if restore else remove_faces)(original, effective, previous, selections)
+    report = dict(schema_version='legaia.model-face-restoration.v1' if restore else 'legaia.model-face-removal.v1', asset_id=asset_id,
                   source_sha256=sha256(original).hexdigest(), effective_sha256=expected_sha256,
                   proposed_sha256=sha256(candidate).hexdigest(), project_source_key=expected_key,
                   selections=selections, removed_faces=removed, previous_removed_faces=previous,
@@ -53,7 +54,7 @@ def prepare(project, asset_id, selections, expected_sha256, expected_key):
     return candidate, removed, report
 
 
-def review(*args):
-    report = prepare(*args)[2]
+def review(*args, **kwargs):
+    report = prepare(*args, **kwargs)[2]
     report.pop('_effective')
     return _budget(report, 64 * 1024 * 1024)

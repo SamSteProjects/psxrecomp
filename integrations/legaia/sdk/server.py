@@ -1054,18 +1054,18 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_face_removal import source
                     self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
                     return
-                if route in ('/api/model-face-removal-preview','/api/model-face-removal'):
+                if route in ('/api/model-face-removal-preview','/api/model-face-removal','/api/model-face-restoration-preview','/api/model-face-restoration'):
                     fields = {'asset_id','selections','expected_sha256','source_key'}
-                    if route == '/api/model-face-removal':
+                    if route in ('/api/model-face-removal','/api/model-face-restoration'):
                         fields.add('proposed_sha256')
                     if set(body) != fields:
                         raise ProjectError('Face removal requires exact selections and reviewed source hashes')
                     args = (body['asset_id'],body['selections'],body['expected_sha256'],body['source_key'])
-                    if route == '/api/model-face-removal-preview':
+                    if route.endswith('-preview'):
                         from .model_face_removal import review
-                        self._json(200,review(self.server.project,*args))
+                        self._json(200,review(self.server.project,*args,restore='restoration' in route))
                     else:
-                        self.server.project.apply_model_face_removal(*args,body['proposed_sha256'])
+                        self.server.project.apply_model_face_removal(*args,body['proposed_sha256'],restore='restoration' in route)
                         self._json(200,self.server.state())
                     return
                 if route == '/api/model-vertex-users':

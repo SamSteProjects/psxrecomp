@@ -1,5 +1,15 @@
 # Deferred gameplay verification
 
+## Restored Retail face with later edits - deferred gameplay
+
+Ready offline fixture: `local-output/sdk-20260909/model-face-restoration-20261003/parent/browser-project/`.
+Package SHA256 `d7bed311677f882ae97792d3544155ab425ddb695a11fc740bd090d211d76d68`.
+Town01 model0009 restores object1 Retail quad0 (188→190 triangles), retaining later
+vector/reference/UV/material edits in a normal `tmd-content-v3` binding. Whole-model
+and compressed-neighbor readback match an independent reconstruction. Later verify
+restored appearance, shared group settings and shared-instance/animation behavior.
+The package is not installed or run.
+
 ## GLB vertex edit after removal - deferred gameplay
 
 Ready offline fixture: `local-output/sdk-20260909/model-removal-glb-20261003/parent/browser-project/`.

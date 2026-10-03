@@ -1266,10 +1266,10 @@ class ProjectService:
                                   allow_normal_references=binding['format'] == 'tmd-content-v3')
         return content
 
-    def apply_model_face_removal(self, asset_id, selections, expected_sha256, expected_key, proposed_sha256):
+    def apply_model_face_removal(self, asset_id, selections, expected_sha256, expected_key, proposed_sha256, *, restore=False):
         from .model_face_removal import prepare
         from .scene_preview import source_key
-        content, removed, report = prepare(self, asset_id, selections, expected_sha256, expected_key)
+        content, removed, report = prepare(self, asset_id, selections, expected_sha256, expected_key, restore=restore)
         if proposed_sha256 != report['proposed_sha256']:
             raise ProjectError('Face removal differs from its reviewed candidate')
         if content == report.pop('_effective'):
@@ -1279,17 +1279,31 @@ class ProjectService:
         binding = dict(format='tmd-face-removal-v1', source_scene_id=self.active_scene,
                        source_sha256=report['source_sha256'], asset_sha256=report['proposed_sha256'],
                        byte_length=len(content), removed_faces=removed)
-        path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
+        if not removed:
+            from importer.model_authoring import replace_model_content
+            original = self._model_source(asset_id, self.active_scene)
+            _, changes = replace_model_content(original, report['source_sha256'], content, allow_normal_references=True)
+            material = any(row['kind'] == 'primitive_group' or row['kind'] == 'primitive' and row['field'] in ('clut', 'tpage') for row in changes)
+            normals = any(row['kind'] == 'primitive' and row['field'] == 'normal_index' for row in changes)
+            binding.pop('removed_faces')
+            binding['format'] = 'tmd-content-v3' if normals else 'tmd-content-v2' if material else 'tmd-content-v1' if any(row['kind'] == 'primitive' for row in changes) else 'tmd-shape'
+            if not changes:
+                binding = None
+        path = self.root / 'Authored' / 'Models' / (report['proposed_sha256'] + '.tmd')
         if not path.resolve().is_relative_to(self.root):
             raise ProjectError('Model replacement path escapes project')
         if source_key(self) != expected_key:
             raise ProjectError('Project changed while preparing face removal')
-        if path.exists():
-            self.read_model_replacement(asset_id, binding)
-        else:
-            atomic_write(path, content)
+        if binding is not None:
+            if path.exists():
+                self.read_model_replacement(asset_id, binding)
+            else:
+                atomic_write(path, content)
         before = deepcopy(self.model_overrides.get(asset_id))
-        self.model_overrides[asset_id] = binding
+        if binding is None:
+            self.model_overrides.pop(asset_id, None)
+        else:
+            self.model_overrides[asset_id] = binding
         self.undo_stack.append(dict(target='model_overrides', asset_id=asset_id, before=before, after=deepcopy(binding)))
         self.redo_stack.clear()
 

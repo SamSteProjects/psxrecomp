@@ -109,3 +109,18 @@ def remove_faces(original, effective, previous, selections):
     metadata = [dict(object_index=obj, primitive_index=primitive) for obj, primitive in sorted(removed)]
     qualify_face_removal(original, source_hash, candidate, metadata)
     return candidate, metadata
+
+
+def restore_faces(original, effective, previous, selections):
+    """Restore selected omitted Retail packets, retaining all current owned fields."""
+    expanded, _ = qualify_face_removal(original, sha256(original).hexdigest(), effective, previous)
+    inspection = _qualified_model(original)[0]
+    removed = _selection(inspection, previous)
+    requested = _selection(inspection, selections)
+    if not requested <= removed:
+        raise ImportError('Only removed Retail faces can be restored')
+    remaining = removed - requested
+    candidate = _encode(original, expanded, inspection, remaining)
+    metadata = [dict(object_index=obj, primitive_index=primitive) for obj, primitive in sorted(remaining)]
+    qualify_face_removal(original, sha256(original).hexdigest(), candidate, metadata)
+    return candidate, metadata
