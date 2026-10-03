@@ -4,6 +4,14 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+Imported textures support **Edit texture through PNG**: export the effective
+image, source binding and separate STP plane; edit externally; review palette,
+pixel, quantization and flag changes; inspect proposed pixels/scene; and Apply
+through texture history, Save/Open and Build. Existing or rebuilt selected
+palettes retain the original allocation. Binary alpha is required; shared
+indices, live blending and gameplay limits are explicit. Pillow is not a runtime
+dependency. See the [PNG workflow](../../docs/legaia-texture-png.md).
+
 Imported models support **Edit model through GLB**: export the current unposed
 model and binding, edit existing positions/UVs in Blender, review exact fields,
 inspect the proposed model and Apply through normal history, Save/Open and Build.

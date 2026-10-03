@@ -8,6 +8,23 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Source-bound texture PNG editing (2026-10-02):** Effective PNG/binding/STP
+export, external pixel edits, exact Review, proposed pixel/scene inspection and
+Apply now connect to ordinary texture history, Save/Open and normal Build.
+Indexed palette selection/rebuild preserves layout and other CLUT rows; Review
+explains shared indices, numeric color error and forced STP changes.
+
+Twelve focused Python cases, the Node suite, both frontend syntax checks and
+11 browser checks passed. Independent Pillow verifies retail no-ops and exact
+byte edits. Town01 Build readback matches the reviewed 33,312-byte candidate,
+other palettes and neighboring source bytes; proposed scene textures affect
+26 materials across 10 instances with unchanged geometry and placements.
+Review/Return, stale/no-op gates, history, persistence and 540px layout passed;
+page/HTTP errors and game-launch requests were zero. No new dependencies or
+game launches are required. Allocation, large-image performance acceptance,
+live blending/residency and gameplay remain pending. See
+[workflow](legaia-texture-png.md) and `local-output/sdk-20260909/texture-png-20261002/`.
+
 **Source-bound model GLB editing (2026-10-02):** A connected model Export + binding,
 external position/UV edit, Review, proposed-model inspection and explicit Apply
 workflow now uses ordinary model commands, Undo/Redo, Save/Open and normal Build.

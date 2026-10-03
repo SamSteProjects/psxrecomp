@@ -2,6 +2,19 @@
 
 Current scene-editor status (2026-10-02):
 
+**Source-bound texture PNG editing:** FUNCTIONAL / EXISTING ALLOCATION. Current
+image/binding/STP export, external edit, exact Review, proposed pixels/scene and
+Apply connect to texture history, Save/Open and Build. Existing palette words
+or deterministic selected-row rebuild are supported. Binary alpha, separate
+STP, color errors, shared indices and stale/no-op gates are explicit. Twelve
+Python cases, the Node suite, both frontend syntax checks and 11 browser checks
+pass; independent Pillow and saved Build readback preserve source capacities,
+other CLUT rows and neighboring bytes. Scene proposal changes 26 materials
+across 10 instances with unchanged geometry. 540px layout passes; page/HTTP
+errors and game launches are zero. Texture allocation, large-image performance
+acceptance, palette animation, live blending/residency and gameplay remain
+pending. See [workflow](legaia-texture-png.md).
+
 **Source-bound model GLB editing:** FUNCTIONAL / EXISTING LAYOUT. Export current
 unposed model + binding, edit positions/UVs externally, review exact source and
 current changes, inspect the proposed model, Apply, Undo/Redo, Save/Open and

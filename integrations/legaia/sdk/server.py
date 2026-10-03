@@ -124,6 +124,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
         state["capabilities"]["model_shape_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_glb_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["texture_png_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         from .scene_preview import source_key
         try:
@@ -651,7 +652,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
-                 "/model-glb.js": ("model-glb.js", "text/javascript")}
+                 "/model-glb.js": ("model-glb.js", "text/javascript"),
+                 "/texture-png.js": ("texture-png.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})
             return
@@ -674,6 +676,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import'):
                 request_limit = 44 * 1024 * 1024
+            if urlsplit(self.path).path in ('/api/texture-png-preview', '/api/texture-png-pixels-preview', '/api/texture-png-scene-preview', '/api/texture-png-import'):
+                request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
             content = self.rfile.read(length)
@@ -1235,6 +1239,69 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route == '/api/texture-png-export':
+                    if set(body) != {'asset_id', 'palette_index'} or not isinstance(body['asset_id'], str) or type(body['palette_index']) is not int:
+                        raise ProjectError('Texture PNG export requires a texture asset and integer palette')
+                    from .texture_png import export_texture, _json_size
+                    from .build import _guard_output
+                    from .project import atomic_write
+                    from uuid import uuid4
+                    png, stp, binding, report = export_texture(self.server.project, body['asset_id'], body['palette_index'])
+                    output = self.server.project.root / 'Exports'
+                    stem = 'texture-' + uuid4().hex
+                    paths = [output / (stem + suffix) for suffix in ('.png', '.stp.png', '.binding.json')]
+                    _guard_output(output / '.gitignore', self.server.project.root)
+                    for path in paths:
+                        _guard_output(path, self.server.project.root)
+                    output.mkdir(parents=True, exist_ok=True)
+                    for path, content in zip(paths, (png, stp, (json.dumps(binding, sort_keys=True, indent=2, allow_nan=False) + '\n').encode('utf-8'))):
+                        with path.open('xb') as handle:
+                            handle.write(content)
+                    if not (output / '.gitignore').exists():
+                        atomic_write(output / '.gitignore', b'*\n')
+                    result = dict(path=str(paths[0]), filename=paths[0].name, stp_path=str(paths[1]), stp_filename=paths[1].name,
+                                  binding_path=str(paths[2]), binding_filename=paths[2].name, binding=binding, report=report,
+                                  png_base64=base64.b64encode(png).decode('ascii'), stp_png_base64=base64.b64encode(stp).decode('ascii'))
+                    _json_size(result, 24 * 1024 * 1024, 'Texture PNG export')
+                    self._json(200, result)
+                    return
+                if route in ('/api/texture-png-preview', '/api/texture-png-pixels-preview', '/api/texture-png-scene-preview', '/api/texture-png-import'):
+                    expected = {'asset_id', 'png_base64', 'stp_png_base64', 'binding', 'palette_mode'}
+                    if route in ('/api/texture-png-scene-preview', '/api/texture-png-import'):
+                        expected.add('review_key')
+                    from .texture_png import _json_size, preview_import, pixels_import, scene_import, apply_import
+                    if set(body) != expected or not isinstance(body['asset_id'], str) or not isinstance(body['binding'], dict) or body['palette_mode'] not in ('existing', 'rebuild'):
+                        raise ProjectError('Texture PNG requires an asset, bounded binding, palette mode and PNG bytes')
+                    _json_size(body['binding'], 128 * 1024, 'Texture PNG binding')
+                    if 'review_key' in expected and (not isinstance(body['review_key'], str) or len(body['review_key']) != 64):
+                        raise ProjectError('Texture PNG requires a reviewed proposal key')
+                    payloads = []
+                    for field in ('png_base64', 'stp_png_base64'):
+                        encoded = body[field]
+                        if field == 'stp_png_base64' and encoded is None:
+                            payloads.append(None)
+                            continue
+                        if not isinstance(encoded, str) or len(encoded) > 11184812:
+                            raise ProjectError('Texture PNG files must be at most 8 MiB each')
+                        try:
+                            payload = base64.b64decode(encoded, validate=True)
+                        except ValueError as exc:
+                            raise ProjectError('Texture PNG requires valid base64') from exc
+                        if not 1 <= len(payload) <= 8 * 1024 * 1024:
+                            raise ProjectError('Texture PNG files must contain at most 8 MiB each')
+                        payloads.append(payload)
+                    args = (self.server.project, body['asset_id'], payloads[0], body['binding'], body['palette_mode'], payloads[1])
+                    if route == '/api/texture-png-preview':
+                        self._json(200, preview_import(*args))
+                    elif route == '/api/texture-png-pixels-preview':
+                        self._json(200, pixels_import(*args))
+                    elif route == '/api/texture-png-scene-preview':
+                        candidate, report = scene_import(*args, body['review_key'])
+                        self._json(200, self.server.scene_texture_proposal(body['asset_id'], candidate, report, report['project_source_key']))
+                    else:
+                        report = apply_import(*args, body['review_key'])
+                        self._json(200, dict(self.server.state(), texture_png_report=report))
                     return
                 if route == '/api/model-glb-export':
                     if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):

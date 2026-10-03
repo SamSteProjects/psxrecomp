@@ -2,6 +2,27 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Source-bound texture PNG editing (2026-10-02):** Imported textures now support
+current PNG + binding + separate STP export, external image editing, exact
+source/current Review, Current/Proposed pixel and scene inspection, and explicit
+Apply through normal texture history, Save/Open and Build. Existing palette mode
+retains words; deterministic rebuild changes only the selected CLUT row. Shared
+indices, color error and forced black/transparent STP changes are reported.
+Dimensions, bit depth, VRAM rectangles and source capacities remain fixed.
+
+Validation: 12 focused Python cases, the Node workflow suite, both frontend
+syntax checks and 11 integrated browser checks passed. Independent Pillow 12.1
+proofs cover both palettes of a retail Dolk2 TIM, exact nibble/word edits,
+transparent/opaque-black semantics and deterministic color reduction. The saved
+Town01 browser Build contains the exact reviewed 33,312-byte TIM with unchanged
+other CLUT rows and neighboring source bytes. Scene preview changes 26 materials
+across 10 instances while preserving geometry/placements; Return restores the
+scene and retains exact Files. Review-only, stale/no-op, history, persistence and
+540px checks passed, with zero page/HTTP errors or game-launch requests. Large
+unique-color images may be CPU-intensive; gameplay and live blending remain
+deferred. See [workflow and limits](legaia-texture-png.md); private evidence is
+under `local-output/sdk-20260909/texture-png-20261002/`.
+
 **Source-bound model GLB editing (2026-10-02):** Imported models now support
 Export current model + binding → external mesh edit → Review → Inspect proposed
 model → Apply → Undo/Redo → Save/Open → normal Build. Explicit source vertex

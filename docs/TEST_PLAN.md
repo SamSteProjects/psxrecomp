@@ -7,6 +7,25 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Source-bound texture PNG editing:** 12 focused Python cases pass with no skips:
+4/8/16/24-bpp exact no-ops, duplicate indices, selected-row/pixel byte masks,
+raw RGB nearest choices, deterministic palette reduction, binary alpha/STP,
+PNG filters/indexed samples, bounded malformed/zlib/profile rejection, fresh
+binding and read-only review/pixels, reviewed Apply, history, persistence and
+HTTP envelopes. The Node suite covers exact Files/mode/context, export/download,
+read-only pixels, immutable scene Return, stale/closed/late/busy guards and
+Apply reply validation. Both frontend syntax checks and 11 browser checks pass,
+including 540px layout and normal Save/Build, with zero page/HTTP errors or
+game-launch requests. Independent Pillow verifies retail conversion and color
+errors. Town01 package readback matches the exact reviewed TIM within its
+33,312-byte allocation; other palettes, source metadata and neighbors remain
+unchanged. Scene proposal affects 26 materials/10 instances and preserves all
+geometry/placements. Private proof:
+`local-output/sdk-20260909/texture-png-20261002/parent/final-evidence.json`.
+Later gameplay acceptance must check texture appearance, palette consumers and
+STP blending under matching runtime provenance. Large-image performance remains
+unverified. See [workflow and limits](legaia-texture-png.md).
+
 **Source-bound model GLB editing:** 14 focused Python cases pass with the private
 disc and no skips: 24 packet families, exact alias/quad byte masks, indexed and
 interleaved accessors, topology/bounds rejection, fresh binding, read-only review
