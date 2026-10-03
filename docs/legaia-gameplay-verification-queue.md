@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Embedded STATE_RESUME0 source checkpoint (2026-10-03): inspection adds no
+immediate gameplay gate. Later menu observation must establish activation,
+suspension/completion and semantic argument/payload ownership independently of
+the static extent, including Dolk2 actor0011 PC115 / actor0012 PC112. No menu
+payload was authored or executed by the editor.
+
 Scene-register/callback source checkpoint (2026-10-03): inspection adds no
 immediate gameplay gate. Later runtime observation must establish the scene
 register effects and callback8003C7EC behavior independently of encoded fixed

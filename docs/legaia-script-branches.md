@@ -36,7 +36,9 @@ between the source entry and PC32767. No instructions or allocations are added.
 Stable entries use `script://<owner>/branch/<pc04hex>` and exactly
 `{"target_pc": integer}` inside the owner's `ScriptBranches.entries` component.
 MENU80 child payloads remain inside the allocator instruction, not selectable
-parent instruction or MES starts. MENU82/84/89 fixed writes have no target words.
+parent instruction or MES starts. Embedded STATE_RESUME0 arguments and payload
+also stay inside one instruction and offer no destination words.
+MENU82/84/89 fixed writes have no target words.
 
 Opcode, target context, encoded test, flag bit/bank, bounds, selectors, ticks,
 record lengths and MAN pointers remain source-owned. For `p = pc + header_length`:

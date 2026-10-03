@@ -1,5 +1,21 @@
 # Read-only actor script and dialogue inspection
 
+Embedded STATE_RESUME0 evidence (2026-10-03), superseding the earlier
+fixed-only limitation: unchanged hashed PROT897/SCUS. Completed state dispatch
+801E08EC reads length at operand+2;801E08F4/F8 adds length+4 to adjusted PC.
+801E08FC/0904 passes operand+length+3 to native walker8003CA38.
+801E0908/0910 adds1 plus returned payload bytes, owning its terminator.
+This establishes total ordinary width length+5+walker_count (extended+1).
+The pinned flow.rs reads length at operand+1; retail words supersede that offset.
+Prefix+1 and declared arguments remain encoded facts with runtime meaning unknown.
+A shared bounded native payload helper now serves both this form and MENU80;
+only C0..CF skip a second byte, and byte≤1E ends a span. It does not run a VM,
+render text, create parent dialogue assets or permit embedded target editing.
+Dolk2 actor0011 PC115/decoded9872 has24 bytes (10 arguments,10-byte payload);
+actor0012 PC112/decoded10152 has25 bytes (10 arguments,11-byte payload).
+Independent fresh carrier/record readback confirms both layouts. Completion is
+conditional on external state; menu activation/effects remain unobserved.
+
 Scene-register/callback evidence (2026-10-03): unchanged hashed PROT897.
 Table801CED78→801E0C0C reads byte operands0/1/2 at801E0C14/20/2C,
 stores zero-extended values into scene halfwords10/12/14 at801E0C1C/28/38,

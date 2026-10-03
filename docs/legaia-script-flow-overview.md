@@ -1,5 +1,11 @@
 # Script source-flow overview
 
+Embedded STATE_RESUME0 (2026-10-03) now owns its full declared argument block
+and terminated native payload as one instruction. These bytes are not parent
+instruction/dialogue starts or target destinations. Its outgoing edge retains
+`external_state_completed`; decoding the extent does not prove menu activation,
+completion, story reachability or payload meaning. Nonadvancing forms still stop.
+
 Scene-register writes (opcode4F) and field callback MENUEA (2026-10-03) expose
 verified fixed continuations without editable target words. Callback effects and
 runtime scene/register meaning remain unknown. A continuation after a native call

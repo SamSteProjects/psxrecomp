@@ -80,6 +80,22 @@ def decode_inline_message(data: bytes, pc: int, base_offset: int = 0) -> dict:
     raise ImportError("inline message has no terminator inside the MAN record")
 
 
+def _native_payload_span(data: bytes, start: int, label: str) -> dict:
+    """Bound SCUS8003CA38 bytes without assigning text or VM ownership."""
+    cursor = start
+    for tokens in range(MAX_MESSAGE_TOKENS):
+        if cursor >= len(data):
+            raise ImportError(f"truncated {label} payload; no recovery performed")
+        value = data[cursor]
+        if value <= 0x1E:
+            return {"pc": start, "length": cursor + 1 - start,
+                    "terminator": value, "token_count": tokens}
+        cursor += 2 if value & 0xF0 == 0xC0 else 1
+        if cursor > len(data):
+            raise ImportError(f"truncated {label} two-byte token")
+    raise ImportError(f"{label} token count exceeds inspection bound")
+
+
 def _instruction(data: bytes, pc: int) -> dict:
     lead = data[pc]
     op = lead & 0x7F
@@ -306,16 +322,31 @@ def _instruction(data: bytes, pc: int) -> dict:
         need(1)
         sub = data[operand]
         # Retail PROT897, 801E08C4: completion dispatch, not a claim
-        # that the menu is complete. Sub0 has an embedded MES walker;
-        # A/B and out-of-range forms have no advancing completion path.
+        # that the menu is complete. A/B and out-of-range forms have
+        # no advancing completion path.
         sizes = {1: 2, 3: 2, 7: 2, 2: 6, 4: 6, 5: 13,
                  6: 4, 8: 4, 9: 4, 0xC: 4, 0xD: 4}
-        if sub not in sizes:
-            raise ImportError(f"unsupported STATE_RESUME sub-op 0x{sub:02x}")
-        size, mnemonic = sizes[sub], "STATE_RESUME"
-        need(size)
-        args = {"sub_op": sub, "can_wait_for_external_state": True,
-                "runtime_state": "not_observed", "payload": list(data[operand + 1:operand + size])}
+        mnemonic = "STATE_RESUME"
+        args = {"sub_op": sub, "can_wait_for_external_state": True, "runtime_state": "not_observed"}
+        if sub == 0:
+            # Retail801E08EC reads length at operand+2 (not pinned +1),
+            # skips length arguments at+3, then walks one native payload.
+            # Completion includes the terminator; the embedded bytes stay
+            # opaque, not parent MES dialogue or editable script anchors.
+            need(3)
+            length = data[operand + 2]
+            need(3 + length)
+            payload = _native_payload_span(data, operand + 3 + length, "STATE_RESUME0")
+            size = 3 + length + payload["length"]
+            args.update(prefix_byte=data[operand + 1], argument_length=length,
+                        arguments=list(data[operand + 3:operand + 3 + length]),
+                        embedded_payload=payload, payload_ownership="runtime_menu_unresolved")
+        else:
+            if sub not in sizes:
+                raise ImportError(f"unsupported STATE_RESUME sub-op 0x{sub:02x}")
+            size = sizes[sub]
+            need(size)
+            args["payload"] = list(data[operand + 1:operand + size])
         branches = [{"pc": operand + size, "condition": "external_state_completed"}]
     elif op == 0x4B:
         need(2)
@@ -370,23 +401,9 @@ def _instruction(data: bytes, pc: int) -> dict:
             cursor = operand + 2
             children = []
             for index in range(count):
-                start = cursor
-                for tokens in range(MAX_MESSAGE_TOKENS):
-                    if cursor >= len(data):
-                        raise ImportError("truncated MENU80 child payload; no recovery performed")
-                    child_byte = data[cursor]
-                    if child_byte <= 0x1E:
-                        cursor += 1
-                        children.append({"index": index, "pc": start, "length": cursor - start,
-                                         "terminator": child_byte, "token_count": tokens})
-                        break
-                    # SCUS8003CA38 skips one argument only for C0..CF.
-                    # Unlike the dialogue renderer, 5E and FF are single bytes.
-                    cursor += 2 if child_byte & 0xF0 == 0xC0 else 1
-                    if cursor > len(data):
-                        raise ImportError("truncated MENU80 two-byte child token")
-                else:
-                    raise ImportError("MENU80 child token count exceeds inspection bound")
+                child = _native_payload_span(data, cursor, "MENU80 child")
+                children.append({"index": index, **child})
+                cursor += child["length"]
             size, mnemonic = cursor - operand, "ALLOCATE_CHILD_PAYLOADS"
             args = {"sub_op": sub, "count": count, "children": children,
                     "child_ownership": "runtime_allocator_unresolved", "runtime_effect": "not_evaluated"}

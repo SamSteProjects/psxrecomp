@@ -41,7 +41,7 @@ class StateResumeDecode(unittest.TestCase):
                     self.assertEqual(report['instructions'], [])
                     self.assertTrue(report['stops'])
 
-    def test_unqualified_embedded_and_nonadvancing_forms_stop(self):
+    def test_malformed_embedded_and_nonadvancing_forms_stop(self):
         for sub in (0, 10, 11, 14, 255):
             report = inspect_record(bytes((0x49,sub,0x1f,65,0,0x21)), 0)
             self.assertTrue(report['stops'])
