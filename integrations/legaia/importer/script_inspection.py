@@ -276,7 +276,22 @@ def _instruction(data: bytes, pc: int) -> dict:
         # Face setup is a configuration/ramp, not a scalar heading.
         need(1)
         sub = data[operand]
-        if sub == 2:
+        if sub in (0, 1, 0xA, 0xB):
+            # Native shared handler801DF384: failure restores original PC;
+            # success calls801D25EC with signed parameters+3/+5, then PC+8.
+            # Wide forms additionally read+7 and advance2. These are not
+            # resume destinations, contrary to the pinned actor_ctrl.rs.
+            size, mnemonic = (9 if sub >= 0xA else 7), "ACTOR_ACQUIRE_REQUEST"
+            need(size)
+            args = {"sub_op": sub, "encoded_xz": list(data[operand + 1:operand + 3]),
+                    "parameters_i16": list(struct.unpack_from("<2h", data, operand + 3)),
+                    "callback": "0x801D25EC", "runtime_acquisition": "not_observed",
+                    "runtime_effect": "not_evaluated"}
+            if sub >= 0xA:
+                args["vertical_operand_i16"] = struct.unpack_from("<h", data, operand + 7)[0]
+            branches = [{"pc": operand + size, "condition": "actor_acquisition_succeeded"},
+                        {"pc": pc, "condition": "actor_acquisition_pending"}]
+        elif sub == 2:
             # Pinned executing actor_ctrl.rs: seven operands including selector,
             # three actor operands, a u16 argument and a trailing byte.
             size, mnemonic = 7, "THREE_ACTOR_TALK"

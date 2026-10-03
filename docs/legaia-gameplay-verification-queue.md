@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+Actor-acquire source checkpoint (2026-10-03): inspection adds no immediate
+gameplay gate. Later runtime observation must establish acquisition predicates,
+callback801D25EC parameter meaning, pending/success behavior and actor/position
+correlation independently of static edges. Source sites: Town01 P2 record0005
+PC1600 and records0012/13/14 PC57. No callback parameters or transforms were
+authored, and no game was launched during this checkpoint.
+
 FMV request source checkpoint (2026-10-03): inspection adds no immediate
 gameplay gate. Later runtime verification must establish ID-to-movie mapping,
 request activation, playback stability and return behavior independently of

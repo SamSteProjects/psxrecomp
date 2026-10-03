@@ -1,5 +1,25 @@
 # Read-only actor script and dialogue inspection
 
+Actor-acquire evidence (2026-10-03): unchanged hash-bound PROT897.
+Opcode43 table801CED48→801DF354; inner entries801CEDA8/AC/D0/D4
+share801DF384 for00/01/A/B. Failure801DF410→801DEE4C restores s8=s4;
+801DEE54 returns original PC. Success reads encoded XZ bytes+1/+2, derives
+or queries a position, and passes a stack vector plus signed parameters+3/+5
+to callback801D25EC. These fields are not resume PCs. Player/nonplayer
+parameter pointer reads are801DF550/554 and801DF580/584. Wide>=A reads+7
+at801DF524/528, negates the vertical operand and advances2 at801DF534.
+The shared success exit801DF5B4/5B8 advances8 then returns advanced s8 via
+801E3624. Ordinary widths are8/10; extended widths9/11. Pinned actor_ctrl.rs
+5/9-byte widths, target-word interpretation and failure advance are superseded.
+Encoded positions are retained without imported actor or runtime pose inference.
+Independent fresh whole-carrier/record reads confirm Town01 P2 record0005
+PC1600/decoded34438 (parameters12/12) and0012/13/14 PC57 at40292/40420/40548
+(parameters96/24). All four are nine-byte extended forms; dispatch contexts70
+and248 remain unresolved numeric selectors. The branch writer rejects these
+instructions: callback parameters cannot be edited as script destinations.
+Browser evidence agrees on source core fields and preserves all project bytes,
+authored state and history. Runtime acquisition/flags/pose remain unobserved.
+
 FMV request evidence (2026-10-03): unchanged hashed PROT897 and SCUS.
 Table801CF010 dispatches E2 to801E30E4; call8003CE9C reads operand+1
 (delay slot801E30E8). The SCUS loader packs low/high bytes and sign-extends

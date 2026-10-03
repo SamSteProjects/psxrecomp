@@ -1,5 +1,12 @@
 # Script source-flow overview
 
+Actor-acquire source edges (2026-10-03) label success and pending acquisition
+separately. Pending returns to the original instruction; success advances past
+the full eight/ten-byte ordinary instruction. A pending self-edge does not prove
+an infinite loop. The signed callback parameters are not resume destinations
+and cannot be edited through branch authoring. XZ and dispatch-context selectors
+remain encoded facts without live actor identity or position correlation.
+
 MENUE2 FMV requests (2026-10-03) expose the signed request ID, two
 consumed trailing bytes and a fixed encoded continuation. The trailing bytes
 are retained without semantic labels. Native request-global writes are source

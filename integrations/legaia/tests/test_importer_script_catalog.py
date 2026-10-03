@@ -200,17 +200,22 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
             # Refreshed 2026-10-03 against hashed retail PROT dispatcher words:
             # camera/field parameters continue instead of becoming false PCs;
             # flag-word targets are relative. The additional bounded segments
-            # retain 58 partial scripts after qualified MENUE2 coverage;
+            # retain 54 partial scripts after native actor-acquire coverage;
             # encoded source coverage never implies runtime reachability.
-            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 619))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (710, 58))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1383, 1))
+            self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 638))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (729, 54))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1506, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(result["partition_two_script_count"], 39)
             fmv_request = assets["script://town01/scripts/man-p2/0025"]
             self.assertEqual((fmv_request["status"], fmv_request["instruction_count"], fmv_request["dialogue_count"]),
                              ("decoded_supported_paths", 204, 28))
             self.assertEqual(fmv_request["stops"], [])
+            for index, instruction_count, dialogue_count in ((5, 355, 47), (12, 35, 0), (13, 35, 0), (14, 35, 0)):
+                acquired = assets[f"script://town01/scripts/man-p2/{index:04d}"]
+                self.assertEqual((acquired["status"], acquired["instruction_count"], acquired["dialogue_count"]),
+                                 ("decoded_supported_paths", instruction_count, dialogue_count))
+                self.assertEqual(acquired["stops"], [])
             p2 = assets["script://town01/scripts/man-p2/0037"]
             self.assertEqual((p2["partition"], p2["dialogue_count"]), (2, 1))
             self.assertIsNone(p2["actor_semantic_id"])
