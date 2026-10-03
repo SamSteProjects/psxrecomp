@@ -1,5 +1,16 @@
 # Deferred gameplay verification
 
+## Imported material binding selection - deferred
+
+Saved fixture: `local-output/sdk-20260909/material-binding-picker-20261002/parent/browser-project/`.
+Package SHA256: `a952ee4f6443068d63f8ddc5b6f636aa31168d3625851d01fcc6a14d0e8a89a3`.
+Dolk2 model0133 object0/group4/primitive36 retains authored group ABE and copies
+model0000's page9/row0/4-bit and CLUT column0/row490. Offline complete payload
+readback is exact; suitability is unverified. Later compare target UV coverage,
+live uploads/residency, palette changes and native blend across shared users,
+then verify revert at matching story state. No immediate gameplay is required
+for the picker milestone. See [workflow/evidence](legaia-material-binding-picker.md).
+
 ## Assigned animation GLB - deferred
 
 Saved fixture: `local-output/sdk-20260909/assigned-animation-glb-20261002/parent/browser-project/`.

@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+The material editor can browse imported models and copy a qualified Current texture binding into a draft. Review/Apply retain target UVs, geometry and blend flags. See [source-binding picker](../../docs/legaia-material-binding-picker.md).
+
 Assigned actor poses now support source-bound GLB interchange with an explicit shared-clip owner. Existing actor contributions and assignments remain separate. See [assigned animation GLB](../../docs/legaia-assigned-animation-glb.md).
 
 **World placements** includes a source-yaw rotation ring, encoded-unit snapping and cancellable shared-record previews. Review and Apply retain the existing command/Build workflow. See [source yaw ring](../../docs/legaia-worldmap-placement-yaw.md).

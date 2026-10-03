@@ -68,6 +68,42 @@ def snapshot(project, asset_id):
     return deepcopy(_snapshot(project, asset_id)['binding'])
 
 
+def donor_models(project, expected_source_key):
+    """List AssetDB models belonging to the current scene; never decode or author."""
+    from .scene_preview import source_key
+    key = source_key(project)
+    binding = dict(scene_id=project.active_scene, project_source_key=key)
+    if not key or key != expected_source_key:
+        raise ProjectError('Model material source changed; reopen the material editor')
+    _current(project, binding)
+    document = project.imports.get(project.active_scene)
+    if not document:
+        raise ProjectError('Material bindings require an imported active scene')
+    members = document.get('assets', {}).get('models', [])
+    if len(members) > 2048:
+        raise ProjectError('Material binding catalog exceeds 2048 models')
+    models = []
+    seen = set()
+    for member in members:
+        identifier = member.get('semantic_id')
+        record = project.assets.records.get(identifier)
+        if (not isinstance(identifier, str) or not identifier.startswith('asset://') or
+                not 1 <= len(identifier) <= 512 or identifier in seen or not record or
+                record.get('kind') != 'model' or record.get('layer') != 'imported' or
+                record.get('disc_identity') != document['source']['disc_identity']):
+            raise ProjectError('Material binding catalog has an unqualified AssetDB model')
+        seen.add(identifier)
+        label = record.get('name') or record.get('label') or identifier
+        if not isinstance(label, str) or not 1 <= len(label) <= 512:
+            raise ProjectError('Material binding model label exceeds its source budget')
+        models.append(dict(asset_id=identifier, label=label))
+    result = dict(schema_version='legaia.model-material-donor-models.v1', **binding,
+                  models=models, project_changed=False)
+    _bounded(result, 'Material binding catalog')
+    _current(project, binding)
+    return result
+
+
 def prepare(project, asset_id, edits, expected_sha256, expected_source_key):
     from importer.model_materials import patch_model_materials
     from importer.model_authoring import replace_model_content

@@ -4,6 +4,8 @@ Model material authoring changes existing CLUT/texture-page fields and a primiti
 
 ## Workflow
 
+The [source-binding picker](legaia-material-binding-picker.md) can fill a draft from another active-scene imported model. Loading is read-only; explicit Copy transfers page/depth/indexed CLUT values and retains target UVs and blend flags. Review and Apply below remain required.
+
 Open a verified imported model in Edit mode and open its material editor. Select an object, group and primitive. The inspector keeps Retail and Current values separate and identifies the source words behind the decoded controls.
 
 For a textured primitive, edit the page column/row and texture bit depth. CLUT column/row are editable for indexed depth. The source-encoded blend mode is read-only. A group's semi-transparency control applies to **every primitive listed in that group**, rather than only the selected row. Untextured rows have no CLUT or texture-page fields; the group control remains the shared source command property.

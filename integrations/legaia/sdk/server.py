@@ -703,6 +703,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/transition-graph-workspace.js': ('transition-graph-workspace.js', 'text/javascript'),
                  '/model-primitives.js': ('model-primitives.js', 'text/javascript'),
                  '/model-materials.js': ('model-materials.js', 'text/javascript'),
+                 '/model-material-donor.js': ('model-material-donor.js', 'text/javascript'),
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
@@ -906,6 +907,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     replacement, report = self.server.project._prepare_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
                     report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key,body.get('all_instances',False))
                     self._json(200,report)
+                    return
+                if route == '/api/model-material-donor-models':
+                    if set(body) != {'source_key'} or not isinstance(body['source_key'], str):
+                        raise ProjectError('Material binding catalog requires a source key only')
+                    from .model_materials import donor_models
+                    self._json(200, donor_models(self.server.project, body['source_key']))
                     return
                 if route == '/api/model-material-source':
                     if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):
