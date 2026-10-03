@@ -9,3 +9,7 @@ The server qualifies the complete retail and effective model layouts and permitt
 Nine focused Python cases and the Node metadata/source guards pass. Seven actual browser checks pass, including a540px screenshot, source face navigation and closing with a fetched response withheld. The private Town01 model0009 object1 normal1 fixture retains prior material/reference/rescaling edits. Retail references normal1 at byte2940; Current references normal2 there, leaving normal1 with zero Current users. Independent raw primitive-packet reads match the complete report for both layers. Every project file hash and history record stays exact, and no authoring command, Build or game request runs.
 
 Proof and inspected screenshot: `local-output/sdk-20260909/model-normal-users-20261003/parent/`. Owned helpers are closed. Gameplay visibility and native lighting are unverified; this feature requires no immediate gameplay check.
+
+## Reference lookup with face removal
+
+Existing face-removal overrides now support read-only reference lookup. Current faces show their retained Retail owners; the Retail layer marks removed faces with no Current identity. Stored-word offsets remain specific to the displayed layer. Face-editor navigation and reference retargeting remain guarded for this topology binding. Source/model hash and selection-lifetime guards still apply.

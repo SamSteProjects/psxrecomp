@@ -11,3 +11,7 @@ Focused Python checks exercise all24 packet flag variants, repeated corners, com
 Town01 model0009 object1 vertex0→9 changes only byte2912 from the inherited authored fixture. Independent complete-model and compressed-carrier readback verifies the candidate, unchanged decoded neighboring assets, retained earlier model edits and the154547-byte consumed capacity. Package SHA256: `37c6b64a03abcf663ac64c00462153ca87a8cb5eaf2f870b274427a2942dedc7`. Private proof: `local-output/sdk-20260909/vertex-retarget-20261003/parent/`.
 
 Owned browser/server helpers are closed. No game, installation or full-disc export ran. Gameplay appearance remains unverified and may be checked later. General count-changing topology import and model retargeting remain unfinished.
+
+## Reference lookup with face removal
+
+Existing face-removal overrides now support read-only reference lookup. Current faces show their retained Retail owners; the Retail layer marks removed faces with no Current identity. Stored-word offsets remain specific to the displayed layer. Face-editor navigation and reference retargeting remain guarded for this topology binding. Source/model hash and selection-lifetime guards still apply.

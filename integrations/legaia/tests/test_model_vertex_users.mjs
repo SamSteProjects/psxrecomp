@@ -6,3 +6,7 @@ const source={schema_version:'legaia.model-vertex-users.v1',...binding,project_s
 const result=decodeVertexUsers(source,binding);result.current_users[0].affected_corners[0]=2;assert.equal(source.current_users[0].affected_corners[0],0);
 for(const delta of [{read_only:false},{gameplay_verified:true},{project_source_key:'b'.repeat(64)},{vertex_index:1},{current_users:[row,row]},{current_users:[{...row,affected_corners:[0,1]}]},{current_users:[{...row,byte_offset:41}]},{current_coordinates:[0,32768,0]}])assert.throws(()=>decodeVertexUsers({...source,...delta},binding));
 console.log('Vertex-user source binding, detached layers, corner coverage and read-only guards passed.');
+
+const mapped={...source,face_mapping:[{retail_index:0,current_index:null},{retail_index:1,current_index:0}]};
+assert.deepEqual(decodeVertexUsers(mapped,binding).face_mapping,mapped.face_mapping);
+for(const face_mapping of [[{retail_index:1,current_index:0}],[{retail_index:0,current_index:1}],[],[{retail_index:0,current_index:null}]])assert.throws(()=>decodeVertexUsers({...source,face_mapping},binding));

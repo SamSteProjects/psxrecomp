@@ -1,4 +1,4 @@
-import {mountStoredReferenceUsers} from './model-normal-users.js';
+import {mountStoredReferenceUsers,validateReferenceFaceMapping} from './model-normal-users.js';
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const integer=(v,max)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
 export function decodeVertexUsers(value,binding){
@@ -13,6 +13,7 @@ export function decodeVertexUsers(value,binding){
       if(row.corner_index>=row.corner_count||JSON.stringify(corners)!==JSON.stringify(row.affected_corners)||seen.has(row.byte_offset))throw new Error('Vertex reference corner coverage conflicts.');seen.add(row.byte_offset);
     }
   }
+  validateReferenceFaceMapping(value);
   return structuredClone(value);
 }
 

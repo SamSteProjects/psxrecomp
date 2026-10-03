@@ -18,7 +18,7 @@ Private fixture, proof and screenshot: `local-output/sdk-20260909/model-face-rem
 
 ## Editing after removal
 
-Vertex and normal tables retain their Retail object/index identities. Use **Vectors** to edit their signed coordinates or preview object translation, quarter-turn rotation, scaling and normal-length adjustment. Apply preserves the removal binding and its exact removed Retail identities. Undo/Redo and Save/Open preserve both edits together. Face-user navigation and reference retargeting remain unavailable for this binding because Current face indices are compacted.
+Vertex and normal tables retain their Retail object/index identities. Use **Vectors** to edit their signed coordinates or preview object translation, quarter-turn rotation, scaling and normal-length adjustment. Apply preserves the removal binding and its exact removed Retail identities. Undo/Redo and Save/Open preserve both edits together. Vertex/normal reference lookup is available for this binding and shows both Retail and compacted Current face identities. Removed Retail references are labeled explicitly and have no Current face. Face-editor navigation and reference retargeting remain unavailable until those editing paths consume this mapping.
 
 TMD imports must preserve the qualified Current packet layout and removal set. OBJ imports must preserve Current oriented triangles; JSON imports use ordered Retail vector capacities and the Retail source hash. Every final candidate is audited against actual Retail ownership, including retained packet fields and opaque bytes. Uploading the original full-topology TMD over a removal binding rejects; Clear the override to restore Retail first.
 
