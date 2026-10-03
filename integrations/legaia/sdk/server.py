@@ -686,6 +686,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/environment-layout.js": ("environment-layout.js", "text/javascript"),
                  "/environment-rotation.js": ("environment-rotation.js", "text/javascript"),
                  "/environment-rotation-group.js": ("environment-rotation-group.js", "text/javascript"),
+                 "/environment-rotation-math.js": ("environment-rotation-math.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),

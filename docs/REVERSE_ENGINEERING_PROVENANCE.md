@@ -1,5 +1,7 @@
 # Legaia reverse-engineering provenance
 
+The 2026-10-02 source-angle scenery extension uses the already qualified MAP descriptor offsets and yaw fields. Its frozen Q30 table and nearest-half-away coordinate rounding are explicitly an SDK authoring convention. They do not add a claim about retail fixed-point rounding, runtime transforms or collision behavior. Source ownership and the reference pin remain unchanged. Private evidence: `local-output/sdk-20260909/scenery-group-angle-20261002/`.
+
 The reference repository is `AndrewAltimit/legend-of-legaia-re`, pinned to
 `d6e64c68ede25813d35db20980da82a1a025549b`. It is an optional development reference
 and parity oracle, not a runtime dependency, submodule or bundled implementation.

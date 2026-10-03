@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+**Rotate scenery group…** now offers source yaw deltas 0–4095 as well as quarter turns. Review shows the rounded source X/Z positions and updated yaws before one-step Apply. Proposed/Current comparison, history, Save/Open and normal Build remain connected; gameplay acceptance can be deferred. See the [group rotation workflow](../../docs/legaia-scenery-group-rotation.md).
+
 Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.

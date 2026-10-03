@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`sdk/environment_rotation_math.py` and `editor/environment-rotation-math.js` retain identical frozen Q30 quarter-wave source-yaw tables. Python integer and JavaScript BigInt arithmetic round rotated displacements to signed source units before the existing cell-local descriptor merger checks capacity and range. `environment_rotation_group.py` retains the legacy quarter-turn operation and adds an exact `yaw_units` variant; reviewed keys bind either shape to source, selection and project state. The editor validates proposals independently, and the existing Environment command/writer owns persistence and Build. This is an editor placement convention, not a reconstruction of retail GTE arithmetic.
+
 Model GLB profile v6 resolves explicit material tuples through source corner
 identities, not external shader assignments. `model_glb_materials.py` reuses the
 qualified semantic writer and masked field locations; primitive CLUT/TPage and
