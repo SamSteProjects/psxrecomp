@@ -1,5 +1,13 @@
 # Deferred gameplay verification
 
+## Retained-face UV edit after removal - deferred gameplay
+
+Ready offline fixture: `local-output/sdk-20260909/model-retained-faces-20261003/parent/browser-project/`.
+Package SHA256 `f6f3bee2fbada9ba1d5f76b19e645ce18a4ec51baaf586fe56d6f1b74c77b911`.
+Town01 model0009 retains its removed object1 quad and edits Current0 / Retail1 corner0 U0→17.
+Exact candidate and compressed-neighbor readback pass. Later verify texture appearance
+across affected instances and native animation/scene transitions. The package is not installed or run.
+
 ## Vector editing after face removal - deferred gameplay
 
 Ready offline fixture: `local-output/sdk-20260909/model-topology-vectors-20261003/parent/browser-project/`.

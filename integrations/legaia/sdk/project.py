@@ -1336,6 +1336,9 @@ class ProjectService:
                       effective_sha256=hashlib.sha256(effective).hexdigest(),
                       project_source_key=key,
                       retail_objects=inspect_model_primitives(original, include_normal_references=True)['objects'])
+        if self.model_overrides.get(asset_id, {}).get('format') == 'tmd-face-removal-v1':
+            from .model_reference_faces import mapping
+            report.update(schema_version='legaia.model-primitives.v3', face_mappings=[mapping(original, effective, self.model_overrides[asset_id], obj['object_index']) for obj in report['objects']])
         if not key or source_key(self) != key:
             raise ProjectError('Scene changed during face inspection; reopen the editor')
         return report
@@ -1355,7 +1358,7 @@ class ProjectService:
         effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
                      if asset_id in self.model_overrides else original)
         replacement, pending = patch_model_primitives(effective, expected_sha256, edits)
-        _, changes = replace_model_content(original, hashlib.sha256(original).hexdigest(), replacement, allow_normal_references=True)
+        changes = self._model_candidate_changes(asset_id, original, replacement)
         if source_key(self) != key:
             raise ProjectError('Scene changed during face inspection; reopen the editor')
         return replacement, dict(asset_id=asset_id, source_sha256=hashlib.sha256(original).hexdigest(),

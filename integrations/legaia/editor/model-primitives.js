@@ -49,16 +49,22 @@ function objects(value,normalReferences=false){
 
 export function decodeModelPrimitives(value,assetId,context){
   context=modelPrimitiveContext(context);
-  if(typeof assetId!=='string'||!/^asset:\/\/[A-Za-z0-9_./-]{1,512}$/.test(assetId)||!exact(value,SOURCE_KEYS)||!['legaia.model-primitives.v1','legaia.model-primitives.v2'].includes(value.schema_version)||value.asset_id!==assetId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey)fail('Model primitive source is invalid or stale.');
-  const normalReferences=value.schema_version==='legaia.model-primitives.v2';objects(value.objects,normalReferences);objects(value.retail_objects,normalReferences);
+  if(typeof assetId!=='string'||!/^asset:\/\/[A-Za-z0-9_./-]{1,512}$/.test(assetId)||!exact(value,[...SOURCE_KEYS,...(value.schema_version==='legaia.model-primitives.v3'?['face_mappings']:[])])||!['legaia.model-primitives.v1','legaia.model-primitives.v2','legaia.model-primitives.v3'].includes(value.schema_version)||value.asset_id!==assetId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey)fail('Model primitive source is invalid or stale.');
+  const topology=value.schema_version==='legaia.model-primitives.v3',normalReferences=value.schema_version!=='legaia.model-primitives.v1';
+  if(topology&&(!Array.isArray(value.face_mappings)||value.face_mappings.length!==value.objects.length))fail('Missing source face mappings.');objects(value.objects,normalReferences);objects(value.retail_objects,normalReferences);
   if(value.source_sha256===value.effective_sha256&&!equal(value.objects,value.retail_objects))fail('Equal source hashes require identical primitive values.');
   if(value.objects.length!==value.retail_objects.length)fail('Current model differs from the retail object layout.');
   for(const [index,entry] of value.objects.entries()){
     const retail=value.retail_objects[index];
-    if(entry.normal_count!==retail.normal_count||entry.vertex_count!==retail.vertex_count||entry.primitives.length!==retail.primitives.length)fail('Current model differs from retail primitive counts.');
-    for(const [i,row] of entry.primitives.entries())for(const field of ROW_KEYS.filter(key=>!['vertices','uvs','colors','material'].includes(key))){if(!equal(row[field],retail.primitives[i][field]))fail('Current model changed immutable primitive metadata.');}
-    for(const [i,row] of entry.primitives.entries())for(const field of ['uvs','colors',...(normalReferences?['normal_indices']:[])])if((row[field]===null)!==(retail.primitives[i][field]===null))fail('Current primitive changed the source attribute layout.');
-    for(const [i,row] of entry.primitives.entries())if(row.uvs!==null&&(((row.material.clut^retail.primitives[i].material.clut)&~0x7fff)||((row.material.tpage^retail.primitives[i].material.tpage)&~0x019f)))fail('Current material changed reserved source bits.');
+    if(entry.normal_count!==retail.normal_count||entry.vertex_count!==retail.vertex_count||!topology&&entry.primitives.length!==retail.primitives.length)fail('Current model differs from retail vector/primitive counts.');
+    if(topology){let next=0;const map=value.face_mappings[index];if(!Array.isArray(map)||map.length!==retail.primitives.length)fail('Invalid Retail face mapping.');for(const [i,row] of map.entries()){if(!exact(row,['retail_index','current_index'])||row.retail_index!==i||row.current_index!==null&&row.current_index!==next)fail('Invalid retained face identity.');if(row.current_index!==null)next++;}if(next!==entry.primitives.length)fail('Current face mapping count differs.');}
+    const retained=topology?value.face_mappings[index].filter(face=>face.current_index!==null):null;
+    for(const [i,row] of entry.primitives.entries()){
+      const old=retail.primitives[topology?retained[i].retail_index:i];
+      for(const field of ROW_KEYS.filter(key=>!['vertices','uvs','colors','material',...(topology?['primitive_index','group_index','byte_offset']:[])].includes(key)))if(!equal(row[field],old[field]))fail('Current model changed immutable primitive metadata.');
+      for(const field of ['uvs','colors',...(normalReferences?['normal_indices']:[])])if((row[field]===null)!==(old[field]===null))fail('Current primitive changed the source attribute layout.');
+      if(row.uvs!==null&&(((row.material.clut^old.material.clut)&~0x7fff)||((row.material.tpage^old.material.tpage)&~0x019f)))fail('Current material changed reserved source bits.');
+    }
   }
   return clone(value);
 }
@@ -66,7 +72,9 @@ export function decodeModelPrimitives(value,assetId,context){
 function selectedRow(source,objectIndex,primitiveIndex,retail=false){
   const entries=retail?source.retail_objects:source.objects;
   if(!int(objectIndex,0,entries.length-1)||!int(primitiveIndex,0,entries[objectIndex].primitives.length-1))fail('Select an existing object and primitive.');
-  return entries[objectIndex].primitives[primitiveIndex];
+  const index=retail&&source.face_mappings?source.face_mappings[objectIndex].find(face=>face.current_index===primitiveIndex)?.retail_index:primitiveIndex;
+  if(index===undefined)fail('Current face has no retained Retail owner.');
+  return entries[objectIndex].primitives[index];
 }
 
 export function modelPrimitiveDraft(source,objectIndex,primitiveIndex,values){
@@ -130,7 +138,7 @@ export function decodeModelPrimitivePreview(value,source,context,edits){
     expected.delete(key);
   }
   if(expected.size||Boolean(value.changes_from_current.length)!==(value.proposed_sha256!==value.effective_sha256))fail('Primitive review hash or changed values are inconsistent.');
-  for(const row of value.coordinate_changes)if(!object(row)||!['primitive','primitive_group','vertex','normal'].includes(row.kind)||!int(row.object_index,0,source.objects.length-1)||!int(row.byte_offset,0,MAX_BYTES-1)||!Number.isSafeInteger(row.before_value)||!Number.isSafeInteger(row.after_value))fail('Invalid retail model change audit.');
+  for(const row of value.coordinate_changes){if(row?.kind==='primitive_removal'){if(!exact(row,['kind','object_index','primitive_index'])||!int(row.object_index,0,source.objects.length-1)||source.face_mappings?.[row.object_index]?.[row.primitive_index]?.current_index!==null)fail('Invalid removed Retail face audit.');continue;}if(!object(row)||!['primitive','primitive_group','vertex','normal'].includes(row.kind)||!int(row.object_index,0,source.objects.length-1)||!int(row.byte_offset,0,MAX_BYTES-1)||!Number.isSafeInteger(row.before_value)||!Number.isSafeInteger(row.after_value))fail('Invalid retail model change audit.');}
   previewGeometry(value.preview,source.asset_id);previewGeometry(value.current_preview,source.asset_id);
   for(const preview of [value.preview,value.current_preview])if(preview.objects.length!==source.objects.length||preview.objects.some(row=>source.objects[row.object_index]?.vertex_count!==row.vertex_count))fail('Comparison geometry differs from the source model layout.');
   return clone(value);
@@ -191,7 +199,7 @@ export function openModelPrimitiveEditor({assetId,getContext,busy,setBusy,onAppl
   function displayRow(){
     invalidate();fields.replaceChildren();inputs=[];normalLinks=[];const entry=source.objects[objectIndex],row=entry.primitives[primitiveIndex];
     if(!row){metadata.textContent='This source object has no editable primitives.';refresh();return;}
-    metadata.textContent=`Object ${objectIndex} · primitive ${primitiveIndex} · group ${row.group_index} · flags 0x${row.flags.toString(16)} · payload offset ${row.byte_offset} · ${row.gouraud?'Gouraud':'Flat'} · CLUT ${row.material.clut??'none'} · texture page ${row.material.tpage??'none'} · semitransparency ${row.material.semi_transparent?'enabled':'disabled'} (read-only).`;
+    metadata.textContent=`Object ${objectIndex} · Current primitive ${primitiveIndex} · Retail face ${source.face_mappings?source.face_mappings[objectIndex].find(face=>face.current_index===primitiveIndex).retail_index:primitiveIndex} · group ${row.group_index} · flags 0x${row.flags.toString(16)} · payload offset ${row.byte_offset} · ${row.gouraud?'Gouraud':'Flat'} · CLUT ${row.material.clut??'none'} · texture page ${row.material.tpage??'none'} · semitransparency ${row.material.semi_transparent?'enabled':'disabled'} (read-only).`;
     hashes.textContent=JSON.stringify({asset_id:source.asset_id,retail_sha256:source.source_sha256,current_sha256:source.effective_sha256,project_source_key:source.project_source_key},null,2);
     const table=element('table'),head=element('tr');Object.assign(table.style,{width:'100%',borderCollapse:'collapse',fontSize:'12px',margin:'10px 0'});fields.style.overflowX='auto';for(const title of ['Corner','Local vertex','UV bytes','Baked RGB / normal reference']){const cell=element('th',title);Object.assign(cell.style,{padding:'4px 6px',textAlign:'left',borderBottom:'1px solid #344b4d'});head.append(cell);}table.append(head);
     const numberInput=(field,corner,axis,value,max,label)=>{const input=element('input');Object.assign(input.style,{width:'72px',maxWidth:'100%',minWidth:'0',padding:'5px 6px'});input.type='number';input.min='0';input.max=String(max);input.step='1';input.required=true;input.value=String(value);input.setAttribute('aria-label',label);input._primitive={field,corner,axis};input.oninput=()=>{invalidate();status.textContent='Draft changed. Preview again before Apply.';refresh();};inputs.push(input);return input;};

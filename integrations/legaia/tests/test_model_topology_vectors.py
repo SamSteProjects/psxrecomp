@@ -53,3 +53,21 @@ class ModelTopologyVectorTests(unittest.TestCase):
         with self.assertRaises(ImportError):self.project._prepare_model_file(self.asset,self.original,'tmd')
         damaged=bytearray(candidate);damaged[-1]^=1
         with self.assertRaises(ImportError):self.project.set_model_replacement(self.asset,bytes(damaged))
+
+    def test_retained_face_preview_apply_retail_identity_and_undo(self):
+        from unittest.mock import patch
+        from importer.model_primitives import inspect_model_primitives
+        key='a'*64
+        row=inspect_model_primitives(self.current,include_normal_references=True)['objects'][0]['primitives'][0]
+        edit=dict(object_index=0,primitive_index=0,vertices=row['vertices'],uvs=row['uvs'],colors=[[7,8,9]])
+        with patch('sdk.scene_preview.source_key',return_value=key):
+            source=self.project.model_primitive_source(self.asset)
+            self.assertEqual(source['schema_version'],'legaia.model-primitives.v3')
+            self.assertEqual(source['face_mappings'][0][1],dict(retail_index=1,current_index=0))
+            report=self.project.preview_model_primitives(self.asset,[edit],sha256(self.current).hexdigest(),key)
+            self.assertTrue(any(r['kind']=='primitive' and r['primitive_index']==1 for r in report['coordinate_changes']))
+            with self.assertRaises(ProjectError):self.project.set_model_primitives(self.asset,[edit],sha256(self.current).hexdigest(),key,'0'*64)
+            self.project.set_model_primitives(self.asset,[edit],sha256(self.current).hexdigest(),key,report['proposed_sha256'])
+            updated=self.effective();self.assertNotEqual(updated,self.current)
+            self.project.undo();self.assertEqual(self.effective(),self.current)
+            self.project.redo();self.assertEqual(self.effective(),updated)

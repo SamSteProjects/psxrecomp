@@ -12,4 +12,4 @@ Proof and inspected screenshot: `local-output/sdk-20260909/model-normal-users-20
 
 ## Reference lookup with face removal
 
-Existing face-removal overrides now support read-only reference lookup. Current faces show their retained Retail owners; the Retail layer marks removed faces with no Current identity. Stored-word offsets remain specific to the displayed layer. Face-editor navigation and reference retargeting remain guarded for this topology binding. Source/model hash and selection-lifetime guards still apply.
+Existing face-removal overrides now support read-only reference lookup. Current faces show their retained Retail owners; the Retail layer marks removed faces with no Current identity. Stored-word offsets remain specific to the displayed layer. Retained-face navigation now opens the mapped Current face editor. Removed faces have no Current target. Object-wide reference retargeting remains guarded for this topology binding. Source/model hash and selection-lifetime guards still apply.

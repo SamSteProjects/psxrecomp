@@ -100,3 +100,14 @@ decodeModelPrimitivePreview(normalReport,normalSource,context,[normalDraft]);
 const wrongNormalWord=structuredClone(normalReport);wrongNormalWord.changes_from_current[0].byte_offset=114;assert.throws(()=>decodeModelPrimitivePreview(wrongNormalWord,normalSource,context,[normalDraft]));
 for(const mutate of [v=>v.objects[0].normal_count=1,v=>v.objects[0].primitives[0].normal_indices=[1,2],v=>v.retail_objects[0].normal_count=5]){const bad=structuredClone(normalSource);mutate(bad);assert.throws(()=>decodeModelPrimitives(bad,assetId,context));}
 console.log('V2 flat normal-reference domain, unchanged topology and exact word audits passed.');
+
+const compact=source();compact.schema_version='legaia.model-primitives.v3';
+for(const layer of ['objects','retail_objects']){compact[layer][0].normal_count=0;compact[layer][0].primitives[0].normal_indices=null;}
+compact.retail_objects[0].primitives.push({...structuredClone(compact.retail_objects[0].primitives[0]),primitive_index:1,byte_offset:140});
+compact.face_mappings=[[{retail_index:0,current_index:null},{retail_index:1,current_index:0}]];
+assert.equal(decodeModelPrimitives(compact,assetId,context).face_mappings[0][1].current_index,0);
+for(const map of [[{retail_index:0,current_index:0},{retail_index:1,current_index:0}],[{retail_index:0,current_index:null}],[]])assert.throws(()=>decodeModelPrimitives({...compact,face_mappings:[map]},assetId,context));
+const compactReview=preview(compact,draft(compact));compactReview.coordinate_changes.push({kind:'primitive_removal',object_index:0,primitive_index:0});
+decodeModelPrimitivePreview(compactReview,compact,context,[draft(compact)]);
+compactReview.coordinate_changes.at(-1).primitive_index=1;assert.throws(()=>decodeModelPrimitivePreview(compactReview,compact,context,[draft(compact)]));
+console.log('V3 compacted face identity and removed Retail audit guards passed.');

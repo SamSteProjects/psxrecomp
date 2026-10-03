@@ -420,6 +420,9 @@ class EditorServer(ThreadingHTTPServer):
         material_content = material_content or self.project.model_overrides.get(asset_id, {}).get('format') in ('tmd-content-v2', 'tmd-content-v3')
         proposal_binding = {'asset_sha256': report['proposed_sha256'],
                             'format': 'tmd-content-v2' if material_content else 'tmd-content-v1'}
+        existing = self.project.model_overrides.get(asset_id, {})
+        if existing.get('format') == 'tmd-face-removal-v1':
+            proposal_binding.update(format=existing['format'], removed_faces=[dict(row) for row in existing['removed_faces']])
         report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,proposal_binding)
         if all_instances:
             report.update(preview_shape_instances(scene,asset_id,replacement,proposal_binding))
