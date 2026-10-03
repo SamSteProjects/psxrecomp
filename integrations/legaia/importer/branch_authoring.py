@@ -93,8 +93,12 @@ def _graph_candidate(original, candidate, entry, source_graph):
     known = {node['pc']: node for node in source_graph['instructions']}
     messages = {row['pc']: row for row in source_graph['dialogues']}
     original_boundaries = set(known) | set(messages)
+    qualified_instructions = []
+    qualified_dialogues = []
     for node in known.values():
         decoded = _instruction(candidate, node['pc'])
+        decoded['byte_offset'] = node['pc']
+        qualified_instructions.append(decoded)
         header = 2 if node['target_context'] is not None else 1
         if (_shape(decoded) != _shape(node) or
                 candidate[node['pc']:node['pc'] + header] != original[node['pc']:node['pc'] + header]):
@@ -114,6 +118,7 @@ def _graph_candidate(original, candidate, entry, source_graph):
                 raise ImportError('Branch candidate targets a new or opaque source boundary, including an unreachable branch')
     for row in messages.values():
         decoded = decode_inline_message(candidate, row['pc'])
+        qualified_dialogues.append(decoded)
         if (decoded['length'] != row['length'] or decoded['terminator'] != row['terminator'] or
                 [(t['pc'], t['length'], t['kind']) for t in decoded['tokens']] !=
                 [(t['pc'], t['length'], t['kind']) for t in row['tokens']]):
@@ -129,6 +134,12 @@ def _graph_candidate(original, candidate, entry, source_graph):
             raise ImportError('Branch candidate reaches an opaque or changed source message boundary')
     reached = {row['pc'] for row in report['instructions']} | {row['pc'] for row in report['dialogues']}
     report['unreachable_source_pcs'] = sorted((set(known) | set(messages)) - reached)
+    # Keep independently redecoded original anchors available to read-only graph
+    # diagnostics. The reached-path arrays retain their existing meaning.
+    report['unvisited_instructions'] = sorted(
+        (row for row in qualified_instructions if row['pc'] not in reached), key=lambda row: row['pc'])
+    report['unvisited_dialogues'] = sorted(
+        (row for row in qualified_dialogues if row['pc'] not in reached), key=lambda row: row['pc'])
     return report
 
 

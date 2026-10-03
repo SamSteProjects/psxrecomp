@@ -1,5 +1,10 @@
 # Deferred gameplay verification
 
+Source-flow overview checkpoint (2026-10-03): this read-only feature is accepted
+offline and adds no immediate gameplay gate. Its cycles and entry reachability
+describe encoded source edges only; existing authored-branch story/runtime checks
+remain deferred. No game was launched for this checkpoint.
+
 ## Restored Retail face with later edits - deferred gameplay
 
 Ready offline fixture: `local-output/sdk-20260909/model-face-restoration-20261003/parent/browser-project/`.

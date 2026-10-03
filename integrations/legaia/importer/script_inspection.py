@@ -574,6 +574,7 @@ def inspect_record(data: bytes, script_offset: int, *, semantic_id: str = "scrip
                        "raw_hex": data[start:cursor].hex(),
                        "reason": "Unsupported, unvisited or ambiguous bytes; no instruction width inferred."})
     return {"status": "partial" if stops or opaque else "decoded_supported_paths",
+            "entry_pc": script_offset,
             "instructions": sorted(instructions, key=lambda row: row["pc"]),
             "dialogues": sorted(dialogues, key=lambda row: row["pc"]),
             "opaque_regions": opaque, "stops": stops}

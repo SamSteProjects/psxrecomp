@@ -729,6 +729,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/source-normal-view.js": ("source-normal-view.js", "text/javascript"),
                  "/asset-navigation.js": ("asset-navigation.js", "text/javascript"),
                  "/script-paths.js": ("script-paths.js", "text/javascript"),
+                 "/script-flow-overview.js": ("script-flow-overview.js", "text/javascript"),
                  "/script-operands.js": ("script-operands.js", "text/javascript"),
                  "/script-branches.js": ("script-branches.js", "text/javascript"),
                  "/worldmap-authoring.js": ("worldmap-authoring.js", "text/javascript"),

@@ -54,6 +54,7 @@ import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selectio
 import {mountGroupAppearance} from '/group-appearance.js';
 import {textureSceneUsage} from '/texture-usage.js';
 import {findDecodedPath} from '/script-paths.js';
+import {mountScriptFlowOverview} from '/script-flow-overview.js';
 import {decodeTextFont,layoutGlyphRun} from '/text-font.js';
 import {instructionOperandEditors,menuLabelEditors} from '/script-operands.js';
 import {mountScriptFacing} from '/script-facing.js';
@@ -2056,6 +2057,7 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
   }
   function select(pc,remember=true){
     if(!rows.has(pc))return false;
+    const disassembly=host.closest('details.script-instructions');if(disassembly)disassembly.open=true;
     if(remember&&selectedPC!==null&&selectedPC!==pc)history.push(selectedPC);
     if(rows.has(selectedPC))rows.get(selectedPC).classList.remove('script-path-selected');
     selectedPC=pc;const row=rows.get(pc);row.classList.add('script-path-selected');row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});
@@ -2067,6 +2069,8 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
     return true;
   }
   back.onclick=()=>{if(history.length)select(history.pop(),false);};
+  const flowOverview=mountScriptFlowOverview(navigation,{selectInstruction:pc=>select(pc),label:'Retail source flow'});
+  flowOverview.update(report);
   let pathStart=null;
   const pathTools=document.createElement('details');pathTools.className='script-path-query';pathTools.innerHTML='<summary>Find a decoded instruction path</summary><p>Choose a start instruction, then select a destination. This finds one shortest route through encoded successors. Conditions are retained but not evaluated; hidden or undecoded execution remains unknown.</p><button type="button" data-path-start>Use selected instruction as path start</button><p data-path-source>No path start selected.</p><button type="button" data-path-find>Find path to selected instruction</button><p data-path-result role="status"></p><div data-path-steps></div>';
   navigation.append(pathTools);

@@ -16,6 +16,14 @@ only after the same review/Apply process. No-op reviews cannot create commands.
 Multiple pending branch choices survive an ordinary workspace refresh, and block
 project history/Save until applied or explicitly discarded.
 
+## Whole-record diagnostics
+
+The [source-flow overview](legaia-script-flow-overview.md) summarizes Retail,
+Current and reviewed Proposed entry reachability and cycles. It preserves
+qualified unvisited source anchors without treating them as executed paths.
+Links open the disassembly at the exact source boundary; Discard withdraws the
+Proposed overview. Conditions and external resumption remain unresolved.
+
 ## Source and wire contract
 
 `BranchAuthoringContext` reuses the verified, uniquely owned MAN P1/P2 record

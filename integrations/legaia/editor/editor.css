@@ -48,6 +48,7 @@
 .transform-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 12px;border-bottom:1px solid var(--line);font-size:10px;color:var(--muted)}.transform-tools label{display:flex;align-items:center;gap:5px}.transform-tools select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:3px;font-size:10px}.transform-tools input{margin:0}.transform-tools span{flex:1;min-width:150px}
 
 .script-path-search{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.script-path-search input{flex:1;min-width:180px}.script-path-search button{font-size:11px}
+.script-flow-overview{margin:10px 0;padding:8px;border:1px solid var(--line);overflow-wrap:anywhere}.script-flow-overview details{margin:6px 0}.script-flow-overview button{font-size:11px;white-space:normal;text-align:left;margin:3px;max-width:100%}.script-flow-pages{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.script-flow-overview p{white-space:normal}
 
 .transition-entry, .movement-entry, .flag-entry, .wait-entry, .modelSelector-entry { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid var(--border, #48505d); margin: 10px 0; }
 .transition-entry h4, .movement-entry h4, .flag-entry h4, .wait-entry h4, .modelSelector-entry h4 { flex-basis: 100%; margin: 0; }
