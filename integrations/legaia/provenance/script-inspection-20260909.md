@@ -1,5 +1,20 @@
 # Read-only actor script and dialogue inspection
 
+Conditional capture ownership correction (2026-10-03): native spawn evidence
+above is unchanged. The incoming-edge reservation now covers [base packet end,
+capture payload end), including marker and length. It remains separate from
+exact decoded instruction ownership, so these bytes still appear opaque.
+A decoded or queued parent entry inside the interval, or an overlapping decoded
+span, invalidates all decoded rows as with ordinary ownership conflicts. Both
+queue discovery orders behave the same. The exclusive end remains eligible as
+a separately qualified parent boundary; reservation does not swallow later data.
+Private synthetic before/after evidence against dc4ca8dd confirms that a branch
+into a captured1F payload formerly exposed a false parent dialogue. The corrected
+graph has no instructions/dialogues and the entire record is opaque. Fresh real
+Town01 actor0020 PC34 core fields and unresolved stop are unchanged. This is a
+source classification correction, not proof of native actor match or execution.
+Private proof: `local-output/sdk-20260909/capture-ownership-20261003/parent/`.
+
 Effect-spawn evidence (2026-10-03): unchanged hashed PROT897.
 Opcode34 table801CED0C→801DFCAC. Sub1 scans existing actors and compares
 actor+90 to current s5; matching exit801DFF48→801E2EA0 skips capture.

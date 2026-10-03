@@ -733,6 +733,10 @@ def inspect_record(data: bytes, script_offset: int, *, semantic_id: str = "scrip
     queue = deque([script_offset])
     entries = {script_offset}
     visited, ownership = set(), {}
+    # Conditional capture bytes remain opaque, but cannot also become parent
+    # instructions through another queued edge. Keep this separate from exact
+    # instruction ownership so the report does not count them as decoded bytes.
+    conditional_capture = {}
     instructions, dialogues, stops = [], [], []
     conflict = False
     while queue:
@@ -751,6 +755,11 @@ def inspect_record(data: bytes, script_offset: int, *, semantic_id: str = "scrip
                           "reason": f"branch target lands inside a decoded instruction or message owned by 0x{ownership[pc]:x}"})
             conflict = True
             continue
+        if pc in conditional_capture:
+            stops.append({"pc": pc, "owner_pc": conditional_capture[pc],
+                          "reason": "decoded path enters conditional capture ownership; parent region is ambiguous"})
+            conflict = True
+            continue
         try:
             if data[pc] == 0x1F:
                 row = decode_inline_message(data, pc, base_offset)
@@ -767,6 +776,19 @@ def inspect_record(data: bytes, script_offset: int, *, semantic_id: str = "scrip
                 stops.append({"pc": pc, "reason": "decoded boundaries overlap; region is ambiguous"})
                 conflict = True
                 continue
+            if any(byte in conditional_capture for byte in range(pc, pc + row["length"])):
+                stops.append({"pc": pc, "reason": "decoded boundary overlaps conditional capture ownership; parent region is ambiguous"})
+                conflict = True
+                continue
+            if not is_message and row["mnemonic"] == "EFFECT_SPAWN_PACKET" and "capture_payload" in row["operands"]:
+                payload = row["operands"]["capture_payload"]
+                capture_range = range(pc + row["length"], payload["pc"] + payload["length"])
+                if any(byte in ownership or byte in conditional_capture or byte in entries for byte in capture_range):
+                    stops.append({"pc": pc, "reason": "conditional capture ownership conflicts with a decoded or queued parent path"})
+                    conflict = True
+                    continue
+                for byte in capture_range:
+                    conditional_capture[byte] = pc
             for byte in range(pc, pc + row["length"]):
                 ownership[byte] = pc
             (dialogues if is_message else instructions).append(row)

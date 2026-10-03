@@ -1,5 +1,12 @@
 # Script source-flow overview
 
+Conditional capture incoming edges (2026-10-03): marker, length and captured
+bytes remain opaque even when another parent branch points into them. Such a
+parent path conflicts with conditional ownership and invalidates the ambiguous
+graph, regardless of discovery order. The exact byte after the capture remains
+a possible separately qualified parent boundary. This guard prevents false
+parent dialogue/instruction entries; it does not choose a native capture path.
+
 EFFECT1 spawn packets (2026-10-03) show a bounded base packet and its
 following-byte peek. A40 marker introduces conditional capture ownership:
 an existing matching actor skips it, while a newly spawned actor can consume

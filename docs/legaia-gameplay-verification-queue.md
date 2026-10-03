@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Conditional capture source guard (2026-10-03): incoming-edge ambiguity is
+now rejected offline and adds no gameplay gate. Native existing/new-actor
+ownership alternatives and captured-byte execution remain unfinished. The guard
+only prevents ambiguous captured bytes from appearing as parent source assets;
+no effect, transform, dialogue or branch was authored or executed.
+
 Effect-spawn source checkpoint (2026-10-03): inspection adds no immediate
 gameplay gate. Conditional capture ownership still needs a source-model solution
 before runtime verification can establish existing-actor match, allocation and

@@ -29,6 +29,51 @@ class EffectSpawnDecode(unittest.TestCase):
             packet=self.packet(extended);full=packet+b'\x40\x03\x1f\x21\0'
             for length in range(1,len(full)):
                 report=inspect_record(full[:length],0);self.assertEqual(report['instructions'],[]);self.assertTrue(report['stops'])
+    def test_incoming_capture_paths_invalidate_parent_decode_in_both_queue_orders(self):
+        for extended in (False, True):
+            for payload in (b'\x1fHidden\0', b'\x21\x26\xfe\xff'):
+                packet = self.packet(extended)
+                # BBOX inside/fallthrough discovers the packet first.
+                capture_start = 7 + len(packet) + 2
+                branch = b'\x4d\0\0\0\0' + struct.pack('<H', capture_start-5)
+                first = branch + packet + b'\x40' + bytes((len(payload),)) + payload
+                # Two jump arms instead queue the payload before the packet.
+                packet_start = 13
+                capture_start = packet_start + len(packet) + 2
+                branch = b'\x4d\0\0\0\0' + struct.pack('<H', 10-5)
+                first_jump = b'\x26' + struct.pack('<h', capture_start-8)
+                second_jump = b'\x26' + struct.pack('<h', packet_start-11)
+                second = branch + first_jump + second_jump + packet + b'\x40' + bytes((len(payload),)) + payload
+                for data in (first, second):
+                    report = inspect_record(data, 0)
+                    self.assertEqual(report['status'], 'partial')
+                    self.assertEqual(report['instructions'], [])
+                    self.assertEqual(report['dialogues'], [])
+                    self.assertEqual(report['opaque_regions'][0]['length'], len(data))
+                    self.assertTrue(any('conditional capture' in stop['reason'] for stop in report['stops']), report['stops'])
+    def test_capture_marker_length_and_every_payload_byte_are_reserved(self):
+        packet = self.packet(False)
+        payload = b'\x1fHidden\0\x21'
+        start = 7 + len(packet)
+        end = start + 2 + len(payload)
+        for target in range(start, end):
+            branch = b'\x4d\0\0\0\0' + struct.pack('<H', target-5)
+            report = inspect_record(branch+packet+b'\x40'+bytes((len(payload),))+payload, 0)
+            self.assertEqual(report['instructions'], [])
+            self.assertEqual(report['dialogues'], [])
+            self.assertTrue(any('conditional capture' in stop['reason'] for stop in report['stops']))
+    def test_exact_end_of_capture_remains_a_separate_parent_boundary(self):
+        packet = self.packet(False)
+        payload = b'\x1fCaptured\0'
+        end = 7 + len(packet) + 2 + len(payload)
+        branch = b'\x4d\0\0\0\0' + struct.pack('<H', end-5)
+        data = branch+packet+b'\x40'+bytes((len(payload),))+payload+b'\x1fOutside\0'
+        report = inspect_record(data, 0)
+        self.assertEqual([row['mnemonic'] for row in report['instructions']], ['BBOX_TEST','EFFECT_SPAWN_PACKET'])
+        self.assertEqual([(row['pc'],row['text']) for row in report['dialogues']], [(end,'Outside')])
+        self.assertEqual(report['opaque_regions'][0]['pc'], 7+len(packet))
+        self.assertEqual(report['opaque_regions'][0]['length'], 2+len(payload))
+        self.assertTrue(report['stops'])
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class RetailEffectSpawnProof(unittest.TestCase):
     def test_native_existing_match_capture_extent_and_shared_advance(self):
