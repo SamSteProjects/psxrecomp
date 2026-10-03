@@ -83,5 +83,48 @@ Private proof: `local-output/sdk-20260909/model-face-addition-20261003/parent/`.
 
 This is a model-level codec foundation. It does not persist a project binding,
 merge an existing removal/GLB identity ledger, allocate surrounding carrier space
-or expose Review/Apply. Cross-operation authored UUID uniqueness and all those
-integrations still need implementation. No gameplay or installation ran.
+or expose Review/Apply. Cross-operation authored UUID uniqueness is now implemented in the separate
+model-only replay ledger below. SDK integration remains unfinished. No gameplay
+or installation ran.
+
+
+## Replayable face identity record
+
+`importer.model_face_ledger` adds a detached JSON record using schema
+`legaia.model-face-addition-ledger.v1`. The record binds the complete original
+model hash and byte length. Its source face IDs are
+`face://source/<source SHA256>/<object>/<source primitive>`; authored faces keep
+canonical `face://authored/<UUIDv4>` identities. Source IDs identify only that
+exact model, not a runtime actor or scene instance.
+
+Each batch stores its input/proposed hashes and requests containing exactly
+`face_id`, `donor_face_id` and typed `fields`. Replay resolves a donor from the
+preceding model, including a previously authored face, and remaps all retained
+identities after packet insertion. References to another new face in the same
+batch reject; add that donor in a preceding batch. Duplicate authored IDs across
+batches reject. Derived Current indices are recomputed rather than persisted as
+authority. Candidate qualification compares every byte with complete replay.
+
+Create with `create_face_ledger(original)`, append through
+`append_face_ledger(original, ledger, requests)`, and reload through
+`replay_face_ledger(original, ledger)`. Append returns candidate bytes, a detached
+updated record and an audit. It does not mutate caller requests or prior records.
+Both replay and append enforce eight batches and 128 total additions; these are
+initial offline resource budgets. Codec typed-field and native byte/count limits
+still apply.
+
+Six ledger regressions cover deterministic JSON replay, multiple objects/groups,
+shifted Current indices, authored-donor attribute inheritance, detached state,
+source/schema/hash/byte tampering, cross-batch UUID collisions, missing donors and
+batch/face budgets. Together with existing codec/topology checks, 28 cases pass.
+Independent private Retail reconstruction serializes and reloads two quads in
+Town01 model0009 object1/group0. Growth is 4,704 to 4,752 bytes; exact header/pointer
+assembly matches, and removing both packets restores every source byte. Fresh
+project reopen supplies the same source and all saved project hashes are unchanged.
+Private proof: `local-output/sdk-20260909/model-face-ledger-20261003/parent/`.
+
+The record is model-only and is not accepted by existing SDK asset override
+bindings. It does not yet compose with Retail face removal/restoration, GLB edits,
+new vectors/groups/objects or carrier relocation. Project history, Save/Open,
+Review/Apply, scene preview and normal Build still need one coherent binding path.
+No gameplay or installation ran.

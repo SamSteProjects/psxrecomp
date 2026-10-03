@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+New-face identity ledger checkpoint (2026-10-03): stable source/authored donor
+identities and serialized multi-batch replay pass offline, including an independent
+Retail two-quad reconstruction. The record is not an SDK asset override; carrier
+relocation, project/editor/history/Build integration and removal/GLB composition
+remain required. No geometry was installed or played. No immediate gameplay gate
+is added; deferred added-face appearance/lighting/culling/pose acceptance remains.
+
 Native new-face codec checkpoint (2026-10-03): independent model-level packet
 growth and source recovery pass offline. The candidate is not installable through
 the SDK yet: carrier relocation, durable topology identity and reviewed editor/
