@@ -125,6 +125,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_shape_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_glb_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_material_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["texture_png_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         from .scene_preview import source_key
@@ -433,6 +434,56 @@ class EditorServer(ThreadingHTTPServer):
             raise ProjectError('Scene changed during shape proposal inspection')
         return report
 
+    def scene_animation_preview(self, representation: str, expected_source_key: str) -> dict:
+        from .scene_animation import prepare_scene_animation
+        from .scene_preview import preview_project, source_key
+        from .terrain_preview import terrain_preview
+        from importer.pipeline import _disc_context
+        from importer.animation import animation_capabilities
+        from importer.scene_animation import load_scene_actor_animation_catalog
+        from importer.environment import load_environment_preview_catalog
+        project = self.project
+        if project.mode != 'edit' or not expected_source_key or source_key(project) != expected_source_key:
+            raise ProjectError('Scene animation source changed; refresh the editable scene')
+        view = preview_project(project, representation)
+        scene = self.scene_previews.preview(view,
+            lambda asset, *args, **kwargs: self.model_preview(asset, *args, effective_shape=True, project_view=view, **kwargs),
+            load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
+        scene.update(representation=representation, project_source_key=expected_source_key)
+        document = view.imports[view.active_scene]
+        actors = {a['semantic_id']: a for a in document['actors']}
+        overrides = {identifier: view.overrides[identifier]['AnimationChannels'] for identifier in actors
+                     if 'AnimationChannels' in view.overrides.get(identifier, {})}
+        catalog = None
+        def load(instance, asset):
+            nonlocal catalog
+            actor = actors.get(instance.get('source_actor_id'))
+            if actor is None or actor['model_reference'].get('asset_semantic_id') != asset['semantic_id']:
+                raise ProjectError('Scene animation model and source actor binding differ')
+            support = animation_capabilities(asset)
+            if instance['pose_kind'] in ('reference_party_idle', 'reference_global_loop'):
+                if support.get('supported') is not True or not support.get('clips'):
+                    raise ProjectError('Scene reference clip no longer matches its model')
+                preview = self.model_preview(asset, support['clips'][0]['id'], effective_shape=True, project_view=view)
+                preview['animation']['source_clip_id'] = preview['animation']['semantic_id']
+                return preview
+            if catalog is None:
+                catalog = load_scene_actor_animation_catalog(view.disc_path, document['scene']['name'])
+            initial_id = actor['placement_fields'].get('animation_id')
+            clip_id = f"animation://{document['scene']['name']}/scene-anm/{initial_id - 1:04d}" if type(initial_id) is int and initial_id > 0 else None
+            affected = any(value['animation_id'] == clip_id for value in overrides.values())
+            animation = (catalog.authored_bank_preview(actor, asset, overrides) if affected
+                         else catalog.animation_preview(actor, asset))
+            animation['source_clip_id'] = animation['semantic_id']
+            prepared = animation.pop('geometry'); prepared['frames'] = animation.pop('frames')
+            prepared['animation'] = animation
+            return self.model_preview(asset, prepared=prepared, effective_shape=True, project_view=view)
+        with _disc_context(view.disc_path):
+            report = prepare_scene_animation(project, scene, load, representation, expected_source_key)
+        if source_key(project) != expected_source_key:
+            raise ProjectError('Scene changed during animation preparation')
+        return report
+
     def scene_texture_proposal(self, asset_id: str, candidate: bytes, report: dict, key: str) -> dict:
         from copy import deepcopy
         from .scene_preview import source_key
@@ -640,6 +691,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/transition-graph-workspace.js': ('transition-graph-workspace.js', 'text/javascript'),
                  '/model-primitives.js': ('model-primitives.js', 'text/javascript'),
                  '/model-materials.js': ('model-materials.js', 'text/javascript'),
+                 '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
@@ -1630,6 +1682,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                         frame_index, clip_fps = _animation_export_choice(body)
                     preview = self.server.actor_animation_preview(body["entity_id"], body.get("representation", "imported"))
                     self._json(200, self.server.export_preview(preview, frame_index, clip_fps) if exporting else preview)
+                    return
+                if route == '/api/scene-animation-preview':
+                    if set(body) != {'representation', 'source_key'} or body['representation'] not in ('retail', 'authored') or not isinstance(body['source_key'], str):
+                        raise ProjectError('Scene animation requires an explicit representation and current source key')
+                    self._json(200, self.server.scene_animation_preview(body['representation'], body['source_key']))
                     return
                 if route in ("/api/scene-preview", "/api/export/scene"):
                     exporting = route == "/api/export/scene"

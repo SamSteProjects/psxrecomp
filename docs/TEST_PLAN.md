@@ -7,6 +7,18 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Coordinated scene animation:** Six focused Python cases and the Node lifecycle
+suite pass. Actual Dolk2 integrated preparation loads 69 actors/15 shared tracks
+and 46,015 frame vertices in Retail and Authored views. Independent Town01 source
+proof covers 42 actors/22 tracks and 67,947 frame vertices. Sampled poses retain
+source geometry, ordered object ranges and material mappings; authored frame zero
+matches the composed shared bank and differs from Retail. Browser checks cover
+multi-mesh sampling, unchanged canonical/placement/material/history, Play/Pause,
+paused command rejection, exact Restore, narrow layout and representation guards.
+No page/HTTP errors or game launches. Runtime timing/scheduling and live clip
+identity remain unverified. Private evidence: scene-animation-20261002/parent
+and research under local-output/sdk-20260909/.
+
 **Source-qualified model materials:** 22 focused Python tests (nine new material
 cases), three Node workflow suites and six real-browser checks pass. Checks cover
 masked CLUT/TPage fields, shared group ABE, strict legacy reads, v2 material splits,

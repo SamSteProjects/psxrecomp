@@ -2,6 +2,18 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Coordinated scene animation (2026-10-02):** The central viewport now previews
+eligible actors together with Play/Pause, integer scrubbing, an explicit preview
+rate and exact Stop/Restore. Retail and Authored projections retain their source
+identity, placements, material/texture associations and separate shared channel
+contributions. Sampling is transient; persistent editing is blocked until Restore.
+Dolk2 covers 69/72 actors in 15 tracks; Town01 source proof covers 42/52 in 22.
+Static/unavailable actors stay explicit. Six Python tests, the Node lifecycle
+suite and integrated browser checks pass, with no game launched. Effective-channel
+frame zero matches the independently composed bank; Retail stays distinct.
+Retail timing, scheduling and current live animation remain unverified. See
+[timeline workflow](legaia-scene-animation.md).
+
 **Source-qualified model materials (2026-10-02):** The model inspector now edits
 existing CLUT/page/depth bindings and shared packet-group ABE with exact masks,
 source/current Review, proposed model/posed-scene inspection and explicit Apply.

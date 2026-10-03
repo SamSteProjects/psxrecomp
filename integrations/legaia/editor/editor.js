@@ -27,6 +27,7 @@ import {openAnimationGlbEditor} from '/animation-glb.js';
 import {openModelGlbEditor} from '/model-glb.js';
 import {openModelMaterialsEditor} from '/model-materials.js';
 import {openTexturePngEditor} from '/texture-png.js';
+import {createSceneAnimationController} from '/scene-animation.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
@@ -54,6 +55,8 @@ const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const format = (value) => numeric(value) ? String(Math.round(value * 1000) / 1000) : 'Unknown';
 let state = {project:{}, scene:null, assets:[], selection:{}, history:{}, capabilities:{}};
 let busy = false, toastTimer, lastSceneId, grid = true;
+let sceneAnimationController=null;
+let sceneAnimationWriteGuard=false;
 let worldmapControls=null,worldmapDraftPending=false;
 let projectAssetControls=null;
 let sceneResourceSelection=null;
@@ -636,12 +639,17 @@ function setBusy(value) {
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
   texturePngEditor?.updateState();
+  sceneAnimationController?.updateState();
   modelMaterialsEditor?.updateState();
   if($('shape-materials'))$('shape-materials').disabled=value||Boolean(shapeDraft)||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
   savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
 }
 async function api(path, payload, {dialog,success}={}) {
   if(busy) return false;
+  if(sceneAnimationController?.active()&&path!=='/api/selection'){
+    if(['/api/scene','/api/project/open','/api/project/new','/api/import','/api/mode'].includes(path))sceneAnimationController.stop();
+    else{notify('Stop the scene animation preview before changing project or runtime state.',true);return false;}
+  }
   if(worldmapDraftPending&&['/api/undo','/api/redo','/api/project/save','/api/build','/api/scene','/api/project/open','/api/import','/api/mode','/api/project/new'].includes(path)){notify('Apply or discard the world-map landmark draft first.',true);return false;}
   if(liveFollow.active){
     const reason=['/api/project/new','/api/project/open','/api/import'].includes(path)?'Project changed':path==='/api/scene'?'Scene changed':path==='/api/mode'?'Mode changed':path==='/api/run/stop'?'Owned runtime stopped':path.startsWith('/api/runtime')||path==='/api/run/attach'?'Manual runtime action':null;
@@ -809,8 +817,8 @@ function frameEnvironmentGroup(report){
   camera.distance=Math.max(800,Math.hypot(...['x','y','z'].map(axis=>Math.max(...corners.map(p=>p[axis]))-Math.min(...corners.map(p=>p[axis]))))*1.5);cameraRevision++;draw();
 }
 function frameEnvironment(){const item=selectedEnvironment();if(item)frame({id:item.entity_id,components:{Transform:{imported:{position:item.position}}}});}
-function canEditAppearance(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
-function canEdit(){return (state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
+function canEditAppearance(){return !sceneAnimationController?.active()&&(state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.actor_appearance===true;}
+function canEdit(){return !sceneAnimationController?.active()&&(state.project?.mode ?? 'edit').toLowerCase()==='edit' && state.capabilities?.edit_transform!==false;}
 function displayPosition(value){const p={x:numeric(value?.x)?value.x:0,y:numeric(value?.y)?value.y:0,z:numeric(value?.z)?value.z:0},matrix=activeScenePreview()?.position_to_display;return matrix?{x:matrix[0]*p.x+matrix[1]*p.y+matrix[2]*p.z+matrix[3],y:matrix[4]*p.x+matrix[5]*p.y+matrix[6]*p.z+matrix[7],z:matrix[8]*p.x+matrix[9]*p.y+matrix[10]*p.z+matrix[11]}:p;}
 function position(entity){
   if(scenePose?.proposalDocument&&scenePose.inspectionLayer==='proposed'&&scenePose.key===sceneKey&&scenePreviewCurrent()){
@@ -1167,7 +1175,7 @@ async function refreshScenePreview(){
     if(waiting&&waiting.key===key&&waiting.scene===state.scene?.id&&waiting.project===state.project?.path&&waiting.revision===cameraRevision&&!drag)frame(waiting.entity);
     else if(!preserveCamera&&revision===cameraRevision&&!drag)frame();else draw();
   }catch(error){if(error.name!=='AbortError'&&sceneRequestKey()===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
-  finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();draw();}}
+  finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();sceneAnimationController?.updateState();draw();}}
 }
 function renderHierarchy(){
   const list=$('hierarchy');list.setAttribute('aria-multiselectable','true');list.replaceChildren();
@@ -1349,6 +1357,7 @@ async function openFlagReferences(projectWide=false){
 function synchronizeResources(){
   modelPrimitiveEditor?.updateState();
   modelMaterialsEditor?.updateState();
+  sceneAnimationController?.updateState();
   if(animationGlbEditor){if(selected()?.id!==animationGlbEntityId)animationGlbEditor.dispose();else animationGlbEditor.updateState();}
   modelGlbEditor?.updateState();
   texturePngEditor?.updateState();
@@ -3660,6 +3669,36 @@ const modelView={yaw:.55,pitch:-.18,zoom:1,center:[0,0,0],radius:1};
 let modelSceneContext=null,modelFileReturn=null,scenePoseTick=null,scenePoseClock=null;
 const scenePoseBar=document.createElement('div');scenePoseBar.hidden=true;scenePoseBar.innerHTML='<span></span> <input type="range" min="0" value="0" aria-label="Scene pose frame"> <button type="button" data-play>Play scene preview</button> <label>Preview fps <select aria-label="Scene preview rate"><option>5</option><option selected>10</option><option>15</option><option>30</option><option>60</option></select></label> <button type="button" data-restore>Restore scene preview</button> <button type="button" data-return-file hidden>Return to animation file</button>';$('frame-selected').after(scenePoseBar);
 const sceneInspectionLayer=document.createElement('label');sceneInspectionLayer.hidden=true;sceneInspectionLayer.innerHTML='Inspection layer <select aria-label="Scene inspection layer"><option value="proposed">Proposed · not applied</option><option value="current">Current authored scene</option></select>';scenePoseBar.querySelector('[data-restore]').before(sceneInspectionLayer);
+sceneAnimationController=createSceneAnimationController({
+  getContext:()=>({projectPath:state.project?.path,sceneId:state.scene?.id??null,mode:state.project?.mode,sourceKey:state.scene_preview_source_key,sceneSourceKey:scenePreview?.source_key??null,representation:sceneRepresentation,
+    ready:!!(state.capabilities?.scene_animation_preview&&scenePreviewCurrent()&&sceneModelsReady()),
+    canStart:!scenePose&&!shapeDraft&&!actorGroupInspection&&!scenePlacementInspection&&!environmentGroupInspection&&!document.querySelector('dialog[open]')}),
+  busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
+  onStatus:status=>{if(status.active!==sceneAnimationWriteGuard){sceneAnimationWriteGuard=status.active;renderInspector();updateSceneBadge();}},
+  onLoad:async(report,{isCurrent,signal})=>{
+    if(signal.aborted||!isCurrent()||!scenePreviewCurrent()||!sceneModelsReady()||scenePose||report.scene_source_key!==scenePreview.source_key||report.project_source_key!==state.scene_preview_source_key||report.representation!==sceneRepresentation)throw new Error('Scene animation no longer matches the loaded scene.');
+    const byGeometry=new Map(scenePreview.assets.map(a=>[a.geometry_key,a])),byEntity=new Map(scenePreview.entities.map(e=>[e.entity_id,e]));
+    for(const row of report.instances){const current=byEntity.get(row.entity_id);if(!current?.renderable||current.geometry_key!==row.geometry_key||current.asset_id!==row.asset_id||current.source_actor_id!==row.source_actor_id)throw new Error('Animation instance differs from the loaded source binding.');}
+    for(const track of report.tracks){const current=byGeometry.get(track.geometry_key);if(current?.asset_id!==track.asset_id||JSON.stringify(current.preview.vertices)!==JSON.stringify(track.frames[0]))throw new Error('Animation baseline differs from the loaded source pose.');}
+    cancelViewportGesture();scenePose={kind:'scene-animation',key:sceneKey,report};
+    const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)throw new Error(failures.join('; '));
+    draw();return true;
+  },
+  onSample:(samples,report)=>{
+    if(scenePose?.kind!=='scene-animation'||scenePose.report!==report||scenePose.key!==sceneKey||!scenePreviewCurrent()||!sceneModelsReady()||report.project_source_key!==state.scene_preview_source_key||sceneRenderer.lost)return false;
+    for(const row of samples){const mesh=sceneRenderer.meshes.get(row.geometry_key);if(!mesh||row.vertices.length!==mesh.vertexCount)return false;}
+    for(const row of samples)if(!sceneRenderer.updateVertices(row.geometry_key,row.vertices))return false;
+    draw();return true;
+  },
+  onRestore:report=>{
+    if(scenePose?.kind!=='scene-animation'||scenePose.report!==report)return;
+    scenePose=null;if(scenePreviewCurrent()&&sceneRenderer&&!sceneRenderer.lost){const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');}
+    renderInspector();draw();
+  }
+});
+document.querySelector('.viewport-toolbar').after(sceneAnimationController.element);
+document.addEventListener('beforetoggle',event=>{if(event.target instanceof HTMLDialogElement&&event.newState==='open'&&sceneAnimationController.active())sceneAnimationController.stop();},true);
+document.addEventListener('close',event=>{if(event.target instanceof HTMLDialogElement)sceneAnimationController.updateState();},true);
 function configureSceneInspectionComparison(proposalDocument=null){
   sceneInspectionLayer.hidden=!proposalDocument;sceneInspectionLayer.querySelector('select').value='proposed';
   sceneInspectionLayer.querySelector('[value=proposed]').textContent=scenePose?.preview?.frames?'Inspected animation · not applied':'Proposed · not applied';
@@ -3682,6 +3721,7 @@ sceneInspectionLayer.querySelector('select').onchange=()=>{
 };
 const showScenePose=document.createElement('button');showScenePose.type='button';showScenePose.id='show-frame-in-scene';showScenePose.textContent='Inspect animation in scene';$('animation-frame-label').after(showScenePose);
 function clearScenePose(restore=true,retainReview=false){
+  if(scenePose?.kind==='scene-animation'&&sceneAnimationController?.active()){sceneAnimationController.stop();return;}
   stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;sceneInspectionLayer.hidden=true;
   if(!retainReview)previous?.onDiscard?.();
   if(restore&&previous&&scenePreviewCurrent()&&sceneRenderer){const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');}

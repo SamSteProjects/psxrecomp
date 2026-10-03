@@ -2,6 +2,16 @@
 
 Current scene-editor status (2026-10-02):
 
+**Coordinated scene animation:** FUNCTIONAL / OFFLINE PREVIEW. Shared qualified
+clips animate all eligible scene actors together, with integer scrubbing and
+explicit preview-rate Play/Pause. Exact Restore, source withdrawal and persistent
+edit guards protect the canonical scene. Effective model materials, initial
+assignments and shared channel contributions compose through existing services.
+Dolk2 69/72 actors, 15 tracks; Town01 source proof 42/52, 22 tracks. Static and
+unsupported actors remain explicit. Current live clips, retail playback cadence,
+script scheduling and runtime appearance remain pending. See
+[workflow](legaia-scene-animation.md).
+
 **Source-qualified model materials:** FUNCTIONAL / EXISTING LAYOUT. Semantic
 CLUT/page/depth and shared group ABE drafts receive exact source/current audits,
 fresh material table/texture associations, model and posed-scene inspection, and

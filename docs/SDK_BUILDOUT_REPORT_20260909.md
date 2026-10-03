@@ -8,6 +8,14 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Coordinated scene animation:** Play/Pause and scrubbing now animate eligible
+actors in the central viewport using shared source-qualified tracks. Stop restores
+the exact canonical scene; sampling preserves placement/materials/history and
+blocks persistent edits. Retail and Authored channels remain distinct. Dolk2
+loads 69 actors/15 tracks; independent Town01 evidence covers 42/22. Six Python
+tests, the Node suite and browser workflow pass. Runtime scheduling/timing and
+current live clip identity remain pending. See [workflow](legaia-scene-animation.md).
+
 **Source-qualified model materials:** Existing CLUT/page/depth fields and shared
 group ABE now connect to source/current Review, model/posed-scene proposal, Apply,
 history, Save/Open and Build. Source ABR remains read-only. An actual Dolk2 model

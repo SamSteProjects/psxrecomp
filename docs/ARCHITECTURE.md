@@ -6,6 +6,19 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Coordinated scene animation (2026-10-02) adds a transient viewport service over
+the existing verified scene graph. `sdk/scene_animation.py` groups exact existing
+geometry bindings into bounded source-qualified tracks; the server composes
+effective source assignments, shared channel contributions and model materials
+through existing decoders. The UI receives sampled actor-local vertices and
+stable animation IDs, never guest pointers or raw animation bank bytes.
+`editor/scene-animation.js` owns preparation, shared preview ticks, source guards
+and playback controls. The parent editor owns renderer state and an exclusive
+inspection token, loads a detached scene copy, updates shared mesh vertices and
+restores the canonical scene. Persistent commands are gated throughout transient
+inspection. Preview sampling produces no authored or generated project state;
+it does not model runtime script scheduling or assert retail timing.
+
 Field branch authoring (2026-10-02) adds `BranchAuthoringContext` over the
 existing verified unique P1/P2 MAN owner snapshot. Retail executing-handler
 arithmetic overrides three incorrect pinned decoder interpretations without

@@ -4,6 +4,14 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+Use **Preview scene animations** in the viewport to play all eligible initial
+reference clips together, scrub integer source samples and Stop/Restore the exact
+scene. The explicit preview rate does not establish retail timing. Unsupported
+actors remain visible in the coverage report. Sampling preserves instance
+placement/materials and blocks persistent editing until stopped; Retail and
+Authored representations stay separate. See the
+[scene timeline workflow](../../docs/legaia-scene-animation.md).
+
 Imported models support **Edit source material bindings**: edit qualified
 CLUT/page/depth fields and packet-group semitransparency, Review exact source
 changes, inspect the proposed model or posed scene, and Apply through ordinary
