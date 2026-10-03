@@ -36,7 +36,6 @@ def _current(project, binding):
 
 def _snapshot(project, asset_id):
     from importer.model_materials import inspect_model_materials
-    from importer.model_authoring import replace_model_content
     from importer.pipeline import _disc_context
     from .scene_preview import source_key
     if project.mode != 'edit':
@@ -53,13 +52,21 @@ def _snapshot(project, asset_id):
         retail = project._model_source(asset_id, project.active_scene)
         authored = project.model_overrides.get(asset_id)
         effective = project.read_model_replacement(asset_id, authored) if authored else retail
-        replace_model_content(retail, sha256(retail).hexdigest(), effective, allow_normal_references=True)
+        project._model_candidate_changes(asset_id, retail, effective)
         current = inspect_model_materials(effective)
         original = inspect_model_materials(retail)
     binding = dict(schema_version='legaia.model-material-source.v1', asset_id=asset_id,
                    scene_id=project.active_scene, source_sha256=sha256(retail).hexdigest(),
                    effective_sha256=sha256(effective).hexdigest(), project_source_key=key,
                    objects=current['objects'], retail_objects=original['objects'], limitations=list(LIMITATIONS))
+    if authored and authored['format'] == 'tmd-face-removal-v1':
+        from .model_reference_faces import mapping
+        faces = [mapping(retail, effective, authored, obj['object_index']) for obj in current['objects']]
+        groups = []
+        for obj, face_map in zip(original['objects'], faces):
+            retained = {row['retail_index'] for row in face_map if row['current_index'] is not None}
+            groups.append([group['group_index'] for group in obj['groups'] if any(row['primitive_index'] in retained for row in group['primitives'])])
+        binding.update(schema_version='legaia.model-material-source.v2', face_mappings=faces, group_mappings=groups)
     _bounded(binding, 'Model material source'); _current(project, binding)
     return dict(binding=binding, retail=retail, effective=effective)
 
@@ -106,7 +113,6 @@ def donor_models(project, expected_source_key):
 
 def prepare(project, asset_id, edits, expected_sha256, expected_source_key):
     from importer.model_materials import patch_model_materials
-    from importer.model_authoring import replace_model_content
     from importer.assets import decode_tmd
     if not isinstance(edits, list) or not 1 <= len(edits) <= 256:
         raise ProjectError('Model material review requires 1 to 256 source edits')
@@ -115,7 +121,7 @@ def prepare(project, asset_id, edits, expected_sha256, expected_source_key):
     if expected_sha256 != binding['effective_sha256'] or expected_source_key != binding['project_source_key']:
         raise ProjectError('Model material source or current model changed; reopen the editor')
     candidate, pending = patch_model_materials(source['effective'], expected_sha256, edits)
-    _, changes = replace_model_content(source['retail'], binding['source_sha256'], candidate, allow_normal_references=True)
+    changes = project._model_candidate_changes(asset_id, source['retail'], candidate)
     if len(changes) > MAX_AUDIT or len(pending) > MAX_AUDIT:
         raise ProjectError('Model material changes exceed the bounded audit')
     if any(row['kind'] != 'primitive_group' and not (row['kind'] == 'primitive' and row['field'] in ('clut', 'tpage')) for row in pending):

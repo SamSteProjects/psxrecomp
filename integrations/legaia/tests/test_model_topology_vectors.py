@@ -92,3 +92,25 @@ class ModelTopologyVectorTests(unittest.TestCase):
                 self.assertEqual(self.effective(),bytes(expected))
                 self.project.undo();self.assertEqual(self.effective(),self.current)
                 self.project.redo();self.assertEqual(self.effective(),bytes(expected));self.project.undo()
+
+    def test_material_review_after_dropped_group_preserves_removal(self):
+        from contextlib import nullcontext
+        from unittest.mock import patch
+        from sdk.model_materials import snapshot,prepare,apply
+        current,removed=remove_faces(self.original,self.current,self.removed,[dict(object_index=0,primitive_index=0)])
+        self.current=current;self.removed=removed
+        binding=self.project.model_overrides[self.asset];binding.update(asset_sha256=sha256(current).hexdigest(),removed_faces=removed)
+        (self.project.root/'Authored'/'Models'/(binding['asset_sha256']+'.tmd')).write_bytes(current)
+        self.project.disc_path='private';self.project.imports[self.project.active_scene]={'assets':{'models':[{'semantic_id':self.asset}]}}
+        key='a'*64
+        edits=[dict(kind='primitive',object_index=0,primitive_index=0,values={'page_column':3}),dict(kind='group',object_index=0,group_index=0,values={'semi_transparent':False})]
+        with patch('importer.pipeline._disc_context',return_value=nullcontext()),patch('sdk.scene_preview.source_key',return_value=key):
+            source=snapshot(self.project,self.asset)
+            self.assertEqual(source['schema_version'],'legaia.model-material-source.v2');self.assertEqual(source['group_mappings'],[[1]])
+            self.assertEqual(source['face_mappings'][0][2],dict(retail_index=2,current_index=0))
+            candidate,report=prepare(self.project,self.asset,edits,sha256(current).hexdigest(),key)
+            self.assertTrue(any(row['kind']=='primitive_removal' for row in report['coordinate_changes']))
+            self.assertTrue(any(row['kind']=='primitive' and row['primitive_index']==2 for row in report['coordinate_changes']))
+            with self.assertRaises(ProjectError):apply(self.project,self.asset,edits,sha256(current).hexdigest(),key,'0'*64)
+            apply(self.project,self.asset,edits,sha256(current).hexdigest(),key,report['review_key'])
+            self.assertEqual(self.effective(),candidate);self.project.undo();self.assertEqual(self.effective(),current);self.project.redo();self.assertEqual(self.effective(),candidate)

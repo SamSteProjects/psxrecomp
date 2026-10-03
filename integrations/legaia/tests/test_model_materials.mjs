@@ -54,3 +54,12 @@ try{
   await open();change('Texture page column',2);const closedLate=deferred();queue=[closedLate.promise];const waiting=action(control,'review').onclick(),closedSignal=calls.at(-1).signal,errorCount=errors.length;control.dialog.close();closedLate.resolve({error:'Late closed error'});assert.equal(await waiting,false);assert.equal(closedSignal.aborted,true);assert.equal(errors.length,errorCount);assert.equal(isBusy,false);
 }finally{for(const [key,value] of Object.entries(saved)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 console.log('Model material source/mask/domain and shared group qualification; batched drafts, Review/no-op/reset, immutable model/scene Return, exact Apply state and stale/abort/busy lifecycle passed.');
+
+const dropped=snapshot();dropped.schema_version='legaia.model-material-source.v2';
+dropped.objects[0].groups=[{...structuredClone(dropped.retail_objects[0].groups[1]),group_index:0,byte_offset:40,primitives:[{...untextured(),primitive_index:0,byte_offset:48}]}];
+dropped.face_mappings=[[{retail_index:0,current_index:null},{retail_index:1,current_index:null},{retail_index:2,current_index:0}]];dropped.group_mappings=[[1]];
+assert.equal(decodeModelMaterialSource(dropped,assetId,context).group_mappings[0][0],1);
+for(const mutate of [v=>v.group_mappings=[[0]],v=>v.face_mappings[0][2].current_index=1,v=>v.objects[0].groups[0].flags=0x19]){const bad=structuredClone(dropped);mutate(bad);assert.throws(()=>decodeModelMaterialSource(bad,assetId,context));}
+const compactReview=report([groupEdit()],dropped);compactReview.coordinate_changes=[{kind:'primitive_removal',object_index:0,primitive_index:0},{kind:'primitive_removal',object_index:0,primitive_index:1},{...compactReview.changes_from_current[0],group_index:1,byte_offset:107,primitive_indices:[2]}];
+decodeModelMaterialReview(compactReview,dropped,context,[groupEdit()]);compactReview.coordinate_changes[0].primitive_index=2;assert.throws(()=>decodeModelMaterialReview(compactReview,dropped,context,[groupEdit()]));
+console.log('Retained material group/face mapping and actual Retail removal audit guards passed.');

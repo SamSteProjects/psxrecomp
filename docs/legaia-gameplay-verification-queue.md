@@ -1,5 +1,15 @@
 # Deferred gameplay verification
 
+## Material editing after removal - deferred gameplay
+
+Ready offline fixture: `local-output/sdk-20260909/model-removal-materials-20261003/parent/browser-project/`.
+Package SHA256 `9458a47b0aa62d030a5c62eb017157c2adc8ffe889895b35c0b2b530dbf40150`.
+Town01 model0009 keeps its removed quad and prior typed edits. Current0 / Retail1
+CLUT column9→10 and page column10→11 change two words; Current group0 enables ABE
+across ten retained faces. Exact candidate and compressed-neighbor readback pass.
+Later verify palette/VRAM associations, caller blend state and appearance across
+shared instances/scene transitions. The package is not installed or run.
+
 ## Reference retargeting after removal - deferred gameplay
 
 Ready offline fixture: `local-output/sdk-20260909/model-removal-retarget-20261003/parent/browser-project/`.
