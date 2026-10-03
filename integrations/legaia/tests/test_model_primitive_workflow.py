@@ -117,7 +117,7 @@ class ModelPrimitiveProjectWorkflow(unittest.TestCase):
     def test_read_only_preview_noop_and_detached_source_layers(self):
         before = self.snapshot()
         current, noop = self.review([])
-        self.assertEqual(current['schema_version'], 'legaia.model-primitives.v1')
+        self.assertEqual(current['schema_version'], 'legaia.model-primitives.v2')
         self.assertEqual(current['source_sha256'], digest(self.source))
         self.assertEqual(current['effective_sha256'], digest(self.source))
         self.assertEqual(current['project_source_key'], source_key(self.project))
@@ -218,7 +218,7 @@ class ModelPrimitiveProjectWorkflow(unittest.TestCase):
         self.assertEqual(final['objects'][0]['primitives'][0]['vertices'], edits[0]['vertices'])
         self.assertEqual(final['objects'][0]['primitives'][0]['uvs'], edits[0]['uvs'])
         self.assertEqual(final['objects'][0]['primitives'][0]['colors'], edits[0]['colors'])
-        self.assertEqual(final['retail_objects'], inspect_model_primitives(self.source)['objects'])
+        self.assertEqual(final['retail_objects'], inspect_model_primitives(self.source, include_normal_references=True)['objects'])
         self.assertNotEqual(self.effective(), effective)
         self.assertEqual(decode_tmd(self.effective())['vertices'][2], [20, 30, 40])
         self.assertEqual(self.project.imports, self.imported)
@@ -269,7 +269,7 @@ class ModelPrimitiveProjectWorkflow(unittest.TestCase):
                  'entities': [{'entity_id': ACTOR, 'asset_id': ASSET, 'renderable': True, 'geometry_key': 'pose'}],
                  'assets': [{'asset_id': ASSET, 'geometry_key': 'pose', 'preview': geometry}]}
         scene_before = deepcopy(scene)
-        row = inspect_model_primitives(self.source)['objects'][0]['primitives'][0]
+        row = inspect_model_primitives(self.source, include_normal_references=True)['objects'][0]['primitives'][0]
         uvs = deepcopy(row['uvs'])
         uvs[0][0] = 100
         edits = [{'object_index': 0, 'primitive_index': 0, 'uvs': uvs}]

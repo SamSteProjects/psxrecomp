@@ -77,3 +77,15 @@ try{
   const large=source();for(const layer of ['objects','retail_objects'])large[layer][0].primitives=Array.from({length:300},(_,i)=>({...structuredClone(source().objects[0].primitives[0]),primitive_index:i,byte_offset:100+i*40}));queue=[large];control=openModelPrimitiveEditor({...settings,initial:{object_index:0,primitive_index:299}});assert.equal(await control.ready,true);assert.equal(input(control,'Model primitive').children.length,44);assert.equal(input(control,'Model primitive').value,'299');assert.equal(action(control,'next-page').disabled,true);assert.equal(action(control,'previous-page').onclick(),true);assert.equal(input(control,'Model primitive').children.length,256);input(control,'Corner 0 local vertex').value='1';input(control,'Corner 0 local vertex').oninput();assert.equal(action(control,'next-page').onclick(),false);control.dispose();
 }finally{for(const [key,value] of Object.entries(globals)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 console.log('Model primitive source/layout/draft/audit validation and detached data; review hashes, reset, bounded fields, busy/stale/close/Apply and scene Return/Restore lifecycle passed.');
+
+const normalSource=source();normalSource.schema_version='legaia.model-primitives.v2';
+for(const layer of ['objects','retail_objects']){normalSource[layer][0].normal_count=4;Object.assign(normalSource[layer][0].primitives[0],{flags:0x10,colors:null,baked_colors:false,normal_indices:[1]});}
+decodeModelPrimitives(normalSource,assetId,context);
+const normalValues={vertices:[0,1,2],uvs:normalSource.objects[0].primitives[0].uvs,normal_indices:[3]};
+const normalDraft=modelPrimitiveDraft(normalSource,0,0,normalValues);
+for(const indices of [[4],[true],[1,2],[-1]])assert.throws(()=>modelPrimitiveDraft(normalSource,0,0,{...normalValues,normal_indices:indices}));
+const normalReport=preview(normalSource,{...normalDraft,normal_indices:undefined});normalReport.proposed_sha256=candidateHash;normalReport.changes_from_current=[{kind:'primitive',object_index:0,primitive_index:0,group_index:0,field:'normal_index',corner_index:0,byte_offset:112,before_value:1,after_value:3}];normalReport.coordinate_changes=structuredClone(normalReport.changes_from_current);
+decodeModelPrimitivePreview(normalReport,normalSource,context,[normalDraft]);
+const wrongNormalWord=structuredClone(normalReport);wrongNormalWord.changes_from_current[0].byte_offset=114;assert.throws(()=>decodeModelPrimitivePreview(wrongNormalWord,normalSource,context,[normalDraft]));
+for(const mutate of [v=>v.objects[0].normal_count=1,v=>v.objects[0].primitives[0].normal_indices=[1,2],v=>v.retail_objects[0].normal_count=5]){const bad=structuredClone(normalSource);mutate(bad);assert.throws(()=>decodeModelPrimitives(bad,assetId,context));}
+console.log('V2 flat normal-reference domain, unchanged topology and exact word audits passed.');

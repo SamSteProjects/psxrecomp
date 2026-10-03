@@ -74,9 +74,19 @@ def _qualified_model(data: bytes):
             'objects': objects}, sorted(vectors)
 
 
-def inspect_model_primitives(data: bytes) -> dict:
+def inspect_model_primitives(data: bytes, *, include_normal_references=False) -> dict:
     """Return detached packet identities and stored values without source payload."""
-    return _qualified_model(data)[0]
+    inspection = _qualified_model(data)[0]
+    if include_normal_references:
+        from .model_normal_references import _normal_field_locations
+        inspection['schema_version'] = 'legaia.model-primitives.v2'
+        for obj in inspection['objects']:
+            obj['normal_count'] = struct.unpack_from('<I', data, 24 + obj['object_index'] * 28)[0]
+            for row in obj['primitives']:
+                row['normal_indices'] = None if row['baked_colors'] else []
+        for field, _ in _normal_field_locations(data, inspection):
+            inspection['objects'][field['object_index']]['primitives'][field['primitive_index']]['normal_indices'].append(struct.unpack_from('<H', data, field['byte_offset'])[0] // 8)
+    return inspection
 
 
 def _primitive_field_locations(inspection: dict):
@@ -102,8 +112,8 @@ def _primitive_field_locations(inspection: dict):
 
 
 def patch_model_primitives(data: bytes, expected_sha256: str, edits: list[dict]):
-    """Patch existing face/UV/RGB fields while preserving every other byte."""
-    inspection = inspect_model_primitives(data)
+    """Patch existing face/UV/RGB/normal-reference fields while preserving every other byte."""
+    inspection = inspect_model_primitives(data, include_normal_references=True)
     if not isinstance(expected_sha256, str) or expected_sha256 != inspection['source_sha256']:
         raise ImportError('Model changed since primitive inspection; reopen the face editor')
     if not isinstance(edits, list) or len(edits) > MAX_PRIMITIVE_EDITS:
@@ -115,8 +125,8 @@ def patch_model_primitives(data: bytes, expected_sha256: str, edits: list[dict])
     for edit in edits:
         if (not isinstance(edit, dict) or
                 not {'object_index', 'primitive_index'} < set(edit) or
-                not set(edit) <= {'object_index', 'primitive_index', 'vertices', 'uvs', 'colors'}):
-            raise ImportError('Primitive edits require existing identities and vertices, UVs or colors only')
+                not set(edit) <= {'object_index', 'primitive_index', 'vertices', 'uvs', 'colors', 'normal_indices'}):
+            raise ImportError('Primitive edits require existing identities and vertices, UVs, colors or normal references only')
         if any(type(edit[key]) is not int for key in ('object_index', 'primitive_index')):
             raise ImportError('Primitive identities must be integer source indices')
         identity = edit['object_index'], edit['primitive_index']
@@ -133,7 +143,15 @@ def patch_model_primitives(data: bytes, expected_sha256: str, edits: list[dict])
                         for value in vertices)):
                 raise ImportError('Face references must fit the existing object and u16 SVECTOR offsets')
             struct.pack_into(f'<{corners}H', result, base + vi, *(value * 8 for value in vertices))
+        if 'normal_indices' in edit:
+            values, source = edit['normal_indices'], row['normal_indices']
+            if (source is None or not isinstance(values, list) or len(values) != len(source) or
+                    any(type(v) is not int or not 0 <= v < min(obj['normal_count'], 8192) for v in values)):
+                raise ImportError('Normal references must fit the existing lit packet and object normal table')
+            relative = (18 if corners == 3 else 20) if row['gouraud'] else (12 if corners == 3 else 20)
+            struct.pack_into(f'<{len(values)}H', result, base + relative, *(v * 8 for v in values))
         for field, width in (('uvs', 2), ('colors', 3)):
+
             if field not in edit:
                 continue
             values, source = edit[field], row[field]
@@ -145,4 +163,4 @@ def patch_model_primitives(data: bytes, expected_sha256: str, edits: list[dict])
                 at = base + ((uv + (0, 4, 8, 10)[corner]) if field == 'uvs' else corner * 4)
                 result[at:at + width] = bytes(value)
     from .model_authoring import replace_model_content
-    return replace_model_content(data, expected_sha256, bytes(result))
+    return replace_model_content(data, expected_sha256, bytes(result), allow_normal_references=True)

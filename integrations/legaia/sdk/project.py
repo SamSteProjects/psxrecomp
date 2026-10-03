@@ -1287,11 +1287,11 @@ class ProjectService:
         original = self._model_source(asset_id, self.active_scene)
         effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
                      if asset_id in self.model_overrides else original)
-        report = inspect_model_primitives(effective)
+        report = inspect_model_primitives(effective, include_normal_references=True)
         report.update(asset_id=asset_id, source_sha256=hashlib.sha256(original).hexdigest(),
                       effective_sha256=hashlib.sha256(effective).hexdigest(),
                       project_source_key=key,
-                      retail_objects=inspect_model_primitives(original)['objects'])
+                      retail_objects=inspect_model_primitives(original, include_normal_references=True)['objects'])
         if not key or source_key(self) != key:
             raise ProjectError('Scene changed during face inspection; reopen the editor')
         return report
