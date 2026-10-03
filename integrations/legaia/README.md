@@ -4,6 +4,13 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+Fresh external model GLB exports use profile v4. Edit stored normal XYZ through
+`_LEGAIA_SOURCE_NORMAL` in raw signed source words, keep shared aliases aligned,
+and retain unlit [32768,32768,32768] sentinels. Review reports exact word changes
+and rounding before Apply/history/Save/Build. Display NORMAL and retail lighting
+parity are outside this lane. See the
+[normal workflow](../../docs/legaia-model-glb-normals.md).
+
 Use **Review NPC output** after saving NPC drafts and supported source-facing
 edits to inspect their serialized composition and relocated byte offsets. Review
 writes no disc/package or history and launches no game. Normal Build still

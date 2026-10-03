@@ -3,7 +3,8 @@
 glTF 2.0 GLB/accessor semantics follow the Khronos specification. Source TMD
 packet offsets are owned by model_primitives, pinned to Andrew's d6e64c68.
 Positions, existing face references, UV bytes and source-bound baked RGB are
-imported. Normals, material words, allocation and opaque source bytes survive.
+imported along with qualified stored normal XYZ. Normal references, material
+words, allocation, vector padding and opaque source bytes survive.
 """
 from __future__ import annotations
 
@@ -31,11 +32,16 @@ CORNER_ID = '_LEGAIA_SOURCE_CORNER'
 COLOR_ID = '_LEGAIA_SOURCE_RGB'
 LEGACY_PROFILE_SCHEMA = 'legaia.model-glb-profile.v1'
 RGB_PROFILE_SCHEMA = 'legaia.model-glb-profile.v2'
-PROFILE_SCHEMA = 'legaia.model-glb-profile.v3'
+REFERENCE_PROFILE_SCHEMA = 'legaia.model-glb-profile.v3'
+PROFILE_SCHEMA = 'legaia.model-glb-profile.v4'
+NORMAL_ID = '_LEGAIA_SOURCE_NORMAL'
+NORMAL_SENTINEL = (32768, 32768, 32768)
 LIMITATIONS = [
-    'Positions, stored UVs, baked RGB and existing vertex references within the source object and packet layout.',
-    'Normals, material, image, command and opaque source bytes are retained.',
+    'Positions, stored UVs, baked RGB, stored normals and existing vertex references within the source object and packet layout.',
+    'Normal references, vector padding, material, image, command and opaque source bytes are retained.',
     'Edit raw byte-domain baked RGB through _LEGAIA_SOURCE_RGB; display COLOR_0 is not imported.',
+    'Edit stored signed-i16 normal XYZ through _LEGAIA_SOURCE_NORMAL in retail [x,y,z] axes, without the POSITION Y flip or normalization; display NORMAL is ignored.',
+    'Unlit corners retain the out-of-domain normal sentinel [32768,32768,32768]; no normal references or tables are allocated.',
     'No added or removed faces, skinning, animation, hierarchy or unapplied object transforms are imported.',
     'Keep all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
@@ -97,9 +103,45 @@ def _source(data):
     return inspection, vectors, geometry, triangles
 
 
+def _normal_bindings(data, inspection, *, include_values=False):
+    """Qualify fixed lit packet normal owners independently of display normals.
+
+    Pinned descriptor.rs: flat FT3 places n0 at12 before vertices14;
+    FT4 places n0 at20 after vertices12; Gouraud GT3/GT4 place their
+    contiguous normal indices after the existing vertex block at18/20.
+    Retail normal operands are 8-byte SVECTOR offsets, like vertex operands.
+    """
+    bindings, stored = {}, {}
+    for obj in inspection['objects']:
+        identity = obj['object_index']
+        normal_at, normal_count = struct.unpack_from('<2I', data, 12 + identity * 28 + 8)
+        normal_at += 12
+        if include_values:
+            stored[identity] = [struct.unpack_from('<3h', data, normal_at + n * 8) for n in range(normal_count)]
+        groups = {}
+        for row in obj['primitives']:
+            group = row['group_index']
+            groups.setdefault(group, data[row['byte_offset'] - 3] * 4)
+            if row['baked_colors']:
+                bindings[identity, row['primitive_index']] = [None] * row['corner_count']
+                continue
+            corners = row['corner_count']
+            count = corners if row['gouraud'] else 1
+            relative = (18 if corners == 3 else 20) if row['gouraud'] else (12 if corners == 3 else 20)
+            if relative + count * 2 > groups[group]:
+                raise ImportError('Model GLB lit normal references exceed their source packet')
+            indices = struct.unpack_from(f'<{count}H', data, row['byte_offset'] + relative)
+            if any(index % 8 or index // 8 >= normal_count for index in indices):
+                raise ImportError('Model GLB lit normal reference exceeds its source normal table')
+            indices = [index // 8 for index in indices]
+            bindings[identity, row['primitive_index']] = indices if row['gouraud'] else indices * corners
+    return bindings, stored
+
+
 def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
     """Export fresh unposed geometry with stable, per-corner source identifiers."""
     inspection, _vectors, geometry, triangles = _source(effective_tmd)
+    normal_bindings, stored_normals = _normal_bindings(effective_tmd, inspection, include_values=True)
     if preview.get('posed') or preview.get('coordinate_system') != 'retail_tmd_object_local':
         raise ImportError('Model GLB authoring requires unposed object-local geometry')
     for field in ('vertices', 'triangles', 'triangle_colors', 'triangle_uvs', 'triangle_materials'):
@@ -142,7 +184,7 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
         for primitive in doc['meshes'][node['mesh']]['primitives']:
             material = primitive['material']
             crop = crops[material]
-            ids, corners, uv, colors = [], [], [], []
+            ids, corners, uv, colors, normals = [], [], [], [], []
             for row in triangles[object_index]:
                 if row['material'] != material:
                     continue
@@ -151,6 +193,8 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
                     corners.append([row['corners'][c]])
                     source_row = row['primitive']
                     source_corner = row['corners'][c] % 4
+                    normal_index = normal_bindings[object_index, source_row['primitive_index']][source_corner]
+                    normals.append(stored_normals[object_index][normal_index] if normal_index is not None else NORMAL_SENTINEL)
                     colors.append(source_row['colors'][source_corner if source_row['gouraud'] else 0]
                                   if source_row['colors'] is not None else [-1, -1, -1])
                     if crop['textured']:
@@ -163,17 +207,18 @@ def export_model_glb(effective_tmd: bytes, preview: dict) -> tuple[bytes, dict]:
             attrs[VERTEX_ID] = accessor(ids, 1)
             attrs[CORNER_ID] = accessor(corners, 1)
             attrs[COLOR_ID] = accessor(colors, 3)
+            attrs[NORMAL_ID] = accessor(normals, 3)
             # Also carry UVs when texture association is unresolved. Ownership
             # follows source corner IDs, never external material assignments.
             if uv:
                 attrs['TEXCOORD_0'] = accessor(uv, 2)
     profile = {'schema_version': PROFILE_SCHEMA, 'effective_sha256': sha256(effective_tmd).hexdigest(),
                'coordinate_conversion': '[x,-y,z]; reverse triangle winding',
-               'attributes': {'vertex': VERTEX_ID, 'corner': CORNER_ID, 'color': COLOR_ID},
+               'attributes': {'vertex': VERTEX_ID, 'corner': CORNER_ID, 'color': COLOR_ID, 'normal': NORMAL_ID},
                'objects': [{'object_index': obj['object_index'], 'vertex_count': obj['vertex_count'],
                             'primitive_count': len(obj['primitives']),
                             'triangle_count': len(triangles[obj['object_index']])} for obj in inspection['objects']],
-               'uv_crops': crops, 'imported_fields': ['vertex_xyz', 'primitive_uv', 'primitive_rgb', 'primitive_vertex_indices']}
+               'uv_crops': crops, 'imported_fields': ['vertex_xyz', 'primitive_uv', 'primitive_rgb', 'primitive_vertex_indices', 'normal_xyz']}
     return _write_glb(doc, bytes(binary)), profile
 
 
@@ -235,8 +280,9 @@ def _profile(profile, data, inspection, geometry, triangles):
     expected_objects = [{'object_index': obj['object_index'], 'vertex_count': obj['vertex_count'],
                          'primitive_count': len(obj['primitives']),
                          'triangle_count': len(triangles[obj['object_index']])} for obj in inspection['objects']]
-    references_enabled = profile['schema_version'] == PROFILE_SCHEMA
-    color_enabled = profile['schema_version'] in (PROFILE_SCHEMA, RGB_PROFILE_SCHEMA)
+    normals_enabled = profile['schema_version'] == PROFILE_SCHEMA
+    references_enabled = profile['schema_version'] in (PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA)
+    color_enabled = profile['schema_version'] in (PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA, RGB_PROFILE_SCHEMA)
     expected_attributes = {'vertex': VERTEX_ID, 'corner': CORNER_ID}
     expected_fields = ['vertex_xyz', 'primitive_uv']
     if color_enabled:
@@ -244,7 +290,10 @@ def _profile(profile, data, inspection, geometry, triangles):
         expected_fields.append('primitive_rgb')
     if references_enabled:
         expected_fields.append('primitive_vertex_indices')
-    if (profile['schema_version'] not in (PROFILE_SCHEMA, RGB_PROFILE_SCHEMA, LEGACY_PROFILE_SCHEMA) or profile['effective_sha256'] != sha256(data).hexdigest() or
+    if normals_enabled:
+        expected_attributes['normal'] = NORMAL_ID
+        expected_fields.append('normal_xyz')
+    if (profile['schema_version'] not in (PROFILE_SCHEMA, REFERENCE_PROFILE_SCHEMA, RGB_PROFILE_SCHEMA, LEGACY_PROFILE_SCHEMA) or profile['effective_sha256'] != sha256(data).hexdigest() or
             profile['coordinate_conversion'] != '[x,-y,z]; reverse triangle winding' or
             profile['attributes'] != expected_attributes or
             profile['imported_fields'] != expected_fields or profile['objects'] != expected_objects):
@@ -263,13 +312,14 @@ def _profile(profile, data, inspection, geometry, triangles):
         for axis, dimension in enumerate(('width', 'height')):
             _integer(origin[axis], 0, 255, 'UV origin')
             _integer(crop[dimension], 1, 256 - origin[axis], 'UV dimension')
-    return crops, color_enabled, references_enabled
+    return crops, color_enabled, references_enabled, normals_enabled
 
 
 def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tuple[bytes, dict]:
-    """Recover source positions/UVs/RGB/references from IDs; reject topology and alias conflicts."""
+    """Recover source positions/UVs/RGB/references/normals from IDs; reject topology and alias conflicts."""
     inspection, vectors, geometry, triangles = _source(effective_tmd)
-    crops, color_enabled, references_enabled = _profile(profile, effective_tmd, inspection, geometry, triangles)
+    crops, color_enabled, references_enabled, normals_enabled = _profile(profile, effective_tmd, inspection, geometry, triangles)
+    normal_bindings, _stored_normals = _normal_bindings(effective_tmd, inspection) if normals_enabled else ({}, {})
     doc, binary = _read_glb(content)
     if doc.get('animations') or doc.get('skins') or doc.get('cameras'):
         raise ImportError('Model GLB authoring does not import animation, skinning or cameras')
@@ -288,9 +338,12 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
     reader = _Accessors(doc, binary)
     result = bytearray(effective_tmd)
     positions, uv_values, color_values, reference_values = {}, {}, {}, {}
+    normal_values = {}
     seen_objects, seen_meshes = set(), set()
     quantization = dict(vertex_max_error=0.0, uv_max_error=0.0,
                         color_max_error=0.0, quantized_component_count=0)
+    if normals_enabled:
+        quantization['normal_max_error'] = 0.0
     quantized_keys = set()
 
     def quantize(value, low, high, kind, key):
@@ -361,6 +414,26 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
             colors = reader.read(attrs.get(COLOR_ID), 3, 'source RGB') if color_enabled else None
             if colors is not None and len(colors) != len(values):
                 raise ImportError('Model GLB source RGB count differs from its positions')
+            normals = reader.read(attrs.get(NORMAL_ID), 3, 'source normals') if normals_enabled else None
+            if normals is not None and len(normals) != len(values):
+                raise ImportError('Model GLB source normal count differs from its positions')
+            if normals_enabled:
+                for normal_value, corner_value in zip(normals, corner_ids):
+                    owner = corner_value[0]
+                    if owner != int(owner) or int(owner) not in source_corners:
+                        raise ImportError('Model GLB source normal corner identity is invalid')
+                    row, corner = source_corners[int(owner)]
+                    normal_index = normal_bindings[identity, row['primitive_index']][corner]
+                    if normal_index is None:
+                        if tuple(normal_value) != NORMAL_SENTINEL:
+                            raise ImportError('Model GLB unlit normal sentinel must remain unchanged')
+                        continue
+                    key = identity, normal_index
+                    xyz = tuple(quantize(v, -32768, 32767, 'normal', ('normal', identity, normal_index, axis))
+                                for axis, v in enumerate(normal_value))
+                    if key in normal_values and normal_values[key] != xyz:
+                        raise ImportError('Model GLB shared source normal copies disagree after quantization')
+                    normal_values[key] = xyz
             if color_enabled:
                 # Validate every attribute row, including unused indexed seam
                 # copies, so an ignored index cannot hide an RGB alias conflict.
@@ -443,6 +516,10 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
             for (object_id, vertex_id), xyz in positions.items():
                 if object_id == identity:
                     struct.pack_into('<3h', result, offset + vertex_id * 8, *xyz)
+        elif normals_enabled and kind == 'normal':
+            for (object_id, normal_id), xyz in normal_values.items():
+                if object_id == identity:
+                    struct.pack_into('<3h', result, offset + normal_id * 8, *xyz)
     for field, _width in _primitive_field_locations(inspection):
         if references_enabled and field.get('field') == 'vertex_index':
             key = field['object_index'], field['primitive_index'], field['corner_index']
@@ -458,9 +535,14 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
     if len(changes) > 65536:
         raise ImportError('Model GLB changes exceed the source audit budget')
     quantization['quantized_component_count'] = len(quantized_keys)
-    return candidate, {'quantization': quantization, 'limitations': (list(LIMITATIONS) if references_enabled else [
-                           'Legacy v2 imports positions, stored UVs and baked RGB; vertex references are retained.',
-                           *LIMITATIONS[1:]]) if color_enabled else [
-                           'Legacy v1 imports positions and stored UVs only; baked RGB is retained.',
-                           *LIMITATIONS[3:]],
+    if normals_enabled:
+        limitations = list(LIMITATIONS)
+    else:
+        label = ('Legacy v3 imports positions, UVs, RGB and vertex references; stored normals are retained.'
+                 if references_enabled else
+                 'Legacy v2 imports positions, stored UVs and baked RGB; vertex references and stored normals are retained.'
+                 if color_enabled else
+                 'Legacy v1 imports positions and stored UVs only; RGB, vertex references and stored normals are retained.')
+        limitations = [label, *LIMITATIONS[5:]]
+    return candidate, {'quantization': quantization, 'limitations': limitations,
                        'changed_field_count': len(changes)}

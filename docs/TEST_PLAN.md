@@ -7,6 +7,26 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Source-bound GLB normal editing (2026-10-02):** Fresh model profile v4 adds
+`_LEGAIA_SOURCE_NORMAL` raw signed-i16 XYZ for existing lit packet normal owners.
+Shared flat/Gouraud aliases must agree after rounding. Retail axes remain
+[x,y,z], without POSITION's Y flip or normalization; unlit corners retain the
+out-of-domain [32768,32768,32768] sentinel. Display NORMAL is ignored. Normal
+references, padding, allocation and unrelated bytes remain unchanged. Review,
+Apply, undo/redo, Save/Open and normal Build use the existing model replacement
+workflow. Legacy v1-v3 codec behavior remains; SDK editing requires a fresh v4
+export. Retail normal-based lighting and gameplay acceptance remain pending.
+See [normal workflow](legaia-model-glb-normals.md).
+
+Validation: 27 focused Python tests passed with the private retail disc (no
+skips), plus Node workflow and frontend syntax checks. Twelve browser checks
+cover actual Blender no-op/edit review, proposed geometry, Apply/history/Save,
+540px layout, stale rejection and normal Build. Independent Blender 5.2.2
+readback changes only byte3332 for a shared flat normal and byte4640 for a
+Gouraud normal. Integrated Build preserves all decoded neighbors and the
+154,547-byte compressed capacity. No game was launched. Private proof:
+`local-output/sdk-20260909/model-glb-normals-20261002/`.
+
 **NPC facing composition and output review (2026-10-02):** Source script facing
 edits now compose with appended NPC drafts in compressed and streaming MAN
 carriers. Original record ownership is re-resolved after append; only the facing

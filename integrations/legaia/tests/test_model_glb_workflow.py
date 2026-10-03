@@ -31,7 +31,7 @@ from test_project_workflow import synthetic_scene
 ROOT = Path(__file__).resolve().parents[3]
 ASSET = 'asset://fixture/model/0'
 SCENE = 'scene://fixture'
-ZERO_QUANTIZATION = dict(vertex_max_error=0, uv_max_error=0, color_max_error=0,
+ZERO_QUANTIZATION = dict(vertex_max_error=0, uv_max_error=0, color_max_error=0, normal_max_error=0,
                          quantized_component_count=0)
 
 
@@ -237,7 +237,7 @@ class ModelGLBServiceTests(unittest.TestCase):
 
     def export_boundary(self, effective, preview):
         self.exports.append(deepcopy(preview))
-        return b'qualified-glb-boundary-mock', dict(schema_version='legaia.model-glb-profile.v3',
+        return b'qualified-glb-boundary-mock', dict(schema_version='legaia.model-glb-profile.v4',
                                                    effective_sha256=sha256(effective).hexdigest())
 
     def import_boundary(self, effective, content, profile):
@@ -330,11 +330,9 @@ class ModelGLBServiceTests(unittest.TestCase):
         self.assertEqual(unchanged['pending_changes'], [])
         with self.assertRaises(ProjectError):
             model_glb.apply_import(self.project, ASSET, b'qualified-glb-boundary-mock', new_binding, unchanged['review_key'])
-        # A reset cannot erase effective normals. Reset
-        # those separately through their source editor, then a GLB retail reset
-        # clears the model binding through normal replacement storage.
-        with self.assertRaisesRegex(ProjectError, 'normals'):
-            model_glb.preview_import(self.project, ASSET, b'retail', new_binding)
+        # Fresh v4 exports explicitly expose existing stored normal words.
+        normal_reset = model_glb.preview_import(self.project, ASSET, b'retail', new_binding)
+        self.assertTrue(any(row['kind'] == 'normal' for row in normal_reset['pending_changes']))
         self.project.set_model_replacement(ASSET, vertex_edit(self.source))
         _, reset_binding, _ = model_glb.export_model(self.project, ASSET)
         reset = model_glb.preview_import(self.project, ASSET, b'retail', reset_binding)
@@ -428,7 +426,10 @@ class ModelGLBServiceTests(unittest.TestCase):
     def test_source_owned_bytes_quantization_and_report_budgets_reject(self):
         _, binding, _ = model_glb.export_model(self.project, ASSET)
         before = self.state()
-        for content in (b'edit-normal', b'edit-opaque'):
+        normal = model_glb.preview_import(self.project, ASSET, b'edit-normal', binding)
+        self.assertTrue(any(row['kind'] == 'normal' for row in normal['pending_changes']))
+        self.assertEqual(self.state(), before)
+        for content in (b'edit-opaque',):
             with self.subTest(content=content), self.assertRaises((ProjectError, RetailImportError)):
                 model_glb.preview_import(self.project, ASSET, content, binding)
             self.assertEqual(self.state(), before)
@@ -436,6 +437,7 @@ class ModelGLBServiceTests(unittest.TestCase):
                       {**ZERO_QUANTIZATION, 'vertex_max_error': -1},
                       {**ZERO_QUANTIZATION, 'color_max_error': float('inf')},
                       {**ZERO_QUANTIZATION, 'color_max_error': -1},
+                      {**ZERO_QUANTIZATION, 'normal_max_error': float('inf')},
                       {**ZERO_QUANTIZATION, 'quantized_component_count': True},
                       {**ZERO_QUANTIZATION, 'quantized_component_count': 65537}):
             self.analysis['quantization'] = value

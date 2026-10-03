@@ -6,6 +6,14 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Model GLB profile v4 adds source-bound stored normal XYZ to the existing model
+replacement service. Custom attribute rows resolve immutable source corner
+owners and existing eight-byte normal-vector references; shared aliases must
+agree after signed-i16 quantization. Only normal XYZ words are written, retaining
+vector padding and references. Fresh export/review keys govern Apply and Build;
+legacy codecs keep their narrower fields. The viewport does not establish
+retail normal-based lighting parity. See [normal workflow](legaia-model-glb-normals.md).
+
 `sdk/draft_review.py` qualifies a current authored-state key, prepares existing
 NPC draft serializers in memory and returns metadata only. Both compressed and
 streaming serializers compose `FacingAuthoringContext.patch_appended` before

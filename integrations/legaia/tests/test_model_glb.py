@@ -7,10 +7,25 @@ import unittest
 from importer.animation_glb import _read_glb
 from importer.assets import decode_tmd
 from importer.core import ImportError
-from importer.model_glb import (VERTEX_ID, CORNER_ID, COLOR_ID, export_model_glb,
+from importer.model_glb import (VERTEX_ID, CORNER_ID, COLOR_ID, NORMAL_ID, export_model_glb,
                                 import_model_glb, _write_glb)
 from importer.model_primitives import inspect_model_primitives
-from test_model_primitives import synthetic
+from test_model_primitives import synthetic as _synthetic
+
+
+def synthetic(*args, **kwargs):
+    # The older primitive fixture deliberately fills nonvertex words with noise.
+    # Fresh normal exports need valid source byte-offset references.
+    data = bytearray(_synthetic(*args, **kwargs))
+    for obj in inspect_model_primitives(bytes(data))['objects']:
+        for row in obj['primitives']:
+            if row['baked_colors']:
+                continue
+            count = row['corner_count'] if row['gouraud'] else 1
+            relative = (18 if row['corner_count'] == 3 else 20) if row['gouraud'] else (12 if row['corner_count'] == 3 else 20)
+            struct.pack_into(f'<{count}H', data, row['byte_offset'] + relative, *(n * 8 for n in range(count)))
+    return bytes(data)
+
 
 
 def rewrite(glb, change):
@@ -45,9 +60,13 @@ class ModelGlbTests(unittest.TestCase):
                 rgb_profile = deepcopy(profile)
                 rgb_profile['schema_version'] = 'legaia.model-glb-profile.v2'
                 rgb_profile['imported_fields'].remove('primitive_vertex_indices')
+                rgb_profile['imported_fields'].remove('normal_xyz')
+                del rgb_profile['attributes']['normal']
                 self.assertEqual(import_model_glb(source, glb, rgb_profile)[0], source)
                 legacy = deepcopy(profile)
                 legacy['schema_version'] = 'legaia.model-glb-profile.v1'
+                legacy['imported_fields'].remove('normal_xyz')
+                del legacy['attributes']['normal']
                 del legacy['attributes']['color']
                 legacy['imported_fields'].remove('primitive_rgb')
                 legacy['imported_fields'].remove('primitive_vertex_indices')
@@ -119,7 +138,7 @@ class ModelGlbTests(unittest.TestCase):
         def edit(doc, binary):
             primitive = doc['meshes'][0]['primitives'][0]
             # Rebuild the required attributes with an extra unused corner-2 row.
-            for attribute in ('POSITION', VERTEX_ID, CORNER_ID, COLOR_ID, 'TEXCOORD_0'):
+            for attribute in ('POSITION', VERTEX_ID, CORNER_ID, COLOR_ID, NORMAL_ID, 'TEXCOORD_0'):
                 original = rows(doc, binary, primitive, attribute)
                 data = [list(value) for _, value in original]
                 corner_rows = rows(doc, binary, primitive, CORNER_ID)
@@ -152,7 +171,7 @@ class ModelGlbTests(unittest.TestCase):
             with self.subTest(flags=hex(flags)):
                 source = synthetic(((flags,),), count=1)
                 glb, profile = export_model_glb(source, decode_tmd(source))
-                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v3')
+                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v4')
                 row = inspect_model_primitives(source)['objects'][0]['primitives'][0]
                 expected = bytearray(source)
                 for slot in range(len(row['colors'])):
@@ -204,6 +223,8 @@ class ModelGlbTests(unittest.TestCase):
                     import_model_glb(source, rewrite(glb, edit), profile)
             legacy = deepcopy(profile)
             legacy['schema_version'] = 'legaia.model-glb-profile.v1'
+            legacy['imported_fields'].remove('normal_xyz')
+            del legacy['attributes']['normal']
             del legacy['attributes']['color']
             legacy['imported_fields'].remove('primitive_rgb')
             legacy['imported_fields'].remove('primitive_vertex_indices')

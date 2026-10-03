@@ -6,6 +6,14 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 GLB normal work qualifies lit FT3/FT4/GT3/GT4 packet offsets
+against the pinned descriptor and independent retail table readback. Normal
+references are eight-byte SVECTOR offsets. Actual flat/Gouraud Blender edits
+change only qualified normal XYZ words, preserving references and padding.
+The pin is unchanged; no reference runtime dependency or lighting/gameplay
+acceptance is introduced. Private qualification proof remains under
+`local-output/sdk-20260909/model-glb-normals-20261002/research/`.
+
 The 2026-10-02 appended-draft facing work reuses the existing verified facing
 operand catalog and MAN record layout. Independent private Town0b/Dolk2 readback
 confirms original-owner relocation, preserved upper flags and unchanged donor
