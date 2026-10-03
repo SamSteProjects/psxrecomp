@@ -2,6 +2,15 @@
 
 Current scene-editor status (2026-10-02):
 
+**Source-qualified model materials:** FUNCTIONAL / EXISTING LAYOUT. Semantic
+CLUT/page/depth and shared group ABE drafts receive exact source/current audits,
+fresh material table/texture associations, model and posed-scene inspection, and
+explicit Apply through history, Save/Open and Build. Legacy bindings stay strict;
+v2 preserves composition and poses. Source ABR is read-only. Actual two-byte Dolk2
+proof, unchanged geometry/GLB round-trip, 118,461-byte capacity and neighbor
+readback pass. General material allocation, live residency/blending and gameplay
+acceptance remain pending. See [workflow](legaia-model-materials.md).
+
 **Source-bound texture PNG editing:** FUNCTIONAL / EXISTING ALLOCATION. Current
 image/binding/STP export, external edit, exact Review, proposed pixels/scene and
 Apply connect to texture history, Save/Open and Build. Existing palette words

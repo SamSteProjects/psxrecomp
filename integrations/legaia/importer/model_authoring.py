@@ -3,7 +3,8 @@
 Object-local vertex and normal XYZ words are writable. Legacy shape bindings
 keep primitives source-owned. Versioned content bindings
 also permit proven face references, UV bytes and baked RGB without reallocating
-packets or changing material bindings and vector padding.
+packets. V2 adds masked CLUT/page selectors and group ABE, preserving source ABR,
+reserved bits, all packet layout and vector padding.
 """
 from hashlib import sha256
 import struct
@@ -33,14 +34,21 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     triangle_count = sum(obj['triangle_count'] for obj in objects)
     if triangle_count != len(result['triangles']):
         raise ImportError('Model face count differs from preview geometry')
-    # Material identities use only unchanged flags/mode/CLUT/page words. Keep
-    # any already-associated metadata (e.g. blend evidence), but reject changed
-    # keys instead of assigning a candidate face to an unrelated texture.
+    # V2 is explicit: material IDs may split, merge or reorder. Rebuild the
+    # entire table and discard associations indexed by old IDs before the
+    # server freshly qualifies the candidate texture catalog/crops.
     material_fields = ('textured', 'clut', 'tpage', 'semi_transparent')
-    if (len(result['materials']) != len(shape['materials']) or
+    material_changed = (len(result['materials']) != len(shape['materials']) or
             any(any(old.get(key) != new.get(key) for key in material_fields)
-                for old, new in zip(result['materials'], shape['materials']))):
+                for old, new in zip(result['materials'], shape['materials'])))
+    material_v2 = binding.get('format') == 'tmd-content-v2'
+    if material_changed and not material_v2:
         raise ImportError('Model content changed source material bindings')
+    if material_v2:
+        result['materials'] = deepcopy(shape['materials'])
+        result['textures'] = []
+        result.pop('texture_catalog', None)
+        result.pop('texture_scope', None)
     for key in ('triangles', 'triangle_colors', 'triangle_uvs', 'triangle_materials'):
         result[key] = deepcopy(shape[key][:triangle_count])
     transforms = result.get('pose', {}).get('object_transforms')
@@ -100,9 +108,12 @@ def replace_model_shape(original: bytes, expected_sha256: str, replacement: byte
     return replacement, audit
 
 
-def replace_model_content(original: bytes, expected_sha256: str, replacement: bytes):
-    """Validate the union of XYZ and proven primitive fields, with exact audit."""
+def replace_model_content(original: bytes, expected_sha256: str, replacement: bytes, *, allow_materials=True):
+    """Validate typed fields and exact changed bits; legacy v1 forbids materials."""
     from .model_primitives import _qualified_model, _primitive_field_locations
+    from .model_materials import _material_field_locations
+    if type(allow_materials) is not bool:
+        raise ImportError('Material qualification flag must be boolean')
     if not isinstance(original, bytes) or sha256(original).hexdigest() != expected_sha256:
         raise ImportError('Model source hash differs from the authored binding')
     inspection, vectors = _qualified_model(original)
@@ -114,7 +125,7 @@ def replace_model_content(original: bytes, expected_sha256: str, replacement: by
         for vector in range(count):
             for axis in range(3):
                 at = start + vector * 8 + axis * 2
-                allowed[at:at + 2] = b'\x01\x01'
+                allowed[at:at + 2] = b'\xff\xff'
                 before = struct.unpack_from('<h', original, at)[0]
                 after = struct.unpack_from('<h', replacement, at)[0]
                 if before != after:
@@ -123,7 +134,7 @@ def replace_model_content(original: bytes, expected_sha256: str, replacement: by
                                       before_value=before, after_value=after))
     for identity, width in _primitive_field_locations(inspection):
         at = identity['byte_offset']
-        allowed[at:at + width] = b'\x01' * width
+        allowed[at:at + width] = b'\xff' * width
         before, after = original[at], replacement[at]
         if width == 2:
             before = struct.unpack_from('<H', original, at)[0] // 8
@@ -133,28 +144,51 @@ def replace_model_content(original: bytes, expected_sha256: str, replacement: by
             after = raw_after // 8
         if before != after:
             audit.append({**identity, 'before_value': before, 'after_value': after})
-    differences = {i: (a, b) for i, (a, b) in enumerate(zip(original, replacement)) if a != b}
-    if any(not allowed[at] for at in differences):
-        raise ImportError('Model content changed layout, material, normal reference or opaque bytes')
+    if allow_materials:
+        for identity, width, mask in _material_field_locations(original, inspection):
+            at = identity['byte_offset']
+            for delta in range(width):
+                allowed[at + delta] |= (mask >> (delta * 8)) & 255
+            before = int.from_bytes(original[at:at + width], 'little')
+            after = int.from_bytes(replacement[at:at + width], 'little')
+            if before == after:
+                continue
+            if (before ^ after) & (0xffff ^ mask if width == 2 else 255 ^ mask):
+                raise ImportError('Model material edit changed source ABR, reserved bits or unrelated GPU command bits')
+            if identity['field'] == 'tpage' and (after >> 7) & 3 == 3:
+                raise ImportError('Material edit cannot target reserved texture depth3')
+            if identity['field'] == 'clut':
+                page = struct.unpack_from('<H', replacement, at + 4)[0]
+                if (page >> 7) & 3 not in (0, 1):
+                    raise ImportError('CLUT edits require a supported indexed target texture depth')
+            audit.append({**identity, 'before_value': before, 'after_value': after})
+    if len(audit) > 600000:
+        raise ImportError('Model content exceeds the bounded 600000-field audit')
+    if any((a ^ b) & (255 ^ allowed[i]) for i, (a, b) in enumerate(zip(original, replacement))):
+        raise ImportError('Model content changed layout, protected material, normal reference or opaque bits')
     _qualified_model(replacement)
-    audited = {}
+    audited = bytearray(len(original))
     for change in audit:
         at = change['byte_offset']
         primitive = change['kind'] == 'primitive'
         if primitive and change['field'] == 'vertex_index':
             before = struct.pack('<H', change['before_value'] * 8)
             after = struct.pack('<H', change['after_value'] * 8)
-        elif primitive:
+        elif primitive and change['field'] in ('clut', 'tpage'):
+            before, after = (struct.pack('<H', change[key]) for key in ('before_value', 'after_value'))
+        elif primitive or change['kind'] == 'primitive_group':
             before, after = bytes([change['before_value']]), bytes([change['after_value']])
         else:
             before = struct.pack('<h', change['before_value'])
             after = struct.pack('<h', change['after_value'])
         for delta, (a, b) in enumerate(zip(before, after)):
             if a != b:
-                if at + delta in audited:
+                if audited[at + delta]:
                     raise ImportError('Model content audit fields overlap')
-                audited[at + delta] = (a, b)
-    if differences != audited:
+                if original[at + delta] != a or replacement[at + delta] != b:
+                    raise ImportError('Model content audit bytes differ from the source or candidate')
+                audited[at + delta] = 1
+    if any((a != b) != bool(audited[i]) for i, (a, b) in enumerate(zip(original, replacement))):
         raise ImportError('Model content changed an unaudited byte')
     return replacement, audit
 
@@ -201,8 +235,11 @@ def model_shape_overlays(archive, assets: dict, replacements: dict):
                 raise ImportError('Model replacement source members overlap')
             intervals.append((start,start+length))
             changed[start:start+length] = payload
-            scope = ('TMD-existing-layout-content' if any(c['kind'] == 'primitive' for c in changes)
-                     else 'TMD-vertex-normal-XYZ-only')
+            material_changes = any(c['kind'] == 'primitive_group' or
+                                   c['kind'] == 'primitive' and c['field'] in ('clut', 'tpage') for c in changes)
+            scope = ('TMD-existing-layout-material-content' if material_changes else
+                     'TMD-existing-layout-content' if any(c['kind'] == 'primitive' for c in changes) else
+                     'TMD-vertex-normal-XYZ-only')
             audit.append(dict(semantic_id=identifier, field='model.shape', scope=scope,
                               before_sha256=sha256(original).hexdigest(), after_sha256=sha256(payload).hexdigest(),
                               coordinate_changes=changes))

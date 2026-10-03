@@ -7,6 +7,17 @@ See `FEATURE_MATRIX.md` and `legaia-release-parity.md` for actual current result
 
 ## Latest integrated offline result — 2026-10-02
 
+**Source-qualified model materials:** 22 focused Python tests (nine new material
+cases), three Node workflow suites and six real-browser checks pass. Checks cover
+masked CLUT/TPage fields, shared group ABE, strict legacy reads, v2 material splits,
+merges/reordering with retained rigid poses, source/draft/stale/no-op guards and
+model/scene Return retention. Actual Dolk2 Apply, Undo/Redo, Save/Open and Build
+preserve geometry and GLB bytes. Package readback changes only source bytes 1095
+and 1102, retains the 118,461-byte compressed capacity and every decoded neighbor.
+540px layout passes; page/HTTP errors and Run requests are zero. Runtime blend
+state, texture residency and gameplay appearance remain unverified. Private
+evidence: `local-output/sdk-20260909/model-material-20261002/parent/`.
+
 **Source-bound texture PNG editing:** 12 focused Python cases pass with no skips:
 4/8/16/24-bpp exact no-ops, duplicate indices, selected-row/pixel byte masks,
 raw RGB nearest choices, deterministic palette reduction, binary alpha/STP,

@@ -55,8 +55,9 @@ export function decodeModelPrimitives(value,assetId,context){
   for(const [index,entry] of value.objects.entries()){
     const retail=value.retail_objects[index];
     if(entry.vertex_count!==retail.vertex_count||entry.primitives.length!==retail.primitives.length)fail('Current model differs from retail primitive counts.');
-    for(const [i,row] of entry.primitives.entries())for(const field of ROW_KEYS.filter(key=>!['vertices','uvs','colors'].includes(key))){if(!equal(row[field],retail.primitives[i][field]))fail('Current model changed immutable primitive metadata.');}
+    for(const [i,row] of entry.primitives.entries())for(const field of ROW_KEYS.filter(key=>!['vertices','uvs','colors','material'].includes(key))){if(!equal(row[field],retail.primitives[i][field]))fail('Current model changed immutable primitive metadata.');}
     for(const [i,row] of entry.primitives.entries())for(const field of ['uvs','colors'])if((row[field]===null)!==(retail.primitives[i][field]===null))fail('Current primitive changed the source attribute layout.');
+    for(const [i,row] of entry.primitives.entries())if(row.uvs!==null&&(((row.material.clut^retail.primitives[i].material.clut)&~0x7fff)||((row.material.tpage^retail.primitives[i].material.tpage)&~0x019f)))fail('Current material changed reserved source bits.');
   }
   return clone(value);
 }
@@ -126,7 +127,7 @@ export function decodeModelPrimitivePreview(value,source,context,edits){
     expected.delete(key);
   }
   if(expected.size||Boolean(value.changes_from_current.length)!==(value.proposed_sha256!==value.effective_sha256))fail('Primitive review hash or changed values are inconsistent.');
-  for(const row of value.coordinate_changes)if(!object(row)||!['primitive','vertex','normal'].includes(row.kind)||!int(row.object_index,0,source.objects.length-1)||!int(row.byte_offset,0,MAX_BYTES-1)||!Number.isSafeInteger(row.before_value)||!Number.isSafeInteger(row.after_value))fail('Invalid retail model change audit.');
+  for(const row of value.coordinate_changes)if(!object(row)||!['primitive','primitive_group','vertex','normal'].includes(row.kind)||!int(row.object_index,0,source.objects.length-1)||!int(row.byte_offset,0,MAX_BYTES-1)||!Number.isSafeInteger(row.before_value)||!Number.isSafeInteger(row.after_value))fail('Invalid retail model change audit.');
   previewGeometry(value.preview,source.asset_id);previewGeometry(value.current_preview,source.asset_id);
   for(const preview of [value.preview,value.current_preview])if(preview.objects.length!==source.objects.length||preview.objects.some(row=>source.objects[row.object_index]?.vertex_count!==row.vertex_count))fail('Comparison geometry differs from the source model layout.');
   return clone(value);

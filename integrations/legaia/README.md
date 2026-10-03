@@ -4,6 +4,14 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+Imported models support **Edit source material bindings**: edit qualified
+CLUT/page/depth fields and packet-group semitransparency, Review exact source
+changes, inspect the proposed model or posed scene, and Apply through ordinary
+history, Save/Open and Build. Group changes affect every listed source row and
+model edits affect shared instances. Source ABR remains read-only; runtime
+blend state and residency remain unverified. See the
+[material workflow](../../docs/legaia-model-materials.md).
+
 Imported textures support **Edit texture through PNG**: export the effective
 image, source binding and separate STP plane; edit externally; review palette,
 pixel, quantization and flag changes; inspect proposed pixels/scene; and Apply

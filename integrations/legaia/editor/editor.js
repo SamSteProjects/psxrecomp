@@ -25,6 +25,7 @@ import {mountTransitionGraphWorkspace} from '/transition-graph-workspace.js';
 import {openModelPrimitiveEditor} from '/model-primitives.js';
 import {openAnimationGlbEditor} from '/animation-glb.js';
 import {openModelGlbEditor} from '/model-glb.js';
+import {openModelMaterialsEditor} from '/model-materials.js';
 import {openTexturePngEditor} from '/texture-png.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
@@ -520,7 +521,7 @@ function buildChangeResource(change){
     record.authoredRecord?.id===change.owner_id) ?? null;
 }
 function modelAuditLabel(row){
-  const field=row.kind==='primitive'?`face ${row.primitive_index} · ${row.field} · corner ${row.corner_index}${row.axis?' · '+row.axis:''}`:`${row.kind} ${row.vector_index} · ${row.axis}`;
+  const field=row.kind==='primitive_group'?`group ${row.group_index} · transparency · ${row.primitive_indices.length} shared rows`:row.kind==='primitive'?`face ${row.primitive_index} · ${row.field}${row.corner_index===undefined?'':` · corner ${row.corner_index}`}${row.axis?' · '+row.axis:''}`:`${row.kind} ${row.vector_index} · ${row.axis}`;
   return `Object ${row.object_index} · ${field}: ${row.before_value} → ${row.after_value}`;
 }
 async function openBuildChange(change,vector=null){
@@ -554,7 +555,7 @@ async function openBuildChange(change,vector=null){
   if(change.field==='model.shape'){
     const binding=state.model_overrides?.[change.asset_id];
     if(!binding||binding.source_sha256!==change.before||binding.asset_sha256!==change.after){notify('The model differs from this build report. Rebuild to inspect current changes.',true);return;}
-    await openModel(change.asset_id,null,null,'authored');if(vector&&modelAssetId===change.asset_id&&$('model-dialog').open)await (vector.kind==='primitive'?inspectModelPrimitives(vector):openModelVectors(vector));return;
+    await openModel(change.asset_id,null,null,'authored');if(vector&&modelAssetId===change.asset_id&&$('model-dialog').open)await (vector.kind==='primitive_group'||vector.kind==='primitive'&&['clut','tpage'].includes(vector.field)?inspectModelMaterials(vector):vector.kind==='primitive'?inspectModelPrimitives(vector):openModelVectors(vector));return;
   }
   if(resource?.type==='texture'){await openTexture(resource);return;}
   if(['script-flag-bit-only','script-wait-target-only','script-branch-target-only'].includes(change.scope)){
@@ -635,6 +636,8 @@ function setBusy(value) {
   if($('script-undo'))updateScriptActions();
   if($('texture-undo'))updateTextureActions();
   texturePngEditor?.updateState();
+  modelMaterialsEditor?.updateState();
+  if($('shape-materials'))$('shape-materials').disabled=value||Boolean(shapeDraft)||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
   savedActorSelections?.synchronize();savedSceneSelections?.synchronize();savedSceneViews?.synchronize();groupPresetTool?.synchronize();updateFieldToggle();renderRuntimeControls();if(!value)scheduleLiveFollow();
 }
 async function api(path, payload, {dialog,success}={}) {
@@ -1345,6 +1348,7 @@ async function openFlagReferences(projectWide=false){
 };
 function synchronizeResources(){
   modelPrimitiveEditor?.updateState();
+  modelMaterialsEditor?.updateState();
   if(animationGlbEditor){if(selected()?.id!==animationGlbEntityId)animationGlbEditor.dispose();else animationGlbEditor.updateState();}
   modelGlbEditor?.updateState();
   texturePngEditor?.updateState();
@@ -3763,9 +3767,41 @@ showScenePose.onclick=()=>{
   }catch(error){clearScenePose(false);const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');notify(error.message,true);draw();}
 };
 
-const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Edit object-local vertex and normal coordinates, existing face connections, texture UVs and stored RGB colors. Object and packet counts, normal references and texture bindings stay fixed. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-vectors">Edit model vectors</button><button id="shape-primitives">Edit faces, UVs and colors</button><button id="shape-source">Download source TMD</button><button id="shape-authored-tmd">Download authored TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
+const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Edit object-local vertex and normal coordinates, existing face connections, texture UVs and stored RGB colors. Object and packet counts and normal references stay fixed. Source material bindings use a separate reviewed editor. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-vectors">Edit model vectors</button><button id="shape-primitives">Edit faces, UVs and colors</button><button id="shape-source">Download source TMD</button><button id="shape-authored-tmd">Download authored TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
 const vectorDialog=document.createElement('dialog');vectorDialog.id='model-vector-dialog';document.body.append(vectorDialog);
 let modelGlbEditor=null;
+let modelMaterialsEditor=null;
+const modelMaterialsButton=document.createElement('button');modelMaterialsButton.id='shape-materials';modelMaterialsButton.type='button';modelMaterialsButton.textContent='Edit source material bindings';$('shape-primitives').after(modelMaterialsButton);
+modelMaterialsButton.onclick=()=>inspectModelMaterials();
+async function inspectModelMaterials(initial=null){
+  if(busy||!modelAssetId||shapeDraft||state.project.mode!=='edit'||!state.capabilities?.model_material_authoring||modelSceneContext!==sceneRequestKey())return;
+  const assetId=modelAssetId,context=sceneRequestKey();modelMaterialsEditor?.dispose();$('model-dialog').close();
+  modelMaterialsEditor=await openModelMaterialsEditor({assetId,initial:initial?{object_index:initial.object_index,group_index:initial.group_index,...(initial.kind==='primitive'?{primitive_index:initial.primitive_index}:{})}:null,
+    getContext:primitiveContext,busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
+    onApplied:next=>{state=next;render();notify('Model materials updated. Save project to persist.');},
+    canPreviewScene:()=>scenePreviewCurrent()&&sceneRepresentation==='authored'&&scenePreview.entities.some(e=>e.asset_id===assetId&&e.renderable),
+    onPreview:async(report,{returnToEditor,isCurrent,signal})=>{
+      if(signal.aborted||!isCurrent()||context!==sceneRequestKey())throw new Error('Model source changed before inspection.');
+      setBusy(false);await openModel(assetId,null,null,'imported',null,report.preview,returnToEditor);
+      if(signal.aborted||!isCurrent()||model!==report.preview||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not inspect reviewed materials.');
+      $('model-dialog').addEventListener('close',()=>{if(model===report.preview)returnToEditor();},{once:true});
+    },
+    onScenePreview:async(request,report,{returnToEditor,isCurrent,signal})=>{
+      if(!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePreview.project_source_key!==report.project_source_key)throw new Error('Load the current authored scene before inspecting proposed materials.');
+      const instances=scenePreview.entities.filter(e=>e.asset_id===assetId&&e.renderable);
+      if(!instances.length)throw new Error('This model has no supported scene instances.');
+      const entityId=instances.some(e=>e.entity_id===environmentSelection)?environmentSelection:instances[0].entity_id,loadedKey=sceneKey;
+      const response=await fetch('/api/model-material-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({...request,entity_id:entityId,all_instances:true})}),posed=await response.json();
+      if(!response.ok||posed.error)throw new Error(posed.error||'Scene material proposal failed');
+      if(signal.aborted||!isCurrent()||context!==sceneRequestKey()||loadedKey!==sceneKey||!scenePreviewCurrent()||posed.project_source_key!==report.project_source_key||posed.proposed_sha256!==report.proposed_sha256||posed.review_key!==report.review_key)throw new Error('Scene changed during material inspection.');
+      stopScenePosePlayback();const isolated=sceneShapeProposalDocument(scenePreview,posed,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
+      const back=()=>{if(context!==sceneRequestKey()||loadedKey!==sceneKey||state.scene_preview_source_key!==report.project_source_key)return false;return returnToEditor();};
+      scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:posed.preview,name:'Proposed materials · not applied',returnToFile:back,afterRestore:back};
+      scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed materials · not applied · ${sceneShapeProposalLabel(posed,entityId)}`;configureSceneInspectionComparison(isolated.document);
+      for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
+      const button=scenePoseBar.querySelector('[data-return-file]');button.hidden=false;button.textContent='Return to material editor';frameShapeProposal(posed,entityId);draw();return true;
+    }});
+}
 const modelGlbButton=document.createElement('button');modelGlbButton.id='shape-glb';modelGlbButton.type='button';modelGlbButton.textContent='Edit model through GLB';$('shape-source-obj').before(modelGlbButton);
 modelGlbButton.onclick=async()=>{
   if(busy||shapeDraft||state.project.mode!=='edit'||!state.capabilities?.model_glb_authoring||modelSceneContext!==sceneRequestKey())return;
@@ -3991,12 +4027,12 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     $('model-diagnostics').textContent=(model.diagnostics ?? []).map(d=>typeof d==='string'?d:d.message ?? (d.kind==='equipment_templates_excluded'?'Equipment template objects 10 and 11 are excluded from this pose.':JSON.stringify(d))).join(' · ');
     if(witnessTarget)$('model-dialog').querySelector('h2').textContent=`Verified witness ${entityId} · proposed target ${witnessTarget} · not applied`;
     configureAnimation(clipId);exportClipControls.hidden=!data.frames?.length;showScenePose.disabled=!modelSceneEntityId||!data.frames?.length||state.project?.mode!=='edit';
-    shapeControls.hidden=clipId==='file-preview'||data.model_glb_proposal===true||!state.capabilities?.model_shape_authoring;
+    shapeControls.hidden=clipId==='file-preview'||data.model_glb_proposal===true||data.representation==='model-material-proposal'||!state.capabilities?.model_shape_authoring;
     $('shape-file').value='';shapeDraft=null;const shape=state.model_overrides?.[assetId];
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
     $('shape-clear').disabled=state.project.mode!=='edit'||!shape;$('shape-authored').disabled=!shape;
     $('shape-status').textContent=`Viewing ${shapeLayer==='authored'?'AUTHORED object-local shape':clipId==='authored-channels'?'AUTHORED shared animation':clipId==='authored-initial-animation'?'AUTHORED initial animation':clipId==='authored-appearance'?'AUTHORED appearance animation':clipId?'RETAIL assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
-    updateShapeDraft();$('model-export').disabled=clipId==='file-preview'||data.model_glb_proposal===true;exportClipControls.hidden=clipId==='file-preview'||!data.frames?.length;
+    updateShapeDraft();$('model-export').disabled=clipId==='file-preview'||data.model_glb_proposal===true||data.representation==='model-material-proposal';exportClipControls.hidden=clipId==='file-preview'||!data.frames?.length;
     if(data.model_glb_proposal===true){$('model-dialog').querySelector('h2').textContent='Proposed GLB model · not applied';$('model-description').textContent='Drag to orbit · Scroll to zoom · Proposed object-local positions and UVs · Not applied. Close to return to GLB review.';}
     if(!modelRenderer){const module=await import('/scene-renderer.js');modelRenderer=new module.SceneRenderer(modelCanvas,message=>{$('model-error').textContent=message??'';if(!message)requestAnimationFrame(drawModel);});}
     if(!$('model-dialog').open)$('model-dialog').showModal();
@@ -4014,6 +4050,7 @@ function updateShapeDraft(){
   $('shape-clear').disabled=pending||!shape||state.project?.mode!=='edit';$('shape-download-authored').disabled=pending||!shape;$('shape-authored-json').disabled=pending||!shape;
   $('model-export').disabled=pending;
   modelGlbButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_glb_authoring;
+  modelMaterialsButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
 }
 $('shape-file').onchange=()=>{const file=$('shape-file').files?.[0];shapeDraft=file?{file,asset:modelAssetId,context:JSON.stringify([state.project.path,state.scene.id])}:null;updateShapeDraft();if(file)$('shape-status').textContent=`Selected ${file.name} · not applied. Apply or discard before changing model views.`;};
 discardShape.onclick=()=>{$('shape-file').value='';shapeDraft=null;updateShapeDraft();$('model-error').textContent='';$('shape-status').textContent='Selected file discarded; project unchanged.';};

@@ -2,6 +2,17 @@
 
 The SDK is functional for supported offline authoring workflows, but the full editor and runtime parity objective is incomplete. Gameplay verification is deferred at the user's request. No new game launch is needed to review the work below.
 
+**Source-qualified model materials (2026-10-02):** The model inspector now edits
+existing CLUT/page/depth bindings and shared packet-group ABE with exact masks,
+source/current Review, proposed model/posed-scene inspection and explicit Apply.
+Ordinary Undo/Redo, Save/Open and Build retain versioned material overrides.
+Source ABR stays read-only because traced retail paths supply caller blend state.
+Twenty-two focused Python tests, three Node suites and six integrated browser
+checks pass. The actual Dolk2 proof changes only bytes 1095 and 1102; Build readback
+preserves the 118,461-byte compressed capacity and every decoded neighboring byte.
+Geometry and a fresh GLB round-trip stay exact. Gameplay blending/residency and
+general material allocation remain pending. See [workflow](legaia-model-materials.md).
+
 **Source-bound texture PNG editing (2026-10-02):** Imported textures now support
 current PNG + binding + separate STP export, external image editing, exact
 source/current Review, Current/Proposed pixel and scene inspection, and explicit

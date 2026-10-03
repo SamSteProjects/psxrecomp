@@ -203,7 +203,7 @@ class ModelPrimitiveTests(unittest.TestCase):
             patch_model_primitives(source, digest,
                 [{'object_index': 0, 'primitive_index': 0, 'vertices': [8192, 1, 2, 3]}])
 
-    def test_normal_refs_material_words_gpu_codes_footers_and_pads_are_immutable(self):
+    def test_legacy_v1_normal_refs_material_words_gpu_codes_footers_and_pads_are_immutable(self):
         source = synthetic(((0x13, 0x27),))
         rows = inspect_model_primitives(source)['objects'][0]['primitives']
         lit, baked = rows[0], rows[2]
@@ -217,7 +217,7 @@ class ModelPrimitiveTests(unittest.TestCase):
         for offset in offsets:
             changed = bytearray(source); changed[offset] ^= 1
             with self.subTest(offset=offset), self.assertRaises(ImportError):
-                replace_model_content(source, sha256(source).hexdigest(), bytes(changed))
+                replace_model_content(source, sha256(source).hexdigest(), bytes(changed), allow_materials=False)
         invalid_ref = bytearray(source); struct.pack_into('<H', invalid_ref, baked['byte_offset'] + 28, 7)
         with self.assertRaises(ImportError):
             replace_model_content(source, sha256(source).hexdigest(), bytes(invalid_ref))

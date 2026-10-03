@@ -1230,7 +1230,7 @@ class ProjectService:
     def read_model_replacement(self, asset_id: str, binding: dict) -> bytes:
         from importer.model_authoring import replace_model_shape, replace_model_content
         if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'}
-                or binding['format'] not in ('tmd-shape', 'tmd-content-v1') or type(binding['byte_length']) is not int
+                or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2') or type(binding['byte_length']) is not int
                 or not 1 <= binding['byte_length'] <= 4*1024*1024
                 or any(not isinstance(binding[k],str) or len(binding[k]) != 64 or any(c not in '0123456789abcdef' for c in binding[k]) for k in ('asset_sha256','source_sha256'))
                 or not isinstance(binding['source_scene_id'], str)):
@@ -1241,8 +1241,12 @@ class ProjectService:
         content = path.read_bytes()
         if hashlib.sha256(content).hexdigest() != binding['asset_sha256']:
             raise ProjectError('Model shape content hash differs from binding')
-        validator = replace_model_shape if binding['format'] == 'tmd-shape' else replace_model_content
-        validator(self._model_source(asset_id, binding['source_scene_id']), binding['source_sha256'], content)
+        original = self._model_source(asset_id, binding['source_scene_id'])
+        if binding['format'] == 'tmd-shape':
+            replace_model_shape(original, binding['source_sha256'], content)
+        else:
+            replace_model_content(original, binding['source_sha256'], content,
+                                  allow_materials=binding['format'] == 'tmd-content-v2')
         return content
 
     def _prepare_model_file(self, asset_id: str, content: bytes, format: str) -> tuple[bytes, dict]:
@@ -1438,7 +1442,10 @@ class ProjectService:
         source_hash = hashlib.sha256(original).hexdigest()
         _, audit = replace_model_content(original, source_hash, content)
         before = deepcopy(self.model_overrides.get(asset_id))
-        binding = {'format': ('tmd-content-v1' if any(row['kind'] == 'primitive' for row in audit) else 'tmd-shape'),
+        has_materials = any(row['kind'] == 'primitive_group' or
+                            (row['kind'] == 'primitive' and row['field'] in ('clut', 'tpage')) for row in audit)
+        binding = {'format': ('tmd-content-v2' if has_materials else
+                              'tmd-content-v1' if any(row['kind'] == 'primitive' for row in audit) else 'tmd-shape'),
                    'source_scene_id':self.active_scene,'source_sha256':source_hash,
                    'asset_sha256':hashlib.sha256(content).hexdigest(),'byte_length':len(content)} if audit else None
         if before == binding:
@@ -2815,7 +2822,7 @@ class ProjectService:
             asset = next(a for a in self.imports[scene_id]['assets']['models'] if a['semantic_id'] == identifier)
             records.append({'id':identifier, 'kind':'model', 'name':'Model shape ' + identifier.rsplit('/',1)[-1],
                             'scene_id':scene_id, 'source_scene':self.imports[scene_id]['scene']['name'],
-                            'changes':['TMD content replacement' if binding['format'] == 'tmd-content-v1' else 'TMD shape replacement'], 'authored':deepcopy(binding),
+                            'changes':[{'tmd-content-v2':'TMD material/content replacement','tmd-content-v1':'TMD content replacement'}.get(binding['format'],'TMD shape replacement')], 'authored':deepcopy(binding),
                             'source_record':deepcopy(asset['source_record'])})
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]

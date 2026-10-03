@@ -8,6 +8,14 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Source-qualified model materials:** Existing CLUT/page/depth fields and shared
+group ABE now connect to source/current Review, model/posed-scene proposal, Apply,
+history, Save/Open and Build. Source ABR remains read-only. An actual Dolk2 model
+changes exactly two bytes; geometry, fresh GLB interchange, source allocation
+and decoded neighbors are preserved. Twenty-two Python tests, three Node suites
+and six browser checks pass. Runtime appearance and general material allocation
+remain deferred. See [workflow](legaia-model-materials.md).
+
 **Source-bound texture PNG editing (2026-10-02):** Effective PNG/binding/STP
 export, external pixel edits, exact Review, proposed pixel/scene inspection and
 Apply now connect to ordinary texture history, Save/Open and normal Build.

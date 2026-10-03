@@ -124,6 +124,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_preview"] = bool(self.project.disc_path)
         state["capabilities"]["model_shape_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_glb_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["model_material_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["texture_png_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         from .scene_preview import source_key
@@ -396,7 +397,7 @@ class EditorServer(ThreadingHTTPServer):
             atomic_write(output / ".gitignore", b"*\n")
         return result
 
-    def scene_shape_proposal(self, asset_id: str, entity_id: str, replacement: bytes, report: dict, key: str, all_instances: bool = False) -> dict:
+    def scene_shape_proposal(self, asset_id: str, entity_id: str, replacement: bytes, report: dict, key: str, all_instances: bool = False, material_content: bool = False) -> dict:
         from .scene_preview import source_key, preview_shape_instance, preview_shape_instances
         from importer.scene_animation import load_scene_actor_animation_catalog
         from importer.environment import load_environment_preview_catalog
@@ -406,9 +407,12 @@ class EditorServer(ThreadingHTTPServer):
         scene = self.scene_previews.preview(self.project,
             lambda asset, *args, **kwargs: self.model_preview(asset, *args, effective_shape=True, **kwargs),
             load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
-        report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,{'asset_sha256':report['proposed_sha256']})
+        material_content = material_content or self.project.model_overrides.get(asset_id, {}).get('format') == 'tmd-content-v2'
+        proposal_binding = {'asset_sha256': report['proposed_sha256'],
+                            'format': 'tmd-content-v2' if material_content else 'tmd-content-v1'}
+        report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,proposal_binding)
         if all_instances:
-            report.update(preview_shape_instances(scene,asset_id,replacement,{'asset_sha256':report['proposed_sha256']}))
+            report.update(preview_shape_instances(scene,asset_id,replacement,proposal_binding))
         # UV edits change the required texture crop even when CLUT/page bindings
         # stay fixed. Refresh each proposed pose group from the verified catalog.
         from .scene_preview import MAX_TEXTURE_BYTES
@@ -635,6 +639,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/transition-graph.js': ('transition-graph.js', 'text/javascript'),
                  '/transition-graph-workspace.js': ('transition-graph-workspace.js', 'text/javascript'),
                  '/model-primitives.js': ('model-primitives.js', 'text/javascript'),
+                 '/model-materials.js': ('model-materials.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
@@ -670,6 +675,8 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/text-json-preview", "/api/text-json-import") else 32768
+            if urlsplit(self.path).path in ('/api/model-material-preview', '/api/model-material-scene-preview', '/api/model-material-apply'):
+                request_limit = 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
@@ -799,6 +806,46 @@ class EditorHandler(BaseHTTPRequestHandler):
                     replacement, report = self.server.project._prepare_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
                     report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key,body.get('all_instances',False))
                     self._json(200,report)
+                    return
+                if route == '/api/model-material-source':
+                    if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):
+                        raise ProjectError('Material inspection requires a model identity only')
+                    from .model_materials import snapshot
+                    self._json(200, snapshot(self.server.project, body['asset_id']))
+                    return
+                if route in ('/api/model-material-preview', '/api/model-material-scene-preview', '/api/model-material-apply'):
+                    expected = {'asset_id', 'expected_sha256', 'source_key', 'edits'}
+                    if route != '/api/model-material-preview':
+                        expected.add('review_key')
+                    if route == '/api/model-material-scene-preview':
+                        expected.update(('entity_id', 'all_instances'))
+                    if (set(body) != expected or not isinstance(body['asset_id'], str) or
+                            not isinstance(body['expected_sha256'], str) or not isinstance(body['source_key'], str)):
+                        raise ProjectError('Material authoring requires exact model, source hashes and semantic edits')
+                    from .model_materials import apply, prepare, reviewed, _bounded
+                    args = (self.server.project, body['asset_id'], body['edits'], body['expected_sha256'], body['source_key'])
+                    if route == '/api/model-material-apply':
+                        report = apply(*args, body['review_key'])
+                        self._json(200, dict(self.server.state(), model_material_report=report))
+                        return
+                    if route == '/api/model-material-scene-preview':
+                        if not isinstance(body['entity_id'], str) or type(body['all_instances']) is not bool:
+                            raise ProjectError('Material scene inspection requires a qualified instance and explicit scope')
+                        replacement, report = reviewed(*args, body['review_key'])
+                        report = self.server.scene_shape_proposal(body['asset_id'], body['entity_id'], replacement,
+                            report, body['source_key'], body['all_instances'], material_content=True)
+                    else:
+                        replacement, report = prepare(*args)
+                        asset = self.server.project.assets.records[body['asset_id']]
+                        for key in ('preview', 'current_preview'):
+                            report[key].update(semantic_id=asset['semantic_id'], source_record=asset['source_record'],
+                                               representation='model-material-proposal')
+                            report[key] = self.server.model_preview(asset, prepared=report[key])
+                    _bounded(report, 'Model material preview')
+                    from .scene_preview import source_key
+                    if source_key(self.server.project) != report['project_source_key']:
+                        raise ProjectError('Scene changed while preparing the material preview')
+                    self._json(200, report)
                     return
                 if route == '/api/model-primitive-source':
                     if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):
