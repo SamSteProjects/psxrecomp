@@ -14,7 +14,8 @@ import {mountScenePlacementGroup} from '/scene-placement-group.js';
 import {mergeScenePlacementSelection} from '/scene-placement-selection.js';
 import {mountWallRectangle,wallRectangleGeometry} from '/collision-rectangle.js';
 import {rescaleStoredNormal} from '/model-normal-length.js';
-import {mountNormalUsers} from '/model-normal-users.js';
+import {mountNormalUsers,decodeNormalUsers} from '/model-normal-users.js';
+import {validateNormalRetarget} from '/normal-retarget.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -3964,9 +3965,16 @@ async function openModelVectors(initial=null){
     const previewNormalLength=()=>{const normals=document.objects[Number(object.value)]?.normals??[],length=Number(normalLengthInput.value);let changed=0,validLength=true;try{for(const vector of normals){const scaled=rescaleStoredNormal(vector,length);changed+=scaled.some((v,a)=>v!==vector[a]);}}catch{validLength=false;}normalLengthTool.querySelector('[data-normal-length-report]').textContent=object.disabled?'Apply or discard the vector draft first.':!validLength?'Enter an integer encoded length1–32767.':`${normals.length} stored normals · ${normals.filter(v=>v.every(a=>a===0)).length} zero vectors retained · ${changed} changed vectors`;normalLengthTool.querySelector('[data-normal-length]').disabled=object.disabled||!validLength||!changed;};
     for(const type of ['click','input','change'])form.addEventListener(type,previewNormalLength);normalLengthTool.ontoggle=previewNormalLength;
     normalLengthTool.querySelector('[data-normal-length]').onclick=async()=>{if(busy||object.disabled)return;previewNormalLength();if(normalLengthTool.querySelector('[data-normal-length]').disabled||!currentContext())return;if(await api('/api/model-object-normal-length',{asset_id:asset,object_index:Number(object.value),length:Number(normalLengthInput.value),expected_sha256:source.effective_sha256},{dialog:vectorDialog,success:'Stored model normals rescaled. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}};
-    const proposal=window.document.createElement('section');proposal.hidden=true;proposal.innerHTML='<h3>Object transform preview · not applied</h3><p data-proposal-status></p><label>Preview layer<select aria-label="Object preview layer"><option value="proposed">Proposed</option><option value="current">Inspected current</option></select></label><p>Drag to orbit · Scroll to zoom · Object-local Y-down coordinates. Both layers share camera framing. Preview does not change history or saved assets; Apply remains explicit.</p>';
+    const normalRetargetTool=window.document.createElement('details');normalRetargetTool.innerHTML='<summary>Retarget uses of this normal in this object</summary><p>Select Normals and the Current source normal index above. Replace every matching stored reference in this object with another existing normal. Flat operands affect every face corner; Gouraud operands affect their own corner. Coordinates, geometry and other references stay fixed. Preview must qualify the exact users before Apply.</p><label>Target normal index<input type="number" min="0" max="8191" step="1" value="0" aria-label="Retarget normal index"></label><p data-normal-retarget-report></p><button type="button" data-normal-retarget>Apply reviewed normal retargeting</button>';normalLengthTool.after(normalRetargetTool);
+    const normalRetargetInput=normalRetargetTool.querySelector('input');
+    const retargetValues=()=>({from_index:Number(index.value),to_index:Number(normalRetargetInput.value)});
+    const retargetValid=()=>{const count=document.objects[Number(object.value)]?.normals.length??0,v=retargetValues();return kind.value==='normals'&&valid&&!object.disabled&&normalRetargetInput.value.trim()!==''&&[v.from_index,v.to_index].every(n=>Number.isInteger(n)&&n>=0&&n<Math.min(count,8192))&&v.from_index!==v.to_index;};
+    const refreshNormalRetarget=()=>{const v=retargetValues(),reviewed=retargetValid()&&proposalReport?.operation==='normal_references'&&proposalReport.object_index===Number(object.value)&&JSON.stringify(proposalReport.values)===JSON.stringify(v)&&proposalReport.changes_from_current.length>0;normalRetargetTool.querySelector('[data-normal-retarget]').disabled=!reviewed;normalRetargetTool.querySelector('[data-normal-retarget-report]').textContent=!retargetValid()?'Select an inspected normal and a different existing target; apply or discard a vector draft first.':reviewed?`${proposalReport.changes_from_current.length} qualified reference words: normal ${v.from_index} → ${v.to_index}`:'Preview the exact Current users before Apply.';};
+    for(const type of ['click','input','change'])form.addEventListener(type,refreshNormalRetarget);normalRetargetTool.ontoggle=refreshNormalRetarget;
+    normalRetargetTool.querySelector('[data-normal-retarget]').onclick=async()=>{refreshNormalRetarget();if(busy||!currentContext()||normalRetargetTool.querySelector('[data-normal-retarget]').disabled)return;const v=retargetValues();if(await api('/api/model-object-normal-references',{asset_id:asset,object_index:Number(object.value),...v,expected_sha256:source.effective_sha256,proposed_sha256:proposalReport.proposed_sha256},{dialog:vectorDialog,success:'Normal references retargeted. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}};
+    const proposal=window.document.createElement('section');proposal.hidden=true;proposal.innerHTML='<h3>Object preview · not applied</h3><p data-proposal-status></p><label>Preview layer<select aria-label="Object preview layer"><option value="proposed">Proposed</option><option value="current">Inspected current</option></select></label><p>Drag to orbit · Scroll to zoom · Object-local Y-down coordinates. Both layers share camera framing. Preview does not change history or saved assets; Apply remains explicit.</p>';
     if(!objectProposalCanvas){objectProposalCanvas=window.document.createElement('canvas');objectProposalCanvas.style.cssText='display:block;width:100%;height:300px;touch-action:none';objectProposalCanvas.setAttribute('aria-label','Object transform preview');}
-    proposal.append(objectProposalCanvas);form.append(proposal);
+    const normalDiagnosticInput=window.document.createElement('input');normalDiagnosticInput.type='checkbox';normalDiagnosticInput.setAttribute('aria-label','Object preview normal directions');const normalDiagnosticLabel=window.document.createElement('label');normalDiagnosticLabel.textContent='Source normal directions · not retail lighting';Object.assign(normalDiagnosticInput.style,{width:'auto',margin:'0'});Object.assign(normalDiagnosticLabel.style,{display:'inline-flex',flexDirection:'row',alignItems:'center',gap:'8px',margin:'10px 0'});normalDiagnosticLabel.prepend(normalDiagnosticInput);proposal.append(normalDiagnosticLabel,objectProposalCanvas);form.append(proposal);normalDiagnosticInput.onchange=()=>drawProposal();
     let proposalReport=null,proposalRequest=0,proposalView=null,proposalDrag=null;
     const sceneProposal=window.document.createElement('div');sceneProposal.innerHTML='<label>Scene instance<select aria-label="Proposed shape scene instance"></select></label><button type="button">Inspect proposed shape in scene</button><p>Choose one instance or all supported instances. Applying the model changes its shared asset. Source placement and supported pose are retained; gameplay visibility remains unverified.</p>';proposal.append(sceneProposal);
     const instanceSelect=sceneProposal.querySelector('select'),inspectSceneButton=sceneProposal.querySelector('button');
@@ -4002,11 +4010,11 @@ async function openModelVectors(initial=null){
     const normalUsers=mountNormalUsers({host:form,assetId:asset,expectedSha:source.effective_sha256,sourceKey:normalUsersSourceKey,getSelection:()=>kind.value==='normals'&&valid?{object_index:Number(object.value),normal_index:Number(index.value)}:null,isCurrent:()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled&&state.scene_preview_source_key===normalUsersSourceKey,onSelect:async row=>{vectorDialog.close();await inspectModelPrimitives(row);}});
     for(const type of ['input','change','click'])form.addEventListener(type,()=>normalUsers.refresh());
     const currentContext=()=>vectorDialog.open&&asset===modelAssetId&&context===JSON.stringify([state.project.path,state.scene.id])&&!object.disabled;
-    const invalidateProposal=()=>{proposalRequest++;proposalReport=null;proposal.hidden=true;};
+    const invalidateProposal=()=>{proposalRequest++;proposalReport=null;proposal.hidden=true;refreshNormalRetarget();};
     const drawProposal=()=>{
       if(!proposalReport||proposal.hidden||!currentContext()||!objectProposalRenderer)return;
       const rect=objectProposalCanvas.getBoundingClientRect(),c=Math.cos(proposalView.yaw),s=Math.sin(proposalView.yaw),cp=Math.cos(proposalView.pitch),sp=Math.sin(proposalView.pitch);
-      objectProposalRenderer.draw({width:rect.width,height:rect.height,positions:new Map(),grid:false,wireframe:true,camera:{target:{x:proposalView.center[0],y:-proposalView.center[1],z:proposalView.center[2]},distance:proposalView.radius*4/proposalView.zoom},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
+      objectProposalRenderer.draw({normalDiagnostic:normalDiagnosticInput.checked,width:rect.width,height:rect.height,positions:new Map(),grid:false,wireframe:true,camera:{target:{x:proposalView.center[0],y:-proposalView.center[1],z:proposalView.center[2]},distance:proposalView.radius*4/proposalView.zoom},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});
     };
     const loadProposal=()=>{
       if(!proposalReport||!currentContext())return;
@@ -4022,29 +4030,33 @@ async function openModelVectors(initial=null){
     objectProposalCanvas.onwheel=event=>{event.preventDefault();if(proposalView){proposalView.zoom=Math.max(.15,Math.min(2.5,proposalView.zoom*Math.exp(-event.deltaY*.001)));drawProposal();}};
     vectorDialog.onclose=()=>{invalidateProposal();normalUsers.close();};
     // A proposal is tied to exact inputs. No old preview remains visible after a draft changes.
-    for(const type of ['input','change'])form.addEventListener(type,event=>{if(event.target!==proposal.querySelector('select')&&event.target!==instanceSelect)invalidateProposal();});
+    for(const type of ['input','change'])form.addEventListener(type,event=>{if(event.target!==proposal.querySelector('select')&&event.target!==instanceSelect&&event.target!==normalDiagnosticInput)invalidateProposal();});
     form.querySelector('[data-retail-vector]').addEventListener('click',invalidateProposal);
     form.querySelector('[data-discard]').addEventListener('click',invalidateProposal);
     for(const [container,operation,applySelector,getValues,refresh] of [
       [translation,'translation','[data-translate]',()=>({offset:offsetValues()}),previewOffset],
       [rotation,'rotation','[data-rotate]',()=>({axis:rotationAxis.value,quarter_turns:Number(turnControl.value)}),previewRotation],
       [scaling,'scale','[data-scale]',()=>({percent:Number(scalePercent.value)}),previewScale],
-      [normalLengthTool,'normal_length','[data-normal-length]',()=>({length:Number(normalLengthInput.value)}),previewNormalLength]]){
-      const button=window.document.createElement('button');button.type='button';button.textContent=operation==='normal_length'?'Preview normal rescaling':'Preview object '+operation;container.append(button);
+      [normalLengthTool,'normal_length','[data-normal-length]',()=>({length:Number(normalLengthInput.value)}),previewNormalLength],
+      [normalRetargetTool,'normal_references','[data-normal-retarget]',retargetValues,refreshNormalRetarget]]){
+      const button=window.document.createElement('button');button.type='button';button.textContent=operation==='normal_length'?'Preview normal rescaling':operation==='normal_references'?'Preview normal retargeting':'Preview object '+operation;container.append(button);
       button.onclick=async()=>{
-        refresh();if(busy||!currentContext()||container.querySelector(applySelector).disabled)return;
+        refresh();if(busy||!currentContext()||(operation==='normal_references'?!retargetValid():container.querySelector(applySelector).disabled))return;
         const request=++proposalRequest;proposalReport=null;proposal.hidden=true;form.querySelector('[data-error]').textContent='';setBusy(true);
         try{
+          let users=null;
+          if(operation==='normal_references'){const binding={asset_id:asset,object_index:Number(object.value),normal_index:getValues().from_index,expected_sha256:source.effective_sha256,source_key:normalUsersSourceKey};const response=await fetch('/api/model-normal-users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(binding)}),value=await response.json();if(!response.ok||value.error)throw new Error(value.error||'Normal users unavailable');users=decodeNormalUsers(value,binding);}
           const response=await fetch('/api/model-object-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,object_index:Number(object.value),operation,values:getValues(),expected_sha256:source.effective_sha256})}),report=await response.json();
           if(request!==proposalRequest||!currentContext())return;
           if(!response.ok||report.error)throw new Error(report.error||'Object preview failed');
           if(report.asset_id!==asset||report.effective_sha256!==source.effective_sha256||report.object_index!==Number(object.value)||report.operation!==operation||report.project_changed!==false)throw new Error('Object preview context differs from inspection');
+          if(operation==='normal_references')validateNormalRetarget(report,users,getValues().to_index);
           if(!objectProposalRenderer){const module=await import('/scene-renderer.js');if(request!==proposalRequest||!currentContext())return;objectProposalRenderer=new module.SceneRenderer(objectProposalCanvas,message=>{if(message&&vectorDialog.open)form.querySelector('[data-error]').textContent=message;});}
           objectProposalRenderer.onStatus=message=>{if(message&&vectorDialog.open)form.querySelector('[data-error]').textContent=message;else drawProposal();};
           const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
           for(const data of [report.preview,report.current_preview]){const obj=data.objects[report.object_index];for(const v of data.vertices.slice(obj.vertex_start,obj.vertex_start+obj.vertex_count))for(let a=0;a<3;a++){min[a]=Math.min(min[a],v[a]);max[a]=Math.max(max[a],v[a]);}}
           proposalView={center:min.map((v,a)=>(v+max[a])/2),radius:Math.max(1,Math.hypot(...max.map((v,a)=>v-min[a]))/2),yaw:.6,pitch:.4,zoom:1};
-          report.values=getValues();proposalReport=report;proposal.hidden=false;updateProposalInstances();proposal.querySelector('select').value='proposed';proposal.querySelector('[data-proposal-status]').textContent=`Object ${report.object_index} · ${operation==='normal_length'?'Normal rescaling':operation} · ${report.changes_from_current.length} scalar changes from inspected current · not applied`;
+          report.values=getValues();proposalReport=report;normalDiagnosticInput.checked=operation==='normal_references';refreshNormalRetarget();proposal.hidden=false;updateProposalInstances();proposal.querySelector('select').value='proposed';proposal.querySelector('[data-proposal-status]').textContent=`Object ${report.object_index} · ${operation==='normal_length'?'Normal rescaling':operation==='normal_references'?'Normal retargeting':operation} · ${report.changes_from_current.length} scalar changes from inspected current · not applied`;
           proposal.scrollIntoView({block:'nearest'});loadProposal();
         }catch(error){if(request===proposalRequest&&currentContext()){form.querySelector('[data-error]').textContent=error.message;invalidateProposal();}}finally{setBusy(false);}
       };
@@ -4055,7 +4067,7 @@ async function openModelVectors(initial=null){
       if(await api('/api/model-vector',{asset_id:asset,object_index:Number(object.value),kind:kind.value,vector_index:Number(index.value),values:xyz.map(input=>Number(input.value)),expected_sha256:source.effective_sha256},{dialog:vectorDialog,success:'Model vector updated. Save project to persist.'})){vectorDialog.close();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');}
     };
     if(initial){const k=initial.kind==='vertex'?'vertices':initial.kind==='normal'?'normals':null;if(!k||!Number.isInteger(initial.object_index)||!Number.isInteger(initial.vector_index)||!document.objects[initial.object_index]?.[k]?.[initial.vector_index])throw new Error('The reported vector is unavailable in this model.');object.value=String(initial.object_index);kind.value=k;index.value=String(initial.vector_index);}
-    load();previewOffset();previewRotation();previewScale();previewNormalLength();vectorDialog.showModal();normalUsers.refresh();
+    load();previewOffset();previewRotation();previewScale();previewNormalLength();refreshNormalRetarget();vectorDialog.showModal();normalUsers.refresh();
   }catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
 }
 $('shape-vectors').onclick=()=>openModelVectors();

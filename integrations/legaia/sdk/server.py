@@ -696,6 +696,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),
+                 "/normal-retarget.js": ("normal-retarget.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
@@ -1018,6 +1019,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {'asset_id','object_index','length','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Normal rescaling requires model, object, length and inspected hash')
                     self.server.project.rescale_model_normals(body['asset_id'],body['object_index'],body['length'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
+                if route == '/api/model-object-normal-references':
+                    if set(body) != {'asset_id','object_index','from_index','to_index','expected_sha256','proposed_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Normal retargeting requires exact model/object/from/to and reviewed hashes')
+                    self.server.project.retarget_model_normals(body['asset_id'],body['object_index'],body['from_index'],body['to_index'],body['expected_sha256'],body['proposed_sha256'])
                     self._json(200,self.server.state())
                     return
                 if route == '/api/model-normal-users':
