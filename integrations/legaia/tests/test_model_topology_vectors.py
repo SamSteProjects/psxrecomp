@@ -114,3 +114,21 @@ class ModelTopologyVectorTests(unittest.TestCase):
             with self.assertRaises(ProjectError):apply(self.project,self.asset,edits,sha256(current).hexdigest(),key,'0'*64)
             apply(self.project,self.asset,edits,sha256(current).hexdigest(),key,report['review_key'])
             self.assertEqual(self.effective(),candidate);self.project.undo();self.assertEqual(self.effective(),current);self.project.redo();self.assertEqual(self.effective(),candidate)
+
+    def test_glb_removal_profile_roundtrip_and_actual_retail_audit(self):
+        from importer.model_glb import export_model_glb,import_model_glb,VERTEX_ID
+        from test_model_glb import rewrite,rows
+        from sdk.model_glb import _audits
+        glb,profile=export_model_glb(self.current,decode_tmd(self.current))
+        self.assertEqual(import_model_glb(self.current,glb,profile)[0],self.current)
+        def edit(doc,binary):
+            for mesh in doc['meshes']:
+                for primitive in mesh['primitives']:
+                    for (at,xyz),(_,identity) in zip(rows(doc,binary,primitive,'POSITION'),rows(doc,binary,primitive,VERTEX_ID)):
+                        if identity[0]==0:struct.pack_into('<f',binary,at,xyz[0]+2)
+        changed=rewrite(glb,edit);candidate,_=import_model_glb(self.current,changed,profile)
+        expected=bytearray(self.current);at=12+struct.unpack_from('<I',self.current,12)[0];struct.pack_into('<h',expected,at,struct.unpack_from('<h',self.current,at)[0]+2)
+        self.assertEqual(candidate,bytes(expected))
+        snapshot=dict(retail=self.original,effective=self.current,binding=dict(schema_version='legaia.model-glb-binding.v2',source_sha256=sha256(self.original).hexdigest(),effective_sha256=sha256(self.current).hexdigest(),removed_faces=self.removed))
+        changes,pending=_audits(snapshot,candidate);self.assertTrue(any(row['kind']=='primitive_removal' for row in changes));self.assertEqual(len(pending),1)
+        self.project.set_model_replacement(self.asset,candidate);self.assertEqual(self.effective(),candidate);self.project.undo();self.assertEqual(self.effective(),self.current)

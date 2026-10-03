@@ -29,17 +29,24 @@ function metadata(value,budget){
   visit(value,0);if(metadataBytes(value)>budget)fail('Model GLB metadata exceeds its byte budget.');
 }
 
+function removedFaces(value){
+  if(!Array.isArray(value)||!value.length||value.length>4096)fail('Invalid removed GLB source faces.');
+  let last=-1;
+  for(const row of value){if(!exact(row,['object_index','primitive_index'])||!integer(row.object_index,0,1023)||!integer(row.primitive_index,0,99999))fail('Invalid removed GLB face identity.');const identity=row.object_index*100000+row.primitive_index;if(identity<=last)fail('Removed GLB face identities conflict.');last=identity;}
+}
 export function decodeModelGlbBinding(value,assetId,context){
   context=modelGlbContext(context);metadata(value,MAX_BINDING);
-  if(!asset(assetId)||!exact(value,['schema_version','asset_id','scene_id','source_sha256','effective_sha256','project_source_key','profile'])||value.schema_version!=='legaia.model-glb-binding.v1'||value.asset_id!==assetId||value.scene_id!==context.sceneId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey||!object(value.profile))fail('The binding does not match this model or current source. Export a fresh binding.');
+  if(!asset(assetId)||!exact(value,['schema_version','asset_id','scene_id','source_sha256','effective_sha256','project_source_key','profile',...(value.schema_version==='legaia.model-glb-binding.v2'?['removed_faces']:[])])||!['legaia.model-glb-binding.v1','legaia.model-glb-binding.v2'].includes(value.schema_version)||value.asset_id!==assetId||value.scene_id!==context.sceneId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey||!object(value.profile))fail('The binding does not match this model or current source. Export a fresh binding.');
   if(value.profile.schema_version!=='legaia.model-glb-profile.v6')fail('Export the current model and binding again to use source-qualified corners, raw RGB, stored normal and material attributes.');
+  if(value.schema_version==='legaia.model-glb-binding.v2')removedFaces(value.removed_faces);
   return clone(value);
 }
 
-function validateAudit(rows){
+function validateAudit(rows,removed=[]){
   if(!Array.isArray(rows)||rows.length>MAX_CHANGES)fail('Model GLB review contains too many source fields.');
-  const offsets=new Set();
+  const offsets=new Set(),omitted=new Set(removed.map(row=>`${row.object_index}:${row.primitive_index}`));
   for(const row of rows){
+    if(row?.kind==='primitive_removal'){const key=`${row.object_index}:${row.primitive_index}`;if(!exact(row,['kind','object_index','primitive_index'])||!omitted.delete(key))fail('GLB removal audit differs from the source binding.');continue;}
     if(!object(row)||!integer(row.object_index,0,1023)||!integer(row.byte_offset,0,MAX_GLB-1)||offsets.has(row.byte_offset)||row.before_value===row.after_value)fail('Model GLB review has invalid or duplicate source locations.');
     if(row.kind==='vertex'||row.kind==='normal'){
       if(!exact(row,['object_index','kind','vector_index','axis','byte_offset','before_value','after_value'])||!integer(row.vector_index,0,99999)||!['x','y','z'].includes(row.axis)||!integer(row.before_value,-32768,32767)||!integer(row.after_value,-32768,32767))fail('Model GLB vector audit differs from its source fields.');
@@ -53,15 +60,18 @@ function validateAudit(rows){
     }else fail('Model GLB review contains an unsupported source field.');
     offsets.add(row.byte_offset);
   }
+  if(omitted.size)fail('GLB review omitted a removed Retail face.');
 }
 
 export function decodeModelGlbReview(value,binding,assetId,context,glbHash){
   binding=decodeModelGlbBinding(binding,assetId,context);metadata(value,MAX_REPORT);
   const keys=['schema_version','asset_id','scene_id','source_sha256','effective_sha256','proposed_sha256','glb_sha256','project_source_key','changes','pending_changes','quantization','limitations','review_key'];
-  if(!object(value)||!keys.every(key=>Object.hasOwn(value,key))||value.schema_version!=='legaia.model-glb-review.v1'||value.asset_id!==assetId||value.scene_id!==context.sceneId||value.source_sha256!==binding.source_sha256||value.effective_sha256!==binding.effective_sha256||value.project_source_key!==context.sourceKey||!hash(value.proposed_sha256)||!hash(value.review_key)||!hash(value.glb_sha256)||value.glb_sha256!==glbHash||!Array.isArray(value.limitations)||value.limitations.length>256||value.limitations.some(line=>!text(line)))fail('Model review differs from the selected files or current source. Review them again.');
+  if(!object(value)||!keys.every(key=>Object.hasOwn(value,key))||value.schema_version!==(binding.schema_version==='legaia.model-glb-binding.v2'?'legaia.model-glb-review.v2':'legaia.model-glb-review.v1')||value.asset_id!==assetId||value.scene_id!==context.sceneId||value.source_sha256!==binding.source_sha256||value.effective_sha256!==binding.effective_sha256||value.project_source_key!==context.sourceKey||!hash(value.proposed_sha256)||!hash(value.review_key)||!hash(value.glb_sha256)||value.glb_sha256!==glbHash||!Array.isArray(value.limitations)||value.limitations.length>256||value.limitations.some(line=>!text(line)))fail('Model review differs from the selected files or current source. Review them again.');
   const q=value.quantization;
   if(!exact(q,['vertex_max_error','uv_max_error','color_max_error','normal_max_error','quantized_component_count'])||['vertex_max_error','uv_max_error','color_max_error','normal_max_error'].some(key=>typeof q[key]!=='number'||!Number.isFinite(q[key])||q[key]<0)||!integer(q.quantized_component_count,0,Number.MAX_SAFE_INTEGER))fail('Model GLB quantization metadata is invalid.');
-  validateAudit(value.changes);validateAudit(value.pending_changes);
+  if(binding.schema_version==='legaia.model-glb-binding.v2'&&!same(value.removed_faces,binding.removed_faces))fail('GLB review changed removed source identities.');
+  if(binding.schema_version==='legaia.model-glb-binding.v1'&&Object.hasOwn(value,'removed_faces'))fail('Unexpected GLB removal metadata.');
+  validateAudit(value.changes,binding.removed_faces??[]);validateAudit(value.pending_changes);
   if(value.pending_changes.some(row=>!['vertex','normal'].includes(row.kind)&&!(row.kind==='primitive'&&['uv','color','vertex_index','normal_index','clut','tpage'].includes(row.field))&&!(row.kind==='primitive_group'&&row.field==='gpu_mode')))fail('GLB imports support existing vectors, references, UV/RGB and qualified material masks only.');
   if((value.pending_changes.length===0)!==(value.proposed_sha256===value.effective_sha256)||(value.changes.length===0)!==(value.proposed_sha256===value.source_sha256))fail('Model review changes contradict its source and current hashes.');
   for(const [key,expected] of [['project_changed',false],['gameplay_verified',false]])if(Object.hasOwn(value,key)&&value[key]!==expected)fail('Model file review cannot claim project or gameplay changes.');

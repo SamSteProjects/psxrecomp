@@ -75,3 +75,10 @@ try{
   await open();isBusy=true;control.updateState();const beforeReads=calls.length;assert.equal(await choose(),false);assert.equal(await action(control,'export').onclick(),false);assert.equal(calls.length,beforeReads);isBusy=false;control.updateState();control.dispose();
 }finally{URL.createObjectURL=urlCreate;URL.revokeObjectURL=urlRevoke;if(cryptoDescriptor)Object.defineProperty(globalThis,'crypto',cryptoDescriptor);else delete globalThis.crypto;for(const [key,value] of Object.entries(globals)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 console.log('Model GLB source/binding/audit qualification; explicit export/review/Apply; immutable file and no-op gates; preview Return retention; stale/closed/abort and busy ownership passed.');
+
+const removalBinding={...binding(),schema_version:'legaia.model-glb-binding.v2',removed_faces:[{object_index:0,primitive_index:0}]};
+const removalReport={...report(),schema_version:'legaia.model-glb-review.v2',removed_faces:removalBinding.removed_faces,changes:[...report().changes,{kind:'primitive_removal',object_index:0,primitive_index:0}]};
+assert.deepEqual(decodeModelGlbReview(removalReport,removalBinding,assetId,context,glbHash).removed_faces,removalBinding.removed_faces);
+for(const change of [v=>v.removed_faces=[],v=>v.changes.pop(),v=>v.changes.push(v.changes.at(-1)),v=>v.pending_changes.push(v.changes.at(-1))]){const bad=structuredClone(removalReport);change(bad);assert.throws(()=>decodeModelGlbReview(bad,removalBinding,assetId,context,glbHash));}
+for(const removed_faces of [[{object_index:true,primitive_index:0}],[{object_index:0,primitive_index:0},{object_index:0,primitive_index:0}],[]])assert.throws(()=>decodeModelGlbBinding({...removalBinding,removed_faces},assetId,context));
+console.log('V2 GLB removal bindings and complete Retail tombstone audit guards passed.');

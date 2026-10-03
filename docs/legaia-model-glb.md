@@ -145,3 +145,7 @@ Fresh profile v3 also supports [existing face rewiring](legaia-model-glb-faces.m
 Fresh profiles v4/v5 add existing normal words and references, and v6 adds
 qualified CLUT/TPage/group ABE words. New polygons and source allocation remain
 outside GLB import. Earlier position/UV and RGB milestones retain their dated evidence.
+
+## Face-removal bindings
+
+Models with `tmd-face-removal-v1` overrides now use `legaia.model-glb-binding.v2` sidecars and `legaia.model-glb-review.v2` reviews. Each carries the exact sorted removed Retail identities. Export and import profiles bind the reduced Current packet layout, while final candidate qualification uses actual Retail bytes and that removal set. The review includes every removed Retail face exactly once and permits only supported typed Current fields as pending edits. V1 bindings remain valid for models without removal. Export again after any source/removal change; GLB topology insertion/allocation remains unsupported. Apply uses the ordinary model override/history/Build path and retains prior material/reference edits. Native gameplay appearance remains deferred.

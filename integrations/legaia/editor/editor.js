@@ -4194,7 +4194,7 @@ function updateShapeDraft(){
   modelGlbButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_glb_authoring;
   modelMaterialsButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
   faceRemovalButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_face_removal;
-  if(state.model_overrides?.[modelAssetId]?.format==='tmd-face-removal-v1'){for(const control of [modelGlbButton])control.disabled=true;$('shape-status').textContent='Count-changing face removal applied. Vector edits, object transforms and same-layout TMD/OBJ/JSON edits retain removals. Retained-face editing is available. Material editing is available. GLB imports remain guarded; downloads, further removals, Undo/Redo and Clear are available.';}
+  if(state.model_overrides?.[modelAssetId]?.format==='tmd-face-removal-v1'){$('shape-status').textContent='Count-changing face removal applied. Vector edits, object transforms and same-layout TMD/OBJ/JSON edits retain removals. Retained-face editing is available. Material editing is available. GLB export/import retains the qualified Current layout; downloads, further removals, Undo/Redo and Clear are available.';}
 }
 $('shape-file').onchange=()=>{const file=$('shape-file').files?.[0];shapeDraft=file?{file,asset:modelAssetId,context:JSON.stringify([state.project.path,state.scene.id])}:null;updateShapeDraft();if(file)$('shape-status').textContent=`Selected ${file.name} · not applied. Apply or discard before changing model views.`;};
 discardShape.onclick=()=>{$('shape-file').value='';shapeDraft=null;updateShapeDraft();$('model-error').textContent='';$('shape-status').textContent='Selected file discarded; project unchanged.';};

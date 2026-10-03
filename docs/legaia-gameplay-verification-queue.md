@@ -1,5 +1,14 @@
 # Deferred gameplay verification
 
+## GLB vertex edit after removal - deferred gameplay
+
+Ready offline fixture: `local-output/sdk-20260909/model-removal-glb-20261003/parent/browser-project/`.
+Package SHA256 `036b2732b290e954c578de666d3f9b9b7fd8e30e8310f45efd61f4deaa186d8a`.
+Town01 model0009 keeps the removed object1 quad and cumulative reference/material edits.
+Its GLB alias edits retained vertex1 X126→128, with exactly byte3196 changed and
+candidate/compressed-neighbor readback verified. Later verify appearance across
+shared instances and animation/scene transitions. The package is not installed or run.
+
 ## Material editing after removal - deferred gameplay
 
 Ready offline fixture: `local-output/sdk-20260909/model-removal-materials-20261003/parent/browser-project/`.
