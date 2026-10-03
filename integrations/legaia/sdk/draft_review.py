@@ -34,6 +34,7 @@ def review(project, expected_key):
         summaries.append(dict(scene_id=scene_id, draft_count=sum(
             item['scene_id'] == scene_id for item in project.actor_drafts.values()),
             final_man_sha256=scene['final_man_sha256'],
+            actor_pool_evidence=deepcopy(scene.get('actor_pool_evidence')),
             facing_changes=deepcopy(scene.get('facing_changes', [])),
             other_change_counts={name: len(scene.get(name) or []) for name in (
                 'existing_actor_placement_changes', 'existing_actor_appearance_changes',
@@ -50,7 +51,8 @@ def review(project, expected_key):
             'This is an experimental serialized NPC candidate, not gameplay or spawn acceptance.',
             'Existing source facing edits affect their original owner; appended donor copies retain retail facing.',
             'Facing operands are source script sectors, not initial or live Transform heading.',
-            'Normal Build still rejects NPC drafts. Archive growth requires separately verified disc relocation.',
+            'Normal Build supports qualified NPC candidates that fit their original compressed stream; archive growth requires separately verified disc relocation.',
+            'Appended NPCs qualify the retail actor-pool lower bound before repacking. Scenery and intervening scripts leave total demand unverified.',
             'Review writes no project, package or disc output and does not launch the game.',
         ])
     try:

@@ -159,6 +159,8 @@ def prepare_streaming_scene(project, scene_id):
             context = load_branch_authoring_context(project.disc_path, scene)
             context.patch(branch_edits, original=carrier.payload)
             candidate, branch_changes = context.patch_appended(candidate, branch_edits)
+        from .actor_capacity import actor_pool_assessment
+        pool_evidence = actor_pool_assessment(archive, candidate) if requests else None
         # The raw loader advances by words. Pad only after all MAN edits so
         # record rebasing uses the original structural append result.
         padding = (-len(candidate)) % 4
@@ -192,7 +194,7 @@ def prepare_streaming_scene(project, scene_id):
         authored_state_key=key, imported_document_sha256=digest(document),
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
-        actor_changes=actor_audit, man_padding_bytes=padding,
+        actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

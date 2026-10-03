@@ -95,6 +95,12 @@ class RetailDraftFacingCompositionTests(unittest.TestCase):
                 draft = next(iter(project.actor_drafts))
                 archive_bytes, audit = prepare_draft_archive(project, draft)
                 scene_audit = audit['scenes'][f'scene://{scene}'] if 'scenes' in audit else audit
+                pool = scene_audit['actor_pool_evidence']
+                self.assertEqual(pool['source']['node_capacity'], 143)
+                self.assertEqual(len(pool['source']['setup_allocation_sites']), 6)
+                self.assertEqual(pool['initial_placement_minimum_nodes'],
+                                 read_man_layout(context._man)['partition_counts'][1] + 1)
+                self.assertFalse(pool['runtime_allocation_verified'])
 
                 class MemoryImage:
                     def read_user(self, lba, offset, length, file_size):

@@ -15,6 +15,7 @@ from importer.serialization import patch_man_positions
 from .project import ProjectError, digest
 from .build import authored_state_key
 from .project import atomic_write, canonical
+from .actor_capacity import actor_pool_assessment
 
 
 def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, dict]:
@@ -317,6 +318,10 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             branch_context=load_branch_authoring_context(project.disc_path,scene)
             branch_context.patch(branches,original=source)
             candidate,branch_audit=branch_context.patch_appended(candidate,branches)
+        # Check the final MAN before reading/repacking the archive. Existing-only
+        # edits retain their prior executable compatibility; appended actors need
+        # the same qualified native lower bound as ordinary NPC packages.
+        pool_evidence = actor_pool_assessment(archive, candidate) if requests else None
         absolute=archive.entry(bundle.entry_index).start_lba*2048+bundle.table_offset
         span=locate_physical_span(archive,absolute)
         prot=archive.image.read_user(archive.node.extent_lba,0,archive.node.size,archive.node.size)
@@ -352,7 +357,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         authored_state_key=input_key,
         imported_document_sha256=digest(document),source_disc_sha256=disc_hash,
         source_prot_sha256=prot_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),
-        actor=actor_audit,existing_actor_placement_changes=placement_audit,
+        actor=actor_audit,actor_pool_evidence=pool_evidence,existing_actor_placement_changes=placement_audit,
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_dialogue_changes=dialogue_audit,
         branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,

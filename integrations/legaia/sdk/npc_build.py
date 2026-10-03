@@ -15,17 +15,10 @@ from importer.serialization import compress_lzs
 from .build import authored_state_key
 from .draft_build import _prepare_draft_scene
 from .project import ProjectError
+from .actor_capacity import actor_pool_assessment
 
 MAX_CANDIDATE_BYTES = 4 * 1024 * 1024
 MAX_PROT_BYTES = 256 * 1024 * 1024
-
-
-def actor_pool_assessment(archive, candidate):
-    from importer.actor_runtime_capacity import qualify_actor_pool, assess_initial_placement_capacity
-    from importer.man_layout import read_man_layout
-    executable = archive.image.read_file(archive.image.find('SCUS_942.54'))
-    return assess_initial_placement_capacity(qualify_actor_pool(executable),
-                                              read_man_layout(candidate)['partition_counts'])
 
 
 def _public(value):

@@ -38,7 +38,19 @@ class DraftReviewTests(unittest.TestCase):
             self.assertFalse(result['gameplay_verified'])
             self.assertEqual(result['draft_count'],1)
             self.assertNotIn('payload',json.dumps(result))
+            self.assertFalse(any('Normal Build still rejects' in line for line in result['limitations']))
             self.assertEqual(before,(authored_state_key(project),list(project.undo_stack),list(project.root.iterdir())))
+
+    def test_review_preserves_detached_pool_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project,key,archive,audit=self.fixture(directory)
+            evidence={'runtime_allocation_verified':False,'initial_placement_minimum_nodes':54}
+            audit['scenes']['scene://fixture']['actor_pool_evidence']=evidence
+            with patch('sdk.draft_build.prepare_draft_archive',return_value=(archive,audit)):
+                result=review(project,key)
+            self.assertEqual(result['scenes'][0]['actor_pool_evidence'],evidence)
+            result['scenes'][0]['actor_pool_evidence']['initial_placement_minimum_nodes']=1
+            self.assertEqual(evidence['initial_placement_minimum_nodes'],54)
 
     def test_source_mode_empty_and_changed_candidate_reject(self):
         with tempfile.TemporaryDirectory() as directory:
