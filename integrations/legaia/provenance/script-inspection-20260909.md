@@ -1,5 +1,27 @@
 # Read-only actor script and dialogue inspection
 
+Actor-state-copy evidence (2026-10-03): unchanged PROT897 SHA256
+216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b,
+load base801CE818 and unchanged Andrew pin d6e64c68ede25813d35db20980da82a1a025549b.
+Table801CF014 dispatches E3 to801E3108. Selector byte+1 is passed to lookup
+8003C83C at801E310C; returned v0 becomes a0 at801E3114. LHU(a0)/SH(s5)
+pairs3120/3128,312C/3134,3138/3140,3144/314C copy fields14/16/18/26 from
+resolved actor to current dispatch context. The pinned nibble_e.rs camera-to-actor
+direction is superseded by these words. Missing lookup branches3118→3174,
+skipping field copies but retaining context post-updates; it is not a full no-op.
+Current flag bit29 gates negative sourceY to context+8E at3164/316C/3170.
+Player context invokes80017EC8; both exits advance adjusted PC3, giving ordinary
+width3 / extended4. Runtime fields and imported actor correlation remain unknown.
+Fresh Dolk2 P2 record0011 SHA256
+3f6b3ecde4e9c576319804e1739cf4d1155c79d923c21cd23639ae70160428bc
+contains sixteen extended copies at PCs51/59/67/75/83/91/99/107 and
+1160/1168/1176/1184/1192/1200/1208/1216. First selectors44/33/32/38/36/39/34/35
+use dispatch contexts82..89; later selectors82..89 use those earlier contexts.
+These are encoded inverse pairs, not proved capture/restore roles. Independent
+fresh decoded-MAN/record readback confirms offsets33009..33065 and34118..34174
+at eight-byte intervals. Browser core fields match all source fixtures; no files,
+commands or history change. The new choice27 stop leaves Dolk2's total at30.
+
 Embedded STATE_RESUME0 evidence (2026-10-03), superseding the earlier
 fixed-only limitation: unchanged hashed PROT897/SCUS. Completed state dispatch
 801E08EC reads length at operand+2;801E08F4/F8 adds length+4 to adjusted PC.

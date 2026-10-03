@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+Actor-state-copy source checkpoint (2026-10-03): no immediate gameplay gate
+is added. Later live observation must independently correlate MENUE3 selectors
+and dispatch contexts to actors, establish copied field meaning and check
+lookup-miss/context-update behavior. Dolk2 P2 record0011's sixteen inverse
+selector pairs alone do not prove capture/restore roles or actor positions.
+No actor transform was authored and no game was launched for this checkpoint.
+
 Embedded STATE_RESUME0 source checkpoint (2026-10-03): inspection adds no
 immediate gameplay gate. Later menu observation must establish activation,
 suspension/completion and semantic argument/payload ownership independently of

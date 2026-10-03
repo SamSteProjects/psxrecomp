@@ -1,5 +1,13 @@
 # Script source-flow overview
 
+MENUE3 actor-state-copy coverage (2026-10-03) exposes a fixed encoded
+continuation and the native resolved-actor-to-dispatch-context direction.
+A missing lookup skips the field copy; context post-updates still run.
+Selector/context numbers remain encoded facts, not imported actor identities
+or observed positions. Sixteen Dolk2 P2 record0011 sites are now visible;
+the next unresolved choice27 boundary still stops inspection. No editable
+target word or runtime transform operation is introduced.
+
 Embedded STATE_RESUME0 (2026-10-03) now owns its full declared argument block
 and terminated native payload as one instruction. These bytes are not parent
 instruction/dialogue starts or target destinations. Its outgoing edge retains

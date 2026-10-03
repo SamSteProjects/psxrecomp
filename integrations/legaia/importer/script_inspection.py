@@ -547,6 +547,19 @@ def _instruction(data: bytes, pc: int) -> dict:
                             uses_frame_delta=sub in (0xCB, 0xCC) and raw == 0xFFFF)
             else:
                 args["values"] = list(data[operand + 1:operand + size])
+        elif sub == 0xE3:
+            # Retail801E3108 resolves selector+1, copies actor fields into
+            # current s5 (not camera -> resolved actor), then advances3.
+            # Missing lookup skips only the copy; current-context post-updates
+            # still run. No selector is correlated to an imported actor here.
+            size, mnemonic = 2, "ACTOR_STATE_COPY"
+            need(size)
+            args = {"sub_op": sub, "actor_selector": data[operand + 1],
+                    "copy_direction": "resolved_actor_to_dispatch_context",
+                    "field_offsets": ["0x14", "0x16", "0x18", "0x26"],
+                    "on_lookup_miss": "no_field_copy",
+                    "source_lookup": "0x8003C83C", "actor_binding": "runtime_lookup_unresolved",
+                    "runtime_effect": "not_evaluated"}
         elif sub == 0xEA:
             # Retail table801CF030 ->801E34CC calls8003C7EC and adds2
             # to PC in its delay slot, then returns advanced s8. Pinned halt is false.
