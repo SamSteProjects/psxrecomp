@@ -1,5 +1,14 @@
 # Deferred gameplay verification
 
+## Vector editing after face removal - deferred gameplay
+
+Ready offline fixture: `local-output/sdk-20260909/model-topology-vectors-20261003/parent/browser-project/`.
+Package SHA256 `f21d1fd224cbf19bba111a1b7398bf00da59e0b7af1767d3afcc4f45b7ed084b`.
+Town01 model0009 retains the removed object1 quad (188 triangles) and edits vertex0 X126→143.
+Whole-model and compressed-neighbor readback are exact. Later verify the intended
+vertex displacement and missing face across affected instances, animation and scene transitions.
+This package has not been installed or run; other offline work can continue.
+
 ## Count-changing model face removal - deferred gameplay
 
 Ready offline fixture: `local-output/sdk-20260909/model-face-removal-20261003/parent/browser-project/`.

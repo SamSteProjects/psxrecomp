@@ -1227,6 +1227,18 @@ class ProjectService:
                 raise ProjectError('Model source differs from imported evidence')
             return load_model_source(self.disc_path, asset)
 
+    def _model_candidate_changes(self, asset_id, original, content):
+        """Audit against actual Retail ownership, retaining an existing topology binding."""
+        from importer.model_authoring import replace_model_content
+        from importer.model_face_removal import qualify_face_removal, FORMAT
+        binding = self.model_overrides.get(asset_id)
+        if binding and binding['format'] == FORMAT:
+            _, changes = qualify_face_removal(original, hashlib.sha256(original).hexdigest(),
+                                              content, binding['removed_faces'])
+            return changes + [dict(kind='primitive_removal', **row) for row in binding['removed_faces']]
+        return replace_model_content(original, hashlib.sha256(original).hexdigest(), content,
+                                     allow_normal_references=True)[1]
+
     def read_model_replacement(self, asset_id: str, binding: dict) -> bytes:
         from importer.model_authoring import replace_model_shape, replace_model_content
         removal = isinstance(binding, dict) and binding.get('format') == 'tmd-face-removal-v1'
@@ -1302,8 +1314,9 @@ class ProjectService:
         elif format == 'obj':
             replacement, _ = import_shape_obj(effective, hashlib.sha256(effective).hexdigest(), content)
         else:
-            replacement, _ = replace_model_content(original, digest, content, allow_normal_references=True)
-        _, changes = replace_model_content(original, digest, replacement, allow_normal_references=True)
+            self._model_candidate_changes(asset_id, original, content)
+            replacement = content
+        changes = self._model_candidate_changes(asset_id, original, replacement)
         _, pending = replace_model_content(effective, hashlib.sha256(effective).hexdigest(), replacement, allow_normal_references=True)
         return replacement, {'asset_id': asset_id, 'source_sha256': digest,
                              'proposed_sha256': hashlib.sha256(replacement).hexdigest(),
@@ -1390,14 +1403,9 @@ class ProjectService:
 
     def translate_model_object(self, asset_id: str, object_index: int, offset: list[int],
                                expected_sha256: str) -> None:
-        from importer.model_json import translate_shape_object
-        if self.mode != 'edit':
-            raise ProjectError('Model object translation requires Edit mode')
-        original = self._model_source(asset_id, self.active_scene)
-        effective = (self.read_model_replacement(asset_id, self.model_overrides[asset_id])
-                     if asset_id in self.model_overrides else original)
-        replacement = translate_shape_object(original, effective, expected_sha256, object_index, offset)
-        if replacement != effective:
+        replacement, report = self._prepare_model_object(asset_id, object_index, 'translation',
+                                                          {'offset': offset}, expected_sha256)
+        if report['changes_from_current']:
             self.set_model_replacement(asset_id, replacement)
 
     def _prepare_model_object(self, asset_id: str, object_index: int, operation: str,
@@ -1414,7 +1422,10 @@ class ProjectService:
                      if asset_id in self.model_overrides else original)
         if not isinstance(values, dict):
             raise ProjectError('Model object preview requires operation values')
-        args = (original, effective, expected_sha256, object_index)
+        # This edit preserves the qualified Current packet layout. The final
+        # candidate is then audited against the actual Retail binding below.
+        operation_source = effective if self.model_overrides.get(asset_id, {}).get('format') == 'tmd-face-removal-v1' else original
+        args = (operation_source, effective, expected_sha256, object_index)
         if operation == 'translation' and set(values) == {'offset'}:
             replacement = translate_shape_object(*args, values['offset'])
         elif operation == 'rotation' and set(values) == {'axis', 'quarter_turns'}:
@@ -1475,29 +1486,18 @@ class ProjectService:
 
     def rotate_model_object(self, asset_id: str, object_index: int, axis: str,
                             quarter_turns: int, expected_sha256: str) -> None:
-        from importer.model_json import rotate_shape_object
-        if self.mode != 'edit':
-            raise ProjectError('Model object rotation requires Edit mode')
-        original = self._model_source(asset_id,self.active_scene)
-        effective = (self.read_model_replacement(asset_id,self.model_overrides[asset_id])
-                     if asset_id in self.model_overrides else original)
-        replacement = rotate_shape_object(original,effective,expected_sha256,object_index,axis,quarter_turns)
-        if replacement != effective:
-            self.set_model_replacement(asset_id,replacement)
+        replacement, report = self._prepare_model_object(asset_id, object_index, 'rotation',
+                                                          {'axis': axis, 'quarter_turns': quarter_turns}, expected_sha256)
+        if report['changes_from_current']:
+            self.set_model_replacement(asset_id, replacement)
 
     def scale_model_object(self, asset_id: str, object_index: int, percent: int, expected_sha256: str) -> None:
-        from importer.model_json import scale_shape_object
-        if self.mode != 'edit':
-            raise ProjectError('Model object scaling requires Edit mode')
-        original = self._model_source(asset_id,self.active_scene)
-        effective = (self.read_model_replacement(asset_id,self.model_overrides[asset_id])
-                     if asset_id in self.model_overrides else original)
-        replacement = scale_shape_object(original,effective,expected_sha256,object_index,percent)
-        if replacement != effective:
-            self.set_model_replacement(asset_id,replacement)
+        replacement, report = self._prepare_model_object(asset_id, object_index, 'scale',
+                                                          {'percent': percent}, expected_sha256)
+        if report['changes_from_current']:
+            self.set_model_replacement(asset_id, replacement)
 
     def set_model_replacement(self, asset_id: str, content: bytes) -> None:
-        from importer.model_authoring import replace_model_content
         if self.mode != 'edit':
             raise ProjectError('Model shape authoring requires Edit mode')
         if not isinstance(asset_id, str) or len(asset_id) > 512 or not isinstance(content, bytes) or not 1 <= len(content) <= 4*1024*1024:
@@ -1506,7 +1506,7 @@ class ProjectService:
             raise ProjectError('Project supports at most 128 model shapes')
         original = self._model_source(asset_id, self.active_scene)
         source_hash = hashlib.sha256(original).hexdigest()
-        _, audit = replace_model_content(original, source_hash, content, allow_normal_references=True)
+        audit = self._model_candidate_changes(asset_id, original, content)
         before = deepcopy(self.model_overrides.get(asset_id))
         has_materials = any(row['kind'] == 'primitive_group' or
                             (row['kind'] == 'primitive' and row['field'] in ('clut', 'tpage')) for row in audit)
@@ -1516,6 +1516,8 @@ class ProjectService:
                               'tmd-content-v1' if any(row['kind'] == 'primitive' for row in audit) else 'tmd-shape'),
                    'source_scene_id':self.active_scene,'source_sha256':source_hash,
                    'asset_sha256':hashlib.sha256(content).hexdigest(),'byte_length':len(content)} if audit else None
+        if before and before['format'] == 'tmd-face-removal-v1' and binding is not None:
+            binding.update(format=before['format'], removed_faces=deepcopy(before['removed_faces']))
         if before == binding:
             return
         if binding is not None:

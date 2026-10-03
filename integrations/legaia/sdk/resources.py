@@ -49,7 +49,7 @@ def model_shape_source(project, asset_id: str, format: str = 'tmd', layer: str =
                 source_sha256=source_hash, effective_sha256=sha256(data).hexdigest(), representation=layer, byte_length=len(data),
                 filename='original-model.tmd', tmd_base64=base64.b64encode(data).decode('ascii'),
                 object_count=len(preview['objects']), coordinate_system=preview['coordinate_system'],
-                limitations=['TMD content supports existing vector capacities and face packets; object/group counts, normal references, material bindings and opaque bytes remain source-owned.'])
+                limitations=['Model files preserve the qualified Current packet layout and object/vector capacities. Existing face-removal bindings retain their exact removed Retail identities; other count-changing file imports remain unsupported. Reserved fields and opaque bytes remain source-owned.'])
     if format == 'json':
         import json
         from importer.model_json import export_shape_json
