@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Model allocation foundation (2026-10-03): extent inspection adds no gameplay
+gate and authors no geometry. General new faces remain unimplemented. Offline
+work still needs authored-face identities, model/carrier relocation, Inspector
+review/Apply and exact Save/Open/history/Build readback before native appearance,
+culling, animation pose and shared-instance verification can be queued.
+
 Conditional capture Inspector summary (2026-10-03): read-only presentation
 adds no gameplay gate. Payload extent and both conditional offsets are visible,
 but actor match, payload ownership and runtime execution remain unresolved.
