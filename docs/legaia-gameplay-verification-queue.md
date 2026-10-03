@@ -2,6 +2,8 @@
 
 ## World source placement transforms - deferred
 
+Additional viewport-handle fixture: `local-output/sdk-20260909/worldmap-placement-gizmo-20261002/parent/browser-project/`. Package SHA256 `d15d8464e9486a9463dac0b5653e1005aadd9fa942c13e11ebf95fee8d28b6b7`. Record0477 is X1280/Y256/Z256/yaw1536; all57 source instances share it. Complete source reconstruction and package readback match, with only four MAP bytes changed. Source Y/Z move the display in the opposite directions. Apply, history and Save/reload pass offline; scripts, actual native resting positions, visibility and collision remain unverified. Use the same retail/authored checks below when gameplay verification is resumed.
+
 Saved fixture: `local-output/sdk-20260909/worldmap-placement-authoring-20261002/parent/browser-project/`.
 Latest package SHA256: `89b1be7633bd5911afd39bce3dcea41ea8723370f7f96535c11ace76dab1bb56`.
 Map01 record0477 retains its source cell/anchor/model/flags and changes X offset

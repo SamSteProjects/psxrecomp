@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+**World placements** now includes cancellable source X/Y/Z translation handles, snapping and Frame anchor. Dragging retains a draft for Review; Apply alone changes authored state. See [world translation handles](../../docs/legaia-worldmap-placement-gizmo.md).
+
 In **World placements**, **Export Current scene GLB** downloads applied world record transforms; **Export Proposed scene GLB** requires the exact reviewed proposal and writes no authored command. Both retain retail geometry and explicit source/runtime confidence. See [world placement export](../../docs/legaia-worldmap-placement-export.md).
 
 Use **World placements** to inspect and edit qualified kingdom source-record offsets and yaw with shared-record scope, Current/Proposed viewport comparison, reviewed Apply, history, Save/Open and normal Build. Source seeds do not establish runtime resting positions or visibility. See [world placement authoring](../../docs/legaia-worldmap-placement-authoring.md).

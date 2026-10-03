@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {translateOffset,sourceOffsetDirections} from '../editor/worldmap-placement-gizmo.js';
+const base={offset:{x:7,y:-32,z:64},yaw_units:2112};
+assert.deepEqual(sourceOffsetDirections,{x:{x:1,y:0,z:0},y:{x:0,y:-1,z:0},z:{x:0,y:0,z:-1}});
+assert.deepEqual(translateOffset(base,'x',{x:30,y:40},{x:60,y:80},200,1),{offset:{x:107,y:-32,z:64},yaw_units:2112});
+assert.equal(translateOffset(base,'x',{x:30,y:40},{x:60,y:80},200,64).offset.x,128);
+assert.equal(translateOffset(base,'y',{x:0,y:20},{x:0,y:80},256,16).offset.y,32);
+assert.equal(translateOffset(base,'z',{x:0,y:-20},{x:0,y:-80},256,64).offset.z,128);
+assert.equal(translateOffset({offset:{x:-7,y:0,z:0},yaw_units:0},'x',{x:-9,y:0},{x:128,y:0},128,64).offset.x,0);
+assert.equal(translateOffset({offset:{x:0,y:0,z:0},yaw_units:0},'x',{x:-32,y:0},{x:128,y:0},128,64).offset.x,-64);
+assert.equal(base.offset.x,7);assert.equal(base.yaw_units,2112);
+for(const [axis,delta,basis,units,step] of [['w',{x:0,y:0},{x:64,y:0},128,1],['x',{x:Infinity,y:0},{x:64,y:0},128,1],['x',{x:10,y:0},{x:1,y:0},128,1],['x',{x:64000,y:0},{x:64,y:0},128,1],['x',{x:10,y:0},{x:64,y:0},128,2]])assert.throws(()=>translateOffset(base,axis,delta,basis,units,step));
+console.log('World translation source directions, projected-axis deltas, absolute signed snapping and bounds passed');
