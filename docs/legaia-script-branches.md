@@ -45,12 +45,17 @@ record lengths and MAN pointers remain source-owned. For `p = pc + header_length
 | COND_JMP0x42, modes0/1 | p+2 | Ordinary or extended |
 | BBOX_TEST0x4D | p+4 | Ordinary or extended |
 | FLAG_WORD_BRANCH0x4C/A0..A2 | p+2 | Ordinary or extended |
+| FIELD_68_BRANCH0x4C/8C | p+1 | Ordinary or extended |
+| ACTOR_SEARCH_BRANCH0x4C/8D | p+3 | Ordinary or extended |
 
 All targets are `(word_base + delta) & 65535`; the emitted word is
 `(target_pc - word_base) & 65535`. Retail callers sign-extend the returned PC
 before storing it and adding it to the script base, which establishes the signed
 authoring limit. Conditions remain encoded labels and are never evaluated.
 LFLAG/GFLAG/CFLAG TEST instructions are wait gates without destination words.
+FIELD_68_BRANCH labels zero/nonzero field0x68 paths. ACTOR_SEARCH_BRANCH preserves
+its character selector and marker; empty or unmatched searches fall through.
+Neither family observes runtime values or establishes actor identity.
 
 Existing dialogue and operand writers first qualify their independent retail
 spans. Branch words compose last over those authored values, with exact source

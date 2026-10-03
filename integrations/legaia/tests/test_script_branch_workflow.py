@@ -84,6 +84,32 @@ class ScriptBranchWorkflow(unittest.TestCase):
             self.assertNotIn('ScriptBranches', q.overrides[owner])
             self.assertEqual(snapshot(q, owner)['targets'][0]['current_target_pc'], 15)
 
+    def test_retail_partition_two_field68_history_and_exact_package_word(self):
+        with tempfile.TemporaryDirectory() as directory:
+            p = self.project(directory, 'town01')
+            imported = deepcopy(p.imports)
+            owner = 'scene://town01/scripts/man-p2/0015'
+            identifier = 'script://town01/scripts/man-p2/0015/branch/0017'
+            row = next(r for r in snapshot(p, owner)['targets'] if r['semantic_id'] == identifier)
+            self.assertEqual((row['mnemonic'], row['target_pc'], row['target_context']),
+                             ('FIELD_68_BRANCH', 50, 0))
+            reviewed = self.apply(p, owner, identifier, {'target_pc': 12})
+            self.assertEqual(reviewed['review']['audit'][0]['changed_byte_offsets'], [40645, 40646])
+            authored = deepcopy(p.overrides)
+            p.undo(); self.assertNotIn('ScriptBranches', p.overrides.get(owner, {}))
+            p.redo(); self.assertEqual(p.overrides, authored)
+            p.save(); q = ProjectService.open(p.root)
+            self.assertEqual(q.overrides, authored)
+            self.assertEqual(q.imports, imported)
+            original, decoded, result, _ = self.readback(q, 'town01')
+            # Independent native arithmetic: word base PC26, target PC12,
+            # signed delta -14. The extended selector and every other byte stay retail.
+            self.assertEqual(original[40645:40647], bytes.fromhex('1800'))
+            expected = bytearray(original); expected[40645:40647] = bytes.fromhex('f2ff')
+            self.assertEqual(decoded, expected)
+            self.assertEqual(len(result['report']['changes']), 1)
+            self.assertEqual(result['report']['changes'][0]['scope'], 'script-branch-target-only')
+
     def test_raw_streaming_build_exact_words_and_operand_file_bundle(self):
         from sdk.script_operand_files import export_file, review as file_review
         from sdk.script_operand_bundle import export_file as bundle_export, review as bundle_review

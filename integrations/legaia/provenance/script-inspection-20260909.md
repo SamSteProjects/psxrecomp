@@ -1,5 +1,20 @@
 # Read-only actor script and dialogue inspection
 
+Retail correction (2026-10-03): MENU_CTRL8C/8D now decode from executing
+PROT entry897 SHA256 `216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b`.
+At base0x801CE818, outer table801CEE80 selects801E1EA0; subtable801CEF78/7C
+selects801E23EC/2404. 8C tests signed field0x68, advances4 and uses the signed
+word at operand+1 for its zero path. 8D advances6, reads selector+1/marker+2,
+and matches into801E3608 (word operand+3). Empty searches branch801E3624;
+unmatched searches return the already advanced PC through801E3628.
+Shared exit801E360C/3614/361C reads the signed word, subtracts2, then adds the
+advanced PC: both targets are relative and wrap16. Extended dispatch adds1 to
+operand and PC before this handler. The unchanged pinned nibble_8.rs describes
+absolute targets and a no-match halt; those descriptions are superseded here.
+Hash-bound regression checks and private native-word evidence independently
+qualify this correction. Runtime search-table ownership and values remain unknown.
+Target-only authoring uses the existing fail-closed review/Apply/build gates.
+
 Central transition assets (2026-10-02) adapt existing catalog/graph evidence;
 no decoder, opcode handler or retail source pin changed. Each asset retains
 source record SHA, source PC/stop count and layered entry bytes. Existing static

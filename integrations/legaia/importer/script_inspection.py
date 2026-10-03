@@ -391,6 +391,28 @@ def _instruction(data: bytes, pc: int) -> dict:
                     "can_yield": sub < 0x72}
             if sub >= 0x72:
                 args["mask"] = data[operand + 5]
+        elif sub in (0x8C, 0x8D):
+            # Executing PROT897, 801E23EC/2404: adjusted PC advances by
+            # 4/6, then shared360C/3614 adds signed16 delta-2. C reads at
+            # operand+1; D match reads at operand+3 through3608. The pinned
+            # VM's absolute targets and D no-match halt disagree with retail.
+            size = 3 if sub == 0x8C else 5
+            need(size)
+            relative = 1 if sub == 0x8C else 3
+            delta = struct.unpack_from("<h", data, operand + relative)[0]
+            target = (operand + relative + delta) & 0xFFFF
+            mnemonic = "FIELD_68_BRANCH" if sub == 0x8C else "ACTOR_SEARCH_BRANCH"
+            args = {"sub_op": sub, "delta": delta, "target": target,
+                    "runtime_effect": "not_evaluated"}
+            if sub == 0x8C:
+                args.update(field_offset="0x68", runtime_value="not_observed")
+                matched, other = "field_68_zero", "field_68_nonzero"
+            else:
+                args.update(character_selector=data[operand + 1], marker=data[operand + 2],
+                            actor_binding="runtime_search_table_unresolved")
+                matched, other = "search_match", "search_empty_or_no_match"
+            branches = [{"pc": target, "condition": matched},
+                        {"pc": operand + size, "condition": other}]
         elif sub == 0x8A:
             # Pinned executing menu_ctrl/nibble_8.rs: fixed header+10
             # continuation after three signed words and one packed u24.

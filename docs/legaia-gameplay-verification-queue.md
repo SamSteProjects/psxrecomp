@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+## MENU8C retail branch runtime - deferred
+
+Offline fixture: `local-output/sdk-20260909/script-coverage-20261003/parent/service-project/`.
+Town01 P2 record0015 PC23 retargets FIELD_68_BRANCH PC50→12. Package SHA256
+`54707d3cd606648d1051ae10234c0435bdace401f603a26d76a0bb536c9ac06c`.
+Review/history/Save/Open/normal Build and independent whole-MAN readback pass;
+only decoded offsets40645/40646 differ. This is an encoding fixture, not a
+recommended story change. Later verify activation and field0x68-dependent
+behavior against a retail baseline before treating this retarget as accepted.
+Actor-search runtime branches and selector/table correlation need separate
+runtime evidence. No package was installed or played; offline work can continue.
+
 Source-flow overview checkpoint (2026-10-03): this read-only feature is accepted
 offline and adds no immediate gameplay gate. Its cycles and entry reachability
 describe encoded source edges only; existing authored-branch story/runtime checks

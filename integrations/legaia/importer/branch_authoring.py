@@ -19,7 +19,7 @@ MAX_MAN_BYTES = 4 * 1024 * 1024
 MAX_BRANCH_EDITS = 1024
 MAX_BRANCH_OWNERS = 128
 LIMITATIONS = [
-    'Only existing reached JMP, conditional, bounding-box, flag-word and ordinary system-flag target words are editable.',
+    'Only existing reached JMP, conditional, bounding-box, flag-word, field-68, actor-search and ordinary system-flag target words are editable.',
     'Targets are original decoded instruction or atomic MES starts from the source entry through 32767; interiors and opaque bytes are excluded.',
     'Opcode, dispatch context, conditions, flag indices, bounds, selectors, ticks, record lengths and MAN pointers remain unchanged.',
     'Changed edges may make original instructions unreachable; their source spans and other authored operands remain retained.',
@@ -32,6 +32,8 @@ _FAMILIES = {
     'BBOX_TEST': (4, 'outside_box', 'relative_u16_wrap16'),
     'SYSFLAG_TEST': (1, 'flag_set', 'relative_u16_wrap16'),
     'FLAG_WORD_BRANCH': (2, 'flag_bit_set', 'relative_i16_wrap16'),
+    'FIELD_68_BRANCH': (1, 'field_68_zero', 'relative_i16_wrap16'),
+    'ACTOR_SEARCH_BRANCH': (3, 'search_match', 'relative_i16_wrap16'),
 }
 
 

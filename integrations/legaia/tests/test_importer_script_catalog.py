@@ -197,13 +197,14 @@ class RetailScriptAssetCatalogTests(unittest.TestCase):
         from importer.pipeline import _disc_context
         with _disc_context(os.environ["LEGAIA_DISC_BIN"]):
             result = load_script_asset_catalog(os.environ["LEGAIA_DISC_BIN"], "town01")
-            # Refreshed 2026-10-02 against hashed retail PROT dispatcher words:
+            # Refreshed 2026-10-03 against hashed retail PROT dispatcher words:
             # camera/field parameters continue instead of becoming false PCs;
             # flag-word targets are relative. The additional bounded segments
-            # retain 60 partial scripts and never imply runtime reachability.
+            # retain 59 partial scripts after qualified MENU8C/8D coverage;
+            # encoded source coverage never implies runtime reachability.
             self.assertEqual((result["actor_count"], result["script_count"], result["dialogue_count"]), (52, 91, 619))
-            self.assertEqual((result["asset_count"], result["partial_script_count"]), (710, 60))
-            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1339, 1))
+            self.assertEqual((result["asset_count"], result["partial_script_count"]), (710, 59))
+            self.assertEqual((result["flag_reference_count"], result["transition_count"]), (1383, 1))
             assets = {a["semantic_id"]: a for a in result["assets"]}
             self.assertEqual(result["partition_two_script_count"], 39)
             p2 = assets["script://town01/scripts/man-p2/0037"]
