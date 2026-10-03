@@ -43,3 +43,5 @@ browser checks verified all three scenes, hierarchy and source XYZ, actual GPU
 mesh picking, placement toggles, camera controls, 540px fit, source withdrawal,
 pending-close cancellation and exact project/Build file hashes. Screenshots and
 the combined proof are private under the milestone `parent/` evidence folder.
+
+The inspection now supports [source scene and selected-entity GLB export](legaia-worldmap-export.md) with the same geometry, transforms and confidence limits.

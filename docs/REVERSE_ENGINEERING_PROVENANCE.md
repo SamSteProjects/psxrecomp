@@ -1,5 +1,7 @@
 # Legaia reverse-engineering provenance
 
+The 2026-10-02 world source GLB workflow reuses the previously qualified walk MAP, kingdom slots and sparse source seed transforms. It exports the same static source representations, without new runtime or overview structure claims. Source geometry and partial texture associations remain distinct from gameplay rendering. Private evidence: `local-output/sdk-20260909/worldmap-glb-20261002/`.
+
 The 2026-10-02 source-angle scenery extension uses the already qualified MAP descriptor offsets and yaw fields. Its frozen Q30 table and nearest-half-away coordinate rounding are explicitly an SDK authoring convention. They do not add a claim about retail fixed-point rounding, runtime transforms or collision behavior. Source ownership and the reference pin remain unchanged. Private evidence: `local-output/sdk-20260909/scenery-group-angle-20261002/`.
 
 The reference repository is `AndrewAltimit/legend-of-legaia-re`, pinned to

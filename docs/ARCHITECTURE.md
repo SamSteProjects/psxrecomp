@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`importer/worldmap_export.py` adapts the qualified world source graph into the existing scene-export contract. Column-major source matrices become row-major display matrices with one Y reflection; model GLB local reflection is composed by the established scene encoder. `sdk/worldmap_export.py` reloads immutable source geometry, validates disc identity and state before writing a uniquely named artifact in project `Exports`, and returns bounded bytes with the provenance audit. The editor validates the artifact binding and digest before downloading; visibility controls affect export scope, not source placement confidence.
+
 `sdk/environment_rotation_math.py` and `editor/environment-rotation-math.js` retain identical frozen Q30 quarter-wave source-yaw tables. Python integer and JavaScript BigInt arithmetic round rotated displacements to signed source units before the existing cell-local descriptor merger checks capacity and range. `environment_rotation_group.py` retains the legacy quarter-turn operation and adds an exact `yaw_units` variant; reviewed keys bind either shape to source, selection and project state. The editor validates proposals independently, and the existing Environment command/writer owns persistence and Build. This is an editor placement convention, not a reconstruction of retail GTE arithmetic.
 
 Model GLB profile v6 resolves explicit material tuples through source corner

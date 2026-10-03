@@ -160,6 +160,7 @@ class EditorServer(ThreadingHTTPServer):
         state['worldmap_authoring_state_key'] = worldmap_state_key(self.project)
         state['capabilities']['worldmap_authoring'] = bool(self.project.disc_path and self.project.imports)
         state['capabilities']['worldmap_geometry'] = bool(self.project.disc_path and self.project.imports)
+        state['capabilities']['worldmap_export'] = bool(self.project.disc_path and self.project.imports)
         from .project_assets import source_key as project_assets_source_key
         state['project_assets_source_key'] = None
         state['project_assets_unavailable_reason'] = None
@@ -771,6 +772,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('World ground inspection accepts only scene and source_key')
                     from .worldmap_geometry import inspect
                     self._json(200, inspect(self.server.project, body['scene'], body['source_key']))
+                    return
+                if route == '/api/export/worldmap':
+                    selected = body.get('scope') == 'selected'
+                    expected = {'scene', 'source_key', 'scope'} | ({'entity_id'} if selected else set())
+                    if set(body) != expected:
+                        raise ProjectError('World source export requires scene, source key and scope; only selected scope accepts an entity identity')
+                    from .worldmap_export import export
+                    self._json(200, export(self.server.project, body['scene'], body['source_key'],
+                                           body['scope'], body.get('entity_id')))
                     return
                 if route in ('/api/worldmap-authoring', '/api/worldmap-authoring-review'):
                     expected = set() if route == '/api/worldmap-authoring' else {'entity_id', 'values'}

@@ -30,3 +30,5 @@ Source model seeds now share this viewport. Use **Source model placements**, the
 source entity hierarchy and **Frame selected** to inspect their immutable XYZ.
 See [sparse placements](legaia-worldmap-placements.md) for provenance, model
 texture coverage and the limits on runtime visibility and resting transforms.
+
+The inspection now supports [source scene and selected-entity GLB export](legaia-worldmap-export.md) with the same geometry, transforms and confidence limits.
