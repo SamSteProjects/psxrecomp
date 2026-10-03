@@ -12,6 +12,7 @@ import math
 import re
 
 from importer.core import ImportError as RetailImportError
+from importer.animation import pose_vertices
 from .project import ProjectError
 from .scene_preview import preview_project, source_key
 
@@ -21,6 +22,7 @@ MAX_INSTANCES = 512
 MAX_FRAMES = 4096
 MAX_VERTICES_PER_FRAME = 100000
 MAX_FRAME_VERTICES = 1000000
+MAX_FRAME_NORMAL_CORNERS = 3000000
 MAX_METADATA_BYTES = 64 * 1024 * 1024
 ELIGIBLE_POSES = frozenset(('reference_party_idle', 'reference_global_loop',
     'imported_scene_animation_frame0', 'authored_scene_animation_frame0',
@@ -123,6 +125,64 @@ def _json_size(value):
         raise ProjectError('Scene animation metadata is not bounded finite JSON') from exc
 
 
+def _normal_pose(loaded, baseline, frames, budget):
+    """Optional source vectors and channels; never derive normals from positions."""
+    metadata = loaded.get('normal_preview')
+    if not isinstance(metadata, dict) or metadata.get('status') != 'source_unposed':
+        return None
+    canonical = baseline.get('normal_source', baseline)
+    if not isinstance(canonical, dict):
+        raise ProjectError('Scene normal source evidence is malformed')
+    if (loaded.get('posed') is not False or
+            metadata.get('coordinate_system') != 'retail_tmd_object_local' or
+            loaded.get('triangle_normals') != canonical.get('triangle_normals')):
+        raise ProjectError('Scene normal channels differ from canonical source vectors')
+    normals = loaded.get('triangle_normals')
+    if (not isinstance(normals, list) or len(normals) != len(loaded['triangles']) or
+            len(normals) > 100000):
+        raise ProjectError('Scene normal source triangle layout is invalid')
+    if len(normals) * 3 * len(frames) > budget:
+        return None
+    for row in normals:
+        if row is not None and (not isinstance(row, list) or len(row) != 3 or
+                any(not isinstance(v, list) or len(v) != 3 or
+                    any(type(n) is not int or not -32768 <= n <= 32767 for n in v) for v in row)):
+            raise ProjectError('Scene normal source vectors are not signed16 corners')
+    for obj in loaded['objects']:
+        lo, hi = obj['vertex_start'], obj['vertex_start'] + obj['vertex_count']
+        for triangle in loaded['triangles'][obj['triangle_start']:obj['triangle_start']+obj['triangle_count']]:
+            if any(not lo <= vertex < hi for vertex in triangle):
+                raise ProjectError('Scene normal triangle crosses its rigid source object')
+    channels = []
+    for frame in frames:
+        if (not isinstance(frame, dict) or frame.get('posed') is not True or
+                frame.get('coordinate_system') != 'retail_psx_actor_local_y_down' or
+                not isinstance(frame.get('object_transforms'), list)):
+            return None
+        transforms = []
+        for channel in frame['object_transforms']:
+            if not isinstance(channel, dict) or type(channel.get('object_index')) is not int:
+                raise ProjectError('Scene normal channel is invalid')
+            angles, translation = channel.get('rotation_psx'), channel.get('translation')
+            if (not isinstance(angles, list) or len(angles) != 3 or
+                    any(type(a) is not int or not 0 <= a < 4096 for a in angles)):
+                raise ProjectError('Scene normal rotation words are invalid')
+            _vertices([translation])
+            transforms.append(dict(object_index=channel.get('object_index'),
+                                   rotation_psx=deepcopy(angles), translation=deepcopy(translation)))
+        try:
+            expected = pose_vertices(loaded['vertices'], loaded['objects'], transforms)
+        except RetailImportError as exc:
+            raise ProjectError('Scene normal channel mapping is invalid') from exc
+        if expected != frame['vertices']:
+            raise ProjectError('Scene normal channels do not reproduce the qualified vertex sample')
+        channels.append(dict(posed=True,coordinate_system='retail_psx_actor_local_y_down',
+                             object_transforms=transforms))
+    source = {key: deepcopy(loaded[key]) for key in
+              ('posed','vertices','triangles','objects','triangle_normals','normal_preview')}
+    return dict(source=source,frames=channels)
+
+
 def _current(project, scene_id, expected_source_key):
     if (project.mode != 'edit' or project.active_scene != scene_id or
             source_key(project) != expected_source_key):
@@ -201,6 +261,7 @@ def prepare_scene_animation(project, scene, animation_loader, representation, ex
             raise ProjectError('Scene animation pose kind differs from its canonical geometry binding')
         grouped.setdefault(key, []).append(instance)
     tracks, admitted, total_vertices, track_bytes, budget_rejections = [], set(), 0, 0, 0
+    normal_corners = 0
     for key in sorted(grouped):
         members = grouped[key]
         representative = members[0]
@@ -247,12 +308,21 @@ def prepare_scene_animation(project, scene, animation_loader, representation, ex
                     raise ProjectError('Scene animation frame 0 differs from the canonical scene pose')
                 track = dict(geometry_key=key, asset_id=asset['asset_id'], clip_id=clip_id,
                              pose_kind=asset['pose_kind'], frame_count=frame_count, vertex_count=count, frames=values)
+                normal_pose = _normal_pose(loaded, baseline, frames, MAX_FRAME_NORMAL_CORNERS-normal_corners)
+                if normal_pose is not None:
+                    track['normal_pose'] = normal_pose
                 used_bytes = _json_size(track)
+                if normal_pose is not None and track_bytes + used_bytes > MAX_METADATA_BYTES:
+                    del track['normal_pose']
+                    normal_pose = None
+                    used_bytes = _json_size(track)
                 if track_bytes + used_bytes > MAX_METADATA_BYTES:
                     reason = 'Animation preview JSON budget exceeded; complete source track omitted'
                     budget_rejections += 1
                 else:
                     tracks.append(track); admitted.add(key)
+                    if normal_pose is not None:
+                        normal_corners += len(normal_pose['source']['triangles']) * 3 * frame_count
                     total_vertices += usage; track_bytes += used_bytes
         if reason is not None:
             if not isinstance(reason, str) or len(reason) > 512:

@@ -411,7 +411,11 @@ class ScenePreviewService:
                         else:
                             pose_kind = "single_object_static"
                     if pose_kind not in ("single_object_static", "reference_clipless_multipart_static"):
-                        # Static source normals have not been posed through these channels.
+                        # Retain raw vectors as source evidence, separate from the
+                        # posed render stream. The timeline qualifies its channels.
+                        if 'triangle_normals' in preview and 'normal_preview' in preview:
+                            preview['normal_source'] = dict(triangle_normals=preview['triangle_normals'],
+                                                            normal_preview=preview['normal_preview'])
                         preview.pop("triangle_normals", None)
                         preview.pop("normal_preview", None)
                     count = len(preview.get("triangles", []))

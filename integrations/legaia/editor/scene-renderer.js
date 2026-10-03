@@ -210,7 +210,7 @@ export class SceneRenderer {
     const drawInstance=(index,pass)=>{
       const instance=this.instances[index],mesh=this.meshes.get(instance.geometry_key),id=index+1;
       if(view.hiddenEntities?.has(instance.entity_id))return;
-      const matrix=this.matrix(instance,view.positions,view.transforms),diagnostic=!picking&&view.normalDiagnostic===true;
+      const matrix=this.matrix(instance,view.positions,view.transforms),diagnostic=!picking&&view.normalDiagnostic===true&&(view.normalGeometryKeys===undefined||view.normalGeometryKeys.has(instance.geometry_key));
       gl.uniformMatrix4fv(l.model,false,columnMajor(matrix));gl.uniform3f(l.pick,(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255);
       const normalMatrix=diagnostic&&mesh.normalQualified?sourceNormalMatrix(matrix):null;
       const normalScale=normalMatrix?Math.max(...normalMatrix.map(Math.abs)):1;

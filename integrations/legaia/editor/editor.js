@@ -82,7 +82,7 @@ function snappedTransformCoordinate(value,step){return Math.round(value/(step||1
 const camera = {projection:'perspective',yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null, pendingEntityFrame=null;
 let sceneRepresentation="authored";
-let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0;
+let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0,sceneNormalDiagnostic=false;
 const sceneLayers={actors:true,scenery:true,ground:true};
 let showObservedNodes=false,runtimeNodeHits=[],pickRuntimeNodes=false;
 const observedLayerButton=document.createElement('button');observedLayerButton.textContent='Runtime positions';observedLayerButton.setAttribute('aria-pressed','false');observedLayerButton.title='Alt-click a sampled marker to inspect it, including occluded nodes; not confirmed NPC identities';observedLayerButton.onclick=()=>{showObservedNodes=!showObservedNodes;observedLayerButton.setAttribute('aria-pressed',String(showObservedNodes));draw();};$('frame-selected').after(observedLayerButton);
@@ -1167,7 +1167,7 @@ function render(){
 function activeScenePreview(){return scenePreview&&state.capabilities?.scene_preview&&state.scene_preview_source_key&&sceneProjectPath===state.project?.path&&scenePreview.scene_id===state.scene?.id&&scenePreview.representation===sceneRepresentation?scenePreview:null;}
 function scenePreviewCurrent(){return !!activeScenePreview()&&sceneKey===sceneRequestKey()&&!sceneError;}
 function sceneModelsReady(){return modelsEnabled&&activeScenePreview()&&sceneRenderer&&!sceneRenderer.lost&&!sceneError;}
-function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const proposed=sceneryGroupPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(scenePlacementInspection?.layer==='proposed')for(const row of scenePlacementInspection.report.targets){const proposed=scenePlacementPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(draft&&!draft.group&&!draft.sceneryYaw)positions.set(draft.id,draft.position);return {transforms:yawPreviewTransforms(),camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
+function sceneView(){const positions=new Map(entities().map(entity=>[entity.id,draft?.id===entity.id?draft.position:position(entity)]));if(environmentGroupInspection?.layer==='proposed')for(const row of environmentGroupInspection.report.targets){const proposed=sceneryGroupPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(scenePlacementInspection?.layer==='proposed')for(const row of scenePlacementInspection.report.targets){const proposed=scenePlacementPosition(row);if(proposed)positions.set(row.entity_id,proposed);}if(draft&&!draft.group&&!draft.sceneryYaw)positions.set(draft.id,draft.position);return {normalDiagnostic:sceneNormalDiagnostic,normalGeometryKeys:sceneNormalDiagnostic?new Set(scenePose?.report?.tracks.filter(track=>track.normal_pose).map(track=>track.geometry_key)??[]):undefined,transforms:yawPreviewTransforms(),camera,basis:basis(),width,height,grid,hiddenEntities:hiddenSceneEntities(),positions};}
 function updateSceneBadge(){
   if($('texture-scene-uses'))$('texture-scene-uses').disabled=busy||!scenePreviewCurrent();
   comparisonNotice.hidden=sceneRepresentation!=='retail';
@@ -3723,12 +3723,13 @@ sceneAnimationController=createSceneAnimationController({
     ready:!!(state.capabilities?.scene_animation_preview&&scenePreviewCurrent()&&sceneModelsReady()),
     canStart:!scenePose&&!shapeDraft&&!actorGroupInspection&&!scenePlacementInspection&&!environmentGroupInspection&&!document.querySelector('dialog[open]')}),
   busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
+  onNormalView:enabled=>{sceneNormalDiagnostic=enabled;draw();},
   onStatus:status=>{if(status.active!==sceneAnimationWriteGuard){sceneAnimationWriteGuard=status.active;renderInspector();updateSceneBadge();}},
   onLoad:async(report,{isCurrent,signal})=>{
     if(signal.aborted||!isCurrent()||!scenePreviewCurrent()||!sceneModelsReady()||scenePose||report.scene_source_key!==scenePreview.source_key||report.project_source_key!==state.scene_preview_source_key||report.representation!==sceneRepresentation)throw new Error('Scene animation no longer matches the loaded scene.');
     const byGeometry=new Map(scenePreview.assets.map(a=>[a.geometry_key,a])),byEntity=new Map(scenePreview.entities.map(e=>[e.entity_id,e]));
     for(const row of report.instances){const current=byEntity.get(row.entity_id);if(!current?.renderable||current.geometry_key!==row.geometry_key||current.asset_id!==row.asset_id||current.source_actor_id!==row.source_actor_id)throw new Error('Animation instance differs from the loaded source binding.');}
-    for(const track of report.tracks){const current=byGeometry.get(track.geometry_key);if(current?.asset_id!==track.asset_id||JSON.stringify(current.preview.vertices)!==JSON.stringify(track.frames[0]))throw new Error('Animation baseline differs from the loaded source pose.');}
+    for(const track of report.tracks){const current=byGeometry.get(track.geometry_key);if(current?.asset_id!==track.asset_id||JSON.stringify(current.preview.vertices)!==JSON.stringify(track.frames[0]))throw new Error('Animation baseline differs from the loaded source pose.');if(track.normal_pose){if(JSON.stringify(current.preview.triangles)!==JSON.stringify(track.normal_pose.source.triangles)||JSON.stringify((current.preview.normal_source??current.preview).triangle_normals)!==JSON.stringify(track.normal_pose.source.triangle_normals))throw new Error('Animation normals differ from the loaded source geometry.');}}
     cancelViewportGesture();scenePose={kind:'scene-animation',key:sceneKey,report};
     const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)throw new Error(failures.join('; '));
     draw();return true;
@@ -3736,7 +3737,7 @@ sceneAnimationController=createSceneAnimationController({
   onSample:(samples,report)=>{
     if(scenePose?.kind!=='scene-animation'||scenePose.report!==report||scenePose.key!==sceneKey||!scenePreviewCurrent()||!sceneModelsReady()||report.project_source_key!==state.scene_preview_source_key||sceneRenderer.lost)return false;
     for(const row of samples){const mesh=sceneRenderer.meshes.get(row.geometry_key);if(!mesh||row.vertices.length!==mesh.vertexCount)return false;}
-    for(const row of samples)if(!sceneRenderer.updateVertices(row.geometry_key,row.vertices))return false;
+    for(const row of samples)if(!sceneRenderer.updateVertices(row.geometry_key,row.vertices,row.normal_preview))return false;
     draw();return true;
   },
   onRestore:report=>{

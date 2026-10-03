@@ -9,8 +9,9 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer.core import ImportError as RetailImportError
 from sdk.project import ProjectError, ProjectService, digest
-from sdk.scene_animation import prepare_scene_animation
+from sdk.scene_animation import prepare_scene_animation, _json_size, MAX_METADATA_BYTES
 from sdk.scene_preview import preview_project, source_key
+from importer.animation import pose_vertices
 from test_project_workflow import synthetic_scene
 
 
@@ -107,6 +108,7 @@ class SceneAnimationTests(unittest.TestCase):
         self.assertEqual(track['clip_id'], 'animation://fixture/scene-anm/0001')
         self.assertEqual(track['pose_kind'], 'imported_scene_animation_frame0')
         self.assertEqual(track['frames'], [f['vertices'] for f in clip['frames']])
+
         self.assertEqual(track['frames'][0], scene['assets'][0]['preview']['vertices'])
         self.assertEqual([i['entity_id'] for i in report['instances']], self.actor_ids[:2])
         self.assertTrue(all(set(i) == {'entity_id', 'geometry_key', 'asset_id', 'source_actor_id'} for i in report['instances']))
@@ -119,6 +121,44 @@ class SceneAnimationTests(unittest.TestCase):
         self.assertEqual((self.project._document(), self.project.undo_stack, self.project.assets.records), project_before)
         track['frames'][0][0][0] = 777
         self.assertEqual(clip, pristine); self.assertEqual(scene, baseline)
+
+    def test_optional_normal_channels_match_source_and_actual_samples(self):
+        scene = self.scene()
+        baseline = scene['assets'][0]['preview']
+        baseline.update(triangle_normals=[[[4096, 0, 0]]*3],
+                        normal_preview=dict(status='source_unposed',coordinate_system='retail_tmd_object_local'))
+        clip = full_clip(baseline, self.asset_id)
+        clip.update(posed=False, vertices=deepcopy(baseline['vertices']))
+        for index, frame in enumerate(clip['frames']):
+            frame['posed'] = True
+            frame['object_transforms'][0]['rotation_psx'] = [0, 0, index*1024]
+            frame['vertices'] = pose_vertices(clip['vertices'], clip['objects'], frame['object_transforms'])
+        report = self.prepare(scene, lambda *args: clip)
+        normal = report['tracks'][0]['normal_pose']
+        self.assertEqual(normal['source']['triangle_normals'], baseline['triangle_normals'])
+        self.assertEqual(normal['frames'][1]['object_transforms'][0]['rotation_psx'], [0, 0, 1024])
+        normal['source']['triangle_normals'][0][0][0] = 0
+        self.assertEqual(clip['triangle_normals'][0][0][0], 4096)
+        for mutate in [lambda c: c['frames'][1]['vertices'][0].__setitem__(0, 999),
+                       lambda c: c['frames'][1]['object_transforms'][0]['rotation_psx'].__setitem__(0, 4096),
+                       lambda c: c['triangle_normals'][0][0].__setitem__(0, 5000)]:
+            changed = deepcopy(clip); mutate(changed)
+            with self.assertRaises(ProjectError):
+                self.prepare(scene, lambda *args: changed)
+        unknown = deepcopy(clip); unknown['frames'][1]['coordinate_system'] = 'unknown'
+        self.assertNotIn('normal_pose', self.prepare(scene, lambda *args: unknown)['tracks'][0])
+        with patch('sdk.scene_animation.MAX_FRAME_NORMAL_CORNERS', 0):
+            limited = self.prepare(scene, lambda *args: clip)['tracks'][0]
+            self.assertNotIn('normal_pose', limited)
+            self.assertEqual(limited['frames'], [f['vertices'] for f in clip['frames']])
+        with patch('sdk.scene_animation._json_size', side_effect=lambda value:
+                   MAX_METADATA_BYTES+1 if 'normal_pose' in value else _json_size(value)):
+            limited = self.prepare(scene, lambda *args: clip)['tracks'][0]
+            self.assertNotIn('normal_pose', limited)
+            self.assertEqual(limited['frames'], [f['vertices'] for f in clip['frames']])
+        malformed = deepcopy(scene); malformed['assets'][0]['preview']['normal_source'] = None
+        with self.assertRaisesRegex(ProjectError, 'source evidence'):
+            self.prepare(malformed, lambda *args: clip)
 
     def test_retail_authored_keys_remain_distinct_and_stale_checks_wrap_loader(self):
         self.project.overrides[self.actor_ids[0]] = {'Transform': {'position': {'x': 500}}}
