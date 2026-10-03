@@ -1,0 +1,58 @@
+import {SceneRenderer} from './scene-renderer.js';
+const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
+const integer=(value,max)=>Number.isSafeInteger(value)&&value>=0&&value<=max;
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const fail=message=>{throw new Error(message);};
+function removedIdentities(rows,objectCount){
+  if(!Array.isArray(rows)||rows.length>4096)fail('Invalid Retail removal identities.');
+  const seen=new Set();for(const row of rows){if(!row||Object.keys(row).length!==2||!integer(row.object_index,objectCount-1)||!integer(row.primitive_index,65535))fail('Invalid Retail removal owner.');const id=`${row.object_index}:${row.primitive_index}`;if(seen.has(id))fail('Duplicate Retail removal owner.');seen.add(id);}
+}
+export function decodeFaceRemovalSource(value,assetId,key){
+  if(!value||value.schema_version!=='legaia.model-face-removal-source.v1'||value.asset_id!==assetId||value.project_source_key!==key||!hash(key)||!hash(value.source_sha256)||!hash(value.effective_sha256)||!Array.isArray(value.objects)||value.objects.length>1024||!Array.isArray(value.removed_faces)||value.removed_faces.length>4096)fail('Face removal source differs from this model.');
+  for(const [i,obj] of value.objects.entries())if(obj.object_index!==i||!integer(obj.vertex_count,65535)||!Array.isArray(obj.primitives)||obj.primitives.length>65535||obj.primitives.some((row,j)=>row.primitive_index!==j||![3,4].includes(row.corner_count)))fail('Invalid source face ownership.');
+  removedIdentities(value.removed_faces,value.objects.length);
+  return structuredClone(value);
+}
+export function faceRemovalSelections(source,objectIndex,text){
+  if(!integer(objectIndex,source.objects.length-1)||typeof text!=='string'||text.length>32768)fail('Choose a source object and Current face indices.');
+  const values=text.trim()?text.split(',').map(value=>value.trim()):[];
+  if(values.length>4096||values.some(value=>!/^\d+$/.test(value)))fail('Enter up to4096 comma-separated Current face indices.');
+  const indices=values.map(Number);
+  if(new Set(indices).size!==indices.length||indices.some(value=>!integer(value,source.objects[objectIndex].primitives.length-1)))fail('Face indices must be distinct existing Current faces.');
+  return indices.sort((a,b)=>a-b).map(primitive_index=>({object_index:objectIndex,primitive_index}));
+}
+export function decodeFaceRemovalReview(value,source,selections){
+  if(!value||value.schema_version!=='legaia.model-face-removal.v1'||value.asset_id!==source.asset_id||value.source_sha256!==source.source_sha256||value.effective_sha256!==source.effective_sha256||value.project_source_key!==source.project_source_key||!hash(value.proposed_sha256)||value.project_changed!==false||value.gameplay_verified!==false||!same(value.selections,selections)||!same(value.previous_removed_faces,source.removed_faces)||!Array.isArray(value.removed_faces)||value.removed_faces.length!==source.removed_faces.length+selections.length)fail('Face removal review differs from its inspected selection.');
+  const before=value.current_preview,after=value.preview;
+  removedIdentities(value.removed_faces,source.objects.length);
+  if(!before||!after||!same(before.vertices,after.vertices)||!Array.isArray(before.objects)||!Array.isArray(after.objects)||before.objects.length!==source.objects.length||after.objects.length!==source.objects.length)fail('Face removal changed object or vertex ownership.');
+  for(const [i,obj] of before.objects.entries()){
+    const candidate=after.objects[i],count=selections.filter(row=>row.object_index===i).reduce((n,row)=>n+(source.objects[i].primitives[row.primitive_index].corner_count===4?2:1),0);
+    if(obj.object_index!==i||candidate.object_index!==i||obj.vertex_count!==candidate.vertex_count||obj.vertex_start!==candidate.vertex_start||obj.triangle_count-candidate.triangle_count!==count)fail('Face removal count differs from its reviewed primitives.');
+  }
+  if(Boolean(selections.length)!==(value.proposed_sha256!==source.effective_sha256))fail('Face removal hash differs from its reviewed count.');
+  return structuredClone(value);
+}
+
+export async function openModelFaceRemoval({assetId,getContext,busy,setBusy,onApplied,onError}){
+  const context=structuredClone(getContext()),key=JSON.stringify(context),dialog=document.createElement('dialog');dialog.id='model-face-removal-dialog';dialog.className='model-dialog';
+  dialog.innerHTML='<div class="dialog-heading"><h2>Remove model faces</h2><button type="button" aria-label="Close face removal">×</button></div><p>Remove whole Current triangles or quads. Objects, vertex/normal tables, group settings and source allocation remain fixed. A model can be shared by several actors. Runtime appearance is unverified.</p><label>Object<select aria-label="Face removal object"></select></label><p data-count></p><label>Current face indices<textarea aria-label="Current faces to remove" placeholder="0, 2, 3"></textarea></label><p>Indices refer to the Current model, starting at0. A quad removes two preview triangles. Review shows the complete model; no changes are applied until Apply.</p><button type="button" data-review>Preview face removal</button><button type="button" data-apply disabled>Apply reviewed face removal</button><p role="status"></p><section data-comparison hidden><label>Preview layer<select aria-label="Face removal preview layer"><option value="proposed">Proposed</option><option value="current">Current</option></select></label><canvas aria-label="Face removal model comparison" style="display:block;width:100%;height:320px"></canvas><p>Drag to orbit · Scroll to zoom · Both layers use the same camera. Stored normals are not recomputed.</p></section>';
+  document.body.append(dialog);
+  const object=dialog.querySelector('[aria-label="Face removal object"]'),input=dialog.querySelector('textarea'),status=dialog.querySelector('[role="status"]'),reviewButton=dialog.querySelector('[data-review]'),applyButton=dialog.querySelector('[data-apply]'),comparison=dialog.querySelector('[data-comparison]'),layer=comparison.querySelector('select'),canvas=comparison.querySelector('canvas');
+  let source=null,review=null,pending=false,closed=false,generation=0,renderer=null,view=null,drag=null,controller=null;
+  const current=()=>!closed&&JSON.stringify(getContext())===key&&context.mode==='edit';
+  const selections=()=>faceRemovalSelections(source,Number(object.value),input.value);
+  function invalidate(){generation++;review=null;comparison.hidden=true;refresh();}
+  function refresh(){if(!current()){review=null;comparison.hidden=true;}let valid=false;try{valid=!!source&&selections().length>0;}catch{}reviewButton.disabled=!current()||pending||busy()||!valid;applyButton.disabled=reviewButton.disabled||!review;object.disabled=input.disabled=pending||!current();}
+  async function request(route,body){controller=new AbortController();const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)fail(value.error||'Model face removal failed');return value;}
+  function draw(){if(!view||comparison.hidden||!current()||!renderer)return;const rect=canvas.getBoundingClientRect(),c=Math.cos(view.yaw),s=Math.sin(view.yaw),cp=Math.cos(view.pitch),sp=Math.sin(view.pitch);renderer.draw({width:rect.width,height:rect.height,positions:new Map(),wireframe:true,grid:false,camera:{target:{x:view.center[0],y:-view.center[1],z:view.center[2]},distance:view.radius*4/view.zoom},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});}
+  function load(){if(!review||!current())return;renderer??=new SceneRenderer(canvas,message=>{if(message&&!closed)status.textContent=message;});const preview=layer.value==='current'?review.current_preview:review.preview;const failures=renderer.load({assets:[{geometry_key:'face-removal',preview}],entities:[{entity_id:'face-removal',geometry_key:'face-removal',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});if(failures.length)fail(failures.join('; '));draw();}
+  reviewButton.onclick=async()=>{refresh();if(reviewButton.disabled)return;const requested=selections();invalidate();const token=generation;pending=true;setBusy(true);refresh();try{const value=await request('/api/model-face-removal-preview',{asset_id:assetId,selections:requested,expected_sha256:source.effective_sha256,source_key:context.sourceKey});if(!current()||generation!==token)return;review=decodeFaceRemovalReview(value,source,requested);const vertices=review.current_preview.vertices,min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];for(const point of vertices)for(let i=0;i<3;i++){min[i]=Math.min(min[i],point[i]);max[i]=Math.max(max[i],point[i]);}view={center:min.map((v,i)=>(v+max[i])/2),radius:Math.max(1,Math.hypot(...max.map((v,i)=>v-min[i]))/2),yaw:.6,pitch:.4,zoom:1};comparison.hidden=false;layer.value='proposed';status.textContent=`${requested.length} Current faces removed · ${review.removed_faces.length} total removals from Retail · not applied`;load();}catch(error){if(current()){invalidate();status.textContent=error.message;onError(error);}}finally{pending=false;setBusy(false);refresh();}};
+  applyButton.onclick=async()=>{refresh();if(applyButton.disabled)return;const accepted=review,requested=selections();pending=true;setBusy(true);refresh();try{const value=await request('/api/model-face-removal',{asset_id:assetId,selections:requested,expected_sha256:source.effective_sha256,source_key:context.sourceKey,proposed_sha256:accepted.proposed_sha256});if(!current())return;pending=false;dispose();await onApplied(value);}catch(error){if(current()){status.textContent=error.message;onError(error);}}finally{pending=false;setBusy(false);refresh();}};
+  object.onchange=()=>{input.value='';dialog.querySelector('[data-count]').textContent=`${source.objects[Number(object.value)].primitives.length} Current faces · ${source.removed_faces.length} prior Retail removals`;invalidate();};input.oninput=invalidate;layer.onchange=()=>{try{load();}catch(error){status.textContent=error.message;}};
+  canvas.onpointerdown=event=>{canvas.setPointerCapture(event.pointerId);drag={x:event.clientX,y:event.clientY};};canvas.onpointermove=event=>{if(!drag||!view)return;view.yaw+=(event.clientX-drag.x)*.009;view.pitch+=(event.clientY-drag.y)*.009;drag={x:event.clientX,y:event.clientY};draw();};canvas.onpointerup=canvas.onpointercancel=()=>drag=null;canvas.onwheel=event=>{event.preventDefault();if(view){view.zoom=Math.max(.15,Math.min(2.5,view.zoom*Math.exp(-event.deltaY*.001)));draw();}};
+  function dispose(){if(closed)return;closed=true;controller?.abort();renderer?.dispose?.();if(dialog.open)dialog.close();dialog.remove();}
+  dialog.querySelector('[aria-label="Close face removal"]').onclick=()=>{if(!pending)dispose();};dialog.oncancel=event=>{if(pending)event.preventDefault();};dialog.onclose=dispose;dialog.showModal();pending=true;setBusy(true);refresh();
+  try{const value=await request('/api/model-face-removal-source',{asset_id:assetId,source_key:context.sourceKey});if(!current())return;source=decodeFaceRemovalSource(value,assetId,context.sourceKey);for(const obj of source.objects){const option=document.createElement('option');option.value=String(obj.object_index);option.textContent=`Object ${obj.object_index}`;object.append(option);}object.onchange();}catch(error){if(current()){status.textContent=error.message;onError(error);}}finally{pending=false;setBusy(false);refresh();}
+  return {dialog,dispose,updateState:refresh};
+}

@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+## Count-changing model face removal - deferred gameplay
+
+Ready offline fixture: `local-output/sdk-20260909/model-face-removal-20261003/parent/browser-project/`.
+Package SHA256 `c6bcc7a8ccd981960b07cbb8482c0699e8179ce161a66594a8a841120d5a138c`.
+Town01 model0009 object1 Current quad0 is removed, reducing190 to188 model triangles.
+Complete model and compressed-neighbor readback are exact; object/vertex channels,
+source vector tables and carrier capacity survive. Later verify the intended
+missing face in each affected instance, native traversal/culling, scene transitions
+and normal actor/animation behavior. This package has not been installed or run.
+No immediate gameplay check is needed to continue other offline SDK features.
+See [workflow and limits](legaia-model-face-removal.md).
+
 ## NPC source capacity - deferred gameplay
 
 Latest ready fixture: `local-output/sdk-20260909/npc-runtime-source-20261003/parent/browser-project/`.

@@ -1229,8 +1229,9 @@ class ProjectService:
 
     def read_model_replacement(self, asset_id: str, binding: dict) -> bytes:
         from importer.model_authoring import replace_model_shape, replace_model_content
-        if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'}
-                or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3') or type(binding['byte_length']) is not int
+        removal = isinstance(binding, dict) and binding.get('format') == 'tmd-face-removal-v1'
+        if (not isinstance(binding, dict) or set(binding) != {'asset_sha256','source_sha256','byte_length','source_scene_id','format'} | ({'removed_faces'} if removal else set())
+                or binding['format'] not in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1') or type(binding['byte_length']) is not int
                 or not 1 <= binding['byte_length'] <= 4*1024*1024
                 or any(not isinstance(binding[k],str) or len(binding[k]) != 64 or any(c not in '0123456789abcdef' for c in binding[k]) for k in ('asset_sha256','source_sha256'))
                 or not isinstance(binding['source_scene_id'], str)):
@@ -1242,13 +1243,43 @@ class ProjectService:
         if hashlib.sha256(content).hexdigest() != binding['asset_sha256']:
             raise ProjectError('Model shape content hash differs from binding')
         original = self._model_source(asset_id, binding['source_scene_id'])
-        if binding['format'] == 'tmd-shape':
+        if removal:
+            from importer.model_face_removal import qualify_face_removal
+            qualify_face_removal(original, binding['source_sha256'], content, binding['removed_faces'])
+        elif binding['format'] == 'tmd-shape':
             replace_model_shape(original, binding['source_sha256'], content)
         else:
             replace_model_content(original, binding['source_sha256'], content,
                                   allow_materials=binding['format'] in ('tmd-content-v2', 'tmd-content-v3'),
                                   allow_normal_references=binding['format'] == 'tmd-content-v3')
         return content
+
+    def apply_model_face_removal(self, asset_id, selections, expected_sha256, expected_key, proposed_sha256):
+        from .model_face_removal import prepare
+        from .scene_preview import source_key
+        content, removed, report = prepare(self, asset_id, selections, expected_sha256, expected_key)
+        if proposed_sha256 != report['proposed_sha256']:
+            raise ProjectError('Face removal differs from its reviewed candidate')
+        if content == report.pop('_effective'):
+            return
+        if asset_id not in self.model_overrides and len(self.model_overrides) >= 128:
+            raise ProjectError('Project supports at most 128 model replacements')
+        binding = dict(format='tmd-face-removal-v1', source_scene_id=self.active_scene,
+                       source_sha256=report['source_sha256'], asset_sha256=report['proposed_sha256'],
+                       byte_length=len(content), removed_faces=removed)
+        path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
+        if not path.resolve().is_relative_to(self.root):
+            raise ProjectError('Model replacement path escapes project')
+        if source_key(self) != expected_key:
+            raise ProjectError('Project changed while preparing face removal')
+        if path.exists():
+            self.read_model_replacement(asset_id, binding)
+        else:
+            atomic_write(path, content)
+        before = deepcopy(self.model_overrides.get(asset_id))
+        self.model_overrides[asset_id] = binding
+        self.undo_stack.append(dict(target='model_overrides', asset_id=asset_id, before=before, after=deepcopy(binding)))
+        self.redo_stack.clear()
 
     def _prepare_model_file(self, asset_id: str, content: bytes, format: str) -> tuple[bytes, dict]:
         from importer.model_authoring import replace_model_content
@@ -2880,7 +2911,7 @@ class ProjectService:
             asset = next(a for a in self.imports[scene_id]['assets']['models'] if a['semantic_id'] == identifier)
             records.append({'id':identifier, 'kind':'model', 'name':'Model shape ' + identifier.rsplit('/',1)[-1],
                             'scene_id':scene_id, 'source_scene':self.imports[scene_id]['scene']['name'],
-                            'changes':[{'tmd-content-v3':'TMD normal-reference/content replacement','tmd-content-v2':'TMD material/content replacement','tmd-content-v1':'TMD content replacement'}.get(binding['format'],'TMD shape replacement')], 'authored':deepcopy(binding),
+                            'changes':[{'tmd-face-removal-v1':'TMD count-changing face removal','tmd-content-v3':'TMD normal-reference/content replacement','tmd-content-v2':'TMD material/content replacement','tmd-content-v1':'TMD content replacement'}.get(binding['format'],'TMD shape replacement')], 'authored':deepcopy(binding),
                             'source_record':deepcopy(asset['source_record'])})
         for identifier, binding in sorted(self.texture_overrides.items()):
             scene_id = binding["source_scene_id"]

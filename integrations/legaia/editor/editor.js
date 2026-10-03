@@ -648,6 +648,7 @@ function setBusy(value) {
   if($('build-review-button'))$('build-review-button').disabled=value||worldmapDraftPending||!state.capabilities?.build_review;
   $('save-button').disabled=value||worldmapDraftPending;worldmapControls?.updateState();projectAssetControls?.updateState();
   renderRunStatus();renderBuildStatus();
+  if($('shape-remove-faces'))$('shape-remove-faces').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_face_removal;
   document.querySelectorAll('[data-axis],[data-component-property]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   document.querySelectorAll('[data-animation-edit]').forEach(button=>button.disabled=value||state.project.mode!=='edit');
@@ -1400,6 +1401,7 @@ async function openFlagReferences(projectWide=false){
   finally{if(flagsAbort===controller){flagsAbort=null;setBusy(false);}}
 };
 function synchronizeResources(){
+  modelFaceRemovalEditor?.updateState();
   modelPrimitiveEditor?.updateState();
   modelMaterialsEditor?.updateState();
   sceneAnimationController?.updateState();
@@ -3871,6 +3873,9 @@ showScenePose.onclick=()=>{
 
 const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Edit object-local vertex and normal coordinates, existing face connections and normal references, texture UVs and stored RGB colors. Object and packet counts stay fixed. Source material bindings use a separate reviewed editor. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-vectors">Edit model vectors</button><button id="shape-primitives">Edit faces, UVs and colors</button><button id="shape-source">Download source TMD</button><button id="shape-authored-tmd">Download authored TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
 const vectorDialog=document.createElement('dialog');vectorDialog.id='model-vector-dialog';document.body.append(vectorDialog);
+let modelFaceRemovalEditor=null;
+const faceRemovalButton=document.createElement('button');faceRemovalButton.id='shape-remove-faces';faceRemovalButton.type='button';faceRemovalButton.textContent='Remove model faces';$('shape-primitives').after(faceRemovalButton);
+faceRemovalButton.onclick=async()=>{if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit')return;modelFaceRemovalEditor?.dispose();const asset=modelAssetId,module=await import('/model-face-removal.js');modelFaceRemovalEditor=await module.openModelFaceRemoval({assetId:asset,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Model faces removed. Save project to persist.');await openModel(asset,null,null,'authored');}});};
 let modelGlbEditor=null;
 let modelMaterialsEditor=null;
 const modelMaterialsButton=document.createElement('button');modelMaterialsButton.id='shape-materials';modelMaterialsButton.type='button';modelMaterialsButton.textContent='Edit source material bindings';$('shape-primitives').after(modelMaterialsButton);
@@ -4185,6 +4190,8 @@ function updateShapeDraft(){
   $('model-export').disabled=pending;
   modelGlbButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_glb_authoring;
   modelMaterialsButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
+  faceRemovalButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_face_removal;
+  if(state.model_overrides?.[modelAssetId]?.format==='tmd-face-removal-v1'){for(const control of [$('shape-vectors'),$('shape-primitives'),$('shape-file-preview'),$('shape-upload'),modelGlbButton,modelMaterialsButton])control.disabled=true;$('shape-status').textContent='Count-changing face removal applied. Further removals, downloads, Undo/Redo and Clear are available; other mesh editors require clearing this topology override first.';}
 }
 $('shape-file').onchange=()=>{const file=$('shape-file').files?.[0];shapeDraft=file?{file,asset:modelAssetId,context:JSON.stringify([state.project.path,state.scene.id])}:null;updateShapeDraft();if(file)$('shape-status').textContent=`Selected ${file.name} · not applied. Apply or discard before changing model views.`;};
 discardShape.onclick=()=>{$('shape-file').value='';shapeDraft=null;updateShapeDraft();$('model-error').textContent='';$('shape-status').textContent='Selected file discarded; project unchanged.';};

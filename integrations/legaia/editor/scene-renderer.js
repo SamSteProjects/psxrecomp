@@ -32,8 +32,9 @@ export class SceneRenderer {
     this.gl=canvas.getContext('webgl',{alpha:true,antialias:true,premultipliedAlpha:false});
     if(!this.gl)throw new Error('WebGL is unavailable. The scene remains usable with placement markers.');
     this.initialize();
-    canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();this.lost=true;this.onStatus('Graphics context lost; placement markers remain available.');});
+    canvas.addEventListener('webglcontextlost',event=>{if(this.disposed)return;event.preventDefault();this.lost=true;this.onStatus('Graphics context lost; placement markers remain available.');});
     canvas.addEventListener('webglcontextrestored',()=>{
+      if(this.disposed)return;
       // The restored context invalidates every old GPU handle, including cached meshes.
       const scene=this.scene;this.meshes.clear();this.instances=[];
       try{this.initialize();this.lost=false;if(scene){const failures=this.load(scene);if(failures.length)throw new Error('Graphics recovery could not upload scene meshes: '+failures.join('; '));}this.onStatus(null);}catch(error){this.lost=true;this.onStatus(error.message);}
@@ -72,6 +73,17 @@ export class SceneRenderer {
     for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.normalBuffer)gl.deleteBuffer(batch.normalBuffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
     this.meshes.clear();this.instances=[];this.scene=null;
     if(!this.lost){gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);}
+  }
+
+  dispose(){
+    if(this.disposed)return;
+    this.clear();this.disposed=true;this.onStatus=()=>{};
+    const gl=this.gl;
+    if(this.gridBuffer)gl.deleteBuffer(this.gridBuffer);
+    if(this.whiteTexture)gl.deleteTexture(this.whiteTexture);
+    if(this.program)gl.deleteProgram(this.program);
+    if(this.pickTarget){gl.deleteFramebuffer(this.pickTarget.framebuffer);gl.deleteTexture(this.pickTarget.texture);gl.deleteRenderbuffer(this.pickTarget.depth);}
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
   }
 
   load(scene){

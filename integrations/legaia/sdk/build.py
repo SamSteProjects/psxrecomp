@@ -662,7 +662,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             model_payloads[identifier] = project.read_model_replacement(identifier, binding)
             document = project.imports[binding['source_scene_id']]
             model_assets[identifier] = next(a for a in document['assets']['models'] if a['semantic_id'] == identifier)
-        shape_overlays, shape_changes = model_shape_overlays(archive, model_assets, model_payloads)
+        shape_overlays, shape_changes = model_shape_overlays(archive, model_assets, model_payloads,
+                                                          removal_bindings=project.model_overrides)
         for overlay in shape_overlays:
             if _hash(_image.read_user(0, overlay['offset'], overlay['size'], (_image.size // 2352)*2048)) != overlay['expected_sha256']:
                 raise BuildError('Model shape overlay differs from its original disc span')

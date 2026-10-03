@@ -22,19 +22,24 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     result = deepcopy(preview)
     shape = decode_tmd(replacement)
     objects = result['objects']
+    face_removal = binding.get('format') == 'tmd-face-removal-v1'
     # Party poses intentionally omit trailing equipment objects; only accept the
     # same prefix/ranges, never infer a new object-to-channel association.
     if len(objects) > len(shape['objects']) or any(
             any(obj[k] != shape['objects'][i][k] for k in
-                ('object_index','vertex_start','vertex_count','triangle_start','triangle_count'))
+                (('object_index','vertex_start','vertex_count') if face_removal else
+                 ('object_index','vertex_start','vertex_count','triangle_start','triangle_count')))
             for i,obj in enumerate(objects)):
         raise ImportError('Shape objects do not match the existing pose layout')
     count = sum(obj['vertex_count'] for obj in objects)
     vertices = shape['vertices'][:count]
     if len(vertices) != len(result['vertices']):
         raise ImportError('Shape vertex count differs from preview geometry')
+    if face_removal:
+        for i, obj in enumerate(objects):
+            obj.update(triangle_start=shape['objects'][i]['triangle_start'], triangle_count=shape['objects'][i]['triangle_count'])
     triangle_count = sum(obj['triangle_count'] for obj in objects)
-    if triangle_count != len(result['triangles']):
+    if not face_removal and triangle_count != len(result['triangles']):
         raise ImportError('Model face count differs from preview geometry')
     # V2 is explicit: material IDs may split, merge or reorder. Rebuild the
     # entire table and discard associations indexed by old IDs before the
@@ -43,7 +48,7 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     material_changed = (len(result['materials']) != len(shape['materials']) or
             any(any(old.get(key) != new.get(key) for key in material_fields)
                 for old, new in zip(result['materials'], shape['materials'])))
-    material_v2 = binding.get('format') in ('tmd-content-v2', 'tmd-content-v3')
+    material_v2 = binding.get('format') in ('tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1')
     if material_changed and not material_v2:
         raise ImportError('Model content changed source material bindings')
     if material_v2:
@@ -203,7 +208,7 @@ def replace_model_content(original: bytes, expected_sha256: str, replacement: by
     return replacement, audit
 
 
-def model_shape_overlays(archive, assets: dict, replacements: dict):
+def model_shape_overlays(archive, assets: dict, replacements: dict, *, removal_bindings=None):
     """Compose model members sharing one compressed stream before encoding."""
     from .core import parse_lzs_sections, decompress_lzs
     from .serialization import serialize_lzs_decoded
@@ -238,8 +243,15 @@ def model_shape_overlays(archive, assets: dict, replacements: dict):
             if len(decoded) != source['containing_size'] or start < 0 or start+length > len(decoded):
                 raise ImportError('Model replacement source bounds changed')
             original = decoded[start:start+length]
-            payload, changes = replace_model_content(original, sha256(original).hexdigest(), replacements[identifier],
-                                                    allow_normal_references=True)
+            binding = (removal_bindings or {}).get(identifier, {})
+            if binding.get('format') == 'tmd-face-removal-v1':
+                from .model_face_removal import qualify_face_removal
+                payload = replacements[identifier]
+                _, changes = qualify_face_removal(original, binding['source_sha256'], payload, binding['removed_faces'])
+                changes += [dict(kind='primitive_removal', **row) for row in binding['removed_faces']]
+            else:
+                payload, changes = replace_model_content(original, sha256(original).hexdigest(), replacements[identifier],
+                                                        allow_normal_references=True)
             if not changes:
                 continue
             if any(start < b and start+length > a for a,b in intervals):
@@ -248,7 +260,8 @@ def model_shape_overlays(archive, assets: dict, replacements: dict):
             changed[start:start+length] = payload
             material_changes = any(c['kind'] == 'primitive_group' or
                                    c['kind'] == 'primitive' and c['field'] in ('clut', 'tpage') for c in changes)
-            scope = ('TMD-existing-layout-material-content' if material_changes else
+            scope = ('TMD-source-allocation-face-removal' if binding.get('format') == 'tmd-face-removal-v1' else
+                     'TMD-existing-layout-material-content' if material_changes else
                      'TMD-existing-layout-content' if any(c['kind'] == 'primitive' for c in changes) else
                      'TMD-vertex-normal-XYZ-only')
             audit.append(dict(semantic_id=identifier, field='model.shape', scope=scope,

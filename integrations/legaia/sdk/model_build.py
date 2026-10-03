@@ -16,6 +16,6 @@ def prepare_model_patches(project,scene_id,bindings,archive):
             raise ProjectError('Model export requires an imported model from its source scene')
         assets[identifier]=imported[identifier]
         payloads[identifier]=project.read_model_replacement(identifier,binding)
-    overlays,changes=model_shape_overlays(archive,assets,payloads)
+    overlays,changes=model_shape_overlays(archive,assets,payloads,removal_bindings=bindings)
     patches,carriers=archive_overlay_patches(archive,overlays)
     return patches,dict(changes=changes,carriers=carriers)

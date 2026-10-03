@@ -125,6 +125,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_shape_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_glb_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_material_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["model_face_removal"] = bool(self.project.disc_path)
         state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["draft_output_review"] = bool(self.project.disc_path and self.project.actor_drafts)
         state["capabilities"]["texture_png_authoring"] = bool(self.project.disc_path)
@@ -699,6 +700,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/normal-retarget.js": ("normal-retarget.js", "text/javascript"),
                  "/vertex-retarget.js": ("vertex-retarget.js", "text/javascript"),
                  "/model-vertex-users.js": ("model-vertex-users.js", "text/javascript"),
+                 "/model-face-removal.js": ("model-face-removal.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
@@ -1042,6 +1044,26 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Vertex retargeting requires exact model/object/from/to and reviewed hashes')
                     self.server.project.retarget_model_vertices(body['asset_id'],body['object_index'],body['from_index'],body['to_index'],body['expected_sha256'],body['proposed_sha256'])
                     self._json(200,self.server.state())
+                    return
+                if route == '/api/model-face-removal-source':
+                    if set(body) != {'asset_id','source_key'}:
+                        raise ProjectError('Face removal inspection requires model and source key only')
+                    from .model_face_removal import source
+                    self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    return
+                if route in ('/api/model-face-removal-preview','/api/model-face-removal'):
+                    fields = {'asset_id','selections','expected_sha256','source_key'}
+                    if route == '/api/model-face-removal':
+                        fields.add('proposed_sha256')
+                    if set(body) != fields:
+                        raise ProjectError('Face removal requires exact selections and reviewed source hashes')
+                    args = (body['asset_id'],body['selections'],body['expected_sha256'],body['source_key'])
+                    if route == '/api/model-face-removal-preview':
+                        from .model_face_removal import review
+                        self._json(200,review(self.server.project,*args))
+                    else:
+                        self.server.project.apply_model_face_removal(*args,body['proposed_sha256'])
+                        self._json(200,self.server.state())
                     return
                 if route == '/api/model-vertex-users':
                     if set(body) != {'asset_id','object_index','vertex_index','expected_sha256','source_key'}:
