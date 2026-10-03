@@ -6,6 +6,13 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 appended-draft facing work reuses the existing verified facing
+operand catalog and MAN record layout. Independent private Town0b/Dolk2 readback
+confirms original-owner relocation, preserved upper flags and unchanged donor
+facing. It introduces no new opcode interpretation, live heading claim or
+reference dependency, and does not advance the pin. The read-only editor review
+reports candidate provenance without gameplay or allocation acceptance.
+
 The 2026-10-02 central flag assets adapt the existing independent script catalog
 and source-preserving operand writer. Script/context/bank/retail-index identity,
 source hashes/locators and per-PC operations are retained; no reference code,

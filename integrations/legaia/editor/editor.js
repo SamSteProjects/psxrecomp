@@ -1,4 +1,5 @@
 import {mountBuildReview} from '/build-review.js';
+import {mountDraftOutputReview} from '/draft-review.js';
 import {mountBuildHistory} from '/build-history.js';
 import {openAssetReferences} from '/asset-references.js';
 import {openActorAnimationAssignment} from '/actor-animation.js';
@@ -407,6 +408,7 @@ const buildDialog=document.createElement('dialog');buildDialog.className='projec
 const buildReportButton=document.createElement('button');buildReportButton.id='build-report-button';buildReportButton.textContent='Build report';buildReportButton.title='Review the latest build';buildReportButton.hidden=true;buildButton.after(buildReportButton);buildReportButton.onclick=()=>showBuildReport();
 mountBuildHistory({after:buildReportButton,getState:()=>state,busy:()=>busy,setBusy});
 const exportProjectButton=document.createElement('button');exportProjectButton.id='export-project-button';exportProjectButton.textContent='Export disc';exportProjectButton.title='Export supported authored changes as a separate experimental disc';buildButton.after(exportProjectButton);exportProjectButton.onclick=()=>exportNpcDrafts();
+const draftOutputReview=mountDraftOutputReview({after:exportProjectButton,getState:()=>state,busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});
 const exportHistoryButton=document.createElement('button');exportHistoryButton.id='export-history-button';exportHistoryButton.textContent='Export history';buildReportButton.after(exportHistoryButton);
 exportHistoryButton.onclick=async()=>{
   if(busy)return;
@@ -618,6 +620,7 @@ function setBusy(value) {
   if($('inspect-npc-draft'))$('inspect-npc-draft').disabled=value;
   if($('export-npc-drafts'))$('export-npc-drafts').disabled=value||!canEdit();
   if($('export-project-button'))$('export-project-button').disabled=value||!canEdit();
+  draftOutputReview.updateState();
   document.querySelectorAll('#draft-inspector-form input,#draft-inspector-form button,#draft-name-form input,#draft-name-form button,#draft-donor-form select,#draft-donor-form button,#duplicate-npc-draft,#repeat-npc-draft,#delete-npc-draft').forEach(control=>control.disabled=value||!canEdit());
   for(const id of ['import-button','save-button','project-button','empty-import']) $(id).disabled=value;
   $('undo-button').disabled=value || worldmapDraftPending || !state.history?.can_undo;

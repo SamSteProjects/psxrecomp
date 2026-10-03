@@ -2,6 +2,24 @@
 
 Current scene-editor status (2026-10-02):
 
+**NPC facing composition and output review (2026-10-02):** Source script facing
+edits now compose with appended NPC drafts in compressed and streaming MAN
+carriers. Original record ownership is re-resolved after append; only the facing
+nibble changes, upper flags remain intact, and donor clones retain retail facing.
+The editor's **Review NPC output** prepares an in-memory archive and reports
+source identities, relocated fields and allocation limits without writing a
+package/disc, changing history or launching the game. Normal Build still rejects
+NPC drafts; gameplay, scheduling and general allocation remain unverified.
+See [draft facing workflow](legaia-draft-facing.md).
+
+Validation: 16 focused Python tests passed with the private retail disc (no
+skips), plus Node metadata guards and frontend syntax checks. Six integrated
+browser checks cover actual two-scene review, exact metadata, 540px layout,
+stale-input withdrawal, pending-close handling and unchanged saved files.
+Independent Town0b/Dolk2 readback verifies four/one facing-byte changes, each
+rebased by three bytes after append; donor copies and unrelated bytes are retained.
+Private proof: `local-output/sdk-20260909/draft-facing-20261002/`.
+
 **Source-bound GLB face rewiring (2026-10-02):** Model profile v3 adds existing
 polygon vertex references to the external mesh workflow. Immutable source corner
 IDs retain face ownership; qualified vertex IDs may select existing vertices in

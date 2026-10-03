@@ -131,12 +131,13 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     flags={}
     waits={}
     model_selectors={}
+    facing={}
     branches={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptBranches','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
-            raise ProjectError('Draft serialization currently composes only same-scene actor positions, appearances and dialogue')
+            raise ProjectError('Draft serialization requires supported same-scene actor or script components; unsupported authored families cannot be omitted')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
         if 'AnimationChannels' in components:
             project._validate_animation_override(identifier,components['AnimationChannels'])
@@ -153,6 +154,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         if 'ScriptWaits' in components:
             project._validate_waits(identifier,components['ScriptWaits'])
             waits.update(components['ScriptWaits']['entries'])
+        if 'ScriptFacing' in components:
+            project._validate_facing(identifier,components['ScriptFacing'])
+            facing.update(components['ScriptFacing']['entries'])
         if 'ScriptModelSelectors' in components:
             project._validate_model_selectors(identifier,components['ScriptModelSelectors'])
             model_selectors.update(components['ScriptModelSelectors']['entries'])
@@ -197,6 +201,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     wait_context=load_wait_authoring_context(project.disc_path,scene) if waits else None
     from importer.model_selector_authoring import load_model_selector_authoring_context
     model_selector_context=load_model_selector_authoring_context(project.disc_path,scene) if model_selectors else None
+    from importer.facing_authoring import load_facing_authoring_context
+    facing_context=load_facing_authoring_context(project.disc_path,scene) if facing else None
     transition_edits={}
     for identifier,entries in transitions.items():
         allowed={item['semantic_id'] for item in transition_context.options(identifier)['transitions']}
@@ -263,6 +269,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             wait_context.patch(waits,original=source)
         if model_selector_context:
             model_selector_context.patch(model_selectors,original=source)
+        if facing_context:
+            facing_context.patch(facing,original=source)
         if requests:
             candidate,actor_audit=append_actor_candidates(source,sha256(source).hexdigest(),requests)
         else:
@@ -300,6 +308,9 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         model_selector_audit=[]
         if model_selector_context:
             candidate,model_selector_audit=model_selector_context.patch_appended(candidate,model_selectors)
+        facing_audit=[]
+        if facing_context:
+            candidate,facing_audit=facing_context.patch_appended(candidate,facing)
         branch_audit=[]
         if branches:
             from importer.branch_authoring import load_branch_authoring_context
@@ -344,7 +355,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         actor=actor_audit,existing_actor_placement_changes=placement_audit,
         existing_actor_appearance_changes=appearance_audit,
         existing_actor_dialogue_changes=dialogue_audit,
-        branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit,
+        branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
         final_man_sha256=sha256(candidate).hexdigest(),
         container=container_audit,gameplay_verified=False)
 

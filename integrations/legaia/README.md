@@ -4,6 +4,12 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
+Use **Review NPC output** after saving NPC drafts and supported source-facing
+edits to inspect their serialized composition and relocated byte offsets. Review
+writes no disc/package or history and launches no game. Normal Build still
+rejects NPC drafts; runtime acceptance is deferred. See the
+[draft facing workflow](../../docs/legaia-draft-facing.md).
+
 Use **Preview scene animations** in the viewport to play all eligible initial
 reference clips together, scrub integer source samples and Stop/Restore the exact
 scene. The explicit preview rate does not establish retail timing. Unsupported

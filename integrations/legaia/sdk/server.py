@@ -126,6 +126,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_glb_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_material_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
+        state["capabilities"]["draft_output_review"] = bool(self.project.disc_path and self.project.actor_drafts)
         state["capabilities"]["texture_png_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["animation_preview"] = bool(self.project.disc_path)
         from .scene_preview import source_key
@@ -272,6 +273,10 @@ class EditorServer(ThreadingHTTPServer):
             if affected:
                 preview["animation_support"]["clips"].append({"id": "authored-channels", "label": "Authored channel overrides"})
         return preview
+
+    def review_actor_drafts(self, expected_key: str) -> dict:
+        from .draft_review import review
+        return review(self.project, expected_key)
 
     def export_actor_drafts(self, entity_id: str | None = None) -> dict:
         from uuid import uuid4
@@ -665,6 +670,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
+                 "/draft-review.js": ("draft-review.js", "text/javascript"),
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
@@ -1607,6 +1613,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     frame_index, clip_fps = _animation_export_choice(body) if exporting else (None, None)
                     preview = self.server.actor_initial_animation_preview(body['entity_id'])
                     self._json(200, self.server.export_preview(preview, frame_index, clip_fps) if exporting else preview)
+                    return
+                if route == '/api/draft-output-review':
+                    if set(body) != {'source_key'}:
+                        raise ProjectError('NPC output review accepts only the current source_key')
+                    self._json(200, self.server.review_actor_drafts(body['source_key']))
                     return
                 if route == "/api/export/actor-drafts":
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:

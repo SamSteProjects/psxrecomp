@@ -9,7 +9,7 @@ from hashlib import sha256
 import re
 
 from .core import ImportError
-from .dialogue_authoring import load_dialogue_authoring_context
+from .dialogue_authoring import MAX_MAN_BYTES, load_dialogue_authoring_context
 from .script_inspection import inspect_record
 
 MAX_FACING_EDITS = 1024
@@ -116,6 +116,71 @@ class FacingAuthoringContext:
                   'No supported source facing operands occur on the inspected paths' if not targets else None)
         return dict(supported=bool(targets), targets=deepcopy(targets), unavailable=deepcopy(unavailable),
                     reason=reason, source=self.provenance(), limitations=list(LIMITATIONS))
+
+    def patch_appended(self, candidate, edits):
+        """Rebase original owners after append, retaining donor and unrelated bytes."""
+        from .man_layout import read_man_layout
+        from .trigger_scripts import _p2_entry
+        if not isinstance(candidate, bytes) or not 0x2B <= len(candidate) <= MAX_MAN_BYTES:
+            raise ImportError('Appended facing MAN requires bounded immutable bytes')
+        _, changes = self.patch(edits)
+        layout = read_man_layout(candidate)
+        if sum(layout['partition_counts']) > 8192:
+            raise ImportError('Appended facing MAN exceeds the record budget')
+        records = {}
+        for row in layout['records']:
+            key = row['partition'], row['record_index']
+            if key in records:
+                raise ImportError('Appended facing record identity is duplicated')
+            records[key] = row
+        resolved = {}
+        # Include no-op requests in qualification; they must not conceal a
+        # changed source entry, target instruction, or operand preimage.
+        for identifier in edits:
+            match = _ID.fullmatch(identifier)
+            owner, pc = 'scene://' + match.group(1), int(match.group(2), 16)
+            _, original, entry = self._source.verified_record(owner)
+            partition = 2 if '/scripts/man-p2/' in owner else 1
+            record = records.get((partition, int(owner.rsplit('/', 1)[1])))
+            if record is None or record['byte_length'] != len(original):
+                raise ImportError('Appended facing record differs from verified source extent')
+            start = record['byte_offset']
+            if sum(row['byte_offset'] == start for row in layout['records']) != 1:
+                raise ImportError('Appended facing record is aliased')
+            if any(start < section['byte_offset'] + section['byte_length'] and
+                   section['byte_offset'] < start + len(original) for section in layout['sections']):
+                raise ImportError('Appended facing record overlaps a MAN section')
+            current = candidate[start:start + len(original)]
+            current_entry = _p2_entry(current)[0] if partition == 2 else 1 + current[0] * 2 + 4
+            # P1's final two entry-header bytes are independently authored
+            # placement coordinates; they do not select script entry or context.
+            prefix_end = entry if partition == 2 else entry - 2
+            if current_entry != entry or current[:prefix_end] != original[:prefix_end]:
+                raise ImportError('Appended facing source entry differs from verified source')
+            source_node, relative, source_report = _target(original, entry, pc)
+            node, offset, report = _target(current, entry, pc)
+            if (offset != relative or _shape(report) != _shape(source_report) or
+                    current[pc] != original[pc] or node['mnemonic'] != source_node['mnemonic'] or
+                    node['target_context'] != source_node['target_context']):
+                raise ImportError('Appended facing instruction differs from source layout')
+            if current[offset] != original[relative]:
+                raise ImportError('Appended facing operand preimage differs from source')
+            resolved[identifier] = (start + offset, node['target_context'])
+        output, audit = bytearray(candidate), []
+        digest = sha256(candidate).hexdigest()
+        for change in changes:
+            offset, context = resolved[change['facing_id']]
+            if (candidate[offset] != change['before_byte'] or
+                    change['before_byte'] & PRESERVATION_MASK != change['after_byte'] & PRESERVATION_MASK):
+                raise ImportError('Appended facing operand preimage or preserved flags differ')
+            output[offset] = change['after_byte']
+            audit.append(dict(change, source_decoded_byte_offset=change['decoded_byte_offset'],
+                              decoded_byte_offset=offset, appended_man_sha256=digest,
+                              appended_target_context=context))
+        result = bytes(output)
+        if read_man_layout(result) != layout:
+            raise ImportError('Appended facing edit changed MAN layout')
+        return result, deepcopy(audit)
 
     def patch(self, edits, *, original=None):
         if original is not None and (not isinstance(original, bytes) or original != self._man):

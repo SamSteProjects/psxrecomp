@@ -6,6 +6,14 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`sdk/draft_review.py` qualifies a current authored-state key, prepares existing
+NPC draft serializers in memory and returns metadata only. Both compressed and
+streaming serializers compose `FacingAuthoringContext.patch_appended` before
+branch edits, retaining original record identity after table relocation. The
+editor review aborts pending reads and withdraws results when source inputs or
+mode change. This service has no disc writer and does not change normal Build
+acceptance. See [draft facing](legaia-draft-facing.md).
+
 Coordinated scene animation (2026-10-02) adds a transient viewport service over
 the existing verified scene graph. `sdk/scene_animation.py` groups exact existing
 geometry bindings into bounded source-qualified tracks; the server composes

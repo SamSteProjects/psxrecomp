@@ -16,6 +16,21 @@ from test_importer_dialogue_authoring import ACTOR, fixture
 END = b'\x3f\0\0\x06town01\x01\x02\x03opaque'
 
 
+def appended_fixture(script, p2_script=None):
+    from test_importer_dialogue_authoring import literals
+    records = [b'opaque', b'\0\0\0\0\0\x2a', b'\0\1\2\3\4' + script,
+               bytes(4) + (p2_script if p2_script is not None else b'\x2a')]
+    header = bytearray(0x2b)
+    struct.pack_into('<hhh', header, 0x22, 1, 2, 1)
+    header[0x28:0x2b] = sum(map(len, records)).to_bytes(3, 'little')
+    offsets, cursor = [], 0
+    for record in records:
+        offsets.append(cursor.to_bytes(3, 'little'))
+        cursor += len(record)
+    man = bytes(header) + b''.join(offsets) + b''.join(records) + bytes(18) + b'tail'
+    return DialogueAuthoringContext('fixture', man, literals(man), {}), man
+
+
 class FacingAuthoringTests(unittest.TestCase):
     def test_both_opcode_families_preserve_flags_context_and_exact_instruction_shape(self):
         for extended in (False, True):
@@ -85,6 +100,84 @@ class FacingAuthoringTests(unittest.TestCase):
                 context.patch(invalid)
         self.assertEqual(context.patch({}), (original, []))
 
+    def test_appended_original_p1_p2_owners_rebase_and_donor_copies_remain_retail(self):
+        from importer.man_actor_structure import append_actor_candidates
+        from importer.man_layout import read_man_layout
+        from test_importer_dialogue_authoring import literals
+        source, man = appended_fixture(b'\x38\xa3\0\xcc\xf8\x51\0\x80\xb3\x09' + END,
+                                       b'\xb8\xf8\xa3\0' + END)
+        context = FacingAuthoringContext(source)
+        appended, _ = append_actor_candidates(man, sha256(man).hexdigest(),
+            [dict(id='draft/a', donor_record_index=1, position=None),
+             dict(id='draft/b', donor_record_index=1, position=None)])
+        targets = context.options(ACTOR)['targets'] + context.options('scene://fixture/scripts/man-p2/0000')['targets']
+        edits = {target['semantic_id']: {'sector': 6} for target in targets}
+        result, audit = context.patch_appended(appended, edits)
+        self.assertEqual(len(audit), 3)
+        self.assertEqual(read_man_layout(appended), read_man_layout(result))
+        self.assertEqual({n for n, (a, b) in enumerate(zip(appended, result)) if a != b},
+                         {row['decoded_byte_offset'] for row in audit})
+        for row in audit:
+            self.assertEqual(row['decoded_byte_offset'], row['source_decoded_byte_offset'] + 6)
+            self.assertEqual(row['appended_man_sha256'], sha256(appended).hexdigest())
+            self.assertEqual(row['appended_target_context'], row['target_context'])
+            self.assertEqual(result[row['decoded_byte_offset']] & 0xF0, row['before_byte'] & 0xF0)
+        layout = read_man_layout(appended)
+        for clone in (row for row in layout['records'] if row['partition'] == 1 and row['record_index'] >= 2):
+            start, end = clone['byte_offset'], clone['byte_offset'] + clone['byte_length']
+            self.assertEqual(result[start:end], appended[start:end])
+        self.assertEqual(context.patch_appended(appended, {}), (appended, []))
+        noops = {target['semantic_id']: target['values'] for target in targets}
+        self.assertEqual(context.patch_appended(appended, noops), (appended, []))
+        self.assertEqual(context._man, man)
+        placed = bytearray(appended)
+        p1_placement = next(row for row in layout['records'] if row['partition'] == 1 and row['record_index'] == 1)
+        placed[p1_placement['byte_offset'] + 3:p1_placement['byte_offset'] + 5] = b'\x88\x89'
+        placed = bytes(placed)
+        composed, placed_audit = context.patch_appended(placed, edits)
+        self.assertEqual({n for n, (a, b) in enumerate(zip(placed, composed)) if a != b},
+                         {row['decoded_byte_offset'] for row in placed_audit})
+        self.assertEqual(composed[p1_placement['byte_offset'] + 3:p1_placement['byte_offset'] + 5], b'\x88\x89')
+        for target in targets:
+            at = target['decoded_byte_offset'] + 6
+            for relative, value in ((0, appended[at] ^ 0x10),):
+                invalid = bytearray(appended)
+                invalid[at + relative] = value
+                with self.assertRaisesRegex(ImportError, 'preimage'):
+                    context.patch_appended(bytes(invalid), {target['semantic_id']: {'sector': 6}})
+        # Entry prefix, dispatch context and opcode cannot be substituted.
+        p1 = next(row for row in layout['records'] if row['partition'] == 1 and row['record_index'] == 1)
+        for at in (p1['byte_offset'], p1['byte_offset'] + 5, p1['byte_offset'] + 9):
+            invalid = bytearray(appended)
+            invalid[at] ^= 1
+            with self.assertRaises(ImportError):
+                context.patch_appended(bytes(invalid), edits)
+        with self.assertRaisesRegex(ImportError, 'preimage'):
+            context.patch_appended(result, edits)
+        for invalid in (bytearray(appended), b'', bytes(4 * 1024 * 1024 + 1)):
+            with self.assertRaises(ImportError):
+                context.patch_appended(invalid, edits)
+
+    def test_appended_missing_aliased_or_changed_extent_record_rejects(self):
+        from importer.man_actor_structure import append_actor_candidates
+        source, man = appended_fixture(b'\x38\xa3\0' + END)
+        context = FacingAuthoringContext(source)
+        target = context.options(ACTOR)['targets'][0]
+        appended, _ = append_actor_candidates(man, sha256(man).hexdigest(),
+            [dict(id='draft/a', donor_record_index=1, position=None)])
+        edits = {target['semantic_id']: {'sector': 6}}
+        # Original P1 record table entry is at 0x31; alias, truncate and move it.
+        for replacement in (appended[0x2B:0x2E],
+                            (int.from_bytes(appended[0x31:0x34], 'little') + 1).to_bytes(3, 'little')):
+            invalid = bytearray(appended)
+            invalid[0x31:0x34] = replacement
+            with self.assertRaises(ImportError):
+                context.patch_appended(bytes(invalid), edits)
+        invalid = bytearray(appended)
+        struct.pack_into('<h', invalid, 0x24, 1)
+        with self.assertRaises(ImportError):
+            context.patch_appended(bytes(invalid), edits)
+
     def test_nonscalar_modes_parked_nondirection_unknown_conflicts_and_invalid_values_reject(self):
         for record in (b'\x38\x03\x01' + END, b'\x38\x08\0' + END,
                        b'\x4c\x51\x7f\xff\x03\x09' + END,
@@ -122,7 +215,7 @@ class FacingAuthoringTests(unittest.TestCase):
         target = FacingAuthoringContext(supported).options(ACTOR)['targets'][0]['semantic_id']
         self.assertEqual(FacingAuthoringContext(raw).patch({target: {'sector': 3}}),
                          FacingAuthoringContext(supported).patch({target: {'sector': 3}}))
-        self.assertFalse(hasattr(FacingAuthoringContext(raw), 'patch_appended'))
+        self.assertTrue(hasattr(FacingAuthoringContext(raw), 'patch_appended'))
 
 
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'), 'requires private retail disc')
