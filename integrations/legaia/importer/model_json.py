@@ -18,7 +18,7 @@ def rotate_shape_object(original: bytes, effective: bytes, expected_sha256: str,
     if axis not in ('x','y','z') or type(quarter_turns) is not int or quarter_turns not in (-1,1,2):
         raise ImportError('Choose a source XYZ axis and −90, +90 or 180 degree turn')
     source_hash = sha256(original).hexdigest()
-    replace_model_content(original,source_hash,effective)
+    replace_model_content(original,source_hash,effective, allow_normal_references=True)
     document = json.loads(export_shape_json(effective))
     if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
         raise ImportError('Choose an existing model object')
@@ -35,7 +35,7 @@ def rotate_shape_object(original: bytes, effective: bytes, expected_sha256: str,
     for kind in ('vertices','normals'):
         obj[kind] = [rotate(vector) for vector in obj[kind]]
     replacement = import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
-    return replace_model_content(original,source_hash,replacement)[0]
+    return replace_model_content(original,source_hash,replacement, allow_normal_references=True)[0]
 
 
 def translate_shape_object(original: bytes, effective: bytes, expected_sha256: str,
@@ -46,7 +46,7 @@ def translate_shape_object(original: bytes, effective: bytes, expected_sha256: s
     if not isinstance(offset, list) or len(offset) != 3 or any(type(v) is not int or not -65535 <= v <= 65535 for v in offset):
         raise ImportError('Object offset requires three integer source-unit values within ±65535')
     source_hash = sha256(original).hexdigest()
-    replace_model_content(original, source_hash, effective)
+    replace_model_content(original, source_hash, effective, allow_normal_references=True)
     document = json.loads(export_shape_json(effective))
     if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
         raise ImportError('Choose an existing model object')
@@ -58,7 +58,7 @@ def translate_shape_object(original: bytes, effective: bytes, expected_sha256: s
         raise ImportError('Object translation exceeds signed16 vertex coordinates; nothing was applied')
     document['objects'][object_index]['vertices'] = translated
     replacement = import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
-    return replace_model_content(original,source_hash,replacement)[0]
+    return replace_model_content(original,source_hash,replacement, allow_normal_references=True)[0]
 
 
 def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
@@ -69,7 +69,7 @@ def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
     if type(percent) is not int or not 1 <= percent <= 1000:
         raise ImportError('Object scale requires an integer percent1..1000')
     source_hash = sha256(original).hexdigest()
-    replace_model_content(original,source_hash,effective)
+    replace_model_content(original,source_hash,effective, allow_normal_references=True)
     document = json.loads(export_shape_json(effective))
     if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
         raise ImportError('Choose an existing model object')
@@ -83,7 +83,7 @@ def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
         return result
     obj['vertices'] = [[scale(v) for v in vector] for vector in obj['vertices']]
     replacement = import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
-    return replace_model_content(original,source_hash,replacement)[0]
+    return replace_model_content(original,source_hash,replacement, allow_normal_references=True)[0]
 
 
 def export_shape_json(source: bytes) -> bytes:

@@ -8,6 +8,28 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Source-bound GLB normal-reference editing (2026-10-02):** Fresh profile v5
+adds `_LEGAIA_SOURCE_NORMAL_INDEX` for selecting an existing normal within the
+source object. Immutable corners retain packet ownership; flat references and
+all raw XYZ aliases must agree. Unlit index -1 and XYZ sentinel remain explicit.
+Changed references use `tmd-content-v3`; older content versions keep normal
+references immutable. Review/Apply/history/Save/Open and normal Build compose
+reference changes with earlier authored normal words. Material inspection,
+source-bound JSON/TMD review and object transforms preserve the new references.
+Counts, allocation, padding and unrelated source bytes remain fixed. Retail
+lighting and gameplay parity remain deferred. See
+[normal-reference workflow](legaia-model-glb-normal-references.md).
+
+Validation: 42 focused Python tests passed with the private retail disc (no
+skips), plus Node workflow and frontend syntax checks. Twelve integrated browser
+checks cover actual Blender review/no-op, proposed inspection, Apply/history/
+Save, 540px layout, stale rejection and Build. Independent flat/Gouraud rewiring
+changes only byte2940/byte4284 respectively, retaining the earlier normal edit.
+Integrated Build retains bytes2940 and3332, unchanged neighbors and the original
+154,547-byte compressed capacity. Legacy content downgrades reject the changed
+reference. No game was launched. Private proof:
+`local-output/sdk-20260909/model-glb-normal-references-20261002/`.
+
 **Source-bound GLB normal editing (2026-10-02):** Fresh model profile v4 adds
 `_LEGAIA_SOURCE_NORMAL` raw signed-i16 XYZ for existing lit packet normal owners.
 Shared flat/Gouraud aliases must agree after rounding. Retail axes remain

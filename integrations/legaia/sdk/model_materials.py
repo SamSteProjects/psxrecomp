@@ -53,7 +53,7 @@ def _snapshot(project, asset_id):
         retail = project._model_source(asset_id, project.active_scene)
         authored = project.model_overrides.get(asset_id)
         effective = project.read_model_replacement(asset_id, authored) if authored else retail
-        replace_model_content(retail, sha256(retail).hexdigest(), effective)
+        replace_model_content(retail, sha256(retail).hexdigest(), effective, allow_normal_references=True)
         current = inspect_model_materials(effective)
         original = inspect_model_materials(retail)
     binding = dict(schema_version='legaia.model-material-source.v1', asset_id=asset_id,
@@ -79,7 +79,7 @@ def prepare(project, asset_id, edits, expected_sha256, expected_source_key):
     if expected_sha256 != binding['effective_sha256'] or expected_source_key != binding['project_source_key']:
         raise ProjectError('Model material source or current model changed; reopen the editor')
     candidate, pending = patch_model_materials(source['effective'], expected_sha256, edits)
-    _, changes = replace_model_content(source['retail'], binding['source_sha256'], candidate)
+    _, changes = replace_model_content(source['retail'], binding['source_sha256'], candidate, allow_normal_references=True)
     if len(changes) > MAX_AUDIT or len(pending) > MAX_AUDIT:
         raise ProjectError('Model material changes exceed the bounded audit')
     if any(row['kind'] != 'primitive_group' and not (row['kind'] == 'primitive' and row['field'] in ('clut', 'tpage')) for row in pending):

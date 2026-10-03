@@ -6,6 +6,15 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+Model GLB profile v5 resolves existing normal reference IDs through immutable
+packet corners. `model_normal_references.py` qualifies aligned SVECTOR offsets
+and object table bounds. The replacement writer admits these words only with
+explicit normal-reference opt-in, persisted as `tmd-content-v3`; legacy v1/v2
+bindings retain their immutable-reference contract. Shared references and raw
+normal XYZ aliases remain consistent, and Build requalifies payloads against
+retail source before fixed-capacity overlays. See
+[normal references](legaia-model-glb-normal-references.md).
+
 Model GLB profile v4 adds source-bound stored normal XYZ to the existing model
 replacement service. Custom attribute rows resolve immutable source corner
 owners and existing eight-byte normal-vector references; shared aliases must

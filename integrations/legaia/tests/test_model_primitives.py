@@ -47,6 +47,10 @@ def synthetic(object_groups=((0x22,),), count=2):
                     struct.pack_into('<H', packet, uv + 2, 0x123)
                     struct.pack_into('<H', packet, uv + 6, 0x41)
                 struct.pack_into(f'<{corners}H', packet, vi, *(corner * 8 for corner in range(corners)))
+                if not baked:
+                    normal_at = (18 if corners == 3 else 20) if gouraud else (12 if corners == 3 else 20)
+                    normal_slots = corners if gouraud else 1
+                    struct.pack_into(f'<{normal_slots}H', packet, normal_at, *(n * 8 for n in range(normal_slots)))
                 data.extend(packet)
             data.extend(bytes([0xCC]) * stride)
         data.extend(bytes(4) + b'KEEP')

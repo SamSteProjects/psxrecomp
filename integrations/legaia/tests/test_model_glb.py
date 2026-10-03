@@ -61,11 +61,15 @@ class ModelGlbTests(unittest.TestCase):
                 rgb_profile['schema_version'] = 'legaia.model-glb-profile.v2'
                 rgb_profile['imported_fields'].remove('primitive_vertex_indices')
                 rgb_profile['imported_fields'].remove('normal_xyz')
+                rgb_profile['imported_fields'].remove('primitive_normal_indices')
+                del rgb_profile['attributes']['normal_index']
                 del rgb_profile['attributes']['normal']
                 self.assertEqual(import_model_glb(source, glb, rgb_profile)[0], source)
                 legacy = deepcopy(profile)
                 legacy['schema_version'] = 'legaia.model-glb-profile.v1'
                 legacy['imported_fields'].remove('normal_xyz')
+                legacy['imported_fields'].remove('primitive_normal_indices')
+                del legacy['attributes']['normal_index']
                 del legacy['attributes']['normal']
                 del legacy['attributes']['color']
                 legacy['imported_fields'].remove('primitive_rgb')
@@ -138,7 +142,7 @@ class ModelGlbTests(unittest.TestCase):
         def edit(doc, binary):
             primitive = doc['meshes'][0]['primitives'][0]
             # Rebuild the required attributes with an extra unused corner-2 row.
-            for attribute in ('POSITION', VERTEX_ID, CORNER_ID, COLOR_ID, NORMAL_ID, 'TEXCOORD_0'):
+            for attribute in ('POSITION', VERTEX_ID, CORNER_ID, COLOR_ID, NORMAL_ID, '_LEGAIA_SOURCE_NORMAL_INDEX', 'TEXCOORD_0'):
                 original = rows(doc, binary, primitive, attribute)
                 data = [list(value) for _, value in original]
                 corner_rows = rows(doc, binary, primitive, CORNER_ID)
@@ -171,7 +175,7 @@ class ModelGlbTests(unittest.TestCase):
             with self.subTest(flags=hex(flags)):
                 source = synthetic(((flags,),), count=1)
                 glb, profile = export_model_glb(source, decode_tmd(source))
-                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v4')
+                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v5')
                 row = inspect_model_primitives(source)['objects'][0]['primitives'][0]
                 expected = bytearray(source)
                 for slot in range(len(row['colors'])):
@@ -224,6 +228,8 @@ class ModelGlbTests(unittest.TestCase):
             legacy = deepcopy(profile)
             legacy['schema_version'] = 'legaia.model-glb-profile.v1'
             legacy['imported_fields'].remove('normal_xyz')
+            legacy['imported_fields'].remove('primitive_normal_indices')
+            del legacy['attributes']['normal_index']
             del legacy['attributes']['normal']
             del legacy['attributes']['color']
             legacy['imported_fields'].remove('primitive_rgb')

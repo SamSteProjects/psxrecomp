@@ -4,9 +4,11 @@ Object-local vertex and normal XYZ words are writable. Legacy shape bindings
 keep primitives source-owned. Versioned content bindings
 also permit proven face references, UV bytes and baked RGB without reallocating
 packets. V2 adds masked CLUT/page selectors and group ABE, preserving source ABR,
-reserved bits, all packet layout and vector padding.
+reserved bits, all packet layout and vector padding. V3 explicitly permits
+qualified existing lit normal references within the source object normal table.
 """
 from hashlib import sha256
+from itertools import chain
 import struct
 
 from .assets import decode_tmd
@@ -41,7 +43,7 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     material_changed = (len(result['materials']) != len(shape['materials']) or
             any(any(old.get(key) != new.get(key) for key in material_fields)
                 for old, new in zip(result['materials'], shape['materials'])))
-    material_v2 = binding.get('format') == 'tmd-content-v2'
+    material_v2 = binding.get('format') in ('tmd-content-v2', 'tmd-content-v3')
     if material_changed and not material_v2:
         raise ImportError('Model content changed source material bindings')
     if material_v2:
@@ -108,12 +110,13 @@ def replace_model_shape(original: bytes, expected_sha256: str, replacement: byte
     return replacement, audit
 
 
-def replace_model_content(original: bytes, expected_sha256: str, replacement: bytes, *, allow_materials=True):
-    """Validate typed fields and exact changed bits; legacy v1 forbids materials."""
+def replace_model_content(original: bytes, expected_sha256: str, replacement: bytes, *, allow_materials=True, allow_normal_references=False):
+    """Validate typed fields; normal-reference writes require explicit v3 opt-in."""
     from .model_primitives import _qualified_model, _primitive_field_locations
     from .model_materials import _material_field_locations
-    if type(allow_materials) is not bool:
-        raise ImportError('Material qualification flag must be boolean')
+    from .model_normal_references import _normal_field_locations
+    if type(allow_materials) is not bool or type(allow_normal_references) is not bool:
+        raise ImportError('Material and normal reference qualification flags must be boolean')
     if not isinstance(original, bytes) or sha256(original).hexdigest() != expected_sha256:
         raise ImportError('Model source hash differs from the authored binding')
     inspection, vectors = _qualified_model(original)
@@ -132,7 +135,13 @@ def replace_model_content(original: bytes, expected_sha256: str, replacement: by
                     audit.append(dict(object_index=index, kind=kind, vector_index=vector,
                                       axis='xyz'[axis], byte_offset=at,
                                       before_value=before, after_value=after))
-    for identity, width in _primitive_field_locations(inspection):
+    primitive_fields = _primitive_field_locations(inspection)
+    if allow_normal_references:
+        primitive_fields = chain(primitive_fields, _normal_field_locations(original, inspection))
+        # Qualify every candidate reference, even words unchanged in this edit.
+        for _field in _normal_field_locations(replacement, inspection):
+            pass
+    for identity, width in primitive_fields:
         at = identity['byte_offset']
         allowed[at:at + width] = b'\xff' * width
         before, after = original[at], replacement[at]
@@ -171,7 +180,7 @@ def replace_model_content(original: bytes, expected_sha256: str, replacement: by
     for change in audit:
         at = change['byte_offset']
         primitive = change['kind'] == 'primitive'
-        if primitive and change['field'] == 'vertex_index':
+        if primitive and change['field'] in ('vertex_index', 'normal_index'):
             before = struct.pack('<H', change['before_value'] * 8)
             after = struct.pack('<H', change['after_value'] * 8)
         elif primitive and change['field'] in ('clut', 'tpage'):
@@ -228,7 +237,8 @@ def model_shape_overlays(archive, assets: dict, replacements: dict):
             if len(decoded) != source['containing_size'] or start < 0 or start+length > len(decoded):
                 raise ImportError('Model replacement source bounds changed')
             original = decoded[start:start+length]
-            payload, changes = replace_model_content(original, sha256(original).hexdigest(), replacements[identifier])
+            payload, changes = replace_model_content(original, sha256(original).hexdigest(), replacements[identifier],
+                                                    allow_normal_references=True)
             if not changes:
                 continue
             if any(start < b and start+length > a for a,b in intervals):

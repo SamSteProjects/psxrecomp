@@ -4,7 +4,14 @@ Local scene import and project authoring around PSXRecomp. Requires Python 3.11+
 and a user-owned North American SCUS-94254 Mode 2/2352 disc image for retail import.
 No runtime dependency on Andrew's repository and no retail assets are included.
 
-Fresh external model GLB exports use profile v4. Edit stored normal XYZ through
+Fresh external model GLB exports now use profile v5. Reconnect existing lit
+face normals through `_LEGAIA_SOURCE_NORMAL_INDEX`, copying the chosen source
+normal's raw XYZ into all corresponding aliases. Review and Apply retain
+source ownership; changed references persist as `tmd-content-v3`. Older content
+bindings preserve their immutable-reference contract. See the
+[normal-reference workflow](../../docs/legaia-model-glb-normal-references.md).
+
+Profile v4 introduced stored normal XYZ editing through
 `_LEGAIA_SOURCE_NORMAL` in raw signed source words, keep shared aliases aligned,
 and retain unlit [32768,32768,32768] sentinels. Review reports exact word changes
 and rounding before Apply/history/Save/Build. Display NORMAL and retail lighting

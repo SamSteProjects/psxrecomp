@@ -6,6 +6,14 @@ and parity oracle, not a runtime dependency, submodule or bundled implementation
 The 2026-09-09 importer work read the exact commit through `git show` in the
 existing read-only reference checkout. The pin was not advanced.
 
+The 2026-10-02 normal-reference extension uses the same independently qualified
+lit packet offsets and eight-byte SVECTOR table bounds. Blender flat/Gouraud
+rewiring changes only the selected reference byte, preserves the complete
+normal table and composes with the prior authored normal word. The explicit
+content-v3 boundary retains legacy immutable-reference semantics. No reference
+pin, runtime dependency or lighting/gameplay acceptance changes. Private proof:
+`local-output/sdk-20260909/model-glb-normal-references-20261002/research/`.
+
 The 2026-10-02 GLB normal work qualifies lit FT3/FT4/GT3/GT4 packet offsets
 against the pinned descriptor and independent retail table readback. Normal
 references are eight-byte SVECTOR offsets. Actual flat/Gouraud Blender edits

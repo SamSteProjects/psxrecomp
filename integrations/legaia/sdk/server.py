@@ -413,7 +413,7 @@ class EditorServer(ThreadingHTTPServer):
         scene = self.scene_previews.preview(self.project,
             lambda asset, *args, **kwargs: self.model_preview(asset, *args, effective_shape=True, **kwargs),
             load_scene_actor_animation_catalog, load_environment_preview_catalog, terrain_preview)
-        material_content = material_content or self.project.model_overrides.get(asset_id, {}).get('format') == 'tmd-content-v2'
+        material_content = material_content or self.project.model_overrides.get(asset_id, {}).get('format') in ('tmd-content-v2', 'tmd-content-v3')
         proposal_binding = {'asset_sha256': report['proposed_sha256'],
                             'format': 'tmd-content-v2' if material_content else 'tmd-content-v1'}
         report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,proposal_binding)

@@ -30,7 +30,7 @@ LIMITATIONS = [
     'Source vertex and stored normal coordinates, UVs and qualified raw RGB attributes are rounded to their existing integer domains.',
     'RGB edits use _LEGAIA_SOURCE_RGB in the raw 0..255 byte domain; display COLOR_0 and shader colors are ignored.',
     'The profile and binding describe this exact effective export; export again after project changes.',
-    'Normal edits use _LEGAIA_SOURCE_NORMAL signed source words; existing normal references, material words, images and opaque bytes remain unchanged.',
+    'Normal edits use _LEGAIA_SOURCE_NORMAL signed source words; material words, images and opaque bytes remain unchanged. Existing normal references may select another source normal in the same object; shared references and coordinates must agree.',
     'The viewport does not reproduce retail normal-based lighting; exact normal words are reviewed as source fields.',
     'Normal Build retains source capacities; gameplay remains unverified.',
 ]
@@ -149,7 +149,7 @@ def _snapshot(project, asset_id: str) -> dict:
         retail = project._model_source(asset_id, project.active_scene)
         authored = project.model_overrides.get(asset_id)
         effective = project.read_model_replacement(asset_id, authored) if authored else retail
-        replace_model_content(retail, sha256(retail).hexdigest(), effective)
+        replace_model_content(retail, sha256(retail).hexdigest(), effective, allow_normal_references=True)
         preview = load_model_preview(Path(project.disc_path), asset)
         source_geometry = decode_tmd(retail)
         if preview.get('posed') or any(preview.get(field) != source_geometry[field] for field in
@@ -161,7 +161,7 @@ def _snapshot(project, asset_id: str) -> dict:
         preview = _texture_preview(project, asset, preview)
         glb, profile = export_model_glb(effective, preview)
         _content(glb)
-        if not isinstance(profile, dict) or profile.get('schema_version') != 'legaia.model-glb-profile.v4':
+        if not isinstance(profile, dict) or profile.get('schema_version') != 'legaia.model-glb-profile.v5':
             raise ProjectError('Model GLB exporter returned an invalid source profile')
         _json_size(profile, MAX_PROFILE_BYTES, 'Model GLB profile')
         binding = dict(schema_version='legaia.model-glb-binding.v1', asset_id=asset_id,
@@ -182,15 +182,15 @@ def _current(project, binding: dict) -> None:
 
 def _audits(snapshot: dict, candidate: bytes) -> tuple[list, list]:
     from importer.model_authoring import replace_model_content
-    _, changes = replace_model_content(snapshot['retail'], snapshot['binding']['source_sha256'], candidate)
-    _, pending = replace_model_content(snapshot['effective'], snapshot['binding']['effective_sha256'], candidate)
+    _, changes = replace_model_content(snapshot['retail'], snapshot['binding']['source_sha256'], candidate, allow_normal_references=True)
+    _, pending = replace_model_content(snapshot['effective'], snapshot['binding']['effective_sha256'], candidate, allow_normal_references=True)
     if len(changes) > MAX_AUDIT_ROWS or len(pending) > MAX_AUDIT_ROWS:
         raise ProjectError('Model GLB changes exceed the bounded review audit')
     # Qualified existing normal words, corner references, positions, UVs and RGB
     # can add pending changes; no count allocation
     # or packet ownership changes are admitted by the fresh source profile.
     if any(row['kind'] not in ('vertex', 'normal') and
-           not (row['kind'] == 'primitive' and row['field'] in ('uv', 'color', 'vertex_index')) for row in pending):
+           not (row['kind'] == 'primitive' and row['field'] in ('uv', 'color', 'vertex_index', 'normal_index')) for row in pending):
         raise ProjectError('Model GLB import changed an unsupported source field')
     return changes, pending
 
