@@ -697,6 +697,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),
                  "/normal-retarget.js": ("normal-retarget.js", "text/javascript"),
+                 "/vertex-retarget.js": ("vertex-retarget.js", "text/javascript"),
+                 "/model-vertex-users.js": ("model-vertex-users.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
@@ -1033,6 +1035,18 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Normal users require model, object, vector, inspected hash and source key only')
                     from .model_normal_users import inspect
                     self._json(200,inspect(self.server.project,body['asset_id'],body['object_index'],body['normal_index'],body['expected_sha256'],body['source_key']))
+                    return
+                if route == '/api/model-object-vertex-references':
+                    if set(body) != {'asset_id','object_index','from_index','to_index','expected_sha256','proposed_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Vertex retargeting requires exact model/object/from/to and reviewed hashes')
+                    self.server.project.retarget_model_vertices(body['asset_id'],body['object_index'],body['from_index'],body['to_index'],body['expected_sha256'],body['proposed_sha256'])
+                    self._json(200,self.server.state())
+                    return
+                if route == '/api/model-vertex-users':
+                    if set(body) != {'asset_id','object_index','vertex_index','expected_sha256','source_key'}:
+                        raise ProjectError('Vertex users require model, object, vector, inspected hash and source key only')
+                    from .model_vertex_users import inspect
+                    self._json(200,inspect(self.server.project,body['asset_id'],body['object_index'],body['vertex_index'],body['expected_sha256'],body['source_key']))
                     return
                 if route == '/api/model-object-translation':
                     if set(body) != {'asset_id','object_index','offset','expected_sha256'} or not isinstance(body['asset_id'], str):

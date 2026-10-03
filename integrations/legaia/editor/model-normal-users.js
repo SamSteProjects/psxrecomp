@@ -15,21 +15,23 @@ export function decodeNormalUsers(value,binding){
   return structuredClone(value);
 }
 function element(tag,text){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;}
-export function mountNormalUsers({host,assetId,expectedSha,sourceKey,getSelection,isCurrent,onSelect}){
-  const section=element('section'),button=element('button','Find faces using this normal'),status=element('p'),content=element('div');button.type='button';button.dataset.normalUsers='';status.setAttribute('role','status');section.append(button,status,content);host.append(section);
+export function mountNormalUsers(options){return mountStoredReferenceUsers(options,{noun:'normal',decode:decodeNormalUsers});}
+export function mountStoredReferenceUsers({host,assetId,expectedSha,sourceKey,getSelection,isCurrent,onSelect},{noun,decode}){
+  const title=noun[0].toUpperCase()+noun.slice(1);
+  const section=element('section'),button=element('button',`Find faces using this ${noun}`),status=element('p'),content=element('div');button.type='button';button.dataset[noun+'Users']='';status.setAttribute('role','status');section.append(button,status,content);host.append(section);
   let controller=null,generation=0,bound=null,report=null;
   const binding=()=>{const selection=getSelection();return selection?{asset_id:assetId,expected_sha256:expectedSha,source_key:sourceKey,...selection}:null;};
   const current=()=>isCurrent()&&JSON.stringify(binding())===JSON.stringify(bound);
   function close(){generation++;controller?.abort();controller=null;bound=null;report=null;content.replaceChildren();status.textContent='';}
   function refresh(){if(bound&&!current())close();button.disabled=!isCurrent()||!getSelection()||!!controller;}
   button.onclick=async()=>{
-    refresh();if(button.disabled)return;close();bound=binding();const requested=bound,token=++generation,request=new AbortController();controller=request;status.textContent='Qualifying stored normal references…';refresh();
+    refresh();if(button.disabled)return;close();bound=binding();const requested=bound,token=++generation,request=new AbortController();controller=request;status.textContent=`Qualifying stored ${noun} references…`;refresh();
     try{
-      const response=await fetch('/api/model-normal-users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(requested),signal:request.signal}),value=await response.json();
-      if(token!==generation||!current())return;if(!response.ok||value.error)throw new Error(value.error||'Normal references unavailable');report=decodeNormalUsers(value,requested);
-      const label=element('label','Reference layer'),layer=element('select');layer.setAttribute('aria-label','Normal reference layer');for(const [key,text] of [['current','Current'],['retail','Retail']]){const option=element('option',text);option.value=key;layer.append(option);}label.append(layer);const table=element('div');content.append(label,table);
+      const response=await fetch(`/api/model-${noun}-users`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(requested),signal:request.signal}),value=await response.json();
+      if(token!==generation||!current())return;if(!response.ok||value.error)throw new Error(value.error||`${title} references unavailable`);report=decode(value,requested);
+      const label=element('label','Reference layer'),layer=element('select');layer.setAttribute('aria-label',`${title} reference layer`);for(const [key,text] of [['current','Current'],['retail','Retail']]){const option=element('option',text);option.value=key;layer.append(option);}label.append(layer);const table=element('div');content.append(label,table);
       function draw(){if(!current()){close();refresh();return;}const users=report[layer.value+'_users'],coordinates=report[layer.value+'_coordinates'];table.replaceChildren();status.textContent=`${users.length} qualified stored reference operand(s) · ${layer.value==='current'?'Current':'Retail'} XYZ ${coordinates.join(', ')} · Showing ${Math.min(128,users.length)}. Runtime use and visibility are unverified.`;
-        for(const row of users.slice(0,128)){const p=element('p'),link=element('button',`Inspect current face ${row.primitive_index}`);link.type='button';link.onclick=()=>{if(current())onSelect(structuredClone(row));else{close();refresh();}};p.append(element('span',`Normal ${row.normal_index} · stored word at byte ${row.byte_offset} · ${row.sharing==='flat_all_corners'?'all '+row.corner_count+' corners':'corner '+row.corner_index} `),link);table.append(p);}
+        for(const row of users.slice(0,128)){const p=element('p'),link=element('button',`Inspect current face ${row.primitive_index}`);link.type='button';link.onclick=()=>{if(current())onSelect(structuredClone(row));else{close();refresh();}};p.append(element('span',`${title} ${row[noun+'_index']} · stored word at byte ${row.byte_offset} · ${row.sharing==='flat_all_corners'?'all '+row.corner_count+' corners':'corner '+row.corner_index} `),link);table.append(p);}
       }
       layer.onchange=draw;draw();
     }catch(error){if(error.name!=='AbortError'&&token===generation&&current())status.textContent=error.message;}finally{if(controller===request)controller=null;refresh();}

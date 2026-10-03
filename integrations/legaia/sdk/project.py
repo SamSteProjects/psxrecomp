@@ -1374,6 +1374,7 @@ class ProjectService:
         from importer.model_json import translate_shape_object, rotate_shape_object, scale_shape_object
         from importer.model_normal_length import rescale_object_normals
         from importer.model_normal_retarget import retarget_object_normals
+        from importer.model_vertex_references import retarget_object_vertices
         from importer.assets import decode_tmd
         if self.mode != 'edit':
             raise ProjectError('Model object preview requires Edit mode')
@@ -1393,8 +1394,10 @@ class ProjectService:
             replacement = rescale_object_normals(*args, values['length'])
         elif operation == 'normal_references' and set(values) == {'from_index','to_index'}:
             replacement = retarget_object_normals(*args, values['from_index'], values['to_index'])
+        elif operation == 'vertex_references' and set(values) == {'from_index','to_index'}:
+            replacement = retarget_object_vertices(*args, values['from_index'], values['to_index'])
         else:
-            raise ProjectError('Choose translation, rotation, scale, normal_length or normal_references with exact operation fields')
+            raise ProjectError('Choose translation, rotation, scale, normal_length, normal_references or vertex_references with exact operation fields')
         report = self.preview_model_file(asset_id, replacement)
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
@@ -1423,6 +1426,15 @@ class ProjectService:
 
     def preview_model_file(self, asset_id: str, content: bytes, format: str = 'tmd') -> dict:
         return self._prepare_model_file(asset_id, content, format)[1]
+
+    def retarget_model_vertices(self, asset_id: str, object_index: int, from_index: int, to_index: int,
+                               expected_sha256: str, proposed_sha256: str) -> None:
+        replacement, report = self._prepare_model_object(asset_id, object_index, 'vertex_references',
+                                                        {'from_index': from_index, 'to_index': to_index}, expected_sha256)
+        if report['proposed_sha256'] != proposed_sha256:
+            raise ProjectError('Vertex reference draft differs from its reviewed proposal')
+        if report['changes_from_current']:
+            self.set_model_replacement(asset_id, replacement)
 
     def set_model_json(self, asset_id: str, content: bytes) -> None:
         self.set_model_replacement(asset_id, self._prepare_model_file(asset_id, content, 'json')[0])
