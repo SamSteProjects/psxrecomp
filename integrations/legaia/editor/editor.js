@@ -36,6 +36,7 @@ import {createSceneAnimationController} from '/scene-animation.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
+import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
@@ -4336,3 +4337,5 @@ const projectAssetHost=document.createElement('div');projectAssetHost.style.grid
 projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projectAssetContext,busy:()=>busy,setBusy,
   getUnavailableReason:()=>state.project_assets_unavailable_reason,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
+
+mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools],onToggle:()=>{cancelViewportGesture();resize();}});
