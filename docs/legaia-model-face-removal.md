@@ -18,7 +18,7 @@ Private fixture, proof and screenshot: `local-output/sdk-20260909/model-face-rem
 
 ## Editing after removal
 
-Vertex and normal tables retain their Retail object/index identities. Use **Vectors** to edit their signed coordinates or preview object translation, quarter-turn rotation, scaling and normal-length adjustment. Apply preserves the removal binding and its exact removed Retail identities. Undo/Redo and Save/Open preserve both edits together. Vertex/normal reference lookup is available for this binding and shows both Retail and compacted Current face identities. Removed Retail references are labeled explicitly and have no Current face. Retained faces now navigate to the native face editor. Object-wide reference retargeting remains unavailable.
+Vertex and normal tables retain their Retail object/index identities. Use **Vectors** to edit their signed coordinates or preview object translation, quarter-turn rotation, scaling and normal-length adjustment. Apply preserves the removal binding and its exact removed Retail identities. Undo/Redo and Save/Open preserve both edits together. Vertex/normal reference lookup is available for this binding and shows both Retail and compacted Current face identities. Removed Retail references are labeled explicitly and have no Current face. Retained faces now navigate to the native face editor. Object-wide vertex/normal retargeting is now available and affects only qualified Current reference words.
 
 TMD imports must preserve the qualified Current packet layout and removal set. OBJ imports must preserve Current oriented triangles; JSON imports use ordered Retail vector capacities and the Retail source hash. Every final candidate is audited against actual Retail ownership, including retained packet fields and opaque bytes. Uploading the original full-topology TMD over a removal binding rejects; Clear the override to restore Retail first.
 
@@ -29,3 +29,9 @@ The private Town01 model0009 proof retains the removed object1 quad and changes 
 Open **Edit faces, UVs and colors** after removal, or follow a retained vertex/normal user. Metadata shows the selected Current primitive and its Retail face owner. **Reset draft to Retail** uses that retained Retail face, including its original normal references; it does not restore removed faces. **Discard draft** returns to Current values. Preview and reviewed Apply preserve the removal binding. Existing local vertex, UV byte, baked RGB and stored normal-reference fields retain their native domains. Removed Retail faces have no Current navigation target.
 
 The private Town01 proof changes retained object1 Current0 / Retail1 corner0 U0→17. Apply, Undo/Redo, Save/reload and normal Build pass, with one independently verified model byte and all compressed neighbors preserved. Runtime texture appearance is deferred.
+
+## Retargeting retained references
+
+Use **Vectors**, select an inspected vertex or normal, expand its retarget tool and choose another existing index. Preview must account for every matching Current reference word before Apply is enabled. Removed faces retain their Retail identities and are not edited. The final candidate is audited against actual Retail source ownership, preserving the removal binding and unrelated typed edits. Undo/Redo and Save/Open keep the edits together. Vertex retargeting can collapse faces; normal directions are an SDK diagnostic, not native lighting acceptance.
+
+The private Town01 proof retargets object1 normal4→3 (three words), then vertex5→6 (one word). Browser Apply and cumulative Build match independently patched bytes with the removed quad and carrier neighbors preserved. Native appearance remains deferred.

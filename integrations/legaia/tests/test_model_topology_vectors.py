@@ -71,3 +71,24 @@ class ModelTopologyVectorTests(unittest.TestCase):
             updated=self.effective();self.assertNotEqual(updated,self.current)
             self.project.undo();self.assertEqual(self.effective(),self.current)
             self.project.redo();self.assertEqual(self.effective(),updated)
+
+    def test_removal_retarget_complete_current_words_and_review_guards(self):
+        from importer.model_primitives import inspect_model_primitives, _layout
+        for operation,field,method in [('vertex_references','vertices',self.project.retarget_model_vertices),('normal_references','normal_indices',self.project.retarget_model_normals)]:
+            with self.subTest(operation=operation):
+                expected=bytearray(self.current);words=[]
+                for row in inspect_model_primitives(self.current,include_normal_references=True)['objects'][0]['primitives']:
+                    values=row[field]
+                    if values is None:continue
+                    start=_layout(row['flags'])[1] if field=='vertices' else ((18 if row['corner_count']==3 else 20) if row['gouraud'] else (12 if row['corner_count']==3 else 20))
+                    for corner,value in enumerate(values):
+                        if value==0:
+                            at=row['byte_offset']+start+corner*2;struct.pack_into('<H',expected,at,24);words.append(at)
+                self.assertTrue(words)
+                candidate,report=self.project._prepare_model_object(self.asset,0,operation,{'from_index':0,'to_index':3},sha256(self.current).hexdigest())
+                self.assertEqual(candidate,bytes(expected));self.assertEqual({r['byte_offset'] for r in report['changes_from_current']},set(words))
+                with self.assertRaises(ProjectError):method(self.asset,0,0,3,sha256(self.current).hexdigest(),'0'*64)
+                method(self.asset,0,0,3,sha256(self.current).hexdigest(),report['proposed_sha256'])
+                self.assertEqual(self.effective(),bytes(expected))
+                self.project.undo();self.assertEqual(self.effective(),self.current)
+                self.project.redo();self.assertEqual(self.effective(),bytes(expected));self.project.undo()

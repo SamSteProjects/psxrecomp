@@ -9,3 +9,7 @@ Preview first qualifies the complete Current-user report using the inspected mod
 10 focused Python cases and the Node retarget/primitive suites pass. Nine actual private-retail browser checks pass through invalid targets, mandatory review, independently constructed candidate, Current/Proposed source directions,540px controls, rejected mismatched candidate, one Apply, complete-model Undo/Redo, Save/reload and Build. A separate read-only preview verifies the final labels and checkbox layout. Town01 model0009 object1 retargets normal3 to4 at words2940/2988. Only those two bytes change from the inherited authored fixture; full compressed carrier readback retains every neighboring decoded asset and the154547-byte consumed capacity. Package SHA256: `31c7e714c2f90c3ba82496970558cb3371df67fbe87609cae9cb6f7e4b401b3f`.
 
 Private proof and inspected screenshots: `local-output/sdk-20260909/normal-retarget-20261003/parent/`. Owned helpers are closed. No game, installation or full-disc export ran. Native lighting, runtime use and gameplay appearance remain unverified and can be checked later.
+
+## After face removal
+
+Normal retargeting remains available with a face-removal override. Preview and Apply operate only on retained Current words, then qualify the entire candidate against actual Retail ownership and the unchanged removal set. Vector tables and packet counts/layout stay fixed; Undo/Redo, Save/Open and Build retain both edits. Removed Retail references are not edited. Native lighting still requires later gameplay verification.

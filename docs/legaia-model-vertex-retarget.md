@@ -14,4 +14,4 @@ Owned browser/server helpers are closed. No game, installation or full-disc expo
 
 ## Reference lookup with face removal
 
-Existing face-removal overrides now support read-only reference lookup. Current faces show their retained Retail owners; the Retail layer marks removed faces with no Current identity. Stored-word offsets remain specific to the displayed layer. Retained-face navigation now opens the mapped Current face editor. Removed faces have no Current target. Object-wide reference retargeting remains guarded for this topology binding. Source/model hash and selection-lifetime guards still apply.
+Existing face-removal overrides now support read-only reference lookup. Current faces show their retained Retail owners; the Retail layer marks removed faces with no Current identity. Stored-word offsets remain specific to the displayed layer. Retained-face navigation now opens the mapped Current face editor. Removed faces have no Current target. Object-wide reference retargeting now supports this topology binding, qualifying every Current operand and preserving removed Retail identities. Source/model hash and selection-lifetime guards still apply.

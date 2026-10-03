@@ -1,5 +1,14 @@
 # Deferred gameplay verification
 
+## Reference retargeting after removal - deferred gameplay
+
+Ready offline fixture: `local-output/sdk-20260909/model-removal-retarget-20261003/parent/browser-project/`.
+Package SHA256 `5dfcc1ffed7111883201e380d28eff5fdcbc328fbfbdf22962de9101aed99ac9`.
+Town01 model0009 object1 retains its removed quad and UV edit, retargets normal4→3
+at three Current words and vertex5→6 at one Current word. Exact candidate and
+compressed-neighbor readback pass. Later verify intended shape/lighting across
+shared instances and animation/scene transitions. The package is not installed or run.
+
 ## Retained-face UV edit after removal - deferred gameplay
 
 Ready offline fixture: `local-output/sdk-20260909/model-retained-faces-20261003/parent/browser-project/`.
