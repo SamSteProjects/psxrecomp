@@ -262,13 +262,14 @@ class ScriptInspectionTests(unittest.TestCase):
                         self.assertEqual(truncated["instructions"], [])
                         self.assertEqual(truncated["dialogues"], [])
 
-    def test_effect_host_dependent_forms_remain_opaque(self):
+    def test_effect_truncated_spawn_and_unsupported_forms_remain_opaque(self):
         for sub in (1, 2, *range(4, 16)):
             report = inspect_record(bytes([0x34, sub << 4]) + b"\x1fOpaque\0", 0)
             self.assertEqual(report["status"], "partial")
             self.assertEqual(report["instructions"], [])
             self.assertEqual(report["dialogues"], [])
-            self.assertIn("unsupported EFFECT", report["stops"][0]["reason"])
+            self.assertIn("truncated opcode 0x34" if sub == 1 else "unsupported EFFECT",
+                          report["stops"][0]["reason"])
 
     def test_evidenced_menu_ed_e8_fields_and_continuation_ignore_operand_lookalikes(self):
         # The state byte and camera operands include apparent message/opcode

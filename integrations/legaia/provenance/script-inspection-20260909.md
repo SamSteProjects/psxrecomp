@@ -1,5 +1,27 @@
 # Read-only actor script and dialogue inspection
 
+Effect-spawn evidence (2026-10-03): unchanged hashed PROT897.
+Opcode34 table801CED0C→801DFCAC. Sub1 scans existing actors and compares
+actor+90 to current s5; matching exit801DFF48→801E2EA0 skips capture.
+Otherwise callback801E5668 at801DFFE0 creates/selects the effect actor.
+801DFFEC advances operand pointer12, then801DFFF0/F4/F8 peeks for40.
+Capture writes the pointer after marker/length to actor+94 at801E0000;
+801E000C/10/18 adds2+declared length to adjusted PC. Shared exit
+801E2EA0/2EA4 adds13 and returns advanced PC through801E3624.
+Thus base packet extent is13 ordinary/14 extended, but following capture
+ownership depends on existing-actor match. Inspection requires lookahead and
+full capture extent; unlike pinned missing-byte defaults it never substitutes
+zero or an empty payload for absent source bytes. Conditional offsets are
+operands only; no graph edges or editable destinations are fabricated for capture.
+Town01 actor0020 PC34 contains an extended14-byte packet at decoded11484,
+marker40 at record48, length15 and payload at record50/decoded11500.
+Existing-actor continuation48 and new-actor capture continuation65 remain
+conditional/unexecuted. Record SHA256
+fd45c73fb74606b946f73639b2b768c75dc72cd782448ac6302ccd68419be4f4.
+Independent full carrier/record reconstruction and actual browser source fields
+agree; no project files/history/authored state change. Conditional payload
+ownership and runtime actor identity remain unresolved source/model work.
+
 Actor-acquire evidence (2026-10-03): unchanged hash-bound PROT897.
 Opcode43 table801CED48→801DF354; inner entries801CEDA8/AC/D0/D4
 share801DF384 for00/01/A/B. Failure801DF410→801DEE4C restores s8=s4;

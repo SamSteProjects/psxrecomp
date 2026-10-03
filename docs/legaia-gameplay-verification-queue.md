@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+Effect-spawn source checkpoint (2026-10-03): inspection adds no immediate
+gameplay gate. Conditional capture ownership still needs a source-model solution
+before runtime verification can establish existing-actor match, allocation and
+captured-byte execution. Town01 actor0020 PC34 has possible continuation offsets
+48/65 and a15-byte captured payload. No effect or capture was authored, installed
+or executed by this checkpoint; actor identity remains unresolved.
+
 Actor-acquire source checkpoint (2026-10-03): inspection adds no immediate
 gameplay gate. Later runtime observation must establish acquisition predicates,
 callback801D25EC parameter meaning, pending/success behavior and actor/position

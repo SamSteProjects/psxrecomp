@@ -164,9 +164,8 @@ def _instruction(data: bytes, pc: int) -> dict:
         if operation == 2:
             args["can_wait_for_flag"] = True
     elif op == 0x34:
-        # Pinned executing VM step/effect.rs::op_34: only these two
-        # forms have unconditional, fixed-width encoded continuations.
-        # Spawn/capture forms depend on host control flow and remain opaque.
+        # Fixed color/animation forms and uncaptured spawn packets advance.
+        # Captured payload ownership depends on actor match and stays opaque.
         need(1)
         selector = data[operand]
         sub = selector >> 4
@@ -176,6 +175,25 @@ def _instruction(data: bytes, pc: int) -> dict:
             need(size)
             args.update(rgb=list(data[operand + 1:operand + 4]),
                         intensity=struct.unpack_from("<h", data, operand + 4)[0])
+        elif sub == 1:
+            size, mnemonic = 12, "EFFECT_SPAWN_PACKET"
+            # Retail peeks just past the base packet; record end cannot stand
+            # in for an absent capture marker. Existing actor skips capture.
+            need(size + 1)
+            args.update(packet_bytes=list(data[operand + 1:operand + size]),
+                        runtime_actor_match="not_observed", runtime_effect="not_evaluated")
+            marker = data[operand + size]
+            args["following_byte"] = marker
+            if marker == 0x40:
+                need(size + 2)
+                length = data[operand + size + 1]
+                need(size + 2 + length)
+                args.update(capture_payload={"pc": operand + size + 2, "length": length,
+                                             "encoded_hex": data[operand + size + 2:operand + size + 2 + length].hex()},
+                            conditional_continuations={"existing_actor": operand + size,
+                                                       "new_actor_capture": operand + size + 2 + length},
+                            unresolved_control_flow="EFFECT spawn capture has conditional payload ownership; actor match and both parent continuations remain unresolved")
+                branches = []
         elif sub == 3:
             size, mnemonic = 2, "EFFECT_ANIMATION_TRIGGER"
             need(size)

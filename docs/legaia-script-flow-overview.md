@@ -1,5 +1,13 @@
 # Script source-flow overview
 
+EFFECT1 spawn packets (2026-10-03) show a bounded base packet and its
+following-byte peek. A40 marker introduces conditional capture ownership:
+an existing matching actor skips it, while a newly spawned actor can consume
+the declared payload. Inspection shows both offsets but retains a stop and no
+outgoing graph edges for that form. Captured bytes are not automatically parent
+dialogue, instruction starts or editable destinations. An absent lookahead or
+truncated declared capture is rejected, rather than treated as an empty payload.
+
 Actor-acquire source edges (2026-10-03) label success and pending acquisition
 separately. Pending returns to the original instruction; success advances past
 the full eight/ten-byte ordinary instruction. A pending self-edge does not prove
