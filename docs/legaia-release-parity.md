@@ -1,5 +1,9 @@
 # Legaia stability and release parity
 
+**Precompile multi-configuration acceptance (2026-10-03):** The existing synthetic static-overlay fixture now builds and executes both Release and Debug for every inventory/body variant when using a multi-configuration generator. Shared generated sources must reach both configurations after growth, shrinkage, body-only changes, split/monolithic switching, empty output and regrowth. Single-configuration behavior remains unchanged. See [release parity evidence](legaia-release-parity.md#ninja-multi-config-acceptance-2026-10-03).
+
+Validation: Ninja Multi-Config1.13.2, CMake4.2.3 and MSYS2 UCRT GCC16.1.0 pass both focused tests in12.745s with no skips: nine recipes times two configurations,18 executable sum checks, final no-change builds and sparse numeric filename ownership. A restricted invocation failed before configuration while starting the Winget Ninja executable; the approved retry passes. GNU Make is not installed and its coverage remains open. Private logs/tool/source identities: `local-output/sdk-20260909/precompile-ninja-multi-20261003/parent/`. No runtime implementation, game executable, installed mod, retail payload or gameplay acceptance changed; no game ran.
+
 **NPC authoring capacity evidence - 2026-10-03:** Retail static instructions and a
 bounded isolated execution fixture establish143 pooled216-byte actor slots and
 zero-on-exhaustion. Normal source NPC Build now rejects unavoidable initial
@@ -30,7 +34,7 @@ must be used when deciding which behavior has actually been accepted.
 
 | Patch group | Included implementation | Acceptance boundary |
 | --- | --- | --- |
-| Precompile output and incremental builds | Discover split sources after generation; propagate body-only changes; handle empty/regrown inventories; recognize exact numeric part suffixes including indices above9999 without deleting neighboring files. | Nine executable inventory variants and sparse filename checks passed with Ninja/GCC, Visual Studio/MSVC and NMake/GCC. Full Legaia MSVC build passed. |
+| Precompile output and incremental builds | Discover split sources after generation; propagate body-only changes; handle empty/regrown inventories; recognize exact numeric part suffixes including indices above9999 without deleting neighboring files. | Nine executable inventory variants and sparse filename checks passed with Ninja/GCC, Visual Studio/MSVC and NMake/GCC. Ninja Multi-Config/GCC now passes every variant in both Release and Debug. Full Legaia MSVC build passed in the earlier milestone. |
 | Savestate ownership | Invalidate restored native validation and ownership memos, refresh lifecycle evidence, reject incompatible/corrupt snapshots before committing state. | Focused entry/CPS and transactional restore tests passed. Repeated title restores passed; field and cross-scene performance acceptance remains open. |
 | Release runtime compatibility | Preserve scheduled device progress during exception handling, CD response visibility gating, seek/header and XA handling, Windows initialization and accepted pacing behavior. | See per-fix ledger for source provenance and executable checks. Battle items/Hyper Arts and subjective audio synchronization still require gameplay acceptance. |
 | Host audio reporting | Require a resumed device and initialized pull bridge before reporting output ready. | Isolated healthy/unavailable-device checks passed. Nonzero title PCM and bounded settled-title counters were measured; startup overflow remains unresolved. |
@@ -780,3 +784,11 @@ reported kick PC8005A160. Process exited0. Evidence is private under
 `local-output/sdk-20260909/dma-title-restore`. This is bounded title acceptance;
 field/cross-scene restore ownership and immediate in-flight DMA capture remain
 unverified by this run.
+
+## Ninja Multi-Config acceptance (2026-10-03)
+
+`tools/tests/test_static_overlay_build.py` now uses both Release and Debug under multi-configuration generators. Each configuration builds and executes all nine shared-source recipes:2/5/1 split images, unchanged inventory with changed bodies,3 monolithic images,35 split images across32 groups, shrinkage to4, empty output, then regrowth to2. Every executable returns the independent count/value arithmetic expected by the fixture. Both final no-change builds succeed. The separate sparse-name test retains exact numeric part ownership, including index10000, without deleting neighboring files.
+
+Fresh Ninja Multi-Config1.13.2/CMake4.2.3/MSYS2 UCRT GCC16.1.0 evidence passes both focused tests, no skips, in12.745s:18 executable checks across both configurations. The first restricted run was denied while CMake attempted to execute the Winget Ninja binary; an approved synthetic-only retry passed. The earlier single-Release run also passed in8.809s. Neither result establishes Linux/Unix Makefiles or GNU Make acceptance. No local GNU Make executable was found, and no toolchain was installed.
+
+Private logs and source/tool identities are retained under `local-output/sdk-20260909/precompile-ninja-multi-20261003/parent/`. Fixture SHA256: `29321755b476364acb701f1f3b3aa91c61d79f6fe8db5263c58d33e6835ab7bc`. Production staging CMake SHA256: `a4e8a287dbc9c1fd416d2189bedee923ca6fcc3556e09e76886f9457028f551b`. Compiler/generator code stays unchanged. No retail payload, game executable, install or runtime launch is produced by these synthetic tests. Existing gameplay, audio and savestate acceptance boundaries remain unchanged.

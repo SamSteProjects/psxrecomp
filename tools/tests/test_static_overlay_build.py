@@ -129,19 +129,26 @@ class StaticOverlayBuildTests(unittest.TestCase):
                 configure.append(f'-DCMAKE_C_COMPILER={Path(cc).as_posix()}')
             run(*configure)
             multi_config = visual_studio or generator in ('Ninja Multi-Config', 'Xcode')
-            executable_dir = build / 'Release' if multi_config else build
-            exe = executable_dir / ('fixture.exe' if os.name == 'nt' else 'fixture')
+            configurations = ('Release', 'Debug') if multi_config else ('Release',)
             for count, value, single in [(2, 10, 0), (5, 20, 0), (1, 30, 0),
                                           (1, 40, 0), (3, 50, 1), (35, 60, 0),
                                           (4, 70, 0), (0, 0, 0), (2, 80, 0)]:
                 with self.subTest(count=count, value=value, single=single):
                     recipe.write_text(f'{count} {value} {single}', encoding='utf-8')
-                    run(cmake, '--build', str(build), '--config', 'Release', '--parallel', '2')
-                    self.assertEqual(run(str(exe)),
-                                     str(count * value + count * (count - 1) // 2))
+                    # Generated parts are shared across configurations. Each build
+                    # must observe the current inventory and bodies, even when the
+                    # other configuration already regenerated the shared inputs.
+                    for config in configurations:
+                        with self.subTest(configuration=config):
+                            run(cmake, '--build', str(build), '--config', config, '--parallel', '2')
+                            executable_dir = build / config if multi_config else build
+                            exe = executable_dir / ('fixture.exe' if os.name == 'nt' else 'fixture')
+                            self.assertEqual(run(str(exe)),
+                                             str(count * value + count * (count - 1) // 2))
                     parts = list((build / 'generated').glob('overlays_static_[0-9][0-9][0-9][0-9].c'))
                     self.assertEqual(len(parts), 0 if single else count)
-            run(cmake, '--build', str(build), '--config', 'Release', '--parallel', '2')
+            for config in configurations:
+                run(cmake, '--build', str(build), '--config', config, '--parallel', '2')
 
 
 if __name__ == '__main__':
