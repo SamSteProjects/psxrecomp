@@ -1,5 +1,10 @@
 # Script source-flow overview
 
+Conditional capture summaries (2026-10-03) explain the payload extent and
+two possible continuation offsets above raw operands. These are plain text,
+not source-flow links: neither is a confirmed parent instruction boundary.
+The unresolved ownership stop remains. See [capture inspection](legaia-script-capture.md).
+
 Conditional capture incoming edges (2026-10-03): marker, length and captured
 bytes remain opaque even when another parent branch points into them. Such a
 parent path conflicts with conditional ownership and invalidates the ambiguous

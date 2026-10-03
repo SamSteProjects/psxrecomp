@@ -681,6 +681,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/draft-review.js": ("draft-review.js", "text/javascript"),
                  "/script-operand-bundle.js": ("script-operand-bundle.js", "text/javascript"),
+                 "/script-capture.js": ("script-capture.js", "text/javascript"),
                  "/animation-range.js": ("animation-range.js", "text/javascript"),
                  "/project-settings.js": ("project-settings.js", "text/javascript"),
                  "/asset-references.js": ("asset-references.js", "text/javascript"),

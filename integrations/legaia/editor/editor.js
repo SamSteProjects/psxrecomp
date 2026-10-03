@@ -23,6 +23,7 @@ import {mountAssetNavigation} from '/asset-navigation.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
+import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
 import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
 import {bindComponentReferences} from '/component-references.js';
@@ -1975,6 +1976,7 @@ async function openTriggerScript(record){
 }
 function appendScriptOperands(cell,instruction,menuEditors=new Map(),focusMenuRun=null){
   const operands=instruction.operands;
+  const hasCaptureSummary=appendCaptureSummary(cell,instruction);
   if(instruction.mnemonic==='DIALOGUE_SEGMENT'){const text=document.createElement('p');text.textContent=operands?.text??'';cell.append(text);return;}
   if(instruction.target_context!==null&&instruction.target_context!==undefined){
     const context=document.createElement('p');context.className='script-warning';
@@ -2022,7 +2024,7 @@ function appendScriptOperands(cell,instruction,menuEditors=new Map(),focusMenuRu
   }
   const details=document.createElement('details'),label=document.createElement('summary'),raw=document.createElement('pre');
   label.textContent='Encoded operands';raw.textContent=typeof operands==='string'?operands:JSON.stringify(operands??{},null,2);
-  details.open=!['ACTOR_POSITION','DIALOGUE_PICKER','NPC_RUN','MOVE_TO','SET_ACTOR_MODEL'].includes(instruction.mnemonic);details.append(label,raw);cell.append(details);
+  details.open=!hasCaptureSummary&&!['ACTOR_POSITION','DIALOGUE_PICKER','NPC_RUN','MOVE_TO','SET_ACTOR_MODEL'].includes(instruction.mnemonic);details.append(label,raw);cell.append(details);
 }
 function appendScriptInstructions(host,report,identity=report.semantic_id??report.script_id??'Inspected script',movementAuthoring=report.movement_authoring,onSelect=null){
   host.replaceChildren();host.classList.remove('script-table-wrap');

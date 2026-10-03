@@ -1,5 +1,16 @@
 # Read-only actor script and dialogue inspection
 
+Conditional capture presentation (2026-10-03): native/source ownership
+evidence is unchanged. The read-only summary qualifies the instruction bytes,
+ordinary/extended header and context, selector, eleven packet bytes, capture
+extent/encoded bytes, both conditional offsets and unresolved/no-successor state.
+It does not navigate either continuation or create an editable operand target.
+Town01 actor0020 PC34's real source fields agree with the previous fixture;
+the browser summary names payload0x32/15 bytes and continuations0x30/0x41.
+Raw operands remain inspectable; no state/file/history change occurs. Four
+Node suites, three private-retail HTTP cases and three browser checks pass.
+Private proof: `local-output/sdk-20260909/capture-summary-20261003/parent/`.
+
 Conditional capture ownership correction (2026-10-03): native spawn evidence
 above is unchanged. The incoming-edge reservation now covers [base packet end,
 capture payload end), including marker and length. It remains separate from

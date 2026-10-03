@@ -1,5 +1,10 @@
 # Deferred gameplay verification
 
+Conditional capture Inspector summary (2026-10-03): read-only presentation
+adds no gameplay gate. Payload extent and both conditional offsets are visible,
+but actor match, payload ownership and runtime execution remain unresolved.
+No capture, branch or transform was authored or played by this feature.
+
 Conditional capture source guard (2026-10-03): incoming-edge ambiguity is
 now rejected offline and adds no gameplay gate. Native existing/new-actor
 ownership alternatives and captured-byte execution remain unfinished. The guard
