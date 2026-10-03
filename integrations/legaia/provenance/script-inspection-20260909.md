@@ -1,5 +1,20 @@
 # Read-only actor script and dialogue inspection
 
+Fixed STATE_RESUME completion evidence (2026-10-03): unchanged hashed PROT897
+(as recorded below), dispatch table801CED60→801E08C4, reads external slot8007B450.
+Completed sentinel1 routes sub1/3/7 to801E00B8 (adjusted PC+3), sub2/4 to801E212C
+(delay slot801E2130 adds7), sub5 through801E0948 (+14), sub6/8/9/C to801DF898
+(+5), and D through801E0978 (+5). Extended dispatch contributes its earlier+1.
+Other state values may arm or wait; these static edges are labeled
+`external_state_completed`, never evaluated. A/B return without advancing in
+Done; out-of-range Idle forms do not arm. Sub0's embedded message walker still
+requires separate ownership/length evidence and remains a decoder stop.
+Fixed payload bytes are retained as opaque operands, with no new authoring gate.
+Dolk2 actor0049 record SHA256
+`b7e592fb94b104493a77bd2dc979db548c5a753d7fe48fe8e80bcf2139e17356`
+has three ordinary4909 sites at PCs959/1232/1611, independently verified from
+fresh source carrier bytes. Runtime activation/resume values remain unobserved.
+
 Retail correction (2026-10-03): MENU_CTRL8C/8D now decode from executing
 PROT entry897 SHA256 `216f846db5ab085a295cef4064747380a06c995caa3e1b2773e78a1d349f126b`.
 At base0x801CE818, outer table801CEE80 selects801E1EA0; subtable801CEF78/7C

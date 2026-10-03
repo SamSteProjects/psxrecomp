@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+STATE_RESUME coverage checkpoint (2026-10-03): fixed completion-boundary
+inspection passes offline and adds no immediate gameplay gate. Later menu-state
+verification must establish activation, suspension and completion independently
+of the static `external_state_completed` edge, including Dolk2 actor0049's three
+sub9 sites. No menu payload was authored or game launched.
+
 ## MENU8C retail branch runtime - deferred
 
 Offline fixture: `local-output/sdk-20260909/script-coverage-20261003/parent/service-project/`.

@@ -1,5 +1,11 @@
 # Script source-flow overview
 
+Fixed STATE_RESUME edges (2026-10-03) are conditional completion continuations.
+The `external_state_completed` label does not establish that a menu has opened,
+finished or resumed in the game. Fixed menu payload bytes remain opaque operands;
+embedded-message/nonadvancing forms still stop decoding. Encoded path queries and
+overviews retain this condition without evaluating the external state machine.
+
 Open an actor's **Inspect script and dialogue** workspace or a partition-2
 script's disassembly, then expand **Whole-record source flow overview**.
 The branch workspace offers the same overview for the selected **Script flow

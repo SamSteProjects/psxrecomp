@@ -305,9 +305,18 @@ def _instruction(data: bytes, pc: int) -> dict:
     elif op == 0x49:
         need(1)
         sub = data[operand]
-        if sub not in (1, 3, 7):
+        # Retail PROT897, 801E08C4: completion dispatch, not a claim
+        # that the menu is complete. Sub0 has an embedded MES walker;
+        # A/B and out-of-range forms have no advancing completion path.
+        sizes = {1: 2, 3: 2, 7: 2, 2: 6, 4: 6, 5: 13,
+                 6: 4, 8: 4, 9: 4, 0xC: 4, 0xD: 4}
+        if sub not in sizes:
             raise ImportError(f"unsupported STATE_RESUME sub-op 0x{sub:02x}")
-        size, mnemonic, args = 2, "STATE_RESUME", {"sub_op": sub, "can_wait_for_external_state": True}
+        size, mnemonic = sizes[sub], "STATE_RESUME"
+        need(size)
+        args = {"sub_op": sub, "can_wait_for_external_state": True,
+                "runtime_state": "not_observed", "payload": list(data[operand + 1:operand + size])}
+        branches = [{"pc": operand + size, "condition": "external_state_completed"}]
     elif op == 0x4B:
         need(2)
         size, mnemonic = 2 + 4 * data[operand], "ANIMATE"
