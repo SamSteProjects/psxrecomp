@@ -360,6 +360,58 @@ def _instruction(data: bytes, pc: int) -> dict:
             else:
                 value, ticks = struct.unpack_from("<hH", data, operand + 1)
                 args.update(value=value, ticks=ticks)
+        elif sub == 0x80:
+            # Retail 801E1ECC: halt-acquire success advances3, then
+            # adds native MES-walker length+1 for each child payload.
+            # Child ownership is external; never decode these as parent
+            # instructions or infer an actor from the dispatch selector.
+            need(2)
+            count = data[operand + 1]
+            cursor = operand + 2
+            children = []
+            for index in range(count):
+                start = cursor
+                for tokens in range(MAX_MESSAGE_TOKENS):
+                    if cursor >= len(data):
+                        raise ImportError("truncated MENU80 child payload; no recovery performed")
+                    child_byte = data[cursor]
+                    if child_byte <= 0x1E:
+                        cursor += 1
+                        children.append({"index": index, "pc": start, "length": cursor - start,
+                                         "terminator": child_byte, "token_count": tokens})
+                        break
+                    # SCUS8003CA38 skips one argument only for C0..CF.
+                    # Unlike the dialogue renderer, 5E and FF are single bytes.
+                    cursor += 2 if child_byte & 0xF0 == 0xC0 else 1
+                    if cursor > len(data):
+                        raise ImportError("truncated MENU80 two-byte child token")
+                else:
+                    raise ImportError("MENU80 child token count exceeds inspection bound")
+            size, mnemonic = cursor - operand, "ALLOCATE_CHILD_PAYLOADS"
+            args = {"sub_op": sub, "count": count, "children": children,
+                    "child_ownership": "runtime_allocator_unresolved", "runtime_effect": "not_evaluated"}
+            branches = [{"pc": cursor, "condition": "halt_acquire_succeeded"},
+                        {"pc": pc, "condition": "halt_acquire_pending"}]
+        elif sub in (0x82, 0x84):
+            # Retail801E206C/2134: byte selector/value + two fixed writes,
+            # adjusted PC+3. Native page table identity remains unresolved.
+            size = 2
+            need(size)
+            mnemonic = "MIRROR_CHARACTER_FIELDS" if sub == 0x82 else "SET_GLOBAL_B630"
+            args = {"sub_op": sub, "runtime_effect": "not_evaluated"}
+            if sub == 0x82:
+                args.update(character_selector=data[operand + 1],
+                            field_pairs=[["0x6CC", "0x6CE"], ["0x6D0", "0x6D2"]],
+                            actor_binding="runtime_character_table_unresolved")
+            else:
+                args.update(value=data[operand + 1], address="0x8007B630")
+        elif sub == 0x89:
+            # Retail801E22C8 uses the signed helper, stores the low word
+            # at80073F00 and returns through the fixed PC+4 exit3620.
+            size, mnemonic = 3, "SET_GLOBAL_73F00"
+            need(size)
+            args = {"sub_op": sub, "value": struct.unpack_from("<h", data, operand + 1)[0],
+                    "address": "0x80073F00", "runtime_effect": "not_evaluated"}
         elif sub == 0x81:
             # Executing pinned menu_ctrl/nibble_8.rs: u24 model and two
             # unsigned u16 frame operands; continuation is unconditional.

@@ -1,5 +1,28 @@
 # Read-only actor script and dialogue inspection
 
+MENU8 allocator and fixed-write evidence (2026-10-03): unchanged hashed PROT897
+and SCUS, recorded below. Tables801CEF48/50/58/6C dispatch80/82/84/89 to
+801E1ECC/206C/2134/22C8. MENU80 success first advances3 at801E1F78; it then
+reads count at operand+1 and repeatedly calls native walker8003CA38, adding
+walker length+1 to both adjusted PC and source pointer (801E1F98..1FB8).
+The failure path801DEE4C restores original saved PC, including extended header.
+The pinned source's fixed header-only continuation is superseded here.
+SCUS walker tests byte<31, consumes an extra argument only when high nibble=C,
+and returns bytes before the terminator; caller owns that terminator too.
+Child spans are opaque allocator operands, not parent MES assets or guessed
+child actor scripts. Every child must terminate inside the verified record;
+truncation/token-limit/ownership conflicts stop without recovery.
+
+MENU82 reads byte selector+1, copies character fields6CC→6CE /6D0→6D2 and
+advances3. MENU84 reads byte+1, writes8007B630 and advances3. MENU89 reads
+signed word+1, stores low16 at80073F00 and advances4 through801E3620.
+These offsets label native evidence only; runtime selector correlation is unknown.
+Fresh map01 P2 record0039 SHA256
+`6854ade69c74c22fe34153c1550014a7ca574944b70e20600b275490b51ff942`
+contains extended MENU80 at PC183/decoded7479, length369 with14 children.
+Independent carrier/record reconstruction agrees with the inspector. No allocation
+executes, and no serializer for these operands is introduced.
+
 Retail value-comparison and MENU49 evidence (2026-10-03): unchanged hashed
 PROT897/SCUS sources, recorded below. Opcode4E table801CED74→801E0A04 dispatches
 source0..B through801CEE30; C..F retain initialized zero state/threshold.

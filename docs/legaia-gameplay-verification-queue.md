@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+MENU8 source-coverage checkpoint (2026-10-03): offline inspection adds no
+immediate gameplay gate. Later native actor-allocation verification must establish
+acquisition/resumption and child ownership/execution independently of static
+payload spans, including map01 P2 record0039's14 children. Character selector
+correlation and global-write effects remain runtime-unverified. No payload or
+write operand was authored, and no game was launched.
+
 ## Value-comparison branch runtime - deferred
 
 Offline fixture: `local-output/sdk-20260909/inventory-branches-20261003/parent/service-project/`.

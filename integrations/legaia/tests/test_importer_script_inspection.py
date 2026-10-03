@@ -353,7 +353,7 @@ class ScriptInspectionTests(unittest.TestCase):
         self.assertFalse(report["stops"])
 
     def test_unknown_width_stops_without_scanning_later_text(self):
-        data = b"\x25\x4c\x80\x1fFake text\0"
+        data = b"\x25\x4c\x83\x1fFake text\0"
         report = inspect_record(data, 0)
         self.assertEqual(report["status"], "partial")
         self.assertEqual(len(report["instructions"]), 1)

@@ -1,5 +1,12 @@
 # Script source-flow overview
 
+MENU80 allocator coverage (2026-10-03) treats the full native child payload list
+as one owned instruction span. Child payload PCs are operand locations, not parent
+instruction/dialogue boundaries or editable destinations. The acquisition success
+edge reaches the end of that list; pending acquisition retains the original PC.
+Its self-edge does not prove an infinite loop or runtime allocation success.
+Native MENU82/84/89 writes expose fixed continuations with effects unobserved.
+
 Fixed STATE_RESUME edges (2026-10-03) are conditional completion continuations.
 The `external_state_completed` label does not establish that a menu has opened,
 finished or resumed in the game. Fixed menu payload bytes remain opaque operands;
