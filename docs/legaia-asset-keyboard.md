@@ -1,0 +1,13 @@
+# Asset database keyboard browsing
+
+Tab enters the asset results at one remembered button. **Up/Down** browse cards in result order. **Left/Right** choose the card's Open or Details action. **Home/End** move to the first/last visible card, retaining the action where available. **Enter/Space** activate the existing native button. Focus browsing does not select a scene entity, open an inspector or author a change.
+
+In **Imported project resources**, **PageDown** moves to the next result page and focuses its first card; **PageUp** moves to the previous page and focuses its last card. The chosen action is retained. A boundary or unavailable pager leaves native PageUp/PageDown behavior available. Existing Previous/Next buttons remain usable. Modifier shortcuts and Tab are not intercepted.
+
+The result group tracks a stable asset ID and action alongside its rendered project/scene/scope/filter context. Rebuilding the same context restores that button when it remains available. Scope changes are recognized even when new state arrives before rendering. Search and other external controls keep their own focus. Empty or entirely disabled results provide a reachable named group. Temporarily disabled buttons retain their remembered asset/action so completion can restore it. The parent busy lifecycle refreshes the Tab entry after directly enabling or disabling buttons, including completion of project-resource discovery.
+
+At narrow widths, choose **Hierarchy & assets** to browse the results. Cards may wrap into columns; Up/Down still follow result order, and Left/Right move between actions on the same card. Keyboard instructions are available in Search filters and linked to the named result group.
+
+Focused Node checks cover card/action boundaries, native activation keys, modifiers, same-context rebuild, busy disable/enable, project paging, external search focus, empty lists, rendered-context changes and disposal. The existing hierarchy suite also passes. Eight actual browser checks pass against a private retail Town01 fixture, including Enter/Space on Details, exact focus restoration, empty/search handling, project paging through1614 retained results across13 pages, source-scope change and540px reachability. Project files, history and selection remain exact. The only resource POSTs are read-only scene/project previews and catalog discovery; no authoring, Save, Build or Run request occurs.
+
+Desktop and narrow screenshots were inspected. Private proof: `local-output/sdk-20260909/asset-keyboard-20261003/parent/`. Owned browser/server handles are terminal. This editor navigation feature needs no immediate gameplay verification; catalog completeness and runtime use remain governed by existing source coverage.

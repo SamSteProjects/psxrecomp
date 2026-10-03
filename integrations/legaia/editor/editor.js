@@ -17,6 +17,7 @@ import {rescaleStoredNormal} from '/model-normal-length.js';
 import {mountNormalUsers,decodeNormalUsers} from '/model-normal-users.js';
 import {validateNormalRetarget} from '/normal-retarget.js';
 import {qualifySourceNormals,rigidFrameNormals} from '/source-normal-view.js';
+import {mountAssetNavigation} from '/asset-navigation.js';
 import {wallCellAt,wallDragRectangle,wallSelectionGeometry} from '/wall-viewport.js';
 import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
@@ -82,7 +83,7 @@ function snappedTransformCoordinate(value,step){return Math.round(value/(step||1
 const camera = {projection:'perspective',yaw:-0.65,pitch:0.66,distance:2000,target:{x:0,y:0,z:0}};
 let width=1, height=1, projected=[], handles=[], drag=null, draft=null, pendingEntityFrame=null;
 let sceneRepresentation="authored";
-let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0,sceneNormalDiagnostic=false;
+let sceneRenderer=null,scenePreview=null,sceneProjectPath=null,sceneLoadedId=null,sceneKey=null,scenePendingKey=null,sceneFailedKey=null,sceneAbort=null,sceneError=null,modelsEnabled=true,cameraRevision=0,sceneNormalDiagnostic=false,assetNavigation=null;
 const sceneLayers={actors:true,scenery:true,ground:true};
 let showObservedNodes=false,runtimeNodeHits=[],pickRuntimeNodes=false;
 const observedLayerButton=document.createElement('button');observedLayerButton.textContent='Runtime positions';observedLayerButton.setAttribute('aria-pressed','false');observedLayerButton.title='Alt-click a sampled marker to inspect it, including occluded nodes; not confirmed NPC identities';observedLayerButton.onclick=()=>{showObservedNodes=!showObservedNodes;observedLayerButton.setAttribute('aria-pressed',String(showObservedNodes));draw();};$('frame-selected').after(observedLayerButton);
@@ -617,6 +618,7 @@ function notify(message, error=false) {
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>{$('toast').hidden=true;},error?8500:3200);
 }
 function setBusy(value) {
+  const assetFocus=assetNavigation?.beforeRender();
   if($('shape-glb'))$('shape-glb').disabled=value||!!$('shape-file')?.files?.length||state.project?.mode!=='edit'||!state.capabilities?.model_glb_authoring;
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
@@ -624,6 +626,7 @@ function setBusy(value) {
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
+  assetNavigation?.afterRender(assetFocus);
   assetPrevious.disabled=value||assetPage===0;assetNext.disabled=value||assetPage>=assetPages-1;
   document.querySelectorAll('.model-preview-button').forEach(button=>button.disabled=value||((button.dataset.animationEdit==='true'||button.dataset.inspectorEdit==='true')&&state.project?.mode!=='edit'));
   if($('inspect-actor-candidate'))$('inspect-actor-candidate').disabled=value;
@@ -1259,8 +1262,10 @@ const assetPrevious=document.createElement('button'),assetNext=document.createEl
 assetPrevious.type=assetNext.type='button';assetPrevious.textContent='Previous assets';assetNext.textContent='Next assets';assetPageStatus.setAttribute('role','status');
 assetPager.append(assetPrevious,assetPageStatus,assetNext);$('assets').before(assetPager);assetPager.hidden=true;
 assetPrevious.onclick=()=>{if(busy||assetPage<=0)return;assetPage--;renderAssets();};assetNext.onclick=()=>{if(busy||assetNext.disabled)return;assetPage++;renderAssets();};
+assetNavigation=mountAssetNavigation($('assets'),()=>[state.project?.path,state.scene?.id,projectAssetControls?.scope(),projectAssetControls?.filter()],delta=>{if(busy||projectAssetControls?.scope()!=='project'||assetPage+delta<0||assetPage+delta>=assetPages)return false;assetPage+=delta;renderAssets();return true;});
 $('asset-search').oninput=renderAssets;$('asset-category').onchange=renderAssets;
 const assetSearchHelp=document.createElement('details');assetSearchHelp.id='asset-search-help';assetSearchHelp.innerHTML='<summary>Search filters</summary><p>Use name:, id:, type:, scene:, model:, confidence: or provenance:. Combine terms to narrow results; quote phrases and prefix a term with - to exclude it.</p><p>Examples: <code>type:model scene:town01 confidence:confirmed</code> · <code>name:&quot;Actor 0012&quot; -type:script</code>. Confidence searches recorded claims; a match does not confirm every property. Model filters include recorded imported and authored references, without proving runtime use. Project scope searches all retained imported memberships; active scope covers the refreshed scene.</p>';assetTools.append(assetSearchHelp);
+const assetKeyboardHelp=document.createElement('p');assetKeyboardHelp.id='asset-keyboard-help';assetKeyboardHelp.textContent='Tab enters asset results. Up/Down browse records; Left/Right choose Open or Details. Home/End jump to the first/last visible record. PageUp/PageDown browse imported-project pages. Enter/Space activate the focused action.';assetSearchHelp.append(assetKeyboardHelp);$('assets').setAttribute('aria-describedby',assetKeyboardHelp.id);
 let resourceRecords=[],resourceLimitations=[],resourceContextKey=null,resourceKey=null,resourcePendingKey=null,resourceAbort=null,resourceError=null;
 const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,state.scene_preview_source_key,state.scene_flag_state_key,state.scene_transition_state_key,state.scene_region_state_key,state.scene_trigger_state_key]);
 let flagResourceDialog=null,transitionResourceDialog=null;
@@ -1641,6 +1646,7 @@ function inspectTransitionResource(record){
   }catch(error){notify(error.message,true);}
 }
 function renderAssets(){
+  const assetFocus=assetNavigation.beforeRender();
   synchronizeResources();
   const projectScope=projectAssetControls?.scope()==='project';
   const list=$('assets'),category=$('asset-category').value;let query=[],searchError=null;try{query=parseAssetQuery($('asset-search').value);}catch(error){searchError=error.message;}
@@ -1656,12 +1662,13 @@ function renderAssets(){
   assetPageStatus.textContent=`Page ${assetPage+1} / ${pages} · ${filtered.length} matching assets`;
   const visible=projectScope?filtered.slice(assetPage*128,(assetPage+1)*128):filtered;
   for(const record of visible){
-    const row=document.createElement('div');row.className='asset-result';
-    const card=document.createElement('button');card.className='asset-card';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
+    const row=document.createElement('div');row.className='asset-result';row.dataset.assetKey=record.id;
+    const card=document.createElement('button');card.className='asset-card';card.dataset.assetAction='open';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
     card.disabled=busy;card.onclick=()=>activateAsset(record);
-    const info=document.createElement('button');info.className='asset-info';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
+    const info=document.createElement('button');info.className='asset-info';info.dataset.assetAction='details';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
   }
   if(!filtered.length){const p=document.createElement('p');p.className='field-note';p.textContent=searchError??(category==='authored'?(records.some(record=>record.authoredRecord)?'No matching authored assets. Try an actor, texture, scene or change description.':'No authored assets yet. Edit an actor, replace a texture or capture a transform template; project edits appear here across scenes.'):projectScope&&!projectAssetControls.sourceReport()?'Use Refresh project resources to verify the imported project inventory.':['texture','animation','script','dialogue','flag','transition','collision','trigger','region'].includes(category)&&!resourceKey&&!projectScope?(state.capabilities?.resource_catalog?'Use Refresh scene resources to verify and load this category.':'Resource catalogs are unavailable in this service.'):records.length?'No matching records. Try a stable ID, model type, scene name or source term.':'Import a scene to populate the catalog.');list.append(p);}
+  assetNavigation.afterRender(assetFocus);
 }
 const fieldDialog=document.createElement('dialog');fieldDialog.id='field-map-dialog';document.body.append(fieldDialog);
 const fieldToggle=document.createElement('button');fieldToggle.id='field-map-toggle';fieldToggle.textContent='Base collision';fieldToggle.hidden=true;fieldToggle.setAttribute('aria-pressed','false');$('grid-toggle').after(fieldToggle);
