@@ -26,10 +26,11 @@ QUANTIZATION_KEYS = {'vertex_max_error', 'uv_max_error', 'color_max_error',
                      'quantized_component_count'}
 LIMITATIONS = [
     'Existing object, vertex and primitive layout only; no insertion or allocation.',
-    'Effective face references, normals, material words, texture images and opaque bytes remain unchanged.',
+    'Existing packet corner references may select existing vertices in the same object; counts and capacities remain unchanged.',
     'Source vertex coordinates, UVs and qualified raw RGB attributes are rounded to their existing integer domains.',
     'RGB edits use _LEGAIA_SOURCE_RGB in the raw 0..255 byte domain; display COLOR_0 and shader colors are ignored.',
     'The profile and binding describe this exact effective export; export again after project changes.',
+    'Normals, material words, texture images and opaque bytes remain unchanged.',
     'Normal Build retains source capacities; gameplay remains unverified.',
 ]
 
@@ -159,7 +160,7 @@ def _snapshot(project, asset_id: str) -> dict:
         preview = _texture_preview(project, asset, preview)
         glb, profile = export_model_glb(effective, preview)
         _content(glb)
-        if not isinstance(profile, dict) or profile.get('schema_version') != 'legaia.model-glb-profile.v2':
+        if not isinstance(profile, dict) or profile.get('schema_version') != 'legaia.model-glb-profile.v3':
             raise ProjectError('Model GLB exporter returned an invalid source profile')
         _json_size(profile, MAX_PROFILE_BYTES, 'Model GLB profile')
         binding = dict(schema_version='legaia.model-glb-binding.v1', asset_id=asset_id,
@@ -184,12 +185,12 @@ def _audits(snapshot: dict, candidate: bytes) -> tuple[list, list]:
     _, pending = replace_model_content(snapshot['effective'], snapshot['binding']['effective_sha256'], candidate)
     if len(changes) > MAX_AUDIT_ROWS or len(pending) > MAX_AUDIT_ROWS:
         raise ProjectError('Model GLB changes exceed the bounded review audit')
-    # Earlier source editors may have changed normals or face references. Keep
-    # those effective bytes; only source-qualified positions, UVs and raw RGB
-    # attributes can add pending changes. Display COLOR_0 is not an RGB preimage.
+    # Preserve earlier normal edits. Qualified existing corner references,
+    # positions, UVs and raw RGB can add pending changes; no count allocation
+    # or packet ownership changes are admitted by the fresh source profile.
     if any(row['kind'] != 'vertex' and
-           not (row['kind'] == 'primitive' and row['field'] in ('uv', 'color')) for row in pending):
-        raise ProjectError('Model GLB import changed source-owned face references or normals')
+           not (row['kind'] == 'primitive' and row['field'] in ('uv', 'color', 'vertex_index')) for row in pending):
+        raise ProjectError('Model GLB import changed source-owned normals')
     return changes, pending
 
 

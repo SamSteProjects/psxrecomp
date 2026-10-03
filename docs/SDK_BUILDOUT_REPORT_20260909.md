@@ -8,6 +8,26 @@ product work; the detailed [feature matrix](FEATURE_MATRIX.md) and
 
 ## Current buildout status — updated 2026-10-02
 
+**Source-bound GLB face rewiring (2026-10-02):** Model profile v3 adds existing
+polygon vertex references to the external mesh workflow. Immutable source corner
+IDs retain face ownership; qualified vertex IDs may select existing vertices in
+the same object. Seam/quad reference and coordinate aliases must agree. Review
+shows exact source/current/proposed references before ordinary Apply/history/
+persistence/Build. Object, vector, polygon and packet capacities stay fixed;
+new objects/polygons, normal tables and material allocation remain pending.
+Legacy v1/v2 codec behavior is retained; SDK authoring requires a fresh v3 export.
+See [face workflow](legaia-model-glb-faces.md).
+
+Validation: 22 focused Python cases passed with the private retail disc (no
+skips), plus the Node workflow and frontend syntax checks. Twelve browser checks
+cover exact reference Review, regenerated proposed geometry, no-op and stale
+rejection, 540px layout, Apply/history/Save and normal Build. Actual Blender 5.2.2
+updates both aliases of one quad corner, vertex 17 to 0; independent readback
+changes only byte434 (136 to 0). Build retains earlier RGB/material bytes300,
+1095 and1102, all decoded neighbors and the 118,461-byte compressed capacity.
+No game was launched; gameplay appearance and general allocation remain pending.
+Private proof: `local-output/sdk-20260909/model-glb-faces-20261002/`.
+
 **Raw RGB model GLB editing (2026-10-02):** The existing external model workflow
 now imports qualified baked RGB through `_LEGAIA_SOURCE_RGB` in the raw 0..255
 byte domain. Profile v2 binds each flat/shared or Gouraud/corner color to its

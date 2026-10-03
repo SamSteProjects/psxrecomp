@@ -1,7 +1,7 @@
 # Source-bound model GLB editing
 
 The model GLB workflow imports existing object-local vertex positions, UV
-coordinates and qualified baked RGB into the SDK's normal model replacement path. It complements
+coordinates, qualified baked RGB and existing polygon vertex references into the SDK's normal model replacement path. It complements
 animation GLB editing: mesh edits change the model asset, while animation edits
 change rigid pose channels. Actor placement and source mesh coordinates remain
 separate. Shared model edits can affect several recorded instances.
@@ -135,3 +135,7 @@ general material replacement, runtime lighting and full SDK parity remain pendin
 Profile v2 RGB support and later flat/Gouraud Blender, browser and Build evidence
 are documented in [the RGB workflow](legaia-model-glb-rgb.md). The original
 positions/UV milestone below remains historical evidence for its own source.
+
+Fresh profile v3 also supports [existing face rewiring](legaia-model-glb-faces.md).
+Normal tables, new polygons, source allocation and material words remain outside
+GLB import. Earlier position/UV and RGB milestones retain their dated evidence.

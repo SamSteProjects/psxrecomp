@@ -42,18 +42,117 @@ class ModelGlbTests(unittest.TestCase):
                 self.assertEqual(candidate, source)
                 self.assertEqual(report['changed_field_count'], 0)
                 self.assertEqual(preview, before)
+                rgb_profile = deepcopy(profile)
+                rgb_profile['schema_version'] = 'legaia.model-glb-profile.v2'
+                rgb_profile['imported_fields'].remove('primitive_vertex_indices')
+                self.assertEqual(import_model_glb(source, glb, rgb_profile)[0], source)
                 legacy = deepcopy(profile)
                 legacy['schema_version'] = 'legaia.model-glb-profile.v1'
                 del legacy['attributes']['color']
                 legacy['imported_fields'].remove('primitive_rgb')
+                legacy['imported_fields'].remove('primitive_vertex_indices')
                 self.assertEqual(import_model_glb(source, glb, legacy)[0], source)
+
+    def test_vertex_reference_rewire_and_position_edits_have_exact_masks(self):
+        for flags in (0x20, 0x22):
+            with self.subTest(flags=hex(flags)):
+                source = synthetic(((flags,),), count=1)
+                geometry = decode_tmd(source)
+                glb, profile = export_model_glb(source, geometry)
+                row = inspect_model_primitives(source)['objects'][0]['primitives'][0]
+                corner = 2
+                new_id = 4  # Existing but originally unused source vertex.
+                expected = bytearray(source)
+                from importer.model_primitives import _primitive_field_locations
+                inspection = inspect_model_primitives(source)
+                field = next(f for f, _ in _primitive_field_locations(inspection)
+                             if f['field'] == 'vertex_index' and f['corner_index'] == corner)
+                struct.pack_into('<H', expected, field['byte_offset'], new_id * 8)
+                vertex_at = struct.unpack_from('<I', source, 12)[0] + 12 + new_id * 8
+                struct.pack_into('<h', expected, vertex_at, geometry['vertices'][new_id][0] + 2)
+                def edit(doc, binary):
+                    for mesh in doc['meshes']:
+                        for primitive in mesh['primitives']:
+                            for (at, ids), (position_at, xyz), (_, owner) in zip(
+                                    rows(doc, binary, primitive, VERTEX_ID),
+                                    rows(doc, binary, primitive, 'POSITION'),
+                                    rows(doc, binary, primitive, CORNER_ID)):
+                                if owner[0] == corner:
+                                    struct.pack_into('<f', binary, at, new_id)
+                                    point = geometry['vertices'][new_id]
+                                    struct.pack_into('<3f', binary, position_at, point[0] + 2.25, -point[1], point[2])
+                changed = rewrite(glb, edit)
+                candidate, report = import_model_glb(source, changed, profile)
+                self.assertEqual(candidate, bytes(expected))
+                self.assertEqual(report['changed_field_count'], 2)
+                self.assertEqual(report['quantization']['vertex_max_error'], .25)
+                for schema in ('legaia.model-glb-profile.v1', 'legaia.model-glb-profile.v2'):
+                    legacy = deepcopy(profile)
+                    legacy['schema_version'] = schema
+                    legacy['imported_fields'].remove('primitive_vertex_indices')
+                    if schema.endswith('v1'):
+                        del legacy['attributes']['color']
+                        legacy['imported_fields'].remove('primitive_rgb')
+                    with self.assertRaises(ImportError):
+                        import_model_glb(source, changed, legacy)
+
+    def test_vertex_reference_bounds_and_duplicate_corner_conflicts_reject(self):
+        source = synthetic(((0x26,),), count=1)
+        glb, profile = export_model_glb(source, decode_tmd(source))
+        def change(value, all_copies=False):
+            def edit(doc, binary):
+                primitive = doc['meshes'][0]['primitives'][0]
+                for (at, ids), (_, owner) in zip(rows(doc, binary, primitive, VERTEX_ID),
+                                                rows(doc, binary, primitive, CORNER_ID)):
+                    if owner[0] == 2:
+                        struct.pack_into('<f', binary, at, value)
+                        if not all_copies:
+                            break
+            return edit
+        for value, all_copies in ((4, False), (-1, True), (5, True), (8192, True), (2.5, True)):
+            with self.subTest(value=value), self.assertRaises(ImportError):
+                import_model_glb(source, rewrite(glb, change(value, all_copies)), profile)
+
+    def test_unused_indexed_row_cannot_hide_vertex_reference_conflict(self):
+        source = synthetic(((0x26,),), count=1)
+        glb, profile = export_model_glb(source, decode_tmd(source))
+        def edit(doc, binary):
+            primitive = doc['meshes'][0]['primitives'][0]
+            # Rebuild the required attributes with an extra unused corner-2 row.
+            for attribute in ('POSITION', VERTEX_ID, CORNER_ID, COLOR_ID, 'TEXCOORD_0'):
+                original = rows(doc, binary, primitive, attribute)
+                data = [list(value) for _, value in original]
+                corner_rows = rows(doc, binary, primitive, CORNER_ID)
+                alias = next(n for n, (_, value) in enumerate(corner_rows) if value[0] == 2)
+                extra = list(data[alias])
+                if attribute == VERTEX_ID:
+                    extra[0] = 4
+                data.append(extra)
+                width = len(data[0])
+                binary.extend(bytes(-len(binary) % 4))
+                at = len(binary)
+                flat = [v for value in data for v in value]
+                binary.extend(struct.pack(f'<{len(flat)}f', *flat))
+                view = len(doc['bufferViews'])
+                doc['bufferViews'].append(dict(buffer=0, byteOffset=at, byteLength=len(flat) * 4))
+                primitive['attributes'][attribute] = len(doc['accessors'])
+                doc['accessors'].append(dict(bufferView=view, componentType=5126, count=len(data),
+                                            type='SCALAR' if width == 1 else f'VEC{width}'))
+            at = len(binary)
+            binary.extend(struct.pack('<6H', *range(6)))
+            view = len(doc['bufferViews'])
+            doc['bufferViews'].append(dict(buffer=0, byteOffset=at, byteLength=12))
+            primitive['indices'] = len(doc['accessors'])
+            doc['accessors'].append(dict(bufferView=view, componentType=5123, count=6, type='SCALAR'))
+        with self.assertRaisesRegex(ImportError, 'references disagree'):
+            import_model_glb(source, rewrite(glb, edit), profile)
 
     def test_baked_rgb_exact_byte_masks_and_shared_aliases(self):
         for flags in (0x18, 0x1a, 0x1c, 0x1e, 0x20, 0x22, 0x24, 0x26):
             with self.subTest(flags=hex(flags)):
                 source = synthetic(((flags,),), count=1)
                 glb, profile = export_model_glb(source, decode_tmd(source))
-                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v2')
+                self.assertEqual(profile['schema_version'], 'legaia.model-glb-profile.v3')
                 row = inspect_model_primitives(source)['objects'][0]['primitives'][0]
                 expected = bytearray(source)
                 for slot in range(len(row['colors'])):
@@ -107,6 +206,7 @@ class ModelGlbTests(unittest.TestCase):
             legacy['schema_version'] = 'legaia.model-glb-profile.v1'
             del legacy['attributes']['color']
             legacy['imported_fields'].remove('primitive_rgb')
+            legacy['imported_fields'].remove('primitive_vertex_indices')
             def remove(doc, binary):
                 for mesh in doc['meshes']:
                     for primitive in mesh['primitives']:

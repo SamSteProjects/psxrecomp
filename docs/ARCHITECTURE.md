@@ -576,3 +576,14 @@ to positions, UVs and baked RGB; the registered model tool reuses Review, posed
 inspection, normal replacement history, persistence and Build. Legacy v1 codec
 profiles retain their original positions/UV behavior. No runtime lighting or
 new packet allocation is inferred.
+
+## Source-bound GLB face references
+
+Profile v3 retains immutable object/primitive/corner ownership while allowing
+existing source vertex IDs to change a polygon connection. Source references
+encode SVECTOR byte offsets (vertex ID times eight). The importer validates
+object-specific capacities and all alias references, independently of glTF
+material assignments. Positions remain owned by the selected source vertex ID.
+The service and registered model inspector reuse exact replacement audits,
+posed preview, commands, persistence and normal Build. Legacy profiles retain
+their own supported field sets; no new packet/vector allocation is inferred.

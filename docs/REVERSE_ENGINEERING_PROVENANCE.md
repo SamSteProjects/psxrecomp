@@ -404,3 +404,14 @@ change only flat byte300 or Gouraud byte460. The authored material baseline is
 retained. Profile v2 raw attributes are SDK interchange metadata, not retail
 format facts or runtime lighting evidence. See [workflow](legaia-model-glb-rgb.md)
 and private `local-output/sdk-20260909/model-glb-rgb-20261002/research/qualification-proof.json`.
+
+## Source-bound GLB existing face references (2026-10-02)
+
+Pinned Andrew `d6e64c68ede25813d35db20980da82a1a025549b` descriptor and primitive
+walker qualify little-endian u16 SVECTOR byte offsets: vertex ID times eight.
+Immutable primitive/corner IDs and object-specific source counts own v3 GLB
+reference writes. Independent retail walking and Blender 5.2.2 update both
+aliases of a quad corner and change only byte434 (136 to0); vertex coordinates
+and the authored RGB/material baseline remain exact. No new vector/packet
+allocation or runtime acceptance is inferred. See [workflow](legaia-model-glb-faces.md)
+and private `local-output/sdk-20260909/model-glb-faces-20261002/research/qualification-proof.json`.

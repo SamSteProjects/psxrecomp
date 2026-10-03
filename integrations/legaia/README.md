@@ -31,8 +31,8 @@ dependency. See the [PNG workflow](../../docs/legaia-texture-png.md).
 Imported models support **Edit model through GLB**: export the current unposed
 model and binding, edit existing positions/UVs in Blender, review exact fields,
 inspect the proposed model and Apply through normal history, Save/Open and Build.
-Keep Merge Vertices off and Custom Attributes on. Profile v2 also imports raw baked RGB via
-`_LEGAIA_SOURCE_RGB`; display colors are ignored. Normals, topology,
+Keep Merge Vertices off and Custom Attributes on. Profile v3 also imports existing polygon vertex references and raw baked RGB via
+`_LEGAIA_SOURCE_RGB`; display colors are ignored. Source corner ownership and packet counts stay fixed. Normals, new topology,
 materials and images remain source owned; arbitrary allocation and gameplay
 acceptance remain pending. See the [model GLB workflow](../../docs/legaia-model-glb.md).
 
