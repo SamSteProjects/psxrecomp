@@ -671,6 +671,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
                  "/scene-views.js": ("scene-views.js", "text/javascript"),
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
+                 "/hierarchy-navigation.js": ("hierarchy-navigation.js", "text/javascript"),
                  "/preset-batch.js": ("preset-batch.js", "text/javascript"),
                  "/draft-repeat.js": ("draft-repeat.js", "text/javascript"),
                  "/draft-review.js": ("draft-review.js", "text/javascript"),

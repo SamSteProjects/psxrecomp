@@ -35,6 +35,7 @@ import {openTexturePngEditor} from '/texture-png.js';
 import {createSceneAnimationController} from '/scene-animation.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
+import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
@@ -1207,7 +1208,9 @@ async function refreshScenePreview(){
   }catch(error){if(error.name!=='AbortError'&&sceneRequestKey()===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();sceneAnimationController?.updateState();draw();}}
 }
+const hierarchyNavigation=mountHierarchyNavigation($('hierarchy'),()=>[state.project?.path,state.scene?.id]);
 function renderHierarchy(){
+  const focusSnapshot=hierarchyNavigation.beforeRender();
   const list=$('hierarchy');list.setAttribute('aria-multiselectable','true');list.replaceChildren();
   const filter=$('entity-search').value.toLowerCase();
   const actors=entities().filter(e=>`${e.name} ${e.id} ${authoredComponentLabels(e).join(" ")}`.toLowerCase().includes(filter));
@@ -1238,6 +1241,7 @@ function renderHierarchy(){
     const badge=document.createElement('small');badge.textContent='Hidden';badge.style.marginLeft='auto';
     row.append(badge);row.setAttribute('aria-label',`${row.textContent} in viewport`);
   }
+  hierarchyNavigation.afterRender(focusSnapshot);
 }
 // Search SDK records already present in project state, including their provenance.
 const assetTools=document.createElement('div');assetTools.className='asset-tools';
