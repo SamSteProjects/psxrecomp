@@ -95,6 +95,31 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
   return structuredClone(value);
 }
 export const assetReferenceNavigationNode=(node,edge,scope='active')=>scope==='project'&&node.navigable_scene_ids.includes(edge.scene_id)?{...node,scene_id:edge.scene_id}:node;
+export function assetReferenceInstructionSite(edge,nodes,scope='active'){
+  const targets={script_dialogue_segment:'dialogue',script_flag_reference:'flag',script_transition_reference:'transition',encoded_scene_change:'scene'};
+  if(!Object.hasOwn(targets,edge?.kind)||edge.layer!=='decoded'||!boundedInteger(edge.pc,0,65535)||
+    !hash(edge.source_import_sha256)||!hash(edge.source_catalog_key)||edge.runtime_binding!=='not_asserted')return null;
+  const source=nodes.get(edge.source_id),target=nodes.get(edge.target_id),match=/^script:\/\/([A-Za-z0-9_-]+)\/(actors\/man-p1|scripts\/man-p2)\/([0-9]{4})$/.exec(edge.source_id);
+  if(!match||!source?.available||source.kind!=='script'||target?.kind!==targets[edge.kind]||edge.scene_id!=='scene://'+match[1])return null;
+  const location=assetReferenceNavigationNode(source,edge,scope);
+  if(location.scene_id!==edge.scene_id)return null;
+  const recordHash=edge.flag_reference_evidence?.source_record_sha256??edge.transition_reference_evidence?.source_record_sha256??null;
+  if(recordHash!==null&&!hash(recordHash))return null;
+  return {script_id:source.id,owner_id:'scene://'+source.id.slice(9),scene_id:edge.scene_id,
+    partition:match[2]==='actors/man-p1'?1:2,record_index:Number(match[3]),pc:edge.pc,
+    source_catalog_key:edge.source_catalog_key,source_import_sha256:edge.source_import_sha256,source_record_sha256:recordHash};
+}
+export function qualifyAssetReferenceInstructionSite(site,record,sourceKey){
+  const match=/^script:\/\/([A-Za-z0-9_-]+)\/(actors\/man-p1|scripts\/man-p2)\/([0-9]{4})$/.exec(site?.script_id??'');
+  const partition=match?.[2]==='actors/man-p1'?1:2,source=record?.source_record;
+  if(!match||site.scene_id!=='scene://'+match[1]||site.owner_id!=='scene://'+site.script_id.slice(9)||site.partition!==partition||site.record_index!==Number(match[3])||
+    !boundedInteger(site.pc,0,65535)||!hash(site.source_import_sha256)||!hash(site.source_catalog_key)||sourceKey!==site.source_catalog_key||
+    record?.semantic_id!==site.script_id||record.asset_kind!=='script'||record.script_id!==site.script_id||record.owner_semantic_id!==site.owner_id||record.partition!==partition||
+    source?.partition!==partition||source.record_index!==site.record_index||!hash(source.sha256)||
+    !boundedInteger(source.byte_length,1,65536)||site.pc>=source.byte_length||
+    site.source_record_sha256!==null&&(!hash(site.source_record_sha256)||source.sha256!==site.source_record_sha256))throw new Error('Reference instruction source changed or could not be qualified. Refresh asset references.');
+  return structuredClone(site);
+}
 export const assetReferenceRelationLabel=edge=>edge.kind==='reference_pinned_model_clip'?`pinned model/clip association · clip ${edge.reference_clip_evidence.clip_id} · actor playback unknown`:edge.kind==='field_trigger_script_reference'?`encoded gate-1 trigger → partition 2 source record ${edge.trigger_reference_evidence.partition_two_record_index} · activation not evaluated`:transitionRelations.has(edge.kind)?`${edge.kind==='script_transition_reference'?'source script instruction':'encoded destination source'} · reachability not evaluated`:edge.kind.replaceAll('_',' ');
 export function assetReferenceTriggerEvidenceLabel(edge){
   const proof=edge.trigger_reference_evidence;if(!proof)return null;
@@ -104,7 +129,7 @@ export function assetReferenceTransitionEvidenceLabel(edge){
   const proof=edge.transition_reference_evidence;if(!proof)return null;
   return `Source instruction: ${proof.transition_id} · record SHA-256 ${proof.source_record_sha256} · ${proof.destination_scene_id===null?'Destination name unresolved':`Encoded destination: ${proof.destination_scene_id}`} · ${proof.extended_target===null?'Current script context':`Extended target ${proof.extended_target} unresolved`}. Trigger position, executed path and gameplay connection are not established.`;
 }
-export function openAssetReferences({record,getState,busy,onNavigate,onError=()=>{},initialScope='active'}){
+export function openAssetReferences({record,getState,busy,onNavigate,onInspectInstruction=null,onError=()=>{},initialScope='active'}){
   if(busy()||!getState().capabilities?.asset_references)return;
   const key=getState().asset_reference_source_key,dialog=document.createElement('dialog');let controller=null,generation=0;dialog.id='asset-references-dialog';dialog.className='project-dialog';
   const current=()=>dialog.open&&key===getState().asset_reference_source_key&&getState().capabilities?.asset_references===true;
@@ -112,7 +137,7 @@ export function openAssetReferences({record,getState,busy,onNavigate,onError=()=
   const content=document.createElement('div'),status=document.createElement('p');status.setAttribute('role','status');status.textContent='Verifying recorded references…';
   const scopeLabel=document.createElement('label'),scopeSelect=document.createElement('select');scopeLabel.textContent='Reference scope';scopeSelect.setAttribute('aria-label','Reference scope');for(const [value,label] of [['active','Active scene'],['project','Project']]){const option=document.createElement('option');option.value=value;option.textContent=label;scopeSelect.append(option);}scopeSelect.value=initialScope==='project'?'project':'active';scopeLabel.append(scopeSelect);
   const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();dialog.addEventListener('close',()=>{generation++;controller?.abort();dialog.remove();});dialog.append(title,scopeLabel,status,content,close);document.body.append(dialog);dialog.showModal();
-  const navigate=async node=>{if(busy())return;if(!current()){status.textContent='Project sources changed. Reopen asset references.';return;}try{dialog.close();await onNavigate(node);}catch(error){onError(error);}};
+  const navigate=async (value,action=onNavigate)=>{if(!dialog.open||busy())return;if(!current()){status.textContent='Project sources changed. Reopen asset references.';return;}try{dialog.close();await action(value);}catch(error){onError(error);}};
   const load=async()=>{const request=++generation;controller?.abort();const activeController=new AbortController();controller=activeController;const scope=scopeSelect.value;content.replaceChildren();status.textContent='Verifying recorded references…';try{
     const response=await fetch('/api/asset-references',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(scope==='project'?{asset_id:record.id,scope:'project'}:{asset_id:record.id}),signal:activeController.signal}),value=await response.json();
     if(activeController.signal.aborted||request!==generation||!dialog.open)return;if(!current())throw new Error('Project sources changed. Reopen asset references.');if(!response.ok||value.error)throw new Error(value.error||'Asset reference verification failed.');
@@ -123,6 +148,11 @@ export function openAssetReferences({record,getState,busy,onNavigate,onError=()=
       if(!rows.length){const empty=document.createElement('p');empty.textContent='No recorded relationships in this coverage.';section.append(empty);}
       for(const edge of rows){const node=nodes.get(edge[target]),row=document.createElement('div'),button=document.createElement('button'),description=document.createElement('p');button.textContent=node.label;button.title=node.id;button.dataset.referenceTarget=node.id;button.disabled=!node.available;button.onclick=()=>navigate(assetReferenceNavigationNode(node,edge,scope));description.textContent=`${assetReferenceRelationLabel(edge)} · ${edge.layer}${scope==='project'?` · ${edge.scene_id}`:''}${edge.pc===undefined?'':` · instruction PC ${edge.pc}`}${edge.material_evidence?` · material ${edge.material_evidence.material_index}`:''}${node.available?'':node.kind==='scene'?' · source scene not imported':' · outside navigable resource catalog'}`;
         const evidence=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='Recorded provenance';pre.className='diagnostic-detail';pre.textContent=JSON.stringify(edge,null,2);evidence.append(summary,pre);row.append(button,description,evidence);section.append(row);
+        const site=assetReferenceInstructionSite(edge,nodes,scope);
+        if(site&&typeof onInspectInstruction==='function'){
+          const inspect=document.createElement('button');inspect.type='button';inspect.textContent='Inspect reference instruction';inspect.dataset.referenceInstruction=site.script_id;inspect.dataset.referencePc=site.pc;
+          inspect.title=`${site.script_id} · PC 0x${site.pc.toString(16).toUpperCase()}`;inspect.onclick=()=>navigate(site,onInspectInstruction);row.append(inspect);
+        }
         if(edge.transition_reference_evidence){const note=document.createElement('p');note.textContent=assetReferenceTransitionEvidenceLabel(edge);row.append(note);}
         if(edge.trigger_reference_evidence){const note=document.createElement('p');note.textContent=assetReferenceTriggerEvidenceLabel(edge);row.append(note);}
       }content.append(section);

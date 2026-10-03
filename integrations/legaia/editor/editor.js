@@ -2,7 +2,7 @@ import {environmentYawMatrix,yawFromDrag,environmentRotationCommand} from '/envi
 import {mountBuildReview} from '/build-review.js';
 import {mountDraftOutputReview} from '/draft-review.js';
 import {mountBuildHistory} from '/build-history.js';
-import {openAssetReferences} from '/asset-references.js';
+import {openAssetReferences,qualifyAssetReferenceInstructionSite} from '/asset-references.js';
 import {openActorAnimationAssignment} from '/actor-animation.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
@@ -1500,6 +1500,16 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
       if(node.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:node.scene_id}))return;
       if(!['actor','model','scene'].includes(node.kind))await refreshResources();
       const target=assetRecords().find(item=>item.id===node.id);if(!target)throw new Error('Referenced asset is absent from the current catalog.');showAssetDetails(target);
+    },onInspectInstruction:async site=>{
+      if(!state.capabilities?.actor_script_preview||!(state.scenes??[]).some(scene=>scene.id===site.scene_id))throw new Error('Reference script source is not available in this project.');
+      if(site.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:site.scene_id}))return;
+      await refreshResources();
+      if(state.scene?.id!==site.scene_id||resourceKey!==resourceStateKey())throw new Error('Reference source catalog could not be refreshed.');
+      const record=resourceRecords.find(row=>row.semantic_id===site.script_id);
+      qualifyAssetReferenceInstructionSite(site,record,state.scene_preview_source_key);
+      const owner=site.partition===2?{id:site.owner_id,name:record.name,partitionTwo:true}:entities().find(entity=>entity.id===site.owner_id);
+      if(!owner)throw new Error('Reference script owner is unavailable.');
+      await openActorScript(owner,false,null,null,site.pc);
     }});};$('asset-source-data').parentElement.before(button);
   }
   if(inspectorId){

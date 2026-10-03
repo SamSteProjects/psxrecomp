@@ -56,19 +56,28 @@ class FlagAssetTests(unittest.TestCase):
         records[0]['limitations'].clear()
         self.assertEqual(source, before)
 
-    def test_all_observed_banks_and_system_extended_selector_are_metadata_only(self):
+    def test_supported_banks_and_system_selector_are_metadata_only(self):
         source = catalog(b'\x2b\x02\xab\x07\x12\x2e\x03\xb1\x08\x05'
-                         b'\x51\x23\xd0\x09\x44\x42\x00\x23\x02\x00')
+                         b'\x51\x23\x50\x44\x42\x00\x23\x02\x00')
         records = build_flag_assets(source)
         self.assertEqual({row['bank'] for row in records}, {'local', 'global', 'context', 'system', 'extra'})
-        system = next(row for row in records if row['bank'] == 'system' and row['extended_target'] == 9)
-        self.assertEqual(system['index'], 0x8044)
+        system = next(row for row in records if row['bank'] == 'system' and row['index'] == 0x44)
+        self.assertIsNone(system['extended_target'])
         self.assertEqual(system['references'][0]['index_semantics'], 'encoded_selector_not_resolved_runtime_bit')
         unresolved = next(row for row in records if row['bank'] == 'local' and row['index'] == 18)
         self.assertEqual(unresolved['references'][0]['status'], 'bank_width_unresolved')
         self.assertEqual(forbidden_fields(records), set())
         validate_metadata_only(records)
         json.dumps(records)
+
+    def test_unqualified_extended_system_dispatch_stops_before_later_references(self):
+        source = catalog(b'\x51\x23\xd0\x09\x44\x42\x00\x23\x02\x00')
+        records = build_flag_assets(source)
+        self.assertEqual([(row['bank'], row['index'], row['extended_target']) for row in records],
+                         [('system', 0x123, None)])
+        script = next(row for row in source['assets'] if row['asset_kind'] == 'script')
+        self.assertEqual(script['status'], 'partial')
+        self.assertTrue(script['stops'])
 
     def test_authored_layer_changes_reference_without_changing_retail_identity(self):
         source = catalog(b'\x2e\xe2\x2e\x02')

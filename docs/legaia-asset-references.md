@@ -1,5 +1,43 @@
 # Asset dependencies and referenced-by navigation
 
+## Inspect the reference instruction
+
+Dependency and Referenced by rows offer **Inspect reference instruction** when
+an edge retains a decoded source-script PC. Supported relationships are script
+references to dialogue segments, flag groups, transition assets and encoded
+named scenes. The neighbor button still opens Asset Details. The instruction
+action opens the source script's disassembly and selects the exact instruction
+or atomic MES boundary, automatically opening collapsed disassembly.
+
+Both Active and Project scopes support P1 actor and P2 script owners. Project
+navigation chooses the edge's imported source scene, refreshes its catalog,
+then checks the structural script ID, owner, partition, record index, source
+extent/catalog key and any recorded source hash. The destination asset may be
+unavailable: an unimported scene does not disable its imported source's action.
+Unknown PCs, non-script relationships and unavailable source owners do not gain
+this action. References do not establish runtime actor identity or execution.
+
+Busy or changed-source views reject navigation; closed views cannot navigate
+again, and a late response cannot recreate source actions. The action submits
+no authoring command or Save. Ordinary cross-scene navigation can mark the
+Active scene setting unsaved; returning to the original scene restores that
+setting. Source navigation preserves authored data and history.
+
+On 2026-10-03,25 focused retail-enabled Python cases, four Node suites and two
+module syntax checks pass. Eight actual browser checks cover P1 outgoing/incoming
+flag sites, dialogue PC15, P2 transition PC22 with an unimported destination,
+540px Project controls, Dolk2 PC14 source navigation, stale-key rejection and
+unchanged saved bytes/authored data/history. Native MAN pointer tables and raw
+opcode bytes independently confirm Town01 offsets4771/4774/28565 and Dolk2
+7466. Dolk2's PC14 is an ordinary CFLAG_SET selector24, not an extended dispatch
+context. The source fixture now tests ordinary system selectors and explicitly
+rejects reference recovery beyond unsupported extended system dispatch.
+
+Private proofs: `local-output/sdk-20260909/asset-reference-instructions-20261003/parent/`.
+Screenshot inspected; helpers closed; no game or installation ran. This read-only
+feature needs no immediate gameplay verification. Wider script authoring and
+live actor correlation remain unfinished.
+
 Gate-1 field triggers now expose `field_trigger_script_reference` edges to a
 unique bounded P2 record. Both source hashes, primary/fallback table identity,
 row/P2 indexes and gate1 qualify the relationship in Active/Project scopes.

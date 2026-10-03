@@ -58,3 +58,6 @@ authoring command, Build, Save or Run. Screenshots and private reports are under
 No immediate gameplay verification is required for this inspection feature.
 General control-flow authoring, runtime execution and authored story behavior
 remain unfinished or separately deferred.
+
+Asset dependencies now provide [reference-instruction navigation](legaia-asset-references.md#inspect-the-reference-instruction)
+into this disassembly and its overview, including P1/P2 sources in Project scope.
