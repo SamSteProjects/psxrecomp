@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`editor/worldmap-placement-yaw.js` converts pointer positions through the frozen horizontal-plane homogeneous projection, unwraps consecutive angles, and snaps/wraps encoded source yaw. Its SVG ring owns temporary gesture state only. The placement editor combines mutually exclusive translation/yaw tools under the same draft restoration and reviewed Apply boundary. Existing source serializers, Build composition and exports remain authoritative.
+
 `editor/worldmap-placement-gizmo.js` owns only temporary projected-axis pointer gestures and signed source-offset snapping. `worldmap-placement-editor.js` binds its frozen source/camera/viewport context to the existing source-qualified record inspector, previews all shared instances, and restores drafts/reviews on cancellation. No gesture writes project state; reviewed Apply uses the normal WorldMapPlacements command. Dialog cancellation releases busy state only for its owned request.
 
 `sdk/worldmap_placement_export.py` binds Current/Proposed geometry to the source MAP/floor context and the normal WorldMapPlacements serializer. It revalidates proposal keys, composes only qualified record transforms, and retains per-instance retail and exported identity. The shared world encoder adds explicitly bounded placement provenance and representation while preserving its retail-only default contract. The editor verifies representation, MAP/review/hash binding and late-response state before download. Exports are artifacts, not authoring commands or gameplay acceptance.

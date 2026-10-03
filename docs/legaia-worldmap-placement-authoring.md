@@ -56,3 +56,5 @@ script-driven transforms remain on the deferred gameplay queue.
 [Current/Proposed scene GLB exports](legaia-worldmap-placement-export.md) now retain authored or reviewed world placement transforms without applying proposals. The original World ground exports remain retail-source.
 
 [Viewport translation handles](legaia-worldmap-placement-gizmo.md) now edit source X/Y/Z drafts with explicit shared scope, snapping, Frame anchor and cancellable previews. Review and Apply remain the only authoring path.
+
+[Source yaw rotation](legaia-worldmap-placement-yaw.md) now adds a perspective-correct ring and encoded-unit snapping to the same shared-record Review/Apply workflow. Translation and rotation are exclusive tools.

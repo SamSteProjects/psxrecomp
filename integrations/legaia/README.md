@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+**World placements** includes a source-yaw rotation ring, encoded-unit snapping and cancellable shared-record previews. Review and Apply retain the existing command/Build workflow. See [source yaw ring](../../docs/legaia-worldmap-placement-yaw.md).
+
 **World placements** now includes cancellable source X/Y/Z translation handles, snapping and Frame anchor. Dragging retains a draft for Review; Apply alone changes authored state. See [world translation handles](../../docs/legaia-worldmap-placement-gizmo.md).
 
 In **World placements**, **Export Current scene GLB** downloads applied world record transforms; **Export Proposed scene GLB** requires the exact reviewed proposal and writes no authored command. Both retain retail geometry and explicit source/runtime confidence. See [world placement export](../../docs/legaia-worldmap-placement-export.md).

@@ -2,6 +2,8 @@
 
 ## World source placement transforms - deferred
 
+Additional yaw-ring fixture: `local-output/sdk-20260909/worldmap-placement-yaw-20261002/parent/browser-project/`. Package SHA256 `4a953cf8acfb12105dd121b7c3f6416f9469bfa00907ef4c2999d4e9bc9de6bf`. Record0477 retains X1280/Y256/Z256 with yaw448 across57 source seeds. Independent full MAP readback proves the two yaw-byte changes alongside the prior offsets. Pointer rotation, cancellation, history, persistence and Build pass offline; use matching story-state retail/authored gameplay comparisons below to check visibility, resting transforms, collision and script overrides.
+
 Additional viewport-handle fixture: `local-output/sdk-20260909/worldmap-placement-gizmo-20261002/parent/browser-project/`. Package SHA256 `d15d8464e9486a9463dac0b5653e1005aadd9fa942c13e11ebf95fee8d28b6b7`. Record0477 is X1280/Y256/Z256/yaw1536; all57 source instances share it. Complete source reconstruction and package readback match, with only four MAP bytes changed. Source Y/Z move the display in the opposite directions. Apply, history and Save/reload pass offline; scripts, actual native resting positions, visibility and collision remain unverified. Use the same retail/authored checks below when gameplay verification is resumed.
 
 Saved fixture: `local-output/sdk-20260909/worldmap-placement-authoring-20261002/parent/browser-project/`.

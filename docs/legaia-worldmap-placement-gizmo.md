@@ -58,3 +58,5 @@ Package SHA256: `d15d8464e9486a9463dac0b5653e1005aadd9fa942c13e11ebf95fee8d28b6b
 Candidate MAP SHA256: `c50f59209004bfdde04ad531363d670cb84abfbe77026646b1a11f5256dc0be3`.
 Private evidence: `local-output/sdk-20260909/worldmap-placement-gizmo-20261002/parent/`.
 The owned helper and browser processes are closed. Gameplay remains deferred.
+
+[Source yaw rotation](legaia-worldmap-placement-yaw.md) now adds a perspective-correct ring and encoded-unit snapping to the same shared-record Review/Apply workflow. Translation and rotation are exclusive tools.
