@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+Native new-face codec checkpoint (2026-10-03): independent model-level packet
+growth and source recovery pass offline. The candidate is not installable through
+the SDK yet: carrier relocation, durable topology identity and reviewed editor/
+history/Build integration remain required. Later gameplay must establish added-face
+appearance, lighting/culling, pose and shared-instance behavior. No model was
+installed or played; no immediate gameplay gate is added.
+
 Model allocation Inspector (2026-10-03): read-only Retail/Current extent
 inspection adds no gameplay gate. The source endpoint and editor dialog are
 connected; general new faces, authored topology identities and relocation

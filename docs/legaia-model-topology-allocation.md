@@ -29,8 +29,9 @@ rewritten consistently, and carrier neighbors must remain independently verified
 The current same-length content and Retail-removal bindings cannot represent that
 change. Removal-derived spare space alone is not a general allocation solution.
 
-The allocation Inspector is connected and source-qualified. The next implementation
-is a new geometry binding and source-bound relocation codec. Review/Apply, history,
+The allocation Inspector is connected and source-qualified. A model-level packet
+growth codec is now implemented. The next integration is a durable topology
+binding and carrier relocation path. Review/Apply, history,
 Save/Open, preview, GLB and normal Build need that same identity model. Native
 appearance, pose/culling and shared-instance acceptance remain later gameplay
 checks; successful source inspection is not evidence for those behaviors.
@@ -48,3 +49,39 @@ Six actual retail browser/HTTP checks verified all four Retail/Current objects,
 packet-group disclosure,540px layout, source agreement and invalid requests.
 Project files, authored state and history remained unchanged. Private UI proof:
 `local-output/sdk-20260909/model-allocation-inspector-20261003/parent/`.
+
+
+## Native packet-growth codec
+
+`importer.model_face_addition.add_model_faces` accepts a verified source hash
+and1..128 new authored face requests. Each names a canonical `face://authored/`
+UUID, existing object/group and donor primitive, and typed fields including
+vertex references. UV/RGB/normal fields use the existing source-qualified field
+writer. Vertices and normals must already exist; arbitrary new vector/object/
+group allocation is still unfinished. Donor formats preserve material and opaque
+command bytes. A donor must belong to the chosen group.
+
+New packets are inserted before that group's footer. Group and object primitive
+counts update, active object-table offsets rebase relative to the12-byte header,
+and existing source bytes retain their order. Unused vector pointer words stay
+unchanged. The audit separates new UUID identities from retained source indices
+and records Current primitive indices, packet hashes and pointer relocations.
+Complete qualification recomputes the exact candidate and rejects unowned edits.
+The4MiB source-model limit and native16-bit group count remain enforced.
+
+Pinned evidence: unchanged Andrew `d6e64c68ede25813d35db20980da82a1a025549b`,
+`docs/formats/tmd.md` and `crates/tmd/src/legaia_prims.rs`: relative object-table
+pointers and group length `8 + (count + 1) * stride`, including the footer slot.
+The codec preserves footer bytes rather than treating them as available space.
+
+Independent Retail Town01 model0009 reconstruction adds a quad to object1/group0
+(flags0x13, stride24), growing4704→4728 bytes. The new packet inserts at3160 and
+uses vertex indices1/2/3/0; Current primitive index11. Candidate bytes agree with
+independently rewritten headers/pointers. Removing the packet and restoring source
+header words recovers the complete original, including vectors/footers/padding.
+Private proof: `local-output/sdk-20260909/model-face-addition-20261003/parent/`.
+
+This is a model-level codec foundation. It does not persist a project binding,
+merge an existing removal/GLB identity ledger, allocate surrounding carrier space
+or expose Review/Apply. Cross-operation authored UUID uniqueness and all those
+integrations still need implementation. No gameplay or installation ran.
