@@ -4,7 +4,7 @@ Model material authoring changes existing CLUT/texture-page fields and a primiti
 
 ## Workflow
 
-The [source-binding picker](legaia-material-binding-picker.md) can fill a draft from another active-scene imported model. Loading is read-only; explicit Copy transfers page/depth/indexed CLUT values and retains target UVs and blend flags. Review and Apply below remain required.
+The [source-binding picker](legaia-material-binding-picker.md) can fill a draft from another active-scene imported model. Loading is read-only; explicit Copy transfers page/depth/indexed CLUT values to one primitive or all textured primitives in a target group and retains target UVs and blend flags. Group scope/count and whole-batch budget validation are explicit. Review and Apply below remain required.
 
 Open a verified imported model in Edit mode and open its material editor. Select an object, group and primitive. The inspector keeps Retail and Current values separate and identifies the source words behind the decoded controls.
 

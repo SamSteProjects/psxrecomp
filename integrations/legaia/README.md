@@ -1,6 +1,6 @@
 # Legaia Trace SDK
 
-The material editor can browse imported models and copy a qualified Current texture binding into a draft. Review/Apply retain target UVs, geometry and blend flags. See [source-binding picker](../../docs/legaia-material-binding-picker.md).
+The material editor can browse imported models and copy a qualified Current texture binding into one primitive or all textured primitives in a target group. Review/Apply retain target UVs, geometry and blend flags. See [source-binding picker](../../docs/legaia-material-binding-picker.md).
 
 Assigned actor poses now support source-bound GLB interchange with an explicit shared-clip owner. Existing actor contributions and assignments remain separate. See [assigned animation GLB](../../docs/legaia-assigned-animation-glb.md).
 

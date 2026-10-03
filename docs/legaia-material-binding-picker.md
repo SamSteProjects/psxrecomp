@@ -6,6 +6,8 @@ In Edit mode, open a model's material editor, choose the target object/group/pri
 
 Review, inspect Proposed, return, and explicitly Apply through the existing material workflow. Copying withdraws a prior review. Closing, changing project/scene/mode/source, or a delayed cancelled request cannot populate the editor. Apply uses the target model's existing replacement command; the donor is a source reference for choosing values, not a new runtime dependency or allocation. Ordinary Undo/Redo, Save/Open and Build remain available. All instances using the target model share its replacement.
 
+**Use binding for all textured primitives in target group** shows the qualified target count and copies the same binding into those primitive drafts. It preserves untextured rows, the target group's blend draft, every other group/object draft and source-owned fields. No-op rows clear their superseded binding draft. The editor validates the complete resulting batch before replacing it; more than256 draft entries rejects without partially copying the group. Review and one explicit Apply remain required.
+
 A binding does not establish suitable target UV coverage, live VRAM residency, palette animation, texture windows or PSX blend appearance. Source ABR remains read-only. Review recomputes static pixel associations and reports missing/ambiguous matches. Gameplay checks remain deferred. See [source materials](legaia-model-materials.md).
 
 ## Offline evidence, 2026-10-02
@@ -22,3 +24,14 @@ Candidate SHA256: `8b6c772cac8ab297b393a6df00ec156e0e45c45c75b638313de833c7af4b0
 Package SHA256: `a952ee4f6443068d63f8ddc5b6f636aa31168d3625851d01fcc6a14d0e8a89a3`.
 
 The owned browser and loopback proof server are closed. No game, dependency install or disc export ran. This fixture demonstrates source-byte authoring and packaging; it does not assert visual suitability or native acceptance.
+
+## Packet-group copy evidence, 2026-10-02
+
+Private fixture: `local-output/sdk-20260909/material-group-binding-20261002/parent/`.
+The donor/group Node checks cover source immutability, indexed/direct bindings, untextured exclusion, other-group and target ABE draft preservation, normal reviewed batch ordering and atomic257-row rejection. Seven actual browser checks pass with no page/HTTP errors or game requests, including Proposed/Return,540px layout, exactly one Apply, Undo/Redo verified by fresh effective-model hashes, Save/Reload and normal Build. The scrolled narrow screenshot confirms the explicit14-primitive scope is readable.
+
+Dolk2 model0133 object0/group4 contains14 textured primitives. Primitive36 already matches the donor; primitives37..49 change26 CLUT/TPage words and39 bytes. Complete candidate TMD equality to independent manual word-mask construction proves every UV, geometry/normal byte, other group and prior ABE edit is retained. Full packaged carrier readback also preserves neighboring decoded bytes and the118461-byte compressed capacity. Source import metadata and retail bytes remain unchanged.
+
+Candidate SHA256: `49240fadef8ef4872b5d725f1c64e20578f5cbca76e0e26fb5a31de25cd501fc`.
+Package SHA256: `f1e9c622f00bf4b07fbee0ef1926ecd83872e8430125c94ebda325effcfd39c0`.
+Owned proof browser/server are closed. Gameplay suitability remains deferred.

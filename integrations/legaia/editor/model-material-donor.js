@@ -18,3 +18,8 @@ export function materialDonorValues(row){
   for(const field of ['page_column','page_row',...(row.texture_bpp===16?[]:['clut_column','clut_row'])]){const value=row[field];if(!Number.isInteger(value)||value<0||value>ranges[field])fail('Source binding has an invalid VRAM coordinate.');values[field]=value;}
   return values;
 }
+export function materialDonorGroupEdits(source,objectIndex,groupIndex,donorRow){
+  const values=materialDonorValues(donorRow),object=source.objects.find(row=>row.object_index===objectIndex),group=object?.groups.find(row=>row.group_index===groupIndex);
+  if(!group)fail('Choose a qualified target packet group.');
+  return group.primitives.filter(row=>row.textured).map(row=>({kind:'primitive',object_index:objectIndex,primitive_index:row.primitive_index,values:Object.fromEntries(Object.entries(values).filter(([field,value])=>row[field]!==value))}));
+}

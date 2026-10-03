@@ -2,6 +2,14 @@
 
 ## Imported material binding selection - deferred
 
+Additional group-copy fixture: `local-output/sdk-20260909/material-group-binding-20261002/parent/browser-project/`.
+Package SHA256 `f1e9c622f00bf4b07fbee0ef1926ecd83872e8430125c94ebda325effcfd39c0`.
+All14 Dolk2 model0133 object0/group4 textured primitives use the selected binding;
+13 add26 CLUT/TPage word edits while the earlier single-row edit and ABE persist.
+Complete TMD/carrier readback is exact. Later inspect every affected face/shared
+instance for UV suitability, live residency, palette behavior, blending and revert.
+
+
 Saved fixture: `local-output/sdk-20260909/material-binding-picker-20261002/parent/browser-project/`.
 Package SHA256: `a952ee4f6443068d63f8ddc5b6f636aa31168d3625851d01fcc6a14d0e8a89a3`.
 Dolk2 model0133 object0/group4/primitive36 retains authored group ABE and copies
