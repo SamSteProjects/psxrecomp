@@ -52,3 +52,5 @@ source reconstruction. Private proof is retained under
 
 No game, install or disc export ran. Visibility, placement/collision behavior and
 script-driven transforms remain on the deferred gameplay queue.
+
+[Current/Proposed scene GLB exports](legaia-worldmap-placement-export.md) now retain authored or reviewed world placement transforms without applying proposals. The original World ground exports remain retail-source.

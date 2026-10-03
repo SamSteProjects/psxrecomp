@@ -793,6 +793,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200, export(self.server.project, body['scene'], body['source_key'],
                                            body['scope'], body.get('entity_id')))
                     return
+                if route == '/api/export/worldmap-placements':
+                    if set(body)!={'scene','source_key','proposal'}:
+                        raise ProjectError('World placement export requires scene, source identity and optional reviewed proposal')
+                    from .worldmap_placement_export import export
+                    self._json(200,export(self.server.project,body['scene'],body['source_key'],body['proposal']))
+                    return
                 if route in ('/api/worldmap-authoring', '/api/worldmap-authoring-review'):
                     expected = set() if route == '/api/worldmap-authoring' else {'entity_id', 'values'}
                     if set(body) != expected:

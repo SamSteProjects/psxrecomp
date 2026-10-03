@@ -133,12 +133,22 @@ def adapt_worldmap_scene(result, source_key, scope='source-scene', entity_id=Non
     return scene_preview
 
 
-def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None):
+def encode_worldmap_glb(result, source_key, scope='source-scene', entity_id=None, *, placement_authoring=None):
     scene = adapt_worldmap_scene(result, source_key, scope, entity_id)
+    if placement_authoring is not None:
+        if (not isinstance(placement_authoring, dict) or placement_authoring.get('schema_version') != 'legaia.worldmap-placement-export.v1' or
+                placement_authoring.get('representation') not in ('current-source', 'proposed-source') or
+                placement_authoring.get('source_key') != source_key or placement_authoring.get('gameplay_verified') is not False or
+                not _hash(placement_authoring.get('current_map_sha256')) or not _hash(placement_authoring.get('exported_map_sha256')) or
+                len(json.dumps(placement_authoring, allow_nan=False).encode()) > 512 * 1024):
+            raise ImportError('World placement export requires explicit bounded source/authored provenance')
+        scene['representation'] = placement_authoring['representation']
     raw, audit = encode_scene_glb(scene)
     provenance = dict(scene=result['scene'], scope=scope, entity_id=entity_id,
         source_record=deepcopy(result['source_record']), coverage=deepcopy(result['scene_graph']['coverage']),
         metrics=deepcopy(result['scene_graph']['metrics']), limitations=deepcopy(scene['limits']))
+    if placement_authoring is not None:
+        provenance['placement_authoring'] = deepcopy(placement_authoring)
     size = struct.unpack_from('<I', raw, 12)[0]
     document = json.loads(raw[20:20 + size])
     document['extras']['worldmap_source'] = provenance

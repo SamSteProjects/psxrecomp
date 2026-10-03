@@ -1,5 +1,7 @@
 # Legaia Trace SDK
 
+In **World placements**, **Export Current scene GLB** downloads applied world record transforms; **Export Proposed scene GLB** requires the exact reviewed proposal and writes no authored command. Both retain retail geometry and explicit source/runtime confidence. See [world placement export](../../docs/legaia-worldmap-placement-export.md).
+
 Use **World placements** to inspect and edit qualified kingdom source-record offsets and yaw with shared-record scope, Current/Proposed viewport comparison, reviewed Apply, history, Save/Open and normal Build. Source seeds do not establish runtime resting positions or visibility. See [world placement authoring](../../docs/legaia-worldmap-placement-authoring.md).
 
 In **World ground**, use **Export source scene GLB** to download terrain and visible source model seeds, or **Export selected GLB** for the chosen source entity. Hiding placements exports ground alone. Source coordinates and provenance stay attached; runtime resting positions and visibility remain unknown. See [world-source export](../../docs/legaia-worldmap-export.md).
