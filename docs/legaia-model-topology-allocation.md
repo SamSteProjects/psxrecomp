@@ -223,3 +223,49 @@ ISO relocation, persisted SDK asset bindings/history/Save/Open, removal and GLB
 composition, editor Review/Apply/preview and normal Build remain unfinished.
 No gameplay or installation ran. The next integration must carry this same
 source/ledger/carrier qualification into the actual SDK project and Build path.
+
+
+## Saved SDK face-addition binding
+
+The SDK now accepts `tmd-face-addition-v1` through source-bound Python services
+and `ProjectService.apply_model_face_additions`. Review and Apply both recompute
+from the current Edit source key/effective model hash; Apply must match the
+reviewed candidate hash. The binding contains ordinary model source/asset hashes,
+byte length and scene identity, plus `base_binding` and the replayable `ledger`.
+The candidate is stored in the existing content-addressed Authored/Models store.
+
+`base_binding` is null for unchanged Retail or a retained, independently valid
+same-source shape/content/material/normal-reference/face-removal binding. Nested
+addition bases reject; successive additions append to one ledger instead. The
+base's saved model bytes remain required, hash-qualified dependencies. Ledger
+source-face IDs bind that exact effective base, not an inferred Retail/runtime
+identity. This permits additions after existing edits/removal without discarding
+them. Editing or restoring/removing/GLB importing *after* additions still needs
+explicit ledger composition and remains unfinished.
+
+Every model read and project Open verifies outer schema, Retail source, saved
+candidate hash/length, retained base and exact complete ledger replay. Apply adds
+one ordinary model-override session history entry and clears Redo. Session Undo/
+Redo restores exact prior bindings. Save/Open retains bindings and owned bytes;
+under the existing SDK convention Open clears session history, so history itself
+is not claimed to persist across reopening.
+
+Preview composition accepts addition/removal face-count changes while requiring
+unchanged object identities and vertex ranges. It rebuilds triangle/material
+arrays and continues to use existing verified rigid pose channels. No new object
+or animation-channel relationship is inferred. Asset status identifies a
+count-changing face addition. Existing-layout model edits and overlay Build reject
+addition bindings explicitly; they cannot flatten or mis-export the ledger.
+
+Four project regressions plus the focused native suites pass 48 cases, and 34
+existing authoring/primitive/material/GLB regressions pass with private disc source,
+82 total without skips. The private proof clones the previously saved Town01
+project, retains its normal-reference/content base, reviews/applies a quad, tests
+session history and composed preview, saves/reopens, then adds another face using
+the authored donor and saves/reopens again. The final 4,752-byte model qualifies
+exactly. No public project or game was modified. Private proof:
+`local-output/sdk-20260909/model-face-addition-project-20261003/parent/`.
+
+HTTP/editor source/Review/Apply actions, legacy edit/removal/GLB composition after
+addition, and normal Build/ISO relocation remain unfinished. The persisted binding
+is not yet installable through SDK Build. No gameplay or installation ran.

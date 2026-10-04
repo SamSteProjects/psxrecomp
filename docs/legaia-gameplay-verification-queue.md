@@ -1,5 +1,13 @@
 # Deferred gameplay verification
 
+SDK face-addition project binding checkpoint (2026-10-03): internal source/review/
+Apply, retained base edits, session history, Save/Open and composed preview pass
+offline in a private cloned Town01 project. Existing project Open clears session
+history while retaining saved asset state. Editor/HTTP actions and relocated normal
+Build/ISO export remain unfinished, and existing-layout export rejects this binding.
+No model was installed or played; deferred native appearance/culling/pose checks
+remain unchanged. No immediate gameplay gate is added.
+
 Model pack PROT relocation checkpoint (2026-10-03): physical carrier growth,
 sector alignment, later start relocation and reopened model-pack verification
 pass offline. A bounded logical start-table fixture with the fresh Town01 carrier
