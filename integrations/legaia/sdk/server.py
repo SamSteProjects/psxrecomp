@@ -1731,6 +1731,19 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
                     return
+                if route in ('/api/texture-resize-preview', '/api/texture-resize'):
+                    fields = {'asset_id', 'expected_sha256', 'source_key', 'width', 'height', 'fill_value', 'accept_potential_overlap'}
+                    if route == '/api/texture-resize': fields.add('review_key')
+                    if set(body) != fields or not isinstance(body['asset_id'], str) or not 1 <= len(body['asset_id']) <= 512:
+                        raise ProjectError('Texture resize requires exact current texture context and encoded dimensions')
+                    from .texture_resize import review, apply
+                    args = (self.server.project, body['asset_id'], body['expected_sha256'], body['source_key'],
+                            body['width'], body['height'], body['fill_value'], body['accept_potential_overlap'])
+                    if route.endswith('preview'): self._json(200, review(*args))
+                    else:
+                        report = apply(*args, body['review_key'])
+                        self._json(200, dict(self.server.state(), resize_report=report))
+                    return
                 if route in ('/api/texture-glb-retain-review','/api/texture-glb-retain'):
                     fields={'asset_id','expected_sha256','source_key','content_base64'}
                     if route.endswith('retain'):fields.add('review_key')

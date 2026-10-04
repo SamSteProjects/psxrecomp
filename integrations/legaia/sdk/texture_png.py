@@ -69,6 +69,8 @@ def _snapshot(project, asset_id, palette_index):
             raise ProjectError(options.get('reason') or 'Texture carrier is not authorable')
         retail = context.original_tim(asset_id)
         authored = project.texture_overrides.get(asset_id)
+        if authored and authored['format'] == 'tim-image-layout-v1':
+            raise ProjectError('Resized texture PNG reporting is not connected yet; use native TIM and Build')
         effective = project.read_texture_replacement(authored) if authored else retail
         context.validate_replacement(asset_id, effective)
         if len(retail) > 1024 * 1024 or len(effective) > 1024 * 1024:

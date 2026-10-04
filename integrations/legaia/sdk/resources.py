@@ -451,7 +451,7 @@ def texture_preview(project, asset_id: str, palette_index: int, layer: str = "ef
         authored = project.texture_overrides.get(asset_id)
         if authored is not None and layer == "effective":
             content = project.read_texture_replacement(authored)
-            project._texture_context(asset_id).validate_replacement(asset_id, content)
+            project.validate_effective_texture(asset_id,content)
             preview.update(decode_tim(content, palette_index))
     if key != source_key(project):
         raise ProjectError("Texture source changed during preview; refresh again")
@@ -484,7 +484,7 @@ def apply_texture_overrides(project, catalog):
     replacements = {}
     for identifier, binding in bindings.items():
         content = project.read_texture_replacement(binding)
-        context.validate_replacement(identifier, content)
+        project.validate_effective_texture(identifier,content,context=context)
         replacements[identifier] = parse_tim(content)
     result = deepcopy(catalog)
     result.textures = [(replacements.get(source["semantic_id"], tim), source)

@@ -232,6 +232,7 @@ class TextureAuthoringContext:
     """
     def __init__(self, disc: Any, scene: str, catalog: TextureCatalog):
         self.disc, self.scene, self._digest = disc, scene, catalog.disc_sha256
+        self._catalog = catalog
         self._items = {source["semantic_id"]: (tim, deepcopy(source)) for tim, source in catalog.textures}
         if len(self._items) != len(catalog.textures) or catalog.scene != scene:
             raise ImportError("texture authoring catalog contains ambiguous identifiers or scene identity")

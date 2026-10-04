@@ -1024,13 +1024,19 @@ class ProjectService:
         return report
 
     def _validate_texture_binding(self, binding: dict) -> None:
-        if (not isinstance(binding, dict) or set(binding) not in ({"asset_sha256", "byte_length", "format", "source_scene_id"},{"asset_sha256", "byte_length", "format", "source_scene_id", "glb_source"})
-                or binding["format"] != "tim" or type(binding["byte_length"]) is not int
+        fields = {"asset_sha256", "byte_length", "format", "source_scene_id"}
+        if isinstance(binding, dict) and binding.get('format') == 'tim-image-layout-v1':
+            fields |= {'source_sha256', 'image_layout'}
+        if (not isinstance(binding, dict) or set(binding) not in (fields, fields | {'glb_source'})
+                or binding["format"] not in ("tim","tim-image-layout-v1") or type(binding["byte_length"]) is not int
                 or not 1 <= binding["byte_length"] <= 1024 * 1024
                 or not isinstance(binding["asset_sha256"], str) or len(binding["asset_sha256"]) != 64
                 or any(c not in "0123456789abcdef" for c in binding["asset_sha256"])
                 or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports):
             raise ProjectError("Invalid authored TIM content reference")
+        if binding['format']=='tim-image-layout-v1':
+            from .texture_resize import validate_binding
+            validate_binding(binding)
         if 'glb_source' in binding:
             receipt=binding['glb_source']
             if (not isinstance(receipt,dict) or set(receipt) not in ({'glb_sha256','png_sha256','image_index','name'},{'glb_sha256','png_sha256','image_index','name','glb_byte_length'})
@@ -1068,7 +1074,23 @@ class ProjectService:
         content = path.read_bytes()
         if hashlib.sha256(content).hexdigest() != binding["asset_sha256"]:
             raise ProjectError("Authored texture digest disagrees with project reference")
+        if binding['format']=='tim-image-layout-v1':
+            from .texture_resize import image_layout
+            if image_layout(content)!=binding['image_layout']:raise ProjectError('Authored texture layout differs from its binding')
         return content
+
+    def validate_effective_texture(self, asset_id, content, *, context=None):
+        context=context or self._texture_context(asset_id)
+        binding=self.texture_overrides.get(asset_id)
+        if not binding or binding['format']=='tim':return context.validate_replacement(asset_id,content)
+        from importer.texture_layout_allocation import validate_tim_allocation
+        from .texture_resize import image_layout
+        original=context.original_tim(asset_id)
+        if hashlib.sha256(original).hexdigest()!=binding['source_sha256']:raise ProjectError('Texture allocation Retail source changed')
+        if content==original:return context.validate_replacement(asset_id,content)
+        result=validate_tim_allocation(original,content)
+        if image_layout(content)!=binding['image_layout']:raise ProjectError('Texture allocation dimensions differ from the saved binding')
+        return result
 
     def _texture_context(self, asset_id: str):
         from importer.texture_authoring import load_texture_authoring_context
@@ -1090,7 +1112,7 @@ class ProjectService:
         original = context.original_tim(asset_id)
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if asset_id in self.texture_overrides else original)
-        context.validate_replacement(asset_id, effective)
+        self.validate_effective_texture(asset_id, effective, context=context)
         tim, retail = parse_tim(effective), parse_tim(original)
         if tim.bpp not in (4, 8) or tim.clut is None:
             raise ProjectError('Palette editing requires an indexed scene TIM')
@@ -1123,7 +1145,11 @@ class ProjectService:
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if asset_id in self.texture_overrides else original)
         pixel = inspect_tim_pixel_index(effective, x, y)
-        return dict(source, pixel=pixel, retail_entry=inspect_tim_pixel_index(original, x, y)['palette_entry'])
+        from importer.textures import parse_tim
+        retail=parse_tim(original)
+        retail_entry=(inspect_tim_pixel_index(original,x,y)['palette_entry']
+                      if x<retail.width and y<retail.image.height else None)
+        return dict(source,pixel=pixel,retail_entry=retail_entry)
 
     def set_texture_pixel_index(self, asset_id: str, x: int, y: int, palette_entry: int,
                                 expected_sha256: str) -> None:
@@ -1146,7 +1172,7 @@ class ProjectService:
         original = context.original_tim(asset_id)
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if asset_id in self.texture_overrides else original)
-        context.validate_replacement(asset_id,effective)
+        self.validate_effective_texture(asset_id,effective,context=context)
         replacement = patch_tim_index_rectangle(effective,expected_sha256,x,y,width,height,palette_entry)
         if replacement != effective:
             self.set_texture_replacement(asset_id,replacement)
@@ -1160,7 +1186,7 @@ class ProjectService:
         original = context.original_tim(asset_id)
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if asset_id in self.texture_overrides else original)
-        context.validate_replacement(asset_id, effective)
+        self.validate_effective_texture(asset_id, effective, context=context)
         replacement = copy_tim_index_rectangle(effective, expected_sha256, source_x, source_y, x, y, width, height)
         if replacement != effective:
             self.set_texture_replacement(asset_id, replacement)
@@ -1170,11 +1196,13 @@ class ProjectService:
         from importer.texture_json import export_texture_json
         if layer not in ('imported','effective'):
             raise ProjectError('Choose imported or effective texture JSON')
+        if layer == 'effective' and self.texture_overrides.get(asset_id, {}).get('format') == 'tim-image-layout-v1':
+            raise ProjectError('Resized texture JSON export/import reporting is not connected yet; use native TIM and Build')
         context = self._texture_context(asset_id)
         original = context.original_tim(asset_id)
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if layer == 'effective' and asset_id in self.texture_overrides else original)
-        context.validate_replacement(asset_id,effective)
+        self.validate_effective_texture(asset_id,effective,context=context)
         document = json.loads(export_texture_json(effective))
         document['source_sha256'] = hashlib.sha256(original).hexdigest()
         content = (json.dumps(document,separators=(',',':'),sort_keys=True)+'\n').encode()
@@ -1198,13 +1226,15 @@ class ProjectService:
         from importer.textures import parse_tim, decode_tim
         if self.mode != 'edit' or format not in ('tim','json'):
             raise ProjectError('Texture file preview requires Edit mode and TIM or JSON')
+        if self.texture_overrides.get(asset_id, {}).get('format') == 'tim-image-layout-v1':
+            raise ProjectError('Resized texture file preview reporting is not connected yet; use native TIM and Build')
         context = self._texture_context(asset_id)
         original = context.original_tim(asset_id)
         candidate = import_texture_json(original,hashlib.sha256(original).hexdigest(),content) if format == 'json' else content
         context.validate_replacement(asset_id,candidate)
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if asset_id in self.texture_overrides else original)
-        context.validate_replacement(asset_id,effective)
+        self.validate_effective_texture(asset_id,effective,context=context)
         pixels = decode_tim(candidate,palette_index)
         return candidate, {'asset_id':asset_id,'input_format':format,'palette_index':palette_index,
                 'source_sha256':hashlib.sha256(original).hexdigest(),
@@ -1221,7 +1251,7 @@ class ProjectService:
                              palette_index: int = 0) -> dict:
         return self._prepare_texture_file(asset_id,content,format,palette_index)[1]
 
-    def set_texture_replacement(self, asset_id: str, content: bytes, *, glb_source: dict | None = None, glb_content: bytes | None = None) -> None:
+    def set_texture_replacement(self, asset_id: str, content: bytes, *, glb_source: dict | None = None, glb_content: bytes | None = None, image_allocation: bool = False) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")
         if not isinstance(asset_id, str) or not asset_id.startswith("texture://") or len(asset_id) > 512:
@@ -1230,9 +1260,25 @@ class ProjectService:
             raise ProjectError("Authored TIM must contain at most 1 MiB")
         if asset_id not in self.texture_overrides and len(self.texture_overrides) >= 128:
             raise ProjectError("Project supports at most 128 texture replacements")
-        self._texture_context(asset_id).validate_replacement(asset_id, content)
+        context=self._texture_context(asset_id)
+        existing=self.texture_overrides.get(asset_id)
+        allocated=image_allocation or bool(existing and existing['format']=='tim-image-layout-v1')
+        original=context.original_tim(asset_id) if allocated else None
+        if type(image_allocation) is not bool:raise ProjectError('Texture allocation policy must be explicit')
+        if image_allocation:
+            if glb_source is not None:raise ProjectError('Resizing withdraws the earlier GLB image receipt')
+            from importer.texture_layout_allocation import validate_tim_allocation
+            validate_tim_allocation(original,content)
+        elif existing and existing['format']=='tim-image-layout-v1':
+            effective=self.read_texture_replacement(existing);self.validate_effective_texture(asset_id,effective,context=context)
+            from importer.texture_authoring import _validate
+            _validate(effective,content)
+        else:context.validate_replacement(asset_id,content)
         binding = {"asset_sha256": hashlib.sha256(content).hexdigest(), "byte_length": len(content),
                    "format": "tim", "source_scene_id": self.active_scene}
+        from .texture_resize import image_layout
+        if allocated and image_layout(original)!=image_layout(content):
+            binding.update(format='tim-image-layout-v1',source_sha256=hashlib.sha256(original).hexdigest(),image_layout=image_layout(content))
         if glb_source is not None:binding["glb_source"]=deepcopy(glb_source)
         self._validate_texture_binding(binding)
         if glb_source is not None and 'glb_byte_length' in glb_source:

@@ -84,6 +84,7 @@ def package_change_kinds(edits) -> list[str]:
         'initial-man-header-only': 'initial actor appearance',
         'inline-mes-glyph-run-only': 'dialogue text',
         'TIM-image-and-palette-payload-only': 'textures',
+        'TIM-image-allocation-fixed-mode-and-VRAM-origin': 'texture image allocations',
         'shared-MAP-transform-only': 'shared scenery transforms',
         'instance-MAP-transform-only': 'individual decoration transforms',
         'encoded-transition-entry-only': 'transition entries',
@@ -1063,13 +1064,18 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         _hash(payload) != binding["asset_sha256"]):
                     raise BuildError("Private texture replacement no longer matches its authored binding")
                 replacements[identifier] = payload
-            texture_overlays, texture_changes, texture_requests = context.build_patch(replacements)
+            if any(binding['format'] == 'tim-image-layout-v1' for binding in bindings.values()):
+                from .texture_allocation_build import prepare
+                texture_overlays, texture_changes, texture_requests = prepare(project, bindings, replacements, context, archive)
+            else:
+                texture_overlays, texture_changes, texture_requests = context.build_patch(replacements)
             growth_requests.extend(texture_requests)
             changed_ids = set()
             for change in texture_changes:
                 identifier = change.get("semantic_id")
                 if (identifier not in replacements or identifier in changed_ids or
-                        change.get("scope") != "TIM-image-and-palette-payload-only" or
+                        change.get("scope") != ('TIM-image-allocation-fixed-mode-and-VRAM-origin'
+                            if bindings[identifier]['format'] == 'tim-image-layout-v1' else 'TIM-image-and-palette-payload-only') or
                         change.get("after_sha256") != _hash(replacements[identifier]) or
                         change.get("before_sha256") != _hash(context.original_tim(identifier)) or
                         change.get("byte_length") != len(replacements[identifier])):
@@ -1159,7 +1165,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     package_dir = destination / "package"
     has_appearance = any(change.get("scope") == "initial-man-header-only" for change in audit_edits)
     has_dialogue = any(change.get("scope") == "inline-mes-glyph-run-only" for change in audit_edits)
-    has_texture = any(change.get("scope") == "TIM-image-and-palette-payload-only" for change in audit_edits)
+    has_texture = any(change.get("scope") in ("TIM-image-and-palette-payload-only", "TIM-image-allocation-fixed-mode-and-VRAM-origin") for change in audit_edits)
     package_suffix = " authored actor headers" if has_appearance else (" authored placements" if overlays else " retail baseline")
     feature_name = "Authored actor headers" if has_appearance else "Authored actor placements"
     description = ("Private initial model/animation and placement headers; script compatibility is unverified."

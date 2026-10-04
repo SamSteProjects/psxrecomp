@@ -1,5 +1,40 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — saved texture resize bindings and normal Build (service stage):**
+Reviewed native image resizing now has project Apply, one-step Undo/Redo and
+Save/Open. The versioned `tim-image-layout-v1` binding retains the Retail TIM
+hash and exact authored image layout; ordinary uploads cannot change dimensions.
+Review is read-only and binds the current source, encoded fill value and explicit
+potential-overlap choice. The footprint census includes effective scene images,
+flattened CLUTs (including the edited texture's CLUT) and known boot uploads.
+Only overlap added by the new footprint is reported. This census does not prove
+runtime residency, upload order or material suitability.
+
+Normal Build merges resized and fixed-layout edits sharing a pack into one
+qualified raw/compressed allocation. Source slots, unedited members, opaque
+member tails and physical neighbors retain the native allocation guarantees.
+Build audits identify image allocations separately from payload-only edits.
+Effective texture/scene previews and palette, pixel and rectangle commands
+understand saved allocations; pixels outside the Retail image have no Retail index.
+Resizing withdraws an earlier GLB image receipt rather than retaining stale provenance.
+
+Thirty-one focused construction checks passed, followed by thirteen targeted
+checks after report guards and added-pixel editing were refined. Private Town01
+raw and Dolk2 compressed projects passed Review/Apply, history, Save/Open,
+read-only Build review and exact normal-Build readback, including a neighboring
+payload edit in the same allocated pack. Town01 allocated one extra PROT sector;
+Dolk2 retained physical capacity. Private evidence:
+`local-output/sdk-20260909/texture-resize-project-20261004/parent/`.
+No game, installed runtime change or physical disc export ran.
+
+**Remaining before the complete resize workflow:** editor resize controls and
+reviewed pixel/scene proposals, plus allocation-aware PNG/JSON/TIM-file comparison
+reports. Those report paths explicitly reject saved resized bindings for now;
+normal native TIM publication and Build work. The HTTP service endpoints are
+available without advertising a finished editor capability. Runtime appearance,
+UV coverage, upload overlap/residency and scene transitions remain deferred.
+This is an implementation milestone, not completion of the SDK goal.
+
 **2026-10-04 — native texture image-allocation groundwork:** Added source-bound
 TIM resizing for 4/8/16/24-bpp images. It keeps overlapping encoded pixels, fills
 new pixels with an explicit encoded value and supports cropping without resampling.
