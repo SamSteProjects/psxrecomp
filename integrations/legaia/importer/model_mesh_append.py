@@ -12,7 +12,9 @@ from .model_face_addition import MAX_NEW_FACES
 from .model_vector_allocation import MAX_NEW_VECTORS
 
 
-def decode_append_mesh(content):
+def decode_append_mesh(content, *, preserve_primitives=False):
+    if type(preserve_primitives) is not bool:
+        raise ImportError('Mesh primitive preservation must be boolean')
     doc,binary=_read_glb(content)
     if doc.get('animations') or doc.get('skins'):
         raise ImportError('Mesh append requires static geometry without skinning or animation')
@@ -42,11 +44,17 @@ def decode_append_mesh(content):
     primitives=mesh.get('primitives')
     if not isinstance(primitives,list) or not 1<=len(primitives)<=MAX_NEW_FACES:
         raise ImportError('Mesh append requires a bounded set of triangle primitives')
+    if preserve_primitives:
+        from .model_group_allocation import MAX_NEW_GROUPS
+        if len(primitives)>MAX_NEW_GROUPS:
+            raise ImportError('Mesh primitive groups exceed the native group budget')
     reader=_Accessors(doc,binary)
     if any(not isinstance(view,dict) or type(view.get('buffer')) is not int or view['buffer']!=0 for view in reader.views):
         raise ImportError('Mesh append buffer views must own the embedded buffer')
     vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];triangle_colors=[];owners={};ignored=set();error=0.0;normal_error=0.0
-    for primitive in primitives:
+    primitive_ranges=[]
+    for primitive_index,primitive in enumerate(primitives):
+        first_triangle=len(triangles)
         if (not isinstance(primitive,dict) or type(primitive.get('mode',4)) is not int
                 or primitive.get('mode',4) not in (4,5,6) or any(key in primitive for key in ('targets','extensions'))):
             raise ImportError('Mesh append supports triangle lists, strips and fans without morph targets or extensions')
@@ -119,6 +127,9 @@ def decode_append_mesh(content):
             if not any(u[(i+1)%3]*v[(i+2)%3]-u[(i+2)%3]*v[(i+1)%3] for i in range(3)):
                 raise ImportError('Mesh append contains a degenerate triangle after native quantization')
             triangles.append(current);triangle_normals.append(directions if normals is not None else None);triangle_uvs.append(texture_points if uvs is not None else None);triangle_colors.append(color_points if colors is not None else None)
-    return dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=sha256(content).hexdigest(),
+        primitive_ranges.append(dict(primitive_index=primitive_index,first_triangle=first_triangle,triangle_count=len(triangles)-first_triangle,source_mode=mode))
+    result=dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=sha256(content).hexdigest(),
         vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')
+    if preserve_primitives:result.update(schema_version='legaia.model-mesh-append-geometry.v5',primitive_ranges=primitive_ranges)
+    return result

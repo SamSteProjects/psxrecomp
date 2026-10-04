@@ -1311,9 +1311,9 @@ class ProjectService:
             raise ProjectError('Object allocation identities differ from the reviewed draft')
         self._publish_model_ledger(asset_id,content,binding,expected_key,'Object allocation')
 
-    def apply_model_mesh_append(self,asset_id,content,donor_face_id,expected_sha256,expected_key,review_key,*,new_group=False,replace_group=False):
+    def apply_model_mesh_append(self,asset_id,content,donor_face_id,expected_sha256,expected_key,review_key,*,new_group=False,replace_group=False,preserve_primitives=False):
         from .model_mesh_append import prepare
-        candidate,binding,report=prepare(self,asset_id,content,donor_face_id,expected_sha256,expected_key,new_group=new_group,replace_group=replace_group)
+        candidate,binding,report=prepare(self,asset_id,content,donor_face_id,expected_sha256,expected_key,new_group=new_group,replace_group=replace_group,preserve_primitives=preserve_primitives)
         if review_key!=report['review_key']:
             raise ProjectError('Mesh import differs from the reviewed geometry or donor')
         self._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh append')

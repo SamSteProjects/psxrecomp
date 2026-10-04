@@ -1090,9 +1090,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'asset_id','content_base64','donor_face_id','expected_sha256','source_key'}
                     if 'new_group' in body:fields.add('new_group')
                     if 'replace_group' in body:fields.add('replace_group')
+                    if 'preserve_primitives' in body:fields.add('preserve_primitives')
                     if route=='/api/model-mesh-append':fields.add('review_key')
                     if route=='/api/model-mesh-append-scene-preview':fields.update(('review_key','proposed_sha256','entity_id','all_instances'))
-                    if (set(body)!=fields or type(body.get('new_group',False)) is not bool or type(body.get('replace_group',False)) is not bool or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
+                    if (set(body)!=fields or any(type(body.get(choice,False)) is not bool for choice in ('new_group','replace_group','preserve_primitives')) or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
                             or not isinstance(body['donor_face_id'],str) or not 0<len(body['donor_face_id'])<=512
                             or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key])
                                    for key in fields & {'source_key','expected_sha256','review_key','proposed_sha256'})):
@@ -1108,15 +1109,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         if not isinstance(body['entity_id'],str) or not 0<len(body['entity_id'])<=512 or type(body['all_instances']) is not bool:
                             raise ProjectError('Mesh scene inspection requires an exact instance and boolean scope')
                         from .model_mesh_append import prepare
-                        candidate,binding,report=prepare(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False))
+                        candidate,binding,report=prepare(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False))
                         if report['review_key']!=body['review_key'] or report['proposed_sha256']!=body['proposed_sha256']:
                             raise ProjectError('Mesh scene proposal differs from the reviewed file or mode')
                         self._json(200,self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],candidate,report,body['source_key'],body['all_instances'],prepared_binding=binding))
                     elif route.endswith('-preview'):
                         from .model_mesh_append import review
-                        self._json(200,review(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False)))
+                        self._json(200,review(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False)))
                     else:
-                        self.server.project.apply_model_mesh_append(*args,body['review_key'],new_group=body.get('new_group',False),replace_group=body.get('replace_group',False))
+                        self.server.project.apply_model_mesh_append(*args,body['review_key'],new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False))
                         self._json(200,self.server.state())
                     return
                 if route in ('/api/model-object-allocation-source','/api/model-object-allocation-preview','/api/model-object-allocation'):

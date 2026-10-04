@@ -37,11 +37,13 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False):
-    if type(new_group) is not bool or type(replace_group) is not bool:
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False):
+    if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and not new_group:
         raise ProjectError('Mesh group replacement requires an independent new group')
+    if preserve_primitives and not new_group:
+        raise ProjectError('Preserving mesh primitives requires independent packet groups')
     original,effective,base,base_binding,ledger,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh append inspection')
@@ -52,7 +54,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -125,9 +127,14 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
             fields=fields))
     group_requests=None
     if new_group:
-        identity=bytearray(sha256((expected_sha256+geometry['glb_sha256']+donor_face_id+'/group').encode('utf-8')).digest()[:16])
-        identity[6]=(identity[6]&15)|64;identity[8]=(identity[8]&63)|128
-        group_requests=[dict(group_id='group://authored/'+str(UUID(bytes=bytes(identity))),donor_face_id=donor_face_id,faces=additions)]
+        group_requests=[]
+        ranges=geometry['primitive_ranges'] if preserve_primitives else [dict(first_triangle=0,triangle_count=len(additions))]
+        for ordinal,span in enumerate(ranges):
+            suffix='/primitive-group/'+str(ordinal) if preserve_primitives else '/group'
+            identity=bytearray(sha256((expected_sha256+geometry['glb_sha256']+donor_face_id+suffix).encode('utf-8')).digest()[:16])
+            identity[6]=(identity[6]&15)|64;identity[8]=(identity[8]&63)|128
+            start=span['first_triangle'];faces=additions[start:start+span['triangle_count']]
+            group_requests.append(dict(group_id='group://authored/'+str(UUID(bytes=bytes(identity))),donor_face_id=donor_face_id,faces=faces))
         candidate,updated,audit=append_group_ledger(base,updated,group_requests)
     else:
         candidate,updated,audit=append_face_ledger(base,updated,additions)
@@ -156,6 +163,10 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
             removed_face_ids=removed,replaced_group=dict(object_index=donor['object_index'],group_index=row['group_index']))
         report['limitations'][-1]='Replaces the complete Current donor packet group with a new native group. Retired faces remain reserved and restorable in ledger history; original vector rows remain. No native object, image or animation channel is created. Gameplay remains unverified.'
         report['review_key']=digest(dict(base_review_key=report['review_key'],allocation_mode='replace_group',removed_face_ids=removed,replaced_group=report['replaced_group']))
+    if preserve_primitives:
+        report.update(schema_version='legaia.model-mesh-append-review.v7',preserve_primitives=True)
+        report['limitations'][-1]=('Replaces the exact Current donor group' if replace_group else 'Appends geometry')+' with one independent native packet group per GLB primitive, preserving source order and shared position rows. All groups inherit the selected donor layout/material; GLB materials are not allocated. No native object or animation channel is created. Gameplay remains unverified.'
+        report['review_key']=digest(dict(base_review_key=report['review_key'],preserve_primitives=True,primitive_ranges=geometry['primitive_ranges']))
     if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh append review')
     return candidate,binding,_budget(report,64*1024*1024)
 
