@@ -1,5 +1,14 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: Combined native face/material transaction API
+
+Backend/HTTP implemented and qualified: face/UV fields plus semantic page/palette
+or shared blend edits compose against one Current model, with exact native audit
+union, fresh Review/Apply and one retained-ledger replacement/Undo. Four focused
+codec/HTTP/history tests and private five-face Town01 exact Build readback passed.
+Browser combined-draft controls/review are still pending.
+[API contract](legaia-model-texture-assignment.md) documents the current boundary.
+
 ## 2026-10-04: Native texture page UV target picker
 
 Implemented: the face editor can fill explicit Target UV controls from a qualified

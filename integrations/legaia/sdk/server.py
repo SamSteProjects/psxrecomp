@@ -1064,6 +1064,28 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_materials import donor_models
                     self._json(200, donor_models(self.server.project, body['source_key']))
                     return
+                if route in ('/api/model-texture-assignment-preview','/api/model-texture-assignment-apply'):
+                    expected={'asset_id','primitive_edits','material_edits','expected_sha256','source_key'}
+                    if route.endswith('-apply'):expected.add('review_key')
+                    if set(body)!=expected or any(not isinstance(body[k],str) for k in ('asset_id','expected_sha256','source_key')):
+                        raise ProjectError('Combined model authoring requires exact source identity and both native drafts')
+                    from .model_texture_assignment import prepare,apply
+                    args=(self.server.project,body['asset_id'],body['primitive_edits'],body['material_edits'],body['expected_sha256'],body['source_key'])
+                    if route.endswith('-apply'):
+                        report=apply(*args,body['review_key'])
+                        self._json(200,dict(self.server.state(),model_texture_assignment_report=report))
+                    else:
+                        _,report=prepare(*args)
+                        asset=self.server.project.assets.records[body['asset_id']]
+                        report['preview']=self.server.model_preview(asset,prepared=report['preview'])
+                        report['current_preview']=self.server.model_preview(asset,prepared=report['current_preview'])
+                        from .model_materials import _bounded
+                        _bounded(report,'Combined model preview')
+                        from .scene_preview import source_key
+                        if source_key(self.server.project)!=body['source_key']:
+                            raise ProjectError('Scene changed during combined model preview')
+                        self._json(200,report)
+                    return
                 if route == '/api/model-material-source':
                     if set(body) != {'asset_id'} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Material inspection requires a model identity only')

@@ -1,5 +1,32 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Combined native face/material Review and Apply API
+
+Implemented the backend/HTTP composition needed to apply UV/face fields and native
+page/palette/shared-blend drafts as one model replacement. Both drafts independently
+qualify the actual same Current model. Material edits are composed onto the face
+candidate; their audit must match the independent material-only candidate. The final
+native audit must equal both disjoint field audits. No intermediate override is
+published or represented as Current. Review includes Current/final previews, exact
+intermediate/final hashes and a source-bound review key. Apply regenerates everything
+and uses the ordinary replacement writer for one Undo entry and retained topology
+ledgers. This API does not add texture slots, allocate topology or infer addresses.
+
+Four focused Python tests passed real native codecs, exact readonly HTTP Review,
+wrong/stale/changed/invalid/no-change rejection, group blend plus UV/page composition,
+one-step Undo/Redo and existing authored face stable IDs with exact ledger replay.
+A private Town01 HTTP test composed five faces onto an authored 128x128 16-bit TIM
+region. Independent packet readback confirmed UV and TPage bytes only; wrong review
+and stale repeated Apply rejected. Save/Open, Undo/Redo and normal Build exact model
+and TIM readback passed with unchanged decoded neighbors. Evidence:
+`local-output/sdk-20260909/model-texture-assignment-20261004/parent/proof.json`.
+
+**Next:** browser combined-draft controls and a combined review UI. Existing separate
+face/material editors remain available. This milestone proves the combined API, not
+completion of the combined browser workflow. See
+[API contract](legaia-model-texture-assignment.md). No game launched; gameplay remains
+deferred and the broader SDK goal remains active.
+
 ## 2026-10-04: Native texture page regions feed explicit UV target controls
 
 The face editor now offers **Choose target UVs from a scene texture** inside
