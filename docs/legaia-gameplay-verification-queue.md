@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+PVD/path-table preflight checkpoint (2026-10-03): mandatory/optional LE/BE tables,
+exact expected bytes and opaque PVD preservation qualify natively with rollback.
+Python/native complete synthetic ISO/payload interoperability passes. Reader
+publication/lifetime and normal Build remain unfinished; activation is still
+guarded. No game/full Retail export ran; no immediate gameplay gate is added.
+
 Activation preflight checkpoint (2026-10-03): source hashes, bounded ISO entry
 mapping/membership and streamed proposed PROT readback qualify offline. Wrong
 movie mapping/extra directory entries reject and roll back. Runtime publication,

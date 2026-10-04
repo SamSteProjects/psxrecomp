@@ -584,3 +584,28 @@ build/log: `local-output/sdk-20260909/iso-reader-relocation-20261003/parent/`.
 Runtime publication/ownership/lifetime and path-table semantic qualification are
 still required; runtime commit's explicit activation guard remains. Normal Build
 is not connected. No game, installation or full Retail disc export ran.
+
+
+## PVD and complete path-table semantics
+
+Activation preflight snapshots the source PVD and every mandatory/optional path
+table before installation. Tables are bounded to 1 MiB; both size copies and
+mandatory pointers must agree. Records require complete headers, nonempty names,
+no extended attributes and valid odd-name padding allocation. Source directory
+extents must belong to the inventoried tree. Exact proposed extents are derived
+using the insertion mapping; all other record bytes remain unchanged.
+
+After installation, all four descriptor pointers, absent optional copies and
+complete expected table bytes must match. The entire PVD must equal its source
+transformation, allowing only volume-size, path-table-pointer and root-extent
+updates. A mismatch rolls back to the original reader layout.
+
+Fresh native regression passes with four source copies, wrong LE/BE extents,
+padding/pointer/PVD mutations and rollback. Complete Python-generated payload/
+Mode 2 fixture preflight also passes, including PROT and shifted nested movie
+lookup. Fixtures: `local-output/sdk-20260909/relocation-path-table-preflight-20261003/parent/`.
+Build/log: `local-output/sdk-20260909/iso-reader-relocation-20261003/parent/`.
+Existing library/parser warnings remain; full runtime suite not run. Reader
+publication/lifetime and normal Build integration remain required. Runtime commit
+still refuses enabled relocation until activation is connected. No gameplay or
+full Retail disc export ran.

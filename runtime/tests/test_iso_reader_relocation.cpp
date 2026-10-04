@@ -14,6 +14,13 @@ static void check(bool ok, const char* message) {
 static void both(uint8_t* out, uint32_t value) {
     for (unsigned i = 0; i < 4; ++i) { out[i] = uint8_t(value >> (8*i)); out[4+i] = uint8_t(value >> (8*(3-i))); }
 }
+static void single(uint8_t* out,uint32_t value,bool big=false) {
+    for(unsigned i=0;i<4;++i)out[i]=uint8_t(value>>(8*(big?3-i:i)));
+}
+static PS1::DiscRelocation::Sector path_table(uint32_t root,bool big) {
+    PS1::DiscRelocation::Sector out{};out[0]=1;single(out.data()+2,root,big);
+    out[big?7:6]=1;return out;
+}
 static std::vector<uint8_t> record(const std::string& name, uint32_t lba, uint32_t size, bool directory) {
     std::vector<uint8_t> out(33 + name.size() + (name.size()%2 == 0));
     out[0] = uint8_t(out.size()); both(out.data()+2,lba); both(out.data()+10,size);
@@ -31,10 +38,13 @@ static PS1::DiscRelocation::Sector directory(uint32_t root, uint32_t prot_bytes,
 static PS1::DiscRelocation::Sector descriptor(uint32_t root, uint32_t volume) {
     PS1::DiscRelocation::Sector out{}; out[0] = out[6] = 1; std::memcpy(out.data()+1,"CD001",5);
     both(out.data()+80,volume); out[129] = out[130] = 8;
+    both(out.data()+132,10);
+    single(out.data()+140,42+(root-40));single(out.data()+144,44+(root-40));
+    single(out.data()+148,43+(root-40),true);single(out.data()+152,45+(root-40),true);
     auto row=record(std::string(1,'\0'),root,2048,true); std::copy(row.begin(),row.end(),out.begin()+156); return out;
 }
 
-int main() {
+int main(int argc,char** argv) {
     namespace fs=std::filesystem;
     auto root=fs::temp_directory_path()/("psxrecomp_iso_relocation_test_"+
         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
@@ -42,6 +52,8 @@ int main() {
     std::vector<PS1::DiscRelocation::Sector> sectors(60);
     for (unsigned i=0;i<60;++i) sectors[i].fill(uint8_t(i));
     sectors[16]=descriptor(40,58); sectors[40]=directory(40,4096,48);
+    sectors[42]=path_table(40,false);sectors[43]=path_table(40,true);
+    sectors[44]=path_table(40,false);sectors[45]=path_table(40,true);
     {
         std::ofstream file(path,std::ios::binary);
         for (unsigned lba=0;lba<60;++lba) {
@@ -57,6 +69,8 @@ int main() {
     check(reader.GetSectorCount()==60 && reader.GetRootDirectory().lba==40,"original ISO layout changed");
     PS1::DiscRelocation::Plan plan; plan.source_sector_count=60; plan.prot_lba=30; plan.source_prot_sectors=2;
     plan.replacement.resize(8192,'R'); plan.metadata[16]=descriptor(42,60); plan.metadata[42]=directory(42,8192,50);
+    plan.metadata[44]=path_table(42,false);plan.metadata[45]=path_table(42,true);
+    plan.metadata[46]=path_table(42,false);plan.metadata[47]=path_table(42,true);
     std::string error;
     for (unsigned test=0;test<4;++test) {
         auto bad=plan;
@@ -110,8 +124,30 @@ int main() {
     auto& dir=wrong.plan.metadata[42];size_t end=0;while(dir[end])end+=dir[end];std::copy(hidden.begin(),hidden.end(),dir.begin()+end);
     for(auto& preimage:wrong.preimages)if(preimage.proposed_lba==42)preimage.proposed_digest=PS1::DiscHash(dir.data(),2048);
     check(!PS1::PrepareDiscRelocationReader(reader,std::move(wrong),&error)&&!reader.HasDiscRelocation(),"hidden directory member must reject and rollback");
+    for(unsigned test=0;test<5;++test) {
+        wrong=qualified;
+        if(test==0)single(wrong.plan.metadata[44].data()+2,43);
+        if(test==1)single(wrong.plan.metadata[47].data()+2,43,true);
+        if(test==2)wrong.plan.metadata[45][9]^=1;
+        if(test==3)single(wrong.plan.metadata[16].data()+152,49,true);
+        if(test==4)wrong.plan.metadata[16][40]^=1;
+        for(auto& preimage:wrong.preimages)preimage.proposed_digest=PS1::DiscHash(wrong.plan.metadata.at(preimage.proposed_lba).data(),2048);
+        check(!PS1::PrepareDiscRelocationReader(reader,std::move(wrong),&error)&&!reader.HasDiscRelocation()&&reader.GetRootDirectory().lba==40,
+              "invalid path-table extent/padding/pointer must reject and rollback");
+    }
     check(PS1::PrepareDiscRelocationReader(reader,std::move(qualified),&error)&&reader.HasDiscRelocation(),"qualified relocation preflight failed");
     check(reader.GetFileSize("PROT.DAT")==8192&&reader.FindFile("MOVIE.STR",entry)&&entry.lba==50,"preflight did not expose qualified ISO layout");
     reader.Close(); fs::remove(path); fs::remove(root);
+    if(argc==3) {
+        check(reader.Open(argv[1]),"Python ISO fixture open failed");
+        std::ifstream input(argv[2],std::ios::binary);check(bool(input),"Python payload fixture missing");
+        std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(input)),{});
+        PS1::DiscRelocationPayload decoded;
+        check(PS1::ParseDiscRelocationPayload(bytes,PS1::DiscHash(bytes.data(),bytes.size()),decoded,&error),"Python payload parse failed");
+        check(PS1::PrepareDiscRelocationReader(reader,std::move(decoded),&error),"Python/native complete ISO preflight differs");
+        check(reader.GetSectorCount()==62&&reader.GetFileSize("PROT.DAT")==8192&&reader.FindFile("MOV/MOVIE.STR",entry)&&entry.lba==50,
+              "Python/native reopened ISO mapping differs");
+        reader.Close();
+    }
     std::cout<<"ISOReader relocation checks passed\n";
 }
