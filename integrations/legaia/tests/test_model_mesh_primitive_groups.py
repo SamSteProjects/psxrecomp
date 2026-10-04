@@ -1,6 +1,8 @@
 """One atomic GLB import can preserve its distinct primitive group boundaries."""
 from copy import deepcopy
 import base64,tomllib,unittest,zipfile
+import json,shutil,subprocess
+from pathlib import Path
 from unittest.mock import patch
 from importer.model_mesh_append import decode_append_mesh
 from importer.core import ImportError,_pack_ranges,parse_scene_assets,decompress_lzs
@@ -15,6 +17,7 @@ from importer.model_authoring import preview_model_shape
 from test_model_object_ledger import clone_request
 from test_model_primitive_workflow import http_server
 import test_model_mesh_append as fixtures
+import test_model_mesh_append_normals as normal_fixtures
 
 
 def mesh():
@@ -26,6 +29,13 @@ def mesh():
 
 
 class MeshPrimitiveGroupTests(unittest.TestCase):
+    def qualify(self,source,report):
+        node=shutil.which('node')
+        if not node:self.skipTest('Node is required for browser qualification')
+        script="""import {decodeMeshAppendSource,decodeMeshAppendReview} from './integrations/legaia/editor/model-mesh-append.js';let data='';for await(const chunk of process.stdin)data+=chunk;const {source,report}=JSON.parse(data),s=decodeMeshAppendSource(source,source.asset_id,source.project_source_key),replace=report.allocation_mode==='replace_group';const check=r=>decodeMeshAppendReview(r,s,report.donor_face_id,report.geometry.glb_sha256,true,replace,true);check(report);for(const edit of [r=>r.geometry.primitive_ranges[1].first_triangle--,r=>r.geometry.primitive_ranges[1].triangle_count--,r=>r.geometry.primitive_ranges[0].source_mode=1,r=>r.group_requests.reverse(),r=>r.group_requests[1].group_id=r.group_requests[0].group_id,r=>r.topology.allocated_groups.at(-1).origin_group_index++,r=>r.topology.allocated_group_count--,r=>r.topology.faces.at(-1).group_index--,r=>r.preview.triangle_uvs[0][0][0]++,r=>r.preserve_primitives=false]){const r=structuredClone(report);edit(r);let rejected=false;try{check(r);}catch{rejected=true;}if(!rejected)throw Error('Forged primitive group accepted');}let rejected=false;try{decodeMeshAppendReview(report,s,report.donor_face_id,report.geometry.glb_sha256,true,replace,false);}catch{rejected=true;}if(!rejected)throw Error('Wrong preservation choice accepted');"""
+        result=subprocess.run([node,'--input-type=module','-e',script],input=json.dumps(dict(source=source,report=report)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
+        self.assertEqual(result.returncode,0,result.stderr)
+
     def fixture(self):
         h=fixtures.MeshAppendTests();self.addCleanup(h.doCleanups)
         return h.fixture()
@@ -43,11 +53,25 @@ class MeshPrimitiveGroupTests(unittest.TestCase):
         def too_many(doc):doc['meshes'][0]['primitives']*=65
         with self.assertRaises(ImportError):decode_append_mesh(fixtures.glb(too_many),preserve_primitives=True)
 
+    def test_browser_qualifies_mixed_imported_and_inherited_normal_groups(self):
+        h=normal_fixtures.MeshAppendNormalTests();self.addCleanup(h.doCleanups)
+        p,asset,donor=h.fixture(0x15)
+        def duplicate(doc):
+            second=deepcopy(doc['meshes'][0]['primitives'][0]);second['attributes'].pop('NORMAL');doc['meshes'][0]['primitives'].append(second)
+        content=fixtures.glb(duplicate,normals=[[0,1,0],[1,0,0],[0,0,1],[0,1,0]])
+        source=model_mesh_append.source(p,asset,'a'*64)
+        report=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64,new_group=True,preserve_primitives=True)
+        self.assertEqual(report['normal_import']['imported_face_count'],2)
+        self.assertEqual(len(report['normal_import']['vectors']),3)
+        self.assertEqual(report['normal_import']['references'][2:],[None,None])
+        self.qualify(source,report)
+
     def test_one_command_read_only_review_reopen_undo_and_build(self):
         p,asset,donor=self.fixture();source=model_mesh_append.source(p,asset,'a'*64);content=mesh()
         args=(asset,content,donor,source['effective_sha256'],'a'*64)
         state=deepcopy((p._document(),p.undo_stack,p.redo_stack));files=set((p.root/'Authored'/'Models').iterdir())
         candidate,binding,report=model_mesh_append.prepare(p,*args,new_group=True,replace_group=True,preserve_primitives=True)
+        self.qualify(source,report)
         self.assertEqual((p._document(),p.undo_stack,p.redo_stack),state)
         self.assertEqual(set((p.root/'Authored'/'Models').iterdir()),files)
         self.assertEqual(report['schema_version'],'legaia.model-mesh-append-review.v7')
@@ -83,6 +107,7 @@ class MeshPrimitiveGroupTests(unittest.TestCase):
             for changes in (dict(preserve_primitives=1),dict(preserve_primitives='true'),dict(new_group=False)):
                 self.assertEqual(post('/api/model-mesh-append-preview',{**body,**changes})[0],400)
             status,report=post('/api/model-mesh-append-preview',body);self.assertEqual(status,200)
+            self.qualify(source,report)
             self.assertEqual(len(report['group_requests']),2)
             proposal={**body,'review_key':report['review_key'],'proposed_sha256':report['proposed_sha256'],'entity_id':'one','all_instances':True}
             self.assertEqual(post('/api/model-mesh-append-scene-preview',proposal)[0],200)
@@ -100,6 +125,7 @@ class MeshPrimitiveGroupTests(unittest.TestCase):
             p.apply_model_object_allocations(asset,requests,source['effective_sha256'],'a'*64,report['review_key'])
         source=model_mesh_append.source(p,asset,'a'*64);donor=next(f['face_id'] for f in source['topology']['faces'] if f['object_index']==1)
         candidate,binding,report=model_mesh_append.prepare(p,asset,mesh(),donor,source['effective_sha256'],'a'*64,new_group=True,replace_group=True,preserve_primitives=True)
+        self.qualify(source,report)
         self.assertEqual(binding['ledger']['schema_version'],'legaia.model-face-addition-ledger.v7')
         self.assertEqual(report['topology']['objects'],source['topology']['objects'])
         self.assertIsNone(report['topology']['allocated_groups'][0]['current_group_index'])
