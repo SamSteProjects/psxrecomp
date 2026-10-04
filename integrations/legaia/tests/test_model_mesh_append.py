@@ -16,7 +16,7 @@ import test_model_growth_normal_build as build_fixtures
 from test_model_primitive_workflow import http_server
 
 
-def glb(changes=None,positions=None):
+def glb(changes=None,positions=None,normals=None):
     positions=positions or [[0,0,0],[100,0,0],[0,100,0],[100,100,0]]
     binary=b''.join(struct.pack('<3f',*row) for row in positions)+struct.pack('<6H',0,1,2,1,3,2)
     doc=dict(asset={'version':'2.0'},scene=0,scenes=[{'nodes':[0]}],nodes=[{'mesh':0}],
@@ -25,6 +25,12 @@ def glb(changes=None,positions=None):
         {'buffer':0,'byteOffset':len(positions)*12,'byteLength':12}],
         accessors=[{'bufferView':0,'componentType':5126,'count':len(positions),'type':'VEC3'},
                    {'bufferView':1,'componentType':5123,'count':6,'type':'SCALAR'}])
+    if normals is not None:
+        offset=len(binary);binary+=b''.join(struct.pack('<3f',*row) for row in normals)
+        doc['buffers'][0]['byteLength']=len(binary)
+        doc['bufferViews'].append(dict(buffer=0,byteOffset=offset,byteLength=len(normals)*12))
+        doc['accessors'].append(dict(bufferView=2,componentType=5126,count=len(normals),type='VEC3'))
+        doc['meshes'][0]['primitives'][0]['attributes']['NORMAL']=2
     if changes:changes(doc)
     encoded=json.dumps(doc,separators=(',',':')).encode();encoded+=b' '*(-len(encoded)%4)
     return struct.pack('<3I',0x46546c67,2,28+len(encoded)+len(binary))+struct.pack('<2I',len(encoded),0x4e4f534a)+encoded+struct.pack('<2I',len(binary),0x004e4942)+binary
@@ -45,8 +51,10 @@ class MeshAppendTests(unittest.TestCase):
         self.assertEqual(report['ignored_attributes'],[]);self.assertEqual(report['vertex_max_error'],0)
         nonindexed=decode_append_mesh(glb(lambda d:d['meshes'][0]['primitives'][0].pop('indices'),positions=[[0,0,0],[100,0,0],[0,100,0]]))
         self.assertEqual(nonindexed['triangles'],[[0,1,2]]);self.assertEqual(len(nonindexed['vertices']),3)
-        report=decode_append_mesh(glb(lambda d:d['meshes'][0]['primitives'][0]['attributes'].update(NORMAL=0)))
-        self.assertEqual(report['ignored_attributes'],['NORMAL'])
+        report=decode_append_mesh(glb(normals=[[0,1,0]]*4))
+        self.assertEqual(report['ignored_attributes'],[])
+        self.assertEqual(report['triangle_normals'],[[[0,-4096,0]]*3]*2)
+        with self.assertRaises(ImportError):decode_append_mesh(glb(normals=[[0,0,0]]*4))
         for mutation in (lambda d:d['nodes'][0].update(translation=[1,0,0]),lambda d:d['scenes'][0].update(nodes=[False]),
             lambda d:d['nodes'][0].update(children=[]),lambda d:d.update(animations=[{}]),
             lambda d:d['meshes'][0]['primitives'][0].update(mode=5),lambda d:d['meshes'][0]['primitives'][0]['attributes'].update(JOINTS_0=0),
