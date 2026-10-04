@@ -23,9 +23,17 @@ Retail dolk2 smoke verifies actual format-7 package delivery, expanded/frozen ba
 shared axes, allocated initial selector and placement with exact MAN/bank readback.
 No physical Retail disc export, game launch, installed-runtime change or gameplay
 acceptance is claimed. Streaming NPC append in normal Build remains unavailable.
-Managed raw experimental export and post-MAN-growth locator composition remain
-pending; the earlier native codec tests demonstrate the required explicit remaps
-but do not establish those SDK paths.
+Managed raw experimental export now composes retained initial assignments with
+streaming NPC append. Scene preparation removes the allocation ledger from map
+serialization and delegates shared channel edits to bank composition. It patches
+allocated headers against the rebased MAN record after append. Export replays
+completed native chunk relocation audits: MAN locators follow ANM growth, and
+final ANM locators follow MAN growth. Exact final bank readback is mandatory.
+
+Read-only Retail dolk2 preparation verifies the combined assignment, shared axes,
+append and final payloads without writing a Retail disc. Synthetic physical-disc
+exports verify both chunk orders, preserved neighboring edits and exact reopened
+MAN/ANM bytes. Streaming NPC normal Build and gameplay acceptance remain pending.
 
 Raw streaming ANM delivery now has native transforms in
 `importer/streaming_animation_bank.py`. `grow_streaming_animation_bank` qualifies

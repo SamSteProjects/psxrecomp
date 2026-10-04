@@ -4,7 +4,7 @@ import struct
 import unittest
 from importer.core import ImportError,parse_man
 from importer.streaming_man import streaming_chunks
-from importer.streaming_animation_bank import grow_streaming_animation_bank,rebuild_streaming_animation_bank_entry
+from importer.streaming_animation_bank import grow_streaming_animation_bank,rebuild_streaming_animation_bank_entry,remap_streaming_header,verify_rebuilt_streaming_animation_banks
 from importer.prot_rebuild import rebuild_streaming_man_entry
 from importer.model_pack_archive import _archive
 from importer.man_actor_structure import append_actor_candidates
@@ -55,10 +55,12 @@ class StreamingAnimationBank(unittest.TestCase):
             grown,audit=rebuild_streaming_animation_bank_entry(source,sha256(source).hexdigest(),1,anm_at,sha256(bank).hexdigest(),expanded)
             relocated=next((c for c in audit['carrier']['relocated_chunks'] if c['before']==man_at),None)
             proposed_man=relocated['after'] if relocated else man_at
+            self.assertEqual(remap_streaming_header(1,man_at,3,[audit]),proposed_man)
             result,man_audit=rebuild_streaming_man_entry(grown,sha256(grown).hexdigest(),1,proposed_man,sha256(man).hexdigest(),candidate)
             other,first_man=rebuild_streaming_man_entry(source,sha256(source).hexdigest(),1,man_at,sha256(man).hexdigest(),candidate)
             relocated_anm=next((c for c in first_man['container']['relocated_chunks'] if c['before']==anm_at),None)
             proposed_anm=relocated_anm['after'] if relocated_anm else anm_at
+            self.assertEqual(remap_streaming_header(1,anm_at,5,[first_man]),proposed_anm)
             reverse,final_bank=rebuild_streaming_animation_bank_entry(other,sha256(other).hexdigest(),1,proposed_anm,sha256(bank).hexdigest(),expanded)
             self.assertEqual(result,reverse);self.assertEqual(result[-8*2048:],source[-8*2048:])
             archive=_archive(result);raw=archive.read_entry(archive.entry(1));chunks,terminated=streaming_chunks(raw)
@@ -67,10 +69,15 @@ class StreamingAnimationBank(unittest.TestCase):
             actual=raw[new_man['header_offset']+4:new_man['header_offset']+4+new_man['size']]
             self.assertEqual(actual,candidate);self.assertEqual(len(parse_man(actual).actors),2)
             self.assertTrue(final_bank['reopened_bank_verified']);self.assertTrue(man_audit['reopened_man_verified'])
+            final_offset=remap_streaming_header(1,anm_at,5,[man_audit])
+            self.assertEqual(final_offset,new_bank['header_offset'])
+            self.assertTrue(verify_rebuilt_streaming_animation_banks(result,[dict(kind='streaming-animation-bank',entry_index=1,chunk_header_offset=final_offset,expected_bank_sha256=sha256(bank).hexdigest(),bank=expanded)])[0]['final_bank_verified'])
             same,_=rebuild_streaming_animation_bank_entry(source,sha256(source).hexdigest(),1,anm_at,sha256(bank).hexdigest(),bank)
             self.assertEqual(same,source)
             if not man_first:
                 with self.assertRaises(ImportError):rebuild_streaming_man_entry(grown,sha256(grown).hexdigest(),1,man_at,sha256(man).hexdigest(),candidate)
+                invalid=dict(audit,carrier=dict(audit['carrier'],archive_relocation_verified=False))
+                with self.assertRaisesRegex(ImportError,'completed'):remap_streaming_header(1,man_at,3,[invalid])
 
 
 if __name__=='__main__':unittest.main()

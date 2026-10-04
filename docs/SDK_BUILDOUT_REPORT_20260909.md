@@ -1,5 +1,21 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — managed raw streaming experimental export:** Raw scene
+preparation now composes retained allocated initial MAN assignments with donor NPC
+append. Shared channel edits enter the expanded ANM bank once. Experimental archive
+export remaps MAN headers after ANM growth and ANM headers after MAN growth using
+completed, typed native relocation audits, then verifies the exact final bank.
+Unmanaged allocation still rejects rather than silently omitting it.
+
+A read-only Retail dolk2 smoke passes frozen capture, shared axes, allocated
+assignment and NPC append together, with exact final MAN/ANM bytes and unchanged
+project/history. Ten focused regressions pass, including two synthetic physical
+disc exports covering both chunk orders, retained neighboring edits, exact reopened
+bank/MAN payloads, stale disc rejection and damaged bank metadata rejection.
+No physical Retail disc was exported, game launched or installed runtime changed.
+Streaming NPC append in normal Build remains pending. Gameplay verification remains
+deferred; the full SDK goal stays active and solo. [Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — raw streaming allocated ANM in normal Build:** Source-bound
 animation growth now prepares raw type-5 chunk requests as well as compressed
 bank requests. The archive composer applies guarded MAN/asset overlays at original

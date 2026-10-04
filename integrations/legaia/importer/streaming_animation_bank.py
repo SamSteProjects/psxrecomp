@@ -102,3 +102,32 @@ def verify_rebuilt_streaming_animation_banks(source,requests):
         reports.append(dict(entry_index=index,chunk_header_offset=offset,bank_sha256=sha256(bank).hexdigest(),
             record_count=len(animation_record_ranges(bank)),final_bank_verified=True))
     return reports
+
+
+def remap_streaming_header(entry_index,header_offset,type_byte,audits):
+    """Replay completed native carrier growth audits in their operation order."""
+    if type(entry_index) is not int or type(header_offset) is not int or header_offset<0 or header_offset%4 or type(type_byte) is not int or type_byte not in (3,5) or not isinstance(audits,list) or len(audits)>128:
+        raise ImportError('Streaming header remap requires bounded typed owner, locator and audits')
+    offset=header_offset
+    for audit in audits:
+        if not isinstance(audit,dict):raise ImportError('Streaming header remap audit is malformed')
+        if audit.get('entry_index')!=entry_index:continue
+        carrier=audit.get('carrier',audit.get('container',{}));moves=carrier.get('relocated_chunks',[]) if isinstance(carrier,dict) else None
+        if not isinstance(moves,list) or len(moves)>4096:raise ImportError('Streaming header remap exceeds its chunk budget')
+        if not moves:continue
+        growth=carrier.get('growth_bytes')
+        if carrier.get('archive_relocation_verified') is not True or type(growth) is not int or not 0<growth<=4*1024*1024 or growth%4:
+            raise ImportError('Streaming header remap requires completed word-aligned native relocation')
+        seen=set();match=None
+        for row in moves:
+            if not isinstance(row,dict) or set(row)!={'before','after','type_byte','byte_length'}:
+                raise ImportError('Streaming header remap chunk is malformed')
+            before,after,kind,length=(row[key] for key in ('before','after','type_byte','byte_length'))
+            if any(type(v) is not int for v in (before,after,kind,length)) or before<0 or before%4 or after!=before+growth or after>=16*1024*1024 or not 1<=kind<=255 or not 0<length<=16*1024*1024 or before in seen:
+                raise ImportError('Streaming header remap chunk identity or growth changed')
+            seen.add(before)
+            if before==offset:match=row
+        if match:
+            if match['type_byte']!=type_byte:raise ImportError('Streaming header remap targeted a different resource type')
+            offset=match['after']
+    return offset

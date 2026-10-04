@@ -9,7 +9,7 @@ from .project import ProjectError, digest
 from .build import authored_state_key
 
 
-def prepare_streaming_scene(project, scene_id):
+def prepare_streaming_scene(project, scene_id, *,animation_growth_managed=False):
     key = authored_state_key(project)
     document = deepcopy(project.imports[scene_id])
     scene = document['scene']['name']
@@ -25,6 +25,7 @@ def prepare_streaming_scene(project, scene_id):
                              position=draft['position']))
     edits, dialogue_edits, transition_edits, map_components = {}, {}, {}, None
     assignments, assignment_donors, animations = {}, {}, {}
+    allocated_assignments={}
     movement_edits = {}
     flag_edits = {}
     wait_edits = {}
@@ -33,16 +34,22 @@ def prepare_streaming_scene(project, scene_id):
     branch_edits = {}
     for identifier, components in deepcopy(project.overrides).items():
         if identifier == scene_id:
-            map_components = components
+            if 'AnimationRecords' in components:
+                if not animation_growth_managed:raise ProjectError('Streaming animation allocation requires managed bank delivery')
+                components={key:value for key,value in components.items() if key!='AnimationRecords'}
+            map_components = components or None
             continue
         p2 = isinstance(identifier, str) and re.fullmatch(re.escape(scene_id) + r'/scripts/man-p2/[0-9]{4}', identifier) is not None
-        allowed = {'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches'} if p2 else {'Transform', 'ActorAppearance', 'ActorAnimation', 'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches', 'AnimationChannels'}
+        allowed = {'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches'} if p2 else {'Transform', 'ActorAppearance', 'ActorAnimation','ActorAllocatedAnimation', 'Dialogue', 'Transitions', 'ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'ScriptFacing', 'ScriptBranches', 'AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components, dict) or not components or set(components) - allowed:
             raise ProjectError('Streaming export requires supported same-scene actor or script components; unsupported authored families cannot be omitted')
         if 'AnimationChannels' in components:
             project._validate_animation_override(identifier, components['AnimationChannels'])
             animations[identifier] = components['AnimationChannels']
-        if 'ActorAppearance' in components:
+        if 'ActorAllocatedAnimation' in components:
+            if not animation_growth_managed:raise ProjectError('Streaming allocated assignment requires managed bank delivery')
+            allocated_assignments[identifier]=components['ActorAllocatedAnimation']
+        if 'ActorAppearance' in components and 'ActorAllocatedAnimation' not in components:
             appearance = components['ActorAppearance']
             if (not isinstance(appearance, dict) or set(appearance) != {'donor_entity_id'} or
                     not isinstance(appearance['donor_entity_id'], str) or appearance['donor_entity_id'] not in actors):
@@ -116,6 +123,10 @@ def prepare_streaming_scene(project, scene_id):
                 if animation:
                     change.update(assignment_kind='ActorAnimation', animation_asset_id=animation['animation_asset_id'],
                                   assignment_source_record_sha256=animation['source_record_sha256'])
+        allocated_changes=[]
+        if allocated_assignments:
+            from .allocated_animation_build import patch_assignments
+            candidate,allocated_changes=patch_assignments(project,scene_id,allocated_assignments,carrier.payload,candidate,appended=bool(requests))
         candidate, placements = patch_man_positions(candidate, scene, edits)
         transition_changes = []
         if transition_edits:
@@ -166,7 +177,7 @@ def prepare_streaming_scene(project, scene_id):
         padding = (-len(candidate)) % 4
         candidate += bytes(padding)
         patches, map_audit, animation_audit = [], None, None
-        if animations:
+        if animations and not (animation_growth_managed and 'AnimationRecords' in project.overrides.get(scene_id,{})):
             from .animation_build import prepare_animation_patches
             animation_patches, animation_audit = prepare_animation_patches(project, scene_id, animations, archive)
             patches.extend(animation_patches)
@@ -195,6 +206,7 @@ def prepare_streaming_scene(project, scene_id):
         existing_actor_placement_changes=placements, existing_actor_dialogue_changes=dialogue_changes, map_changes=map_audit,
         model_changes=model_audit, texture_changes=texture_audit, animation_changes=animation_audit, branch_changes=branch_changes, transition_changes=transition_changes, movement_changes=movement_changes, flag_changes=flag_changes, wait_changes=wait_changes, model_selector_changes=model_selector_changes, facing_changes=facing_changes, existing_actor_appearance_changes=appearance_changes,
         actor_changes=actor_audit, actor_pool_evidence=pool_evidence, man_padding_bytes=padding,
+        existing_actor_allocated_animation_changes=allocated_changes,
         final_man_sha256=sha256(candidate).hexdigest(), gameplay_verified=False,
         _asset_patches=patches,
         _rebuild_request=dict(entry_index=carrier.entry_index, chunk_header_offset=carrier.chunk_header_offset,

@@ -84,10 +84,28 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
                 raise ProjectError('Allocated export disc changed after scene preparation')
             animation_requests,animation_audit,_=prepare_animation_growth(project,archive,animation_scenes)
         composed,animation_container=compose_model_pack_archive(composed,sha256(composed).hexdigest(),animation_requests)
+        from importer.streaming_animation_bank import remap_streaming_header
+        remapped=[];moves=[]
+        for request in requests:
+            if 'chunk_header_offset' in request:
+                before=request['chunk_header_offset'];after=remap_streaming_header(request['entry_index'],before,3,animation_container['resources'])
+                request=dict(request,chunk_header_offset=after)
+                if before!=after:moves.append(dict(entry_index=request['entry_index'],before=before,after=after,type_byte=3))
+            remapped.append(request)
+        requests=remapped;animation_audit['streaming_MAN_header_relocations']=moves
     rebuilt,container=rebuild_man_entries(composed,sha256(composed).hexdigest(),requests)
     if animation_requests:
         from importer.animation_bank_growth import verify_rebuilt_animation_banks
-        animation_audit['final_archive_banks']=verify_rebuilt_animation_banks(rebuilt,animation_requests)
+        from importer.streaming_animation_bank import remap_streaming_header,verify_rebuilt_streaming_animation_banks
+        compressed=[r for r in animation_requests if r['kind']=='animation-bank']
+        streaming=[];moves=[]
+        for request in animation_requests:
+            if request['kind']!='streaming-animation-bank':continue
+            before=request['chunk_header_offset'];after=remap_streaming_header(request['entry_index'],before,5,container['entries'])
+            streaming.append(dict(request,chunk_header_offset=after))
+            if before!=after:moves.append(dict(entry_index=request['entry_index'],before=before,after=after,type_byte=5))
+        animation_audit['streaming_ANM_header_relocations']=moves
+        animation_audit['final_archive_banks']=(verify_rebuilt_animation_banks(rebuilt,compressed) if compressed else [])+(verify_rebuilt_streaming_animation_banks(rebuilt,streaming) if streaming else [])
     from .map_build import verify_rebuilt_maps
     map_audits=[audit['map_changes'] for audit in scenes.values() if audit.get('map_changes')]
     if map_audits:
@@ -138,7 +156,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         if not defer_rebuild:
             raise ProjectError('Streaming NPC additions require further serialization support')
         from .streaming_build import prepare_streaming_scene
-        return prepare_streaming_scene(project, draft['scene_id'])
+        return prepare_streaming_scene(project, draft['scene_id'],**({'animation_growth_managed':True} if animation_growth_managed else {}))
     actors={a['semantic_id']:a for a in document['actors']}
     edits={}
     assignments={}
