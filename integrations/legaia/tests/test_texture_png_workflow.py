@@ -139,7 +139,7 @@ class TexturePngWorkflow(unittest.TestCase):
             for route, request in invalid:
                 with self.subTest(route=route):
                     status, result = post(route, request); self.assertEqual(status, 400, result)
-            for route, limit in [('/api/texture-png-export', 32768), ('/api/texture-png-preview', 24 * 1024 * 1024)]:
+            for route, limit in [('/api/texture-png-export', 32768), ('/api/texture-png-preview', 68 * 1024 * 1024)]:
                 connection = HTTPConnection('127.0.0.1', server.server_port, timeout=10)
                 connection.request('POST', route, b'{}', {'Content-Type': 'application/json', 'Content-Length': str(limit + 1)})
                 response = connection.getresponse(); self.assertEqual(response.status, 400); response.read(); connection.close()

@@ -1,5 +1,23 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — original GLB recovery for legacy texture receipts:** The texture
+Inspector now offers **Retain original GLB source** for older four-field image
+receipts. Review verifies the exact recorded GLB hash, embedded PNG hash, image
+index/name and current texture/source context without writes. Retain archives the
+original file and upgrades its receipt in one Undo step; the native TIM remains
+byte-for-byte unchanged. Save/Open, project-copy source capture and normal Build
+use the retained bytes. Changed files, stale reviews and repeated Apply reject.
+The action does not reconstruct the old palette/STP import recipe or establish
+runtime texture acceptance. The duplicate 24 MiB PNG request cap was removed so
+the intended 68 MiB combined GLB/PNG/STP envelope is effective.
+
+Validation: 22 focused Python checks passed, including HTTP review/Apply guards,
+Undo/Redo, Save/Open, source capture and browser response qualification. A private
+Retail-derived browser smoke passed Review, file-change invalidation, Retain,
+Save/reload and exact GLB download; native Build readback remained identical to the
+pre-upgrade TIM. Evidence: `local-output/sdk-20260909/texture-source-backfill-20261004/parent/`.
+No game launched; gameplay verification remains deferred.
+
 **2026-10-04 — retained texture GLB import sources:** New GLB-image Applies
 now retain the exact original GLB in `Authored/TextureSources/<sha256>.glb` and add
 its bounded byte length to the source receipt. The embedded PNG remains recoverable

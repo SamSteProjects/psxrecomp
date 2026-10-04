@@ -129,3 +129,16 @@ An exact existing-palette edit at `(22,15)` changes index 8 to 0, only TIM byte 
 A second retail fixture, `texture://dolk2/69/0/4`, has original palette entries `0x0000` and `0x8000`. Its original image uses the transparent entry; its opaque-black entry is unused. A reviewed PNG edit selects that original black entry with one exact packed-nibble change and one forced-black STP count. Separate synthetic direct-color fixtures check the word/alpha/STP corner cases and rejection of partial alpha or explicit black/STP0 conflict.
 
 These proofs establish offline source conversion and payload preservation. A bounded search of the first 100 Dolk2 scene models did not establish an actual material use for the selected two-palette fixture. No live residency, palette animation, hardware blend result or gameplay appearance is inferred from this evidence. No game was launched.
+
+## Recover an older original GLB source
+
+For an older image receipt without retained bytes, open its texture Inspector in
+Edit mode and choose **Retain original GLB source**. Select the exact original GLB
+file and choose **Review original source**, then **Retain reviewed source**. Save
+the project. **Download retained GLB source** now recovers those exact bytes.
+
+This is one undoable receipt upgrade. It leaves the TIM unchanged, so an identical
+PNG does not need a no-op texture Apply. Review checks the saved file/image hashes
+and image identity; it does not recompute the earlier palette/STP import recipe.
+A changed file or project context requires a fresh review. Already retained
+receipts use Download directly; arbitrary replacement sources are rejected.

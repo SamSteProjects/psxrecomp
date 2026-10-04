@@ -832,7 +832,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-record-edit.js": ("animation-record-edit.js", "text/javascript"),
                  "/animation-record-glb.js": ("animation-record-glb.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
-                 "/texture-png.js": ("texture-png.js", "text/javascript")}
+                 "/texture-png.js": ("texture-png.js", "text/javascript"),
+                 "/texture-source-retention.js": ("texture-source-retention.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})
             return
@@ -859,12 +860,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                 request_limit = 44 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/texture-png-preview', '/api/texture-png-pixels-preview', '/api/texture-png-scene-preview', '/api/texture-png-import'):
-                request_limit = 24 * 1024 * 1024
             if not 0 < length <= request_limit or self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 raise ProjectError(f"Commands require a JSON object of at most {request_limit} bytes")
             content = self.rfile.read(length)
@@ -1731,6 +1730,20 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route in ('/api/texture-glb-retain-review','/api/texture-glb-retain'):
+                    fields={'asset_id','expected_sha256','source_key','content_base64'}
+                    if route.endswith('retain'):fields.add('review_key')
+                    if set(body)!=fields or not isinstance(body['content_base64'],str) or not 1<=len(body['content_base64'])<=44739244:
+                        raise ProjectError('Original GLB retention requires bounded file bytes and current texture context')
+                    try:payload=base64.b64decode(body['content_base64'],validate=True)
+                    except ValueError as exc:raise ProjectError('Original GLB requires valid base64') from exc
+                    from .texture_source_retention import review,apply
+                    args=(self.server.project,body['asset_id'],body['expected_sha256'],body['source_key'],payload)
+                    if route.endswith('review'):self._json(200,review(*args))
+                    else:
+                        report=apply(*args,body['review_key'])
+                        self._json(200,dict(self.server.state(),retention_report=report))
                     return
                 if route == '/api/texture-glb-source':
                     if set(body)!={'asset_id','expected_sha256'} or not isinstance(body['asset_id'],str) or not 1<=len(body['asset_id'])<=512:
