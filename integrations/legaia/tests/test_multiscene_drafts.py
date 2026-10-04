@@ -3,11 +3,16 @@ from pathlib import Path
 from copy import deepcopy
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 from sdk.project import ProjectService, ProjectError
 from sdk.draft_build import prepare_draft_archive
 
 
 class MultiSceneDrafts(unittest.TestCase):
+    def setUp(self):
+        # Routing fixtures substitute native archive bytes and MAN rebuilds.
+        self.enterContext(patch('sdk.draft_build._archive',return_value=SimpleNamespace(header_offset=0)))
+
     def test_project_export_does_not_require_or_invent_a_draft(self):
         project=ProjectService(Path('.'))
         project.imports={'scene://a':{}}

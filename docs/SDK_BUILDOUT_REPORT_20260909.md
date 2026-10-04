@@ -1,5 +1,20 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — prefixed PROT export delivery:** The experimental parent
+export now parses the composed archive's actual PROT header location and passes
+it into the MAN batch rebuild. The deferred compressed scene path no longer
+rejects the native-supported prefixed header. The selected-scene direct writer
+already carries its qualified header offset.
+
+Twelve focused checks pass, including synthetic physical-disc output/reopen with
+a 2048-byte PROT prefix for model/ANM/MAN growth and raw ANM/MAN growth, plus
+existing unprefixed, no-ledger, routing and export completion checks. Exact final
+payload and preserved-neighbor checks remain in those construction smokes.
+Routing-only fixtures explicitly substitute native archive-header parsing; the
+physical-disc checks use real native transforms and writer. No physical Retail
+disc export, game launch or installed-runtime modification occurred. Gameplay
+stays deferred and the full solo SDK goal remains active.
+
 **2026-10-04 — model topology in experimental archive export:** Export now
 prepares source-qualified model-growth requests, keeps their authored pack members
 out of each scene's fixed-layout model serializer, and composes model and ANM

@@ -42,7 +42,13 @@ class AnimationDraftExport(unittest.TestCase):
     def test_model_and_man_growth_without_animation_ledger_synthetic_disc(self):
         self._run(topology=True,bank_growth=False)
 
-    def _run(self,streaming=False,man_first=False,topology=False,bank_growth=True):
+    def test_prefixed_archive_model_anm_man_synthetic_disc(self):
+        self._run(topology=True,header_offset=2048)
+
+    def test_prefixed_archive_raw_anm_man_synthetic_disc(self):
+        self._run(streaming=True,man_first=True,header_offset=2048)
+
+    def _run(self,streaming=False,man_first=False,topology=False,bank_growth=True,header_offset=0):
         _,bank,expanded,_,_=bank_fixture();man=man_fixture()
         candidate,_=append_actor_candidates(man,sha256(man).hexdigest(),[
             dict(id='npc',donor_record_index=1,position=dict(x=832,z=896))])
@@ -57,7 +63,7 @@ class AnimationDraftExport(unittest.TestCase):
             kind,size=(5,len(bank)) if i==0 else (3,len(man)) if i==1 else (1,len(data))
             if topology and i==3:kind,size=2,len(pack)
             struct.pack_into('<II',carrier,8+8*i,(kind<<24)|size,len(carrier));carrier.extend(data)
-        source,starts=archive_source(bytes(carrier));table=parse_scene_assets(bytes(carrier),1)
+        source,starts=archive_source(bytes(carrier),header_offset);table=parse_scene_assets(bytes(carrier),1)
         resource=dict(kind='animation-bank',entry_index=1,table_offset=0,descriptor_index=0,
             expected_bank_sha256=sha256(bank).hexdigest(),bank=expanded)
         native_request=dict(entry_index=1,table_offset=0,source_man_sha256=sha256(man).hexdigest(),candidate=candidate)
@@ -68,7 +74,7 @@ class AnimationDraftExport(unittest.TestCase):
             candidate+=bytes(-len(candidate)%4)
             parts=[chunk(3,man),chunk(5,bank)] if man_first else [chunk(5,bank),chunk(3,man)]
             carrier=chunk(1,b'KEEP')+b''.join(parts)+chunk(1,b'TAILraw!')+bytes(4)
-            source,starts=archive_source(carrier)
+            source,starts=archive_source(carrier,header_offset)
             rows=streaming_chunks(carrier)[0]
             resource=dict(kind='streaming-animation-bank',entry_index=1,
                 chunk_header_offset=next(c['header_offset'] for c in rows if c['type_byte']==5),

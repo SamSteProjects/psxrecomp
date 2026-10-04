@@ -10,6 +10,7 @@ from importer.man_assignments import load_man_assignment_context
 from importer.dialogue_authoring import load_dialogue_authoring_context
 from importer.transition_authoring import load_transition_authoring_context
 from importer.prot_layout import locate_physical_span
+from importer.model_pack_archive import _archive
 from importer.prot_rebuild import rebuild_man_entry, rebuild_man_entries, patch_archive_spans
 from importer.serialization import patch_man_positions
 from .project import ProjectError, digest
@@ -106,7 +107,8 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
             remapped.append(request)
         requests=remapped
         if animation_audit is not None:animation_audit['streaming_MAN_header_relocations']=moves
-    rebuilt,container=rebuild_man_entries(composed,sha256(composed).hexdigest(),requests)
+    rebuilt,container=rebuild_man_entries(composed,sha256(composed).hexdigest(),requests,
+        header_offset=_archive(composed).header_offset)
     if model_requests:
         from importer.model_pack_archive import verify_rebuilt_model_packs
         candidates=[dict(entry_index=row['entry_index'],descriptor_index=row['descriptor_index'],
@@ -393,8 +395,6 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         request=dict(entry_index=span['entry_index'],table_offset=span['offset_within_span'],
                      source_man_sha256=sha256(source).hexdigest(),candidate=candidate)
         if defer_rebuild:
-            if archive.header_offset!=0:
-                raise ProjectError('Multi-scene draft export requires the primary PROT header')
             rebuilt,container_audit=prot,None
         else:
             composed,_=patch_archive_spans(prot,prot_hash,map_patches)

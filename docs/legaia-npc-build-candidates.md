@@ -1,5 +1,11 @@
 # Source NPC candidates in normal Build
 
+Experimental parent export now propagates the parsed native PROT header location
+through MAN batch rebuilding. Both primary and 2048-byte-prefixed headers are
+supported by that orchestration. Synthetic physical-disc reopen verifies prefixed
+compressed model/ANM/MAN composition and raw ANM/MAN composition with exact final
+payloads. This layout check does not establish Retail gameplay acceptance.
+
 **2026-10-04 — experimental model composition:** Experimental archive export
 now uses qualified model-growth requests too. Those requests own every authored
 member in a relocating pack, while scene preparation serializes the MAN and
