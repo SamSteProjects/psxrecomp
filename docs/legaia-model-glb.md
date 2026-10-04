@@ -1,5 +1,30 @@
 # Source-bound model GLB editing
 
+## Choose a static scene in a mixed file
+
+A GLB may contain static and animated scenes. Choose a source scene whose entire
+node hierarchy is static and unskinned. A channel targeting any selected node,
+including a parent or a node shared between scenes, rejects this mesh workflow.
+A separate animated instance of the same mesh can remain outside the selection.
+Selected skin, morph and node-extension data retain their existing rejection.
+The geometry-independent catalog keeps other source scenes selectable after an
+animated default scene fails qualification.
+
+Animation target ownership follows the standard node/property relationships in
+the [Khronos glTF animation specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#animations).
+This bounded mesh workflow requires explicit existing integer target nodes and
+standard translation/rotation/scale/weights paths. Missing targets and animation,
+channel or target extensions reject instead of inferring activity. The source
+may have at most 64 animation clips, 64 skin records and 256 total animation
+channels; sampler references must resolve within each bounded clip.
+
+The dialogs report excluded clip/skin counts. Only activity ownership metadata
+is qualified; excluded sampler values, skin payloads and their animation behavior
+are not decoded or validated as playable assets. No pose is sampled or baked.
+Review binds the exact file, chosen scene and static scope, and retains the normal
+native donor, source hash, Undo/Redo, persistence and Build gates. This does not
+add animated mesh import or skin retargeting.
+
 ## Compare while mapping donors
 
 **Map GLB section donors** shows the mapping controls beside the mesh comparison

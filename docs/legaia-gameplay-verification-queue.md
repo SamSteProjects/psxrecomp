@@ -1,5 +1,28 @@
 # Deferred gameplay verification
 
+**2026-10-04 — static scene import from mixed GLBs:** Static mesh qualification
+now resolves bounded animation channel targets instead of rejecting every GLB
+with an animation or skin table. The entire selected node hierarchy must stay
+static and unskinned, including its parents. Other scenes may contain animation
+and skin records; their payloads are excluded, not decoded or imported. Unknown,
+missing, extended or invalid target ownership rejects qualification. Existing
+static-only imports retain their previous reports.
+
+Optional `static_scope` records selected nodes, animated nodes and excluded clip/
+skin counts. Browser qualification checks typed, disjoint ownership and mesh
+ancestry; atomic donor mapping requires matching scope in inventory and every
+native step. Both import dialogs explicitly display the excluded-data counts.
+Ten focused construction checks passed, including exact normal Build readback,
+one Undo/Redo entry, Save/Open, changed-target review rejection even with identical
+candidate bytes, ancestor/skin guards and malformed activity bounds. The actual
+Retail editor smoke rejects an animated default scene, selects a static hierarchy,
+reviews mixed UV donor mappings and returns from scene inspection with choices
+retained. Screenshot inspected; project files/history unchanged, no Apply or Run.
+Private evidence: `local-output/sdk-20260909/glb-static-selection-20261004/parent/`.
+No immediate gameplay verification is required for source selection; final native
+appearance remains deferred. General animated/skin import and the full SDK goal
+remain unfinished and active.
+
 **2026-10-04 — donor mapping beside the mesh comparison:** The batch GLB
 mapping dialog now places its section controls alongside the Current/Proposed
 comparison. The section list scrolls independently, keeping Review, Apply and
