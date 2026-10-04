@@ -562,3 +562,25 @@ Activation is the next required native step. SDK normal Build still emits format
 `local-output/sdk-20260909/mod-disc-relocation-20261003/parent/`.
 CMake regression registered; full framework suite not run. Existing TOML/parser
 warnings appear in native builds. No game, installation or full-disc export ran.
+
+
+## Activation preflight before reader publication
+
+`runtime/include/disc_relocation_activation.h` provides
+`PrepareDiscRelocationReader` for a parsed payload and fresh unmodified reader
+bound to the committed source identity. It verifies original PROT/metadata
+preimages, inventories source file/directory identities and allocations within
+budgets, then installs the candidate. Every reopened entry must retain type/size
+and follow the expected extent shift; PROT gains its proposed size. Root mapping
+and all directory child counts must match. Proposed PROT is streamed through the
+installed reader and hashed without another full readback allocation. A failure
+after installation clears relocation and restores the original reader root.
+
+The native ISOReader regression passes for stale source rejection, wrong movie
+extent rejection, hidden directory membership rejection/rollback and successful
+PROT/movie readback, alongside previous mapping/lifetime cases. MSVC uses cached
+libchdr plus native SHA256; existing library/parser warnings remain. Private
+build/log: `local-output/sdk-20260909/iso-reader-relocation-20261003/parent/`.
+Runtime publication/ownership/lifetime and path-table semantic qualification are
+still required; runtime commit's explicit activation guard remains. Normal Build
+is not connected. No game, installation or full Retail disc export ran.

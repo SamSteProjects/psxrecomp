@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+Activation preflight checkpoint (2026-10-03): source hashes, bounded ISO entry
+mapping/membership and streamed proposed PROT readback qualify offline. Wrong
+movie mapping/extra directory entries reject and roll back. Runtime publication,
+lifetime, path-table semantic checks and normal Build remain unfinished. Commit
+still rejects enabled relocation rather than silently running stock. No immediate
+gameplay gate; no game or full Retail export ran.
+
 Feature relocation manifest checkpoint (2026-10-03): format 7 declarations,
 selection, payload requalification/fingerprinting and provider/disc-edit conflicts
 pass offline. Runtime commit rejects enabled relocation while activation remains

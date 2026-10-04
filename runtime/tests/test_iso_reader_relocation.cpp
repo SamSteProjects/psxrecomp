@@ -1,4 +1,5 @@
 #include "iso_reader.h"
+#include "disc_relocation_activation.h"
 
 #include <algorithm>
 #include <chrono>
@@ -86,6 +87,31 @@ int main() {
     check(reader.InstallDiscRelocation(plan),"reinstall after clear failed"); reader.Close();
     check(!reader.HasDiscRelocation()&&reader.GetSectorCount()==0,"close retained relocation");
     check(reader.Open(path.string())&&!reader.HasDiscRelocation()&&reader.GetSectorCount()==60,"reopen retained relocation");
+    reader.Close();
+    check(reader.Open(path.string()),"preflight source open failed");
+    PS1::DiscRelocationPayload qualified;qualified.plan=plan;
+    std::vector<uint8_t> original_prot;
+    original_prot.insert(original_prot.end(),sectors[30].begin(),sectors[30].end());
+    original_prot.insert(original_prot.end(),sectors[31].begin(),sectors[31].end());
+    qualified.source_prot_digest=PS1::DiscHash(original_prot.data(),original_prot.size());
+    qualified.proposed_prot_digest=PS1::DiscHash(plan.replacement.data(),plan.replacement.size());
+    for(const auto& metadata:plan.metadata) {
+        const uint32_t old_lba=metadata.first>=34?metadata.first-2:metadata.first;
+        qualified.preimages.push_back({old_lba,metadata.first,PS1::DiscHash(sectors[old_lba].data(),2048),
+            PS1::DiscHash(metadata.second.data(),2048)});
+    }
+    auto stale=qualified;stale.source_prot_digest[0]^=1;
+    check(!PS1::PrepareDiscRelocationReader(reader,std::move(stale),&error)&&!reader.HasDiscRelocation(),"stale source preflight accepted");
+    auto wrong=qualified;wrong.plan.metadata[42]=directory(42,8192,51);
+    for(auto& preimage:wrong.preimages)if(preimage.proposed_lba==42)preimage.proposed_digest=PS1::DiscHash(wrong.plan.metadata[42].data(),2048);
+    check(!PS1::PrepareDiscRelocationReader(reader,std::move(wrong),&error)&&!reader.HasDiscRelocation()&&reader.GetRootDirectory().lba==40,
+          "incorrect movie relocation must fail and restore source layout");
+    wrong=qualified;auto hidden=record("HIDDEN.BIN;1",55,2048,false);
+    auto& dir=wrong.plan.metadata[42];size_t end=0;while(dir[end])end+=dir[end];std::copy(hidden.begin(),hidden.end(),dir.begin()+end);
+    for(auto& preimage:wrong.preimages)if(preimage.proposed_lba==42)preimage.proposed_digest=PS1::DiscHash(dir.data(),2048);
+    check(!PS1::PrepareDiscRelocationReader(reader,std::move(wrong),&error)&&!reader.HasDiscRelocation(),"hidden directory member must reject and rollback");
+    check(PS1::PrepareDiscRelocationReader(reader,std::move(qualified),&error)&&reader.HasDiscRelocation(),"qualified relocation preflight failed");
+    check(reader.GetFileSize("PROT.DAT")==8192&&reader.FindFile("MOVIE.STR",entry)&&entry.lba==50,"preflight did not expose qualified ISO layout");
     reader.Close(); fs::remove(path); fs::remove(root);
     std::cout<<"ISOReader relocation checks passed\n";
 }

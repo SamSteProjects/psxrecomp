@@ -360,7 +360,7 @@ if(BUILD_TESTING)
     add_test(NAME iso_reader_sbi_test COMMAND iso_reader_sbi_test)
 
     add_executable(iso_reader_relocation_test tests/test_iso_reader_relocation.cpp
-        src/iso_reader.cpp src/cue_sheet.cpp)
+        src/iso_reader.cpp src/cue_sheet.cpp src/psx_sha256.c)
     target_include_directories(iso_reader_relocation_test PRIVATE include)
     target_link_libraries(iso_reader_relocation_test PRIVATE chdr-static)
     add_test(NAME iso_reader_relocation_test COMMAND iso_reader_relocation_test)
