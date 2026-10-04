@@ -1,5 +1,24 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — prepared native texture inputs:** After **Prepare PNG export**,
+**Use prepared binding and STP** now fills both native source inputs directly from
+the qualified export. The chosen edited PNG remains, including an extracted GLB
+image. The action replaces the binding and STP inputs, clears an unavailable STP
+plane, and withdraws the previous review. This removes the download/re-upload
+round trip while preserving explicit Review and Apply. Source/context, busy and
+stale gates also govern prepared inputs.
+
+Existing PNG lifecycle checks passed with focused additions for missing PNG,
+retained image identity, review invalidation, stale context and a direct-color
+export without STP. An actual Retail Town01 browser smoke prepared the export,
+used its binding/STP, extracted a GLB PNG, reviewed and inspected pixels, returned,
+reused prepared inputs and restored a cleared STP plane. Screenshot inspected;
+no Apply or Run. Saved project/import data, authored state and history stayed
+unchanged; the ordinary export artifacts were written beneath `Exports`.
+Private evidence: `local-output/sdk-20260909/texture-prepared-source-20261004/parent/`.
+No native codec or Build change; previous exact TIM Build proof still applies to
+the shared pipeline. Gameplay remains deferred and the full SDK goal stays active.
+
 **2026-10-04 — embedded GLB PNG source handoff:** The existing texture PNG
 editor now accepts a bounded GLB and explicitly selected embedded PNG image.
 Read-only inspection lists source image indices, names, dimensions and byte hashes;

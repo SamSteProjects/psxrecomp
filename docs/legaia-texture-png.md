@@ -5,7 +5,7 @@ The SDK can export the current verified TIM texture as a PNG, accept an external
 ## Editor workflow
 
 1. Open an imported texture, choose its palette and enter Edit mode. Select **Edit texture through PNG**.
-2. Select **Prepare PNG export**, then download the PNG and its binding JSON. Download the separate STP plane if you intend to edit STP. The image represents the effective texture, including an existing authored replacement.
+2. Select **Prepare PNG export**. Download files for external editing, or select **Use prepared binding and STP** to fill both source inputs directly. This replaces the binding and STP files, clearing the STP input when the export has no plane, and keeps your selected edited PNG. The export represents the effective texture, including an existing authored replacement.
 3. Edit the PNG externally without resizing it. Preserve binary alpha: every pixel must have alpha 0 or 255. Keep the binding JSON unchanged. An STP plane must contain only opaque black and opaque white at the same dimensions.
 4. Choose the edited PNG, its binding JSON and optionally an STP plane. Choose **Use existing palette** or **Rebuild selected palette** for an indexed TIM. Direct-color TIMs use existing mode.
 5. Select **Review selected files**. The review shows both retail-to-proposed and current-to-proposed changes, palette-word/index/image-byte counts, RGB error, STP changes and forced black/transparent rules. Review does not alter authored state or history.
@@ -20,8 +20,9 @@ Instead of choosing an externally saved edited PNG, choose **GLB PNG source**,
 select **Embedded GLB PNG**, and select **Use embedded PNG**. The editor places
 those exact extracted bytes in **Edited texture PNG**, displays GLB and PNG SHA-256
 identities, and reads them through the same fixed-dimension/native-binding checks.
-Choose the binding JSON exported from this texture and the optional STP plane as
-usual; then Review and inspect before explicit Apply. Changing the GLB source or
+Use **Prepare PNG export** and **Use prepared binding and STP** for this native
+texture, or upload its exported binding JSON and optional STP plane manually. Then
+Review and inspect before explicit Apply. Changing the GLB source or
 image selection withdraws any accepted review. Extraction itself changes no native
 asset, saved project file or history entry.
 
