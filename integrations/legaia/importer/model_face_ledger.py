@@ -274,7 +274,9 @@ def _replay_face_ledger(original, ledger, *, capture=False):
                 row=allocated_by_id[group['group_id']];owner=row['object_index']
                 root=next_group.get(owner,0);next_group[owner]=root+1
                 group_records.append(dict(group_id=group['group_id'],object_index=owner,
-                    origin_group_index=root,donor_face_id=group['donor_face_id']))
+                    origin_group_index=root,donor_face_id=group['donor_face_id'],
+                    flags=int.from_bytes(current[row['byte_offset']+2:row['byte_offset']+4],'little'),
+                    mode=current[row['byte_offset']+7]))
                 group_reserved.add(group['group_id'])
                 for face in group['faces']:
                     identity=face['face_id'];origins[identity]=(owner,root)

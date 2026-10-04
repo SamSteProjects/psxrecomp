@@ -86,6 +86,17 @@ decodeModelPrimitivePreview(review,decoded,context,edits);
         self.assertEqual(replay_face_ledger(base,p.model_overrides[asset]['ledger'])[1]['allocated_group_count'],1)
         p.undo();self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),current)
         p.redo();self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),final)
+        from sdk import model_materials
+        from contextlib import nullcontext
+        with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()):
+            catalog=model_materials.snapshot(p,asset)
+            group_index=catalog['authored_groups'][0][0]['current_index']
+            semi=catalog['objects'][0]['groups'][group_index]['semi_transparent']
+            edits=[dict(kind='group',object_index=0,group_index=group_index,values={'semi_transparent':not semi})]
+            candidate,review=model_materials.prepare(p,asset,edits,sha256(final).hexdigest(),'a'*64)
+            model_materials.apply(p,asset,edits,sha256(final).hexdigest(),'a'*64,review['review_key'])
+            self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),candidate)
+            final=candidate
         p.save();saved=deepcopy(p.model_overrides[asset])
         with patch.object(ProjectService,'_model_source',side_effect=p._model_source):
             reopened=ProjectService.open(p.root)

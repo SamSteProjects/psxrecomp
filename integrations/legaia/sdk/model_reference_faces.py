@@ -49,7 +49,11 @@ def addition_mapping(project, asset_id, retail, effective, binding):
 
 
 def addition_group_mapping(project, asset_id, retail, effective, binding):
-    """Retain original packet-group ownership through deleted donor faces."""
+    return addition_group_ownership(project,asset_id,retail,effective,binding)[0]
+
+
+def addition_group_ownership(project, asset_id, retail, effective, binding):
+    """Retain Retail ownership; authored groups have an explicit null counterpart."""
     from .model_face_addition import base_content
     from importer.model_face_ledger import qualify_face_ledger, _operations
     base=base_content(project,asset_id,retail,binding)
@@ -67,6 +71,11 @@ def addition_group_mapping(project, asset_id, retail, effective, binding):
         if operation['kind']=='add_faces':
             for request in operation['additions']:
                 origins[request['face_id']]=origins[request['donor_face_id']]
+        elif operation['kind']=='allocate_groups':
+            for group in operation['requests']:
+                owner=origins[group['donor_face_id']][0]
+                for face in group['faces']:
+                    origins[face['face_id']]=(owner,None)
     current=inspect_model_primitives(effective)['objects'];groups=[{} for _ in current]
     for face in audit['faces']:
         owner=face['object_index'];origin_owner,original=origins[face['face_id']]
@@ -80,4 +89,16 @@ def addition_group_mapping(project, asset_id, retail, effective, binding):
         if set(owned)!=set(range(count)):
             raise ProjectError('Current group has no qualified original packet owner')
         result.append([owned[index] for index in range(count)])
-    return result
+    authored=[[] for _ in current]
+    for group in audit.get('allocated_groups',[]):
+        index=group['current_group_index'];owner=group['object_index']
+        if index is None:continue
+        if result[owner][index] is not None:
+            raise ProjectError('Authored group acquired an invented Retail counterpart')
+        authored[owner].append(dict(group_id=group['group_id'],current_index=index,
+                                   flags=group['flags'],mode=group['mode']))
+    for owner,rows in enumerate(authored):
+        rows.sort(key=lambda row:row['current_index'])
+        if {row['current_index'] for row in rows}!={index for index,origin in enumerate(result[owner]) if origin is None}:
+            raise ProjectError('Current authored group has no stable allocation owner')
+    return result,authored
