@@ -154,13 +154,16 @@ def _apply_removal(current, faces, identities):
     return candidate,updated
 
 
-def replay_face_ledger(original, ledger):
+def _replay_face_ledger(original, ledger, *, capture=False):
     source_hash = sha256(original).hexdigest()
     operations = _operations(ledger)
     if (ledger['source_sha256'] != source_hash or type(ledger['source_byte_length']) is not int
             or ledger['source_byte_length'] != len(original)):
         raise ImportError('Face ledger source binding changed')
     faces = _source_faces(original, source_hash)
+    origins={identity:(face['object_index'],face['group_index']) for identity,face in faces.items()} if capture else {}
+    ranks={identity:index for index,identity in enumerate(faces)} if capture else {}
+    deleted_packets={}
     current, total, batches = original, 0, 0
     reserved=set();removed=[]
     for operation in operations:
@@ -173,6 +176,11 @@ def replay_face_ledger(original, ledger):
             if total > MAX_LEDGER_FACES or batches > MAX_BATCHES:
                 raise ImportError('Face ledger exceeds its authored face or batch budget')
             current, faces = _apply_batch(current, faces, operation['additions'],reserved)
+            if capture:
+                for request in operation['additions']:
+                    identity=request['face_id']
+                    origins[identity]=origins[request['donor_face_id']]
+                    ranks[identity]=len(ranks)
             reserved.update(row['face_id'] for row in operation['additions'])
         elif operation.get('kind') == 'edit_content':
             if set(operation) != {'kind','input_sha256','proposed_sha256','runs'}:
@@ -181,7 +189,22 @@ def replay_face_ledger(original, ledger):
         elif operation.get('kind') == 'remove_faces' and ledger['schema_version'] == REMOVAL_SCHEMA:
             if set(operation) != {'kind','input_sha256','proposed_sha256','face_ids'}:
                 raise ImportError('Face ledger removal schema changed')
+            prior=current if capture else None;prior_faces=faces if capture else None
             current,faces=_apply_removal(current,faces,operation['face_ids'])
+            if capture:
+                inspection=_qualified_model(prior)[0];groups={};group_counts={}
+                for owner,start,count,stride,first in _groups(prior,inspection):
+                    group=group_counts.get(owner,0);group_counts[owner]=group+1
+                    groups[owner,group]=(start,count,stride,first)
+                for identity in operation['face_ids']:
+                    face=prior_faces[identity];owner=face['object_index']
+                    start,count,stride,first=groups[owner,face['group_index']]
+                    at=start+8+(face['current_primitive_index']-first)*stride
+                    deleted_packets[identity]=dict(face=deepcopy(face),origin_group_index=origins[identity][1],
+                        stable_order=ranks[identity],deletion_input_sha256=operation['input_sha256'],
+                        source_byte_length=len(prior),packet_byte_offset=at,
+                        packet=prior[at:at+stride],descriptor=prior[start:start+8],
+                        footer=prior[start+8+count*stride:start+8+(count+1)*stride])
             removed.extend(operation['face_ids'])
         else:
             raise ImportError('Face ledger operation kind is unknown')
@@ -193,7 +216,22 @@ def replay_face_ledger(original, ledger):
         authored_face_count=total, faces=list(faces.values()))
     if ledger['schema_version'] == REMOVAL_SCHEMA:
         audit['removed_face_ids']=removed
+    return current,audit,deleted_packets
+
+
+def replay_face_ledger(original,ledger):
+    current,audit,_=_replay_face_ledger(original,ledger)
     return current,audit
+
+
+def deleted_face_sources(original,ledger):
+    """Detached exact deletion preimages recovered only from complete qualified replay.
+
+    These bytes are not user-provided ledger fields or restoration requests.
+    Stable ordering and original group ownership survive Current compaction.
+    """
+    _,_,packets=_replay_face_ledger(original,ledger,capture=True)
+    return deepcopy(packets)
 
 
 def append_content_ledger(original, ledger, candidate):
