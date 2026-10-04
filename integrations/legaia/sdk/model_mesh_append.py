@@ -2,7 +2,7 @@
 from hashlib import sha256
 from uuid import UUID
 from importer.model_mesh_append import decode_append_mesh
-from importer.model_face_ledger import append_vector_ledger,append_face_ledger,append_group_ledger
+from importer.model_face_ledger import append_vector_ledger,append_face_ledger,append_group_ledger,append_removal_ledger
 from importer.model_primitives import inspect_model_primitives
 from importer.assets import decode_tmd
 from .model_face_addition import _context,_budget,FORMAT
@@ -37,9 +37,11 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False):
-    if type(new_group) is not bool:
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False):
+    if type(new_group) is not bool or type(replace_group) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
+    if replace_group and not new_group:
+        raise ProjectError('Mesh group replacement requires an independent new group')
     original,effective,base,base_binding,ledger,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh append inspection')
@@ -129,6 +131,11 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         candidate,updated,audit=append_group_ledger(base,updated,group_requests)
     else:
         candidate,updated,audit=append_face_ledger(base,updated,additions)
+    removed=[]
+    if replace_group:
+        removed=[face['face_id'] for face in topology['faces'] if face['object_index']==donor['object_index']
+            and face['group_index']==row['group_index']]
+        candidate,updated,audit=append_removal_ledger(base,updated,removed)
     binding=dict(format=FORMAT,source_scene_id=project.active_scene,source_sha256=sha256(original).hexdigest(),
         asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),base_binding=base_binding,ledger=updated)
     report=dict(schema_version='legaia.model-mesh-append-review.v4',asset_id=asset_id,
@@ -144,6 +151,11 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report.update(schema_version='legaia.model-mesh-append-review.v5',allocation_mode='new_group',group_requests=group_requests)
         report['limitations'][-1]='Appends geometry in one independent native packet group in the donor object; retained faces and groups remain. No native object or animation channel is created. Gameplay remains unverified.'
         report['review_key']=digest(dict(base_review_key=report['review_key'],allocation_mode='new_group',group_requests=group_requests))
+    if replace_group:
+        report.update(schema_version='legaia.model-mesh-append-review.v6',allocation_mode='replace_group',
+            removed_face_ids=removed,replaced_group=dict(object_index=donor['object_index'],group_index=row['group_index']))
+        report['limitations'][-1]='Replaces the complete Current donor packet group with a new native group. Retired faces remain reserved and restorable in ledger history; original vector rows remain. No native object, image or animation channel is created. Gameplay remains unverified.'
+        report['review_key']=digest(dict(base_review_key=report['review_key'],allocation_mode='replace_group',removed_face_ids=removed,replaced_group=report['replaced_group']))
     if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh append review')
     return candidate,binding,_budget(report,64*1024*1024)
 

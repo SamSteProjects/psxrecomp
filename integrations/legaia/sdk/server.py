@@ -1080,8 +1080,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route in ('/api/model-mesh-append-preview','/api/model-mesh-append'):
                     fields={'asset_id','content_base64','donor_face_id','expected_sha256','source_key'}
                     if 'new_group' in body:fields.add('new_group')
+                    if 'replace_group' in body:fields.add('replace_group')
                     if route=='/api/model-mesh-append':fields.add('review_key')
-                    if (set(body)!=fields or type(body.get('new_group',False)) is not bool or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
+                    if (set(body)!=fields or type(body.get('new_group',False)) is not bool or type(body.get('replace_group',False)) is not bool or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
                             or not isinstance(body['donor_face_id'],str) or not 0<len(body['donor_face_id'])<=512
                             or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key])
                                    for key in fields & {'source_key','expected_sha256','review_key'})):
@@ -1095,9 +1096,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                     args=(body['asset_id'],payload,body['donor_face_id'],body['expected_sha256'],body['source_key'])
                     if route.endswith('-preview'):
                         from .model_mesh_append import review
-                        self._json(200,review(self.server.project,*args,new_group=body.get('new_group',False)))
+                        self._json(200,review(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False)))
                     else:
-                        self.server.project.apply_model_mesh_append(*args,body['review_key'],new_group=body.get('new_group',False))
+                        self.server.project.apply_model_mesh_append(*args,body['review_key'],new_group=body.get('new_group',False),replace_group=body.get('replace_group',False))
                         self._json(200,self.server.state())
                     return
                 if route in ('/api/model-object-allocation-source','/api/model-object-allocation-preview','/api/model-object-allocation'):
