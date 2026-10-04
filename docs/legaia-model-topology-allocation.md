@@ -511,3 +511,27 @@ ownership, conflict checks and activation are still required, followed by normal
 Build packaging. Eight focused package/logical-disc/ISO tests pass; package tests
 pass again after the preallocation guard. Output remains runtime/build/gameplay
 unconnected. No game, helper, installation or full-disc export ran.
+
+
+## Native payload qualification
+
+`runtime/include/disc_relocation_package.h` decodes the exact binary v1 contract.
+Parsing requires the whole-package expected SHA256 and stages the candidate
+before assigning output. Header/extents, budgets, exact length, proposed PROT
+hash and metadata ordering/ownership/candidate hashes are verified. The result
+retains original PROT and metadata preimage digests with proposed payloads.
+
+`VerifyDiscRelocationSource` must run against an unmodified reader bound to the
+committed disc identity. It checks physical sector count, hashes original PROT
+user sectors and checks every metadata preimage. Mutated parsed candidate
+PROT/metadata is rejected too. This does not replace full ISO qualification,
+feature/resolver conflict rules or package activation.
+
+The standalone native regression passes with warnings treated as errors. A
+Python-generated payload and source sectors verify natively with identical
+replacement bytes and all five metadata source/proposed LBAs. Payload is 18,888
+bytes, SHA256 `88ec8609e1e62340b14fee948057c78d678ecda9332bcdaf5409eea57c53b5b4`.
+CMake target registered; full runtime suite not run. Private proof:
+`local-output/sdk-20260909/native-relocation-package-20261003/parent/`.
+No game/helper/installation/full-disc export ran. Normal Build integration and
+activation remain unfinished.

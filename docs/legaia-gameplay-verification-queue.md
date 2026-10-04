@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Native payload qualification checkpoint (2026-10-03): strict native decoding and
+original PROT/metadata preimage checks pass, including Python/native payload and
+source-sector interoperability. Feature manifests, conflicts, activation and
+normal Build remain unfinished. No game, installation or full-disc export ran;
+no immediate gameplay gate is added.
+
 Relocation package payload checkpoint (2026-10-03): source-bound PROT/metadata
 payload encoding and strict readback pass offline. The legacy derived-disc
 channel is forbidden for feature-style manifests. Native parser, feature conflict
