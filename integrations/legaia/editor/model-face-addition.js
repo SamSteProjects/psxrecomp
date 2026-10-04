@@ -1,3 +1,4 @@
+import {validateObjectOwnership} from './model-object-ownership.js';
 import {SceneRenderer} from './scene-renderer.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
@@ -8,6 +9,13 @@ export function decodeFaceAdditionSource(value,asset,key){
   if(value?.schema_version!=='legaia.model-face-addition-source.v1'||value.asset_id!==asset||value.project_source_key!==key||!hash(key)||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_changed!==false||value.gameplay_verified!==false)fail('Face source differs from this model.');
   const audit=value.topology,objects=value.objects;
   if(!audit||!hash(audit.source_sha256)||audit.proposed_sha256!==value.effective_sha256||!integer(audit.authored_face_count,128)||!integer(audit.batch_count,8)||!Array.isArray(audit.faces)||!Array.isArray(objects)||!objects.length||objects.length>1024)fail('Missing stable face ownership.');
+  let objectOwners=null;
+  if(audit.allocated_object_count!==undefined||audit.object_allocation_count!==undefined||audit.objects!==undefined){
+    if(!integer(audit.allocated_object_count,64)||!integer(audit.object_allocation_count,audit.batch_count)||audit.object_allocation_count>audit.allocated_object_count||!audit.allocated_object_count||!audit.object_allocation_count||!Array.isArray(audit.objects))fail('Invalid allocated object history.');
+    objectOwners=audit.objects.map(row=>({object_index:row.object_index,retail_index:row.origin==='source'?row.source_object_index:null,object_id:row.object_id,donor_object_id:row.donor_object_id??null}));
+    validateObjectOwnership(objectOwners,objects.length,objects.length-audit.allocated_object_count);
+    if(audit.objects.some((row,i)=>row.origin!==(i<objects.length-audit.allocated_object_count?'source':'authored')||row.origin==='source'&&row.object_id!==`object://source/${audit.source_sha256}/${i}`))fail('Object history changed its base source identity.');
+  }
   let count=0;for(const [i,obj] of objects.entries()){
     if(obj.object_index!==i||!integer(obj.vertex_count,65535)||!integer(obj.normal_count,65535)||!Array.isArray(obj.primitives)||obj.primitives.length>65535)fail('Invalid face object.');
     for(const [j,row] of obj.primitives.entries()){
@@ -24,7 +32,7 @@ export function decodeFaceAdditionSource(value,asset,key){
   for(const row of audit.faces){
     const primitive=objects[row.object_index]?.primitives[row.current_primitive_index],owner=`${row.object_index}:${row.current_primitive_index}`;
     if(!primitive||row.group_index!==primitive.group_index||ids.has(row.face_id)||owners.has(owner))fail('Duplicate or missing donor owner.');
-    if(row.origin==='source'){if(!integer(row.source_primitive_index,65535)||row.face_id!==`face://source/${audit.source_sha256}/${row.object_index}/${row.source_primitive_index}`)fail('Invalid source face identity.');}
+    if(row.origin==='source'){if(objectOwners&&objectOwners[row.object_index].retail_index===null)fail('Copied object acquired a source face identity.');if(!integer(row.source_primitive_index,65535)||row.face_id!==`face://source/${audit.source_sha256}/${row.object_index}/${row.source_primitive_index}`)fail('Invalid source face identity.');}
     else if(row.origin==='authored'&&authored(row.face_id)){added++;}else fail('Invalid authored face identity.');
     ids.add(row.face_id);owners.add(owner);
   }
@@ -48,7 +56,8 @@ export function decodeFaceAdditionSource(value,asset,key){
   }
   for(const row of audit.faces)if(row.origin==='authored'&&!removed.includes(row.donor_face_id)){
     const donor=audit.faces.find(d=>d.face_id===row.donor_face_id);
-    if(!donor||donor.object_index!==row.object_index||donor.group_index!==row.group_index&&!groupOwners.has(`${row.object_index}:${row.group_index}`))fail('Authored donor provenance is missing.');
+    const group=groupOwners.get(`${row.object_index}:${row.group_index}`),cloned=donor&&objectOwners&&group&&objectOwners[row.object_index].retail_index===null&&objectOwners[row.object_index].donor_object_id===objectOwners[donor.object_index].object_id;
+    if(!donor||row.donor_face_id===row.face_id||donor.object_index!==row.object_index&&!cloned||donor.group_index!==row.group_index&&!group)fail('Authored donor provenance is missing.');
   }
   if(!value.preview||!Array.isArray(value.preview.vertices)||!Array.isArray(value.preview.objects)||value.preview.objects.length!==objects.length)fail('Missing Current geometry.');
   return structuredClone(value);

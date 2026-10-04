@@ -25,6 +25,8 @@ class ObjectProjectTests(unittest.TestCase):
 
     def test_command_review_identity_one_history_step_reopen_and_build(self):
         p,asset=self.fixture();source=model_object_allocation.source(p,asset,'a'*64)
+        self.assertEqual(len(source['native_objects']),len(source['objects']))
+        self.assertEqual(sum(group['primitive_count'] for group in source['native_objects'][0]['groups']),len(source['objects'][0]['primitives']))
         request=clone_request(source['topology'],source['object_identities'][0],100)
         requests=[request];state=deepcopy((p._document(),p.undo_stack,p.redo_stack))
         files=set((p.root/'Authored'/'Models').iterdir());before=p.read_model_replacement(asset,p.model_overrides[asset])
@@ -70,6 +72,30 @@ class ObjectProjectTests(unittest.TestCase):
         self.assertEqual((p._document(),p.undo_stack,p.redo_stack),state)
         self.assertEqual(set((p.root/'Authored'/'Models').iterdir()),files)
         with self.assertRaises(ProjectError):model_object_allocation.review(p,asset,requests,'0'*64,'a'*64)
+
+    def test_HTTP_exact_review_fields_stale_and_repeated_apply(self):
+        from test_model_primitive_workflow import http_server
+        p,asset=self.fixture()
+        with http_server(p) as (server,post),patch.object(server,'state',return_value={'applied':True}):
+            status,source=post('/api/model-object-allocation-source',dict(asset_id=asset,source_key='a'*64))
+            self.assertEqual(status,200)
+            requests=[clone_request(source['topology'],source['object_identities'][0],100)]
+            body=dict(asset_id=asset,source_key='a'*64,expected_sha256=source['effective_sha256'],requests=requests)
+            state=deepcopy((p._document(),p.undo_stack,p.redo_stack));files=set((p.root/'Authored'/'Models').iterdir())
+            status,report=post('/api/model-object-allocation-preview',body);self.assertEqual(status,200)
+            self.assertEqual((p._document(),p.undo_stack,p.redo_stack),state)
+            self.assertEqual(set((p.root/'Authored'/'Models').iterdir()),files)
+            for changes in (dict(extra=True),dict(source_key='0'*64),dict(expected_sha256='0'*64),dict(requests=[]),
+                    dict(requests=requests*65),dict(requests=[dict(requests[0],extra=True)]),
+                    dict(requests=[dict(requests[0],object_id=True)]),dict(requests=[dict(requests[0],groups=[])])):
+                self.assertEqual(post('/api/model-object-allocation-preview',{**body,**changes})[0],400)
+                self.assertEqual((p._document(),p.undo_stack,p.redo_stack),state)
+            self.assertEqual(post('/api/model-object-allocation',{**body,'review_key':'0'*64})[0],400)
+            self.assertEqual((p._document(),p.undo_stack,p.redo_stack),state)
+            self.assertEqual(post('/api/model-object-allocation',{**body,'review_key':report['review_key']})[0],200)
+            state=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+            self.assertEqual(post('/api/model-object-allocation',{**body,'review_key':report['review_key']})[0],400)
+            self.assertEqual((p._document(),p.undo_stack,p.redo_stack),state)
 
 
 if __name__=='__main__':unittest.main()

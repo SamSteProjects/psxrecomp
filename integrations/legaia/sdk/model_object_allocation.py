@@ -1,6 +1,7 @@
 """Reviewed object duplication with stable clone identities and retained base edits."""
 from copy import deepcopy
 from hashlib import sha256
+import struct
 from importer.assets import decode_tmd
 from importer.model_face_ledger import (append_object_ledger,_operations,_reserved_faces,_reserved_groups,
                                       MAX_METADATA_BYTES,MAX_LEDGER_FACES,MAX_LEDGER_VECTORS,MAX_BATCHES,MAX_OPERATIONS)
@@ -8,6 +9,7 @@ from importer.model_object_ledger import source_objects,apply_object_allocation
 from importer.model_object_allocation import MAX_NEW_OBJECTS
 from importer.model_group_allocation import MAX_NEW_GROUPS
 from importer.model_primitives import inspect_model_primitives
+from importer.model_face_removal import _groups
 from .model_face_addition import _context,_budget,FORMAT
 from .project import ProjectError,digest
 from .scene_preview import source_key
@@ -25,10 +27,23 @@ LIMITATIONS=[
 def source(project,asset_id,expected_key):
     original,effective,base,_,_,audit=_context(project,asset_id,expected_key)
     objects=audit.get('objects',list(source_objects(base).values()))
+    packets=inspect_model_primitives(effective,include_normal_references=True)['objects']
+    groups=[[] for _ in packets]
+    for owner,start,count,stride,first in _groups(effective,{'objects':packets}):
+        groups[owner].append(dict(group_index=len(groups[owner]),primitive_count=count,first_primitive_index=first))
+    native=[]
+    for owner,obj in enumerate(packets):
+        vert,nv,normal,nn,prim,claimed,opaque=struct.unpack_from('<7I',effective,12+owner*28)
+        end=min([offset+12 for offset,count in ((vert,nv),(normal,nn)) if count] or [len(effective)])
+        native.append(dict(object_index=owner,table_offsets=[vert,normal,prim],opaque_metadata=opaque,
+            primitive_byte_length=end-prim-12,groups=groups[owner],
+            primitive_sha256=sha256(effective[prim+12:end]).hexdigest(),
+            vertex_sha256=sha256(effective[vert+12:vert+12+nv*8]).hexdigest(),
+            normal_sha256=sha256(effective[normal+12:normal+12+nn*8]).hexdigest()))
     report=dict(schema_version='legaia.model-object-allocation-source.v1',asset_id=asset_id,
         source_sha256=sha256(original).hexdigest(),effective_sha256=sha256(effective).hexdigest(),
         project_source_key=expected_key,topology=deepcopy(audit),object_identities=deepcopy(objects),
-        objects=inspect_model_primitives(effective,include_normal_references=True)['objects'],
+        objects=packets,native_objects=native,
         preview=decode_tmd(effective),remaining_object_budget=MAX_NEW_OBJECTS-audit.get('allocated_object_count',0),
         remaining_group_budget=MAX_NEW_GROUPS-audit.get('allocated_group_count',0),
         remaining_face_budget=MAX_LEDGER_FACES-audit['authored_face_count'],

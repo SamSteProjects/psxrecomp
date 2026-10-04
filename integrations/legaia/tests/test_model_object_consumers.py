@@ -84,5 +84,22 @@ decodeModelPrimitivePreview(review,decodeModelPrimitives(source,source.asset_id,
         p.undo();self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),before)
         p.redo();self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),after)
 
+    def test_shared_face_and_group_donors_qualify_copied_object_ancestry(self):
+        from sdk import model_face_addition,model_group_allocation
+        p,asset=self.fixture();source=model_face_addition.source(p,asset,'a'*64)
+        self.enterContext(patch('sdk.model_group_allocation.source_key',return_value='a'*64))
+        groups=model_group_allocation.source(p,asset,'a'*64)
+        node=shutil.which('node')
+        if not node:self.skipTest('Node unavailable')
+        script="""import {decodeFaceAdditionSource} from './integrations/legaia/editor/model-face-addition.js';
+import {decodeGroupAllocationSource} from './integrations/legaia/editor/model-group-allocation.js';
+import assert from 'node:assert/strict';let text='';for await(const chunk of process.stdin)text+=chunk;
+const {source,groups}=JSON.parse(text),decode=s=>decodeFaceAdditionSource(s,s.asset_id,s.project_source_key);
+decode(source);decodeGroupAllocationSource(groups,groups.asset_id,groups.project_source_key);
+for(const mutate of [s=>s.topology.objects[1].donor_object_id=s.topology.objects[1].object_id,s=>s.topology.allocated_object_count++,s=>s.topology.objects[0].source_object_index=1,s=>s.topology.faces.find(f=>f.object_index===1).donor_face_id=s.topology.faces.find(f=>f.object_index===1).face_id]){const bad=structuredClone(source);mutate(bad);assert.throws(()=>decode(bad));}
+"""
+        result=subprocess.run([node,'--input-type=module','-e',script],input=json.dumps(dict(source=source,groups=groups)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
+        self.assertEqual(result.returncode,0,result.stderr)
+
 
 if __name__=='__main__':unittest.main()
