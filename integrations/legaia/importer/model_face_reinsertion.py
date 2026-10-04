@@ -15,10 +15,6 @@ from .model_face_ledger import _replay_face_ledger, _source_faces, _operations
 
 def reinsert_ledger_faces(original,ledger,face_ids):
     current,audit,deleted=_replay_face_ledger(original,ledger,capture=True)
-    if (not isinstance(face_ids,list) or not 0<len(face_ids)<=4096
-            or any(not isinstance(identity,str) or identity not in deleted for identity in face_ids)
-            or len(set(face_ids))!=len(face_ids)):
-        raise ImportError('Face reinsertion requires unique recorded deleted identities')
     initial=_source_faces(original,sha256(original).hexdigest())
     origins={identity:(face['object_index'],face['group_index']) for identity,face in initial.items()}
     ranks={identity:index for index,identity in enumerate(initial)}
@@ -27,8 +23,17 @@ def reinsert_ledger_faces(original,ledger,face_ids):
             for request in operation['additions']:
                 origins[request['face_id']]=origins[request['donor_face_id']]
                 ranks[request['face_id']]=len(ranks)
+    return _reinsert_faces(current,audit['faces'],deleted,origins,ranks,face_ids)
+
+
+def _reinsert_faces(current,faces,deleted,origins,ranks,face_ids):
+    """Internal replay step; inputs come from the qualified preceding operations."""
+    if (not isinstance(face_ids,list) or not 0<len(face_ids)<=4096
+            or any(not isinstance(identity,str) or identity not in deleted for identity in face_ids)
+            or len(set(face_ids))!=len(face_ids)):
+        raise ImportError('Face reinsertion requires unique recorded deleted identities')
     inspection,_=_qualified_model(current)
-    active={face['face_id']:deepcopy(face) for face in audit['faces']}
+    active={face['face_id']:deepcopy(face) for face in faces}
     groups={};object_groups={}
     for owner,start,count,stride,first in _groups(current,inspection):
         group=len(object_groups.setdefault(owner,[]))
