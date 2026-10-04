@@ -8,7 +8,7 @@ from .core import ImportError
 IDENTITY=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]
 
 
-def node_transform(node):
+def node_transform(node,*,allow_shear=False):
     def values(key,default):
         value=node.get(key,default)
         if not isinstance(value,list) or len(value)!=len(default) or any(type(v) not in (int,float) or not math.isfinite(v) or abs(v)>1e9 for v in value):
@@ -32,7 +32,7 @@ def node_transform(node):
     columns=[[matrix[col*4+row] for row in range(3)] for col in range(3)]
     lengths=[math.hypot(*column) for column in columns]
     if any(length<1e-9 for length in lengths):raise ImportError('Mesh node scale must be nonsingular')
-    if any(abs(sum(a*b for a,b in zip(columns[i],columns[j])))>1e-6*lengths[i]*lengths[j] for i in range(3) for j in range(i)):
+    if not allow_shear and any(abs(sum(a*b for a,b in zip(columns[i],columns[j])))>1e-6*lengths[i]*lengths[j] for i in range(3) for j in range(i)):
         raise ImportError('Mesh node matrix must decompose into TRS without shear')
     a,b,c=matrix[0],matrix[4],matrix[8];d,e,f=matrix[1],matrix[5],matrix[9];g,h,i=matrix[2],matrix[6],matrix[10]
     cofactors=[[e*i-f*h,f*g-d*i,d*h-e*g],[c*h-b*i,a*i-c*g,b*g-a*h],[b*f-c*e,c*d-a*f,a*e-b*d]]
@@ -40,6 +40,14 @@ def node_transform(node):
     if not math.isfinite(determinant) or determinant==0:raise ImportError('Mesh node transform is singular')
     normal_matrix=[[v/determinant for v in row] for row in cofactors]
     return dict(matrix=matrix,normal_matrix=normal_matrix,determinant=determinant,winding_reversed=determinant>0)
+
+
+def compose_node_transform(parent,local):
+    a,b=parent['matrix'],local['matrix']
+    matrix=[sum(a[k*4+row]*b[col*4+k] for k in range(4)) for col in range(4) for row in range(4)]
+    # TRS-valid ancestors can compose into a sheared world matrix. Baking uses
+    # its full inverse transpose instead of discarding or decomposing the shear.
+    return node_transform({'matrix':matrix},allow_shear=True)
 
 
 def transform_point(transform,point):

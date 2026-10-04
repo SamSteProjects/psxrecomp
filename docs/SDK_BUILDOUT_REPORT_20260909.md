@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — static GLB child hierarchies:** Mesh source ingestion now
+qualifies a bounded forest, rejects cycles/multiple parents/duplicate children and
+roots with parents, and traverses selected roots depth-first in declared child
+order. Transform-only group nodes are supported. Each mesh section carries its
+root-to-node path and composed world matrix; native positions and inverse-transpose
+normals are baked from that full matrix. TRS-valid parent/child composition may
+introduce shear, which is retained in the composed bake instead of decomposed or
+dropped. Local sheared matrices remain unsupported. Node paths appear in section
+and donor-mapping labels and are qualified through Review/scene inspection.
+
+Twelve focused construction checks pass, including independent inherited position
+and normal expectations, composed shear, ancestry/forest rejection, browser DTO
+forgery rejection, one-step history, Save/Open and exact normal Build model bytes.
+An actual private Retail editor smoke loads two child mesh nodes under a translated,
+nonuniformly scaled parent, maps distinct native donor objects, inspects the scene
+and returns to the retained paths/mappings. Authored files/history remain unchanged;
+no browser Apply, Save or Run occurs. The 64-node/mesh, 128-section and existing
+native allocation limits remain; batch mapping still admits at most16 sections.
+This bakes static geometry into existing native objects, not game parenting, rigs,
+skinning, animation or arbitrary material/image allocation. Gameplay stays deferred
+and the full solo SDK goal remains active.
+
 **2026-10-04 — multiple static GLB mesh roots:** Mesh import now enumerates the
 sole scene's ordered static root mesh nodes, including distinct meshes and shared
 mesh instances. Each node's transform is baked independently; vertex ownership

@@ -1,5 +1,28 @@
 # Source-bound model GLB editing
 
+## Static child hierarchies
+
+Static GLB import now accepts transform-only group nodes and child mesh nodes.
+The sole scene's roots and each node's children are traversed in declared,
+depth-first order. Section labels retain the source Node/Mesh and **Path** from
+root to mesh. Duplicate children, cycles, multiple parents and roots that also
+have parents reject before geometry decoding. An empty selected scene rejects.
+
+Global matrices compose parent-global with child-local, following the
+[Khronos glTF node transform convention](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#transformations).
+Positions and normals are baked from the composed matrix. Nonuniform parent scale
+plus child rotation can produce global shear; its full inverse transpose is
+retained. Local matrix inputs must still decompose into TRS without shear, and
+all local/composed values retain finite/bounds/nonsingularity qualification.
+
+Section selection, multi-donor Review, scene inspection, atomic Apply/history,
+Save/Open and normal Build use the same composed candidate and ancestry evidence.
+This transfers static geometry into chosen existing native objects. It does not
+create game scene parenting, animation channels or rigs. Skinning, morphs,
+animated nodes and new images/material allocation remain unsupported; gameplay
+acceptance is deferred. Existing64-node/mesh and128-section bounds remain, with
+at most16 sections in one donor-mapping batch.
+
 ## Multiple static mesh nodes
 
 The static GLB importer accepts multiple independent root mesh nodes in its sole
