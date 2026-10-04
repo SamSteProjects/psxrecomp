@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — persistent allocated initial actor assignment:** Source-bound
+Review and explicit API Apply now store an `ActorAllocatedAnimation` component
+using scene, retained UUID, record hash and exact model identity. Native selectors
+are resolved afresh rather than persisted. Apply/clear use ordinary Undo/Redo;
+Save/Open validates associations after all ledgers are loaded, including offline
+metadata-only Open. A referenced clip cannot be retired or removed, and conflicting
+appearance changes roll back without altering history.
+
+Assigned clip Preview and scene frame zero use the captured record over Current
+geometry. Observer correlation retains imported candidates without claiming an
+allocated effective runtime match and invalidates cached observations on Apply,
+replacement or clear. Imported GLB export/recapture reject while
+this assignment is active instead of silently using a different clip.
+
+29 distinct focused checks pass, covering persistence, stale Review rejection, reference guards,
+scene pose, clear/Undo and malformed saved bindings. Normal Build explicitly
+blocks allocated actor assignments pending MAN header composition; active
+unassigned compressed banks remain supported. Editor assignment controls and
+Build delivery are still implementation work. No immediate gameplay check is
+needed, no game was launched, and the full solo goal remains active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — allocated initial animation assignment qualification/review:**
 Implemented native appended-ordinal MAN header qualification using an evidenced
 same-model donor and exact bank/record preimages. Only header bytes change;

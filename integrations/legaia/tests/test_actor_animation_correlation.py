@@ -26,6 +26,29 @@ def fixture():
 
 
 class ActorAnimationCorrelationTests(unittest.TestCase):
+    def test_project_cached_observation_invalidates_on_allocate_replace_and_clear(self):
+        from pathlib import Path
+        from sdk.project import ProjectService
+        project=ProjectService(Path('.'));document=imported();target=document['actors'][0]['semantic_id']
+        project.imports={'scene://town01':document};project.active_scene='scene://town01'
+        self.assertTrue(project.correlate_runtime(status())['available'])
+        for value in ({'record_id':'first'},{'record_id':'second'},None):
+            if value is None:project.overrides.pop(target)
+            else:project.overrides[target]={'ActorAllocatedAnimation':value}
+            result=project._current_correlation();self.assertFalse(result['available'])
+            self.assertIn('allocated initial animation changed',result['reason'])
+            self.assertTrue(project.correlate_runtime(status())['available'])
+
+    def test_allocated_assignment_cannot_be_confirmed_by_an_imported_clip_witness(self):
+        document=imported();target=document['actors'][0]['semantic_id'];live=status()
+        result=correlate(document,live,allocated_assignments={target:{'record_id':'saved-record'}})
+        self.assertEqual(result['allocated_assignments_not_correlated'],[target])
+        candidate=result['entities'][target]['candidates'][0]
+        self.assertEqual(candidate['appearance_layers'],['imported'])
+        self.assertIsNone(candidate['effective_animation_donor_id'])
+        invalid=correlate(document,live,allocated_assignments={'outside':{}})
+        self.assertFalse(invalid['available'])
+        self.assertEqual(invalid['state'],'unavailable')
     def test_effective_model_and_clip_witnesses_remain_distinct(self):
         document, target, appearance, witness = fixture()
         live = status()

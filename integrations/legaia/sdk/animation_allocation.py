@@ -27,6 +27,8 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
                   if item['semantic_id'] == entity_id), None)
     if actor is None:
         raise ProjectError('Animation allocation requires an imported actor in the active scene')
+    if 'ActorAllocatedAnimation' in project.overrides.get(entity_id,{}):
+        raise ProjectError('Allocating from an assigned allocated clip is not implemented; clear its assignment before capturing an imported clip')
     key = source_key(project)
     if not key or expected_source_key != key:
         raise ProjectError('Animation allocation source is stale; review the current scene')
@@ -265,6 +267,10 @@ def prepare_record_activation(project, scene_id, record_id, active, expected_sou
     was_active = record_id not in ledger['removed_record_ids']
     if active == was_active:
         raise ProjectError('Animation record activation has no effective change')
+    if not active and any(components.get('ActorAllocatedAnimation',{}).get('scene_id')==scene_id
+            and components.get('ActorAllocatedAnimation',{}).get('record_id')==record_id
+            for components in project.overrides.values()):
+        raise ProjectError('Allocated clip is still assigned to an actor; clear its initial assignment before retirement')
     if active:
         ledger['removed_record_ids'].remove(record_id)
     else:

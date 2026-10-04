@@ -7,7 +7,9 @@ review the proposed expanded native bank through
 in a scene-owned `AnimationRecords` component with ordinary Undo/Redo and
 Save/Open. The editor now exposes creation, Review, posed Preview and explicit
 Apply. Normal Build delivers expanded banks in qualified compressed ANM carriers.
-Authored-clip assignment and raw streaming bank relocation remain unavailable.
+Persistent initial actor assignment is available through reviewed APIs and scene
+Preview; assignment Build delivery, editor controls and raw streaming bank
+relocation remain unavailable.
 Existing GLB channel import remains a separate complete
 workflow for fixed-layout clips.
 
@@ -219,7 +221,43 @@ Two new native tests plus eight existing synthetic MAN checks pass (the optional
 Retail importer case was skipped in that synthetic run). The Retail SDK test
 covers read-only Review/Pose, exact captured record, Current geometry, selector
 71→70 after another clip's retirement, and stale/missing/incompatible request
-rejection. Assignment Apply/persistence, actor scene projection, normal Build
-header composition and editor controls remain explicitly unavailable. Carrying
+rejection. This was the read-only qualification milestone; persistence and scene
+projection were subsequently added below. Normal Build header composition and
+editor controls remain unavailable. Carrying
 an allocated bank and qualifying a MAN proposal do not establish runtime selection
 or playback suitability. No game was launched.
+
+## Persistent initial actor assignment (2026-10-04)
+
+`POST /api/allocated-animation-assignment` accepts the exact Review request plus
+`review_key`. Apply independently replays Review and stores `ActorAllocatedAnimation`
+with exactly `scene_id`, `record_id`, `record_sha256` and `model_asset_id`. It replaces
+an existing imported `ActorAnimation` in one history entry; Undo restores the whole
+prior actor state. It stores no ordinal or Retail payload. Repeating a current
+no-change Review/Apply creates no history entry. Stale source/review keys reject.
+
+Review/Apply with `record_id: null` clears the allocated component and restores
+the inherited appearance initial clip. Undo restores the allocated component.
+The displaced imported assignment is restored only by Undo, not by clear.
+
+Save/Open structurally verify the retained active capture, exact hash/model and
+actor association after all ledgers are loaded, independent of JSON key order.
+Offline Open does not claim native payload validation. Native Review, posed
+Preview and guarded mutations independently verify disc evidence. Referenced
+clips cannot be retired or removed; incompatible appearance changes and whole
+ledger reset roll back overrides and history together.
+
+Actor initial Preview and scene geometry use the assigned frozen record over
+Current model shape, with frame zero in the scene. Cache source keys include the
+portable assignment. Imported observer candidates stay available; imported
+witnesses are not reported as an effective allocated runtime match. Cached
+observations invalidate on assignment Apply, replacement or clear. GLB
+interchange and capture from assigned allocated clips remain unsupported and
+reject explicitly rather than substituting the imported clip. Ordinary shared
+channel authoring remains attached to imported channel ownership.
+
+Normal Build reports an explicit MAN header composition blocker while an actor
+has this component. Expanded compressed bank delivery without actor assignments
+remains supported. Build header integration and editor assignment controls are
+the next work; runtime script selection, timing and suitability remain deferred
+gameplay checks. No game was launched.

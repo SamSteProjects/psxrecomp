@@ -96,6 +96,8 @@ def options(project, entity_id):
     from importer.man_assignments import load_man_assignment_context
 
     scene, document, actor = _subject(project, entity_id)
+    if 'ActorAllocatedAnimation' in project.overrides.get(entity_id,{}):
+        raise ProjectError('Clear the allocated initial clip assignment before choosing an imported clip')
     if not project.disc_path:
         raise ProjectError('Initial animation choices require the project user-owned disc')
     before = source_key(project)

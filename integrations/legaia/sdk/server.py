@@ -384,6 +384,15 @@ class EditorServer(ThreadingHTTPServer):
     def actor_initial_animation_preview(self, entity_id: str) -> dict:
         from .actor_animation import source_actor
         from importer.pipeline import _disc_context
+        if self.project.overrides.get(entity_id,{}).get('ActorAllocatedAnimation'):
+            from .allocated_animation_assignment import assigned_pose
+            animation,asset=assigned_pose(self.project,entity_id)
+            geometry=animation.pop('geometry');geometry['frames']=animation.pop('frames')
+            preview=self.model_preview(asset,prepared=geometry,effective_shape=True)
+            preview['animation']=animation
+            preview['animation_support']=dict(supported=True,clips=[dict(id='authored-allocated-animation',label='Assigned allocated initial clip')],
+                evidence='authored_initial_header_assignment_not_runtime_state')
+            return preview
         if not self.project.overrides.get(entity_id, {}).get('ActorAnimation'):
             raise ProjectError('Actor has no authored initial animation assignment')
         if not any(a['semantic_id'] == entity_id for a in
@@ -1853,16 +1862,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self.server.project.command(dict(type='set_animation_record_active',**body))
                         self._json(200,self.server.state())
                     return
-                if route in ('/api/allocated-animation-assignment-review','/api/allocated-animation-assignment-pose'):
+                if route in ('/api/allocated-animation-assignment-review','/api/allocated-animation-assignment-pose','/api/allocated-animation-assignment'):
                     expected={'entity_id','record_id','expected_source_key'}
-                    if route.endswith('-pose'):
+                    if not route.endswith('-review'):
                         expected.add('review_key')
                     if set(body)!=expected:
                         raise ProjectError('Allocated clip assignment review requires exact actor, record and current source fields')
                     from .allocated_animation_assignment import review,pose_preview
                     if route.endswith('-review'):
                         self._json(200,review(self.server.project,body['entity_id'],body['record_id'],body['expected_source_key']))
-                    else:
+                    elif route.endswith('-pose'):
                         animation,asset,report=pose_preview(self.server.project,body['entity_id'],body['record_id'],body['expected_source_key'],body['review_key'])
                         geometry=animation.pop('geometry');geometry['frames']=animation.pop('frames')
                         preview=self.server.model_preview(asset,prepared=geometry,effective_shape=True)
@@ -1870,6 +1879,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                         preview['animation_support']=dict(supported=True,clips=[dict(id='allocated-assignment-preview',label='Proposed initial allocated clip')],
                             evidence='reviewed_initial_header_proposal_not_applied_or_runtime_verified')
                         self._json(200,preview)
+                    else:
+                        self.server.project.command(dict(type='set_actor_allocated_animation',**body))
+                        self._json(200,self.server.state())
                     return
                 if route in ('/api/animation-record-library','/api/animation-record-pose'):
                     expected = {'scene_id','expected_source_key'}

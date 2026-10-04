@@ -79,6 +79,9 @@ def source_key(project, *, geometry_only=False) -> str | None:
                    "model_shapes": deepcopy(project.model_overrides),
                    **({'animation_records': deepcopy(project.overrides[project.active_scene]['AnimationRecords'])}
                       if 'AnimationRecords' in project.overrides.get(project.active_scene,{}) else {}),
+                   **({'allocated_animation_assignments': {a['semantic_id']:deepcopy(project.overrides[a['semantic_id']]['ActorAllocatedAnimation'])
+                        for a in document['actors'] if 'ActorAllocatedAnimation' in project.overrides.get(a['semantic_id'],{})}}
+                       if any('ActorAllocatedAnimation' in project.overrides.get(a['semantic_id'],{}) for a in document['actors']) else {}),
                    "actor_transforms": None if geometry_only else {
                        actor["semantic_id"]: deepcopy(project.overrides[actor["semantic_id"]]["Transform"])
                        for actor in document["actors"]
@@ -337,7 +340,7 @@ class ScenePreviewService:
             authored_clips = {v["animation_id"] for v in animation_overrides.values()}
             actor_views = [(actor, False) for actor in actors]
             actor_views += [(actor, True) for actor in actors
-                            if {'ActorAppearance', 'ActorAnimation'} & project.overrides.get(actor['semantic_id'], {}).keys()]
+                            if {'ActorAppearance', 'ActorAnimation','ActorAllocatedAnimation'} & project.overrides.get(actor['semantic_id'], {}).keys()]
             for actor, retail_draft_source in actor_views:
                 identifier = actor["semantic_id"]
                 resolver = getattr(project, "appearance_source_actor", None)
@@ -346,6 +349,7 @@ class ScenePreviewService:
                     raise ProjectError("Scene appearance override requires a verified source resolver")
                 source_actor = resolver(identifier, verify_disc=True) if resolver and not retail_draft_source else actor
                 assignment = None if retail_draft_source else project.overrides.get(identifier, {}).get('ActorAnimation')
+                allocated_assignment=None if retail_draft_source else project.overrides.get(identifier,{}).get('ActorAllocatedAnimation')
                 if assignment is not None:
                     from .actor_animation import source_actor as animation_source_actor
                     source_actor = animation_source_actor(project, identifier, verify_disc=True)
@@ -361,23 +365,35 @@ class ScenePreviewService:
                            "source_record": deepcopy(source_actor.get("source_record")),
                            "model_reference": deepcopy(source_actor["model_reference"]),
                            "appearance_authored": appearance is not None,
-                           "animation_assignment_authored": assignment is not None,
+                           "animation_assignment_authored": assignment is not None or allocated_assignment is not None,
+                           "allocated_animation_assignment": deepcopy(allocated_assignment),
                            "pose_kind": "unavailable", "reason": "Imported model reference is unresolved"}
                 bindings[identifier] = binding
                 if asset is None:
                     continue
                 animation_id = source_actor.get("placement_fields", {}).get("animation_id", 0)
-                geometry_key = digest({"asset": asset_id, "animation_id": animation_id})
+                geometry_key = digest({"asset": asset_id, "animation_id": animation_id,
+                    **({'allocated_initial_assignment':allocated_assignment} if allocated_assignment else {})})
                 if geometry_key in decoded:
                     binding.update(decoded[geometry_key])
-                    if assignment is not None and binding['renderable']:
-                        binding['pose_kind'] = 'authored_initial_animation_frame0'
+                    if (assignment is not None or allocated_assignment is not None) and binding['renderable']:
+                        binding['pose_kind'] = 'authored_allocated_initial_animation_frame0' if allocated_assignment else 'authored_initial_animation_frame0'
                     continue
                 result = {"geometry_key": None, "renderable": False, "pose_kind": "unavailable"}
                 try:
                     from importer.animation import animation_capabilities
                     support = animation_capabilities(asset)
-                    if support.get("supported"):
+                    if allocated_assignment is not None:
+                        from .allocated_animation_assignment import assigned_pose
+                        animation,allocated_asset=assigned_pose(project,identifier)
+                        if allocated_asset['semantic_id']!=asset_id:
+                            raise ProjectError('Allocated initial scene pose model differs from actor appearance')
+                        geometry=animation.pop('geometry');geometry['frames']=animation.pop('frames')
+                        preview=model_loader(asset,prepared=geometry)
+                        preview['vertices']=preview['frames'][0]['vertices'];preview.pop('frames',None)
+                        preview['animation']=animation
+                        pose_kind='authored_allocated_initial_animation_frame0'
+                    elif support.get("supported"):
                         preview = model_loader(asset, support["clips"][0]["id"])
                         frame = preview["frames"][0]
                         preview["vertices"] = frame["vertices"] if isinstance(frame, dict) else frame
@@ -436,8 +452,8 @@ class ScenePreviewService:
                     result["reason"] = str(exc)
                 decoded[geometry_key] = result
                 binding.update(result)
-                if assignment is not None and binding['renderable']:
-                    binding['pose_kind'] = 'authored_initial_animation_frame0'
+                if (assignment is not None or allocated_assignment is not None) and binding['renderable']:
+                    binding['pose_kind'] = 'authored_allocated_initial_animation_frame0' if allocated_assignment else 'authored_initial_animation_frame0'
             environment = []
             environment_metadata = None
             environment_error = None

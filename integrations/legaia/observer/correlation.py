@@ -199,7 +199,8 @@ def unavailable(reason: str) -> dict:
 
 def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any],
               appearance_donors: Mapping[str, str] | None = None,
-              animation_donors: Mapping[str, str] | None = None) -> dict:
+              animation_donors: Mapping[str, str] | None = None,
+              allocated_assignments: Mapping[str, Any] | None = None) -> dict:
     """Produce structural candidate groups; never promote unique guesses to identity."""
     if imported is None:
         return unavailable("No imported scene is active")
@@ -248,6 +249,10 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
     if animation_donors is not None and not isinstance(animation_donors, Mapping):
         return unavailable("Animation witness assignments require an imported actor mapping")
     animation_donors = dict(animation_donors or {})
+    if allocated_assignments is not None and (not isinstance(allocated_assignments,Mapping) or
+            any(not isinstance(key,str) or key not in actor_lookup for key in allocated_assignments)):
+        return unavailable('Allocated assignment identities are outside the imported scene')
+    allocated_assignments=dict(allocated_assignments or {})
     if animation_donors and (len(actor_lookup) != len(actors) or
                             len(models) != len(imported.get("assets", {}).get("models", []))):
         return unavailable("Animation witness evidence has ambiguous imported identities")
@@ -290,7 +295,10 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
               "profile_hash": profile["profile_hash"], "guard_token": epoch["observation_guard_token"],
               "scene_name": epoch["scene_name"], "disc_identity": binding["disc_identity"],
               "import_digest": _digest(imported), "appearance_donors": deepcopy(appearance_donors),
-              "animation_donors": deepcopy(animation_donors), "frame": binding["last_frame"],
+              "animation_donors": deepcopy(animation_donors),
+              **({'allocated_assignments_not_correlated':sorted(allocated_assignments),
+                  'allocated_assignment_digest':_digest(allocated_assignments)} if allocated_assignments else {}),
+              "frame": binding["last_frame"],
               "complete": binding.get("complete") is True, "historical_observation": True,
               "source_evidence": deepcopy(SOURCE_EVIDENCE)}
     seen = set()
@@ -323,6 +331,11 @@ def correlate(imported: Mapping[str, Any] | None, live_status: Mapping[str, Any]
             animation_donor_id = animation_donors.get(actor_id, donor_id)
             variants = [("imported", actor, actor),
                         ("effective", actor_lookup[donor_id], actor_lookup[animation_donor_id])]
+            if actor_id in allocated_assignments:
+                # Imported witnesses cannot prove an allocated initial clip.
+                # Keep imported matches available, without claiming an authored
+                # effective layer from a different native animation selector.
+                variants=variants[:1]
             matching_layers = []
             for layer, appearance_actor, animation_actor in variants:
                 ref = appearance_actor["model_reference"]
