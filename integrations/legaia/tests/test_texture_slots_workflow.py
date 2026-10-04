@@ -138,6 +138,36 @@ class TextureSlotsWorkflow(unittest.TestCase):
             self.assertEqual(len(p.undo_stack),1)
             status,_=post('/api/texture-slot-apply',dict(body,review_key=report['review_key']));self.assertEqual(status,400)
 
+    def test_current_catalog_material_pages_and_imported_separation(self):
+        from sdk import model_texture_binding
+        from sdk.resources import texture_preview,apply_texture_overrides
+        from importer.textures import associate_material
+        p,context,archive,blob,ids=self.setup_project()
+        content=tim(16,image=block(640,32,2,1,b'\x00\x80'*2))
+        args=(p,ids[0],content,source_key(p),'Visible authored slot',True)
+        report=texture_slots.review(*args);result=texture_slots.apply(*args,report['review_key']);identifier=result['asset_id']
+        before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+        with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()),patch('importer.pipeline.import_scene',return_value=p.imports[p.active_scene]),patch('importer.texture_authoring.load_texture_authoring_context',return_value=context):
+            preview=texture_preview(p,identifier,0)
+            self.assertEqual(preview['name'],'Visible authored slot');self.assertTrue(preview['authored_slot'])
+            catalog=p.assets.register_resources(p.active_scene,source_key(p),[texture_slots.metadata(identifier,p.texture_additions[identifier],content)],[])
+            self.assertEqual(catalog['records'][0]['layer'],'authored')
+            self.assertEqual((preview['width'],preview['height']),(2,1))
+            with self.assertRaises(ProjectError):texture_preview(p,identifier,0,'imported')
+            source=model_texture_binding.source(p,identifier,source_key(p),0)
+            self.assertEqual(source['pages'][0]['values'],dict(texture_bpp=16,page_column=10,page_row=0))
+            self.assertEqual(source['pages'][0]['uv_rectangle'],[0,32,1,32])
+            self.assertEqual(source['effective_sha256'],sha256(content).hexdigest())
+            current=apply_texture_overrides(p,context._catalog)
+            self.assertEqual(len(current.textures),3);self.assertEqual(len(context._catalog.textures),2)
+            match=associate_material(current,dict(textured=True,clut=0,tpage=10|(2<<7)),(0,32,1,32))
+            self.assertEqual(match['status'],'address_match')
+            self.assertIn(identifier,str(match))
+            p.texture_additions[identifier]['source_pack_sha256']='f'*64
+            with self.assertRaises(ProjectError):texture_preview(p,identifier,0)
+            p.texture_additions=deepcopy(before[0]['texture_additions'])
+        self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+
     def test_two_additions_resize_and_payload_edit_share_one_pack_reopen(self):
         for compressed in (False, True):
             p, context, archive, blob, ids = self.setup_project(compressed)

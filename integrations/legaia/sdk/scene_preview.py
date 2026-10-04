@@ -30,6 +30,7 @@ def preview_project(project, representation='authored'):
     view.actor_drafts = {}
     view.model_overrides = {}
     view.texture_overrides = {}
+    view.texture_additions = {}
     return view
 
 
@@ -209,6 +210,9 @@ class ScenePreviewService:
         for binding in project.texture_overrides.values():
             if binding["source_scene_id"] == project.active_scene:
                 project.read_texture_replacement(binding)
+        from .texture_slots import read
+        for identifier,binding in project.texture_additions.items():
+            if binding['source_scene_id']==project.active_scene:read(project,identifier,binding)
         key = source_key(project)
         if key is None:
             raise ProjectError("Scene preview requires an imported scene and its user-owned disc")

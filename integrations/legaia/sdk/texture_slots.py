@@ -107,6 +107,40 @@ def group(project, scene_id, context, archive):
     return groups
 
 
+def current_items(project, scene_id=None):
+    """Requalify authored uploads against their native Retail pack before display."""
+    validate_collection(project)
+    scene_id=scene_id or project.active_scene
+    selected=[(i,b) for i,b in project.texture_additions.items() if b['source_scene_id']==scene_id]
+    if not selected:return []
+    from importer.texture_authoring import load_texture_authoring_context
+    from importer.pipeline import _disc_context,import_scene
+    document=project.imports.get(scene_id)
+    if document is None or not project.disc_path:raise ProjectError('New texture inspection requires its imported scene')
+    with _disc_context(project.disc_path):
+        if import_scene(project.disc_path,document['scene']['name'])!=document:
+            raise ProjectError('New texture source differs from fresh imported evidence')
+        context=load_texture_authoring_context(project.disc_path,document['scene']['name'])
+        with context._archive() as archive:
+            groups=group(project,scene_id,context,archive)
+    return [row for key in sorted(groups) for row in groups[key]]
+
+
+def metadata(identifier,binding,content):
+    tim=validate_added_tim(content)
+    palettes=len(tim.clut.data)//((1<<tim.bpp)*2) if tim.bpp in (4,8) and tim.clut else 0
+    return dict(semantic_id=identifier,asset_kind='texture',name=binding['label'],
+        source_record=dict(semantic_id=identifier,authored=True,anchor_asset_id=binding['anchor_asset_id'],
+                           prot_entry_index=binding['pack_entry_index'],descriptor_index=binding['pack_descriptor_index'],
+                           pack_slot=binding['slot_index'],source_pack_sha256=binding['source_pack_sha256'],
+                           asset_sha256=binding['asset_sha256']),
+        width=tim.width,height=tim.image.height,dimensions=dict(width=tim.width,height=tim.image.height),
+        bpp=tim.bpp,palette_count=palettes,
+        preview_supported=tim.bpp>=16 or palettes>0,image=tim.image.metadata(),clut=tim.clut.metadata() if tim.clut else None,
+        authored_slot=True,limitations=['Current authored upload; no Retail texture counterpart.',
+        'Static upload addresses do not establish runtime residency or upload order.'])
+
+
 def _footprint(project, context, candidate):
     new = validate_added_tim(candidate)
     proposed = [('image', (new.image.x, new.image.y, new.image.width_words, new.image.height))]

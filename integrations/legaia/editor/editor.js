@@ -2219,7 +2219,7 @@ let texturePngEditor=null;
 const textureProjectKey=()=>JSON.stringify([state.project?.path,state.scene?.id]);
 const canEditTexture=()=>state.capabilities?.texture_replacement===true&&(state.project?.mode ?? 'edit').toLowerCase()==='edit';
 textureDialog.addEventListener('close',()=>{textureRequest++;textureAbort?.abort();if(texturePaletteDialog.open)texturePaletteDialog.close();if(texturePixelDialog.open)texturePixelDialog.close();if(textureFileDialog.open)textureFileDialog.close();if(textureRectangleDialog.open)textureRectangleDialog.close();if(textureUsageDialog.open)textureUsageDialog.close();});
-function textureAuthored(){return state.texture_overrides?state.texture_overrides[textureSession?.record.id] ?? null:texturePreview?.authored ?? null;}
+function textureAuthored(){if(textureSession?.record.id?.startsWith('texture-new://'))return state.texture_additions?.[textureSession.record.id]??null;return state.texture_overrides?state.texture_overrides[textureSession?.record.id] ?? null:texturePreview?.authored ?? null;}
 async function openTexturePng(){
   if(busy||!canEditTexture()||!textureSession||!texturePreview||$('texture-file')?.files?.length||!state.capabilities?.texture_png_authoring)return;
   const assetId=textureSession.record.id,paletteIndex=textureSession.paletteIndex;
@@ -2289,9 +2289,19 @@ function updateTextureActions(){
   $('texture-edit-palette').disabled=busy||pending||!canEditTexture()||!texturePreview||![4,8].includes(texturePreview.bpp);
   $('texture-scene-uses').disabled=busy||!scenePreviewCurrent();$('texture-fill-rectangle').disabled=$('texture-edit-palette').disabled;$('texture-copy-rectangle').disabled=$('texture-edit-palette').disabled;
   for(const id of ['texture-source-json','texture-effective-json'])$(id).disabled=busy||!texturePreview||![4,8].includes(texturePreview.bpp);
+  const newSlot=textureSession?.record.id?.startsWith('texture-new://');
+  if(newSlot){
+    $('texture-layer-label').hidden=true;
+    for(const id of ['texture-file','texture-preview-file','texture-apply','texture-clear','texture-source','texture-source-json','texture-effective-json','texture-edit-palette','texture-fill-rectangle','texture-copy-rectangle','texture-new-slot','texture-resize','texture-png','texture-glb-source','texture-glb-retain']){$(id).disabled=true;$(id).hidden=true;}
+    $('texture-file').closest('label').hidden=true;
+    $('texture-preview-file').parentElement.hidden=true;
+    $('texture-authoring').querySelector('h3').textContent='Authored slot';
+    $('texture-file-status').textContent='New authored TIM slot - no Retail counterpart. Inspect pixels here and assign its page in the model material editor.';
+  }
   $('texture-project-status').textContent=pending?'Selected file is not applied. Apply or discard before project actions.':busy?'Verifying…':projectSaveStatus();
   $('texture-authored').textContent=authored?`Authored TIM replacement · ${authored.byte_length} bytes · SHA-256 ${authored.asset_sha256?.slice(0,12) ?? 'unavailable'}`:'No authored replacement · effective pixels inherit the imported TIM.';
   if(authored?.glb_source){const receipt=authored.glb_source;$('texture-authored').textContent+=` | GLB image ${receipt.image_index} (${receipt.name??'unnamed'}) | GLB SHA-256 ${receipt.glb_sha256} | input PNG SHA-256 ${receipt.png_sha256}`;}
+  if(newSlot&&authored)$('texture-authored').textContent=`Authored TIM slot ${authored.slot_index} - ${authored.byte_length} bytes - SHA-256 ${authored.asset_sha256.slice(0,12)}`;
   $('texture-authored').style.overflowWrap='anywhere';
   $('texture-glb-source').disabled=busy||!authored?.glb_source?.glb_byte_length;
   $('texture-glb-retain').disabled=busy||pending||!canEditTexture()||!authored?.glb_source||!!authored.glb_source.glb_byte_length||!state.scene_preview_source_key;

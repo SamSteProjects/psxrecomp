@@ -69,7 +69,7 @@ class AssetDatabase:
             if not isinstance(identifier, str) or kind not in ("texture", "animation", "script", "dialogue", "collision", "trigger", "region", "worldmap", "flag", "transition") or identifier in indexed:
                 raise ProjectError("Resource catalog has an invalid or duplicate identity")
             record = deepcopy(item)
-            record.update(id=identifier, kind=kind, layer="derived", scene_id=scene_id)
+            record.update(id=identifier, kind=kind, layer="authored" if item.get("authored_slot") else "derived", scene_id=scene_id)
             indexed[identifier] = record
         result = {"scene_id": scene_id, "source_key": source_key,
                   "records": [indexed[key] for key in sorted(indexed)], "limitations": list(limitations)}

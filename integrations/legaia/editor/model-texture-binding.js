@@ -1,7 +1,7 @@
 // Qualified native page regions, independent of model/scene runtime residency.
 const fail=m=>{throw new Error(m);},int=(v,a,b)=>Number.isSafeInteger(v)&&v>=a&&v<=b;
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
-const asset=v=>typeof v==='string'&&v.startsWith('texture://')&&v.length<=512;
+const asset=v=>typeof v==='string'&&(v.startsWith('texture://')||/^texture-new:\/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v))&&v.length<=512;
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 export function decodeTextureBindingCatalog(v,context){
   if(!exact(v,['schema_version','scene_id','project_source_key','textures','project_changed'])||v.schema_version!=='legaia.material-texture-catalog.v1'||v.scene_id!==context.sceneId||v.project_source_key!==context.sourceKey||v.project_changed!==false||!Array.isArray(v.textures)||v.textures.length>4096)fail('Texture catalog differs from the current scene.');

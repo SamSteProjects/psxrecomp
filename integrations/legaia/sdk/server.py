@@ -650,6 +650,9 @@ class EditorServer(ThreadingHTTPServer):
         for binding in project.texture_overrides.values():
             if binding["source_scene_id"] == "scene://" + scene:
                 project.read_texture_replacement(binding)
+        from .texture_slots import read
+        for identifier,binding in project.texture_additions.items():
+            if binding['source_scene_id']=='scene://'+scene:read(project,identifier,binding)
         key = (project.disc_path, scene, source_key(project))
         if key not in self.texture_catalogs:
             if len(self.texture_catalogs) >= 2:

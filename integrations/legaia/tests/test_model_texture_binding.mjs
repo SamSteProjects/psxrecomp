@@ -6,4 +6,8 @@ assert.equal(decodeTextureBindingCatalog(catalog,context).length,1);assert.throw
 const source={schema_version:'legaia.material-texture-source.v1',scene_id:context.sceneId,project_source_key:context.sourceKey,asset_id:asset,source_sha256:'b'.repeat(64),effective_sha256:'c'.repeat(64),image_layout:{bpp:4,x:64,y:255,width:268,height:2,width_words:67},palette_index:1,palette_count:2,palette_origin:{x:32,y:480},project_changed:false,pages:[]};
 for(const [i,x,y,w] of [[0,64,255,64],[1,128,255,3],[2,64,256,64],[3,128,256,3]])source.pages.push({page_index:i,values:{texture_bpp:4,page_column:x/64,page_row:y===255?0:1,clut_column:2,clut_row:480},uv_rectangle:[0,y%256,w*4-1,y%256],image_rectangle:{x,y,width_words:w,height:1}});
 assert.deepEqual(decodeTextureBindingSource(source,context,asset,1),source);
+const authored='texture-new://00000000-0000-4000-8000-000000000000';
+assert.equal(decodeTextureBindingCatalog({...catalog,textures:[{asset_id:authored,label:'New authored TIM'}]},context)[0].asset_id,authored);
+assert.deepEqual(decodeTextureBindingSource({...source,asset_id:authored},context,authored,1),{...source,asset_id:authored});
+assert.throws(()=>decodeTextureBindingCatalog({...catalog,textures:[{asset_id:'texture-new://bad',label:'Invalid'}]},context));
 for(const mutate of [s=>s.project_changed=true,s=>s.palette_index=0,s=>s.pages.pop(),s=>s.palette_origin.x=33,s=>s.pages[0].values.page_column=2,s=>s.pages[0].uv_rectangle[2]=254,s=>s.pages[0].image_rectangle.width_words=63,s=>s.effective_sha256='stale']){const s=structuredClone(source);mutate(s);assert.throws(()=>decodeTextureBindingSource(s,context,asset,1));}

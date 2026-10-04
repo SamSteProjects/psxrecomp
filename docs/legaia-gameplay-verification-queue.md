@@ -1,5 +1,35 @@
 # Deferred gameplay verification
 
+## 2026-10-04: saved TIM slots in resources and material assignment
+
+Saved new TIM slots now appear in the active-scene resource catalog under their
+persistent authored IDs and names. Current pixel previews qualify their native
+pack receipts and retained files; Imported inspection rejects new slots because
+there is no Retail counterpart. The texture dialog exposes inspection and
+project history while hiding unsupported replacement/interchange actions.
+
+The material texture picker includes the new slots and derives their qualified
+page/depth and local indexed palette addresses. Existing primitive/group draft,
+Review, Proposed scene inspection/Return and Apply workflows accept them. Current
+scene/model catalogs include authored upload contributors; Imported scene views
+exclude them. Cached previews reread retained authored files. Static overlapping
+addresses keep the existing ambiguity rules; no upload-order inference is added.
+
+Eight focused Python cases and the material-binding Node suite passed. Private
+Town01 browser proof discovered and inspected a new 256×256 checker TIM,
+selected its native page for five wall primitives, passed review invalidation,
+readonly scene inspection/Return, one model Apply, Save/reload and normal Build
+assessment. Independent packet masks matched the whole model candidate; relocated
+package readback matched both the model and slot 96 TIM and preserved neighboring
+decoded model bytes. Undo/Redo and offline reopen passed. Parent visual inspection
+passed; a further readonly preview check covers the simplified authored-slot UI.
+Evidence: `local-output/sdk-20260909/new-texture-material-20261004/parent/`.
+
+Next: editing/interchange for saved new slots, broader source-image conversion,
+VRAM placement and allocation policies. Runtime upload/residency, materials and
+scene transitions remain queued for gameplay verification. No game was launched
+or installed. The goal remains active.
+
 ## 2026-10-04: new TIM slot import editor
 
 The texture resource dialog now opens **Import new texture slot** for its native

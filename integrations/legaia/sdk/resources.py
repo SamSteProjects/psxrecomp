@@ -102,6 +102,8 @@ def refresh_resource_catalog(project) -> dict:
                     records.extend(build_transition_assets(catalog, project.imports, _transition_edits(project, project.active_scene)))
             except RetailImportError as exc:
                 limitations.append(f"{kind} unavailable: {exc}")
+    from .texture_slots import current_items,metadata
+    records.extend(metadata(*row) for row in current_items(project))
     if (key != source_key(project) or flag_key != scene_flag_state_key(project) or
             transition_key != scene_transition_state_key(project) or region_key != scene_region_state_key(project) or
             trigger_key != scene_trigger_state_key(project)):
@@ -445,6 +447,19 @@ def texture_preview(project, asset_id: str, palette_index: int, layer: str = "ef
     if layer not in ("imported", "effective"):
         raise ProjectError("Choose imported or effective texture preview")
     document, key = _scene(project)
+    if asset_id in project.texture_additions:
+        if layer!='effective':raise ProjectError('New texture slots have no Imported Retail counterpart')
+        if type(palette_index) is not int:raise ProjectError('Texture palette must be an existing integer index')
+        from .texture_slots import current_items,metadata
+        selected=next((row for row in current_items(project) if row[0]==asset_id),None)
+        if selected is None:raise ProjectError('New texture is outside the active scene')
+        identifier,binding,content=selected
+        decoded=decode_tim(content,palette_index)
+        if key!=source_key(project):raise ProjectError('New texture source changed during preview')
+        return dict(metadata(identifier,binding,content),source_key=key,scene_id=project.active_scene,layer=layer,
+            authored=deepcopy(binding),palette_index=palette_index,
+            rgba_base64=base64.b64encode(decoded['rgba']).decode('ascii'),
+            stp_base64=base64.b64encode(decoded['stp']).decode('ascii'))
     with _disc_context(project.disc_path):
         _verify(project, document)
         preview = preview_texture_asset(project.disc_path, document["scene"]["name"], asset_id, palette_index)
@@ -478,7 +493,9 @@ def apply_texture_overrides(project, catalog):
     from importer.textures import parse_tim
     bindings = {identifier: binding for identifier, binding in project.texture_overrides.items()
                 if binding["source_scene_id"] == "scene://" + catalog.scene}
-    if not bindings:
+    from .texture_slots import current_items,metadata
+    added=current_items(project,'scene://'+catalog.scene)
+    if not bindings and not added:
         return catalog
     context = load_texture_authoring_context(project.disc_path, catalog.scene)
     replacements = {}
@@ -489,6 +506,9 @@ def apply_texture_overrides(project, catalog):
     result = deepcopy(catalog)
     result.textures = [(replacements.get(source["semantic_id"], tim), source)
                        for tim, source in result.textures]
+    for identifier,binding,content in added:
+        result.textures.append((parse_tim(content),metadata(identifier,binding,content)['source_record']))
+    result.diagnostics.append(f'Current preview includes {len(added)} authored TIM uploads; overlapping addresses retain static ambiguity.')
     result.diagnostics.append(f"Effective preview applies {len(replacements)} project-authored TIM replacements; source locators remain retail provenance.")
     return result
 
