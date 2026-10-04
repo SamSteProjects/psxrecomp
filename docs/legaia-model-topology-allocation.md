@@ -397,3 +397,24 @@ conflict/stale/ownership rejection. These are synthetic archive proofs, not a
 Retail disc build or native gameplay acceptance. This module is not yet called
 by normal Build; package and ISO metadata relocation integration remains required.
 Output continues to report `build_ready=False` and `gameplay_verified=False`.
+
+
+## Read relocated archives through ISO lookup
+
+`importer.relocated_disc.RelocatedLogicalDisc` borrows an open source image and
+verifies its complete original PROT hash before accepting a whole-sector, equal
+or larger replacement. It uses `collect_metadata_relocation` to update PVD,
+directories and endian path tables, supplies replacement PROT user sectors and
+maps later logical LBAs back to their original source sectors. PROT is reopened
+through ISO lookup to verify its extent and size. The audit describes source/
+proposed sector counts and metadata sector preimage/candidate hashes. Closing
+the view never closes the borrowed source. It does not expose raw CD sectors.
+
+Seventeen focused tests include complete composition-to-ISO readback, shifted
+metadata/payloads, same-size logical identity and invalid input rejection. These
+are synthetic proofs with no physical disc export. The current runtime reads a
+physical sector before applying ordinary overlays and obtains sector count from
+that physical reader; insertion cannot be represented by ordinary overlays alone.
+Normal Build packaging and runtime mapping/sector-count support must use the
+verified logical mapping and remain unfinished. The view reports
+`runtime_connected=False`, `build_ready=False` and `gameplay_verified=False`.

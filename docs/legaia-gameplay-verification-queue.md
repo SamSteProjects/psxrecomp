@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Relocated logical ISO checkpoint (2026-10-03): composed model-pack growth now
+reopens through synthetic ISO lookup, including moved directories/path tables
+and unchanged following movie bytes. This is in-memory logical readback; no BIN
+was exported. Runtime physical-sector mapping/sector count and normal Build
+packaging remain offline work. No immediate gameplay gate is added.
+
 Model relocation composition checkpoint (2026-10-03): original-offset patches
 are verified and applied before pack/PROT growth. Synthetic tests preserve edits
 across multiple growing carriers/resources and shifted neighbors; final packs
