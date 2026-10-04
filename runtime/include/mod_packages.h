@@ -216,6 +216,12 @@ struct ModDerivedDisc {
     std::map<std::string, std::string> when;
 };
 
+struct ModDiscRelocation {
+    std::string feature_id;
+    std::filesystem::path file;
+    std::string sha256;
+};
+
 struct ModAuthorLink {
     std::string name;
     std::string url;
@@ -265,6 +271,7 @@ struct ModPackage {
     std::vector<ModPlugin> plugins;
     std::vector<ModResource> resources;
     std::vector<ModDerivedDisc> derived_discs;
+    std::vector<ModDiscRelocation> disc_relocations;
 };
 
 struct ModFeatureSelection {
@@ -319,6 +326,11 @@ struct ModResolution {
         std::string package_id;
     };
     std::vector<DerivedDisc> derived_discs;
+    struct DiscRelocation {
+        std::filesystem::path file;
+        std::string sha256, package_id, feature_id;
+    };
+    std::vector<DiscRelocation> disc_relocations;
     struct Plugin {
         std::string id;
         std::string package_id;

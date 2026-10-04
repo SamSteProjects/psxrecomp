@@ -1223,6 +1223,11 @@ bool mod_runtime_commit(const std::filesystem::path& disc_path, std::string* err
         }
     }
     std::filesystem::path effective_disc;
+    if (!plan.disc_relocations.empty()) {
+        s.error="disc relocation activation is not connected yet; refusing to ignore the enabled relocation feature";
+        if (error) *error=s.error;
+        return false;
+    }
     if (!materialize_derived_disc(s, plan, effective_disc, &s.error)) {
         if (error) *error = s.error;
         return false;

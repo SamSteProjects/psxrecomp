@@ -375,6 +375,11 @@ if(BUILD_TESTING)
         ../recompiler/lib/toml11)
     add_test(NAME mod_packages_test COMMAND mod_packages_test)
 
+    add_executable(mod_disc_relocation_test tests/test_mod_disc_relocation.cpp
+        src/mod_packages.cpp src/crc32.c src/psx_sha256.c)
+    target_include_directories(mod_disc_relocation_test PRIVATE include ../recompiler/lib/toml11)
+    add_test(NAME mod_disc_relocation_test COMMAND mod_disc_relocation_test)
+
     add_executable(text_xlate_fix_only_test
         tests/test_text_xlate_fix_only.cpp
         src/text_xlate.cpp)

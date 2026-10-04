@@ -535,3 +535,30 @@ CMake target registered; full runtime suite not run. Private proof:
 `local-output/sdk-20260909/native-relocation-package-20261003/parent/`.
 No game/helper/installation/full-disc export ran. Normal Build integration and
 activation remain unfinished.
+
+
+## Feature manifest and conflict rules
+
+Format 7 supports `[[disc_relocation]]` with exactly `feature`, `file` and
+`sha256`. Ownership must name a declared feature; the package requires a target
+with source-disc SHA256. File paths must be safe relative package assets and
+payload hashes lowercase SHA256. The payload qualifies at manifest load and
+again when its feature resolves enabled. Disabled features emit no relocation.
+Channel pruning removes inaccessible owners and their relocation declarations.
+
+Only one active relocation is permitted. Active ordinary disc writes, disc
+user/raw overlays and legacy derived-disc providers conflict with relocation;
+other authored carrier edits must be precomposed into the relocation payload.
+Main-EXE operations retain their separate target. Resolved relocation package/
+feature/payload hash joins the fingerprint; failed resolutions clear relocation
+and other emitted operations. The existing 256 MiB loader limit is unchanged;
+a fresh source metadata check reports PROT at 121,253,888 bytes.
+
+Native relocation/complete package/runtime regressions pass. Runtime commit
+currently rejects enabled relocation with an explicit unfinished-activation
+error; it cannot silently boot stock while ignoring the selected feature.
+Activation is the next required native step. SDK normal Build still emits format
+6 overlays and does not emit relocation declarations yet. Private builds:
+`local-output/sdk-20260909/mod-disc-relocation-20261003/parent/`.
+CMake regression registered; full framework suite not run. Existing TOML/parser
+warnings appear in native builds. No game, installation or full-disc export ran.

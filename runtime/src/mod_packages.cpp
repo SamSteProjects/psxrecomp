@@ -3,6 +3,7 @@
 #include "crc32.h"
 #include "mod_plugins.h"
 #include "psx_sha256.h"
+#include "disc_relocation_package.h"
 #include "toml.hpp"
 
 #include <algorithm>
@@ -22,7 +23,7 @@ namespace PSXRecompV4 {
 namespace {
 
 constexpr uint32_t kMinFormatVersion = 1;
-constexpr uint32_t kMaxFormatVersion = 6;
+constexpr uint32_t kMaxFormatVersion = 7;
 constexpr uint64_t kMaxArchiveBytes = 256ull * 1024ull * 1024ull;
 constexpr uint32_t kMaxArchiveFiles = 4096;
 
@@ -282,6 +283,15 @@ bool read_file(const fs::path& path, std::vector<uint8_t>& out, std::string* err
         return false;
     }
     return true;
+}
+
+bool validate_disc_relocation_asset(const fs::path& path, const std::string& hash, std::string* error) {
+    std::vector<uint8_t> payload, decoded_hash;
+    if (!parse_hex_bytes(hash, decoded_hash) || decoded_hash.size()!=32 || !read_file(path,payload,error)) return false;
+    PS1::DiscDigest expected{};
+    std::copy(decoded_hash.begin(),decoded_hash.end(),expected.begin());
+    PS1::DiscRelocationPayload decoded;
+    return PS1::ParseDiscRelocationPayload(payload,expected,decoded,error);
 }
 
 uint16_t le16(const uint8_t* p) {
@@ -1523,6 +1533,7 @@ bool strip_developer_features(ModPackage& package) {
     prune(package.constraints);
     prune(package.patches);
     prune(package.overlays);
+    prune(package.disc_relocations);
     prune(package.plugins);
     prune(package.resources);
     return !package.features.empty();
@@ -2221,6 +2232,34 @@ bool ModPackageManager::read_manifest(const fs::path& path, ModPackage& out,
                 }
                 out.patches.push_back(std::move(patch));
                 ++declaration_index;
+            }
+        }
+        if (cfg.contains("disc_relocation")) {
+            if (out.format_version<7 || !feature_style)
+                throw std::runtime_error("disc_relocation requires format_version 7 and explicit feature ownership");
+            if (std::none_of(out.targets.begin(),out.targets.end(),[](const ModTarget& target) { return !target.disc_sha256.empty(); }))
+                throw std::runtime_error("disc_relocation requires a source-disc SHA256 target");
+            std::set<std::string> owners;
+            const std::string relocation_key="disc_relocation";
+            for (const toml::value& v:toml::find(cfg,relocation_key).as_array()) {
+                for (const auto& [key,unused]:v.as_table()) {
+                    (void)unused;
+                    if (key!="feature" && key!="file" && key!="sha256")
+                        throw std::runtime_error("disc_relocation has unknown field: "+key);
+                }
+                ModDiscRelocation relocation;
+                relocation.feature_id=toml::find<std::string>(v,"feature");
+                if (!find_feature(out,relocation.feature_id) || !owners.insert(relocation.feature_id).second)
+                    throw std::runtime_error("disc_relocation references unknown or duplicate feature");
+                const std::string relative=toml::find<std::string>(v,"file");
+                if (!safe_archive_name(relative)) throw std::runtime_error("disc_relocation file path is unsafe");
+                relocation.file=out.root/fs::path(relative);
+                relocation.sha256=toml::find<std::string>(v,"sha256");
+                if (!valid_sha256(relocation.sha256)) throw std::runtime_error("disc_relocation requires lowercase SHA256");
+                std::string payload_error;
+                if (!validate_disc_relocation_asset(relocation.file,relocation.sha256,&payload_error))
+                    throw std::runtime_error("disc_relocation payload: "+payload_error);
+                out.disc_relocations.push_back(std::move(relocation));
             }
         }
         if (cfg.contains("overlay")) {
@@ -3387,6 +3426,16 @@ ModResolution ModPackageManager::resolve(const std::string& game_id,
                 result.errors.empty())
                 result.errors.push_back(package->id + ": built-in resolver failed");
         }
+        for (const ModDiscRelocation& relocation:package->disc_relocations) {
+            const ModFeature* feature=find_feature(*package,relocation.feature_id);
+            if (!feature || !is_feature_enabled(*package,selected,*feature)) continue;
+            std::string payload_error;
+            if (!validate_disc_relocation_asset(relocation.file,relocation.sha256,&payload_error)) {
+                result.errors.push_back(package->id+"/"+relocation.feature_id+": "+payload_error);
+                continue;
+            }
+            result.disc_relocations.push_back({relocation.file,relocation.sha256,package->id,relocation.feature_id});
+        }
         std::vector<const ModOverlay*> overlays;
         overlays.reserve(package->overlays.size());
         for (const ModOverlay& overlay : package->overlays) {
@@ -3497,6 +3546,11 @@ ModResolution ModPackageManager::resolve(const std::string& game_id,
         result.errors.push_back(
             "more than one derived-disc provider is active: " + providers);
     }
+    if (result.disc_relocations.size()>1)
+        result.errors.push_back("more than one disc relocation provider is active");
+    if (!result.disc_relocations.empty() && (!result.derived_discs.empty() || !result.overlays.empty() ||
+        std::any_of(result.writes.begin(),result.writes.end(),[](const ModResolution::Write& write) { return write.target!=ModPatchTarget::MainExe; })))
+        result.errors.push_back("disc relocation conflicts with active disc writes, overlays or derived discs");
     std::vector<ModResolution::Plugin> coalesced_plugins;
     coalesced_plugins.reserve(result.plugins.size());
     for (const ModResolution::Plugin& plugin : result.plugins) {
@@ -3671,6 +3725,7 @@ ModResolution ModPackageManager::resolve(const std::string& game_id,
         result.writes.clear();
         result.overlays.clear();
         result.derived_discs.clear();
+        result.disc_relocations.clear();
         result.plugins.clear();
         result.resources.clear();
         return result;
@@ -3680,6 +3735,11 @@ ModResolution ModPackageManager::resolve(const std::string& game_id,
             result.ordered, selections_, result.writes, result.overlays,
             result.derived_discs, result.plugins, result.resources,
             disc_sha256));
+    if (!result.disc_relocations.empty()) {
+        const auto& relocation=result.disc_relocations.front();
+        result.fingerprint=fingerprint_text(result.fingerprint+"\ndisc_relocation:"+relocation.package_id+":"+
+            relocation.feature_id+":"+relocation.sha256);
+    }
     result.ok = true;
     return result;
 }

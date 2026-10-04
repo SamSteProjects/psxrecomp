@@ -2,6 +2,7 @@
 #include "mod_packages.h"
 #include "mod_plugins.h"
 #include "psx_sha256.h"
+#include "disc_relocation_package.h"
 
 #include "gpu.h"
 
@@ -536,6 +537,25 @@ int main() {
           "unestablished display geometry must report zero so callers skip "
           "drawing instead of guessing");
 
+    {
+        const fs::path guard_root=root/"relocation-activation-guard";
+        std::vector<uint8_t> relocation(96+8192,0);
+        std::memcpy(relocation.data(),"PSXDRLOC",8);
+        const auto word=[&](size_t at,uint32_t value) { for(unsigned i=0;i<4;++i)relocation[at+i]=uint8_t(value>>(8*i)); };
+        word(8,1);word(12,60);word(16,30);word(20,2);word(24,4);
+        std::memset(relocation.data()+96,'R',8192);
+        const auto candidate=PS1::DiscHash(relocation.data()+96,8192);
+        std::memcpy(relocation.data()+64,candidate.data(),32);
+        write_bytes(guard_root/"installed/relocation.guard/1.0.0/assets/relocation.bin",relocation);
+        write_text(guard_root/"installed/relocation.guard/1.0.0/manifest.toml",
+            "format_version=7\nid=\"relocation.guard\"\nversion=\"1.0.0\"\nname=\"Guard\"\n"
+            "[[target]]\ngame_id=\"SLUS-RUNTIME\"\ndisc_sha256=\""+sha256_hex(stock)+"\"\n"
+            "[[feature]]\nid=\"scene\"\nname=\"Scene\"\ndefault_enabled=true\n"
+            "[[disc_relocation]]\nfeature=\"scene\"\nfile=\"assets/relocation.bin\"\nsha256=\""+sha256_hex(relocation)+"\"\n");
+        check(PSXRecompV4::mod_runtime_initialize(guard_root,"SLUS-RUNTIME",0x80002000,{},&error),error.c_str());
+        check(!PSXRecompV4::mod_runtime_commit(stock_path,&error)&&!error.empty(),
+              "an enabled relocation that cannot activate must reject commit instead of silently booting stock");
+    }
     fs::remove_all(root, ec);
     if (failures) return 1;
     std::cout << "mod runtime tests passed\n";

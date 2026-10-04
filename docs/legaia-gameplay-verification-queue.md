@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Feature relocation manifest checkpoint (2026-10-03): format 7 declarations,
+selection, payload requalification/fingerprinting and provider/disc-edit conflicts
+pass offline. Runtime commit rejects enabled relocation while activation remains
+unfinished, rather than silently booting stock. SDK Build still emits format 6;
+activation and normal Build integration remain offline work. No gameplay gate.
+
 Native payload qualification checkpoint (2026-10-03): strict native decoding and
 original PROT/metadata preimage checks pass, including Python/native payload and
 source-sector interoperability. Feature manifests, conflicts, activation and
