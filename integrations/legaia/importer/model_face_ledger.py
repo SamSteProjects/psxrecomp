@@ -5,6 +5,7 @@ V1 addition batches remain readable; V2 chains typed content edits between
 additions without changing stable face identities. V3 also replays typed stable
 face removals, retaining historical authored identities and allocation ownership.
 V4 restores deleted identities from qualified replay-derived packet preimages.
+V5 allocates bounded new native vertex/normal rows before further face edits.
 Restoration commands require separate project/editor integration.
 """
 import json
@@ -20,6 +21,10 @@ SCHEMA = 'legaia.model-face-addition-ledger.v1'
 CONTENT_SCHEMA = 'legaia.model-face-addition-ledger.v2'
 REMOVAL_SCHEMA = 'legaia.model-face-addition-ledger.v3'
 RESTORATION_SCHEMA = 'legaia.model-face-addition-ledger.v4'
+VECTOR_SCHEMA = 'legaia.model-face-addition-ledger.v5'
+REMOVAL_VERSIONS = (REMOVAL_SCHEMA,RESTORATION_SCHEMA,VECTOR_SCHEMA)
+RESTORATION_VERSIONS = (RESTORATION_SCHEMA,VECTOR_SCHEMA)
+MAX_LEDGER_VECTORS = 4096
 MAX_OPERATIONS = 64
 MAX_METADATA_BYTES = 2*1024*1024
 MAX_BATCHES = 8
@@ -82,7 +87,7 @@ def _operations(ledger):
         raise ImportError('Face ledger requires an object')
     version = ledger.get('schema_version')
     member = 'batches' if version == SCHEMA else 'operations'
-    if (version not in (SCHEMA, CONTENT_SCHEMA, REMOVAL_SCHEMA, RESTORATION_SCHEMA)
+    if (version not in (SCHEMA, CONTENT_SCHEMA, *REMOVAL_VERSIONS)
             or set(ledger) != {'schema_version','source_sha256','source_byte_length',member}
             or not isinstance(ledger[member],list)
             or len(ledger[member]) > (MAX_BATCHES if version == SCHEMA else MAX_OPERATIONS)):
@@ -169,6 +174,7 @@ def _replay_face_ledger(original, ledger, *, capture=False):
     ranks={identity:index for index,identity in enumerate(faces)} if capture else {}
     deleted_packets={}
     current, total, batches = original, 0, 0
+    vector_total=0;vector_batches=0
     reserved=set();removed=[]
     for operation in operations:
         if (not isinstance(operation,dict) or operation.get('input_sha256') != sha256(current).hexdigest()):
@@ -190,7 +196,15 @@ def _replay_face_ledger(original, ledger, *, capture=False):
             if set(operation) != {'kind','input_sha256','proposed_sha256','runs'}:
                 raise ImportError('Face ledger content schema changed')
             current = _apply_content(current, operation)
-        elif operation.get('kind') == 'remove_faces' and ledger['schema_version'] in (REMOVAL_SCHEMA,RESTORATION_SCHEMA):
+        elif operation.get('kind') == 'allocate_vectors' and ledger['schema_version'] == VECTOR_SCHEMA:
+            from .model_vector_allocation import append_model_vectors
+            if set(operation) != {'kind','input_sha256','proposed_sha256','requests'}:
+                raise ImportError('Face ledger vector allocation schema changed')
+            current,allocated=append_model_vectors(current,operation['input_sha256'],operation['requests'])
+            vector_total+=sum(row['added_count'] for row in allocated['new_vectors']);vector_batches+=1
+            if vector_total>MAX_LEDGER_VECTORS:
+                raise ImportError('Face ledger exceeds its allocated vector budget')
+        elif operation.get('kind') == 'remove_faces' and ledger['schema_version'] in REMOVAL_VERSIONS:
             if set(operation) != {'kind','input_sha256','proposed_sha256','face_ids'}:
                 raise ImportError('Face ledger removal schema changed')
             prior=current if capture else None;prior_faces=faces if capture else None
@@ -210,7 +224,7 @@ def _replay_face_ledger(original, ledger, *, capture=False):
                         packet=prior[at:at+stride],descriptor=prior[start:start+8],
                         footer=prior[start+8+count*stride:start+8+(count+1)*stride])
             removed.extend(operation['face_ids'])
-        elif operation.get('kind') == 'restore_faces' and ledger['schema_version'] == RESTORATION_SCHEMA:
+        elif operation.get('kind') == 'restore_faces' and ledger['schema_version'] in RESTORATION_VERSIONS:
             from .model_face_reinsertion import _reinsert_faces
             if set(operation) != {'kind','input_sha256','proposed_sha256','face_ids'}:
                 raise ImportError('Face ledger restoration schema changed')
@@ -228,8 +242,10 @@ def _replay_face_ledger(original, ledger, *, capture=False):
         source_byte_length=len(original), proposed_byte_length=len(current),
         growth_bytes=len(current)-len(original), batch_count=batches, operation_count=len(operations),
         authored_face_count=total, faces=list(faces.values()))
-    if ledger['schema_version'] in (REMOVAL_SCHEMA,RESTORATION_SCHEMA):
+    if ledger['schema_version'] in REMOVAL_VERSIONS:
         audit['removed_face_ids']=removed
+    if ledger['schema_version'] == VECTOR_SCHEMA:
+        audit.update(allocated_vector_count=vector_total,vector_allocation_count=vector_batches)
     return current,audit,deleted_packets
 
 
@@ -264,7 +280,7 @@ def append_content_ledger(original, ledger, candidate):
         start=at
         while at < len(current) and current[at] != candidate[at]:at += 1
         runs.append(dict(offset=start,before_hex=current[start:at].hex(),after_hex=candidate[start:at].hex()))
-    updated = dict(schema_version=ledger['schema_version'] if ledger['schema_version'] in (REMOVAL_SCHEMA,RESTORATION_SCHEMA) else CONTENT_SCHEMA,source_sha256=ledger['source_sha256'],
+    updated = dict(schema_version=ledger['schema_version'] if ledger['schema_version'] in REMOVAL_VERSIONS else CONTENT_SCHEMA,source_sha256=ledger['source_sha256'],
         source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
     updated['operations'].append(dict(kind='edit_content',input_sha256=sha256(current).hexdigest(),
         proposed_sha256=sha256(candidate).hexdigest(),runs=runs))
@@ -294,7 +310,7 @@ def append_removal_ledger(original, ledger, face_ids):
     if len(operations)>=MAX_OPERATIONS:
         raise ImportError('Face ledger exceeds its operation budget')
     candidate,_=_apply_removal(current,{row['face_id']:row for row in audit['faces']},face_ids)
-    result=dict(schema_version=RESTORATION_SCHEMA if ledger['schema_version']==RESTORATION_SCHEMA else REMOVAL_SCHEMA,source_sha256=ledger['source_sha256'],
+    result=dict(schema_version=ledger['schema_version'] if ledger['schema_version'] in REMOVAL_VERSIONS else REMOVAL_SCHEMA,source_sha256=ledger['source_sha256'],
                 source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
     result['operations'].append(dict(kind='remove_faces',input_sha256=sha256(current).hexdigest(),
                                     proposed_sha256=sha256(candidate).hexdigest(),face_ids=deepcopy(face_ids)))
@@ -308,10 +324,27 @@ def append_restoration_ledger(original,ledger,face_ids):
     if len(operations)>=MAX_OPERATIONS:
         raise ImportError('Face ledger exceeds its operation budget')
     candidate,restored=reinsert_ledger_faces(original,ledger,face_ids)
-    result=dict(schema_version=RESTORATION_SCHEMA,source_sha256=ledger['source_sha256'],
+    result=dict(schema_version=VECTOR_SCHEMA if ledger['schema_version']==VECTOR_SCHEMA else RESTORATION_SCHEMA,source_sha256=ledger['source_sha256'],
                 source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
     result['operations'].append(dict(kind='restore_faces',input_sha256=restored['source_sha256'],
         proposed_sha256=restored['proposed_sha256'],face_ids=deepcopy(face_ids)))
+    qualified,report=replay_face_ledger(original,result)
+    return qualified,result,report
+
+
+def append_vector_ledger(original,ledger,requests):
+    from .model_vector_allocation import append_model_vectors
+    current,audit=replay_face_ledger(original,ledger)
+    operations=_operations(ledger)
+    if len(operations)>=MAX_OPERATIONS:
+        raise ImportError('Face ledger exceeds its operation budget')
+    candidate,allocated=append_model_vectors(current,sha256(current).hexdigest(),requests)
+    if audit.get('allocated_vector_count',0)+sum(row['added_count'] for row in allocated['new_vectors'])>MAX_LEDGER_VECTORS:
+        raise ImportError('Face ledger exceeds its allocated vector budget')
+    result=dict(schema_version=VECTOR_SCHEMA,source_sha256=ledger['source_sha256'],
+                source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
+    result['operations'].append(dict(kind='allocate_vectors',input_sha256=sha256(current).hexdigest(),
+        proposed_sha256=allocated['proposed_sha256'],requests=deepcopy(requests)))
     qualified,report=replay_face_ledger(original,result)
     return qualified,result,report
 
