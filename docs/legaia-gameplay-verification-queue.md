@@ -1,5 +1,24 @@
 # Deferred gameplay verification
 
+**2026-10-04 — retained animation content editor:** Actor inspector →
+Manage allocated clips → Edit retained content now opens a source-qualified form
+for captured-donor frame mapping and per-frame, per-object integer translation
+and rotation axes. Review shows the proposed frame count and affected initial
+actor references. Preview opens the actual reconstructed proposed pose over
+Current geometry and returns to the same reviewed draft; explicit Apply updates
+content and references together. Changing the draft or source invalidates Review.
+Retired clips stay retired, and an exhausted revision budget is read only.
+
+Focused editor checks cover exact requests, provenance/reference qualification,
+invalid axes, draft/stale/close/late-response guards and Preview Return. The Retail
+HTTP workflow passes including normal Build review, atomic Undo/Redo and
+Save/Open. Private Edge smoke passes four-frame Review/Preview/Return/Apply and
+verifies the new retained hash and actor reference with no page errors; screenshots
+were inspected and the staging server stopped. No game was launched or installed.
+Allocated GLB content import and broader bank relocation remain work. Gameplay
+acceptance stays deferred; the full solo goal remains active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — retained animation content editing APIs:** Source-bound
 Review/Pose/Apply can now replace a retained clip's captured-donor frame mapping
 and integer channel axes while preserving its UUID, donor snapshot and retirement

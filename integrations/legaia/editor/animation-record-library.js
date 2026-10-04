@@ -59,7 +59,7 @@ export function decodeAllocatedAssignmentPose(value,report,row){
 }
 const element=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
 const button=(label,action)=>{const node=element('button',label);node.type='button';node.dataset.action=action;return node;};
-export async function openAnimationRecordLibrary({entityId,getContext,assignment=null,modelAssetId=null,busy=()=>false,setBusy=()=>{},onApplied=()=>{},onPosePreview=null,onError=()=>{}}){
+export async function openAnimationRecordLibrary({entityId,getContext,assignment=null,modelAssetId=null,busy=()=>false,setBusy=()=>{},onApplied=()=>{},onPosePreview=null,onEdit=null,onError=()=>{}}){
   const context=animationGlbContext(getContext());
   if(!actor(entityId,context.sceneId))fail('Choose an imported actor in the editable scene.');
   const dialog=element('dialog');dialog.className='project-dialog';dialog.style.maxWidth='52rem';dialog.style.maxHeight='90vh';dialog.style.overflowY='auto';
@@ -68,6 +68,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
   const actions=element('div');actions.append(inspect,reviewButton,apply,close);
   const assign=button('Review initial assignment','assign'),clearAssignment=button('Review clear assignment','clear-assignment'),previewAssignment=button('Preview reviewed assignment','assignment-pose');previewAssignment.hidden=onPosePreview===null;
   actions.append(assign,clearAssignment,previewAssignment);
+  const editContent=button('Edit retained content','edit-content');editContent.hidden=onEdit===null;actions.append(editContent);
   const details=element('p'),status=element('p','Verifying retained clips…'),error=element('p');status.setAttribute('role','status');error.className='dialog-error';error.setAttribute('role','alert');
   dialog.append(element('h2','Saved allocated clips'),element('p','Independent saved donor snapshots. Review an active clip as this actor’s initial animation, or review retirement/restoration separately. Initial headers can be changed later by scripts. Playback and gameplay remain unverified.'),element('p',assignment?`Current allocated initial clip: ${assignment.record_id}`:'Current initial clip: inherited/imported'),select,details,actions,status,error);document.body.append(dialog);
   let library=null,held=null,closed=false,stale=false,pending=null,generation=0,controller=null,owner=null;
@@ -81,6 +82,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     const row=selected(),blocked=!current()||pending!==null||busy()!==false;
     select.disabled=blocked||!row;inspect.disabled=blocked||!row;reviewButton.disabled=blocked||!row||!library.activation_available;apply.disabled=blocked||!held||held.row!==row||held.report.project_change===false;close.disabled=pending==='apply';
     assign.disabled=blocked||!row?.active;clearAssignment.disabled=blocked||!assignment;previewAssignment.disabled=blocked||held?.kind!=='assignment'||!held.row||held.request.record_id===null;
+    editContent.disabled=blocked||!row;
     if(row){details.textContent=`${row.animation_id} · ${row.frame_count} frames · ${row.object_count} objects · ${row.active?'Active':'Retired'} · ${assignment?.record_id===row.record_id?'assigned as this actor’s initial clip':'retained capture'}`;reviewButton.textContent=row.active?'Review retirement':'Review restoration';}
   }
   function dispose(){if(closed)return;closed=true;invalidate();if(dialog.open)dialog.close();dialog.remove();}
@@ -125,6 +127,7 @@ export async function openAnimationRecordLibrary({entityId,getContext,assignment
     try{const result=await onPosePreview(data,{returnToEditor});if(!valid()||result===false){returnToEditor();return false;}return true;}catch(e){returnToEditor();throw e;}
   });};
   close.onclick=()=>{if(pending==='apply')return false;dispose();return true;};dialog.oncancel=e=>{if(pending==='apply')e.preventDefault();};dialog.onclose=()=>{if(!dialog.open&&dialog.dataset.poseRetained!=='true')dispose();};
+  editContent.onclick=async()=>{const row=selected();if(!row||!current()||pending!==null||busy()!==false||onEdit===null)return false;dispose();try{await onEdit(row);return true;}catch(e){onError(e);return false;}};
   dialog.showModal();updateState();
   const ready=run('list',async(signal,valid)=>{const result=await post('/api/animation-record-library',{scene_id:context.sceneId,expected_source_key:context.sourceKey},signal);if(!valid())return false;library=decodeAnimationRecordLibrary(result,context);const rows=library.records.filter(allowed);for(const row of rows){const option=element('option',`${row.active?'Active':'Retired'} · ${row.frame_count} frames · ${row.record_id}`);option.value=row.record_id;select.append(option);}select.value=rows.find(r=>r.record_id===assignment?.record_id)?.record_id??rows[0]?.record_id??'';status.textContent=rows.length?'Choose a clip to Preview, review initial assignment, or review a lifecycle change.':'No retained clips match this actor’s model.';return true;});
   return {dialog,ready,updateState,dispose};

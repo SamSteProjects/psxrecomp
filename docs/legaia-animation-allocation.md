@@ -1,5 +1,28 @@
 # Persistent native animation record allocation
 
+The actor inspector's **Manage allocated clips → Edit retained content** opens
+an editor for the selected saved capture, including retired captures. Frame mapping
+uses the frozen captured donor's indices; comma-separated indices and inclusive
+ranges can repeat, reorder, shorten or extend the output within the displayed
+frame budget. Select a mapped output frame and rigid object, then enter native
+integer translation (-2048–2047) or rotation (0–4080, steps of 16) axes. Blank axes
+inherit that captured frame. Contributions replace the retained edit, so clearing
+an axis restores inherited content. Shortening a mapping does not silently discard
+out-of-range channel contributions; correct those drafts before Review.
+
+**Review retained edit** validates native reconstruction and all initial actor
+references without changing the project. **Preview reviewed content** opens the
+proposed pose over Current geometry; closing it returns to the same reviewed form.
+**Apply reviewed content** preserves the record UUID and captured donor, updates
+its content hash and referring actors in one ordinary Undo entry, and keeps a
+retired record retired. Save persists the result. Draft/source changes invalidate
+Review; content export is available after Apply. The options endpoint is
+`POST /api/animation-record-edit-options` with exactly `scene_id`, `record_id`
+and `expected_source_key`; it returns verified capture metadata, native frame
+budget, revision availability and referring actor identities, without payload bytes.
+Allocated GLB content import remains pending. Preview rate is a user setting;
+Retail timing and gameplay are not claimed verified.
+
 The SDK can construct new rigid animation records from a verified donor and
 review the proposed expanded native bank through
 `POST /api/animation-record-allocation-preview`, then Apply the exact request and

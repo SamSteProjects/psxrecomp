@@ -815,6 +815,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
+                 "/animation-record-edit.js": ("animation-record-edit.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript")}
         if route not in files:
@@ -1899,6 +1900,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         self.server.project.command(dict(type='set_animation_record_active',**body))
                         self._json(200,self.server.state())
+                    return
+                if route=='/api/animation-record-edit-options':
+                    if set(body)!={'scene_id','record_id','expected_source_key'}:raise ProjectError('Retained editor options require exact scene, clip and source')
+                    from .animation_record_edit import options
+                    self._json(200,options(self.server.project,**body))
                     return
                 if route in ('/api/animation-record-edit-review','/api/animation-record-edit-pose','/api/animation-record-edit'):
                     fields={'scene_id','record_id','source_frame_indices','edits','expected_source_key'}

@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {decodeRetainedEditOptions,decodeRetainedEditReview,decodeRetainedEditPose,validateRetainedAxes,openRetainedAnimationEditor} from '../editor/animation-record-edit.js';
+const entity='scene://town01/actors/man-p1/0011',id='11111111-1111-4111-8111-111111111111',asset='asset://town01/models/scene-tmd/0105';
+const context={projectPath:'C:/private',sceneId:'scene://town01',sourceKey:'a'.repeat(64),mode:'edit'};
+const row={record_id:id,record_sha256:'b'.repeat(64),donor_asset_id:asset,frame_count:3,object_count:6,active:true};
+const entry={...row,source_frame_indices:[1,0,1],edits:[],donor_frame_count:20};
+const options={schema_version:'legaia.animation-record-edit-options.v1',scene_id:context.sceneId,record_id:id,project_source_key:context.sourceKey,entry,revision:1,edit_available:true,active:true,maximum_frame_count:512,referencing_actors:[entity],gameplay_verified:false};
+const binding={scene_id:context.sceneId,record_id:id,record_sha256:row.record_sha256,model_asset_id:asset};
+const report=request=>{const after={...entry,source_frame_indices:request.source_frame_indices,edits:request.edits,record_sha256:'c'.repeat(64)};return {schema_version:'legaia.animation-record-edit-review.v1',scene_id:context.sceneId,record_id:id,project_source_key:context.sourceKey,before:entry,after,review_key:'d'.repeat(64),candidate_record_sha256:after.record_sha256,candidate_bank_sha256:'e'.repeat(64),project_change:true,project_changed:false,gameplay_verified:false,proposed_ledger:{schema_version:'legaia.animation-record-ledger.v1',source_scene_id:context.sceneId,revision:2,records:[after],removed_record_ids:[]},assignment_updates:{[entity]:{before:binding,after:{...binding,record_sha256:after.record_sha256}}}};};
+const request={scene_id:context.sceneId,record_id:id,source_frame_indices:[1,0,1,0],edits:[{frame_index:0,object_index:0,translation:{x:2}}],expected_source_key:context.sourceKey};
+const pose=r=>({schema_version:'legaia.model-preview.v1',semantic_id:asset,frames:Array.from({length:r.after.source_frame_indices.length},()=>({})),animation:{representation:'allocated_record_edit_preview',clip_id:'allocated-record-edit-preview',edit_proposal:r,source_record:{record_id:id,record_sha256:r.after.record_sha256}}});
+decodeRetainedEditOptions(options,row,context);decodeRetainedEditReview(report(request),options,request);decodeRetainedEditPose(pose(report(request)),report(request));
+for(const edit of [v=>v.candidate_record_sha256='0'.repeat(64),v=>v.assignment_updates={},v=>v.proposed_ledger.removed_record_ids=[id],v=>v.after.source_frame_indices=[0]]){const v=structuredClone(report(request));edit(v);assert.throws(()=>decodeRetainedEditReview(v,options,request));}
+assert.throws(()=>validateRetainedAxes([{frame_index:0,object_index:0,rotation_psx:{x:1}}],3,6));assert.throws(()=>validateRetainedAxes([{frame_index:3,object_index:0,translation:{x:2}}],3,6));
+class Node{constructor(tag){this.children=[];this.style={};this.dataset={};this.attributes={};this.value='';this.open=false;this.disabled=false;}append(...nodes){for(const n of nodes){this.children.push(n);n.parent=this;}}setAttribute(k,v){this.attributes[k]=v;}showModal(){this.open=true;}close(){this.open=false;this.onclose?.();}remove(){if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}}
+const tree=n=>[n,...n.children.flatMap(tree)],action=(c,k)=>tree(c.dialog).find(n=>n.dataset.action===k),input=(c,k)=>tree(c.dialog).find(n=>n.attributes['aria-label']===k);
+const old={document:globalThis.document,fetch:globalThis.fetch};globalThis.document={body:new Node('body'),createElement:t=>new Node(t)};
+try{
+ let current={...context},busy=false,applied=0,returned,calls=[],heldReport,delay=null;
+ globalThis.fetch=async(path,settings)=>{const body=JSON.parse(settings.body);calls.push({path,body});if(delay?.path===path)return delay.promise;return {ok:true,json:async()=>path.endsWith('-options')?options:path.endsWith('-review')?(heldReport=report(body)):path.endsWith('-pose')?pose(heldReport):{project:{mode:'edit'}}};};
+ const settings={row,getContext:()=>current,busy:()=>busy,setBusy:v=>busy=v,onApplied:()=>applied++,onPosePreview:async(_,callbacks)=>returned=callbacks.returnToEditor};
+ let control=await openRetainedAnimationEditor(settings);await control.ready;
+ input(control,'Captured donor frame mapping').value='1,0,1,0';input(control,'Captured donor frame mapping').oninput();input(control,'Translation X').value='2';input(control,'Translation X').oninput();
+ assert.equal(action(control,'apply').disabled,true);assert.equal(await action(control,'review').onclick(),true);assert.deepEqual(calls.at(-1).body,request);
+ assert.equal(await action(control,'pose').onclick(),true);assert.equal(control.dialog.open,false);assert.equal(returned(),true);assert.equal(action(control,'apply').disabled,false);
+ input(control,'Translation X').value='3';input(control,'Translation X').oninput();assert.equal(action(control,'apply').disabled,true);assert.equal(await action(control,'apply').onclick(),false);
+ await action(control,'review').onclick();assert.equal(await action(control,'apply').onclick(),true);assert.equal(applied,1);assert.equal(calls.at(-1).body.review_key,'d'.repeat(64));assert.equal(busy,false);
+ control=await openRetainedAnimationEditor(settings);await control.ready;await action(control,'review').onclick();current={...context,sourceKey:'f'.repeat(64)};control.updateState();assert.equal(await action(control,'apply').onclick(),false);control.dispose();
+ current={...context};control=await openRetainedAnimationEditor(settings);await control.ready;let resolve;delay={path:'/api/animation-record-edit-review',promise:new Promise(done=>resolve=done)};const late=action(control,'review').onclick();control.dispose();resolve({ok:true,json:async()=>report(request)});assert.equal(await late,false);assert.equal(applied,1);assert.equal(busy,false);
+}finally{Object.assign(globalThis,old);}
+console.log('Retained editor provenance, frame/axis draft, reference Review, Preview Return, exact Apply and stale/draft/late guards passed.');

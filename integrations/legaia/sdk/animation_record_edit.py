@@ -11,6 +11,23 @@ from .scene_preview import source_key
 from .project import ProjectError,digest
 
 
+def options(project,scene_id,record_id,expected_source_key):
+    key=source_key(project)
+    if project.mode!='edit' or scene_id!=project.active_scene or not key or key!=expected_source_key:
+        raise ProjectError('Retained editor requires the current editable scene source')
+    ledger=validate(project,scene_id,project.overrides.get(scene_id,{}).get('AnimationRecords'),verify_disc=True)
+    entry=next((row for row in ledger['records'] if row['record_id']==record_id),None)
+    if entry is None:raise ProjectError('Retained editor requires an existing clip identity')
+    other=sum(len(row['source_frame_indices'])*row['object_count'] for row in ledger['records'] if row['record_id']!=record_id)
+    if source_key(project)!=key:raise ProjectError('Source changed while loading retained editor')
+    return dict(schema_version='legaia.animation-record-edit-options.v1',scene_id=scene_id,record_id=record_id,
+        project_source_key=key,entry=entry,active=record_id not in ledger['removed_record_ids'],revision=ledger['revision'],
+        maximum_frame_count=min(512,(4096-other)//entry['object_count']),edit_available=ledger['revision']<64,
+        referencing_actors=sorted(actor for actor,value in project.overrides.items()
+            if value.get('ActorAllocatedAnimation',{}).get('scene_id')==scene_id and
+            value.get('ActorAllocatedAnimation',{}).get('record_id')==record_id),gameplay_verified=False)
+
+
 def prepare(project,scene_id,record_id,source_frame_indices,edits,expected_source_key):
     key=source_key(project)
     if project.mode!='edit' or scene_id!=project.active_scene or not key or key!=expected_source_key:

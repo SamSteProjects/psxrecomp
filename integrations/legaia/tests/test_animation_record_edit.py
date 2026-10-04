@@ -25,6 +25,10 @@ class AnimationRecordEdit(unittest.TestCase):
                 status,review=post('/api/allocated-animation-assignment-review',assignment);self.assertEqual(status,200,review)
                 status,_=post('/api/allocated-animation-assignment',dict(assignment,review_key=review['review_key']));self.assertEqual(status,200)
                 key=source_key(project)
+                status,options=post('/api/animation-record-edit-options',dict(scene_id=project.active_scene,record_id=record,expected_source_key=key))
+                self.assertEqual(status,200,options);self.assertEqual(options['referencing_actors'],[owner])
+                self.assertTrue(options['active']);self.assertEqual(options['entry']['source_frame_indices'],[1,0,1])
+                self.assertTrue(options['edit_available'])
                 status,original=post('/api/animation-record-pose',dict(scene_id=project.active_scene,record_id=record,expected_source_key=key));self.assertEqual(status,200)
                 value=original['frames'][0]['object_transforms'][0]['translation'][0]^1
                 request=dict(scene_id=project.active_scene,record_id=record,source_frame_indices=[1,0,1,0],
@@ -66,6 +70,8 @@ class AnimationRecordEdit(unittest.TestCase):
                 self.assertIn(record,project.overrides[project.active_scene]['AnimationRecords']['removed_record_ids'])
                 status,pose=post('/api/animation-record-pose',dict(scene_id=project.active_scene,record_id=record,expected_source_key=source_key(project)));self.assertEqual(status,200,pose)
                 self.assertEqual(len(pose['frames']),2);self.assertFalse(pose['animation']['saved_record']['active'])
+                status,options=post('/api/animation-record-edit-options',dict(scene_id=project.active_scene,record_id=record,expected_source_key=source_key(project)))
+                self.assertEqual(status,200,options);self.assertFalse(options['active']);self.assertEqual(options['referencing_actors'],[])
 
 
 if __name__=='__main__':unittest.main()
