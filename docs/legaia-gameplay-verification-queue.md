@@ -1,5 +1,13 @@
 # Deferred gameplay verification
 
+Model pack/carrier growth checkpoint (2026-10-03): selected ledger-qualified
+members and later directory/resource offsets can now grow offline. Town01 slot 9
+passes exact reconstruction within its physical PROT span, with all 113 neighboring
+slots and five other compressed sections preserved. This is not a normal Build or
+installed-game result. PROT/disc relocation and project/editor integration remain
+required; deferred added-face appearance/lighting/culling/pose checks are unchanged.
+No immediate gameplay gate is added.
+
 New-face identity ledger checkpoint (2026-10-03): stable source/authored donor
 identities and serialized multi-batch replay pass offline, including an independent
 Retail two-quad reconstruction. The record is not an SDK asset override; carrier

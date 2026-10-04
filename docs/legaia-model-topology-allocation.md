@@ -128,3 +128,54 @@ bindings. It does not yet compose with Retail face removal/restoration, GLB edit
 new vectors/groups/objects or carrier relocation. Project history, Save/Open,
 Review/Apply, scene preview and normal Build still need one coherent binding path.
 No gameplay or installation ran.
+
+
+## Model pack and scene-resource relocation codecs
+
+`importer.model_pack_growth.grow_model_pack(source, source_hash, replacements)`
+accepts exact `slot_index`/`ledger` pairs. It qualifies a canonical word-offset
+TMD directory, derives each selected model's native extent, replays its ledger,
+and preserves the member's trailing bytes separately. Later offsets rebase to
+new word positions. All unselected slots remain byte-exact. Replacements compose
+as one pack rather than sequential edits to stale offsets. Initial budgets are
+240 slots, 32 selected slots and a 4 MiB decoded pack. Slots are explicit directory
+identities; magic scanning does not establish relocation ownership.
+
+`grow_scene_model_pack` qualifies a source carrier hash, explicit nonempty type-2
+resource descriptor and decoded pack hash. It reuses original compressed bytes
+for no-op replay. For changes it verifies deterministic compression readback,
+updates the descriptor's decoded byte count, and retains every later payload byte.
+If the compressed stream exceeds its resource slot, `allow_growth=True` permits
+four-byte-aligned insertion and rebases later descriptor offsets. The default
+rejects that growth. Other resource types, decoded sizes and reserved header bytes
+remain unchanged. Nonempty descriptors cannot point at the carrier's exclusive end.
+
+Format evidence is read from pinned Andrew commit
+`d6e64c68ede25813d35db20980da82a1a025549b`, `docs/formats/pack.md` and
+`crates/asset/src/pack.rs`: pack offsets are words relative to the pack start and
+slot order is retained. The reference checkout's current HEAD is not used as that
+pin. Existing SDK `man_container` descriptor relocation and `prot_layout` physical
+ownership readers supply the established resource/physical boundary conventions.
+
+Six new pack/carrier regression cases plus the existing focused suites pass,
+35 cases total. Tests independently assemble multiple grown members and headers,
+force compressed-slot growth, verify every neighbor/tail and later descriptor,
+exercise no-op source identity, and reject stale/duplicate/aliased/malformed input.
+
+The private Town01 proof uses the **227,328-byte consecutive-start physical span**
+for PROT entry 4, not its 458,752-byte overlapping read window. Section 0 is a
+114-slot pack; slot 9 begins at decoded offset 20,832 and its original model spans
+4,704 bytes. Two ledger additions produce 4,752 bytes. The complete decoded pack
+grows 304,116 to 304,164 bytes and agrees with independent whole-pack assembly.
+Every other slot is unchanged. The new compressed stream occupies 154,531 bytes
+inside the original 154,547-byte slot, so this real carrier requires no byte or
+sector growth. All other five compressed resource sections remain byte-exact and
+all six sections decode. Forced relocation is covered separately with synthetic
+sources; it is not claimed to have been required by this Retail edit.
+
+Private proof: `local-output/sdk-20260909/model-pack-growth-20261003/parent/`.
+These are native pack/resource codecs with `build_ready=False`. They do not yet
+compose PROT physical allocation/TOC or ISO relocation, create project asset
+bindings, integrate removal/GLB, or expose editor Review/Apply/history/normal Build.
+No gameplay or installation ran. The next integration must use consecutive-start
+physical ownership, preserve every archive neighbor, and read back after reopening.
