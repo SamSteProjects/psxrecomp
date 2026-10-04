@@ -1,5 +1,45 @@
 # Persistent native animation record allocation
 
+**Manage allocated clips → Edit retained GLB** supports external channel editing
+of a saved active or retired capture. Choose an explicit 1–120 export FPS,
+Prepare retained GLB export, and download both the GLB and binding JSON. Preserve
+the rigid `object-N` nodes; the unchanged sidecar qualifies the current scene,
+saved UUID/content hash, frozen donor, object count and interchange rate. Choose
+the edited GLB (maximum 32 MiB) and sidecar (maximum 128 KiB), then specify the
+output mapping into frozen captured-donor frames. It defaults to the saved mapping
+and can repeat, reorder, grow or shorten within the native ledger budget. The
+mapping sets output frame count and opaque native channel data; it is not inferred
+from GLB duration. Shortened files must fit that chosen output duration.
+
+Review GLB content samples object-local channels at `float32(i/binding_fps)` with
+STEP, LINEAR or CUBICSPLINE interpolation and endpoint hold. The codec reverses
+`[x,-y,z]`, rounds translation to native integers and quantizes rotation on the
+existing byte-angle grid; the Review displays quantization error and referring
+actor count. Same-mapping imports use existing retained content as the angular
+baseline; changed mappings inherit captured donor frames before file sampling.
+Mesh edits are ignored. No extra rigid objects, skinning or hierarchy is allocated.
+The chosen rate does not establish Retail playback timing.
+
+Preview reviewed GLB content opens the proposed pose over Current geometry and
+returns to the same Review. Apply reviewed GLB content replays the exact file,
+binding and mapping, preserves UUID/donor/retirement, and updates content hash and
+initial references together through ordinary Undo/Redo. Save persists the result.
+Changing files, mapping or source invalidates Review. Unchanged imports add no
+history; unapplied content cannot be exported as an applied clip.
+
+Full saved or current-assigned exports through `/api/export/allocated-animation`
+now include `.binding.json` beside the GLB, plus `binding`, `binding_path`,
+`binding_filename` and `glb_base64` in the response. Initial-assignment proposals
+and posed-frame exports have no content-import sidecar. The binding schema is
+`legaia.animation-record-glb-binding.v1`.
+
+`POST /api/animation-record-glb-review` takes exactly `scene_id`, `record_id`,
+`source_frame_indices`, `expected_source_key`, `binding`, `glb_base64`.
+`/api/animation-record-glb-pose` and `/api/animation-record-glb-import` additionally
+require the returned `review_key`. The Review exposes GLB analysis, the qualified
+native content request and native Review; Apply requalifies all referenced actor
+headers. Browser and Retail smoke cover this workflow; gameplay remains deferred.
+
 The actor inspector's **Manage allocated clips → Edit retained content** opens
 an editor for the selected saved capture, including retired captures. Frame mapping
 uses the frozen captured donor's indices; comma-separated indices and inclusive
@@ -20,7 +60,7 @@ Review; content export is available after Apply. The options endpoint is
 `POST /api/animation-record-edit-options` with exactly `scene_id`, `record_id`
 and `expected_source_key`; it returns verified capture metadata, native frame
 budget, revision availability and referring actor identities, without payload bytes.
-Allocated GLB content import remains pending. Preview rate is a user setting;
+Retained GLB content import is available through the file workflow above. Preview rate is a user setting;
 Retail timing and gameplay are not claimed verified.
 
 The SDK can construct new rigid animation records from a verified donor and

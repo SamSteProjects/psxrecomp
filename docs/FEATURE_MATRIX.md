@@ -1,5 +1,29 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — retained GLB content interchange:** Actor inspector →
+Manage allocated clips → Edit retained GLB now exports the saved rigid clip and
+its current capture/source binding, downloads both files, reviews externally
+edited channels with an explicit captured-donor output mapping, previews the
+proposed pose and applies it. Repeated mappings can grow or shorten retained
+content without inventing opaque native data. The saved UUID and donor remain;
+content hash and referring initial assignments update in one ordinary Undo entry.
+STEP/LINEAR/CUBICSPLINE sampling and native quantization reuse the existing codec.
+File/binding/mapping/source changes reject stale Review; no-op imports add no
+history. Retired captures remain retired. Mesh changes are not imported.
+
+The Retail HTTP workflow verifies unchanged roundtrip, three-to-four frame
+content growth, exact proposed pose, read-only Review/Preview, wrong binding/file/
+key rejection, atomic Apply/Undo/Redo, Save/Open and normal Build review. The
+existing allocated export regression passes for saved, retired, proposed and
+assigned representations, including encoding-time source change. Three focused
+editor regressions pass. Private Edge smoke verifies exact GLB/binding downloads,
+file selection, four-frame Review/Preview Return, mapping invalidation and Apply
+with no page errors; form/pose screenshots were inspected and staging stopped.
+No game was launched or installed. Retail playback timing and gameplay acceptance
+stay deferred; raw streaming ANM relocation, full-disc allocation export and
+broader SDK work remain. The full solo goal stays active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — retained animation content editor:** Actor inspector →
 Manage allocated clips → Edit retained content now opens a source-qualified form
 for captured-donor frame mapping and per-frame, per-object integer translation

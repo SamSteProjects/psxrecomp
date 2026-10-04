@@ -439,7 +439,20 @@ class EditorServer(ThreadingHTTPServer):
         geometry=animation.pop('geometry');geometry['frames']=animation.pop('frames')
         preview=self.model_preview(asset,prepared=geometry,effective_shape=True)
         animation['export_source_key']=key;preview['animation']=animation
-        return self.export_preview(preview,frame,fps,expected_source_key=key)
+        binding=None
+        if fps is not None and representation!='allocated_assignment_preview':
+            from .animation_record_glb import export_binding
+            binding=export_binding(self.project,body['scene_id'],body['record_id'],key,fps)
+        result=self.export_preview(preview,frame,fps,expected_source_key=key)
+        if binding is not None:
+            from .build import _guard_output
+            binding_path=Path(result['path']).with_suffix('.binding.json')
+            _guard_output(binding_path,self.project.root)
+            with binding_path.open('xb') as handle:
+                handle.write((json.dumps(binding,sort_keys=True,indent=2,allow_nan=False)+'\n').encode('utf-8'))
+            result.update(binding=binding,binding_path=str(binding_path),binding_filename=binding_path.name)
+            result.update(glb_base64=base64.b64encode(Path(result['path']).read_bytes()).decode('ascii'))
+        return result
 
     def export_preview(self, preview: dict, frame_index: int | None, clip_fps: float | None = None, *,expected_source_key=None) -> dict:
         from .build import _guard_output
@@ -816,6 +829,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
                  "/animation-record-edit.js": ("animation-record-edit.js", "text/javascript"),
+                 "/animation-record-glb.js": ("animation-record-glb.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript")}
         if route not in files:
@@ -843,6 +857,8 @@ class EditorHandler(BaseHTTPRequestHandler):
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
+                request_limit = 44 * 1024 * 1024
+            if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview', '/api/texture-png-pixels-preview', '/api/texture-png-scene-preview', '/api/texture-png-import'):
                 request_limit = 24 * 1024 * 1024
@@ -1900,6 +1916,30 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         self.server.project.command(dict(type='set_animation_record_active',**body))
                         self._json(200,self.server.state())
+                    return
+                if route in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
+                    expected={'scene_id','record_id','source_frame_indices','expected_source_key','glb_base64','binding'}
+                    if route!='/api/animation-record-glb-review':expected.add('review_key')
+                    if set(body)!=expected or not isinstance(body['binding'],dict) or len(json.dumps(body['binding'],allow_nan=False).encode('utf-8'))>128*1024:
+                        raise ProjectError('Retained GLB requires exact scene, clip, output mapping, source, bounded sidecar and bytes')
+                    encoded=body['glb_base64']
+                    if not isinstance(encoded,str) or len(encoded)>44739244:raise ProjectError('Retained GLB exceeds 32 MiB')
+                    try:payload=base64.b64decode(encoded,validate=True)
+                    except ValueError as exc:raise ProjectError('Retained GLB requires valid base64') from exc
+                    if not 1<=len(payload)<=32*1024*1024:raise ProjectError('Retained GLB must contain at most 32 MiB')
+                    from .animation_record_glb import prepare_import,pose_import,apply_import
+                    request={k:v for k,v in body.items() if k!='glb_base64'};request['content']=payload
+                    if route=='/api/animation-record-glb-review':
+                        self._json(200,prepare_import(self.server.project,**request)[1])
+                    elif route=='/api/animation-record-glb-pose':
+                        animation,asset,report=pose_import(self.server.project,**request)
+                        preview=self.server.model_preview(asset,prepared=animation.pop('geometry'),effective_shape=True)
+                        preview['frames']=animation.pop('frames');preview['animation']=animation;preview['report']=report
+                        preview['animation_support']=dict(supported=True,clips=[dict(id='allocated-record-edit-preview',label='Proposed retained GLB content')],evidence='reviewed_retained_glb_not_applied')
+                        self._json(200,preview)
+                    else:
+                        report=apply_import(self.server.project,**request)
+                        self._json(200,dict(self.server.state(),retained_glb_report=report))
                     return
                 if route=='/api/animation-record-edit-options':
                     if set(body)!={'scene_id','record_id','expected_source_key'}:raise ProjectError('Retained editor options require exact scene, clip and source')

@@ -39,6 +39,7 @@ import {openAnimationGlbEditor} from '/animation-glb.js';
 import {openAnimationAllocationEditor} from '/animation-allocation.js';
 import {openAnimationRecordLibrary,allocatedAnimationExportRequest} from '/animation-record-library.js';
 import {openRetainedAnimationEditor} from '/animation-record-edit.js';
+import {openRetainedAnimationGlbEditor} from '/animation-record-glb.js';
 import {openModelGlbEditor} from '/model-glb.js';
 import {openModelMaterialsEditor} from '/model-materials.js';
 import {openTexturePngEditor} from '/texture-png.js';
@@ -1428,6 +1429,7 @@ function synchronizeResources(){
   if(animationAllocationEditor){if(selected()?.id!==animationAllocationEntityId)animationAllocationEditor.dispose();else animationAllocationEditor.updateState();}
   if(animationRecordLibrary){if(selected()?.id!==animationRecordEntityId)animationRecordLibrary.dispose();else animationRecordLibrary.updateState();}
   if(retainedAnimationEditor){if(selected()?.id!==retainedAnimationEntityId)retainedAnimationEditor.dispose();else retainedAnimationEditor.updateState();}
+  if(retainedAnimationGlbEditor){if(selected()?.id!==retainedAnimationGlbEntityId)retainedAnimationGlbEditor.dispose();else retainedAnimationGlbEditor.updateState();}
   modelGlbEditor?.updateState();
   texturePngEditor?.updateState();
   if(transitionsDialog.open&&transitionsDialog.dataset.sourceContext!==transitionsContext(transitionsDialog.dataset.projectWide==='true'))transitionsDialog.close();
@@ -2812,6 +2814,19 @@ let animationGlbEditor=null,animationGlbEntityId=null;
 let animationAllocationEditor=null,animationAllocationEntityId=null;
 let animationRecordLibrary=null,animationRecordEntityId=null;
 let retainedAnimationEditor=null,retainedAnimationEntityId=null;
+let retainedAnimationGlbEditor=null,retainedAnimationGlbEntityId=null;
+async function inspectRetainedAnimationGlb(entity,row){
+  if(busy||state.project.mode!=='edit')return;
+  retainedAnimationGlbEditor?.dispose();retainedAnimationGlbEntityId=entity.id;
+  retainedAnimationGlbEditor=await openRetainedAnimationGlbEditor({row,
+    getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
+    busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
+    onApplied:next=>{state=next;render();notify('Retained GLB content and actor references updated. Save project to persist.');},
+    onPosePreview:async(data,{returnToEditor})=>{setBusy(false);await openModel(data.semantic_id,data.animation.clip_id,entity.id,'imported',null,data,returnToEditor);
+      if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open proposed retained GLB content.');
+      $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});}
+  });
+}
 async function inspectRetainedAnimationContent(entity,row){
   if(busy||state.project.mode!=='edit')return;
   retainedAnimationEditor?.dispose();retainedAnimationEntityId=entity.id;
@@ -2829,6 +2844,7 @@ async function inspectSavedAnimationRecords(entity){
   animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;
   animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,
     onEdit:row=>inspectRetainedAnimationContent(entity,row),
+    onGlb:row=>inspectRetainedAnimationGlb(entity,row),
     assignment:entity.components?.ActorAllocatedAnimation?.authored??null,
     modelAssetId:entity.components?.ActorAppearance?.effective?.asset_id??null,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
