@@ -1,5 +1,22 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — allocated initial assignment editor controls:** The actor inspector
+now opens Manage allocated clips directly. The library filters retained captures
+by the actor's exact inherited model, separately offers lifecycle changes, and
+supports initial assignment Review, proposed posed Preview with Return, explicit
+Apply and Review/Apply clear. Review exposes stable clip identity, current native
+selector, Build support and gameplay limits. Assigned identity/hash/model remain
+visible in the actor inspector. Proposal/assigned clip exports reject instead of
+exporting a different Retail clip.
+
+Focused editor checks cover provenance, exact Review and posed identity, Apply,
+clear, retained Return and stale source rejection, alongside the existing library
+lifecycle checks. The private Retail-backed Edge smoke passed Review, three-frame
+posed Preview/Return, Apply and clear, with disabled exports and no page errors.
+Review and pose screenshots were visually inspected. Gameplay remains deferred; no user game is launched or installed. Raw ANM
+relocation and joint appended NPC MAN composition remain implementation work.
+The full solo goal stays active. [Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — allocated initial assignment Build delivery:** Normal Build and
 read-only Build review now compose retained clip assignments into fixed-layout
 MAN headers and deliver them with the expanded compressed ANM bank. UUID/hash

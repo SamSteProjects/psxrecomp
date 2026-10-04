@@ -8,8 +8,8 @@ in a scene-owned `AnimationRecords` component with ordinary Undo/Redo and
 Save/Open. The editor now exposes creation, Review, posed Preview and explicit
 Apply. Normal Build delivers expanded banks in qualified compressed ANM carriers.
 Persistent initial actor assignment is available through reviewed APIs and scene
-Preview and normal Build for qualified compressed carriers; editor controls and raw streaming bank
-relocation remain unavailable.
+Preview, editor Review/Apply/clear and normal Build for qualified compressed
+carriers; raw streaming bank relocation remains unavailable.
 Existing GLB channel import remains a separate complete
 workflow for fixed-layout clips.
 
@@ -285,3 +285,32 @@ streaming ANM relocation and joint composition with appended NPC MAN records
 remain explicit unsupported combinations. Build rejects them before package
 publication. Gameplay selection, script changes, cadence and lifecycle are still
 deferred; no game was launched or installed.
+
+## Initial assignment editor workflow (2026-10-04)
+
+Select an imported actor and use **Manage allocated clips** directly in the actor
+inspector, or through the imported channel editor. The library lists retained
+captures for the actor's exact inherited model, including captures from other
+actors with that same asset identity. Retired clips remain previewable and
+restorable but cannot be assigned. Native Review rechecks compatibility.
+
+**Review initial assignment** shows the portable retained identity and current
+native selector, marks the change unapplied, and reports Build support and
+limitations. **Preview reviewed assignment** opens the captured pose over Current
+geometry; close returns to the same Review. **Apply reviewed change** sends the
+exact reviewed source/record/key and publishes the actor component. An already
+assigned no-change Review disables Apply. A new source, selection, pending work
+or closed dialog invalidates the held Review. Retirement/restoration retain their
+separate Review path and cannot be confused with initial assignment Apply.
+
+The inspector displays the assigned UUID, record hash and captured model.
+**Review clear assignment** then **Apply reviewed change** restores the inherited
+initial clip; normal Undo/Redo and Save/Open remain available. Proposal/assigned
+clip exports are unavailable and explicitly disabled, so they cannot silently
+export an imported clip. Scripts may replace the initial clip at runtime.
+
+Two focused Node workflow suites pass. A private Retail-backed headless Edge
+smoke exercised direct inspector entry, Review, three-frame posed Preview and
+Return, Apply and clear, with no page errors and disabled exports. The Review and
+pose screenshots were inspected. The staging server was stopped. This is browser
+acceptance, not gameplay acceptance; no game was launched or installed.
