@@ -281,9 +281,9 @@ saved project metadata and overrides unchanged. Synthetic composition preserves
 placement and rejects conflicting header edits.
 
 This covers initial source headers, not a runtime assignment observation. Raw
-streaming ANM relocation and joint composition with appended NPC MAN records
-remain explicit unsupported combinations. Build rejects them before package
-publication. Gameplay selection, script changes, cadence and lifecycle are still
+streaming ANM relocation remains explicitly unsupported. Joint composition with
+appended NPC MAN records was subsequently added below. Build rejects unsupported
+carriers before package publication. Gameplay selection, script changes, cadence and lifecycle are still
 deferred; no game was launched or installed.
 
 ## Initial assignment editor workflow (2026-10-04)
@@ -314,3 +314,30 @@ smoke exercised direct inspector entry, Review, three-frame posed Preview and
 Return, Apply and clear, with no page errors and disabled exports. The Review and
 pose screenshots were inspected. The staging server was stopped. This is browser
 acceptance, not gameplay acceptance; no game was launched or installed.
+
+## Joint allocated clip/NPC composition (2026-10-04)
+
+Normal Build now supports allocated initial headers on original actors in scenes
+with appended NPC records. `patch_allocated_appended` first qualifies the exact
+bank/donor/target proposal against Retail, then requires bounded partition-1
+additions with unchanged other partition counts and target record/header layout.
+It reparses actor identities to rebase header offsets, checks the new preimages,
+and independently reads back the resulting model/clip bytes. Source and rebased
+offsets remain distinct in the audit. New NPC copies retain their imported donor
+clip; an original actor's allocated assignment is not copied implicitly.
+
+The normal NPC preparation path explicitly marks expanded animation delivery as
+managed by the parent Build. Scene ledgers bypass MAP handling, and shared channel
+patches for ledger scenes are composed once into the expanded ANM bank. Allocated
+header changes are retained in `existing_actor_allocated_animation_changes` in
+the NPC audit. Existing bounded compression, source capacity, neighboring payload
+preservation and actor-pool qualification apply to the complete appended MAN.
+Experimental full-disc draft export does not claim expanded bank support and
+rejects this assignment path rather than omitting it.
+
+Eight focused checks pass. Independent Retail combined-package readback confirms
+one new NPC, the original actor's allocated selector 70 and the donor copy's
+original selector, plus the exact composed ANM bank. Synthetic tests reject
+stale target headers and invalid partition growth, verify rebased audited byte
+coverage and preserve placement edits. No gameplay was run. Source qualification
+and package readback do not prove native NPC spawning, scripts, cadence or lifecycle.

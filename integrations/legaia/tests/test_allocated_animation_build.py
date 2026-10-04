@@ -34,6 +34,14 @@ class AllocatedAnimationBuild(unittest.TestCase):
                 patch_assignments(project,'scene',{'target':value},baseline,bytes(overlapping))
             with self.assertRaisesRegex(ProjectError,'original MAN layout'):
                 patch_assignments(project,'scene',{'target':value},baseline,positioned+b'x')
+            from importer.man_actor_structure import append_actor_candidates
+            appended,_=append_actor_candidates(baseline,sha256(baseline).hexdigest(),[
+                dict(id='draft',donor_record_index=2,position=dict(x=64,z=64))])
+            result,audit=patch_assignments(project,'scene',{'target':value},baseline,appended,appended=True)
+            actors=parse_man(result).actors
+            self.assertEqual((actors[0].model_index,actors[0].animation_id),(5,3))
+            self.assertTrue(all(row['decoded_byte_offset']!=row['source_decoded_byte_offset'] for row in audit))
+            self.assertEqual(actors[-1].animation_id,parse_man(appended).actors[-1].animation_id)
 
 
 if __name__=='__main__':unittest.main()

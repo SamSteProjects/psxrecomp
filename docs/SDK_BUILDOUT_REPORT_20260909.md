@@ -1,5 +1,23 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — allocated clip/NPC Build composition:** Normal Build now combines
+allocated initial animation assignments with appended source-qualified NPC MAN
+records. Native qualification rebases audited initial header bytes through the
+reparsed original actor identity after partition offsets move. New NPC donor
+copies retain their Retail initial clips. The expanded ANM bank and current
+shared channel changes are composed once by the parent Build path; NPC preparation
+consumes that managed bank without emitting duplicate equal-span ANM patches.
+
+All eight focused native, composition, NPC carrier and Retail package checks pass.
+Independent combined-package readback recovers the exact expanded bank, allocated
+selector 70 on the original actor and one appended NPC with its donor's original
+clip. Existing source capacity, descriptor ownership, actor-pool qualification,
+compression and exact MAN readback gates remain in force. Raw streaming ANM
+relocation and experimental full-disc allocation export remain implementation
+work. No game was launched or installed; spawning, scripts, animation cadence
+and lifecycle remain deferred gameplay checks. The full solo goal stays active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — allocated initial assignment editor controls:** The actor inspector
 now opens Manage allocated clips directly. The library filters retained captures
 by the actor's exact inherited model, separately offers lifecycle changes, and

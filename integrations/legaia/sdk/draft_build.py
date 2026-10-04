@@ -95,7 +95,7 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
         container=container,archive_asset_changes=asset_audit,gameplay_verified=False)
 
 
-def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, scene_id=None) -> tuple[bytes, dict]:
+def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, scene_id=None, animation_growth_managed=False) -> tuple[bytes, dict]:
     """Serialize all drafts in the selected draft's scene; reject omitted scenes."""
     if draft_id is None and defer_rebuild and scene_id in project.imports:
         pass
@@ -114,6 +114,8 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     document=deepcopy(project.imports[draft['scene_id']])
     scene=document['scene']['name']
     map_components=overrides.pop(draft['scene_id'],None)
+    if map_components and 'AnimationRecords' in map_components and animation_growth_managed:
+        map_components={key:value for key,value in map_components.items() if key!='AnimationRecords'} or None
     if digest(import_scene(project.disc_path,scene))!=digest(document):
         raise ProjectError('Draft donor evidence differs from the source disc')
     if any(a.get('source_record', {}).get('scene_bundle', {}).get('kind') == 'raw_streaming_man' for a in document['actors']):
@@ -125,6 +127,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     edits={}
     assignments={}
     assignment_donors={}
+    allocated_assignments={}
     dialogues={}
     animations={}
     transitions={}
@@ -136,10 +139,14 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
     branches={}
     for identifier,components in overrides.items():
         p2=isinstance(identifier,str) and re.fullmatch(re.escape(f'scene://{scene}/scripts/man-p2/')+r'[0-9]{4}',identifier) is not None
-        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches','AnimationChannels'}
+        allowed={'Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches'} if p2 else {'Transform','ActorAppearance','ActorAnimation','ActorAllocatedAnimation','Dialogue','Transitions','ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches','AnimationChannels'}
         if (identifier not in actors and not p2) or not isinstance(components,dict) or not components or set(components)-allowed:
             raise ProjectError('Draft serialization requires supported same-scene actor or script components; unsupported authored families cannot be omitted')
         record=int(identifier.rsplit('/',1)[1]) if p2 else actors[identifier]['source_record']['record_index']
+        if 'ActorAllocatedAnimation' in components:
+            if not animation_growth_managed:
+                raise ProjectError('Allocated NPC assignment export requires managed expanded ANM delivery; use normal Build')
+            allocated_assignments[identifier]=components['ActorAllocatedAnimation']
         if 'AnimationChannels' in components:
             project._validate_animation_override(identifier,components['AnimationChannels'])
             animations[identifier]=components['AnimationChannels']
@@ -176,7 +183,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             if not isinstance(transform,dict) or set(transform)!={'position'}:
                 raise ProjectError('Draft serialization requires exact position overrides')
             edits[record]=transform['position']
-        if 'ActorAppearance' in components:
+        if 'ActorAppearance' in components and 'ActorAllocatedAnimation' not in components:
             appearance=components['ActorAppearance']
             if (not isinstance(appearance,dict) or set(appearance)!={'donor_entity_id'} or
                     not isinstance(appearance['donor_entity_id'],str) or appearance['donor_entity_id'] not in actors):
@@ -236,7 +243,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
             map_patch,map_audit=prepare_map_patch(project,draft['scene_id'],map_components,archive)
             map_patches.append(map_patch)
         animation_audit=[]
-        if animations:
+        if animations and not (animation_growth_managed and 'AnimationRecords' in project.overrides.get(draft['scene_id'],{})):
             from .animation_build import prepare_animation_patches
             animation_patches,animation_audit=prepare_animation_patches(project,draft['scene_id'],animations,archive)
             map_patches.extend(animation_patches)
@@ -288,6 +295,10 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
                 if animation:
                     change.update(assignment_kind='ActorAnimation',animation_asset_id=animation['animation_asset_id'],
                                   assignment_source_record_sha256=animation['source_record_sha256'])
+        allocated_audit=[]
+        if allocated_assignments:
+            from .allocated_animation_build import patch_assignments
+            candidate,allocated_audit=patch_assignments(project,draft['scene_id'],allocated_assignments,source,candidate,appended=bool(requests))
         candidate,placement_audit=patch_man_positions(candidate,scene,edits)
         dialogue_audit=[]
         if dialogue_context:
@@ -359,6 +370,7 @@ def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, 
         source_prot_sha256=prot_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),
         actor=actor_audit,actor_pool_evidence=pool_evidence,existing_actor_placement_changes=placement_audit,
         existing_actor_appearance_changes=appearance_audit,
+        existing_actor_allocated_animation_changes=allocated_audit,
         existing_actor_dialogue_changes=dialogue_audit,
         branch_changes=branch_audit, transition_changes=transition_audit, movement_changes=movement_audit, flag_changes=flag_audit, wait_changes=wait_audit, model_selector_changes=model_selector_audit, facing_changes=facing_audit,
         final_man_sha256=sha256(candidate).hexdigest(),

@@ -801,8 +801,6 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if document["source"]["disc_identity"] != "sha256:" + disc_hash:
                 raise BuildError(f"Source disc identity does not match {scene_id}")
             if scene_id in draft_scenes:
-                if scene_id in allocated_assignments:
-                    raise BuildError('Allocated initial clips with appended NPC MAN records require joint header composition; this combination is not implemented yet')
                 from .npc_build import prepare_npc_overlays
                 candidate_overlays, candidate_edits, metadata = prepare_npc_overlays(project, scene_id, archive)
                 overlays.extend(candidate_overlays)

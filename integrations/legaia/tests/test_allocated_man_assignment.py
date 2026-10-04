@@ -15,6 +15,25 @@ def allocated(context,frames=None):
 
 
 class AllocatedManAssignment(unittest.TestCase):
+    def test_appended_offsets_rebase_without_retargeting_new_donor_copy(self):
+        from importer.man_actor_structure import append_actor_candidates
+        context,original=fixture();expanded=allocated(context)
+        a,b=animation_record_ranges(expanded)[2]
+        request={1:dict(donor_record_index=2,allocated_record_index=2,record_sha256=sha256(expanded[a:b]).hexdigest())}
+        candidate,_=append_actor_candidates(original,sha256(original).hexdigest(),[
+            dict(id='draft',donor_record_index=2,position=dict(x=64,z=64))])
+        changed,audit=context.patch_allocated_appended(candidate,expanded,sha256(expanded).hexdigest(),request,original=original)
+        before=parse_man(candidate).actors;after=parse_man(changed).actors
+        self.assertEqual((after[0].model_index,after[0].animation_id),(5,3))
+        self.assertEqual((after[-1].model_index,after[-1].animation_id),(before[-1].model_index,before[-1].animation_id))
+        self.assertEqual({i for i,(a,b) in enumerate(zip(candidate,changed)) if a!=b},{row['decoded_byte_offset'] for row in audit})
+        self.assertTrue(all(row['decoded_byte_offset']!=row['source_decoded_byte_offset'] for row in audit))
+        stale=bytearray(candidate);target=before[0];stale[target.byte_offset+1+target.local_count*2+1]=99
+        with self.assertRaisesRegex(ImportError,'header or layout'):
+            context.patch_allocated_appended(bytes(stale),expanded,sha256(expanded).hexdigest(),request)
+        with self.assertRaisesRegex(ImportError,'partition-1 additions'):
+            context.patch_allocated_appended(original,expanded,sha256(expanded).hexdigest(),request)
+
     def test_explicit_appended_ordinal_changes_only_verified_header_bytes(self):
         context,original=fixture();expanded=allocated(context)
         a,b=animation_record_ranges(expanded)[2];record_hash=sha256(expanded[a:b]).hexdigest()

@@ -52,7 +52,7 @@ def prepare_npc_overlays(project, scene_id, archive):
                               if value.get('source_scene_id') == scene_id}
     if not 1 <= len(view.actor_drafts) <= 128:
         raise ProjectError('NPC Build requires 1..128 saved drafts in the source scene')
-    prot, audit = _prepare_draft_scene(view, sorted(view.actor_drafts)[0], defer_rebuild=True, scene_id=scene_id)
+    prot, audit = _prepare_draft_scene(view, sorted(view.actor_drafts)[0], defer_rebuild=True, scene_id=scene_id,animation_growth_managed=True)
     if not isinstance(prot, bytes) or not 0 < len(prot) <= MAX_PROT_BYTES or len(prot) != archive.node.size:
         raise ProjectError('NPC Build source PROT exceeds bounds or differs from the archive')
     current_prot = archive.image.read_user(archive.node.extent_lba, 0, archive.node.size, archive.node.size)

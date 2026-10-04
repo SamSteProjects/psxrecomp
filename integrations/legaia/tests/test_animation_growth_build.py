@@ -89,12 +89,26 @@ class AnimationGrowthBuild(unittest.TestCase):
             self.assertEqual(sha256(delivered[start:end]).hexdigest(),project.overrides[project.active_scene]['AnimationRecords']['records'][1]['record_sha256'])
             self.assertEqual(metadata,(project.root/'project.legaia.json').read_bytes())
             self.assertEqual(overrides,json.dumps(project.overrides,sort_keys=True))
-            rejected_npc=project.root/'RejectedNpcCombination'
-            project.actor_drafts={'draft':dict(scene_id=project.active_scene)}
-            with patch.object(project,'_validate_actor_draft'):
-                with self.assertRaisesRegex(BuildError,'joint header composition'):
-                    build_project(project,rejected_npc)
-            self.assertFalse(rejected_npc.exists())
+            project.command(dict(type='create_actor_draft',donor_entity_id=owner,position=dict(x=64,z=64),name='Allocated composition proof'))
+            combined=build_project(project,project.root/'NpcCombination')
+            combined_audit=json.loads(Path(combined['audit']).read_text(encoding='utf-8'))
+            self.assertTrue(combined_audit['validation']['allocated_initial_MAN_header_readback'])
+            npc=combined_audit['npc_candidates'][project.active_scene]['draft_audit']
+            self.assertTrue(npc['existing_actor_allocated_animation_changes'])
+            with zipfile.ZipFile(combined['path']) as package:
+                manifest=tomllib.loads(package.read('manifest.toml').decode('utf-8'))
+                entry=manifest['disc_relocation'][0]
+                decoded=decode_relocation_package(package.read(entry['file']),entry['sha256'])
+            combined_archive=_archive(decoded['replacement'])
+            combined_man=read_man_source(combined_archive,*bounds,'town01').payload
+            original_actors=parse_man(original_man,'town01').actors
+            combined_actors=parse_man(combined_man,'town01').actors
+            self.assertEqual(len(combined_actors),len(original_actors)+1)
+            self.assertEqual(next(a for a in combined_actors if a.record_index==donor).animation_id,70)
+            self.assertEqual(combined_actors[-1].animation_id,next(a for a in original_actors if a.record_index==donor).animation_id)
+            carrier=combined_archive.read_entry(combined_archive.entry(carrier_audit['entry_index']))
+            descriptor=parse_scene_assets(carrier,0,offset).descriptors[carrier_audit['descriptor_index']]
+            self.assertEqual(decompress_lzs(carrier[offset+descriptor.data_offset:],descriptor.size)[0],expected)
             project.actor_drafts.clear()
             unsupported=SimpleNamespace(source_bank=lambda:(b'',{'source_kind':'raw_streaming_anm'}))
             rejected=project.root/'RejectedStreamingBuild'

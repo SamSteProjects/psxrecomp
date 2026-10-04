@@ -190,6 +190,35 @@ class ManAssignmentContext:
                                 appended_man_sha256=_sha(candidate)))
         return bytes(result), rebased
 
+    def patch_allocated_appended(self,candidate: bytes,bank: bytes,expected_bank_sha256: str,edits: dict,
+                                *,original: bytes | None=None):
+        """Rebase qualified allocated headers onto bounded appended actor records."""
+        _,audit=self.patch_allocated(bank,expected_bank_sha256,edits,original=original)
+        source=parse_man(self._man,self.scene);parsed=parse_man(candidate,self.scene)
+        a,b=source.partition_counts,parsed.partition_counts
+        if a[0]!=b[0] or a[2]!=b[2] or not 1<=b[1]-a[1]<=128:
+            raise ImportError('Allocated appended MAN requires only bounded partition-1 additions')
+        actors={a.record_index:a for a in parsed.actors};result=bytearray(candidate);rebased=[]
+        for record in edits:
+            before=self._actor(record);after=actors.get(record)
+            if after is None or (after.local_count,after.byte_length,after.model_index,after.animation_id)!=(
+                    before.local_count,before.byte_length,before.model_index,before.animation_id):
+                raise ImportError('Allocated appended MAN target header or layout differs from baseline')
+        for row in audit:
+            target=actors[row['record_index']]
+            offset=target.byte_offset+1+target.local_count*2+(row['field']=='animation_id')
+            if candidate[offset]!=row['before_byte']:
+                raise ImportError('Allocated appended header preimage differs from baseline')
+            result[offset]=row['after_byte']
+            rebased.append(dict(row,source_decoded_byte_offset=row['decoded_byte_offset'],
+                decoded_byte_offset=offset,appended_man_sha256=_sha(candidate)))
+        checked={a.record_index:a for a in parse_man(bytes(result),self.scene).actors}
+        for record,value in edits.items():
+            donor=self._actor(value['donor_record_index']);after=checked[record]
+            if (after.model_index,after.animation_id)!=(donor.model_index,value['allocated_record_index']+1):
+                raise ImportError('Allocated appended header failed native readback')
+        return bytes(result),rebased
+
     def patch_allocated(self,bank: bytes,expected_bank_sha256: str,edits: dict,
                         *,original: bytes | None=None) -> tuple[bytes,list[dict]]:
         """Assign appended ANM ordinals through an evidenced same-model donor.
