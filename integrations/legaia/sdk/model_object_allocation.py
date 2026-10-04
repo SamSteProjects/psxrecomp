@@ -30,7 +30,8 @@ def source(project,asset_id,expected_key):
     packets=inspect_model_primitives(effective,include_normal_references=True)['objects']
     groups=[[] for _ in packets]
     for owner,start,count,stride,first in _groups(effective,{'objects':packets}):
-        groups[owner].append(dict(group_index=len(groups[owner]),primitive_count=count,first_primitive_index=first))
+        groups[owner].append(dict(group_index=len(groups[owner]),primitive_count=count,first_primitive_index=first,
+            flags=struct.unpack_from('<H',effective,start+2)[0],mode=effective[start+7]))
     native=[]
     for owner,obj in enumerate(packets):
         vert,nv,normal,nn,prim,claimed,opaque=struct.unpack_from('<7I',effective,12+owner*28)
@@ -44,6 +45,8 @@ def source(project,asset_id,expected_key):
         source_sha256=sha256(original).hexdigest(),effective_sha256=sha256(effective).hexdigest(),
         project_source_key=expected_key,topology=deepcopy(audit),object_identities=deepcopy(objects),
         objects=packets,native_objects=native,
+        normal_vectors=[[list(struct.unpack_from('<3h',effective,12+row['table_offsets'][1]+index*8))
+                         for index in range(packets[owner]['normal_count'])] for owner,row in enumerate(native)],
         preview=decode_tmd(effective),remaining_object_budget=MAX_NEW_OBJECTS-audit.get('allocated_object_count',0),
         remaining_group_budget=MAX_NEW_GROUPS-audit.get('allocated_group_count',0),
         remaining_face_budget=MAX_LEDGER_FACES-audit['authored_face_count'],

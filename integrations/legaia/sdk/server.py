@@ -129,6 +129,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_face_addition"] = bool(self.project.disc_path)
         state["capabilities"]["model_vector_allocation"] = bool(self.project.disc_path)
         state["capabilities"]["model_group_allocation"] = bool(self.project.disc_path)
+        state["capabilities"]["model_object_allocation"] = bool(self.project.disc_path)
         state["capabilities"]["model_mesh_append"] = bool(self.project.disc_path)
         state["capabilities"]["model_allocation_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
@@ -713,6 +714,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-face-addition.js": ("model-face-addition.js", "text/javascript"),
                  "/model-vector-allocation.js": ("model-vector-allocation.js", "text/javascript"),
                  "/model-group-allocation.js": ("model-group-allocation.js", "text/javascript"),
+                 "/model-object-allocation.js": ("model-object-allocation.js", "text/javascript"),
                  "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),

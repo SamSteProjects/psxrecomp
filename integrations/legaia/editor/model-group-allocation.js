@@ -8,7 +8,7 @@ const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&same(Object.key
 const uuid=(v,kind)=>typeof v==='string'&&new RegExp(`^${kind}://authored/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`).test(v);
 const vector=v=>Array.isArray(v)&&v.length===3&&v.every(n=>Number.isSafeInteger(n)&&n>=-32768&&n<=32767);
 function faceSource(source){return decodeFaceAdditionSource({...source,schema_version:'legaia.model-face-addition-source.v1'},source.asset_id,source.project_source_key);}
-function renderPackets(objects,vertices,normalVectors){
+export function renderPackets(objects,vertices,normalVectors){
   const result={triangles:[],triangle_colors:[],triangle_uvs:[],triangle_normals:[],triangle_materials:[],materials:[],objects:[]};
   let vertexStart=0;
   for(const [owner,obj] of objects.entries()){
@@ -30,7 +30,7 @@ function renderPackets(objects,vertices,normalVectors){
   if(vertexStart!==vertices.length)fail('Group geometry has incomplete vector ranges.');
   return result;
 }
-function qualifyRender(preview,expected,vertices){
+export function qualifyRender(preview,expected,vertices){
   if(!preview||preview.coordinate_system!=='retail_tmd_object_local'||!same(preview.vertices,vertices))fail('Group geometry changed Current vector coordinates.');
   for(const key of ['triangles','triangle_colors','triangle_uvs','triangle_normals','triangle_materials','materials'])if(!same(preview[key],expected[key]))fail(`Group geometry differs from typed packet ${key}.`);
   if(!Array.isArray(preview.objects)||preview.objects.length!==expected.objects.length||preview.objects.some((obj,i)=>Object.entries(expected.objects[i]).some(([key,value])=>obj[key]!==value)))fail('Group geometry changed native object ranges.');

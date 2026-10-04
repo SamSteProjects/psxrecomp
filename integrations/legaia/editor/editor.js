@@ -656,6 +656,7 @@ function setBusy(value) {
   if($('shape-add-face'))$('shape-add-face').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_face_addition;
   if($('shape-add-vectors'))$('shape-add-vectors').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_vector_allocation;
   if($('shape-add-group'))$('shape-add-group').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_group_allocation;
+  if($('shape-add-object'))$('shape-add-object').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_object_allocation;
   if($('shape-append-mesh'))$('shape-append-mesh').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_mesh_append;
   document.querySelectorAll('[data-axis],[data-component-property]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
@@ -1415,6 +1416,7 @@ function synchronizeResources(){
   modelVectorAllocationEditor?.updateState();
   modelMeshAppendEditor?.updateState();
   modelGroupAllocationEditor?.updateState();
+  modelObjectAllocationEditor?.updateState();
   modelPrimitiveEditor?.updateState();
   modelMaterialsEditor?.updateState();
   sceneAnimationController?.updateState();
@@ -3914,6 +3916,15 @@ groupAllocationButton.onclick=async()=>{
   modelGroupAllocationEditor=await module.openModelGroupAllocation({assetId:asset,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Packet group created. Save project to persist.');await openModel(asset,null,null,'authored');}});
 };
 
+let modelObjectAllocationEditor=null;
+const objectAllocationButton=document.createElement('button');objectAllocationButton.id='shape-add-object';objectAllocationButton.type='button';objectAllocationButton.textContent='Create native object';$('shape-primitives').after(objectAllocationButton);
+objectAllocationButton.onclick=async()=>{
+  if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit'||!state.capabilities?.model_object_allocation)return;
+  modelObjectAllocationEditor?.dispose();const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]),module=await import('/model-object-allocation.js');
+  if(busy||shapeDraft||!state.capabilities?.model_object_allocation||asset!==modelAssetId||state.project.mode!=='edit'||context!==JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]))return;
+  modelObjectAllocationEditor=await module.openModelObjectAllocation({assetId:asset,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Native object created. Save project to persist.');await openModel(asset,null,null,'authored');}});
+};
+
 const meshAppendButton=document.createElement('button');meshAppendButton.id='shape-append-mesh';meshAppendButton.type='button';meshAppendButton.textContent='Append GLB mesh';$('shape-primitives').after(meshAppendButton);
 meshAppendButton.onclick=async()=>{
   if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit'||!state.capabilities?.model_mesh_append)return;
@@ -4260,6 +4271,7 @@ function updateShapeDraft(){
   allocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_allocation_inspection;
   vectorAllocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_vector_allocation;
   groupAllocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_group_allocation;
+  objectAllocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_object_allocation;
   meshAppendButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_mesh_append;
   if(state.model_overrides?.[modelAssetId]?.format==='tmd-face-removal-v1'){$('shape-status').textContent='Count-changing face removal applied. Vector edits, object transforms and same-layout TMD/OBJ/JSON edits retain removals. Retained-face editing is available. Material editing is available. GLB export/import retains the qualified Current layout; downloads, further removals, Undo/Redo and Clear are available.';}
 }
