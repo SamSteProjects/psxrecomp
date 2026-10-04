@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include "disc_relocation.h"
 
 /**
  * ISO/BIN/CUE Reader for PS1 CD-ROM images
@@ -143,6 +144,13 @@ public:
      */
     uint32_t GetSectorCount();
 
+    // Source hashes and complete ISO metadata qualification belong to package
+    // activation. Installation additionally verifies source ownership/framing
+    // and the proposed PVD/root before exposing any mapped reads.
+    bool InstallDiscRelocation(DiscRelocation::Plan plan, std::string* error = nullptr);
+    void ClearDiscRelocation();
+    bool HasDiscRelocation() const { return relocation_.Active(); }
+
     /**
      * CD-track TOC accessors (multi-track .cue support).
      * TrackCount() is >= 1 (a bare image synthesizes one data track).
@@ -226,6 +234,11 @@ private:
     BinSegment* SegmentForLBA(uint32_t lba);
 
     bool LoadSBICompanion(const std::string& image_path);
+    bool ReadSourceSector(uint32_t lba, uint8_t* buffer);
+    bool ReadSourceRawSector(uint32_t lba, uint8_t* buffer);
+    uint32_t SourceSectorCount() const;
+    DiscRelocation relocation_;
+    RootDirectoryInfo source_root_dir_{};
 
     bool is_open_;
     std::string volume_id_;

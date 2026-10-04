@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+ISOReader relocation checkpoint (2026-10-03): native user/raw reads, grown sector
+count, moved-root file lookup, virtual subchannel bounds and Clear/Close/Open
+pass offline. Existing SBI/CDDA tests still pass. No generated SDK package yet
+activates these APIs; qualified package activation and normal Build remain
+unfinished. No game/full Retail export ran; no immediate gameplay gate is added.
+
 Native raw-sector checkpoint (2026-10-03): codec/mapping regressions pass and
 64 varied native sectors match Python byte-for-byte. Replacement/metadata Form 1
 protection regenerates; shifted XA payload/protection stays exact. ISOReader/CD

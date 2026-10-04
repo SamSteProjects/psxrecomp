@@ -462,3 +462,28 @@ rejection. The CMake codec target is registered; full runtime suite not run.
 Private proof: `local-output/sdk-20260909/native-raw-disc-relocation-20261003/parent/`.
 ISOReader/CD controller wiring, package activation and normal Build integration
 remain required. No game, installation or full-disc export ran.
+
+
+## ISOReader installation and lifetime
+
+`ISOReader::InstallDiscRelocation` validates the raw single-data-track source,
+original ISO PROT extent/size and uniform Form 1 first/terminal framing before
+installing a candidate mapping. Proposed PVD/root bounds are validated. ISO volume
+size and physical sector count remain distinct: both grow by the insertion, even
+when the original volume occupies fewer physical sectors. Hash/provenance and
+complete ISO metadata qualification are the future activation layer's duties.
+
+ReadSector, ReadRawSector and GetSectorCount use the installed mapping. File lookup
+uses the relocated root. Virtual subchannel Q addresses use virtual bounds.
+Clear restores the source root; Close/Open discard relocation. Duplicate active
+installation rejects without changing the reader. CHD/multitrack/audio/SBI
+configurations reject installation; their ordinary reader paths remain available.
+The existing C CD wrappers already call these reader APIs, but package activation
+and normal Build do not yet install plans.
+
+The fresh native relocation regression and rebuilt SBI/CDDA regressions pass.
+The relocation case includes source rejection, moved-root file lookup, exact
+replacement/movie payloads, raw terminal/tail, bounds and lifetime. CMake target
+registered; full runtime suite not run. MSVC reports existing libchdr/parser
+warnings. Private builds: `local-output/sdk-20260909/iso-reader-relocation-20261003/parent/`.
+No gameplay or full Retail disc export ran.

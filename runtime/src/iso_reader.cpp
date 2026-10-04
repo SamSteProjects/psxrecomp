@@ -377,6 +377,8 @@ bool ISOReader::Open(const std::string& filename) {
 }
 
 void ISOReader::Close() {
+    relocation_.Clear();
+    source_root_dir_ = {};
     chd_.reset();
     for (BinSegment& seg : segments_) {
         if (seg.file.is_open()) {
@@ -434,6 +436,7 @@ bool ISOReader::LoadSBICompanion(const std::string& image_path) {
 
 bool ISOReader::ReadSubChannelQ(uint32_t lba, uint8_t* buffer, bool* valid) const {
     if (!buffer || !valid || !is_open_) return false;
+    if (relocation_.Active() && lba >= relocation_.SectorCount()) return false;
     const auto replacement = subq_replacements_.find(lba);
     if (replacement != subq_replacements_.end()) {
         std::memcpy(buffer, replacement->second.data(), replacement->second.size());
@@ -477,6 +480,13 @@ BinSegment* ISOReader::SegmentForLBA(uint32_t lba) {
 }
 
 bool ISOReader::ReadSector(uint32_t lba, uint8_t* buffer) {
+    if (relocation_.Active())
+        return relocation_.ReadUserSector(lba, buffer,
+            [this](uint32_t source_lba, uint8_t* out) { return ReadSourceSector(source_lba, out); });
+    return ReadSourceSector(lba, buffer);
+}
+
+bool ISOReader::ReadSourceSector(uint32_t lba, uint8_t* buffer) {
     if (!is_open_ || !buffer) {
         return false;
     }
@@ -536,6 +546,13 @@ bool ISOReader::ReadSector(uint32_t lba, uint8_t* buffer) {
 }
 
 bool ISOReader::ReadRawSector(uint32_t lba, uint8_t* buffer) {
+    if (relocation_.Active())
+        return relocation_.ReadRawSector(lba, buffer,
+            [this](uint32_t source_lba, uint8_t* out) { return ReadSourceRawSector(source_lba, out); });
+    return ReadSourceRawSector(lba, buffer);
+}
+
+bool ISOReader::ReadSourceRawSector(uint32_t lba, uint8_t* buffer) {
     if (!is_open_ || !buffer) {
         return false;
     }
@@ -576,6 +593,10 @@ std::string ISOReader::GetBinPath() const {
 }
 
 uint32_t ISOReader::GetSectorCount() {
+    return relocation_.Active() ? relocation_.SectorCount() : SourceSectorCount();
+}
+
+uint32_t ISOReader::SourceSectorCount() const {
     if (!is_open_) {
         return 0;
     }
@@ -584,6 +605,66 @@ uint32_t ISOReader::GetSectorCount() {
 
     const BinSegment& last = segments_.back();
     return last.start_lba + last.sector_count;
+}
+
+bool ISOReader::InstallDiscRelocation(DiscRelocation::Plan plan, std::string* error) {
+    auto reject = [&](const char* message) { if (error) *error = message; return false; };
+    if (!is_open_ || chd_ || segments_.size() != 1 || !segments_[0].raw ||
+        tracks_.size() != 1 || tracks_[0].is_audio || tracks_[0].start_lba != 0 ||
+        !subq_replacements_.empty())
+        return reject("disc relocation requires one raw data track without SBI replacements");
+    if (relocation_.Active()) return reject("clear the existing disc relocation before installing another");
+    if (plan.source_sector_count != SourceSectorCount()) return reject("disc relocation source sector count changed");
+    ISOFileEntry prot;
+    if (!FindFile("PROT.DAT", prot) || prot.is_directory || prot.lba != plan.prot_lba ||
+        uint64_t(plan.source_prot_sectors) * SECTOR_SIZE != prot.size)
+        return reject("disc relocation source ISO PROT ownership changed");
+    DiscRelocation candidate;
+    if (!candidate.Configure(std::move(plan), error)) return false;
+    CDSector::Raw first{}, last{}, raw{};
+    if (!ReadSourceRawSector(prot.lba, first.data()) ||
+        !ReadSourceRawSector(prot.lba + prot.size / SECTOR_SIZE - 1, last.data()))
+        return reject("disc relocation source PROT framing cannot be read");
+    auto first_check = first, last_check = last;
+    if (!CDSector::EncodeForm1(first_check) || !CDSector::EncodeForm1(last_check))
+        return reject("disc relocation source PROT requires Mode 2 Form 1 framing");
+    for (uint32_t index = 0; index < prot.size / SECTOR_SIZE; ++index) {
+        if (!ReadSourceRawSector(prot.lba + index, raw.data()) || !CDSector::IsMode2(raw) ||
+            std::memcmp(raw.data() + 16, (index + 1 == prot.size / SECTOR_SIZE ? last : first).data() + 16, 8))
+            return reject("disc relocation source PROT framing is not uniform with a terminal sector");
+    }
+    DiscRelocation::Sector pvd{};
+    if (!candidate.ReadUserSector(PVD_SECTOR, pvd.data(),
+            [this](uint32_t lba, uint8_t* out) { return ReadSourceSector(lba, out); }) ||
+        pvd[0] != 1 || std::memcmp(pvd.data() + 1, "CD001", 5) || pvd[6] != 1)
+        return reject("disc relocation proposed PVD is invalid");
+    const auto be32 = [](const uint8_t* data) {
+        return uint32_t(data[0]) << 24 | uint32_t(data[1]) << 16 | uint32_t(data[2]) << 8 | data[3];
+    };
+    DiscRelocation::Sector original_pvd{};
+    if (!ReadSourceSector(PVD_SECTOR, original_pvd.data())) return reject("disc relocation source PVD cannot be read");
+    const uint64_t original_volume = Read733(original_pvd.data() + 80);
+    const uint64_t proposed_volume = original_volume + candidate.GrowthSectors();
+    if (!original_volume || original_volume != be32(original_pvd.data() + 84) ||
+        original_volume > SourceSectorCount() || proposed_volume > candidate.SectorCount() ||
+        Read733(pvd.data() + 80) != proposed_volume || be32(pvd.data() + 84) != proposed_volume)
+        return reject("disc relocation PVD volume size differs from proposed sector count");
+    RootDirectoryInfo root{Read733(pvd.data() + 158), Read733(pvd.data() + 166)};
+    if (pvd[156] < 34 || !(pvd[181] & 2) || !root.size ||
+        root.lba != be32(pvd.data() + 162) || root.size != be32(pvd.data() + 170) ||
+        uint64_t(root.lba) + (uint64_t(root.size) + SECTOR_SIZE - 1) / SECTOR_SIZE > candidate.SectorCount())
+        return reject("disc relocation proposed root directory is invalid");
+    source_root_dir_ = root_dir_;
+    relocation_ = std::move(candidate);
+    root_dir_ = root;
+    if (error) error->clear();
+    return true;
+}
+
+void ISOReader::ClearDiscRelocation() {
+    if (relocation_.Active()) root_dir_ = source_root_dir_;
+    relocation_.Clear();
+    source_root_dir_ = {};
 }
 
 int ISOReader::TrackCount() const {
