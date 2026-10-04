@@ -4,7 +4,7 @@ import json
 import re
 import struct
 
-from .model_reference_faces import mapping
+from .model_reference_faces import mapping, addition_mapping
 from importer.model_normal_references import normal_users
 from importer.pipeline import _disc_context
 from .project import ProjectError
@@ -24,7 +24,15 @@ def inspect(project, asset_id, object_index, normal_index, expected_sha256, expe
         retail = project._model_source(asset_id, scene)
         effective = project.read_model_replacement(asset_id, project.model_overrides[asset_id]) if asset_id in project.model_overrides else retail
         source_hash = sha256(retail).hexdigest()
-        face_mapping = mapping(retail, effective, project.model_overrides.get(asset_id), object_index)
+        binding = project.model_overrides.get(asset_id)
+        added = binding and binding['format'] == 'tmd-face-addition-v1'
+        if added:
+            maps, authored = addition_mapping(project, asset_id, retail, effective, binding)
+            if type(object_index) is not int or not 0 <= object_index < len(maps):
+                raise ProjectError('Reference face mapping requires an existing object')
+            face_mapping = maps[object_index]
+        else:
+            face_mapping = mapping(retail, effective, binding, object_index)
         if sha256(effective).hexdigest() != expected_sha256:
             raise ProjectError('Model changed since normal vector inspection')
         current_users = normal_users(effective, object_index, normal_index)
@@ -39,6 +47,10 @@ def inspect(project, asset_id, object_index, normal_index, expected_sha256, expe
                       retail_coordinates=coordinates(retail), current_coordinates=coordinates(effective),
                       retail_users=retail_users, current_users=current_users, face_mapping=face_mapping, read_only=True, gameplay_verified=False,
                       scope='qualified_stored_normal_reference_operands_in_selected_object')
+    if added:
+        report.update(schema_version='legaia.model-normal-users.v2', authored_faces=authored[object_index],
+                      current_face_count=sum(row['current_index'] is not None for row in face_mapping)+len(authored[object_index]),
+                      retail_model_byte_length=len(retail))
     if project.mode != 'edit' or project.active_scene != scene or source_key(project) != expected_key:
         raise ProjectError('Project changed while reading normal references')
     if len(json.dumps(report, allow_nan=False).encode('utf-8')) > 4 * 1024 * 1024:
