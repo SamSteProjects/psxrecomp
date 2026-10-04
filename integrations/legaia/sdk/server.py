@@ -126,6 +126,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_glb_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_material_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_face_removal"] = bool(self.project.disc_path)
+        state["capabilities"]["model_face_addition"] = bool(self.project.disc_path)
         state["capabilities"]["model_allocation_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["draft_output_review"] = bool(self.project.disc_path and self.project.actor_drafts)
@@ -764,6 +765,8 @@ class EditorHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             request_limit = 2 * 1024 * 1024 if urlsplit(self.path).path in ("/api/texture-replacement", "/api/text-json-preview", "/api/text-json-import") else 32768
+            if urlsplit(self.path).path in ('/api/model-face-addition-preview', '/api/model-face-addition'):
+                request_limit = 256 * 1024
             if urlsplit(self.path).path in ('/api/model-material-preview', '/api/model-material-scene-preview', '/api/model-material-apply'):
                 request_limit = 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-shape-replacement', '/api/animation-record-replacement', '/api/animation-record-preview', '/api/animation-file-pose-preview'):
@@ -1057,6 +1060,32 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Model allocation inspection requires model and source key only')
                     from .model_allocation import source
                     self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    return
+                if route in ('/api/model-face-addition-source', '/api/model-face-addition-preview', '/api/model-face-addition'):
+                    fields = {'asset_id', 'source_key'}
+                    if route != '/api/model-face-addition-source':
+                        fields.update({'requests', 'expected_sha256'})
+                    if route == '/api/model-face-addition':
+                        fields.add('proposed_sha256')
+                    if (set(body) != fields or not isinstance(body['asset_id'], str)
+                            or not 0 < len(body['asset_id']) <= 512
+                            or any(not isinstance(body[key], str) or len(body[key]) != 64
+                                   or any(c not in '0123456789abcdef' for c in body[key])
+                                   for key in fields & {'source_key', 'expected_sha256', 'proposed_sha256'})
+                            or 'requests' in fields and (not isinstance(body['requests'], list)
+                                                        or not 0 < len(body['requests']) <= 128)):
+                        raise ProjectError('Face addition requires exact typed model, source, requests and reviewed hashes')
+                    if route == '/api/model-face-addition-source':
+                        from .model_face_addition import source
+                        self._json(200, source(self.server.project, body['asset_id'], body['source_key']))
+                    else:
+                        args = (body['asset_id'], body['requests'], body['expected_sha256'], body['source_key'])
+                        if route.endswith('-preview'):
+                            from .model_face_addition import review
+                            self._json(200, review(self.server.project, *args))
+                        else:
+                            self.server.project.apply_model_face_additions(*args, body['proposed_sha256'])
+                            self._json(200, self.server.state())
                     return
                 if route == '/api/model-face-removal-source':
                     if set(body) != {'asset_id','source_key'}:

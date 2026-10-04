@@ -5,6 +5,7 @@ import json
 
 from importer.assets import decode_tmd
 from importer.model_face_ledger import create_face_ledger, replay_face_ledger, append_face_ledger
+from importer.model_primitives import inspect_model_primitives
 from .project import ProjectError
 from .scene_preview import source_key
 
@@ -51,7 +52,9 @@ def source(project, asset_id, expected_key):
     original, effective, _, _, _, audit = _context(project, asset_id, expected_key)
     report = dict(schema_version='legaia.model-face-addition-source.v1', asset_id=asset_id,
         source_sha256=sha256(original).hexdigest(), effective_sha256=sha256(effective).hexdigest(),
-        project_source_key=expected_key, topology=audit, preview=decode_tmd(effective),
+        project_source_key=expected_key, topology=audit,
+        objects=inspect_model_primitives(effective, include_normal_references=True)['objects'],
+        preview=decode_tmd(effective),
         project_changed=False, gameplay_verified=False)
     if source_key(project) != expected_key:
         raise ProjectError('Project changed during face addition inspection')

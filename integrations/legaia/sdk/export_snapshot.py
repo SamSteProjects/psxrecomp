@@ -29,6 +29,10 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     for identifier, binding in project.model_overrides.items():
         payload = project.read_model_replacement(identifier, binding)
         store(f"Authored/Models/{binding['asset_sha256']}.tmd",payload)
+        if binding['format'] == 'tmd-face-addition-v1' and binding['base_binding'] is not None:
+            base = binding['base_binding']
+            store(f"Authored/Models/{base['asset_sha256']}.tmd",
+                  project.read_model_replacement(identifier, base))
     if authored_state_key(project) != key:
         raise ProjectError('Project changed while capturing export inputs')
     return key, files

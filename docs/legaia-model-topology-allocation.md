@@ -269,3 +269,41 @@ exactly. No public project or game was modified. Private proof:
 HTTP/editor source/Review/Apply actions, legacy edit/removal/GLB composition after
 addition, and normal Build/ISO relocation remain unfinished. The persisted binding
 is not yet installable through SDK Build. No gameplay or installation ran.
+
+
+## HTTP source, Review, Apply and copied dependencies
+
+The SDK exposes POST `/api/model-face-addition-source` with exactly `asset_id` and
+`source_key`. Source now contains the native typed primitive/normal-reference
+inspection as well as the replayed stable face ledger and decoded Current preview.
+This supplies real donor field values and object-local vector domains for the
+forthcoming editor. It does not infer donor identity from rendered triangles.
+
+POST `/api/model-face-addition-preview` accepts exactly `asset_id`, `source_key`,
+`expected_sha256` and `requests`. POST `/api/model-face-addition` additionally
+requires `proposed_sha256`. Envelopes require nonempty bounded string asset IDs,
+canonical lowercase 64-character source/hash strings, and 1..128 requests. Native
+UUID/donor/typed-field validation remains in complete replay. Source requests have
+the existing 32 KiB limit; Review/Apply have a 256 KiB limit. Over-limit declared
+bodies reject before decoding or source work. Apply returns normal current state
+with `model_face_addition` capability; the UI dialog is not yet connected.
+
+Project input snapshots now include an addition's retained base file as a verified
+owned dependency. Candidate read qualifies both levels; the base is independently
+read again before capture. Existing duplicate-file identity and byte/file budgets
+apply to that dependency. Project copy can therefore reopen and qualify an
+addition over existing content edits rather than referencing an omitted base file.
+No recursive addition dependency chain is accepted by the binding schema.
+
+Three new HTTP/snapshot regressions plus the project/copy/history and existing
+GLB HTTP suites pass 24 cases without skips. Cases exercise exact envelope/body
+limits, review without mutation, mismatched candidate and stale repeat rejection,
+qualified Apply/history, base dependency inclusion, budget accounting and tampered
+base rejection. A real private Town01 server proof validates normal source/Review/
+Apply state, then creates a project copy through the existing copy API. The copy
+contains both required model hashes, reopens and qualifies the same 4,776-byte
+candidate. Source authoring/history is unchanged by copying. Helpers close.
+Private proof: `local-output/sdk-20260909/model-face-addition-http-20261003/parent/`.
+
+Editor Review/Apply dialog, normal relocated Build/ISO integration and subsequent
+legacy edits/removal/GLB composition remain unfinished. No game or installation ran.

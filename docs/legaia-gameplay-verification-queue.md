@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+Face-addition HTTP/copy checkpoint (2026-10-03): source/Review/reviewed Apply
+pass through real loopback HTTP in a private Town01 clone; stale/mismatched
+requests reject. Project copy retains and reopens both the addition model and
+its independently qualified base dependency. Editor dialog and normal Build/ISO
+integration remain unfinished. No installation or gameplay ran; existing deferred
+native appearance/culling/pose acceptance remains. No immediate gate is added.
+
 SDK face-addition project binding checkpoint (2026-10-03): internal source/review/
 Apply, retained base edits, session history, Save/Open and composed preview pass
 offline in a private cloned Town01 project. Existing project Open clears session
