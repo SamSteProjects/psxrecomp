@@ -38,8 +38,9 @@ def addition_mapping(project, asset_id, retail, effective, binding):
     base=base_content(project,asset_id,retail,binding)
     audit=qualify_face_ledger(base,binding['ledger'],effective)
     objects=inspect_model_primitives(retail)['objects'];maps=[];authored=[]
-    for obj in objects:
-        owner=obj['object_index'];base_map=mapping(retail,base,binding['base_binding'],owner)
+    current_objects=inspect_model_primitives(effective)['objects']
+    for obj in current_objects:
+        owner=obj['object_index'];base_map=mapping(retail,base,binding['base_binding'],owner) if owner<len(objects) else []
         retained={face['source_primitive_index']:face['current_primitive_index'] for face in audit['faces']
                   if face['object_index']==owner and face['origin']=='source'}
         maps.append([dict(retail_index=row['retail_index'],current_index=retained.get(row['current_index'])) for row in base_map])
@@ -102,3 +103,28 @@ def addition_group_ownership(project, asset_id, retail, effective, binding):
         if {row['current_index'] for row in rows}!={index for index,origin in enumerate(result[owner]) if origin is None}:
             raise ProjectError('Current authored group has no stable allocation owner')
     return result,authored
+
+
+def addition_object_ownership(project,asset_id,retail,effective,binding):
+    """Qualify source object identities and explicit null Retail owners for clones."""
+    from .model_face_addition import base_content
+    from importer.model_face_ledger import qualify_face_ledger
+    base=base_content(project,asset_id,retail,binding)
+    audit=qualify_face_ledger(base,binding['ledger'],effective)
+    current=inspect_model_primitives(effective,include_normal_references=True)['objects']
+    original=inspect_model_primitives(retail,include_normal_references=True)['objects']
+    identities=audit.get('objects')
+    if not isinstance(identities,list) or len(identities)!=len(current):
+        raise ProjectError('Object allocation has no complete stable object ownership')
+    result=[];growth=[]
+    for owner,(obj,identity) in enumerate(zip(current,identities)):
+        if identity['object_index']!=owner or (identity['origin']=='source')!=(owner<len(original)):
+            raise ProjectError('Object allocation changed retained Retail object ownership')
+        retained=owner<len(original);old=original[owner] if retained else {'vertex_count':0,'normal_count':0}
+        result.append(dict(object_index=owner,retail_index=owner if retained else None,
+            object_id=identity['object_id'],donor_object_id=identity.get('donor_object_id')))
+        growth.append(dict(object_index=owner,vertices=obj['vertex_count']-old['vertex_count'],normals=obj['normal_count']-old['normal_count']))
+    if (any(row['vertices']<0 or row['normals']<0 for row in growth)
+            or sum(row['vertices']+row['normals'] for row in growth)!=audit['allocated_vector_count']):
+        raise ProjectError('Allocated object vectors differ from complete native table ownership')
+    return result,growth

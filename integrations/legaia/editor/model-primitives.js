@@ -1,3 +1,4 @@
+import {validateObjectOwnership} from './model-object-ownership.js';
 import {SceneRenderer} from './scene-renderer.js';
 
 // Existing source packets only. No material, normal-vector, lighting or allocation edits.
@@ -49,15 +50,16 @@ function objects(value,normalReferences=false){
 
 export function decodeModelPrimitives(value,assetId,context){
   context=modelPrimitiveContext(context);
-  if(typeof assetId!=='string'||!/^asset:\/\/[A-Za-z0-9_./-]{1,512}$/.test(assetId)||!exact(value,[...SOURCE_KEYS,...(['legaia.model-primitives.v3','legaia.model-primitives.v4','legaia.model-primitives.v5'].includes(value.schema_version)?['face_mappings']:[]),...(['legaia.model-primitives.v4','legaia.model-primitives.v5'].includes(value.schema_version)?['authored_faces']:[]),...(value.schema_version==='legaia.model-primitives.v5'?['vector_growth']:[])])||!['legaia.model-primitives.v1','legaia.model-primitives.v2','legaia.model-primitives.v3','legaia.model-primitives.v4','legaia.model-primitives.v5'].includes(value.schema_version)||value.asset_id!==assetId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey)fail('Model primitive source is invalid or stale.');
-  const allocated=value.schema_version==='legaia.model-primitives.v5',additions=allocated||value.schema_version==='legaia.model-primitives.v4',topology=additions||value.schema_version==='legaia.model-primitives.v3',normalReferences=value.schema_version!=='legaia.model-primitives.v1';
+  if(typeof assetId!=='string'||!/^asset:\/\/[A-Za-z0-9_./-]{1,512}$/.test(assetId)||!exact(value,[...SOURCE_KEYS,...(['legaia.model-primitives.v3','legaia.model-primitives.v4','legaia.model-primitives.v5','legaia.model-primitives.v6'].includes(value.schema_version)?['face_mappings']:[]),...(['legaia.model-primitives.v4','legaia.model-primitives.v5','legaia.model-primitives.v6'].includes(value.schema_version)?['authored_faces']:[]),...(['legaia.model-primitives.v5','legaia.model-primitives.v6'].includes(value.schema_version)?['vector_growth']:[]),...(value.schema_version==='legaia.model-primitives.v6'?['object_mappings']:[])])||!['legaia.model-primitives.v1','legaia.model-primitives.v2','legaia.model-primitives.v3','legaia.model-primitives.v4','legaia.model-primitives.v5','legaia.model-primitives.v6'].includes(value.schema_version)||value.asset_id!==assetId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey)fail('Model primitive source is invalid or stale.');
+  const cloned=value.schema_version==='legaia.model-primitives.v6',allocated=cloned||value.schema_version==='legaia.model-primitives.v5',additions=allocated||value.schema_version==='legaia.model-primitives.v4',topology=additions||value.schema_version==='legaia.model-primitives.v3',normalReferences=value.schema_version!=='legaia.model-primitives.v1';
   if(topology&&(!Array.isArray(value.face_mappings)||value.face_mappings.length!==value.objects.length))fail('Missing source face mappings.');objects(value.objects,normalReferences);objects(value.retail_objects,normalReferences);
   if(value.source_sha256===value.effective_sha256&&!equal(value.objects,value.retail_objects))fail('Equal source hashes require identical primitive values.');
-  if(value.objects.length!==value.retail_objects.length)fail('Current model differs from the retail object layout.');
+  if(cloned)validateObjectOwnership(value.object_mappings,value.objects.length,value.retail_objects.length);
+  if(!cloned&&value.objects.length!==value.retail_objects.length)fail('Current model differs from the retail object layout.');
   if(allocated&&(!Array.isArray(value.vector_growth)||value.vector_growth.length!==value.objects.length))fail('Missing allocated vector ownership.');
   let allocatedCount=0;const authoredIds=new Set();
   for(const [index,entry] of value.objects.entries()){
-    const retail=value.retail_objects[index];
+    const retail=value.retail_objects[index]??{vertex_count:0,normal_count:0,primitives:[]};
     const growth=allocated?value.vector_growth[index]:{vertices:0,normals:0};
     if(allocated&&(!exact(growth,['object_index','vertices','normals'])||growth.object_index!==index||!int(growth.vertices,0,4096)||!int(growth.normals,0,4096)))fail('Invalid allocated vector ownership.');
     allocatedCount+=growth.vertices+growth.normals;
@@ -80,7 +82,7 @@ function selectedRow(source,objectIndex,primitiveIndex,retail=false){
   if(!int(objectIndex,0,source.objects.length-1)||!int(primitiveIndex,0,source.objects[objectIndex].primitives.length-1))fail('Select an existing object and primitive.');
   const entries=retail?source.retail_objects:source.objects;
   const index=retail&&source.face_mappings?source.face_mappings[objectIndex].find(face=>face.current_index===primitiveIndex)?.retail_index:primitiveIndex;
-  if(index===undefined||!int(index,0,entries[objectIndex].primitives.length-1))fail('Current face has no retained Retail owner.');
+  if(index===undefined||!int(index,0,(entries[objectIndex]?.primitives.length??0)-1))fail('Current face has no retained Retail owner.');
   return entries[objectIndex].primitives[index];
 }
 

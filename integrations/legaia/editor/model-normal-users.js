@@ -1,7 +1,8 @@
+import {validateObjectOwnership} from './model-object-ownership.js';
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const integer=(v,max)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
 export function validateReferenceFaceMapping(value){
-  const added=value.schema_version.endsWith('.v2')||value.schema_version.endsWith('.v3');
+  const added=value.schema_version.endsWith('.v2')||(value.schema_version.endsWith('.v3')||value.schema_version.endsWith('.v4'));
   if(value.face_mapping===undefined){if(added)throw new Error('Missing reference face mapping.');return;}
   if(!Array.isArray(value.face_mapping)||value.face_mapping.length>65536)throw new Error('Invalid reference face mapping.');
   const owned=new Set();let last=-1;
@@ -22,7 +23,8 @@ export function validateReferenceFaceMapping(value){
   for(const row of value.current_users)if(!owned.has(row.primitive_index))throw new Error('Current reference face is absent.');
 }
 export function validateReferenceVector(value,noun){
-  const allocated=value.schema_version.endsWith('.v3');
+  const allocated=(value.schema_version.endsWith('.v3')||value.schema_version.endsWith('.v4'));
+  if(value.schema_version.endsWith('.v4')){validateObjectOwnership(value.object_mappings,value.current_object_count,value.retail_object_count);if(value.object_index>=value.current_object_count||value.object_mappings[value.object_index].retail_index===null&&(value.retail_vector_count!==0||value.face_mapping.length))throw new Error('Authored object acquired a Retail vector or face owner.');}
   if(allocated){
     if(!integer(value.retail_vector_count,524288)||!integer(value.current_vector_count,524288)||value.current_vector_count<value.retail_vector_count||!integer(value[noun+'_index'],value.current_vector_count-1)||value.vector_origin!==(value[noun+'_index']<value.retail_vector_count?'retail':'allocated'))throw new Error('Vector allocation ownership conflicts.');
     if(value.vector_origin==='allocated'&&(value.retail_coordinates!==null||!Array.isArray(value.retail_users)||value.retail_users.length))throw new Error('Allocated vector cannot have a Retail counterpart.');
@@ -33,13 +35,13 @@ export function validateReferenceVector(value,noun){
   }
 }
 export function decodeNormalUsers(value,binding){
-  if(!value||!['legaia.model-normal-users.v1','legaia.model-normal-users.v2','legaia.model-normal-users.v3'].includes(value.schema_version)||value.asset_id!==binding.asset_id||value.project_source_key!==binding.source_key||value.effective_sha256!==binding.expected_sha256||!hash(value.project_source_key)||!hash(value.effective_sha256)||!hash(value.source_sha256)||value.object_index!==binding.object_index||value.normal_index!==binding.normal_index||!integer(value.object_index,65535)||!integer(value.normal_index,65535)||!integer(value.model_byte_length,32*1024*1024)||value.model_byte_length<12||value.read_only!==true||value.gameplay_verified!==false||value.scope!=='qualified_stored_normal_reference_operands_in_selected_object')throw new Error('Normal users differ from the inspected source vector.');
+  if(!value||!['legaia.model-normal-users.v1','legaia.model-normal-users.v2','legaia.model-normal-users.v3','legaia.model-normal-users.v4'].includes(value.schema_version)||value.asset_id!==binding.asset_id||value.project_source_key!==binding.source_key||value.effective_sha256!==binding.expected_sha256||!hash(value.project_source_key)||!hash(value.effective_sha256)||!hash(value.source_sha256)||value.object_index!==binding.object_index||value.normal_index!==binding.normal_index||!integer(value.object_index,65535)||!integer(value.normal_index,65535)||!integer(value.model_byte_length,32*1024*1024)||value.model_byte_length<12||value.read_only!==true||value.gameplay_verified!==false||value.scope!=='qualified_stored_normal_reference_operands_in_selected_object')throw new Error('Normal users differ from the inspected source vector.');
   validateReferenceVector(value,'normal');
   for(const field of ['retail_users','current_users']){
     if(!Array.isArray(value[field])||value[field].length>4096)throw new Error('Normal users exceed the qualified reference budget.');
     const seen=new Set();
     for(const row of value[field]){
-      if(!row||row.kind!=='primitive'||row.field!=='normal_index'||row.object_index!==value.object_index||row.normal_index!==value.normal_index||!integer(row.primitive_index,65535)||!integer(row.group_index,65535)||!integer(row.corner_index,3)||!integer(row.byte_offset,(field==='retail_users'&&(value.schema_version.endsWith('.v2')||value.schema_version.endsWith('.v3'))?value.retail_model_byte_length:value.model_byte_length)-2)||row.byte_offset%2||![3,4].includes(row.corner_count)||!['flat_all_corners','gouraud_corner'].includes(row.sharing)||!Array.isArray(row.affected_corners))throw new Error('Invalid normal reference ownership.');
+      if(!row||row.kind!=='primitive'||row.field!=='normal_index'||row.object_index!==value.object_index||row.normal_index!==value.normal_index||!integer(row.primitive_index,65535)||!integer(row.group_index,65535)||!integer(row.corner_index,3)||!integer(row.byte_offset,(field==='retail_users'&&(value.schema_version.endsWith('.v2')||(value.schema_version.endsWith('.v3')||value.schema_version.endsWith('.v4')))?value.retail_model_byte_length:value.model_byte_length)-2)||row.byte_offset%2||![3,4].includes(row.corner_count)||!['flat_all_corners','gouraud_corner'].includes(row.sharing)||!Array.isArray(row.affected_corners))throw new Error('Invalid normal reference ownership.');
       const corners=row.sharing==='gouraud_corner'?[row.corner_index]:Array.from({length:row.corner_count},(_,i)=>i);
       if(row.corner_index>=row.corner_count||row.sharing==='flat_all_corners'&&row.corner_index!==0||JSON.stringify(corners)!==JSON.stringify(row.affected_corners)||seen.has(row.byte_offset))throw new Error('Normal reference corner coverage conflicts.');seen.add(row.byte_offset);
     }

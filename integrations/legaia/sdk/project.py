@@ -1444,6 +1444,10 @@ class ProjectService:
                            for kind in ('vertices', 'normals')):
                         raise ProjectError('Vector allocation ownership differs from the Retail tables')
                 report.update(schema_version='legaia.model-primitives.v5', vector_growth=growth)
+            if ledger['schema_version']=='legaia.model-face-addition-ledger.v7':
+                from .model_reference_faces import addition_object_ownership
+                object_mappings,growth=addition_object_ownership(self,asset_id,original,effective,self.model_overrides[asset_id])
+                report.update(schema_version='legaia.model-primitives.v6',object_mappings=object_mappings,vector_growth=growth)
 
         if not key or source_key(self) != key:
             raise ProjectError('Scene changed during face inspection; reopen the editor')
