@@ -819,6 +819,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/uv-rectangle.js': ('uv-rectangle.js', 'text/javascript'),
                  '/model-object-ownership.js': ('model-object-ownership.js', 'text/javascript'),
                  '/model-materials.js': ('model-materials.js', 'text/javascript'),
+                 '/model-glb-material-selection.js': ('model-glb-material-selection.js', 'text/javascript'),
                  '/model-material-donor.js': ('model-material-donor.js', 'text/javascript'),
                  '/model-texture-binding.js': ('model-texture-binding.js', 'text/javascript'),
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
@@ -892,7 +893,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-dependencies','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-material-links','/api/model-glb-material-faces', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-dependencies','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                 request_limit = 44 * 1024 * 1024
@@ -1999,6 +2000,19 @@ class EditorHandler(BaseHTTPRequestHandler):
                                          binding=binding, binding_path=str(binding_path),
                                          binding_filename=binding_path.name, report=report,
                                          content_base64=base64.b64encode(payload).decode('ascii')))
+                    return
+                if route in ('/api/model-glb-material-links','/api/model-glb-material-faces'):
+                    fields={'asset_id','content_base64','binding','source_key'}
+                    if route.endswith('-faces'):fields.update(('material_index','role','image_index'))
+                    if set(body)!=fields or not isinstance(body['binding'],dict) or len(json.dumps(body['binding'],allow_nan=False).encode('utf-8'))>128*1024:
+                        raise ProjectError('GLB native selection requires exact current source and bounded SDK binding')
+                    encoded=body['content_base64']
+                    if not isinstance(encoded,str) or not 1<=len(encoded)<=44739244:raise ProjectError('Choose a source-qualified GLB up to 32 MiB')
+                    try:content=base64.b64decode(encoded,validate=True)
+                    except ValueError as exc:raise ProjectError('GLB selection requires valid base64') from exc
+                    from .model_glb_material_selection import links,faces
+                    args=(self.server.project,body['asset_id'],content,body['binding'],body['source_key'])
+                    self._json(200,links(*args) if route.endswith('-links') else faces(*args,body['material_index'],body['role'],body['image_index']))
                     return
                 if route in ('/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import'):
                     expected = {'asset_id', 'content_base64', 'binding'}

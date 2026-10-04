@@ -1,5 +1,22 @@
 # Deferred gameplay verification
 
+## 2026-10-04: GLB-selected native face texture-page assignment
+
+Queued for later manual gameplay verification: build a deliberate GLB-selected
+face binding, navigate to the corresponding Town01 wall, and confirm the texture
+appears on the selected instances with expected UV coverage and live VRAM residency.
+Check other users of the shared model and neighboring wall faces. The new selector
+requires an exact Current SDK model GLB plus fresh binding JSON; image choice only
+selects complete native faces. The native page/palette is an explicit scene texture
+choice applied through material Review/Apply. Shader/UV/sampler settings are not imported.
+
+Automated proof already passed real native codec/HTTP/client checks, the five-face
+Town01 browser workflow, scene inspection Return, Undo/Redo, Save/reload/offline Open,
+and normal Build exact TIM/model readback with unchanged decoded neighbors.
+`local-output/sdk-20260909/model-glb-material-selection-20261004/parent/proof.json`
+records zero game launches and `gameplay_verified: false`. This queued check does
+not block further SDK features that can be qualified without gameplay.
+
 ## 2026-10-04: GLB image dependency views and retained image selection
 
 Both embedded-PNG pickers now show which standard GLB material texture links use

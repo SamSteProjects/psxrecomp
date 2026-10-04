@@ -1,5 +1,38 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: GLB image-to-native-face material selection
+
+The material editor now offers **Select faces from GLB image**. Load an exact
+Current SDK model GLB and its fresh binding JSON, qualify the image links, and
+choose a material/channel/image. Qualification reruns the native GLB importer
+and requires a byte-exact Current model roundtrip. Source-corner attributes
+identify complete native faces independently of GLB draw-primitive numbering.
+Choose a Current scene texture page separately, then **Use texture page for
+GLB-selected faces** stages the page/depth/indexed-palette values in the existing
+material drafts. Review, model/scene inspection, explicit Apply, and Undo retain
+the existing material workflow. UVs and shared group blend drafts are retained;
+other face drafts stay in place. Direct 16-bit assignment preserves the Current
+CLUT word and removes obsolete pending CLUT coordinates.
+
+A quad split across GLB materials, untextured native faces, more than 256 selected
+faces/pending entries, stale bindings, or pending native model changes cannot stage.
+GLB shader/image/UV/sampler properties never supply native page, palette or blend
+addresses. Selection alone changes neither project nor history. This workflow
+does not allocate native geometry, add texture slots, or convert image pixels;
+those remain explicit existing tools.
+
+Verification: three focused Python tests run the real GLB codec (indexed and
+non-indexed corners), strict readonly HTTP qualification, client report validation,
+draft preservation, split-quad and stale/changed-model rejection. The existing
+Node material suite passed. A private Town01 headless browser test selected five
+wall faces, staged an authored 16-bit checker page, invalidated/rebuilt material
+Review, inspected Proposed in scene, and completed one model Apply and Save/reload.
+Parent verification passed Undo/Redo, offline Open, stale binding rejection after
+Apply, and normal Build package readback: exact authored TIM and exact five-face
+model bytes, with neighboring decoded model bytes and Retail metadata unchanged.
+Evidence: `local-output/sdk-20260909/model-glb-material-selection-20261004/parent/proof.json`.
+No game launched; gameplay and live VRAM residency remain deferred.
+
 ## 2026-10-04: GLB image dependency views and retained image selection
 
 Both embedded-PNG pickers now show which standard GLB material texture links use
