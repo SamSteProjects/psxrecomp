@@ -28,7 +28,7 @@ export function decodeMeshBatchReview(value,source,glbHash,mappings,materialColo
 export function openModelMeshBatch({assetId,source,inventory,content,glbHash,materialColors=false,sceneIndex=null,uvSet=0,getContext,busy,setBusy,onError,onApplied,onScenePreview}){
   const context=structuredClone(getContext());source=decodeMeshAppendSource(source,assetId,context.sourceKey);inventory=decodeMeshFile(inventory,glbHash);
   if(context.mode!=='edit'||busy()||inventory.primitives.length>16)fail('Donor mapping requires Edit mode and at most 16 GLB sections.');
-  const dialog=document.createElement('dialog');dialog.className='diagnostic-dialog';
+  const dialog=document.createElement('dialog');dialog.className='diagnostic-dialog model-mesh-batch-dialog';
   dialog.innerHTML='<h2>Map GLB section donors</h2><p>Map every selected scene section to a native triangle donor. Each creates an independent packet group in that donor object. Source material names identify sections; native donor bindings supply materials. New images and animation channels are not allocated.</p><label><input type="checkbox" data-material-colors> Bake opaque material RGB factors (unlit donors only)</label><label>UV channel for all sections<select data-uv-set aria-label="GLB UV channel"></select></label><div data-mappings></div><button data-review>Review all sections</button><button data-apply>Apply all reviewed sections</button><button data-scene>Inspect mapped mesh in scene</button><button data-close>Close</button><p role="status"></p><section data-comparison hidden><label>Comparison layer<select data-layer><option value="proposed">Proposed</option><option value="current">Current</option></select></label><canvas aria-label="Mapped mesh comparison"></canvas><div data-material-summary></div></section>';
   const colors=dialog.querySelector('[data-material-colors]');colors.checked=materialColors;colors.style.width='auto';colors.parentElement.style.cssText='display:flex;flex-direction:row;align-items:center;gap:8px';
   if(sceneIndex!==null){const label=document.createElement('p');label.textContent=`GLB source scene ${sceneIndex}: ${inventory.scene_source?.scenes[sceneIndex]?.name??'unnamed'}`;dialog.querySelector('[data-mappings]').before(label);}
@@ -43,7 +43,13 @@ export function openModelMeshBatch({assetId,source,inventory,content,glbHash,mat
     const uvLabel=document.createElement('label'),uv=document.createElement('select');uvLabel.textContent='Source UV channel';uv.setAttribute('aria-label',`UV channel for primitive ${primitive.primitive_index}`);for(const set of new Set([0,...(inventory.uv_sets??[]).flat()])){const option=document.createElement('option');option.value=String(set);option.textContent=`TEXCOORD_${set}`;uv.append(option);}uv.value=String(uvSet);uvLabel.append(uv);row.append(legend,donor,uvLabel,label);host.append(row);rows.push({donor,replace,uv});
   }
   const reviewButton=dialog.querySelector('[data-review]'),applyButton=dialog.querySelector('[data-apply]'),sceneButton=dialog.querySelector('[data-scene]'),close=dialog.querySelector('[data-close]'),status=dialog.querySelector('[role=status]'),comparison=dialog.querySelector('[data-comparison]'),layer=dialog.querySelector('[data-layer]'),canvas=dialog.querySelector('canvas');
-  canvas.style.width='100%';canvas.style.height='360px';sceneButton.hidden=typeof onScenePreview!=='function';
+  const workspace=document.createElement('div'),settings=document.createElement('div'),previewPane=document.createElement('aside'),actions=document.createElement('div');
+  workspace.className='mesh-donor-workspace';settings.className='mesh-donor-settings';previewPane.className='mesh-donor-preview';actions.className='mesh-donor-actions';
+  for(const child of Array.from(dialog.children).slice(2))if(child!==comparison)settings.append(child);
+  actions.append(reviewButton,applyButton,sceneButton,close);settings.insertBefore(actions,status);
+  const heading=document.createElement('h3'),empty=document.createElement('p');heading.textContent='Mesh comparison';empty.textContent='Review the mapping to compare Current and Proposed. Drag to orbit; wheel or +/− to zoom; arrows orbit.';empty.dataset.emptyPreview='true';
+  previewPane.append(heading,empty,comparison);workspace.append(settings,previewPane);dialog.append(workspace);
+  canvas.style.width='100%';sceneButton.hidden=typeof onScenePreview!=='function';
   let closed=false,pending=false,applying=false,ownedBusy=false,review=null,controller=null,generation=0,sceneRestore=null,renderer=null,drag=null;
   const view={yaw:.65,pitch:.4,zoom:1};
   const current=()=>!closed&&same(context,getContext());

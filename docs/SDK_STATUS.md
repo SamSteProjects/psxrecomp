@@ -1,5 +1,21 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — donor mapping beside the mesh comparison:** The batch GLB
+mapping dialog now places its section controls alongside the Current/Proposed
+comparison. The section list scrolls independently, keeping Review, Apply and
+scene inspection actions visible. Narrow windows stack the panes within the
+window width. Existing review invalidation and scene inspection/Return behavior
+remain intact; the preview also retains its keyboard focus outline.
+
+Two focused UV mapping construction checks passed. The actual Retail editor
+browser smoke verified desktop canvas/action bounds, narrow-window bounds,
+Current/Proposed switching and retained mixed UV choices after scene inspection
+and Return. Visual screenshots were inspected. Private evidence:
+`local-output/sdk-20260909/glb-donor-layout-20261004/parent/`.
+Authored project files and history stayed unchanged; no Apply or game launch was
+performed. This editor layout change needs no immediate gameplay verification.
+The full goal remains active, with native gameplay checks deferred.
+
 **2026-10-04 — per-section UV channels in atomic donor mapping:** Each row in
 **Map GLB section donors** now offers its own **Source UV channel**. The file/import
 choice seeds all rows; **UV channel for all sections** resets them together. Rows

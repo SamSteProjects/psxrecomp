@@ -203,3 +203,23 @@
 @media(max-width:720px){.transition-graph-body{grid-template-columns:minmax(0,1fr)}.transition-scene-list{max-height:130px;flex-direction:row;flex-wrap:wrap}.transition-scene-list>button{flex:1 1 130px}.transition-graph-svg{height:330px}}
 
 #model-dialog .model-controls{flex-wrap:wrap;justify-content:flex-start;gap:10px}#model-dialog .model-controls label{min-width:0;max-width:100%}#model-dialog .model-controls select{min-width:0;max-width:min(240px,100%)}#model-normal-note{font-size:10px;line-height:1.7;overflow-wrap:anywhere}
+
+/* Keep donor mapping and its geometry comparison visible together. */
+.model-mesh-batch-dialog{width:min(1180px,calc(100vw - 36px));max-height:calc(100dvh - 32px);overflow:auto}
+.mesh-donor-workspace{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(0,1.1fr);gap:24px;height:min(680px,calc(100dvh - 220px));min-height:360px}
+.mesh-donor-settings{display:flex;flex-direction:column;min-width:0;min-height:0}
+.mesh-donor-settings>label{margin-top:10px;flex:none}
+.mesh-donor-settings>[data-mappings]{flex:1;min-height:0;overflow:auto;margin:12px 0;scrollbar-gutter:stable}
+.mesh-donor-settings fieldset{min-width:0;margin:0 0 10px;border:1px solid var(--line);border-radius:5px;padding:10px}
+.mesh-donor-settings legend{overflow-wrap:anywhere;font-size:11px;max-width:100%}
+.mesh-donor-settings fieldset label{margin-top:10px}
+.mesh-donor-actions{display:flex;gap:6px;flex-wrap:wrap;flex:none}
+.mesh-donor-settings>[role=status]{flex:none;max-height:100px;overflow:auto;margin:10px 0 0}
+.mesh-donor-preview{min-width:0;min-height:0;padding:16px;border:1px solid var(--line);border-radius:6px;background:#141d20;display:flex;flex-direction:column}
+.mesh-donor-preview h3{margin:0;font-size:14px}
+.mesh-donor-preview:has([data-comparison]:not([hidden])) [data-empty-preview]{display:none}
+.mesh-donor-preview [data-comparison]:not([hidden]){display:flex;flex-direction:column;flex:1;min-height:0}
+.mesh-donor-preview [data-comparison]>label{flex:none;margin-top:14px}
+.mesh-donor-preview canvas{display:block;flex:1;min-height:200px;max-height:420px;margin-top:14px}
+.mesh-donor-preview [data-material-summary]{overflow:auto;max-height:160px;flex:none;overflow-wrap:anywhere}
+@media(max-width:860px){.mesh-donor-workspace{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mesh-donor-settings>[data-mappings]{flex:none;max-height:40dvh}.mesh-donor-preview{min-height:360px}.mesh-donor-preview canvas{height:300px;flex:none}.mesh-donor-settings>[role=status]{max-height:none}}

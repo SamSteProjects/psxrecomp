@@ -1,5 +1,14 @@
 # Source-bound model GLB editing
 
+## Compare while mapping donors
+
+**Map GLB section donors** shows the mapping controls beside the mesh comparison
+on desktop windows. Scroll the section list to reach additional mappings while
+keeping the review actions visible. After Review, switch between Current and
+Proposed; drag the preview to orbit, use the wheel or +/− to zoom, or use arrow
+keys to orbit. Narrow windows stack the controls and comparison in a scrollable
+dialog. Scene inspection and Return retain the mapping choices and review.
+
 ## Choose the source UV channel
 
 **Source UV channel** lists the selected scene's available channels, with UV0 as
