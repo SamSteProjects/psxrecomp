@@ -23,9 +23,59 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     shape = decode_tmd(replacement)
     objects = result['objects']
     topology_changed = binding.get('format') in ('tmd-face-removal-v1', 'tmd-face-addition-v1')
-    # Party poses intentionally omit trailing equipment objects; only accept the
-    # same prefix/ranges, never infer a new object-to-channel association.
-    if len(objects) > len(shape['objects']) or any(
+    vector_growth=None
+    if binding.get('format')=='tmd-face-addition-v1' and binding.get('ledger',{}).get('schema_version')=='legaia.model-face-addition-ledger.v5':
+        from .model_face_ledger import _operations,MAX_LEDGER_VECTORS
+        from .model_primitives import _qualified_model
+        _qualified_model(replacement)
+        if binding.get('asset_sha256')!=sha256(replacement).hexdigest() or binding.get('byte_length')!=len(replacement):
+            raise ImportError('Allocated vector preview differs from its qualified binding')
+        vector_growth=[0]*len(shape['objects']);total=0
+        for operation in _operations(binding['ledger']):
+            if not isinstance(operation,dict):raise ImportError('Allocated vector preview requires typed operations')
+            if operation.get('kind')!='allocate_vectors':continue
+            if set(operation)!={'kind','input_sha256','proposed_sha256','requests'} or not isinstance(operation['requests'],list):
+                raise ImportError('Allocated vector preview operation schema changed')
+            seen=set()
+            for request in operation['requests']:
+                if (not isinstance(request,dict) or set(request)!={'object_index','kind','vectors'}
+                        or type(request['object_index']) is not int or not 0<=request['object_index']<len(vector_growth)
+                        or request['kind'] not in ('vertices','normals') or not isinstance(request['vectors'],list)
+                        or not request['vectors'] or any(not isinstance(row,list) or len(row)!=3 or any(
+                            type(value) is not int or not -32768<=value<=32767 for value in row) for row in request['vectors'])):
+                    raise ImportError('Allocated vector preview ownership changed')
+                identity=(request['object_index'],request['kind'])
+                if identity in seen:raise ImportError('Allocated vector preview repeats table ownership')
+                seen.add(identity);total+=len(request['vectors'])
+                if total>MAX_LEDGER_VECTORS:raise ImportError('Allocated vector preview exceeds its row budget')
+                if request['kind']=='vertices':vector_growth[request['object_index']]+=len(request['vectors'])
+        preceding=result.get('authored_shape',{})
+        if preceding.get('format')=='tmd-face-addition-v1' and 'ledger' in preceding:
+            old=preceding['ledger'];new=binding['ledger'];old_operations=_operations(old);new_operations=_operations(new)
+            if (any(old[key]!=new[key] for key in ('source_sha256','source_byte_length'))
+                    or old_operations!=new_operations[:len(old_operations)]
+                    or preceding.get('asset_sha256')!=(old_operations[-1]['proposed_sha256'] if old_operations else old['source_sha256'])):
+                raise ImportError('Allocated vector preview is not a continuation of its Current ledger')
+            # Current scene geometry already contains these allocations.
+            for operation in old_operations:
+                if operation['kind']=='allocate_vectors':
+                    for request in operation['requests']:
+                        if request['kind']=='vertices':vector_growth[request['object_index']]-=len(request['vectors'])
+    # Party poses omit trailing equipment objects. Qualified V5 append counts
+    # may enlarge the same prefix; never infer a new object/channel association.
+    if vector_growth is not None:
+        old_count=0
+        if len(objects)>len(shape['objects']):raise ImportError('Allocated vectors cannot infer new pose channels')
+        for i,obj in enumerate(objects):
+            if (obj.get('object_index')!=i or obj.get('vertex_start')!=old_count
+                    or type(obj.get('vertex_count')) is not int or obj['vertex_count']<0
+                    or shape['objects'][i]['vertex_count']!=obj['vertex_count']+vector_growth[i]):
+                raise ImportError('Allocated vectors do not match their existing object channel')
+            old_count+=obj['vertex_count']
+        if old_count!=len(result['vertices']):raise ImportError('Allocated vector source preview has incomplete ownership')
+        for i,obj in enumerate(objects):
+            obj.update(vertex_start=shape['objects'][i]['vertex_start'],vertex_count=shape['objects'][i]['vertex_count'])
+    elif len(objects) > len(shape['objects']) or any(
             any(obj[k] != shape['objects'][i][k] for k in
                 (('object_index','vertex_start','vertex_count') if topology_changed else
                  ('object_index','vertex_start','vertex_count','triangle_start','triangle_count')))
@@ -33,7 +83,7 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
         raise ImportError('Shape objects do not match the existing pose layout')
     count = sum(obj['vertex_count'] for obj in objects)
     vertices = shape['vertices'][:count]
-    if len(vertices) != len(result['vertices']):
+    if vector_growth is None and len(vertices) != len(result['vertices']):
         raise ImportError('Shape vertex count differs from preview geometry')
     if topology_changed:
         for i, obj in enumerate(objects):
