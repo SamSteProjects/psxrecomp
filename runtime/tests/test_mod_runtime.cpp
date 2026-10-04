@@ -584,8 +584,14 @@ int main(int argc, char** argv) {
             "[[disc_relocation]]\nfeature=\"scene\"\nfile=\"assets/relocation.bin\"\nsha256=\""+sha256_hex(payload)+"\"\n");
         check(PSXRecompV4::mod_runtime_initialize(success,"SLUS-RUNTIME",0x80002000,{},&error),error.c_str());
         check(PSXRecompV4::mod_runtime_commit(source_path,&error),error.c_str());
+        mod_runtime_get_status(&status);
+        check(status.active_relocation_count==1 && status.relocation_reader_active && status.relocation_sector_count==62 &&
+              status.relocation_reader_open_count==0 && status.relocation_payload_sha256==sha256_hex(payload),
+              "status must identify prepared relocation without claiming reader acquisition");
         void* first=iso_open(source_path.string().c_str());
         void* second=iso_open(source_path.string().c_str());
+        mod_runtime_get_status(&status);
+        check(status.relocation_reader_open_count==2,"status must count shared reader acquisitions");
         check(first&&second&&iso_sector_count(first)==62,"C bridge must expose committed virtual disc");
         std::array<uint8_t,2352> bytes{};
         check(iso_read_sector(first,30,bytes.data(),2048)&&bytes[0]=='R',"C bridge replacement read");
@@ -612,6 +618,9 @@ int main(int argc, char** argv) {
         second=iso_open(source_path.string().c_str());
         check(second&&iso_sector_count(second)==62,"new handle must acquire new plan");
         check(PSXRecompV4::mod_runtime_clear_for_netplay(&error),error.c_str());
+        mod_runtime_get_status(&status);
+        check(status.active_relocation_count==0 && !status.relocation_reader_active && status.relocation_sector_count==0 &&
+              status.relocation_reader_open_count==0 && status.relocation_payload_sha256[0]==0,"netplay clear must reset relocation observation");
         check(iso_sector_count(second)==60&&iso_read_sector(second,30,bytes.data(),2048)&&bytes[0]==30,"netplay clear restores stock held reader");
         check(PSXRecompV4::mod_runtime_commit(source_path,&error),error.c_str());
         void* third=iso_open(source_path.string().c_str());

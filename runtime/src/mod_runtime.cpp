@@ -68,6 +68,7 @@ struct RuntimeMods {
     std::filesystem::path effective_disc_path;
     std::filesystem::path relocation_source;
     std::shared_ptr<PS1::ISOReader> relocation_reader;
+    uint64_t relocation_reader_open_count = 0;
     uint32_t entry_phys = 0;
     bool initialized = false;
     bool plan_committed = false;
@@ -94,6 +95,7 @@ void clear_relocation_reader(RuntimeMods& s) {
 
 void reset_disc_observation(RuntimeMods& s) {
     ++s.counter_epoch;
+    s.relocation_reader_open_count = 0;
     s.overlay_sector_applications = 0;
     s.overlay_bytes_copied = 0;
     s.has_last_overlay_lba = false;
@@ -1312,6 +1314,7 @@ bool mod_runtime_open_iso_reader(const std::filesystem::path& path,
             return false;
         }
         reader=s.relocation_reader;
+        ++s.relocation_reader_open_count;
     } else {
         auto opened=std::make_shared<PS1::ISOReader>();
         if(!opened->Open(path.string())) { if(error)*error="disc image cannot open";return false; }
@@ -1347,6 +1350,14 @@ extern "C" void mod_runtime_get_status(ModRuntimeStatus* out) {
     out->disc_guard_failed = s.disc_guard_failed;
     out->active_write_count = s.plan.writes.size();
     out->active_overlay_count = s.plan.overlays.size();
+    out->active_relocation_count = s.plan.disc_relocations.size();
+    out->relocation_reader_open_count = s.relocation_reader_open_count;
+    out->relocation_reader_active = s.plan_committed && s.relocation_reader && s.relocation_reader->HasDiscRelocation();
+    if (out->relocation_reader_active) {
+        out->relocation_sector_count = s.relocation_reader->GetSectorCount();
+        std::snprintf(out->relocation_payload_sha256, sizeof(out->relocation_payload_sha256), "%s",
+                      s.plan.disc_relocations.front().sha256.c_str());
+    }
     out->counter_epoch = s.counter_epoch;
     out->overlay_sector_applications = s.overlay_sector_applications;
     out->overlay_bytes_copied = s.overlay_bytes_copied;

@@ -10,7 +10,7 @@ from sdk.run import RunService
 
 
 class RunPreparationTests(unittest.TestCase):
-    def run_ready(self, valid=True, prepared=True):
+    def run_ready(self, valid=True, prepared=True, relocation=None, relocation_status=None):
         service = RunService()
         process = SimpleNamespace(pid=42, poll=lambda: None)
         service._process = process
@@ -23,6 +23,9 @@ class RunPreparationTests(unittest.TestCase):
         mods = {"disc_identity": {"sha256": "disc"}, "active_overlay_count": 0,
                 "active_write_count": 0, "plan_committed": True, "disc_enabled": True,
                 "disc_guard_failed": False}
+        if relocation is not None:
+            service._status.update(expected_relocation_count=1,expected_relocation_sha256='payload',expected_relocation_sector_count=62)
+            mods.update(relocation_status or {})
         client = Mock()
         client.runtime_identity.return_value = identity
         client.request.return_value = mods
@@ -51,6 +54,17 @@ class RunPreparationTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertFalse(result["observation_preparation"]["scene_verified"])
         self.assertEqual(result["observation_preparation"]["witness_tracking"]["status"], "primed")
+
+    def test_relocation_readiness_requires_exact_current_reader_acquisition(self):
+        good=dict(active_relocation_count=1,relocation_reader_active=True,relocation_payload_sha256='payload',
+                  relocation_sector_count=62,relocation_reader_open_count=1)
+        result,factory,_=self.run_ready(relocation=True,relocation_status=good)
+        self.assertTrue(result['ready']);factory.assert_called_once()
+        for bad in ({},dict(good,active_relocation_count=0),dict(good,relocation_reader_active=False),
+                    dict(good,relocation_payload_sha256='other'),dict(good,relocation_sector_count=60),
+                    dict(good,relocation_reader_open_count=0),dict(good,relocation_reader_open_count=True)):
+            result,factory,_=self.run_ready(relocation=True,relocation_status=bad)
+            self.assertFalse(result['ready']);factory.assert_not_called()
 
     def test_wrong_identity_never_arms_and_observer_rejection_stays_explicit(self):
         result, factory, _ = self.run_ready(valid=False)

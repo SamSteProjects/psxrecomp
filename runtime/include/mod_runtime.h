@@ -62,6 +62,11 @@ typedef struct ModRuntimeStatus {
     uint32_t last_overlay_lba;
     char plan_fingerprint[65];
     char disc_sha256[65]; /* Committed source-disc identity; empty if unavailable. */
+    uint64_t active_relocation_count;
+    uint64_t relocation_reader_open_count; /* Host cumulative since plan reset, not gameplay acceptance. */
+    uint32_t relocation_reader_active;
+    uint32_t relocation_sector_count;
+    char relocation_payload_sha256[65];
 } ModRuntimeStatus;
 void mod_runtime_get_status(ModRuntimeStatus* out);
 

@@ -8,6 +8,9 @@ import tomllib
 
 from .build import _guard_output, authored_state_key, build_report
 from .project import ProjectError
+from .build_inventory import package_inventory, MAX_RELOCATION
+from importer.core import ImportError as DiscImportError
+from importer.disc_relocation_package import decode_relocation_package
 
 MAX_METADATA = 8 * 1024 * 1024
 MAX_ARCHIVE = 512 * 1024 * 1024
@@ -126,7 +129,7 @@ def _file_hash(path,expected,size=None,maximum=MAX_ARCHIVE):
 def verify_build(project,identifier):
     try:
         return _verify_build(project,identifier)
-    except (OSError,ValueError,TypeError,KeyError,zipfile.BadZipFile,RuntimeError) as error:
+    except (OSError,ValueError,TypeError,KeyError,zipfile.BadZipFile,RuntimeError,DiscImportError) as error:
         raise ProjectError('Saved Build verification failed: '+str(error)[:8192]) from error
 
 
@@ -141,20 +144,15 @@ def _verify_build(project,identifier):
     if manifest.get('id')!=receipt['package_id'] or manifest.get('version')!=receipt['version'] or manifest.get('target')!=[{'game_id':'SCUS-94254','disc_sha256':receipt['source_disc_sha256']}]:
         raise ProjectError('Manifest identity differs from receipt')
     expected={'manifest.toml':(receipt['manifest_sha256'],len(manifest_bytes))}
-    planned=[]
-    for overlay in audit['overlays']:
-        name=overlay.get('file')
-        if (not isinstance(name,str) or not re.fullmatch(r'assets/[A-Za-z0-9_.-]+',name) or name in expected
-                or not _hash(overlay.get('sha256')) or not _hash(overlay.get('expected_sha256'))
-                or type(overlay.get('size')) is not int or not 0<overlay['size']<=64*1024*1024
-                or type(overlay.get('offset')) is not int or overlay['offset']<0):
-            raise ProjectError('Saved overlay inventory is invalid')
-        expected[name]=(overlay['sha256'],overlay['size'])
-        planned.append(dict(feature='placements',target='disc_user',offset=overlay['offset'],file=name,
-                            sha256=overlay['sha256'],expected_sha256=overlay['expected_sha256']))
-        _file_hash(_path(project,identifier,'package/'+name),overlay['sha256'],overlay['size'],64*1024*1024)
-    if manifest.get('overlay',[])!=planned or sum(size for _,size in expected.values())>MAX_ARCHIVE:
-        raise ProjectError('Manifest overlay inventory differs from audit or exceeds limit')
+    payloads=package_inventory(manifest,audit['overlays'],audit.get('relocation_payload'))
+    expected.update(payloads)
+    if sum(size for _,size in expected.values())>MAX_ARCHIVE:
+        raise ProjectError('Manifest payload inventory exceeds limit')
+    for name,(digest,size) in payloads.items():
+        path=_path(project,identifier,'package/'+name)
+        _file_hash(path,digest,size,MAX_RELOCATION if audit.get('relocation_payload') else 64*1024*1024)
+        if audit.get('relocation_payload'):
+            decode_relocation_package(path.read_bytes(),digest)
     archive_path=_path(project,identifier,receipt['archive_file'])
     _file_hash(archive_path,receipt['archive_sha256'],receipt['archive_bytes'])
     with zipfile.ZipFile(archive_path) as archive:

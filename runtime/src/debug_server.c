@@ -6782,7 +6782,9 @@ static void handle_mod_status(int id, const char *json) {
     send_fmt("{\"id\":%d,\"ok\":true,\"initialized\":%s,\"plan_committed\":%s,"
              "\"main_applied\":%s,\"disc_enabled\":%s,\"disc_guard_failed\":%s,"
              "\"plan_fingerprint\":\"%s\",\"active_write_count\":%llu,"
-             "\"active_overlay_count\":%llu,\"disc_identity\":{"
+             "\"active_overlay_count\":%llu,\"active_relocation_count\":%llu,"
+             "\"relocation_reader_active\":%s,\"relocation_sector_count\":%u,"
+             "\"relocation_reader_open_count\":%llu,\"relocation_payload_sha256\":\"%s\",\"disc_identity\":{"
              "\"available\":%s,\"algorithm\":\"sha256\",\"sha256\":\"%s\","
              "\"scope\":\"committed-source-disc\"},\"overlay_consumption\":{"
              "\"counter_scope\":\"host-cumulative-since-plan-reset\","
@@ -6793,6 +6795,9 @@ static void handle_mod_status(int id, const char *json) {
              status.disc_enabled ? "true" : "false", status.disc_guard_failed ? "true" : "false",
              status.plan_fingerprint, (unsigned long long)status.active_write_count,
              (unsigned long long)status.active_overlay_count,
+             (unsigned long long)status.active_relocation_count,
+             status.relocation_reader_active ? "true" : "false", status.relocation_sector_count,
+             (unsigned long long)status.relocation_reader_open_count, status.relocation_payload_sha256,
              status.disc_sha256[0] ? "true" : "false", status.disc_sha256,
              (unsigned long long)status.counter_epoch,
              (unsigned long long)status.overlay_sector_applications,

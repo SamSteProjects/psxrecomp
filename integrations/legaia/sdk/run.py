@@ -18,6 +18,8 @@ import tomllib
 import uuid
 import zipfile
 
+from .build_inventory import package_inventory, MAX_RELOCATION
+from importer.disc_relocation_package import decode_relocation_package
 from .build import _guard_output
 from .project import ProjectError, atomic_write, canonical
 
@@ -247,11 +249,15 @@ class RunService:
         # independently validates the resulting manifest, stock guards and payloads.
         with zipfile.ZipFile(archive_path) as archive:
             infos = archive.infolist()
-            if len(infos) > 256 or sum(item.file_size for item in infos) > 64 * 1024 * 1024:
+            relocation=build.get('relocation_payload')
+            budget=MAX_RELOCATION+1024*1024 if relocation else 64*1024*1024
+            if len(infos) > 256 or sum(item.file_size for item in infos) > budget:
                 raise ProjectError("Build package exceeds the private install bound")
             names = [item.filename for item in infos]
             if len(names) != len(set(names)) or "manifest.toml" not in names:
                 raise ProjectError("Build package has duplicate entries or no manifest")
+            if next(info.file_size for info in infos if info.filename=='manifest.toml')>1024*1024:
+                raise ProjectError('Build manifest exceeds the private metadata bound')
             manifest = tomllib.loads(archive.read("manifest.toml").decode("utf-8"))
             if manifest.get("id") != build["package_id"] or manifest.get("version") != build["version"]:
                 raise ProjectError("Build identity disagrees with its manifest")
@@ -261,9 +267,19 @@ class RunService:
             overlays = manifest.get("overlay", [])
             if len(overlays) != build["overlay_count"] or any(item.get("target") != "disc_user" for item in overlays):
                 raise ProjectError("Build package does not match its overlay audit")
-            allowed = {"manifest.toml", *(item["file"] for item in overlays)}
-            if set(names) != allowed:
+            audited=[dict(item,size=next((info.file_size for info in infos if info.filename==item['file']),0)) for item in overlays]
+            payloads=package_inventory(manifest,audited,relocation)
+            allowed={"manifest.toml",*payloads}
+            if set(names) != allowed or any(info.filename in payloads and info.file_size != payloads[info.filename][1] for info in infos):
                 raise ProjectError("Build package contains unexpected files")
+            expected_sectors=None
+            if relocation:
+                decoded=decode_relocation_package(archive.read(relocation['file']),relocation['sha256'])
+                expected_sectors=decoded['proposed_sector_count']
+                del decoded
+            targets = manifest.get("target", [])
+            if len(targets) != 1 or targets[0].get("game_id") != "SCUS-94254":
+                raise ProjectError("Build target is not SCUS-94254")
             # The whole run directory is new and no process can read it until
             # start() completes this validation. Install directly into its final
             # private location: renaming a freshly written directory can fail
@@ -276,16 +292,16 @@ class RunService:
                 if relative.is_absolute() or ".." in relative.parts or "\\" in item.filename or ":" in item.filename:
                     raise ProjectError("Unsafe package member path")
                 data = archive.read(item)
-                expected = next((entry["sha256"] for entry in overlays if entry["file"] == item.filename), None)
+                expected = payloads[item.filename][0] if item.filename in payloads else None
                 if expected is not None and hashlib.sha256(data).hexdigest() != expected:
                     raise ProjectError("Build overlay hash mismatch")
                 target = staging.joinpath(*relative.parts)
                 atomic_write(target, data)
-            targets = manifest.get("target", [])
-            if len(targets) != 1 or targets[0].get("game_id") != "SCUS-94254":
-                raise ProjectError("Build target is not SCUS-94254")
             self._status["expected_disc_sha256"] = targets[0]["disc_sha256"]
             self._status["expected_overlay_count"] = len(overlays)
+            self._status['expected_relocation_count'] = 1 if relocation else 0
+            self._status['expected_relocation_sha256'] = relocation['sha256'] if relocation else None
+            self._status['expected_relocation_sector_count'] = expected_sectors
             state = ("format_version = 2\n\n[[package]]\nid = " + json.dumps(build["package_id"]) +
                      "\nversion = " + json.dumps(build["version"]) + "\n\n[[feature]]\npackage_id = " +
                      json.dumps(build["package_id"]) + "\nid = " + json.dumps(build["feature_id"]) + "\nenabled = true\n")
@@ -319,6 +335,12 @@ class RunService:
                              identity.get("bios", {}).get("sha256") == self._status["expected_bios_sha256"] and
                              mods.get("disc_identity", {}).get("sha256") == self._status["expected_disc_sha256"] and
                              mods.get("active_overlay_count") == self._status["expected_overlay_count"] and
+                             mods.get('active_relocation_count',0) == self._status.get('expected_relocation_count',0) and
+                             (not self._status.get('expected_relocation_count') or
+                              (mods.get('relocation_reader_active') is True and
+                               mods.get('relocation_payload_sha256') == self._status['expected_relocation_sha256'] and
+                               mods.get('relocation_sector_count') == self._status['expected_relocation_sector_count'] and
+                               type(mods.get('relocation_reader_open_count')) is int and mods['relocation_reader_open_count']>0)) and
                              mods.get("active_write_count") == 0 and mods.get("plan_committed") is True and
                              mods.get("disc_enabled") is True and mods.get("disc_guard_failed") is False)
                     self._status.update(runtime_identity=identity, mod_status=mods)

@@ -1221,7 +1221,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         for path,content in [(destination / '.gitignore',b'*\n'),(package_dir / 'manifest.toml',manifest),(destination / 'build-audit.json',audit_bytes),*((package_dir / overlay['file'],overlay['payload']) for overlay in package_assets)]:
             _validate_exact(path,content,boundary)
         return dict(report=build_report(audit),build_kind=build_kind,change_kinds=package_change_kinds(audit_edits),
-                    audit_sha256=_hash(audit_bytes),manifest_sha256=_hash(manifest),overlay_count=len(overlays),
+                    audit_sha256=_hash(audit_bytes),manifest_sha256=_hash(manifest),overlay_count=(0 if relocation else len(overlays)),
+                    relocation_payload=({k:v for k,v in relocation.items() if k != "payload"} if relocation else None),
                     source_disc_sha256=disc_hash,package_directory=str(package_dir),
                     archive_packing='not_run',runtime_status='not_run',output_written=False)
     if authored_state_key(project) != input_key:
@@ -1278,7 +1279,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         "authored_state_key": input_key, "report": build_report(audit),
         "receipt": str(input_receipt),
         "package_directory": str(package_dir), "package_id": package_id, "version": version,
-        "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": len(overlays),
+        "sha256": _hash(archive_bytes), "changed_fields": len(audit_edits), "overlay_count": (0 if relocation else len(overlays)),
+        "relocation_payload": ({k:v for k,v in relocation.items() if k != "payload"} if relocation else None),
         **({"changed_fields_unit": "authored fields/runs/textures"} if has_texture else
            {"changed_fields_unit": "authored fields/runs"} if has_dialogue else {}),
         "runtime_status": "package_built_not_launched", "feature_id": "placements",
