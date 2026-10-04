@@ -39,7 +39,7 @@ class TextureBuildGuards(unittest.TestCase):
                    "sha256": digest(changed), "expected_sha256": digest(source), "carrier_kind": "raw"}
         audit = {"semantic_id": identifier, "source_record": {}, "before_sha256": digest(source),
                  "after_sha256": digest(changed), "byte_length": len(changed), "scope": "TIM-image-and-palette-payload-only"}
-        context = SimpleNamespace(original_tim=lambda _: source, patch=lambda _: ([overlay], [audit]))
+        context = SimpleNamespace(original_tim=lambda _: source, build_patch=lambda _: ([overlay], [audit], []))
         return project, document, image, context, overlay, audit
 
     def test_invalid_bindings_fail_without_source_access_or_output(self):
@@ -72,10 +72,10 @@ class TextureBuildGuards(unittest.TestCase):
                 elif fault == "source_hash": overlay["expected_sha256"] = "0" * 64
                 elif fault == "offset": overlay["offset"] = True
                 elif fault == "size": overlay["size"] += 1
-                elif fault == "missing_audit": context.patch = lambda _: ([overlay], [])
+                elif fault == "missing_audit": context.build_patch = lambda _: ([overlay], [], [])
                 elif fault == "foreign_audit": audit["semantic_id"] = "texture://foreign/1/raw/0"
                 elif fault == "audit_hash": audit["after_sha256"] = "0" * 64
-                elif fault == "overlap": context.patch = lambda _: ([overlay, deepcopy(overlay)], [audit])
+                elif fault == "overlap": context.build_patch = lambda _: ([overlay, deepcopy(overlay)], [audit], [])
                 with patch("sdk.build.import_scene", return_value=fresh), \
                         patch("sdk.build._disc_context", return_value=nullcontext((image, "a" * 64, None, None))), \
                         patch("importer.texture_authoring.load_texture_authoring_context", return_value=context):

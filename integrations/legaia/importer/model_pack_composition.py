@@ -1,4 +1,4 @@
-"""Compose source-addressed patches before qualified model, ANM and MAN relocation."""
+"""Compose source-addressed patches before qualified model, TIM, ANM and MAN relocation."""
 from hashlib import sha256
 
 from .core import ImportError, parse_scene_assets, decompress_lzs
@@ -22,12 +22,14 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         raise ImportError('Model composition requires a bounded relocation batch')
     identities = set();tables = {}
     for request in requests:
+        texture = isinstance(request,dict) and request.get('kind') == 'texture-pack'
         animation = isinstance(request,dict) and request.get('kind') == 'animation-bank'
         streaming = isinstance(request,dict) and request.get('kind') == 'streaming-animation-bank'
         streaming_man = isinstance(request,dict) and request.get('kind') == 'streaming-man'
         compressed_man = isinstance(request,dict) and request.get('kind') == 'compressed-man'
         raw_resource = streaming or streaming_man
-        fields = ({'kind','entry_index','table_offset','descriptor_index','source_man_sha256','candidate'} if compressed_man else
+        fields = ({'kind','entry_index','table_offset','descriptor_index','expected_pack_sha256','pack'} if texture else
+                  {'kind','entry_index','table_offset','descriptor_index','source_man_sha256','candidate'} if compressed_man else
                   {'kind','entry_index','chunk_header_offset','source_man_sha256','candidate'} if streaming_man else
                   {'kind','entry_index','chunk_header_offset','expected_bank_sha256','bank'} if streaming else
                   {'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'} if animation else
@@ -102,6 +104,10 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
             working,report=rebuild_man_entry(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k not in ('kind','descriptor_index')},header_offset=header_offset)
             report['entry_index']=request['entry_index']
+        elif request.get('kind') == 'texture-pack':
+            from .texture_pack_growth import rebuild_texture_pack_entry
+            working,report=rebuild_texture_pack_entry(working,sha256(working).hexdigest(),
+                **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
         elif request.get('kind') == 'animation-bank':
             from .animation_bank_growth import rebuild_animation_bank_entry
             working,report=rebuild_animation_bank_entry(working,sha256(working).hexdigest(),
@@ -135,6 +141,10 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         offset=request.get('table_offset',0)
         end = min([offset+d.data_offset for d in table.descriptors if d.data_offset > descriptor.data_offset]+[len(raw)])
         pack,_ = decompress_lzs(raw[offset+descriptor.data_offset:end], descriptor.size)
+        if request.get('kind')=='texture-pack':
+            if descriptor.type_byte!=1 or pack!=request['pack']:
+                raise ImportError('Resource composition final reopened texture pack changed')
+            continue
         if request.get('kind')=='compressed-man':
             if descriptor.type_byte!=3 or pack!=request['candidate']:
                 raise ImportError('Resource composition final reopened compressed MAN changed')
@@ -145,5 +155,5 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
     return working, dict(schema_version='legaia.model-pack-composition.v1', source_sha256=expected_sha256,
         patched_sha256=patched_sha256, proposed_sha256=sha256(working).hexdigest(),
         patch_count=len(prepared), patched_bytes=sum(len(payload) for _,payload in prepared),
-        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,final_compressed_man_verified=True,growth_bytes=len(working)-len(source),
+        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,final_compressed_man_verified=True,final_texture_packs_verified=True,growth_bytes=len(working)-len(source),
         disc_relocation_required=len(working)!=len(source), build_ready=False, gameplay_verified=False)

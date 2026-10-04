@@ -158,6 +158,10 @@ def build_report(audit) -> dict:
             "validation": dict(audit["validation"]), "change_count": len(changes),
             "scene_count": len({change["scene"] for change in changes}),
             "overlay_bytes": sum(overlay["size"] for overlay in audit["overlays"]),
+            **({'resource_relocation':dict(package_bytes=audit['relocation_payload']['size'],
+                 archive_growth_bytes=audit['relocation']['composition']['growth_bytes'],
+                 texture_pack_count=sum(row.get('kind')=='texture-pack' for row in audit['relocation']['composition']['resources']))}
+               if audit.get('relocation') else {}),
             **({'npc_candidates': deepcopy(audit['npc_candidates'])}
                if audit.get('npc_candidates') else {})}
 
@@ -1059,7 +1063,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         _hash(payload) != binding["asset_sha256"]):
                     raise BuildError("Private texture replacement no longer matches its authored binding")
                 replacements[identifier] = payload
-            texture_overlays, texture_changes = context.patch(replacements)
+            texture_overlays, texture_changes, texture_requests = context.build_patch(replacements)
+            growth_requests.extend(texture_requests)
             changed_ids = set()
             for change in texture_changes:
                 identifier = change.get("semantic_id")
@@ -1074,7 +1079,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                     **({"glb_source":dict(bindings[identifier]["glb_source"])} if "glb_source" in bindings[identifier] else {})})
             expected_changes = {identifier for identifier, payload in replacements.items()
                                 if payload != context.original_tim(identifier)}
-            if changed_ids != expected_changes or bool(texture_overlays) != bool(texture_changes):
+            if changed_ids != expected_changes or bool(texture_overlays or texture_requests) != bool(texture_changes):
                 raise BuildError("Texture audit omits or invents an authored replacement")
             disc_user_size = (_image.size // 2352) * 2048
             for overlay in texture_overlays:
@@ -1226,7 +1231,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         package_suffix = " authored scene data"
         feature_name = "Authored scene data"
         description = "Private source-bound scene edits and rebuilt resources with relocated disc reads."
-        feature_description = "Apply composed scene edits, rebuilt model packs and animation banks against the matching source disc. Allocated clips remain unassigned; gameplay is unverified."
+        feature_description = "Apply composed scene edits, rebuilt model, texture and animation packs against the matching source disc. Allocated clips remain unassigned; gameplay is unverified."
     lines = [
         "format_version = 7" if relocation else "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix, ensure_ascii=False)}",

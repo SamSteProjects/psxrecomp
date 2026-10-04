@@ -142,3 +142,15 @@ PNG does not need a no-op texture Apply. Review checks the saved file/image hash
 and image identity; it does not recompute the earlier palette/STP import recipe.
 A changed file or project context requires a fresh review. Already retained
 receipts use Download directly; arbitrary replacement sources are rejected.
+
+## Compressed carrier growth in normal Build
+
+A layout-compatible PNG/TIM edit can increase compressed pack size. Normal Build
+now relocates a qualified compressed texture carrier when needed, preserving all
+TIM layouts, decoded pack member offsets and following opaque data. Review Build
+shows resource relocation size and rebuilt texture pack count. The private package
+uses the existing relocated-disc reader; source disc bytes stay unchanged.
+
+Existing dimensions, bit depth and VRAM rectangles remain fixed. New textures,
+resizing and runtime upload/rendering acceptance are still outside this workflow.
+Legacy fixed-span texture export retains its capacity limit.

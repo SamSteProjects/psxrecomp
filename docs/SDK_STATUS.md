@@ -1,5 +1,30 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — compressed texture carrier growth in normal Build:** Layout-compatible
+TIM edits no longer fail normal Build solely because their compressed pack exceeds
+the original consumed stream span. Source-qualified TIM packs now join the existing
+model/animation/MAN relocation pipeline. Decoded member offsets, TIM headers,
+dimensions, CLUT/image VRAM rectangles and lengths remain fixed. The transform
+preserves compressed-stream trailing opaque bytes, rebases later descriptors and
+relocates the unique physical PROT owner with exact neighbor readback. Shared
+model/texture growth composes in one carrier, and source-addressed overlays apply
+before relocation. Legacy fixed-span texture export keeps its original limit.
+
+Build review and the saved Build report expose relocation package bytes, PROT
+growth bytes and rebuilt texture-pack count. Review table hashes wrap within the
+dialog. Thirty-seven focused Python construction checks and two Build-review Node
+suites passed. Checks include both PROT header positions, shared model/texture
+growth, opaque-tail preservation, malformed candidates/source rejection, normal
+Build review without writes, exact native package readback and existing texture
+Build guards. Private Dolk2 browser workflow passed Preview/Return, Apply,
+Save/reload and normal Build review. Undo/Redo, Save/Open and normal Build deliver
+exactly the selected 32,832-byte texture; PROT grows 24,576 bytes. Private evidence:
+`local-output/sdk-20260909/texture-compression-growth-20261004/parent/`.
+
+This does not allocate new textures, resize TIMs, move VRAM or establish runtime
+upload/rendering acceptance. No game, installed runtime or physical disc export
+ran. Gameplay remains deferred; the full SDK goal remains active.
+
 **2026-10-04 — original GLB recovery for legacy texture receipts:** The texture
 Inspector now offers **Retain original GLB source** for older four-field image
 receipts. Review verifies the exact recorded GLB hash, embedded PNG hash, image

@@ -19,7 +19,7 @@ QUANTIZATION_KEYS = {'color_max_error', 'color_rms_error', 'quantized_pixel_coun
                      'distinct_requested_words', 'output_palette_size', 'stp_changed_pixels',
                      'forced_black_stp_pixels', 'forced_transparent_stp_pixels'}
 LIMITATIONS = [
-    'Fixed TIM dimensions, bit depth, VRAM rectangles and source carrier capacities.',
+    'Fixed TIM dimensions, bit depth and VRAM rectangles; normal Build qualifies compressed-carrier relocation.',
     'PNG RGB uses numeric samples; alpha must be binary. PSX STP is a separate flag.',
     'Existing mode retains palette words; rebuild changes only the selected palette row.',
     'The indexed image plane is shared by every source palette row.',

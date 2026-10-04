@@ -4,7 +4,8 @@ Uses textures.py's existing TIM/pack discovery. Pinned format evidence:
 crates/tim/src/lib.rs, crates/prot/src/timpack.rs, docs/formats/{tim-pack,pack}.md.
 Standalone word offsets include +4; descriptor-pack offsets do not. Source
 headers and VRAM placement stay exact; only image and palette bytes may differ.
-No disc writes, relocation, shared-bank discovery or runtime residency claims.
+No disc writes, shared-bank discovery or runtime residency claims. Normal Build
+may relocate compressed carriers through the private resource pipeline.
 """
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ LIMITATIONS = [
     "Replacement must preserve every TIM header, mode, dimension, image/CLUT VRAM rectangle and byte length.",
     "Only existing scene TIM image and palette payloads are replaceable; shared or conditional texture banks are outside this context.",
     "One source image can serve several materials; runtime residency, palette animation and gameplay appearance are not proved.",
-    "Compressed packs must fit their original consumed stream span; following opaque bytes and other members remain unchanged.",
+    "Fixed-span export requires the original compressed span; normal Build can relocate qualified growing packs, preserving opaque bytes and other members.",
 ]
 
 
@@ -62,7 +63,7 @@ def _validate(original: bytes, replacement: bytes) -> dict:
             "palette_changed": (old.clut.data if old.clut else None) != (new.clut.data if new.clut else None)}
 
 
-def _encode_pack(original_stream: bytes, decoded: bytes) -> tuple[bytes, dict]:
+def _encode_pack(original_stream: bytes, decoded: bytes, *, allow_growth=False) -> tuple[bytes, dict]:
     from .serialization import compress_lzs
     from .lzs_optimal import MAX_OPTIMAL_BYTES, compress_lzs_optimal
     encoded = compress_lzs(decoded)
@@ -70,15 +71,17 @@ def _encode_pack(original_stream: bytes, decoded: bytes) -> tuple[bytes, dict]:
     if len(encoded) > len(original_stream) and len(decoded) <= MAX_OPTIMAL_BYTES:
         stats.update(compression_strategy="bounded_optimal_lzs", greedy_encoded_size=len(encoded))
         encoded = compress_lzs_optimal(decoded)
-    if len(encoded) > len(original_stream):
+    if len(encoded) > len(original_stream) and not allow_growth:
         raise ImportError(f"edited TIM pack requires {len(encoded)} compressed bytes but its original span holds {len(original_stream)}; relocation is unsupported")
     verified, consumed = decompress_lzs(encoded, len(decoded))
     if verified != decoded or consumed != len(encoded):
         raise ImportError("independent decoder rejected the edited TIM pack")
-    replacement = encoded + original_stream[len(encoded):]
+    growth = (max(0, len(encoded)-len(original_stream))+3)&~3
+    replacement = encoded + (bytes(len(original_stream)+growth-len(encoded)) if growth else original_stream[len(encoded):])
     if decompress_lzs(replacement, len(decoded))[0] != decoded:
         raise ImportError("padded TIM pack failed independent decode verification")
     stats["new_encoded_size"] = len(encoded)
+    if allow_growth:stats['growth_bytes']=growth
     return replacement, stats
 
 
@@ -324,6 +327,14 @@ class TextureAuthoringContext:
                     source_record=self._source(identifier), limitations=list(LIMITATIONS))
 
     def patch(self, edits: dict[str, bytes]) -> tuple[list[dict], list[dict]]:
+        overlays,audit,_ = self._patch(edits, allow_relocation=False)
+        return overlays,audit
+
+    def build_patch(self, edits: dict[str, bytes]):
+        """Normal Build may relocate a growing compressed carrier in private output."""
+        return self._patch(edits, allow_relocation=True)
+
+    def _patch(self, edits, *, allow_relocation):
         if not isinstance(edits, dict) or len(edits) > MAX_EDITS:
             raise ImportError("texture replacement edit count exceeds bounded limit")
         groups, supplied = {}, 0
@@ -336,7 +347,7 @@ class TextureAuthoringContext:
                 raise ImportError("texture replacement payload exceeds 16 MiB edit budget")
             key = (source["prot_entry_index"], source.get("descriptor_index", -1))
             groups.setdefault(key, []).append(identifier)
-        overlays, audit, overlay_size = [], [], 0
+        overlays, audit, overlay_size, requests = [], [], 0, []
         with self._archive() as archive:
             for key, identifiers in sorted(groups.items()):
                 carrier = self._carrier(archive, self._item(identifiers[0])[1])
@@ -364,27 +375,32 @@ class TextureAuthoringContext:
                         overlay_size += len(replacement)
                 if group_audit and changed is not None:
                     decoded = bytes(changed)
-                    replacement, stats = _encode_pack(carrier["stream"], decoded)
+                    replacement, stats = _encode_pack(carrier["stream"], decoded, allow_growth=allow_relocation)
                     # Re-extract requested members from independently decoded bytes.
                     check = dict(carrier, decoded=decompress_lzs(replacement, len(decoded))[0])
                     for record in group_audit:
                         offset, size = record["source_record"]["byte_offset"], record["byte_length"]
                         if check["decoded"][offset:offset + size] != edits[record["semantic_id"]]:
                             raise ImportError("encoded texture member failed exact replacement verification")
-                    overlays.append({"scene": self.scene, "offset": carrier["offset"], "size": len(replacement),
+                    if stats.get('growth_bytes'):
+                        requests.append(dict(kind='texture-pack',entry_index=key[0],table_offset=0,
+                            descriptor_index=key[1],expected_pack_sha256=_sha(carrier['decoded']),pack=decoded))
+                        overlay_size += len(decoded)
+                        for record in group_audit:record['carrier_relocation_required']=True
+                    else:overlays.append({"scene": self.scene, "offset": carrier["offset"], "size": len(replacement),
                                      "payload": replacement, "sha256": _sha(replacement),
                                      "expected_sha256": _sha(carrier["stream"]), "carrier_kind": carrier["kind"],
                                      "source_record": dict(carrier["source"], disc={"sha256": self._digest}),
                                      "decoded_before_sha256": _sha(carrier["decoded"]), "decoded_after_sha256": _sha(decoded),
                                      **stats})
-                    overlay_size += len(replacement)
+                    if not stats.get('growth_bytes'):overlay_size += len(replacement)
                 audit.extend(group_audit)
                 if overlay_size > MAX_OVERLAY_BYTES:
                     raise ImportError("texture replacement overlays exceed 32 MiB budget")
         overlays.sort(key=lambda o: o["offset"])
         if any(a["offset"] + a["size"] > b["offset"] for a, b in zip(overlays, overlays[1:])):
             raise ImportError("texture replacement carrier spans overlap; ambiguous aliases are unsupported")
-        return overlays, sorted(audit, key=lambda row: row["semantic_id"])
+        return overlays, sorted(audit, key=lambda row: row["semantic_id"]), requests
 
 
 def load_texture_authoring_context(disc: Any, scene: str) -> TextureAuthoringContext:

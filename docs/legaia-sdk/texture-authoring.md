@@ -34,8 +34,21 @@ order, conditional resources, palette animation or PSX blend behavior.
 
 The build combines compatible replacements within each source carrier, checks
 exact source hashes and boundaries, and emits private guarded disc overlays.
-Compressed carriers must fit their original allocation. Unsupported growth or
-overlapping overlays fails before publication. No relocation is inferred.
+Normal Build keeps fixed-span overlays when compression fits. If a compressed TIM
+pack grows, it instead rebuilds the qualified entry-head descriptor carrier and
+its unique physical PROT owner through the existing private relocation package.
+Every TIM layout and decoded pack offset stays fixed. Following opaque bytes and
+neighbor payloads are retained; later descriptor offsets and PROT starts are
+rebased. Model, animation and texture resource growth can compose in one carrier.
+Source hashes, bounded pack contents and exact final decoded readback are required;
+ambiguous ownership or conflicting edits reject before publication.
+
+**Review Build…** exposes relocation package size, PROT growth and rebuilt texture
+pack count without creating a package. Normal **Build** uses the same qualified
+pipeline. The legacy fixed-span export API still requires its original compressed
+span. No new TIM allocation, resizing, VRAM relocation or runtime appearance is
+established by carrier growth. See private evidence under
+`local-output/sdk-20260909/texture-compression-growth-20261004/parent/`.
 
 A cold authored/baseline pair now proves visible magenta palette replacement
 and return to normal ground colors for `texture://town01/5/raw/0`. Both runs
