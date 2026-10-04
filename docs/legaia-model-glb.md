@@ -1,5 +1,22 @@
 # Source-bound model GLB editing
 
+## Connected triangle strips
+
+For `TRIANGLE_STRIP` sources, repeated-index connector triangles are omitted before
+native allocation. Their original positions in the strip still determine alternating
+winding; indices are not compacted before triangulation. Inventory and selected-face
+budgets report drawable triangles, so long connector sequences do not allocate faces
+or vectors. Strip sources are limited to 16,384 indices and retain the existing
+128 drawable triangles per section/transaction limit.
+
+Every source index is validated even when it participates only in connectors.
+A section with no drawable triangles rejects. Distinct-index triangles that become
+collinear or collapse after native rounding still reject, as do existing malformed
+triangle lists/fans. Non-indexed duplicate positions are not inferred as connectors.
+The source GLB hash continues to bind the exact reviewed bytes, including connectors.
+The [Khronos glTF specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html)
+recommends avoiding degenerate geometry; this compatibility path does not generate it.
+
 ## Import a subset from a larger source scene
 
 File inventory qualifies static sections independently from one parsed GLB.

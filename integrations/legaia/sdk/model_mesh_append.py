@@ -26,6 +26,7 @@ def source(project,asset_id,expected_key):
 
 LIMITATIONS=[
     'Imports static standard GLB POSITION and triangle lists, strips or fans into the selected donor object in native source units.',
+    'Repeated-index triangle-strip connectors are omitted with original strip winding parity; collapsed real triangles still reject. Strip sources are limited to 16,384 indices.',
     'Reflects Y and preserves oriented winding, including mirrored node scales; rounds transformed positions to signed integer native coordinates.',
     'GLB NORMAL directions are normalized, reflected in Y and converted to Q12 stored normals for lit packets. Flat donors require equal corner normals.',
     'Mesh UVs map to the Current UV region of the selected native texture binding, using texel centers and clamped crop edges. Wrapping outside 0..1 is unsupported.',

@@ -138,7 +138,8 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
         mode=primitive.get('mode',4)
         face_count=len(indices)//3 if mode==4 else len(indices)-2
         if (len(indices)<3 or (mode==4 and len(indices)%3)
-                or face_count+len(triangles)>MAX_NEW_FACES):
+                or mode==5 and len(indices)>16384
+                or mode!=5 and face_count+len(triangles)>MAX_NEW_FACES):
             raise ImportError('Mesh append exceeds the native face budget or has incomplete triangles')
         if any(not 0<=index<len(positions) for index in indices):
             raise ImportError('Mesh append index exceeds POSITION count')
@@ -148,6 +149,11 @@ def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_prim
             # Strip parity changes source ordering before the coordinate reflection.
             source_triangles=[(indices[begin+(begin%2)],indices[begin+1-(begin%2)],indices[begin+2])
                               for begin in range(face_count)]
+            # Repeated-index connectors produce no geometry. Filter only after
+            # applying original strip parity; compacting indices flips winding.
+            source_triangles=[triangle for triangle in source_triangles if len(set(triangle))==3]
+            if not source_triangles or len(source_triangles)+len(triangles)>MAX_NEW_FACES:
+                raise ImportError('Mesh strip has no drawable triangles or exceeds the native face budget')
         else:
             source_triangles=[(indices[0],indices[begin+1],indices[begin+2]) for begin in range(face_count)]
         for triangle in source_triangles:

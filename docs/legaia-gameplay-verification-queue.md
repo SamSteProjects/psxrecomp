@@ -1,5 +1,23 @@
 # Deferred gameplay verification
 
+**2026-10-04 — GLB strip connector compatibility:** Mesh import now omits
+repeated-index connector triangles in `TRIANGLE_STRIP` sources. Original strip
+parity is computed before filtering, preserving each drawable triangle's winding.
+Inventory, section ranges and the 128-face native transaction budget count drawable
+triangles. Each strip is bounded to 16,384 source indices. All indices are still
+validated; connector-only strips and real triangles collapsed by native rounding
+reject. Triangle-list/fan behavior, donor bindings and native layouts are unchanged.
+
+Eight focused construction checks passed: source parity equals an explicit triangle
+list, long connector sequences do not consume native face capacity, invalid/collapsed
+sources reject, Review stays read-only, Undo/Redo and Save/Open preserve the candidate,
+and normal Build reads back its exact native payload. Actual Retail Town01 editor
+smoke qualifies an eight-index connected strip as two triangles, reviews it through
+the existing native donor workflow and inspects Current/Proposed. Screenshot inspected;
+project, history and saved files unchanged, no Apply or Run. Private evidence:
+`local-output/sdk-20260909/glb-strip-connectors-20261004/parent/`.
+Gameplay/culling acceptance remains deferred; full SDK coverage remains unfinished.
+
 **2026-10-04 — prepared native texture inputs:** After **Prepare PNG export**,
 **Use prepared binding and STP** now fills both native source inputs directly from
 the qualified export. The chosen edited PNG remains, including an extracted GLB
