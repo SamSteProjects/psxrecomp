@@ -22,9 +22,9 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         raise ImportError('Model composition requires a bounded relocation batch')
     identities = set();tables = {}
     for request in requests:
-        texture = isinstance(request,dict) and request.get('kind') in ('texture-pack','texture-layout-pack')
-        texture_layout = texture and request['kind']=='texture-layout-pack'
-        raw_texture = isinstance(request,dict) and request.get('kind')=='texture-layout-raw'
+        texture = isinstance(request,dict) and request.get('kind') in ('texture-pack','texture-layout-pack','texture-addition-pack')
+        texture_layout = texture and request['kind'] in ('texture-layout-pack','texture-addition-pack')
+        raw_texture = isinstance(request,dict) and request.get('kind') in ('texture-layout-raw','texture-addition-raw')
         animation = isinstance(request,dict) and request.get('kind') == 'animation-bank'
         streaming = isinstance(request,dict) and request.get('kind') == 'streaming-animation-bank'
         streaming_man = isinstance(request,dict) and request.get('kind') == 'streaming-man'
@@ -38,6 +38,11 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
                   {'kind','entry_index','chunk_header_offset','expected_bank_sha256','bank'} if streaming else
                   {'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'} if animation else
                   {'entry_index', 'descriptor_index', 'expected_pack_sha256', 'replacements'})
+        if isinstance(request,dict) and request.get('kind') in ('texture-addition-pack','texture-addition-raw'):
+            fields = fields | {'slot_additions'}
+            additions=request.get('slot_additions')
+            if not isinstance(additions,list) or not 1<=len(additions)<=128:
+                raise ImportError('Texture addition composition requires a bounded nonempty TIM batch')
         if (not isinstance(request, dict) or set(request) != fields
                 or type(request['entry_index']) is not int or type(0 if raw_texture else request['chunk_header_offset'] if raw_resource else request['descriptor_index']) is not int):
             raise ImportError('Model composition relocation request is malformed')
@@ -114,11 +119,11 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
             working,report=rebuild_man_entry(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k not in ('kind','descriptor_index')},header_offset=header_offset)
             report['entry_index']=request['entry_index']
-        elif request.get('kind') == 'texture-layout-raw':
+        elif request.get('kind') in ('texture-layout-raw','texture-addition-raw'):
             from .texture_pack_growth import rebuild_raw_texture_pack_entry
             working,report=rebuild_raw_texture_pack_entry(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
-        elif request.get('kind') in ('texture-pack','texture-layout-pack'):
+        elif request.get('kind') in ('texture-pack','texture-layout-pack','texture-addition-pack'):
             from .texture_pack_growth import rebuild_texture_pack_entry
             working,report=rebuild_texture_pack_entry(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
@@ -150,7 +155,7 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         entry = reopened.entry(request['entry_index'])
         span = locate_physical_span(reopened, entry.start_lba*2048)
         raw = working[span['byte_offset']:span['byte_offset']+span['byte_length']]
-        if request.get('kind')=='texture-layout-raw':
+        if request.get('kind') in ('texture-layout-raw','texture-addition-raw'):
             from .textures import _pack_members
             _pack_members(raw,True)
             size=report['pack_audit']['proposed_byte_length']
@@ -162,7 +167,7 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         offset=request.get('table_offset',0)
         end = min([offset+d.data_offset for d in table.descriptors if d.data_offset > descriptor.data_offset]+[len(raw)])
         pack,_ = decompress_lzs(raw[offset+descriptor.data_offset:end], descriptor.size)
-        if request.get('kind') in ('texture-pack','texture-layout-pack'):
+        if request.get('kind') in ('texture-pack','texture-layout-pack','texture-addition-pack'):
             if descriptor.type_byte!=1 or pack!=request['pack']:
                 raise ImportError('Resource composition final reopened texture pack changed')
             continue
@@ -176,5 +181,5 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
     return working, dict(schema_version='legaia.model-pack-composition.v1', source_sha256=expected_sha256,
         patched_sha256=patched_sha256, proposed_sha256=sha256(working).hexdigest(),
         patch_count=len(prepared), patched_bytes=sum(len(payload) for _,payload in prepared),
-        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,final_compressed_man_verified=True,final_texture_packs_verified=True,final_texture_layouts_verified=True,growth_bytes=len(working)-len(source),
+        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,final_compressed_man_verified=True,final_texture_packs_verified=True,final_texture_layouts_verified=True,final_texture_additions_verified=any(r.get('kind') in ('texture-addition-pack','texture-addition-raw') for r in completed),growth_bytes=len(working)-len(source),
         disc_relocation_required=len(working)!=len(source), build_ready=False, gameplay_verified=False)

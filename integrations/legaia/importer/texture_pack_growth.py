@@ -32,7 +32,7 @@ def qualify_texture_pack(source, candidate):
                 byte_length=len(source),changed_slots=changed,slot_count=len(ranges))
 
 
-def grow_texture_carrier(source, expected_sha256, descriptor_index, expected_pack_sha256, pack, *, layout_edits=None):
+def grow_texture_carrier(source, expected_sha256, descriptor_index, expected_pack_sha256, pack, *, layout_edits=None, slot_additions=None):
     if not isinstance(source,bytes) or not 0<len(source)<=MAX_ENTRY_BYTES or sha256(source).hexdigest()!=expected_sha256:
         raise ImportError('Texture carrier source changed or exceeds its byte budget')
     if type(descriptor_index) is not int:
@@ -49,7 +49,12 @@ def grow_texture_carrier(source, expected_sha256, descriptor_index, expected_pac
     original,consumed=decompress_lzs(source[start:end],row.size)
     if sha256(original).hexdigest()!=expected_pack_sha256:
         raise ImportError('Texture pack source hash changed')
-    if layout_edits is None:
+    if slot_additions is not None:
+        from .texture_slot_allocation import append_texture_pack
+        allocated,pack_audit=append_texture_pack(original,expected_pack_sha256,slot_additions,edits=layout_edits)
+        if allocated!=pack:
+            raise ImportError('Added texture pack differs from its qualified TIM additions')
+    elif layout_edits is None:
         pack_audit=qualify_texture_pack(original,pack)
     else:
         from .texture_pack_allocation import allocate_texture_pack
@@ -84,7 +89,7 @@ def grow_texture_carrier(source, expected_sha256, descriptor_index, expected_pac
 
 
 def rebuild_texture_pack_entry(source, expected_sha256, entry_index, table_offset, descriptor_index,
-                               expected_pack_sha256, pack, *, header_offset=0, layout_edits=None):
+                               expected_pack_sha256, pack, *, header_offset=0, layout_edits=None, slot_additions=None):
     if not isinstance(source,bytes) or sha256(source).hexdigest()!=expected_sha256 or type(entry_index) is not int or type(table_offset) is not int or table_offset!=0:
         raise ImportError('Texture archive requires qualified source and an entry-head table')
     archive=_archive(source)
@@ -94,18 +99,18 @@ def rebuild_texture_pack_entry(source, expected_sha256, entry_index, table_offse
     if span['entry_index']!=entry_index or span['offset_within_span']!=0:
         raise ImportError('Texture archive requires unique physical ownership')
     start,length=span['byte_offset'],span['byte_length'];raw=source[start:start+length]
-    grown,carrier=grow_texture_carrier(raw,sha256(raw).hexdigest(),descriptor_index,expected_pack_sha256,pack,layout_edits=layout_edits)
+    grown,carrier=grow_texture_carrier(raw,sha256(raw).hexdigest(),descriptor_index,expected_pack_sha256,pack,layout_edits=layout_edits,slot_additions=slot_additions)
     padded=grown+bytes(-len(grown)%2048)
     result,allocation=replace_physical_entry(source,expected_sha256,entry_index,padded,header_offset=header_offset)
     reopened=_archive(result);target=reopened.entry(entry_index);new=locate_physical_span(reopened,target.start_lba*2048)
     if result[new['byte_offset']:new['byte_offset']+new['byte_length']]!=padded or result[start+len(padded):]!=source[start+length:]:
         raise ImportError('Texture archive carrier or physical neighbor readback changed')
-    return result,dict(kind='texture-layout-pack' if layout_edits is not None else 'texture-pack',entry_index=entry_index,source_sha256=expected_sha256,proposed_sha256=sha256(result).hexdigest(),
+    return result,dict(kind='texture-addition-pack' if slot_additions is not None else 'texture-layout-pack' if layout_edits is not None else 'texture-pack',entry_index=entry_index,source_sha256=expected_sha256,proposed_sha256=sha256(result).hexdigest(),
                        carrier=carrier,archive=allocation,reopened_pack_verified=True,physical_neighbors_preserved=True)
 
 
 def rebuild_raw_texture_pack_entry(source, expected_sha256, entry_index, expected_pack_sha256,
-                                   edits, *, header_offset=0):
+                                   edits, *, header_offset=0, slot_additions=None):
     """Allocate standalone TIM members inside a uniquely owned physical entry."""
     from .texture_pack_allocation import allocate_texture_pack
     if not isinstance(source,bytes) or sha256(source).hexdigest()!=expected_sha256 or type(entry_index) is not int:
@@ -117,13 +122,17 @@ def rebuild_raw_texture_pack_entry(source, expected_sha256, entry_index, expecte
     if span['entry_index']!=entry_index or span['offset_within_span']!=0:
         raise ImportError('Raw texture archive requires unique physical ownership')
     start,length=span['byte_offset'],span['byte_length'];raw=source[start:start+length]
-    candidate,pack_audit=allocate_texture_pack(raw,expected_pack_sha256,edits,standalone=True)
+    if slot_additions is None:
+        candidate,pack_audit=allocate_texture_pack(raw,expected_pack_sha256,edits,standalone=True)
+    else:
+        from .texture_slot_allocation import append_texture_pack
+        candidate,pack_audit=append_texture_pack(raw,expected_pack_sha256,slot_additions,edits=edits,standalone=True)
     # A smaller image keeps the original physical capacity; growth allocates sectors.
     padded=candidate.ljust(max(length,(len(candidate)+2047)//2048*2048),b'\0')
     result,allocation=replace_physical_entry(source,expected_sha256,entry_index,padded,header_offset=header_offset)
     reopened=_archive(result);target=reopened.entry(entry_index);new=locate_physical_span(reopened,target.start_lba*2048)
     if result[new['byte_offset']:new['byte_offset']+new['byte_length']]!=padded or result[start+len(padded):]!=source[start+length:]:
         raise ImportError('Raw texture archive failed carrier or physical neighbor readback')
-    return result,dict(kind='texture-layout-raw',entry_index=entry_index,source_sha256=expected_sha256,
+    return result,dict(kind='texture-addition-raw' if slot_additions is not None else 'texture-layout-raw',entry_index=entry_index,source_sha256=expected_sha256,
                        proposed_sha256=sha256(result).hexdigest(),pack_audit=pack_audit,archive=allocation,
                        reopened_pack_verified=True,physical_neighbors_preserved=True)

@@ -1,5 +1,28 @@
 # Deferred gameplay verification
 
+## 2026-10-04: native TIM slot append allocation
+
+The native allocator can append one to 128 complete TIM uploads to a qualified
+raw or compressed texture pack, up to the existing 1024-slot limit. It expands
+the native word-offset table while preserving existing slot indices, signature,
+table gap, complete TIM bytes and opaque member tails. Existing qualified image
+edits can share the same allocation. New TIMs carry explicit image/CLUT origins;
+image bounds, flattened CLUT bounds and complete RGB24 pixels are checked.
+
+Both physical archive rebuilders and the shared resource composer accept the
+new addition requests, relocate following descriptors/sectors, and reopen the
+result for exact pack/member readback. Nine focused Python construction cases
+passed, including previous resize and fixed-payload growth checks. Private
+Town01 raw and Dolk2 compressed archive proofs passed: 96 to 97 and 50 to 51
+slots, preserving every original member and tail. Evidence:
+`local-output/sdk-20260909/texture-slot-allocation-20261004/parent/proof.json`.
+
+This is the native allocation foundation. New-slot project persistence,
+Review/Apply, editor import/catalog controls and normal Build routing remain
+unfinished. Automatic VRAM placement and overlap/residency acceptance are also
+pending. No game was launched; runtime upload, material appearance, save/load
+and scene-transition verification remain deferred. The goal remains active.
+
 ## 2026-10-04: scene texture assignment in the material editor
 
 The material editor now browses freshly qualified active-scene TIM assets,
