@@ -28,7 +28,7 @@ properties/extras enabled, Actions enabled, forced sampling disabled, animation
 size optimization disabled, and the imported frame range retained. At 15 fps,
 the verified 30-frame clip has keys at frames 0 through30; frame 30 holds the last
 source pose. STEP channels retain the source's discrete samples. Optimized
-static TR values and ordinary LINEAR tracks are also supported by the importer;
+static TR values, LINEAR tracks and CUBICSPLINE tracks are supported by the importer;
 the SDK samples the existing source frames at the binding's explicit rate.
 
 ## Source and ownership rules
@@ -68,12 +68,31 @@ Input is bounded to a 32 MiB GLB, 128 KiB binding JSON, 4096 source channels,
 64 rigid objects and one million decoded animation components.
 The importer validates self-contained GLB 2 chunks, tightly packed FLOAT
 animation accessors, explicit object mapping, finite TR values and strictly
-increasing nonnegative timestamps. STEP and LINEAR channels and mapped static
+increasing nonnegative timestamps. STEP, LINEAR and CUBICSPLINE channels and mapped static
 node TR values are supported. Unsupported interpolation, transformed hierarchy,
 scale/matrix animation, ambiguous objects, external/sparse data and unsupported
 extensions reject. Mesh-only `KHR_materials_unlit` declarations are ignored.
 These interoperability rules follow the primary
 [glTF 2.0 specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html).
+
+CUBICSPLINE uses at least two timestamped keys and three output vectors per key:
+in-tangent, value and out-tangent. Hermite derivatives scale by each segment's
+duration in seconds, including nonuniform key spacing. Rotation derivatives keep
+their authored magnitudes and signs; interpolated quaternions are normalized
+after evaluating the curve, without LINEAR's shortest-arc sign adjustment.
+Exact keys and values outside the key range retain their endpoint values.
+Nonfinite data, nonunit rotation keys, a sampled zero quaternion and sampled
+translation overflow reject before any project command. This samples into existing
+frames at the binding's rate; it does not retain cubic tangents in the native bank.
+
+The focused construction checks in `test_animation_glb_cubic.py` cover derivative
+units, coordinate reflection, unequal segment durations, endpoint holds, long-path
+rotation, complete quaternion sign reversal, source Euler/opaque-byte preservation
+and malformed input. The private-disc workflow check
+`test_cubic_http_review_pose_history_reopen_and_exact_build_bank` qualifies actual
+Town01 HTTP Review/Pose, stale-file rejection, one-command Apply, Undo/Redo,
+Save/Open and exact decompressed bank output from normal Build. These passed on
+2026-10-04; gameplay cadence and clip selection remain deferred.
 
 The reusable independent proof helper is
 `integrations/legaia/tools/blender_animation_roundtrip.py`. It uses the existing

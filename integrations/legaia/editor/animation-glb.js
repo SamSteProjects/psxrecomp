@@ -90,7 +90,7 @@ export async function openAnimationGlbEditor({entityId,getContext,busy,setBusy,o
   if(!actor(entityId,context.sceneId))fail('Choose an imported actor in the current scene.');
   const dialog=element('dialog');dialog.id='animation-glb-dialog';dialog.className='project-dialog';Object.assign(dialog.style,{width:'min(760px,94vw)',maxHeight:'92vh',overflowY:'auto'});
   const heading=element('div');heading.className='dialog-heading';const close=button('×','close');close.setAttribute('aria-label','Close animation GLB');heading.append(element('h2','Edit animation in a GLB file'),close);
-  const note=element('p','Edit the existing rigid objects and frame count. Translation returns to signed 12-bit coordinates and rotation to the retail angle grid. Timing uses your selected export rate; retail playback FPS is unknown.');note.className='field-note';
+  const note=element('p','Edit the existing rigid objects and frame count. STEP, LINEAR and CUBICSPLINE tracks are sampled into the existing frames. Translation returns to signed 12-bit coordinates and rotation to the retail angle grid. Timing uses your selected export rate; retail playback FPS is unknown.');note.className='field-note';
   const exported=element('section');exported.append(element('h3','Export for external editing'));
   const fps=element('input');fps.type='number';fps.min='1';fps.max='120';fps.step='any';fps.value='15';fps.setAttribute('aria-label','Caller-selected export FPS');Object.assign(fps.style,{width:'90px',margin:'0'});
   const fpsLabel=element('label','Export FPS · caller-selected ');Object.assign(fpsLabel.style,{display:'flex',flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:'8px'});fpsLabel.append(fps);

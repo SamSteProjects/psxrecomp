@@ -280,8 +280,8 @@ def _tracks(doc, accessors, mapping, duration):
         si = _integer(channel.get("sampler"), 0, len(samplers) - 1, "animation sampler index")
         sampler = _object(samplers[si], "animation sampler")
         mode = sampler.get("interpolation", "LINEAR")
-        if mode not in ("STEP", "LINEAR"):
-            raise ImportError("Animation interpolation must be STEP or LINEAR")
+        if mode not in ("STEP", "LINEAR", "CUBICSPLINE"):
+            raise ImportError("Animation interpolation must be STEP, LINEAR or CUBICSPLINE")
         input_index = sampler.get("input")
         _integer(input_index, 0, len(accessors.rows) - 1, "animation input accessor index")
         if input_index not in time_cache:
@@ -294,10 +294,19 @@ def _tracks(doc, accessors, mapping, duration):
         if times[-1] > endpoint + tolerance:
             raise ImportError("Animation key times exceed the existing clip duration; retiming is unsupported")
         values = accessors.read(sampler.get("output"), "VEC3" if path == "translation" else "VEC4")
-        if len(values) != len(times):
+        cubic = mode == "CUBICSPLINE"
+        if cubic and len(times) < 2:
+            raise ImportError("CUBICSPLINE animation requires at least two keyframes")
+        if len(values) != len(times) * (3 if cubic else 1):
             raise ImportError("Animation input and output key counts disagree")
         if path == "rotation":
-            values = [_unit_quaternion(row, "rotation key") for row in values]
+            if cubic:
+                # Tangents are derivatives, not unit quaternions. Retain all raw
+                # components/signs for Hermite interpolation; normalize its result.
+                for row in values[1::3]:
+                    _unit_quaternion(row, "rotation key")
+            else:
+                values = [_unit_quaternion(row, "rotation key") for row in values]
         tracks[(node, path)] = (times, values, mode)
     return tracks
 
@@ -320,6 +329,27 @@ def _slerp(a, b, ratio):
 def _sample(track, time, rotation=False):
     times, values, mode = track
     index = bisect_right(times, time) - 1
+    if mode == "CUBICSPLINE":
+        key = max(0, min(index, len(times) - 1))
+        if index < 0 or index >= len(times) - 1 or time == times[index]:
+            result = list(values[key * 3 + 1])
+        else:
+            duration = times[index + 1] - times[index]
+            t = (time - times[index]) / duration
+            # glTF 2.0 Appendix C.5: derivatives scale by segment seconds.
+            h0, h1 = 2*t**3 - 3*t**2 + 1, duration*(t**3 - 2*t**2 + t)
+            h2, h3 = -2*t**3 + 3*t**2, duration*(t**3 - t**2)
+            result = [h0*a + h1*b + h2*c + h3*d for a, b, c, d in zip(
+                values[index*3 + 1], values[index*3 + 2],
+                values[(index + 1)*3 + 1], values[(index + 1)*3])]
+        if any(not math.isfinite(v) for v in result):
+            raise ImportError("CUBICSPLINE animation produced a nonfinite sample")
+        if rotation:
+            norm = math.hypot(*result)
+            if norm == 0 or not math.isfinite(norm):
+                raise ImportError("CUBICSPLINE rotation produced an invalid zero quaternion")
+            result = [v / norm for v in result]
+        return result
     if index < 0:
         return list(values[0])
     if index >= len(times) - 1 or mode == "STEP":

@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+**2026-10-04 — cubic animation interchange:** Offline import now accepts
+CUBICSPLINE TR tracks and samples them into existing source frames. Focused
+numerical/malformed-input checks and a private Retail Town01 HTTP Review/Pose,
+Apply, Undo/Redo, Save/Open and exact normal Build bank readback pass; editor Node
+lifecycle checks pass. No gameplay was launched.
+
+Deferred manual check: after installing a reviewed animation package yourself,
+confirm the intended actor/clip runs, sampled poses appear as reviewed, playback
+cadence is acceptable and shared clip users behave as expected. The selected GLB
+rate does not establish retail timing. General record/frame allocation and
+retargeting are outside this milestone. See [interchange guide](legaia-animation-glb.md).
+
 **Retail GLB primitive groups — scene/package/native evidence (2026-10-04):** A private copy of the Retail V7 project replaces Town01 model 36 copied object 2 group 0 with two separate groups from two GLB primitives. Four selected authored faces retire and four imported faces preserve their source ranges/order with shared position rows. The first group imports three stored normal directions and UVs; the second omits those attributes and inherits donor references/values. Other groups remain, Current ordinals rebase and the retired group retains its stable tombstone. Actual V7 source/review and V5 material-source browser qualifiers pass.
 
 Read-only Review, one-step Undo/Redo, unchanged base binding, Save/Open, unchanged project during Build and saved Build integrity/current inputs pass. The model changes from 12,308 to 12,524 bytes, SHA-256 `73eb1a978275de8ea3b7014f21ebde1b27ed117122c069ade695973f3ebd2d1f`. The normal format-7 Build emits one relocation payload (121,272,992 bytes, SHA-256 `383a0f2077f29bed03fcc6ad07497ba445b3575fbbb95fa21d52bb0c0243152b`), with no duplicate overlays. Packed readback matches all three authored models, preserves 111 unselected slots and five other resources (qualified padding only), and keeps PROT 121,255,936 bytes, one sector above Retail.

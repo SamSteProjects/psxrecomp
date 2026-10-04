@@ -50,6 +50,71 @@ class AnimationGlbWorkflow(unittest.TestCase):
         self.assertEqual(json.loads(Path(result['binding_path']).read_text(encoding='utf-8')), result['binding'])
         return result
 
+    def test_cubic_http_review_pose_history_reopen_and_exact_build_bank(self):
+        from test_animation_glb import encode
+        from test_animation_glb_cubic import cubic_channel
+        with tempfile.TemporaryDirectory() as directory:
+            project = self.project(directory)
+            owner = 'scene://town01/actors/man-p1/0011'
+            with http_server(project) as (_, post):
+                exported = self.export(post, owner)
+                doc, payload = parse_glb(base64.b64decode(exported['glb_base64']))
+                payload = payload[:doc['buffers'][0]['byteLength']]
+                # Every existing TR track uses in/value/out records. Existing
+                # frame times coincide with keys, so exactly one edit is expected.
+                for channel in doc['animations'][0]['channels']:
+                    sampler = doc['animations'][0]['samplers'][channel['sampler']]
+                    accessor = doc['accessors'][sampler['output']]
+                    view = doc['bufferViews'][accessor['bufferView']]
+                    width = 3 if channel['target']['path'] == 'translation' else 4
+                    start = view.get('byteOffset', 0) + accessor.get('byteOffset', 0)
+                    rows = [list(row) for row in struct.iter_unpack(f'<{width}f',
+                            payload[start:start+accessor['count']*width*4])]
+                    if channel['target'] == {'node': 0, 'path': 'translation'}:
+                        rows[1][0] += 1
+                    doc, payload = cubic_channel(doc, payload, channel['target']['path'],
+                        [([0]*width, row, [0]*width) for row in rows], channel['target']['node'])
+                raw = encode(doc, payload)
+                body = dict(entity_id=owner, binding=exported['binding'],
+                            glb_base64=base64.b64encode(raw).decode())
+                before = digest(dict(overrides=project.overrides, undo=project.undo_stack))
+                status, review = post('/api/animation-glb-preview', body)
+                self.assertEqual(status, 200, review)
+                self.assertEqual(review['changed_axes'], 1)
+                self.assertEqual(review['changes'][0]['frame_index'], 1)
+                self.assertEqual(review['changes'][0]['field'], 'translation.x')
+                status, pose = post('/api/animation-glb-pose-preview', body)
+                self.assertEqual(status, 200, pose)
+                self.assertEqual(pose['report']['candidate_sha256'], review['candidate_sha256'])
+                self.assertEqual(digest(dict(overrides=project.overrides, undo=project.undo_stack)), before)
+                # Uploaded GLB bytes remain part of review identity even when
+                # changed metadata leaves the sampled candidate unchanged.
+                changed_doc = deepcopy(doc)
+                changed_doc['asset']['generator'] = 'changed-after-review'
+                status, _ = post('/api/animation-glb-import', dict(body,
+                    glb_base64=base64.b64encode(encode(changed_doc,payload)).decode(),
+                    review_key=review['review_key']))
+                self.assertEqual(status, 400)
+                self.assertEqual(digest(dict(overrides=project.overrides, undo=project.undo_stack)), before)
+                status, applied = post('/api/animation-glb-import', dict(body, review_key=review['review_key']))
+                self.assertEqual(status, 200, applied)
+                self.assertEqual(len(project.undo_stack), 1)
+                contribution = deepcopy(project.overrides[owner]['AnimationChannels'])
+                project.undo(); self.assertFalse(project.overrides)
+                project.redo(); self.assertEqual(project.overrides[owner]['AnimationChannels'], contribution)
+                project.save()
+                reopened = ProjectService.open(project.root / 'project.legaia.json')
+                self.assertEqual(reopened.overrides[owner]['AnimationChannels'], contribution)
+                with _disc_context(project.disc_path):
+                    catalog = load_scene_actor_animation_catalog(project.disc_path, 'town01')
+                    expected, _ = catalog.authored_bank({owner: contribution})
+                before_build = digest(dict(overrides=reopened.overrides, undo=reopened.undo_stack))
+                built = build_project(reopened)
+                with zipfile.ZipFile(built['path']) as archive:
+                    actual = decompress_lzs(archive.read('assets/town01-animation.lzs'), len(expected))[0]
+                self.assertEqual(actual, expected)
+                self.assertEqual(digest(dict(overrides=reopened.overrides, undo=reopened.undo_stack)), before_build)
+
     def test_http_review_pose_history_save_and_normal_build(self):
         for scene, index, extension in [('town01', 11, 'lzs'), ('dolk2', 1, 'bin')]:
             with self.subTest(scene=scene), tempfile.TemporaryDirectory() as directory:
