@@ -1,5 +1,29 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — selective GLB section donor mapping:** **Map section donors**
+now offers **Import this section**, **Select all sections** and **Clear selection**.
+Choose 1–16 qualified source sections; unchecked rows keep their choices but
+allocate no geometry. Files with at most 16 sections start with all selected.
+Larger inventories start unchecked and require explicit selection, allowing a
+bounded subset from a file that previously exceeded the batch section count.
+
+Native mappings retain unique increasing source primitive IDs, including gaps.
+Review records exact selected/skipped IDs, and browser qualification matches each
+step against its original section's count, node ownership and UV inventory.
+Selection changes withdraw Review; donor/UV/replacement controls are disabled for
+unchecked rows. The complete selected mapping still publishes as one Undo entry.
+Six focused construction checks passed, including sparse 0/2 selection, a single
+section from a 17-section inventory, exact normal Build readback, Save/Open,
+Undo/Redo, invalid selections and changed-selection rejection for identical bytes.
+Actual Retail editor evidence:
+`local-output/sdk-20260909/glb-section-selection-20261004/parent/`. The smoke reviews
+an explicit 1/17 subset and a 0/2 subset of three hierarchy sections, inspects the
+scene and returns with skipped choice, donors, scale and UVs retained. Selection
+and clear/all controls withdraw Review. Screenshot inspected; authored state and
+saved files unchanged, no Apply or Run. Whole-file inventory qualification bounds
+remain; skipping cannot bypass malformed or unsupported source geometry.
+Gameplay appearance remains deferred and the full SDK goal remains active.
+
 **2026-10-04 — explicit GLB source units:** Static mesh import now offers
 **Native units per GLB unit**, default 1. A finite positive factor from 0.000001
 through 1000000 scales baked positions and node translations together before

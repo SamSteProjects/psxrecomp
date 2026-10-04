@@ -1,5 +1,33 @@
 # Source-bound model GLB editing
 
+## Choose the sections to import
+
+Open **Map section donors** and check **Import this section** for each section
+needed in the native model. The dialog shows the selected count and retains each
+source primitive ID; gaps in the IDs do not renumber the source. Select 1–16 rows.
+Unchecked rows keep their donor, UV and replacement choices with controls disabled,
+and contribute no native vertices, normals, faces, groups or replacement removals.
+**Clear selection** unchecks every row. **Select all sections** is available when
+the complete inventory fits the 16-section transaction budget.
+
+Inventories with at most 16 sections start fully selected, preserving the prior
+all-section workflow. Larger inventories start with none selected and require
+explicit choices. The existing whole-file geometry/inventory bounds still apply;
+skipping a section does not bypass malformed source geometry or increase those
+bounds. This feature selects within a qualified file rather than repairing it.
+
+Selection changes invalidate Review. **Review selected sections** reports both
+selected and skipped IDs; scene inspection and Return retain the selection.
+**Apply reviewed sections** writes all selected donor mappings in one history
+entry. Skipped native donor groups stay unchanged even if their unchecked row
+retains a replacement choice. Per-row UVs, fixed source scale, static scene scope,
+material RGB choice and source/hash checks retain their existing requirements.
+
+API `mappings` may contain a subset of existing primitive indices, in strictly
+increasing order with no duplicates. Reports expose `selected_primitive_indices`
+and `skipped_primitive_indices`. Apply binds the complete selection to Review,
+even when alternate sections would produce identical native bytes.
+
 ## Set the source unit scale
 
 Set **Native units per GLB unit** before Review. The default 1 preserves the
@@ -18,7 +46,7 @@ triangles degenerate after rounding and therefore reject qualification.
 Changing the field immediately withdraws Review. Leaving the field requalifies
 the chosen scene at the new scale and retains its UV and section choices. A file
 that failed coordinate qualification remains loaded so the factor can be changed
-and retried. Choose the factor before opening **Map donors for all sections**;
+and retried. Choose the factor before opening **Map section donors**;
 that dialog displays and uses one fixed factor for every section. Scene inspection
 and Return retain it. Scale is bound to Review and Apply even when native rounding
 produces the same bytes. API callers may pass optional `source_scale` in file
@@ -123,7 +151,7 @@ semantics follow the [Khronos glTF specification](https://registry.khronos.org/g
 Enable **Bake opaque material RGB factors (unlit donors only)** to multiply each
 section's standard `pbrMetallicRoughness.baseColorFactor` RGB by linear vertex
 `COLOR_0`. Missing vertex colors are white. The option starts off, preserving the
-existing import behavior. It transfers to **Map donors for all sections** and
+existing import behavior. It transfers to **Map section donors** and
 remains selected after scene inspection and Return. Changing it invalidates Review.
 Review displays each source factor and the number of unlit faces that consume RGB.
 Lit packets ignore the result, even though the choice still binds the review key.
@@ -214,7 +242,7 @@ native candidate. Gameplay remains unverified.
 
 ## Map donors for all sections
 
-Choose a GLB in **Import GLB mesh**, then **Map donors for all sections**. For
+Choose a GLB in **Import GLB mesh**, then **Map section donors**. For
 1–16 source primitives, choose a native triangle donor per section. Each section
 creates an independent packet group in that donor's object. Optional **Replace
 the existing donor group** retires that group; a group used by another section

@@ -1,4 +1,4 @@
-"""Atomic donor mapping for all sections of one qualified static GLB."""
+"""Atomic donor mapping for selected sections of one qualified static GLB."""
 from copy import copy,deepcopy
 from hashlib import sha256
 from importer.model_mesh_append import inspect_append_mesh
@@ -14,12 +14,13 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh donor mapping')
     inventory=inspect_append_mesh(content,scene_index=scene_index,source_scale=source_scale)
-    if not isinstance(mappings,list) or not 1<=len(mappings)<=16 or len(mappings)!=len(inventory['primitives']):
-        raise ProjectError('Map every GLB primitive exactly once, within the 16-section batch budget')
+    if not isinstance(mappings,list) or not 1<=len(mappings)<=16:
+        raise ProjectError('Choose 1 through 16 source GLB sections for donor mapping')
     donors={face['face_id']:face for face in topology['faces']};replaced=set()
     for index,row in enumerate(mappings):
         if (not isinstance(row,dict) or set(row) not in ({'primitive_index','donor_face_id','replace_group'},{'primitive_index','donor_face_id','replace_group','uv_set'})
-                or type(row['primitive_index']) is not int or row['primitive_index']!=index
+                or type(row['primitive_index']) is not int or not 0<=row['primitive_index']<len(inventory['primitives'])
+                or index and row['primitive_index']<=mappings[index-1]['primitive_index']
                 or not isinstance(row['donor_face_id'],str) or row['donor_face_id'] not in donors
                 or type(row['replace_group']) is not bool or type(row.get('uv_set',uv_set)) is not int or not 0<=row.get('uv_set',uv_set)<=7):
             raise ProjectError('Mesh donor mappings require exact source order, Current faces and boolean replacement choices')
@@ -47,10 +48,12 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
     report=dict(schema_version='legaia.model-mesh-batch-review.v1',asset_id=asset_id,
         project_source_key=expected_key,effective_sha256=expected_sha256,source_sha256=binding['source_sha256'],
         proposed_sha256=binding['asset_sha256'],glb_sha256=inventory['glb_sha256'],mappings=deepcopy(mappings),
+        selected_primitive_indices=[row['primitive_index'] for row in mappings],
+        skipped_primitive_indices=[i for i in range(len(inventory['primitives'])) if i not in {row['primitive_index'] for row in mappings}],
         inventory=inventory,steps=steps,current_preview=steps[0]['review']['current_preview'],
         preview=steps[-1]['review']['preview'],topology=steps[-1]['review']['topology'],
         project_changed=False,gameplay_verified=False,
-        limitations=['All source primitives are mapped in source order to existing native triangle donors.',
+        limitations=['Selected source primitives are mapped once in source order to existing native triangle donors; skipped sections allocate no geometry.',
             'Each section creates an independent native packet group in its donor object.',
             'Each mapping may choose its source UV set; omitted choices use the batch default. Missing selected UVs retain donor values.',
             'Only explicitly selected donor groups are replaced; shared replacement ownership is rejected.',
