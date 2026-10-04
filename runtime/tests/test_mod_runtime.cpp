@@ -3,6 +3,7 @@
 #include "mod_plugins.h"
 #include "psx_sha256.h"
 #include "disc_relocation_package.h"
+#include "mod_runtime_relocation_fixture.h"
 
 #include "gpu.h"
 
@@ -14,6 +15,13 @@
 #include <string>
 #include <vector>
 
+extern "C" {
+void* iso_open(const char*);
+void iso_close(void*);
+int iso_read_sector(void*, uint32_t, uint8_t*, int);
+int iso_read_raw_sector(void*, uint32_t, uint8_t*, int);
+uint32_t iso_sector_count(void*);
+}
 namespace fs = std::filesystem;
 
 static std::array<uint8_t, 2 * 1024 * 1024> ram;
@@ -113,7 +121,7 @@ static std::string sha256_hex(const std::vector<uint8_t>& bytes) {
     return out;
 }
 
-int main() {
+int main(int argc, char** argv) {
     const fs::path root = fs::temp_directory_path() / "psxrecomp-mod-runtime-test";
     std::error_code ec;
     fs::remove_all(root, ec);
@@ -555,6 +563,62 @@ int main() {
         check(PSXRecompV4::mod_runtime_initialize(guard_root,"SLUS-RUNTIME",0x80002000,{},&error),error.c_str());
         check(!PSXRecompV4::mod_runtime_commit(stock_path,&error)&&!error.empty(),
               "an enabled relocation that cannot activate must reject commit instead of silently booting stock");
+    }
+    {
+        const auto read=[](const fs::path& path) {
+            std::ifstream stream(path,std::ios::binary);
+            return std::vector<uint8_t>(std::istreambuf_iterator<char>(stream),{});
+        };
+        std::vector<uint8_t> source,payload;
+        if(argc==3) { source=read(argv[1]);payload=read(argv[2]); }
+        else RuntimeRelocationFixture::make(source,payload);
+        check(!source.empty()&&!payload.empty(),"interop fixtures must be readable");
+        const auto success=root/"relocation-success";
+        const auto source_path=success/"source.bin";
+        const auto asset=success/"installed/relocation.success/1.0.0/assets/relocation.bin";
+        write_bytes(source_path,source);write_bytes(asset,payload);
+        write_text(success/"installed/relocation.success/1.0.0/manifest.toml",
+            "format_version=7\nid=\"relocation.success\"\nversion=\"1.0.0\"\nname=\"Success\"\n"
+            "[[target]]\ngame_id=\"SLUS-RUNTIME\"\ndisc_sha256=\""+sha256_hex(source)+"\"\n"
+            "[[feature]]\nid=\"scene\"\nname=\"Scene\"\ndefault_enabled=true\n"
+            "[[disc_relocation]]\nfeature=\"scene\"\nfile=\"assets/relocation.bin\"\nsha256=\""+sha256_hex(payload)+"\"\n");
+        check(PSXRecompV4::mod_runtime_initialize(success,"SLUS-RUNTIME",0x80002000,{},&error),error.c_str());
+        check(PSXRecompV4::mod_runtime_commit(source_path,&error),error.c_str());
+        void* first=iso_open(source_path.string().c_str());
+        void* second=iso_open(source_path.string().c_str());
+        check(first&&second&&iso_sector_count(first)==62,"C bridge must expose committed virtual disc");
+        std::array<uint8_t,2352> bytes{};
+        check(iso_read_sector(first,30,bytes.data(),2048)&&bytes[0]=='R',"C bridge replacement read");
+        check(iso_read_raw_sector(first,33,bytes.data(),2352)&&bytes[18]==0x89&&bytes[24]=='R',"C bridge terminal raw frame");
+        check(iso_read_sector(first,50,bytes.data(),2048)&&bytes[0]==48,"C bridge shifted movie");
+        check(iso_read_sector(first,61,bytes.data(),2048)&&bytes[0]==59,"C bridge shifted tail");
+        bytes.fill(0xa5);
+        check(!iso_read_sector(first,30,bytes.data(),2047)&&bytes[0]==0xa5,"short read must preserve output");
+        check(!iso_read_sector(first,62,bytes.data(),2048)&&bytes[0]==0xa5,"out of range must preserve output");
+        check(!iso_open(stock_path.string().c_str()),"active relocation rejects a different source");
+        iso_close(second);
+        check(iso_sector_count(first)==62,"closing one shared handle must leave another live");
+        auto damaged=payload;damaged.back()^=1;write_bytes(asset,damaged);
+        check(!PSXRecompV4::mod_runtime_commit(source_path,&error),"changed payload must reject recommit");
+        check(iso_sector_count(first)==62&&iso_read_sector(first,30,bytes.data(),2048)&&bytes[0]=='R',"failed commit must preserve published reader");
+        write_bytes(asset,payload);
+        auto changed_source=source;changed_source.back()^=1;write_bytes(source_path,changed_source);
+        check(!PSXRecompV4::mod_runtime_commit(source_path,&error),"same-path source identity change must reject recommit");
+        check(iso_sector_count(first)==62,"source rejection must retain published plan");
+        write_bytes(source_path,source);
+        check(PSXRecompV4::mod_runtime_commit(source_path,&error),error.c_str());
+        bytes.fill(0xa5);
+        check(iso_sector_count(first)==0&&!iso_read_sector(first,30,bytes.data(),2048)&&bytes[0]==0xa5,"old handle must reject new active plan");
+        second=iso_open(source_path.string().c_str());
+        check(second&&iso_sector_count(second)==62,"new handle must acquire new plan");
+        check(PSXRecompV4::mod_runtime_clear_for_netplay(&error),error.c_str());
+        check(iso_sector_count(second)==60&&iso_read_sector(second,30,bytes.data(),2048)&&bytes[0]==30,"netplay clear restores stock held reader");
+        check(PSXRecompV4::mod_runtime_commit(source_path,&error),error.c_str());
+        void* third=iso_open(source_path.string().c_str());
+        check(third&&iso_sector_count(third)==62,"recommit restores relocation");
+        check(PSXRecompV4::mod_runtime_initialize(success,"SLUS-RUNTIME",0x80002000,{},&error),error.c_str());
+        check(iso_sector_count(third)==60&&iso_read_sector(third,30,bytes.data(),2048)&&bytes[0]==30,"reinitialize restores held reader");
+        iso_close(first);iso_close(second);iso_close(third);
     }
     fs::remove_all(root, ec);
     if (failures) return 1;

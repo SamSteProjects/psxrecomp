@@ -5,6 +5,8 @@
 #ifdef __cplusplus
 #include <filesystem>
 #include <string>
+#include <memory>
+namespace PS1 { class ISOReader; }
 #if defined(RECOMP_LAUNCHER)
 #include "recomp_launcher.h"
 #endif
@@ -24,6 +26,11 @@ bool mod_runtime_commit(const std::filesystem::path& disc_path = {},
 bool mod_runtime_clear_for_netplay(std::string* error = nullptr);
 const std::string& mod_runtime_fingerprint();
 const std::filesystem::path& mod_runtime_effective_disc_path();
+// Open the committed relocation reader, or a stock reader when no relocation is active.
+// Retained handles must check current ownership before each read.
+bool mod_runtime_open_iso_reader(const std::filesystem::path& path,
+    std::shared_ptr<PS1::ISOReader>& reader, std::string* error = nullptr);
+bool mod_runtime_iso_reader_current(const std::shared_ptr<PS1::ISOReader>& reader);
 
 #if defined(RECOMP_LAUNCHER)
 const ::RecompLauncherCModProvider* mod_runtime_launcher_provider();

@@ -6,6 +6,7 @@
 #include "mod_plugins.h"
 #include "gpu.h"
 #include "psx_sha256.h"
+#include "disc_relocation_activation.h"
 
 #if defined(RECOMP_LAUNCHER)
 #include "recomp_launcher.h"
@@ -65,6 +66,8 @@ struct RuntimeMods {
     std::string committed_disc_sha256;
     std::filesystem::path disc_path;
     std::filesystem::path effective_disc_path;
+    std::filesystem::path relocation_source;
+    std::shared_ptr<PS1::ISOReader> relocation_reader;
     uint32_t entry_phys = 0;
     bool initialized = false;
     bool plan_committed = false;
@@ -82,6 +85,11 @@ struct RuntimeMods {
 RuntimeMods& state() {
     static RuntimeMods value;
     return value;
+}
+
+void clear_relocation_reader(RuntimeMods& s) {
+    if(s.relocation_reader)s.relocation_reader->ClearDiscRelocation();
+    s.relocation_reader.reset();s.relocation_source.clear();
 }
 
 void reset_disc_observation(RuntimeMods& s) {
@@ -1122,6 +1130,7 @@ bool mod_runtime_initialize(const std::filesystem::path& root,
     s.plan_committed = false;
     s.committed_disc_sha256.clear();
     s.manager.set_root({});
+    clear_relocation_reader(s);
     s.plan = {};
     s.validation = {};
     s.raw_disc_index.clear();
@@ -1170,6 +1179,7 @@ bool mod_runtime_clear_for_netplay(std::string* error) {
         if (error) error->clear();
         return true;
     }
+    clear_relocation_reader(s);
     s.plan = {};
     s.validation = {};
     s.raw_disc_index.clear();
@@ -1223,10 +1233,41 @@ bool mod_runtime_commit(const std::filesystem::path& disc_path, std::string* err
         }
     }
     std::filesystem::path effective_disc;
+    std::shared_ptr<PS1::ISOReader> prepared;
+    std::filesystem::path prepared_source;
     if (!plan.disc_relocations.empty()) {
-        s.error="disc relocation activation is not connected yet; refusing to ignore the enabled relocation feature";
-        if (error) *error=s.error;
-        return false;
+        auto reject=[&](const std::string& message) { s.error=message;if(error)*error=message;return false; };
+        std::string fresh;
+        if(!sha256_file(s.disc_path,fresh,&s.error) || fresh!=s.disc_sha256)
+            return reject("disc relocation committed source identity changed before preflight");
+        const auto& relocation=plan.disc_relocations.front();
+        std::ifstream input(relocation.file,std::ios::binary|std::ios::ate);
+        const std::streamoff length=input.tellg();
+        if(!input || length<96 || uint64_t(length)>256ull*1024*1024)
+            return reject("disc relocation payload cannot be read within package budget");
+        std::vector<uint8_t> bytes(static_cast<size_t>(length));input.seekg(0);
+        if(!input.read(reinterpret_cast<char*>(bytes.data()),length))return reject("disc relocation payload read failed");
+        PS1::DiscDigest expected{};
+        if(relocation.sha256.size()!=64)return reject("disc relocation payload hash is malformed");
+        const auto digit=[](char value) { return value>='0'&&value<='9'?value-'0':value>='a'&&value<='f'?value-'a'+10:-1; };
+        for(size_t i=0;i<32;++i) {
+            const int high=digit(relocation.sha256[i*2]),low=digit(relocation.sha256[i*2+1]);
+            if(high<0 || low<0)return reject("disc relocation payload hash is malformed");
+            expected[i]=uint8_t(high*16+low);
+        }
+        PS1::DiscRelocationPayload payload;
+        if(!PS1::ParseDiscRelocationPayload(bytes,expected,payload,&s.error))return reject(s.error);
+        std::vector<uint8_t>().swap(bytes);
+        prepared=std::make_shared<PS1::ISOReader>();
+        if(!prepared->Open(s.disc_path.string()))return reject("disc relocation source image cannot open");
+        if(!PS1::PrepareDiscRelocationReader(*prepared,std::move(payload),&s.error))return reject(s.error);
+        if(!sha256_file(s.disc_path,fresh,&s.error) || fresh!=s.disc_sha256)
+            return reject("disc relocation source identity changed during preflight");
+        std::error_code path_error;
+        const auto original_source=raw_image_path(s.disc_path,&s.error);
+        if(original_source.empty())return reject("disc relocation source path cannot bind");
+        prepared_source=std::filesystem::weakly_canonical(original_source,path_error);
+        if(path_error || prepared_source.empty())return reject("disc relocation source path cannot bind");
     }
     if (!materialize_derived_disc(s, plan, effective_disc, &s.error)) {
         if (error) *error = s.error;
@@ -1237,6 +1278,9 @@ bool mod_runtime_commit(const std::filesystem::path& disc_path, std::string* err
         return false;
     }
     s.plan = std::move(plan);
+    clear_relocation_reader(s);
+    s.relocation_reader=std::move(prepared);
+    s.relocation_source=std::move(prepared_source);
     s.plan_committed = true;
     s.committed_disc_sha256 = s.disc_sha256;
     reset_disc_observation(s);
@@ -1253,6 +1297,35 @@ const std::string& mod_runtime_fingerprint() {
 
 const std::filesystem::path& mod_runtime_effective_disc_path() {
     return state().effective_disc_path;
+}
+
+bool mod_runtime_open_iso_reader(const std::filesystem::path& path,
+    std::shared_ptr<PS1::ISOReader>& reader,std::string* error) {
+    auto& s=state();
+    if(s.plan_committed && !s.plan.disc_relocations.empty()) {
+        std::error_code ec;
+        const auto source=raw_image_path(path,error);
+        if(source.empty())return false;
+        const auto canonical=std::filesystem::weakly_canonical(source,ec);
+        if(ec || canonical!=s.relocation_source || !s.relocation_reader) {
+            if(error)*error="disc reader path does not match the committed relocation source";
+            return false;
+        }
+        reader=s.relocation_reader;
+    } else {
+        auto opened=std::make_shared<PS1::ISOReader>();
+        if(!opened->Open(path.string())) { if(error)*error="disc image cannot open";return false; }
+        reader=std::move(opened);
+    }
+    if(error)error->clear();
+    return true;
+}
+
+bool mod_runtime_iso_reader_current(const std::shared_ptr<PS1::ISOReader>& reader) {
+    const auto& s=state();
+    if(!reader || !reader->IsOpen())return false;
+    return s.plan_committed && !s.plan.disc_relocations.empty()
+        ? reader==s.relocation_reader : !reader->HasDiscRelocation();
 }
 
 #if defined(RECOMP_LAUNCHER)

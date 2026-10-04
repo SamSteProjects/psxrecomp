@@ -609,3 +609,18 @@ Existing library/parser warnings remain; full runtime suite not run. Reader
 publication/lifetime and normal Build integration remain required. Runtime commit
 still refuses enabled relocation until activation is connected. No gameplay or
 full Retail disc export ran.
+
+
+## Runtime reader publication — 2026-10-03
+
+**Runtime relocation publication and C reader lifetime (2026-10-03):** Commit now stages a fresh reader, rechecks whole-source SHA256 before/after native preflight and publishes only after successful plan/state preparation. The opaque C disc handle acquires the prepared reader for the bound source path. Competing source paths reject; replacing an active relocation invalidates old handles. Closing one shared handle leaves the other live. Netplay clear and reinitialization remove relocation from retained readers and restore stock layout. Failed recommits preserve the published reader. This supersedes the earlier unfinished-activation checkpoints below; normal SDK Build still emits format 6 ordinary overlays and does not yet compose/package model growth.
+
+Validation: fresh MSVC mod-runtime regression passes both its built-in public synthetic source/payload and the independently Python-generated synthetic fixture. Coverage includes 60-to-62 sector mapping, replacement user/raw terminal framing, shifted movie/tail reads, undersized/out-of-range output preservation, wrong source, changed payload, same-path changed source, failed-commit isolation, plan replacement, shared close, netplay clear and reinitialization. The C bridge is now linked into the CMake regression target. Existing compiler/parser warnings remain; the full runtime/game build was not run. Private build/log: `local-output/sdk-20260909/mod-disc-relocation-20261003/parent/`. No game, installation or full Retail disc export ran; gameplay remains deferred.
+
+The normal Build path still needs to consume source-bound model-growth requests,
+compose ordinary source-offset patches before growth, encode the relocation payload
+and emit the format 7 feature package. This runtime checkpoint does not qualify a
+Retail package or gameplay. Directory entry identity/type/extent/size/membership,
+complete PVD and complete path-table bytes are checked; opaque directory-record
+fields and parent-record byte transformations have not received independent full-byte
+qualification.

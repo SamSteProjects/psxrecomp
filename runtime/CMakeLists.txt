@@ -395,6 +395,7 @@ if(BUILD_TESTING)
         src/disc_path.cpp
         src/cue_sheet.cpp
         src/iso_reader.cpp
+        src/iso_reader_c.cpp
         src/crc32.c
         src/psx_sha256.c)
     target_include_directories(mod_runtime_test PRIVATE
