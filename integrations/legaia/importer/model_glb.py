@@ -237,16 +237,21 @@ class _Accessors:
         self.cache = {}
         self.components = 0
 
-    def read(self, index, width, label, indices=False):
+    def read(self, index, width, label, indices=False, normalized=False):
         index = _integer(index, 0, len(self.accessors) - 1, f'{label} accessor')
-        key = (index, width, indices)
+        key = (index, width, indices, normalized)
         if key in self.cache:
             return self.cache[key]
         a = _object(self.accessors[index], f'{label} accessor')
-        if a.get('type') != ('SCALAR' if width == 1 else f'VEC{width}') or a.get('normalized', False) is not False or 'sparse' in a:
+        if a.get('type') != ('SCALAR' if width == 1 else f'VEC{width}') or a.get('normalized', False) is not normalized or (normalized and indices) or 'sparse' in a:
             raise ImportError(f'Model GLB {label} accessor type, normalization or sparse storage is unsupported')
         component = a.get('componentType')
-        formats = {5121: ('B', 1), 5123: ('H', 2), 5125: ('I', 4)} if indices else {5126: ('f', 4)}
+        if normalized:
+            formats = {5121: ('B', 1), 5123: ('H', 2)}
+        elif indices:
+            formats = {5121: ('B', 1), 5123: ('H', 2), 5125: ('I', 4)}
+        else:
+            formats = {5126: ('f', 4)}
         if component not in formats:
             raise ImportError(f'Model GLB {label} accessor component type is unsupported')
         fmt, size = formats[component]
@@ -256,7 +261,7 @@ class _Accessors:
             raise ImportError('Model GLB decoded component budget exceeded')
         view_index = _integer(a.get('bufferView'), 0, len(self.views) - 1, f'{label} buffer view')
         view = _object(self.views[view_index], f'{label} buffer view')
-        if view.get('buffer') != 0 or view.get('target') not in (None, 34962, 34963):
+        if type(view.get('buffer')) is not int or view.get('buffer') != 0 or view.get('target') not in (None, 34962, 34963):
             raise ImportError('Model GLB accessor must use its embedded buffer')
         origin = _integer(view.get('byteOffset', 0), 0, len(self.binary), 'view offset')
         length = _integer(view.get('byteLength'), 1, len(self.binary), 'view length')
@@ -270,6 +275,9 @@ class _Accessors:
         result = [struct.unpack_from(f'<{width}{fmt}', self.binary, origin + relative + n * stride) for n in range(count)]
         if any(not math.isfinite(v) for row in result for v in row):
             raise ImportError(f'Model GLB {label} contains nonfinite components')
+        if normalized:
+            divisor=255 if component==5121 else 65535
+            result=[tuple(value/divisor for value in row) for row in result]
         self.cache[key] = result
         return result
 

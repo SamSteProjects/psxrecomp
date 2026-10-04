@@ -1,6 +1,6 @@
 """Append standard GLB triangle geometry through explicit native donor ownership.
 
-POSITION, triangle indices, UVs and unit normals are decoded. Native packet
+POSITION, triangle indices, UVs, colors and unit normals are decoded. Native packet
 ownership determines whether corner normals can be imported.
 """
 from hashlib import sha256
@@ -45,7 +45,7 @@ def decode_append_mesh(content):
     reader=_Accessors(doc,binary)
     if any(not isinstance(view,dict) or type(view.get('buffer')) is not int or view['buffer']!=0 for view in reader.views):
         raise ImportError('Mesh append buffer views must own the embedded buffer')
-    vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];owners={};ignored=set();error=0.0;normal_error=0.0
+    vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];triangle_colors=[];owners={};ignored=set();error=0.0;normal_error=0.0
     for primitive in primitives:
         if (not isinstance(primitive,dict) or type(primitive.get('mode',4)) is not int
                 or primitive.get('mode',4)!=4 or any(key in primitive for key in ('targets','extensions'))):
@@ -54,7 +54,7 @@ def decode_append_mesh(content):
         if (not isinstance(attrs,dict) or 'POSITION' not in attrs
                 or not set(attrs)<={'POSITION','NORMAL','TEXCOORD_0','COLOR_0','TANGENT'}):
             raise ImportError('Mesh append requires standard POSITION with supported display attributes only')
-        positions=reader.read(attrs['POSITION'],3,'append positions');normals=None;uvs=None
+        positions=reader.read(attrs['POSITION'],3,'append positions');normals=None;uvs=None;colors=None
         for key,width in [('NORMAL',3),('TEXCOORD_0',2),('COLOR_0',None),('TANGENT',4)]:
             if key not in attrs:continue
             if key=='COLOR_0':
@@ -64,10 +64,11 @@ def decode_append_mesh(content):
                 if not isinstance(reader.accessors[index],dict):raise ImportError('Mesh append color accessor is invalid')
                 width={'VEC3':3,'VEC4':4}.get(reader.accessors[index].get('type'))
                 if width is None:raise ImportError('Mesh append color requires VEC3 or VEC4')
-            values=reader.read(attrs[key],width,'append '+key)
+            values=reader.read(attrs[key],width,'append '+key,normalized=(key=='COLOR_0' and reader.accessors[attrs[key]].get('normalized',False) is True))
             if len(values)!=len(positions):raise ImportError('Mesh append attribute counts differ')
             if key=='NORMAL':normals=values
             elif key=='TEXCOORD_0':uvs=values
+            elif key=='COLOR_0':colors=values
             else:ignored.add(key)
         if 'indices' in primitive:
             indices=[row[0] for row in reader.read(primitive['indices'],1,'append indices',indices=True)]
@@ -75,7 +76,7 @@ def decode_append_mesh(content):
         if not indices or len(indices)%3 or len(indices)//3+len(triangles)>MAX_NEW_FACES:
             raise ImportError('Mesh append exceeds the native face budget or has incomplete triangles')
         for begin in range(0,len(indices),3):
-            current=[];directions=[];texture_points=[]
+            current=[];directions=[];texture_points=[];color_points=[]
             # Reflect Y and reverse winding to preserve the SDK GLB convention.
             for index in (indices[begin],indices[begin+2],indices[begin+1]):
                 if not 0<=index<len(positions):raise ImportError('Mesh append index exceeds POSITION count')
@@ -90,6 +91,9 @@ def decode_append_mesh(content):
                     owners[owner]=len(vertices);vertices.append(quantized)
                 current.append(owners[owner])
                 if uvs is not None:texture_points.append(list(uvs[index]))
+                if colors is not None:
+                    if any(not 0<=value<=1 for value in colors[index]):raise ImportError('Mesh COLOR_0 must remain within the normalized 0..1 range')
+                    color_points.append(list(colors[index]))
                 if normals is not None:
                     direction=[normals[index][0],-normals[index][1],normals[index][2]]
                     length=math.hypot(*direction)
@@ -102,7 +106,7 @@ def decode_append_mesh(content):
             u=[b[i]-a[i] for i in range(3)];v=[c[i]-a[i] for i in range(3)]
             if not any(u[(i+1)%3]*v[(i+2)%3]-u[(i+2)%3]*v[(i+1)%3] for i in range(3)):
                 raise ImportError('Mesh append contains a degenerate triangle after native quantization')
-            triangles.append(current);triangle_normals.append(directions if normals is not None else None);triangle_uvs.append(texture_points if uvs is not None else None)
-    return dict(schema_version='legaia.model-mesh-append-geometry.v3',glb_sha256=sha256(content).hexdigest(),
-        vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,
+            triangles.append(current);triangle_normals.append(directions if normals is not None else None);triangle_uvs.append(texture_points if uvs is not None else None);triangle_colors.append(color_points if colors is not None else None)
+    return dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=sha256(content).hexdigest(),
+        vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')

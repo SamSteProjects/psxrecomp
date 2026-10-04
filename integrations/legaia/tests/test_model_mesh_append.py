@@ -16,7 +16,7 @@ import test_model_growth_normal_build as build_fixtures
 from test_model_primitive_workflow import http_server
 
 
-def glb(changes=None,positions=None,normals=None,uvs=None):
+def glb(changes=None,positions=None,normals=None,uvs=None,colors=None,color_component=5126):
     positions=positions or [[0,0,0],[100,0,0],[0,100,0],[100,100,0]]
     binary=b''.join(struct.pack('<3f',*row) for row in positions)+struct.pack('<6H',0,1,2,1,3,2)
     doc=dict(asset={'version':'2.0'},scene=0,scenes=[{'nodes':[0]}],nodes=[{'mesh':0}],
@@ -38,8 +38,17 @@ def glb(changes=None,positions=None,normals=None,uvs=None):
         doc['bufferViews'].append(dict(buffer=0,byteOffset=offset,byteLength=len(uvs)*8))
         doc['accessors'].append(dict(bufferView=view,componentType=5126,count=len(uvs),type='VEC2'))
         doc['meshes'][0]['primitives'][0]['attributes']['TEXCOORD_0']=accessor
+    if colors is not None:
+        offset=len(binary);width=len(colors[0]);fmt={5126:'f',5121:'B',5123:'H'}[color_component]
+        binary+=b''.join(struct.pack('<'+str(width)+fmt,*row) for row in colors)
+        view=len(doc['bufferViews']);accessor=len(doc['accessors'])
+        doc['buffers'][0]['byteLength']=len(binary)
+        doc['bufferViews'].append(dict(buffer=0,byteOffset=offset,byteLength=len(binary)-offset))
+        doc['accessors'].append(dict(bufferView=view,componentType=color_component,count=len(colors),type='VEC'+str(width),normalized=color_component!=5126))
+        doc['meshes'][0]['primitives'][0]['attributes']['COLOR_0']=accessor
     if changes:changes(doc)
     encoded=json.dumps(doc,separators=(',',':')).encode();encoded+=b' '*(-len(encoded)%4)
+    binary+=b'\0'*(-len(binary)%4)
     return struct.pack('<3I',0x46546c67,2,28+len(encoded)+len(binary))+struct.pack('<2I',len(encoded),0x4e4f534a)+encoded+struct.pack('<2I',len(binary),0x004e4942)+binary
 
 

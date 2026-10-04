@@ -14,7 +14,8 @@ LIMITATIONS=[
     'Reflects Y and reverses triangle winding; rounds positions to signed integer native coordinates.',
     'GLB NORMAL directions are normalized, reflected in Y and converted to Q12 stored normals for lit packets. Flat donors require equal corner normals.',
     'Mesh UVs map to the Current UV region of the selected native texture binding, using texel centers and clamped crop edges. Wrapping outside 0..1 is unsupported.',
-    'Baked RGB, packet flags and material bindings are inherited. Missing normals/UVs retain donor values; unlit/untextured packets have no corresponding fields.',
+    'Unlit packets import mesh colors. Textured RGB maps linear modulation to neutral 128; untextured RGB converts linear glTF colors to display-referred byte RGB. Flat donors require equal corner colors.',
+    'Packet flags/materials are inherited. Missing attributes retain donor values. Vertex alpha other than 1 is not representable in baked RGB; lit packets ignore mesh colors.',
     'Other GLB display attributes, materials and images are not imported. No external resources are fetched.',
     'Apply object transforms before export. One scene, one mesh node and no skinning, morph targets or animation.',
     'Appends geometry; it does not replace retained faces or create native objects or packet groups. Gameplay remains unverified.',
@@ -71,6 +72,25 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key)
     if uv_region is None and any(points is not None for points in geometry['triangle_uvs']):
         geometry['ignored_attributes']=sorted(geometry['ignored_attributes']+['TEXCOORD_0'])
     uv_import=dict(region=uv_region,values=uv_values,imported_face_count=uv_faces,uv_max_error=uv_error)
+    color_values=[];color_faces=0;color_error=0.0
+    for points in geometry['triangle_colors']:
+        if row['colors'] is None or points is None:color_values.append(None);continue
+        converted=[]
+        for point in points:
+            if any(not 0<=value<=1 for value in point):raise ProjectError('Mesh colors must remain in the normalized 0..1 range')
+            if len(point)==4 and point[3]!=1:raise ProjectError('Native baked RGB cannot import per-corner alpha; use opaque vertex colors')
+            rgb=[]
+            for value in point[:3]:
+                raw=value*128 if row['uvs'] is not None else (12.92*value if value<=.0031308 else 1.055*value**(1/2.4)-.055)*255
+                rounded=round(min(255,max(0,raw)));color_error=max(color_error,abs(raw-rounded));rgb.append(rounded)
+            converted.append(rgb)
+        if not row['gouraud'] and converted[1:]!=[converted[0],converted[0]]:
+            raise ProjectError('Flat triangle donor cannot represent different corner colors; select an unlit Gouraud donor')
+        color_values.append(converted if row['gouraud'] else converted[:1]);color_faces+=1
+    if row['colors'] is None and any(points is not None for points in geometry['triangle_colors']):
+        geometry['ignored_attributes']=sorted(geometry['ignored_attributes']+['COLOR_0'])
+    color_import=dict(mode=('textured_modulation' if row['uvs'] is not None else 'untextured_srgb') if color_faces else 'inherited',
+        values=color_values,imported_face_count=color_faces,color_max_error=color_error)
     allocations=[dict(object_index=donor['object_index'],kind='vertices',vectors=geometry['vertices'])]
     if normals:allocations.append(dict(object_index=donor['object_index'],kind='normals',vectors=normals))
     _,updated,_=append_vector_ledger(base,ledger,allocations)
@@ -81,15 +101,16 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key)
         fields=dict(vertices=[obj['vertex_count']+value for value in triangle])
         if references[index] is not None:fields['normal_indices']=references[index]
         if uv_values[index] is not None:fields['uvs']=uv_values[index]
+        if color_values[index] is not None:fields['colors']=color_values[index]
         additions.append(dict(face_id='face://authored/'+str(UUID(bytes=bytes(identity))),donor_face_id=donor_face_id,
             fields=fields))
     candidate,updated,audit=append_face_ledger(base,updated,additions)
     binding=dict(format=FORMAT,source_scene_id=project.active_scene,source_sha256=sha256(original).hexdigest(),
         asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),base_binding=base_binding,ledger=updated)
-    report=dict(schema_version='legaia.model-mesh-append-review.v3',asset_id=asset_id,
+    report=dict(schema_version='legaia.model-mesh-append-review.v4',asset_id=asset_id,
         source_sha256=binding['source_sha256'],effective_sha256=expected_sha256,proposed_sha256=binding['asset_sha256'],
         project_source_key=expected_key,donor_face_id=donor_face_id,object_index=donor['object_index'],
-        first_vertex_index=obj['vertex_count'],geometry=geometry,normal_import=normal_import,uv_import=uv_import,allocations=allocations,additions=additions,topology=audit,
+        first_vertex_index=obj['vertex_count'],geometry=geometry,normal_import=normal_import,uv_import=uv_import,color_import=color_import,allocations=allocations,additions=additions,topology=audit,
         current_preview=decode_tmd(effective),preview=decode_tmd(candidate),limitations=list(LIMITATIONS),
         project_changed=False,gameplay_verified=False)
     report['review_key']=digest(dict(asset_id=asset_id,source_key=expected_key,effective_sha256=expected_sha256,
