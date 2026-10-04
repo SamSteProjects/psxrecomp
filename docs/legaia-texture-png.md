@@ -42,6 +42,26 @@ PNG hash and current native texture context; saved authoring does not retain a G
 material relationship. Native image dimensions, palette capacity and existing TIM
 allocation remain fixed.
 
+### Saved GLB source receipt
+
+For a PNG adopted through **Use embedded PNG**, every review/preview/Apply request
+includes the selected GLB source. The server freshly re-extracts the image, verifies
+both hashes and requires exact equality with the PNG input. The review key includes
+its source receipt. Changing or omitting this provenance requires another review;
+a manually chosen PNG follows the ordinary PNG path without a GLB receipt.
+
+Apply saves the GLB hash, input PNG hash, image index and image name alongside the
+TIM reference. Undo/Redo and Save/Open retain it. The texture Inspector displays
+these fields after reopening, and Build includes them in its texture audit while
+emitting the same native TIM payload. Subsequent native edits and ordinary texture
+replacements clear the receipt; Undo restores its previous value.
+
+This is metadata recording the verified import input. It does not archive the
+original GLB or PNG, reproduce a source file from quantized TIM pixels, assign a GLB
+material, or establish live texture residency. Keep original source files if you
+will import them again. Project receipts receive strict schema validation; Build
+does not re-read an original GLB that is no longer supplied.
+
 ## PNG alpha and the PSX STP bit
 
 PNG uses unassociated alpha; RGB channels are not multiplied by alpha. Its general format allows partial transparency, but this TIM workflow accepts only binary alpha. See the primary [PNG specification, alpha representation](https://www.w3.org/TR/png-3/#6AlphaRepresentation).

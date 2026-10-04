@@ -16,7 +16,7 @@ from importer.pipeline import _bounded_scene_range, _disc_context, import_scene
 from importer.man_source import read_man_source
 from importer.serialization import patch_man_positions, serialize_man_decoded, serialize_man_stream
 from importer.man_assignments import load_man_assignment_context
-from .project import ProjectError
+from .project import ProjectError, ProjectService
 
 
 class BuildError(ProjectError):
@@ -641,16 +641,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     if not isinstance(texture_overrides, dict) or len(texture_overrides) > 128:
         raise BuildError("Texture overrides must be a bounded mapping of resource identities")
     for identifier, binding in texture_overrides.items():
-        if (not isinstance(identifier, str) or not identifier.startswith("texture://") or
-                len(identifier) > 512 or not isinstance(binding, dict) or
-                set(binding) != {"asset_sha256", "byte_length", "format", "source_scene_id"} or
-                binding.get("format") != "tim" or type(binding.get("byte_length")) is not int or
-                not 1 <= binding["byte_length"] <= 1024 * 1024 or not isinstance(binding.get("asset_sha256"), str) or
-                len(binding["asset_sha256"]) != 64 or
-                any(c not in "0123456789abcdef" for c in binding["asset_sha256"]) or
-                not isinstance(binding.get("source_scene_id"), str) or
-                binding["source_scene_id"] not in project.imports):
-            raise BuildError("Texture override requires a verified private TIM binding and imported source scene")
+        if not isinstance(identifier,str) or not identifier.startswith('texture://') or len(identifier)>512:
+            raise BuildError('Texture override requires a structural texture identity')
+        try:
+            ProjectService._validate_texture_binding(project,binding)
+        except ProjectError as exc:
+            raise BuildError('Texture override requires a verified private TIM binding and imported source scene') from exc
         texture_edits.setdefault(binding["source_scene_id"], {})[identifier] = binding
 
     for scene_id in sorted(draft_scenes):
@@ -1073,7 +1069,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         change.get("byte_length") != len(replacements[identifier])):
                     raise BuildError("Texture audit does not match the freshly verified replacement")
                 changed_ids.add(identifier)
-                audit_edits.append({**change, "scene": scene, "field": "texture.tim"})
+                audit_edits.append({**change, "scene": scene, "field": "texture.tim",
+                                    **({"glb_source":dict(bindings[identifier]["glb_source"])} if "glb_source" in bindings[identifier] else {})})
             expected_changes = {identifier for identifier, payload in replacements.items()
                                 if payload != context.original_tim(identifier)}
             if changed_ids != expected_changes or bool(texture_overlays) != bool(texture_changes):

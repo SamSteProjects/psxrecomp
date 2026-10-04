@@ -1,5 +1,31 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — persistent verified GLB image provenance:** Applying an
+extracted GLB PNG now saves a source receipt with the native TIM override: GLB
+SHA-256, input PNG SHA-256, image index and image name. Review, pixel/scene preview
+and Apply re-extract the exact selected GLB bytes and require equality with the
+submitted PNG. The receipt participates in the review key, so a plain-PNG review
+cannot authorize a GLB-sourced Apply. Browser response qualification independently
+matches the receipt to its extracted image.
+
+Undo/Redo and Save/Open preserve the receipt. The reopened texture Inspector
+shows both complete source hashes and the image identity. Later native edits or
+ordinary replacements clear the receipt instead of misattributing changed content;
+Undo restores it. Build uses the shared project texture validator and includes the
+receipt in its texture audit. The native TIM payload is unchanged by metadata.
+The original GLB/PNG files are not archived; the saved receipt identifies the
+verified input, rather than providing those original bytes or a material assignment.
+
+Seventeen focused Python construction checks and the existing PNG lifecycle suite
+passed. Forged selections, removed provenance, typed identity errors and stale
+review keys reject without publication. Actual private Retail Town01 browser
+workflow extracts/reviews/inspects, applies, saves, reloads and displays the receipt;
+Undo/Redo, Save/Open and normal Build independently read back the exact native TIM.
+Other CLUT rows, STP and imported metadata remain unchanged. Screenshot inspected.
+Private evidence: `local-output/sdk-20260909/texture-glb-provenance-20261004/parent/`.
+Only the private project was authored; no game, installed runtime or disc export ran.
+Gameplay remains deferred and the full SDK goal stays active.
+
 **2026-10-04 — GLB strip connector compatibility:** Mesh import now omits
 repeated-index connector triangles in `TRIANGLE_STRIP` sources. Original strip
 parity is computed before filtering, preserving each drawable triangle's winding.

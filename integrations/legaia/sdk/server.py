@@ -857,6 +857,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
+            if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
+                request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
@@ -1769,6 +1771,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route in ('/api/texture-png-preview', '/api/texture-png-pixels-preview', '/api/texture-png-scene-preview', '/api/texture-png-import'):
                     expected = {'asset_id', 'png_base64', 'stp_png_base64', 'binding', 'palette_mode'}
+                    if 'glb_source' in body:expected.add('glb_source')
                     if route in ('/api/texture-png-scene-preview', '/api/texture-png-import'):
                         expected.add('review_key')
                     from .texture_png import _json_size, preview_import, pixels_import, scene_import, apply_import
@@ -1794,14 +1797,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                         payloads.append(payload)
                     args = (self.server.project, body['asset_id'], payloads[0], body['binding'], body['palette_mode'], payloads[1])
                     if route == '/api/texture-png-preview':
-                        self._json(200, preview_import(*args))
+                        self._json(200, preview_import(*args,glb_source=body.get('glb_source')))
                     elif route == '/api/texture-png-pixels-preview':
-                        self._json(200, pixels_import(*args))
+                        self._json(200, pixels_import(*args,glb_source=body.get('glb_source')))
                     elif route == '/api/texture-png-scene-preview':
-                        candidate, report = scene_import(*args, body['review_key'])
+                        candidate, report = scene_import(*args, body['review_key'],glb_source=body.get('glb_source'))
                         self._json(200, self.server.scene_texture_proposal(body['asset_id'], candidate, report, report['project_source_key']))
                     else:
-                        report = apply_import(*args, body['review_key'])
+                        report = apply_import(*args, body['review_key'],glb_source=body.get('glb_source'))
                         self._json(200, dict(self.server.state(), texture_png_report=report))
                     return
                 if route == '/api/model-glb-export':

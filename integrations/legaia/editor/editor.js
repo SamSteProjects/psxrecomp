@@ -2257,6 +2257,8 @@ function updateTextureActions(){
   for(const id of ['texture-source-json','texture-effective-json'])$(id).disabled=busy||!texturePreview||![4,8].includes(texturePreview.bpp);
   $('texture-project-status').textContent=pending?'Selected file is not applied. Apply or discard before project actions.':busy?'Verifying…':projectSaveStatus();
   $('texture-authored').textContent=authored?`Authored TIM replacement · ${authored.byte_length} bytes · SHA-256 ${authored.asset_sha256?.slice(0,12) ?? 'unavailable'}`:'No authored replacement · effective pixels inherit the imported TIM.';
+  if(authored?.glb_source){const receipt=authored.glb_source;$('texture-authored').textContent+=` | GLB image ${receipt.image_index} (${receipt.name??'unnamed'}) | GLB SHA-256 ${receipt.glb_sha256} | input PNG SHA-256 ${receipt.png_sha256}`;}
+  $('texture-authored').style.overflowWrap='anywhere';
 }
 async function openTexture(record,paletteIndex=0,layer='effective'){
   if(busy)return;if(!state.capabilities?.texture_preview){notify('Texture decoding is unavailable in this service.',true);return;}

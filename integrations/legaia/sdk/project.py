@@ -1024,13 +1024,21 @@ class ProjectService:
         return report
 
     def _validate_texture_binding(self, binding: dict) -> None:
-        if (not isinstance(binding, dict) or set(binding) != {"asset_sha256", "byte_length", "format", "source_scene_id"}
+        if (not isinstance(binding, dict) or set(binding) not in ({"asset_sha256", "byte_length", "format", "source_scene_id"},{"asset_sha256", "byte_length", "format", "source_scene_id", "glb_source"})
                 or binding["format"] != "tim" or type(binding["byte_length"]) is not int
                 or not 1 <= binding["byte_length"] <= 1024 * 1024
                 or not isinstance(binding["asset_sha256"], str) or len(binding["asset_sha256"]) != 64
                 or any(c not in "0123456789abcdef" for c in binding["asset_sha256"])
                 or not isinstance(binding["source_scene_id"], str) or binding["source_scene_id"] not in self.imports):
             raise ProjectError("Invalid authored TIM content reference")
+        if 'glb_source' in binding:
+            receipt=binding['glb_source']
+            if (not isinstance(receipt,dict) or set(receipt)!={'glb_sha256','png_sha256','image_index','name'}
+                    or any(not isinstance(receipt[key],str) or len(receipt[key])!=64 or any(c not in '0123456789abcdef' for c in receipt[key]) for key in ('glb_sha256','png_sha256'))
+                    or type(receipt['image_index']) is not int or not 0<=receipt['image_index']<64
+                    or not (receipt['name'] is None or isinstance(receipt['name'],str) and len(receipt['name'])<=256 and not any(ord(c)<32 for c in receipt['name']))):
+                raise ProjectError('Invalid authored texture GLB source receipt')
+
 
     def read_texture_replacement(self, binding: dict) -> bytes:
         self._validate_texture_binding(binding)
@@ -1195,7 +1203,7 @@ class ProjectService:
                              palette_index: int = 0) -> dict:
         return self._prepare_texture_file(asset_id,content,format,palette_index)[1]
 
-    def set_texture_replacement(self, asset_id: str, content: bytes) -> None:
+    def set_texture_replacement(self, asset_id: str, content: bytes, *, glb_source: dict | None = None) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")
         if not isinstance(asset_id, str) or not asset_id.startswith("texture://") or len(asset_id) > 512:
@@ -1207,6 +1215,7 @@ class ProjectService:
         self._texture_context(asset_id).validate_replacement(asset_id, content)
         binding = {"asset_sha256": hashlib.sha256(content).hexdigest(), "byte_length": len(content),
                    "format": "tim", "source_scene_id": self.active_scene}
+        if glb_source is not None:binding["glb_source"]=deepcopy(glb_source)
         self._validate_texture_binding(binding)
         before = deepcopy(self.texture_overrides.get(asset_id))
         if before == binding:

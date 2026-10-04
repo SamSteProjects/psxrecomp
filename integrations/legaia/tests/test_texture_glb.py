@@ -6,7 +6,7 @@ import base64,json,shutil,struct,subprocess,unittest
 from importer.core import ImportError
 from importer.texture_glb import inspect_glb_pngs,extract_glb_png
 from sdk import texture_png
-from sdk.project import ProjectService
+from sdk.project import ProjectService,ProjectError
 import test_texture_png_workflow as fixtures
 from test_model_primitive_workflow import http_server
 
@@ -56,17 +56,30 @@ class TextureGlbTests(unittest.TestCase):
             status,_=post('/api/texture-glb-image',dict(asked,image_index=True));self.assertEqual(status,400)
             self.assertEqual(helper.snapshot(),before)
             self.assertEqual(files,{str(file):sha256(file.read_bytes()).hexdigest() for file in p.root.rglob('*') if file.is_file()})
-            request=dict(asset_id=fixtures.ASSET,png_base64=extracted['png_base64'],stp_png_base64=base64.b64encode(stp).decode(),binding=binding,palette_mode='existing')
+            request=dict(asset_id=fixtures.ASSET,png_base64=extracted['png_base64'],stp_png_base64=base64.b64encode(stp).decode(),binding=binding,palette_mode='existing',glb_source=asked)
             status,review=post('/api/texture-png-preview',request);self.assertEqual(status,200,review)
             self.assertEqual(review['pending_changes']['pixel_indices_changed'],1)
+            self.assertEqual(review['glb_source'],dict(glb_sha256=catalog['glb_sha256'],png_sha256=row['png_sha256'],image_index=0,name=row['name']))
+            plain=dict(request);plain.pop('glb_source');status,plain_review=post('/api/texture-png-preview',plain);self.assertEqual(status,200)
+            self.assertNotEqual(plain_review['review_key'],review['review_key'])
+            status,_=post('/api/texture-png-import',dict(plain,review_key=review['review_key']));self.assertEqual(status,400)
+            status,_=post('/api/texture-png-preview',dict(request,glb_source=dict(asked,png_sha256='0'*64)));self.assertEqual(status,400)
+            status,_=post('/api/texture-png-preview',dict(request,glb_source=dict(asked,image_index=True)));self.assertEqual(status,400)
             self.assertEqual(helper.snapshot(),before)
             status,result=post('/api/texture-png-import',dict(request,review_key=review['review_key']));self.assertEqual(status,200,result)
         p.undo();self.assertEqual(helper.snapshot()[0],before[0]);p.redo();p.save()
         reopened=ProjectService.open(p.root);self.assertEqual(reopened.texture_overrides,p.texture_overrides)
+        self.assertEqual(reopened.texture_overrides[fixtures.ASSET]['glb_source'],review['glb_source'])
+        bad=deepcopy(reopened.texture_overrides[fixtures.ASSET]);bad['glb_source']['image_index']=True
+        with self.assertRaises(ProjectError):reopened._validate_texture_binding(bad)
+        p.set_texture_replacement(fixtures.ASSET,p.read_texture_replacement(p.texture_overrides[fixtures.ASSET]))
+        self.assertNotIn('glb_source',p.texture_overrides[fixtures.ASSET]);p.undo();self.assertEqual(p.texture_overrides[fixtures.ASSET]['glb_source'],review['glb_source'])
         script="""import {decodeTextureGlbImages,decodeTextureGlbImage} from './integrations/legaia/editor/texture-png.js';
+import {decodeTexturePngReview} from './integrations/legaia/editor/texture-png.js';
 import assert from 'node:assert/strict';let raw='';for await(const c of process.stdin)raw+=c;
-const {catalog,extracted}=JSON.parse(raw);decodeTextureGlbImages(catalog,catalog.glb_sha256);await decodeTextureGlbImage(extracted,catalog,0);
+const {catalog,extracted,review,binding,context}=JSON.parse(raw);decodeTextureGlbImages(catalog,catalog.glb_sha256);await decodeTextureGlbImage(extracted,catalog,0);
+decodeTexturePngReview(review,binding,review.asset_id,0,context,review.png_sha256,review.stp_png_sha256,'existing',review.glb_source);assert.throws(()=>decodeTexturePngReview(review,binding,review.asset_id,0,context,review.png_sha256,review.stp_png_sha256,'existing'));const forged=structuredClone(review);forged.glb_source.image_index=true;assert.throws(()=>decodeTexturePngReview(forged,binding,review.asset_id,0,context,review.png_sha256,review.stp_png_sha256,'existing',review.glb_source));
 for(const mutate of [c=>c.read_only=false,c=>c.images[0].image_index=true,c=>c.excluded_image_indices=[],c=>c.images[0].width=2097153]){const bad=structuredClone(catalog);mutate(bad);assert.throws(()=>decodeTextureGlbImages(bad,catalog.glb_sha256));}
 const bad=structuredClone(extracted);bad.image.png_sha256='0'.repeat(64);await assert.rejects(()=>decodeTextureGlbImage(bad,catalog,0));"""
-        result=subprocess.run([shutil.which('node'),'--input-type=module','-e',script],input=json.dumps(dict(catalog=catalog,extracted=extracted)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
+        result=subprocess.run([shutil.which('node'),'--input-type=module','-e',script],input=json.dumps(dict(catalog=catalog,extracted=extracted,review=review,binding=binding,context=dict(projectPath=str(p.root),sceneId=binding['scene_id'],mode='edit',sourceKey=binding['project_source_key']))),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
         self.assertEqual(result.returncode,0,result.stderr)
