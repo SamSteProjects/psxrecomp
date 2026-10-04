@@ -1,5 +1,14 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: Native texture page UV target picker
+
+Implemented: the face editor can fill explicit Target UV controls from a qualified
+Retail/authored scene texture page region and palette. Native byte offsets and
+partial/multiple pages are preserved; Use authors nothing. Copy/Preview/Apply own
+UV edits, while native page/palette binding remains separate. Focused checks and
+private Town01 browser/history/Save/Open/exact Build readback passed.
+[UV workflow](legaia-model-uv-rectangle.md) describes use. Gameplay remains deferred.
+
 ## 2026-10-04: Placed-scene qualified face selection inspection
 
 Implemented: GLB-qualified native face highlights can be inspected in Current and

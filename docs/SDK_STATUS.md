@@ -1,5 +1,36 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Native texture page regions feed explicit UV target controls
+
+The face editor now offers **Choose target UVs from a scene texture** inside
+**Retarget a UV rectangle**. Browse the source-qualified Current texture catalog,
+choose a Retail or authored texture and explicit palette index, then load its
+native page regions. **Use texture page UV rectangle** fills only the Target U/V
+controls from the selected inclusive native byte rectangle. It invalidates earlier
+face review but changes no face draft or project. Source rectangle and remap scope
+(single face, packet group or qualified GLB face set) remain explicit. Copy into
+draft, Preview and Apply retain the ordinary face workflow.
+
+The picker reuses native texture source/depth/page/palette qualification and Current
+source-key checks. Native page offsets and partial/multiple page regions are retained;
+image dimensions alone and GLB shader UVs do not define the target. Regions with
+zero U/V spans cannot be used and explain that restriction. Changing texture or
+palette withdraws earlier page evidence. Close/stale-context abort and busy ownership
+follow the existing child-picker pattern. Native TPage, CLUT, blend, pixels and
+geometry are unchanged by this UV helper; material assignment remains separate.
+
+Focused checks passed detached target coordinates, a direct-color native offset,
+indexed multi-page regions with explicit palette qualification, malformed/degenerate
+rectangles and wrong source metadata rejection. Existing texture-binding and face
+editor Node suites passed. A private Town01 browser loaded an authored 128x128
+16-bit TIM at native X=640,Y=32 and received UV [0,32,127,159]. Use filled Target
+controls without authoring; Copy/Preview produced exact five-face UV-only changes.
+Clipping rejection retained prior drafts. Apply/Save/reload, Undo/Redo, offline Open
+and normal Build exact TMD/TIM readback passed, with neighboring decoded model bytes
+unchanged. Evidence:
+`local-output/sdk-20260909/uv-target-texture-region-20261004/parent/proof.json`.
+The picker screenshot was inspected. No game launched; gameplay remains deferred.
+
 ## 2026-10-04: Qualified native face highlights in placed scene context
 
 The model face editor now carries a qualified GLB face highlight into **Inspect

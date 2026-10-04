@@ -1,5 +1,18 @@
 # Deferred gameplay verification
 
+## 2026-10-04: Texture page UV target region helper
+
+For later gameplay validation, use **Choose target UVs from a scene texture** to
+fill the explicit Target rectangle, stage the desired face/group/GLB selection,
+and review the corresponding UV and material-page edits separately. Confirm the
+pixel region on the intended in-game instance and check shared consumers, palette
+behavior and live VRAM residency. The picker itself changes no authored data.
+
+Private proof passed native V-offset handling, five-face UV-only Apply, Save/Open,
+Undo/Redo and exact normal Build readback with unchanged model neighbors:
+`local-output/sdk-20260909/uv-target-texture-region-20261004/parent/proof.json`.
+Zero game launches; no immediate gameplay gate was added.
+
 ## 2026-10-04: Placed-scene native face highlight aid
 
 The face editor can now display GLB-qualified faces in yellow in both Current and
