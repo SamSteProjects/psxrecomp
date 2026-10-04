@@ -18,13 +18,15 @@ from .project import ProjectError, ProjectService
 def _slot_conversion_source(body):
     if 'conversion_source' not in body:return None
     source=body['conversion_source']
-    if not isinstance(source,dict) or set(source)!={'png_base64','stp_png_base64','options'}:
+    if not isinstance(source,dict) or set(source) not in ({'png_base64','stp_png_base64','options'},{'png_base64','stp_png_base64','options','glb_source'}):
         raise ProjectError('Converted slot requires exact PNG/STP source fields')
     def decode(value):
         if not isinstance(value,str) or not 1<=len(value)<=11184812:raise ProjectError('Converted PNG source exceeds eight MiB')
         try:return base64.b64decode(value,validate=True)
         except ValueError as exc:raise ProjectError('Converted PNG source requires valid base64') from exc
-    return dict(png=decode(source['png_base64']),stp=decode(source['stp_png_base64']) if source['stp_png_base64'] is not None else None,options=source['options'])
+    result=dict(png=decode(source['png_base64']),stp=decode(source['stp_png_base64']) if source['stp_png_base64'] is not None else None,options=source['options'])
+    if 'glb_source' in source:result['glb_source']=source['glb_source']
+    return result
 
 
 def _transition_authoring_report(project, identifier):
@@ -884,9 +886,9 @@ class EditorHandler(BaseHTTPRequestHandler):
             if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-source','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
                 request_limit = 2 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
-                request_limit = 24 * 1024 * 1024
+                request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-image-convert','/api/texture-slot-source-review','/api/texture-slot-source-apply'):
-                request_limit = 24 * 1024 * 1024
+                request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
@@ -1774,31 +1776,33 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route in ('/api/texture-slot-source-review','/api/texture-slot-source-apply'):
                     fields={'asset_id','expected_sha256','source_key','png_base64','stp_png_base64','options'}
                     if route.endswith('-apply'):fields.add('review_key')
-                    if set(body)!=fields:raise ProjectError('Source retention requires exact PNG, recipe and Current context')
+                    if set(body) not in (fields,fields|{'glb_source'}):raise ProjectError('Source retention requires exact PNG, recipe and Current context')
                     def decode_source(value):
                         if not isinstance(value,str) or not 1<=len(value)<=11184812:raise ProjectError('Choose PNG sources up to eight MiB each')
                         try:return base64.b64decode(value,validate=True)
                         except ValueError as exc:raise ProjectError('Retained PNG requires valid base64') from exc
+                    if 'glb_source' in body and body['glb_source'] is None:raise ProjectError('Selected GLB source cannot be null')
                     png=decode_source(body['png_base64']);stp=decode_source(body['stp_png_base64']) if body['stp_png_base64'] is not None else None
                     from .texture_slot_sources import review,apply
                     args=(self.server.project,body['asset_id'],body['expected_sha256'],body['source_key'],png,body['options'],stp)
-                    if route.endswith('-review'):self._json(200,review(*args))
+                    if route.endswith('-review'):self._json(200,review(*args,glb_source=body.get('glb_source')))
                     else:
-                        report=apply(*args,body['review_key'])
+                        report=apply(*args,body['review_key'],glb_source=body.get('glb_source'))
                         self._json(200,dict(self.server.state(),texture_source_report=report))
                     return
                 if route=='/api/texture-image-convert':
-                    if set(body)!={'asset_id','source_key','png_base64','stp_png_base64','options'}:
+                    if set(body) not in ({'asset_id','source_key','png_base64','stp_png_base64','options'},{'asset_id','source_key','png_base64','stp_png_base64','options','glb_source'}):
                         raise ProjectError('Image conversion requires exact source, PNG and native options')
                     def decode_image(value):
                         if not isinstance(value,str) or not 1<=len(value)<=11184812:
                             raise ProjectError('Choose a PNG no larger than eight MiB')
                         try:return base64.b64decode(value,validate=True)
                         except ValueError as exc:raise ProjectError('PNG conversion requires valid base64') from exc
+                    if 'glb_source' in body and body['glb_source'] is None:raise ProjectError('Selected GLB source cannot be null')
                     png=decode_image(body['png_base64'])
                     stp=decode_image(body['stp_png_base64']) if body['stp_png_base64'] is not None else None
                     from .texture_image_conversion import convert
-                    self._json(200,convert(self.server.project,body['asset_id'],body['source_key'],png,body['options'],stp))
+                    self._json(200,convert(self.server.project,body['asset_id'],body['source_key'],png,body['options'],stp,glb_source=body.get('glb_source')))
                     return
                 if route=='/api/texture-slot-edit-source':
                     if set(body)!={'asset_id','source_key'}:raise ProjectError('Authored slot source requires exact identity and context')

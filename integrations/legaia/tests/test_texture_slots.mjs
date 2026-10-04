@@ -42,3 +42,10 @@ assert.deepEqual(decodeSlotReview(combined,withSources,converted),combined);
 for(const bad of [{...combined,image_source:{...receipt,png_sha256:hash('f')}},{...combined,image_source:{...receipt,png_byte_length:99}},{...combined,image_source:{...receipt,stp_png_byte_length:1}},{...combined,image_source:{...receipt,options:{...receipt.options,image_x:0}}},{...combined,image_source:{...receipt,conversion_report:{...converted.conversion,png_byte_length:99}}}])assert.throws(()=>decodeSlotReview(bad,withSources,converted));
 assert.throws(()=>decodeSlotReview(report,withSources,converted));assert.throws(()=>decodeSlotReview(combined,request,file));
 console.log('Combined slot Apply source recipe, input identities and exact optional receipt qualification passed.');
+
+const glbReceipt={glb_sha256:hash('e'),png_sha256:receipt.png_sha256,image_index:0,name:'Source',glb_byte_length:28},glbSelection={content_base64:'AAAA',image_index:0,glb_sha256:hash('e'),png_sha256:receipt.png_sha256};
+const glbCombined={...combined,image_source:{...receipt,glb_source:glbReceipt}},glbRequest={...request,conversion_source:{...conversion_source,glb_source:glbSelection}},glbFile={...converted,glbReceipt};
+assert.deepEqual(decodeSlotReview(glbCombined,glbRequest,glbFile),glbCombined);
+for(const changed of [{...glbReceipt,image_index:1},{...glbReceipt,name:'Another'},{...glbReceipt,glb_byte_length:29},{...glbReceipt,glb_sha256:hash('d')}])assert.throws(()=>decodeSlotReview({...glbCombined,image_source:{...receipt,glb_source:changed}},glbRequest,glbFile));
+assert.throws(()=>decodeSlotReview(combined,glbRequest,glbFile));assert.throws(()=>decodeSlotReview(glbCombined,withSources,converted));
+console.log('Combined authored slot GLB identity and source receipt qualification passed.');

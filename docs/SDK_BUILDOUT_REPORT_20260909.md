@@ -1,5 +1,45 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: GLB embedded images feed authored TIM conversion
+
+Convert source PNG now accepts a bounded GLB and explicitly selected embedded PNG.
+It reuses the existing readonly GLB catalog/extraction qualification; URI, JPEG and
+unsupported image slots are excluded. Native bit depth, image/CLUT coordinates,
+STP policy and optional STP plane remain explicit converter choices. No GLB shader
+or material binding is inferred.
+
+Review/Apply retain the full immutable GLB alongside PNG/STP inputs and the exact
+TIM conversion recipe. The receipt includes GLB SHA/length, selected image index
+and name, and embedded PNG SHA. Conversion and every retained-source read freshly
+extract that image and check its bytes against the retained PNG. Review keys bind
+this lineage; switching GLBs with identical image pixels still requires a fresh
+review. All source files are preflighted before writes, and the project binding
+and one combined Undo entry are published only after native/source qualification.
+
+Save/Open, history and export-input snapshots preserve the source GLB. Download
+retained image sources adds source.glb to PNG, optional STP and recipe downloads.
+Load retained PNG/STP recipe restores GLB lineage too, so later native conversion
+keeps the original source without another external file selection. Plain PNG
+receipts remain compatible. Limits: 32 MiB per GLB, 64 MiB logical retained GLB
+inputs per authored-slot project, existing 32 MiB PNG/STP project budget; only
+participating conversion/slot commands accept the 68 MiB JSON transport envelope.
+
+Focused qualification passed: nine Python cases across conversion, retention,
+combined slot Apply and GLB sources; both Node decoder suites; synthetic raw and
+compressed carrier readback, Undo/Redo, offline Open, snapshots, wrong/null/stale
+selection and tampered file rejection. A fresh private Town01 browser run selected
+an embedded PNG, converted RGB16 to indexed 4-bit, inspected Current/Proposed,
+used combined Apply/Save/reload, restored GLB provenance and reproduced Current.
+The normal package Build read back exact native slot 96. A separate readonly
+browser pass checked exact PNG/STP/GLB/recipe downloads. Evidence:
+`local-output/sdk-20260909/texture-slot-glb-20261004/parent/proof.json`.
+
+Gameplay is still unverified. No game or installed runtime was launched/changed.
+Still open: broader GLB/material dependency routing, general Retail mode/CLUT
+allocation, runtime VRAM policy, scripting/scheduling, live scene identity/parity,
+world-map/MAPDSIP and release/performance/gameplay acceptance. The overall SDK
+goal remains active; manual gameplay checks can stay queued.
+
 ## 2026-10-04: reopen retained conversion inputs directly in the editor
 
 For a saved slot with a source receipt, Convert source PNG now offers Load retained

@@ -6,7 +6,7 @@ from .project import ProjectError
 from .scene_preview import source_key
 
 
-def convert(project, asset_id, expected_source_key, png_content, options, stp_content=None):
+def convert(project, asset_id, expected_source_key, png_content, options, stp_content=None,*,glb_source=None):
     if not isinstance(asset_id,str) or not asset_id.startswith(('texture://','texture-new://')):
         raise ProjectError('Image conversion requires a selected texture asset')
     key = source_key(project)
@@ -20,6 +20,9 @@ def convert(project, asset_id, expected_source_key, png_content, options, stp_co
         context = project._texture_context(asset_id)
         with context._archive() as archive:
             native_pack(context, archive, asset_id)
+    if glb_source is not None:
+        from .texture_png import _glb_receipt
+        _glb_receipt(glb_source,png_content)
     content, report = convert_png(png_content, options, stp_content)
     if source_key(project) != key:
         raise ProjectError('Project changed during image conversion')

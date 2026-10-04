@@ -31,6 +31,9 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
             from .texture_slot_sources import read_sources
             png,stp,_=read_sources(project,binding)
             store(f"Authored/TextureSources/{binding['image_source']['png_sha256']}.png",png)
+            if 'glb_source' in binding['image_source']:
+                from .texture_slot_sources import read_glb_source
+                store(f"Authored/TextureSources/{binding['image_source']['glb_source']['glb_sha256']}.glb",read_glb_source(project,binding,png))
             if stp is not None:store(f"Authored/TextureSources/{binding['image_source']['stp_png_sha256']}.png",stp)
     for binding in project.texture_overrides.values():
         payload = project.read_texture_replacement(binding)

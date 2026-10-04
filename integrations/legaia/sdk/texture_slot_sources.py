@@ -11,7 +11,7 @@ from .scene_preview import source_key
 def validate_receipt(binding):
     receipt=binding.get('image_source')
     fields={'format','png_sha256','png_byte_length','stp_png_sha256','stp_png_byte_length','options','conversion_report'}
-    if not isinstance(receipt,dict) or set(receipt)!=fields or receipt['format']!='png-tim-source-v1':
+    if not isinstance(receipt,dict) or set(receipt) not in (fields,fields|{'glb_source'}) or receipt['format']!='png-tim-source-v1':
         raise ProjectError('Invalid authored slot image-source receipt')
     for prefix in ('png','stp_png'):
         key=receipt[prefix+'_sha256'];size=receipt[prefix+'_byte_length']
@@ -25,6 +25,14 @@ def validate_receipt(binding):
             report.get('png_sha256')!=receipt['png_sha256'] or report.get('png_byte_length')!=receipt['png_byte_length'] or
             report.get('stp_png_sha256')!=receipt['stp_png_sha256'] or report.get('options')!=receipt['options']):
         raise ProjectError('Retained image recipe differs from Current TIM or source identities')
+    if 'glb_source' in receipt:
+        g=receipt['glb_source']
+        if (not isinstance(g,dict) or set(g)!={'glb_sha256','png_sha256','image_index','name','glb_byte_length'} or
+                not isinstance(g['glb_sha256'],str) or len(g['glb_sha256'])!=64 or any(c not in '0123456789abcdef' for c in g['glb_sha256']) or
+                g['png_sha256']!=receipt['png_sha256'] or type(g['image_index']) is not int or not 0<=g['image_index']<=63 or
+                type(g['glb_byte_length']) is not int or not 28<=g['glb_byte_length']<=32*1024*1024 or
+                not (g['name'] is None or isinstance(g['name'],str) and len(g['name'])<=256 and not any(ord(c)<32 for c in g['name']))):
+            raise ProjectError('Retained GLB image receipt is malformed')
     return receipt
 
 
@@ -40,6 +48,7 @@ def read_sources(project,binding,native=None):
         if sha256(content).hexdigest()!=key:raise ProjectError('Retained PNG source hash changed')
         return content
     png,stp=read('png'),read('stp_png')
+    if 'glb_source' in receipt:read_glb_source(project,binding,png)
     candidate,report=convert_png(png,receipt['options'],stp)
     if (sha256(candidate).hexdigest()!=binding['asset_sha256'] or len(candidate)!=binding['byte_length'] or
             report!=receipt['conversion_report'] or native is not None and candidate!=native):
@@ -48,7 +57,7 @@ def read_sources(project,binding,native=None):
 
 
 def prepare_recipe(project,native,source,exclude_asset_id=None):
-    if not isinstance(source,dict) or set(source)!={'png','stp','options'}:
+    if not isinstance(source,dict) or set(source) not in ({'png','stp','options'},{'png','stp','options','glb_source'}):
         raise ProjectError('Converted slot requires exact immutable PNG/STP sources and options')
     png,stp,options=source['png'],source['stp'],source['options']
     candidate,conversion=convert_png(png,options,stp)
@@ -56,6 +65,12 @@ def prepare_recipe(project,native,source,exclude_asset_id=None):
     receipt=dict(format='png-tim-source-v1',png_sha256=sha256(png).hexdigest(),png_byte_length=len(png),
         stp_png_sha256=sha256(stp).hexdigest() if stp is not None else None,
         stp_png_byte_length=len(stp) if stp is not None else None,options=deepcopy(options),conversion_report=conversion)
+    if 'glb_source' in source:
+        from .texture_png import _glb_receipt
+        receipt['glb_source'],_= _glb_receipt(source['glb_source'],png)
+        if receipt['glb_source'] is None:raise ProjectError('Selected GLB source cannot be null')
+    glb_total=sum(b.get('image_source',{}).get('glb_source',{}).get('glb_byte_length',0) for i,b in project.texture_additions.items() if i!=exclude_asset_id)
+    if glb_total+receipt.get('glb_source',{}).get('glb_byte_length',0)>64*1024*1024:raise ProjectError('Retained slot GLB sources exceed their 64 MiB project budget')
     total=sum(b['image_source']['png_byte_length']+(b['image_source']['stp_png_byte_length'] or 0)
         for i,b in project.texture_additions.items() if i!=exclude_asset_id and 'image_source' in b)
     if total+len(png)+len(stp or b'')>32*1024*1024:
@@ -75,16 +90,27 @@ def write_recipe(project,binding,source):
         if path.exists():
             if path.stat().st_size!=len(content) or path.read_bytes()!=content:raise ProjectError('Existing retained PNG content changed')
         else:writes.append((path,content))
+    if 'glb_source' in receipt:
+        from .texture_png import _glb_receipt
+        selected,content=_glb_receipt(source.get('glb_source'),source['png'])
+        if selected!=receipt['glb_source']:raise ProjectError('GLB source differs from its reviewed immutable receipt')
+        path=project.root/'Authored'/'TextureSources'/(selected['glb_sha256']+'.glb')
+        if not path.resolve().is_relative_to(project.root):raise ProjectError('GLB source path escapes the project')
+        if path.exists():
+            if path.stat().st_size!=len(content) or path.read_bytes()!=content:raise ProjectError('Existing retained GLB content changed')
+        else:writes.append((path,content))
     for path,content in writes:atomic_write(path,content)
     read_sources(project,binding)
 
 
-def review(project,asset_id,expected_sha256,expected_source_key,png,options,stp=None):
+def review(project,asset_id,expected_sha256,expected_source_key,png,options,stp=None,*,glb_source=None):
     from .texture_slot_edit import source
     native,original=source(project,asset_id,expected_source_key)
     if original['current_sha256']!=expected_sha256:
         raise ProjectError('Current TIM changed; review image-source retention again')
-    receipt=prepare_recipe(project,native,dict(png=png,stp=stp,options=options),asset_id)
+    inputs=dict(png=png,stp=stp,options=options)
+    if glb_source is not None:inputs['glb_source']=glb_source
+    receipt=prepare_recipe(project,native,inputs,asset_id)
     changed=project.texture_additions[asset_id].get('image_source')!=receipt
     result=dict(schema_version='legaia.texture-slot-source-retention.v1',asset_id=asset_id,
         project_source_key=expected_source_key,effective_sha256=expected_sha256,source=receipt,
@@ -94,12 +120,14 @@ def review(project,asset_id,expected_sha256,expected_source_key,png,options,stp=
     return result
 
 
-def apply(project,asset_id,expected_sha256,expected_source_key,png,options,stp,review_key):
-    report=review(project,asset_id,expected_sha256,expected_source_key,png,options,stp)
+def apply(project,asset_id,expected_sha256,expected_source_key,png,options,stp,review_key,*,glb_source=None):
+    report=review(project,asset_id,expected_sha256,expected_source_key,png,options,stp,glb_source=glb_source)
     if report['review_key']!=review_key or not report['can_apply']:
         raise ProjectError('Image-source retention requires the applicable current review')
     before=deepcopy(project.texture_additions[asset_id]);after=deepcopy(before);after['image_source']=deepcopy(report['source'])
-    write_recipe(project,after,dict(png=png,stp=stp,options=options))
+    inputs=dict(png=png,stp=stp,options=options)
+    if glb_source is not None:inputs['glb_source']=glb_source
+    write_recipe(project,after,inputs)
     project.texture_additions[asset_id]=after
     project.undo_stack.append(dict(target='texture_additions',asset_id=asset_id,before=before,after=deepcopy(after)))
     project.redo_stack.clear()
@@ -112,7 +140,24 @@ def download(project,asset_id,expected_sha256,expected_source_key):
     if original['current_sha256']!=expected_sha256:raise ProjectError('Current TIM changed before source download')
     binding=project.texture_additions[asset_id];png,stp,report=read_sources(project,binding,native)
     if source_key(project)!=expected_source_key:raise ProjectError('Project changed during source download')
-    return dict(asset_id=asset_id,project_source_key=expected_source_key,effective_sha256=expected_sha256,
+    result=dict(asset_id=asset_id,project_source_key=expected_source_key,effective_sha256=expected_sha256,
         source=deepcopy(binding['image_source']),png_base64=base64.b64encode(png).decode('ascii'),
         stp_png_base64=base64.b64encode(stp).decode('ascii') if stp is not None else None,
         read_only=True,project_changed=False)
+    if 'glb_source' in binding['image_source']:
+        result['glb_base64']=base64.b64encode(read_glb_source(project,binding,png)).decode('ascii')
+    return result
+
+
+def read_glb_source(project,binding,png=None):
+    receipt=validate_receipt(binding);g=receipt.get('glb_source')
+    if g is None:raise ProjectError('Authored slot has no retained GLB image source')
+    path=project.root/'Authored'/'TextureSources'/(g['glb_sha256']+'.glb')
+    if not path.resolve().is_relative_to(project.root) or not path.is_file() or path.stat().st_size!=g['glb_byte_length']:
+        raise ProjectError('Retained GLB source is missing or changed size')
+    content=path.read_bytes()
+    from importer.texture_glb import extract_glb_png
+    extracted=extract_glb_png(content,g['image_index'],g['glb_sha256'],g['png_sha256'])
+    if extracted['image']['name']!=g['name'] or png is not None and base64.b64decode(extracted['png_base64'])!=png:
+        raise ProjectError('Retained GLB selection differs from its PNG source')
+    return content

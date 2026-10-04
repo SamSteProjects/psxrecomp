@@ -32,3 +32,13 @@ console.log('Retained input load context, exact PNG/native hashes, recipe equali
 
 const missingPlaneReceipt={...retainedSource,stp_png_sha256:pngHash,stp_png_byte_length:retainedPng.length,conversion_report:{...retainedReport,stp_png_sha256:pngHash}};
 await assert.rejects(decodeRetainedInputs({...download,source:missingPlaneReceipt},request.asset_id,retainedContext,draft.sha256,value.content_base64,missingPlaneReceipt));
+
+const glbBytes=Buffer.alloc(28,7),glbHash=createHash('sha256').update(glbBytes).digest('hex'),selection={content_base64:glbBytes.toString('base64'),image_index:0,glb_sha256:glbHash,png_sha256:pngHash},glbReceipt={glb_sha256:glbHash,png_sha256:pngHash,image_index:0,name:'Embedded source',glb_byte_length:28};
+const glbSource={...retainedSource,glb_source:glbReceipt},glbDownload={...download,source:glbSource,glb_base64:selection.content_base64};
+const loadedGlb=await decodeRetainedInputs(glbDownload,request.asset_id,retainedContext,draft.sha256,value.content_base64,glbSource);assert.deepEqual(loadedGlb.glbSource,selection);
+const glbRequest={...request,png_base64:download.png_base64,stp_png_base64:null,glb_source:selection},glbInput={...input,pngSha256:pngHash,glbReceipt};
+const glbDraft=await decodeImageConversion({...value,report:retainedReport},glbRequest,glbInput);assert.deepEqual(glbDraft.conversionSource.glb_source,selection);
+const glbRetention={...retained,source:glbSource};assert.deepEqual(decodeSourceRetention(glbRetention,{...glbRequest,expected_sha256:draft.sha256},glbDraft,{...glbInput,stpSize:null}),glbRetention);
+for(const bad of [{...glbDownload,glb_base64:null},{...glbDownload,glb_base64:Buffer.alloc(28,8).toString('base64')},{...glbDownload,glb_base64:Buffer.alloc(27,7).toString('base64')},{...glbDownload,source:{...glbSource,glb_source:{...glbReceipt,image_index:true}}}])await assert.rejects(decodeRetainedInputs(bad,request.asset_id,retainedContext,draft.sha256,value.content_base64,bad.source));
+for(const receipt of [{...glbReceipt,image_index:1},{...glbReceipt,glb_sha256:hash('f')},{...glbReceipt,png_sha256:hash('f')},{...glbReceipt,name:'Other'}])assert.throws(()=>decodeSourceRetention({...glbRetention,source:{...glbSource,glb_source:receipt}},{...glbRequest,expected_sha256:draft.sha256},glbDraft,{...glbInput,stpSize:null}));
+console.log('GLB conversion lineage, retained file hash/length, metadata receipt and selected image guards passed.');

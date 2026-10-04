@@ -79,11 +79,13 @@ def validate_collection(project):
     if not isinstance(slots, dict) or len(slots) > 128:
         raise ProjectError('Authored texture slots require a bounded mapping')
     source_total = 0
+    glb_total = 0
     for identifier,binding in slots.items():
         validate_binding(project,identifier,binding)
         if 'image_source' in binding:
-            receipt=binding['image_source'];source_total+=receipt['png_byte_length']+(receipt['stp_png_byte_length'] or 0)
+            receipt=binding['image_source'];glb_total+=receipt.get('glb_source',{}).get('glb_byte_length',0);source_total+=receipt['png_byte_length']+(receipt['stp_png_byte_length'] or 0)
     if source_total>32*1024*1024:raise ProjectError('Retained slot image sources exceed 32 MiB')
+    if glb_total>64*1024*1024:raise ProjectError('Retained slot GLB sources exceed 64 MiB')
     total = 0
     groups = {}
     for identifier, binding in slots.items():
