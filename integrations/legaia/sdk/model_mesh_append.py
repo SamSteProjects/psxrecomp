@@ -37,7 +37,7 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None):
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0):
     if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and not new_group:
@@ -54,7 +54,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -91,7 +91,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
             converted.append(pair)
         uv_values.append(converted);uv_faces+=1
     if uv_region is None and any(points is not None for points in geometry['triangle_uvs']):
-        geometry['ignored_attributes']=sorted(geometry['ignored_attributes']+['TEXCOORD_0'])
+        geometry['ignored_attributes']=sorted(geometry['ignored_attributes']+[f'TEXCOORD_{uv_set}'])
     uv_import=dict(region=uv_region,values=uv_values,imported_face_count=uv_faces,uv_max_error=uv_error)
     color_values=[];color_faces=0;color_error=0.0
     for points in geometry['triangle_colors']:
@@ -171,6 +171,10 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report['selected_primitive_index']=primitive_index
         report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index))
         report['limitations'].append('Only the selected source GLB primitive is imported; other source primitives remain outside this transaction.')
+    if uv_set:
+        report['uv_set']=uv_set
+        report['review_key']=digest(dict(base_review_key=report['review_key'],uv_set=uv_set))
+        report['limitations'].append(f'Source TEXCOORD_{uv_set} supplies UVs. Missing selected UVs retain donor values; other channels and source texture/material assignments are not imported.')
     if scene_index is not None:
         report['selected_scene_index']=scene_index
         report['review_key']=digest(dict(base_review_key=report['review_key'],selected_scene_index=scene_index))

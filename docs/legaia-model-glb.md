@@ -1,5 +1,29 @@
 # Source-bound model GLB editing
 
+## Choose the source UV channel
+
+**Source UV channel** lists the selected scene's available channels, with UV0 as
+the default. Static imports accept consecutive `TEXCOORD_0` through `TEXCOORD_7`.
+Choose a channel before Review. Its values map into each native donor's Current
+texture region using the existing bounded texel conversion. Normalized unsigned
+byte/short UV accessors decode to their normalized values; float UVs remain valid.
+The native donor still supplies its texture page/CLUT and material binding.
+
+The choice applies to the selected section(s) and carries into **Map donors for
+all sections**, scene inspection and Return. Changing channel requires another
+Review. Changing source scene resets it to UV0. If a section has no selected UV
+channel, its donor UVs remain; untextured donors ignore UVs. Reviews report the
+textured-face count that consumes the selected values. Other source UV channels
+are listed as ignored. A channel choice remains bound to the review key even when
+it produces identical native bytes.
+
+Source material `texCoord` assignments are not inferred. For sections needing
+different source UV channels, import those sections with their explicit choices
+in separate reviewed transactions. Source images, sampler wrapping and new native
+texture allocation remain unsupported. Selected coordinates must fit 0..1 when
+consumed by a textured donor. Standard UV channel/accessor semantics follow the
+[Khronos glTF specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#meshes).
+
 ## Choose a source scene
 
 The scene picker loads from a separate file catalog before native geometry is

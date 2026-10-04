@@ -44,14 +44,16 @@ def inspect_append_mesh(content,*,scene_index=None):
             source_mode=mode,material_index=material,material_name=name))
     return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=geometry['glb_sha256'],
         primitives=rows,triangle_count=len(geometry['triangles']),read_only=True,
+        **({'uv_sets':[row['sets'] for row in geometry['uv_sources']]} if 'uv_sources' in geometry else {}),
         **({'scene_source':geometry['scene_source']} if 'scene_source' in geometry else {}),
         **({'node_transform':geometry['node_transform']} if 'node_transform' in geometry else {}),
         **({'node_sources':[source_binding(row) for row in sources]} if not canonical else {}))
 
 
-def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None):
+def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None,uv_set=0):
     if type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ImportError('Mesh primitive preservation and material RGB choices must be boolean')
+    if type(uv_set) is not int or not 0<=uv_set<=7:raise ImportError('Choose a source UV set from 0 through 7')
     doc,binary=_read_glb(content)
     sources,canonical=mesh_sources(doc,scene_index)
     primitives=sources
@@ -66,7 +68,7 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
     if any(not isinstance(view,dict) or type(view.get('buffer')) is not int or view['buffer']!=0 for view in reader.views):
         raise ImportError('Mesh append buffer views must own the embedded buffer')
     vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];triangle_colors=[];owners={};ignored=set();error=0.0;normal_error=0.0
-    primitive_ranges=[];material_factors=[];source_triangle_colors=[]
+    primitive_ranges=[];material_factors=[];source_triangle_colors=[];uv_sources=[]
     for primitive_index,source in enumerate(selected):
         primitive=source['primitive'];transform=source['node_transform']
         factor=color_factor(doc,primitive,source['primitive_index']) if material_colors else None
@@ -77,10 +79,13 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
             raise ImportError('Mesh append supports triangle lists, strips and fans without morph targets or extensions')
         attrs=primitive.get('attributes')
         if (not isinstance(attrs,dict) or 'POSITION' not in attrs
-                or not set(attrs)<={'POSITION','NORMAL','TEXCOORD_0','COLOR_0','TANGENT'}):
+                or not set(attrs)<=({'POSITION','NORMAL','COLOR_0','TANGENT'}|{f'TEXCOORD_{i}' for i in range(8)})):
             raise ImportError('Mesh append requires standard POSITION with supported display attributes only')
         positions=reader.read(attrs['POSITION'],3,'append positions');normals=None;uvs=None;colors=None
-        for key,width in [('NORMAL',3),('TEXCOORD_0',2),('COLOR_0',None),('TANGENT',4)]:
+        sets=[i for i in range(8) if f'TEXCOORD_{i}' in attrs]
+        if sets!=list(range(len(sets))):raise ImportError('Source UV sets must be consecutive starting at TEXCOORD_0')
+        uv_sources.append(dict(primitive_index=source['primitive_index'],sets=sets,first_triangle=first_triangle))
+        for key,width in [('NORMAL',3)]+[(f'TEXCOORD_{i}',2) for i in sets]+[('COLOR_0',None),('TANGENT',4)]:
             if key not in attrs:continue
             if key=='COLOR_0':
                 index=attrs[key]
@@ -89,10 +94,16 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
                 if not isinstance(reader.accessors[index],dict):raise ImportError('Mesh append color accessor is invalid')
                 width={'VEC3':3,'VEC4':4}.get(reader.accessors[index].get('type'))
                 if width is None:raise ImportError('Mesh append color requires VEC3 or VEC4')
-            values=reader.read(attrs[key],width,'append '+key,normalized=(key=='COLOR_0' and reader.accessors[attrs[key]].get('normalized',False) is True))
+            uv_key=key.startswith('TEXCOORD_')
+            if uv_key:
+                accessor=attrs[key]
+                if type(accessor) is not int or not 0<=accessor<len(reader.accessors) or not isinstance(reader.accessors[accessor],dict):raise ImportError('Mesh UV accessor is invalid')
+                spec=reader.accessors[accessor]
+                if spec.get('componentType')!=5126 and not (spec.get('componentType') in (5121,5123) and spec.get('normalized') is True):raise ImportError('Mesh UV sets require floats or normalized unsigned components')
+            values=reader.read(attrs[key],width,'append '+key,normalized=((key=='COLOR_0' or uv_key) and reader.accessors[attrs[key]].get('normalized',False) is True))
             if len(values)!=len(positions):raise ImportError('Mesh append attribute counts differ')
             if key=='NORMAL':normals=values
-            elif key=='TEXCOORD_0':uvs=values
+            elif key==f'TEXCOORD_{uv_set}':uvs=values
             elif key=='COLOR_0':colors=values
             else:ignored.add(key)
         original_colors=colors
@@ -155,11 +166,13 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
             triangles.append(current);triangle_normals.append(directions if normals is not None else None);triangle_uvs.append(texture_points if uvs is not None else None);triangle_colors.append(color_points if colors is not None else None)
             if material_colors:
                 source_triangle_colors.append(source_colors)
+        uv_sources[-1]['triangle_count']=len(triangles)-first_triangle
         if factor is not None:factor.update(first_triangle=first_triangle,triangle_count=len(triangles)-first_triangle)
         primitive_ranges.append(dict(primitive_index=primitive_index,first_triangle=first_triangle,triangle_count=len(triangles)-first_triangle,source_mode=mode))
     result=dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=sha256(content).hexdigest(),
         vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')
+    if uv_set or any(isinstance(row['primitive'],dict) and isinstance(row['primitive'].get('attributes'),dict) and 'TEXCOORD_1' in row['primitive']['attributes'] for row in sources):result.update(uv_set=uv_set,uv_sources=uv_sources)
     selection=scene_source(doc,scene_index)
     if len(selection['scenes'])>1:result['scene_source']=selection
     if material_colors:result.update(material_colors=True,material_factors=material_factors,source_triangle_colors=source_triangle_colors)

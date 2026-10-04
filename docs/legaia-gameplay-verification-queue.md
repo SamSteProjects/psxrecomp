@@ -1,5 +1,26 @@
 # Deferred gameplay verification
 
+**2026-10-04 — source UV channel selection:** Static mesh import now offers
+**Source UV channel**, default `TEXCOORD_0`, populated from the selected scene's
+qualified section inventory. Standard consecutive channels 0 through 7 are
+supported, including normalized unsigned byte/short accessors as well as float
+UVs. Single/selected/group imports, atomic donor batches and scene proposals bind
+the chosen channel. Changing it invalidates Review; mapping and Return retain it.
+A source-scene change resets the channel to UV0. Missing selected UVs retain donor
+values; untextured donors ignore UVs. Reviews state consumed textured-face counts.
+The browser verifies channel availability/range ownership and native conversions.
+Native texture bindings and Current UV regions remain; source images/material
+`texCoord` assignments and wrapping are not imported automatically.
+
+Ten focused construction checks passed, including normalized UV0/UV1, exact native
+UV packets after normal Build, Save/Open, mixed missing-channel sections, atomic
+HTTP Apply/Undo/Redo, changed-choice rejection and forged browser DTO rejection.
+Private actual Retail editor evidence is under
+`local-output/sdk-20260909/glb-uv-channels-20261004/parent/`: UV1 is carried through
+Review, donor mapping, scene inspection and Return, and changing it disables Apply.
+That read-only smoke preserves authored files/history; gameplay remains deferred.
+The full goal remains active.
+
 **2026-10-04 — recover unsupported GLB default scenes:** The editor now reads
 an independent, bounded scene catalog before qualifying mesh geometry. A default
 scene with an unsupported native transform or geometry can fail qualification

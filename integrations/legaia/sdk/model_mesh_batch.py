@@ -8,7 +8,7 @@ from .project import ProjectError,digest
 from .scene_preview import source_key
 
 
-def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False,scene_index=None):
+def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False,scene_index=None,uv_set=0):
     _,effective,_,_,_,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh donor mapping')
@@ -40,7 +40,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
     for row in mappings:
         key=source_key(view);source=model_mesh_append.source(view,asset_id,key)
         candidate,binding,report=model_mesh_append.prepare(view,asset_id,content,row['donor_face_id'],
-            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors,scene_index=scene_index)
+            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors,scene_index=scene_index,uv_set=uv_set)
         candidates[binding['asset_sha256']]=candidate;view.model_overrides[asset_id]=deepcopy(binding)
         steps.append(dict(source=source,review=report))
     report=dict(schema_version='legaia.model-mesh-batch-review.v1',asset_id=asset_id,
@@ -54,6 +54,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
             'Only explicitly selected donor groups are replaced; shared replacement ownership is rejected.',
             'Native donor layouts and texture bindings supply materials; no new images, packet families or animation channels are allocated.',
             'Review is read-only and Apply publishes the complete mapping in one Undo entry. Gameplay is unverified.'])
+    if uv_set:report['uv_set']=uv_set
     if scene_index is not None:report['selected_scene_index']=scene_index
     if material_colors:
         report['material_colors']=True
@@ -66,8 +67,8 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
 def review(*args,**kwargs):return prepare(*args,**kwargs)[2]
 
 
-def apply(project,*args,review_key,material_colors=False,scene_index=None):
-    candidate,binding,report=prepare(project,*args,material_colors=material_colors,scene_index=scene_index)
+def apply(project,*args,review_key,material_colors=False,scene_index=None,uv_set=0):
+    candidate,binding,report=prepare(project,*args,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set)
     if report['review_key']!=review_key:raise ProjectError('GLB donor mappings changed after Review')
     asset_id,_,_,_,expected_key=args
     project._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh donor mapping')
