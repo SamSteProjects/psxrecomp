@@ -28,14 +28,16 @@ export function decodeFaceAdditionSource(value,asset,key){
     else if(row.origin==='authored'&&authored(row.face_id)){added++;}else fail('Invalid authored face identity.');
     ids.add(row.face_id);owners.add(owner);
   }
-  if(added!==audit.authored_face_count)fail('Authored face count differs.');
-  for(const row of audit.faces)if(row.origin==='authored'&&!audit.faces.some(d=>d.face_id===row.donor_face_id&&d.object_index===row.object_index&&d.group_index===row.group_index))fail('Authored donor provenance is missing.');
+  const removed=audit.removed_face_ids??[];
+  if(!Array.isArray(removed)||removed.length>65536||new Set(removed).size!==removed.length||removed.some(id=>ids.has(id)||!authored(id)&&!(typeof id==='string'&&id.startsWith(`face://source/${audit.source_sha256}/`)&&/^face:\/\/source\/[0-9a-f]{64}\/\d+\/\d+$/.test(id))))fail('Invalid deleted donor identities.');
+  if(added+removed.filter(authored).length!==audit.authored_face_count)fail('Historical authored face count differs.');
+  for(const row of audit.faces)if(row.origin==='authored'&&!removed.includes(row.donor_face_id)&&!audit.faces.some(d=>d.face_id===row.donor_face_id&&d.object_index===row.object_index&&d.group_index===row.group_index))fail('Authored donor provenance is missing.');
   if(!value.preview||!Array.isArray(value.preview.vertices)||!Array.isArray(value.preview.objects)||value.preview.objects.length!==objects.length)fail('Missing Current geometry.');
   return structuredClone(value);
 }
 export function faceAdditionRequest(source,donorId,texts,faceId){
   const donor=source.topology.faces.find(row=>row.face_id===donorId);
-  if(!donor||!authored(faceId)||source.topology.faces.some(row=>row.face_id===faceId))fail('Choose an existing donor and a new face identity.');
+  if(!donor||!authored(faceId)||(source.topology.faces.some(row=>row.face_id===faceId)||source.topology.removed_face_ids?.includes(faceId)))fail('Choose an existing donor and a new face identity.');
   const obj=source.objects[donor.object_index],row=obj.primitives[donor.current_primitive_index],fields={};
   for(const [field,width,max] of [['vertices',1,obj.vertex_count-1],['uvs',2,255],['colors',3,255],['normal_indices',1,obj.normal_count-1]]){
     if(row[field]===null)continue;
@@ -51,6 +53,7 @@ export function faceAdditionRequest(source,donorId,texts,faceId){
 export function decodeFaceAdditionReview(value,source,request){
   if(!same(value?.requests,[request]))fail('Review differs from the requested typed fields.');
   if(value?.schema_version!=='legaia.model-face-addition-review.v1'||value.asset_id!==source.asset_id||value.source_sha256!==source.source_sha256||value.effective_sha256!==source.effective_sha256||value.project_source_key!==source.project_source_key||!hash(value.proposed_sha256)||value.proposed_sha256===source.effective_sha256||value.project_changed!==false||value.gameplay_verified!==false||!same(value.current_preview,source.preview))fail('Review differs from the inspected model.');
+  if(!same(value.topology?.removed_face_ids??[],source.topology.removed_face_ids??[]))fail('Addition review changed deleted identities.');
   const donor=source.topology.faces.find(f=>f.face_id===request.donor_face_id),primitive=source.objects[donor?.object_index]?.primitives[donor?.current_primitive_index],audit=value.topology;
   if(!primitive||audit?.source_sha256!==source.topology.source_sha256||audit.proposed_sha256!==value.proposed_sha256||audit.batch_count!==source.topology.batch_count+1||audit.authored_face_count!==source.topology.authored_face_count+1||audit.faces?.length!==source.topology.faces.length+1||!same(value.preview?.vertices,source.preview.vertices)||value.preview?.objects?.length!==source.objects.length)fail('Review changed vector or identity ownership.');
   const inserted=Math.max(...source.objects[donor.object_index].primitives.filter(r=>r.group_index===donor.group_index).map(r=>r.primitive_index))+1;

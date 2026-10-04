@@ -73,6 +73,8 @@ def _snapshot(project, asset_id):
         binding.update(schema_version='legaia.model-material-source.v2', face_mappings=faces, group_mappings=groups)
         if added:
             binding.update(schema_version='legaia.model-material-source.v3', authored_faces=authored_faces)
+            from .model_reference_faces import addition_group_mapping
+            binding['group_mappings']=addition_group_mapping(project,asset_id,retail,effective,authored)
     _bounded(binding, 'Model material source'); _current(project, binding)
     return dict(binding=binding, retail=retail, effective=effective)
 

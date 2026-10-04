@@ -29,3 +29,10 @@ calls=[];pending=openModelFaceAddition(options);context={...context,sourceKey:ne
 context={...context,sourceKey:key};busy=true;assert.equal(await openModelFaceAddition(options),null);busy=false;context={...context,mode:'live'};assert.equal(await openModelFaceAddition(options),null);context={...context,mode:'edit'};
 globalThis.fetch=async()=>({ok:true,json:async()=>({...source,asset_id:'wrong'})});const tool=await openModelFaceAddition(options);assert.equal(errors.length,1);assert.equal(tool.dialog.querySelector('[data-apply]').disabled,true);tool.dispose();
 console.log('Close-before-close-event, late/stale response, owned busy release, mode and error guards pass');
+
+const deletedAuthored={...structuredClone(source),topology:{...structuredClone(source.topology),batch_count:1,authored_face_count:1,removed_face_ids:[newId]}};
+decodeFaceAdditionSource(deletedAuthored,asset,key);assert.throws(()=>faceAdditionRequest(deletedAuthored,id,texts,newId));
+const survivingAuthored={...structuredClone(source),topology:{...structuredClone(source.topology),batch_count:1,authored_face_count:1,removed_face_ids:[id],faces:[{face_id:newId,origin:'authored',object_index:0,group_index:0,current_primitive_index:0,donor_face_id:id}]}};
+decodeFaceAdditionSource(survivingAuthored,asset,key);
+for(const change of [v=>v.topology.removed_face_ids=[],v=>v.topology.removed_face_ids.push(id),v=>v.topology.authored_face_count=2]){const bad=structuredClone(survivingAuthored);change(bad);assert.throws(()=>decodeFaceAdditionSource(bad,asset,key));}
+console.log('Deleted donors and historical authored budgets qualify; deleted ID reuse and forged history reject.');

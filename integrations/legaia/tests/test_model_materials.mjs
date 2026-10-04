@@ -81,3 +81,8 @@ for(const mutate of [v=>v.group_mappings=[[0]],v=>v.face_mappings[0][2].current_
 const compactReview=report([groupEdit()],dropped);compactReview.coordinate_changes=[{kind:'primitive_removal',object_index:0,primitive_index:0},{kind:'primitive_removal',object_index:0,primitive_index:1},{...compactReview.changes_from_current[0],group_index:1,byte_offset:107,primitive_indices:[2]}];
 decodeModelMaterialReview(compactReview,dropped,context,[groupEdit()]);compactReview.coordinate_changes[0].primitive_index=2;assert.throws(()=>decodeModelMaterialReview(compactReview,dropped,context,[groupEdit()]));
 console.log('Retained material group/face mapping and actual Retail removal audit guards passed.');
+
+const authoredGroupOnly=structuredClone(grown);authoredGroupOnly.objects[0].groups=[{...authoredGroupOnly.objects[0].groups[0],primitives:[primitive(0,48)]}];authoredGroupOnly.face_mappings=[[{retail_index:0,current_index:null},{retail_index:1,current_index:null},{retail_index:2,current_index:null}]];authoredGroupOnly.group_mappings=[[0]];authoredGroupOnly.authored_faces[0][0].current_index=0;
+assert.deepEqual(decodeModelMaterialSource(authoredGroupOnly,assetId,context).group_mappings,[[0]]);
+assert.throws(()=>decodeModelMaterialSource({...authoredGroupOnly,group_mappings:[[1]]},assetId,context));
+console.log('Authored-only packet groups retain qualified original material ownership.');

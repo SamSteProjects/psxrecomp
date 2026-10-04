@@ -39,7 +39,7 @@ export function decodeModelGlbBinding(value,assetId,context){
   if(!asset(assetId)||!exact(value,['schema_version','asset_id','scene_id','source_sha256','effective_sha256','project_source_key','profile',...(value.schema_version==='legaia.model-glb-binding.v2'?['removed_faces']:value.schema_version==='legaia.model-glb-binding.v3'?['topology_sha256','authored_face_count']:[])])||!['legaia.model-glb-binding.v1','legaia.model-glb-binding.v2','legaia.model-glb-binding.v3'].includes(value.schema_version)||value.asset_id!==assetId||value.scene_id!==context.sceneId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey||!object(value.profile))fail('The binding does not match this model or current source. Export a fresh binding.');
   if(value.profile.schema_version!=='legaia.model-glb-profile.v6')fail('Export the current model and binding again to use source-qualified corners, raw RGB, stored normal and material attributes.');
   if(value.schema_version==='legaia.model-glb-binding.v2')removedFaces(value.removed_faces);
-  if(value.schema_version==='legaia.model-glb-binding.v3'&&(!hash(value.topology_sha256)||!integer(value.authored_face_count,1,128)))fail('Invalid authored GLB topology binding.');
+  if(value.schema_version==='legaia.model-glb-binding.v3'&&(!hash(value.topology_sha256)||!integer(value.authored_face_count,0,128)))fail('Invalid authored GLB topology binding.');
   return clone(value);
 }
 

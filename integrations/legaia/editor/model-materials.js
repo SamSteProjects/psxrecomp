@@ -61,7 +61,7 @@ export function decodeModelMaterialSource(value,assetId,context){
         }
       }
       if(retained.size+authored.size!==currentRows.length)fail('Material mapping count differs.');
-      const expectedGroups=retail.groups.filter(g=>g.primitives.some(row=>faces[row.primitive_index].current_index!==null)).map(g=>g.group_index);if(!same(groups,expectedGroups))fail('Retained group mapping differs from source membership.');
+      const expectedGroups=retail.groups.filter(g=>g.primitives.some(row=>faces[row.primitive_index].current_index!==null)).map(g=>g.group_index);if(added){let previous=-1;for(const index of groups){if(!integer(index,0,retail.groups.length-1)||index<=previous)fail('Invalid original material group ownership.');previous=index;}if(expectedGroups.some(index=>!groups.includes(index)))fail('Retained material group owner is absent.');}else if(!same(groups,expectedGroups))fail('Retained group mapping differs from source membership.');
     }else if(entry.groups.length!==retail.groups.length)fail('Current model changed packet group counts.');
     for(const [g,group] of entry.groups.entries()){
       const original=retail.groups[topology?value.group_mappings[i][g]:g],members=topology?original.primitives.filter(row=>value.face_mappings[i][row.primitive_index].current_index!==null):original.primitives;
