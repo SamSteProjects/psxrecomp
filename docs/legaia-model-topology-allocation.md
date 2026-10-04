@@ -350,3 +350,29 @@ The dialog states that Build support is still being connected. General new vecto
 object/group allocation, legacy edits/removal/GLB composition after addition and
 normal relocated Build/ISO export remain unfinished. No gameplay or installation
 ran; this is not native appearance/culling/pose acceptance.
+
+
+## Shared-pack SDK preparation
+
+`sdk.model_growth.prepare_model_growth` collects every authored model in each
+explicit type-2 pack containing an addition binding. It verifies fresh imported
+scene metadata and exact physical/descriptor/directory ownership, qualifies
+retained base edits, replays addition ledgers and checks emitted bytes against
+all saved model payloads. Ordinary shape/content/removal edits in the same pack
+are carried as independently qualified bases with empty addition ledgers.
+Imported model ownership can include native padding; remaining slot tails and
+unselected members stay byte-exact. Preparation does not write project/history.
+
+Requests target the existing PROT growth writer and report `deferred_model_ids`
+for future Build composition. Those models must be excluded from legacy model
+overlays when this is integrated, then combined with other authored carrier
+patches before relocation. This preparation is not currently invoked by normal
+Build; `build_ready` and `gameplay_verified` remain false. Bare/streaming carriers
+are rejected rather than silently omitted.
+
+The 23 focused tests and actual private Town01 proof cover additions over a
+retained normal-reference/content base plus a neighboring shape edit, exact
+whole-pack assembly, 112 untouched models, five unchanged compressed resources
+and bounded archive reopening. Pack growth is 48 decoded bytes and eight carrier
+bytes. No full Retail archive/BIN export or gameplay ran.
+Private proof: `local-output/sdk-20260909/model-growth-preparation-20261003/parent/`.

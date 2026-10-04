@@ -1,5 +1,12 @@
 # Deferred gameplay verification
 
+Shared-pack preparation checkpoint (2026-10-03): retained-base additions and
+ordinary edited neighbors qualify together, with actual Town01 independent pack
+reconstruction and bounded PROT readback. The compressed carrier grows eight
+bytes, demonstrating the need for relocation. Normal Build composition/ISO
+integration remains offline work. No gameplay gate or game launch is required
+at this checkpoint; deferred native appearance/culling/pose acceptance remains.
+
 Face-addition editor checkpoint (2026-10-03): model viewer donor/typed fields,
 Review, wireframe comparison/orbit/zoom, reviewed Apply and authored viewport
 refresh pass in the private Town01 browser proof. Close/stale/late/mode/busy/error

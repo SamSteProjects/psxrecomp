@@ -7,6 +7,35 @@ from .core import (ImportError, _pack_ranges, _tmd_extent, parse_scene_assets,
 from .model_face_ledger import replay_face_ledger
 from .serialization import compress_lzs
 
+
+def _base_model(original, binding, payload):
+    if binding is None:
+        if payload is not None:
+            raise ImportError('Model pack base payload requires its qualified binding')
+        return original
+    formats = {'tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3', 'tmd-face-removal-v1'}
+    removal = isinstance(binding, dict) and binding.get('format') == 'tmd-face-removal-v1'
+    fields = {'format', 'source_sha256', 'asset_sha256', 'byte_length', 'source_scene_id'} | ({'removed_faces'} if removal else set())
+    if (not isinstance(binding, dict) or set(binding) != fields or binding.get('format') not in formats
+            or not isinstance(payload, bytes) or type(binding['byte_length']) is not int
+            or binding['byte_length'] != len(payload) or len(payload) != len(original)
+            or binding['source_sha256'] != sha256(original).hexdigest()
+            or binding['asset_sha256'] != sha256(payload).hexdigest()
+            or not isinstance(binding['source_scene_id'], str)):
+        raise ImportError('Model pack retained base schema, source or payload changed')
+    if removal:
+        from .model_face_removal import qualify_face_removal
+        qualify_face_removal(original, binding['source_sha256'], payload, binding['removed_faces'])
+    else:
+        from .model_authoring import replace_model_shape, replace_model_content
+        if binding['format'] == 'tmd-shape':
+            replace_model_shape(original, binding['source_sha256'], payload)
+        else:
+            replace_model_content(original, binding['source_sha256'], payload,
+                allow_materials=binding['format'] in ('tmd-content-v2', 'tmd-content-v3'),
+                allow_normal_references=binding['format'] == 'tmd-content-v3')
+    return payload
+
 MAX_PACK_BYTES = 4 * 1024 * 1024
 MAX_PACK_SLOTS = 240
 MAX_REPLACEMENTS = 32
@@ -35,24 +64,30 @@ def grow_model_pack(source, expected_sha256, replacements):
         raise ImportError('Model pack requires a bounded nonempty replacement batch')
     proposed, audits = {}, {}
     for row in replacements:
-        if (not isinstance(row, dict) or set(row) != {'slot_index', 'ledger'}
+        enriched = isinstance(row, dict) and set(row) == {'slot_index', 'ledger', 'source_model_byte_length', 'base_binding', 'base_payload'}
+        if (not isinstance(row, dict) or not (set(row) == {'slot_index', 'ledger'} or enriched)
                 or type(row['slot_index']) is not int or not 0 <= row['slot_index'] < len(members)
                 or row['slot_index'] in proposed):
             raise ImportError('Model pack replacement slot is invalid or duplicated')
-        slot = row['slot_index'];start, _, length = members[slot]
-        candidate, audit = replay_face_ledger(source[start:start+length], row['ledger'])
+        slot = row['slot_index'];start, end, length = members[slot]
+        owned_length = row['source_model_byte_length'] if enriched else length
+        if type(owned_length) is not int or not length <= owned_length <= end-start or owned_length % 4:
+            raise ImportError('Model pack imported model ownership exceeds its slot or changes alignment')
+        original = source[start:start+owned_length]
+        base = _base_model(original, row['base_binding'], row['base_payload']) if enriched else original
+        candidate, audit = replay_face_ledger(base, row['ledger'])
         if len(candidate) % 4:
             raise ImportError('Model pack candidate changed word alignment')
-        proposed[slot], audits[slot] = candidate, audit
-    total_growth = sum(len(payload)-members[slot][2] for slot, payload in proposed.items())
+        proposed[slot], audits[slot] = (candidate, owned_length), audit
+    total_growth = sum(len(payload)-owned_length for payload, owned_length in proposed.values())
     if len(source)+total_growth > MAX_PACK_BYTES:
         raise ImportError('Model pack growth exceeds decoded byte budget')
     result = bytearray(source[:4+4*len(members)])
     records = []
     for slot, (start, end, length) in enumerate(members):
         offset = len(result)
-        payload = proposed.get(slot, source[start:start+length])
-        tail = source[start+length:end]
+        payload, owned_length = proposed.get(slot, (source[start:start+length], length))
+        tail = source[start+owned_length:end]
         struct.pack_into('<I', result, 4+slot*4, offset//4)
         result.extend(payload);result.extend(tail)
         records.append(dict(slot_index=slot, source_byte_offset=start, proposed_byte_offset=offset,
@@ -64,9 +99,11 @@ def grow_model_pack(source, expected_sha256, replacements):
     reopened = _qualified_pack(candidate)
     for slot, (start, end, length) in enumerate(reopened):
         old_start, old_end, old_length = members[slot]
-        if candidate[start+length:end] != source[old_start+old_length:old_end]:
-            raise ImportError('Model pack changed member trailing bytes')
-        if slot not in proposed and candidate[start:end] != source[old_start:old_end]:
+        if slot in proposed:
+            payload, owned_length = proposed[slot]
+            if candidate[start:start+len(payload)] != payload or candidate[start+len(payload):end] != source[old_start+owned_length:old_end]:
+                raise ImportError('Model pack changed qualified payload or member trailing bytes')
+        elif candidate[start:end] != source[old_start:old_end]:
             raise ImportError('Model pack changed an unselected neighbor')
     return candidate, dict(source_sha256=expected_sha256, proposed_sha256=sha256(candidate).hexdigest(),
         source_byte_length=len(source), proposed_byte_length=len(candidate), growth_bytes=total_growth,
