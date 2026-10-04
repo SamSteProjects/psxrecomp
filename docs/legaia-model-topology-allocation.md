@@ -307,3 +307,46 @@ Private proof: `local-output/sdk-20260909/model-face-addition-http-20261003/pare
 
 Editor Review/Apply dialog, normal relocated Build/ISO integration and subsequent
 legacy edits/removal/GLB composition remain unfinished. No game or installation ran.
+
+
+## Model viewer Add face dialog
+
+The model viewer now offers **Add model face** in Edit mode. Choose an existing
+stable donor, then enter its triangle/quad vertex indices. UV pairs, baked RGB and
+lit normal indices appear only when supported by that donor. Initial values come
+from qualified Current native fields; material/command layout remains inherited.
+The form creates one canonical authored UUID and reviews one face at a time.
+Repeated dialog openings can use previously authored donors.
+
+Review is tied to the exact typed request, model hashes and project/scene/asset
+source context. The SDK now echoes the detached request in its review report.
+The dialog checks complete stable owner coverage, typed domains, retained owner
+remapping, expected added identity/counts and unchanged preview vector ownership.
+Edits and donor changes clear Review. Current/Proposed complete-model wireframe
+comparison supports drag/arrow-key orbit and scroll/plus/minus zoom. Camera changes
+do not alter the accepted request. Apply sends only that reviewed request/hash,
+updates normal state/history and refreshes the authored model viewport.
+
+Close aborts inspection/review, releases owned busy state and disposes renderer/
+resize resources. During Apply the Close button and Escape are held until outcome.
+A discovered browser race—`dialog.close()` changes open state before its close
+handler runs—is handled by checking actual dialog open state before accepting a
+response. A late response cannot populate a closed dialog or release another
+operation's busy state. Project/scene/asset/source/mode changes discard the dialog.
+Corrupt or mismatched source/review data cannot enable Apply.
+
+Seven focused Python cases and addition/removal/allocation Node suites pass,
+plus editor/module syntax checks. Node regressions include the close-before-event
+race, stale/late responses, owned busy release, mode and malformed-source guards.
+Eight actual private Town01 browser checks validate typed lit quad fields,
+read-only Review, edit invalidation, Current/Proposed layers, 540px layout, orbit/
+zoom, Apply/history/view refresh, authored donor reopening and lifecycle guards.
+Review leaves saved files and history unchanged. Apply changes only the private
+clone's authored model state. No page errors or command/Save/Build/Run requests
+occur. Narrow screenshot inspected; owned browser/server helpers close.
+Private proof: `local-output/sdk-20260909/model-face-addition-editor-20261003/parent/`.
+
+The dialog states that Build support is still being connected. General new vector/
+object/group allocation, legacy edits/removal/GLB composition after addition and
+normal relocated Build/ISO export remain unfinished. No gameplay or installation
+ran; this is not native appearance/culling/pose acceptance.

@@ -1,5 +1,13 @@
 # Deferred gameplay verification
 
+Face-addition editor checkpoint (2026-10-03): model viewer donor/typed fields,
+Review, wireframe comparison/orbit/zoom, reviewed Apply and authored viewport
+refresh pass in the private Town01 browser proof. Close/stale/late/mode/busy/error
+guards pass, including the asynchronous close-event race. No Save/Build/Run or
+installation/gameplay occurred. Relocated normal Build/ISO and subsequent edit/
+removal/GLB composition remain unfinished. Deferred native appearance/culling/pose
+acceptance is unchanged; no immediate gameplay gate is added.
+
 Face-addition HTTP/copy checkpoint (2026-10-03): source/Review/reviewed Apply
 pass through real loopback HTTP in a private Town01 clone; stale/mismatched
 requests reject. Project copy retains and reopens both the addition model and

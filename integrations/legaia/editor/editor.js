@@ -653,6 +653,7 @@ function setBusy(value) {
   renderRunStatus();renderBuildStatus();
   if($('shape-remove-faces'))$('shape-remove-faces').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_face_removal;
   if($('shape-allocation'))$('shape-allocation').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_allocation_inspection;
+  if($('shape-add-face'))$('shape-add-face').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_face_addition;
   document.querySelectorAll('[data-axis],[data-component-property]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   document.querySelectorAll('[data-animation-edit]').forEach(button=>button.disabled=value||state.project.mode!=='edit');
@@ -1407,6 +1408,7 @@ async function openFlagReferences(projectWide=false){
 function synchronizeResources(){
   modelFaceRemovalEditor?.updateState();
   modelAllocationEditor?.updateState();
+  modelFaceAdditionEditor?.updateState();
   modelPrimitiveEditor?.updateState();
   modelMaterialsEditor?.updateState();
   sceneAnimationController?.updateState();
@@ -3890,10 +3892,18 @@ showScenePose.onclick=()=>{
   }catch(error){clearScenePose(false);const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');notify(error.message,true);draw();}
 };
 
-const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Edit object-local vertex and normal coordinates, existing face connections and normal references, texture UVs and stored RGB colors. Object and packet counts stay fixed. Source material bindings use a separate reviewed editor. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-vectors">Edit model vectors</button><button id="shape-primitives">Edit faces, UVs and colors</button><button id="shape-source">Download source TMD</button><button id="shape-authored-tmd">Download authored TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
+const shapeControls=document.createElement('section');shapeControls.innerHTML='<h3>Model shape</h3><p>Edit object-local vertex and normal coordinates, existing face connections and normal references, texture UVs and stored RGB colors. Use the separate add/remove actions to change face counts. Source material bindings use a separate reviewed editor. Shape preview is unposed. OBJ preserves vertex order, oriented triangulation and integer source coordinates; normals remain unchanged. JSON contains complete ordered vertex and normal arrays bound to the retail source hash.</p><button id="shape-vectors">Edit model vectors</button><button id="shape-primitives">Edit faces, UVs and colors</button><button id="shape-source">Download source TMD</button><button id="shape-authored-tmd">Download authored TMD</button><button id="shape-source-obj">Download shape OBJ</button><button id="shape-download-authored">Download authored OBJ</button><button id="shape-source-json">Download source JSON</button><button id="shape-authored-json">Download authored JSON</button><label>Edited TMD, OBJ or JSON<input id="shape-file" type="file" accept=".tmd,.obj,.json"></label><button id="shape-file-preview">Preview shape file</button><button id="shape-upload">Apply shape</button><div id="shape-file-report"></div><button id="shape-retail">View retail shape</button><button id="shape-authored">View authored shape</button><button id="shape-clear">Clear shape override</button><p id="shape-status"></p>';$('model-description').after(shapeControls);
 const vectorDialog=document.createElement('dialog');vectorDialog.id='model-vector-dialog';document.body.append(vectorDialog);
 let modelFaceRemovalEditor=null;
 let modelAllocationEditor=null;
+let modelFaceAdditionEditor=null;
+const faceAdditionButton=document.createElement('button');faceAdditionButton.id='shape-add-face';faceAdditionButton.type='button';faceAdditionButton.textContent='Add model face';$('shape-primitives').after(faceAdditionButton);
+faceAdditionButton.onclick=async()=>{
+  if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit')return;
+  modelFaceAdditionEditor?.dispose();const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]),module=await import('/model-face-addition.js');
+  if(busy||asset!==modelAssetId||state.project.mode!=='edit'||context!==JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]))return;
+  modelFaceAdditionEditor=await module.openModelFaceAddition({assetId:asset,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Model face added. Save project to persist.');await openModel(asset,null,null,'authored');}});
+};
 const allocationButton=document.createElement('button');allocationButton.id='shape-allocation';allocationButton.type='button';allocationButton.textContent='Inspect native allocation';$('shape-primitives').after(allocationButton);
 allocationButton.onclick=async()=>{if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit')return;modelAllocationEditor?.dispose();const asset=modelAssetId,module=await import('/model-allocation.js');if(busy||asset!==modelAssetId||state.project.mode!=='edit')return;modelAllocationEditor=await module.openModelAllocation({assetId:asset,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true)});};
 const faceRemovalButton=document.createElement('button');faceRemovalButton.id='shape-remove-faces';faceRemovalButton.type='button';faceRemovalButton.textContent='Remove model faces';$('shape-primitives').after(faceRemovalButton);

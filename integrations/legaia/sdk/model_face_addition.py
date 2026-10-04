@@ -72,6 +72,7 @@ def prepare(project, asset_id, requests, expected_sha256, expected_key):
     report = dict(schema_version='legaia.model-face-addition-review.v1', asset_id=asset_id,
         source_sha256=binding['source_sha256'], effective_sha256=expected_sha256,
         proposed_sha256=binding['asset_sha256'], project_source_key=expected_key,
+        requests=deepcopy(requests),
         topology=audit, current_preview=decode_tmd(effective), preview=decode_tmd(candidate),
         project_changed=False, gameplay_verified=False)
     if source_key(project) != expected_key:

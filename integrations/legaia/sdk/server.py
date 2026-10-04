@@ -707,6 +707,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/vertex-retarget.js": ("vertex-retarget.js", "text/javascript"),
                  "/model-vertex-users.js": ("model-vertex-users.js", "text/javascript"),
                  "/model-face-removal.js": ("model-face-removal.js", "text/javascript"),
+                 "/model-face-addition.js": ("model-face-addition.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
