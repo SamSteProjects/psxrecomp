@@ -56,11 +56,24 @@ these fields after reopening, and Build includes them in its texture audit while
 emitting the same native TIM payload. Subsequent native edits and ordinary texture
 replacements clear the receipt; Undo restores its previous value.
 
-This is metadata recording the verified import input. It does not archive the
-original GLB or PNG, reproduce a source file from quantized TIM pixels, assign a GLB
-material, or establish live texture residency. Keep original source files if you
-will import them again. Project receipts receive strict schema validation; Build
-does not re-read an original GLB that is no longer supplied.
+New GLB-image Applies also retain the original bounded GLB as
+`Authored/TextureSources/<glb-sha256>.glb`. Its embedded PNG can be extracted again
+without reconstructing it from quantized TIM pixels. The receipt records the retained
+file size, and reads verify its exact bytes and selected image. Project reopen,
+Build and input snapshots reject missing or changed retained sources. Project copies
+carry these sources under the same byte/file limits as other editable inputs.
+
+Select **Download retained GLB source** in the texture Inspector to recover that
+file. The server and browser verify its receipt and hash; then edit externally and
+import the image again with a fresh native binding. Source retention is part of the
+normal Apply history step. Undo/Redo preserves access to its immutable content;
+ordinary replacement clears the active reference, while unreferenced files remain.
+
+Older receipts without a retained byte length remain readable and display their
+hashes, but the source download stays disabled. Those historical receipts identify
+an input whose bytes were not archived. The new retained source does not assign a
+GLB material or establish live residency. Original external STP files and external
+GLB dependencies are not separately archived; keep them if needed for re-editing.
 
 ## PNG alpha and the PSX STP bit
 

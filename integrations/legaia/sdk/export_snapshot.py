@@ -26,6 +26,8 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     for binding in project.texture_overrides.values():
         payload = project.read_texture_replacement(binding)
         store(f"Authored/Textures/{binding['asset_sha256']}.tim",payload)
+        if 'glb_byte_length' in binding.get('glb_source',{}):
+            store(f"Authored/TextureSources/{binding['glb_source']['glb_sha256']}.glb",project.read_texture_glb_source(binding))
     for identifier, binding in project.model_overrides.items():
         payload = project.read_model_replacement(identifier, binding)
         store(f"Authored/Models/{binding['asset_sha256']}.tmd",payload)

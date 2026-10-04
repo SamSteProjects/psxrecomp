@@ -645,6 +645,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             raise BuildError('Texture override requires a structural texture identity')
         try:
             ProjectService._validate_texture_binding(project,binding)
+            if 'glb_byte_length' in binding.get('glb_source',{}):ProjectService.read_texture_glb_source(project,binding)
         except ProjectError as exc:
             raise BuildError('Texture override requires a verified private TIM binding and imported source scene') from exc
         texture_edits.setdefault(binding["source_scene_id"], {})[identifier] = binding

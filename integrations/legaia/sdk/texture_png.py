@@ -137,7 +137,7 @@ def export_texture(project, asset_id, palette_index=0):
 
 
 def _glb_receipt(source, png):
-    if source is None:return None
+    if source is None:return None,None
     if not isinstance(source,dict) or set(source)!={'content_base64','image_index','glb_sha256','png_sha256'}:
         raise ProjectError('GLB texture provenance requires exact file and image selection')
     encoded=source['content_base64']
@@ -150,7 +150,7 @@ def _glb_receipt(source, png):
     if base64.b64decode(extracted['png_base64'])!=png:
         raise ProjectError('Edited PNG differs from the selected embedded GLB image')
     row=extracted['image']
-    return dict(glb_sha256=extracted['glb_sha256'],png_sha256=row['png_sha256'],image_index=row['image_index'],name=row['name'])
+    return dict(glb_sha256=extracted['glb_sha256'],png_sha256=row['png_sha256'],image_index=row['image_index'],name=row['name'],glb_byte_length=len(content)),content
 
 
 def _prepare(project, asset_id, png, binding, palette_mode='existing', stp=None,glb_source=None):
@@ -169,9 +169,10 @@ def _prepare(project, asset_id, png, binding, palette_mode='existing', stp=None,
         raise ProjectError('Texture binding differs from the current source or effective texture; export again')
     candidate, analysis = import_texture_png(snapshot['effective'], png, snapshot['binding']['profile'], palette_mode, stp)
     report = _report(snapshot, png, stp, candidate, analysis, palette_mode)
-    receipt=_glb_receipt(glb_source,png)
+    receipt,glb_content=_glb_receipt(glb_source,png)
     if receipt is not None:
         report['glb_source']=receipt
+        snapshot['glb_content']=glb_content
         report['review_key']=digest(dict(review_key=report['review_key'],glb_source=receipt))
         _json_size(report,MAX_REPORT_BYTES,'Texture PNG review')
     _current(project, snapshot['binding'])
@@ -211,5 +212,5 @@ def apply_import(project, asset_id, png, binding, palette_mode, stp, review_key,
     if candidate == snapshot['retail']:
         project.command(dict(type='clear_texture_replacement', asset_id=asset_id))
     else:
-        project.set_texture_replacement(asset_id, candidate,glb_source=report.get('glb_source'))
+        project.set_texture_replacement(asset_id, candidate,glb_source=report.get('glb_source'),glb_content=snapshot.get('glb_content'))
     return report

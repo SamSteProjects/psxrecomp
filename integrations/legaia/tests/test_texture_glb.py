@@ -59,7 +59,7 @@ class TextureGlbTests(unittest.TestCase):
             request=dict(asset_id=fixtures.ASSET,png_base64=extracted['png_base64'],stp_png_base64=base64.b64encode(stp).decode(),binding=binding,palette_mode='existing',glb_source=asked)
             status,review=post('/api/texture-png-preview',request);self.assertEqual(status,200,review)
             self.assertEqual(review['pending_changes']['pixel_indices_changed'],1)
-            self.assertEqual(review['glb_source'],dict(glb_sha256=catalog['glb_sha256'],png_sha256=row['png_sha256'],image_index=0,name=row['name']))
+            self.assertEqual(review['glb_source'],dict(glb_sha256=catalog['glb_sha256'],png_sha256=row['png_sha256'],image_index=0,name=row['name'],glb_byte_length=len(content)))
             plain=dict(request);plain.pop('glb_source');status,plain_review=post('/api/texture-png-preview',plain);self.assertEqual(status,200)
             self.assertNotEqual(plain_review['review_key'],review['review_key'])
             status,_=post('/api/texture-png-import',dict(plain,review_key=review['review_key']));self.assertEqual(status,400)
@@ -70,6 +70,33 @@ class TextureGlbTests(unittest.TestCase):
         p.undo();self.assertEqual(helper.snapshot()[0],before[0]);p.redo();p.save()
         reopened=ProjectService.open(p.root);self.assertEqual(reopened.texture_overrides,p.texture_overrides)
         self.assertEqual(reopened.texture_overrides[fixtures.ASSET]['glb_source'],review['glb_source'])
+        saved_binding=reopened.texture_overrides[fixtures.ASSET]
+        self.assertEqual(reopened.read_texture_glb_source(saved_binding),content)
+        legacy=deepcopy(saved_binding);legacy['glb_source'].pop('glb_byte_length')
+        reopened._validate_texture_binding(legacy);self.assertEqual(reopened.read_texture_replacement(legacy),reopened.read_texture_replacement(saved_binding))
+        with self.assertRaises(ProjectError):reopened.read_texture_glb_source(legacy)
+        from sdk.export_snapshot import capture_export_inputs
+        _,inputs=capture_export_inputs(p,max_bytes=256*1024*1024,max_files=512)
+        relative='Authored/TextureSources/'+catalog['glb_sha256']+'.glb'
+        self.assertEqual(inputs[relative],content)
+        from sdk.project_copy import review as review_copy,create_copy
+        copy_review=review_copy(p);copied=create_copy(p,'Retained texture input',copy_review['review_key'])
+        clone=ProjectService.open(Path(copied['copied_project']))
+        self.assertEqual(clone.read_texture_glb_source(clone.texture_overrides[fixtures.ASSET]),content)
+        from sdk.project_copy_history import _entry
+        self.assertEqual(_entry(p,clone.root.name)['current_inputs_validation'],'not_checked')
+        with http_server(p) as (_,post):
+            state=helper.snapshot()
+            status,download=post('/api/texture-glb-source',dict(asset_id=fixtures.ASSET,expected_sha256=saved_binding['asset_sha256']))
+            self.assertEqual(status,200,download);self.assertEqual(base64.b64decode(download['glb_base64']),content)
+            status,_=post('/api/texture-glb-source',dict(asset_id=fixtures.ASSET,expected_sha256='0'*64));self.assertEqual(status,400)
+            self.assertEqual(helper.snapshot(),state)
+        file=p.root/relative;original=file.read_bytes();file.write_bytes(original[:-1]+bytes([original[-1]^1]))
+        with self.assertRaises(ProjectError):p.read_texture_glb_source(saved_binding)
+        with self.assertRaises(ProjectError):ProjectService.open(p.root)
+        with self.assertRaises(ProjectError):capture_export_inputs(p)
+        file.write_bytes(original)
+
         bad=deepcopy(reopened.texture_overrides[fixtures.ASSET]);bad['glb_source']['image_index']=True
         with self.assertRaises(ProjectError):reopened._validate_texture_binding(bad)
         p.set_texture_replacement(fixtures.ASSET,p.read_texture_replacement(p.texture_overrides[fixtures.ASSET]))

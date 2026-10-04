@@ -1033,12 +1033,30 @@ class ProjectService:
             raise ProjectError("Invalid authored TIM content reference")
         if 'glb_source' in binding:
             receipt=binding['glb_source']
-            if (not isinstance(receipt,dict) or set(receipt)!={'glb_sha256','png_sha256','image_index','name'}
+            if (not isinstance(receipt,dict) or set(receipt) not in ({'glb_sha256','png_sha256','image_index','name'},{'glb_sha256','png_sha256','image_index','name','glb_byte_length'})
                     or any(not isinstance(receipt[key],str) or len(receipt[key])!=64 or any(c not in '0123456789abcdef' for c in receipt[key]) for key in ('glb_sha256','png_sha256'))
                     or type(receipt['image_index']) is not int or not 0<=receipt['image_index']<64
                     or not (receipt['name'] is None or isinstance(receipt['name'],str) and len(receipt['name'])<=256 and not any(ord(c)<32 for c in receipt['name']))):
                 raise ProjectError('Invalid authored texture GLB source receipt')
+            if 'glb_byte_length' in receipt and (type(receipt['glb_byte_length']) is not int or not 28<=receipt['glb_byte_length']<=32*1024*1024):
+                raise ProjectError('Invalid retained texture GLB source size')
 
+
+    def read_texture_glb_source(self, binding: dict) -> bytes:
+        self._validate_texture_binding(binding)
+        receipt=binding.get('glb_source',{})
+        if 'glb_byte_length' not in receipt:raise ProjectError('This texture has no retained GLB source')
+        path=self.root/'Authored'/'TextureSources'/(receipt['glb_sha256']+'.glb')
+        if not path.resolve().is_relative_to(self.root):raise ProjectError('Texture GLB source escapes project root')
+        if not path.is_file() or path.stat().st_size!=receipt['glb_byte_length']:
+            raise ProjectError('Retained texture GLB source is missing or has changed size')
+        content=path.read_bytes()
+        if hashlib.sha256(content).hexdigest()!=receipt['glb_sha256']:
+            raise ProjectError('Retained texture GLB source digest differs from its receipt')
+        from importer.texture_glb import extract_glb_png
+        extracted=extract_glb_png(content,receipt['image_index'],receipt['glb_sha256'],receipt['png_sha256'])
+        if extracted['image']['name']!=receipt['name']:raise ProjectError('Retained texture GLB image identity differs from its receipt')
+        return content
 
     def read_texture_replacement(self, binding: dict) -> bytes:
         self._validate_texture_binding(binding)
@@ -1203,7 +1221,7 @@ class ProjectService:
                              palette_index: int = 0) -> dict:
         return self._prepare_texture_file(asset_id,content,format,palette_index)[1]
 
-    def set_texture_replacement(self, asset_id: str, content: bytes, *, glb_source: dict | None = None) -> None:
+    def set_texture_replacement(self, asset_id: str, content: bytes, *, glb_source: dict | None = None, glb_content: bytes | None = None) -> None:
         if self.mode != "edit":
             raise ProjectError("Texture authoring requires Edit mode")
         if not isinstance(asset_id, str) or not asset_id.startswith("texture://") or len(asset_id) > 512:
@@ -1217,6 +1235,15 @@ class ProjectService:
                    "format": "tim", "source_scene_id": self.active_scene}
         if glb_source is not None:binding["glb_source"]=deepcopy(glb_source)
         self._validate_texture_binding(binding)
+        if glb_source is not None and 'glb_byte_length' in glb_source:
+            source_path=self.root/'Authored'/'TextureSources'/(glb_source['glb_sha256']+'.glb')
+            if not source_path.resolve().is_relative_to(self.root):raise ProjectError('Texture GLB source escapes project root')
+            if glb_content is not None:
+                if not isinstance(glb_content,bytes) or len(glb_content)!=glb_source['glb_byte_length'] or hashlib.sha256(glb_content).hexdigest()!=glb_source['glb_sha256']:
+                    raise ProjectError('Texture GLB source bytes differ from the reviewed receipt')
+                if not source_path.exists():atomic_write(source_path,glb_content)
+            self.read_texture_glb_source(binding)
+        elif glb_content is not None:raise ProjectError('Texture GLB source bytes require a retained source receipt')
         before = deepcopy(self.texture_overrides.get(asset_id))
         if before == binding:
             return
@@ -2795,6 +2822,7 @@ class ProjectService:
             if not isinstance(identifier, str) or len(identifier) > 512 or not identifier.startswith(f"texture://{scene}/"):
                 raise ProjectError("Texture reference does not belong to its imported scene")
             result.read_texture_replacement(binding)
+            if 'glb_byte_length' in binding.get('glb_source',{}):result.read_texture_glb_source(binding)
         result.texture_overrides = deepcopy(textures)
         models = raw.get('model_overrides', {})
         if not isinstance(models, dict) or len(models) > 128:

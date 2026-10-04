@@ -1,5 +1,31 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — retained texture GLB import sources:** New GLB-image Applies
+now retain the exact original GLB in `Authored/TextureSources/<sha256>.glb` and add
+its bounded byte length to the source receipt. The embedded PNG remains recoverable
+from that original file. Source writes precede override publication and share the
+normal single Undo step. Unreferenced content files remain available to Undo.
+
+The texture Inspector offers **Download retained GLB source**. The server verifies
+size, digest and exact image identity; the browser verifies the returned receipt,
+texture context and byte hash before download. Project reopen, Build and input
+snapshots verify retained files; project copies include them and their copy/history
+validators recognize the new content-hash path. Old four-field receipts remain
+readable but do not claim retention or enable recovery. No source file is reconstructed
+from quantized TIM pixels, and no GLB material assignment is inferred.
+
+Twenty-nine focused Python construction checks, PNG lifecycle and project-copy Node
+checks passed. Exact source recovery, source-copy/export inclusion, legacy receipt
+compatibility and same-size corruption rejection are covered. Actual private Retail
+Town01 browser workflow applies, saves/reloads, downloads the original GLB exactly,
+and re-imports its image as a no-op review. Undo/Redo, Save/Open and normal Build
+read back the exact candidate TIM; other CLUT rows, STP and imports remain unchanged.
+Screenshot inspected. Private evidence:
+`local-output/sdk-20260909/texture-glb-retained-source-20261004/parent/`.
+No game, installed runtime or physical disc export ran. Original external STP files
+and external GLB dependencies are not separately archived. Existing input-copy
+byte/file limits remain. Gameplay is deferred; the full SDK goal remains active.
+
 **2026-10-04 — persistent verified GLB image provenance:** Applying an
 extracted GLB PNG now saves a source receipt with the native TIM override: GLB
 SHA-256, input PNG SHA-256, image index and image name. Review, pixel/scene preview

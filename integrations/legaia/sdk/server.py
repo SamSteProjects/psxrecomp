@@ -1732,6 +1732,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
                     return
+                if route == '/api/texture-glb-source':
+                    if set(body)!={'asset_id','expected_sha256'} or not isinstance(body['asset_id'],str) or not 1<=len(body['asset_id'])<=512:
+                        raise ProjectError('Retained texture source requires a current texture identity and hash')
+                    project=self.server.project;binding=project.texture_overrides.get(body['asset_id'])
+                    if not binding or binding['asset_sha256']!=body['expected_sha256']:
+                        raise ProjectError('Authored texture changed; reopen its retained source')
+                    content=project.read_texture_glb_source(binding)
+                    self._json(200,dict(schema_version='legaia.texture-glb-source.v1',asset_id=body['asset_id'],
+                        effective_sha256=binding['asset_sha256'],source=binding['glb_source'],glb_base64=base64.b64encode(content).decode(),
+                        read_only=True,project_changed=False))
+                    return
                 if route in ('/api/texture-glb-images','/api/texture-glb-image'):
                     fields={'content_base64'} if route.endswith('images') else {'content_base64','image_index','glb_sha256','png_sha256'}
                     if set(body)!=fields or not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:

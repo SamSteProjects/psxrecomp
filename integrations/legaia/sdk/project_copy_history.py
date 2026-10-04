@@ -38,7 +38,7 @@ def _entry(project,identifier):
     seen=set();total=0;project_record=None
     for row in files:
         if (not isinstance(row,dict) or not isinstance(row.get('path'),str) or
-                not re.fullmatch(r'project\.legaia\.json|Imported/[0-9a-f]{64}\.json|Authored/Textures/[0-9a-f]{64}\.tim|Authored/Models/[0-9a-f]{64}\.tmd',row['path']) or
+                not re.fullmatch(r'project\.legaia\.json|Imported/[0-9a-f]{64}\.json|Authored/Textures/[0-9a-f]{64}\.tim|Authored/Models/[0-9a-f]{64}\.tmd|Authored/TextureSources/[0-9a-f]{64}\.glb',row['path']) or
                 row['path'] in seen or not _hash(row.get('sha256')) or type(row.get('byte_length')) is not int or not 0<=row['byte_length']<=64*1024*1024):
             raise ProjectError('Invalid copy input identity')
         seen.add(row['path']);total+=row['byte_length']
