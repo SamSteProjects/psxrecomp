@@ -1,5 +1,24 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — per-section UV channels in atomic donor mapping:** Each row in
+**Map GLB section donors** now offers its own **Source UV channel**. The file/import
+choice seeds all rows; **UV channel for all sections** resets them together. Rows
+can then select different channels (for example, UV1 for one section and UV0 for
+another) while preserving a single Review, Apply and Undo entry. Mapping payloads
+bind each exact optional `uv_set`; older mappings without it use the batch default.
+Native preparation and browser review validate typed row choices, and changing any
+row invalidates Review. Scene inspection and Return retain each row's choice.
+
+Seven focused construction checks passed, including mixed native UV1/UV0 packet
+values and exact normal Build readback, Save/Open, one Undo/Redo entry, changed-row
+HTTP rejection, invalid/null row guards and identical-candidate review-key binding.
+Private actual Retail editor evidence:
+`local-output/sdk-20260909/glb-section-uv-channels-20261004/parent/`. The smoke reviews
+mixed row choices, inspects them in the scene and returns with both retained; a row
+change disables Apply. Authored files/history stay unchanged. Source texture/material
+assignments are still explicit native donor choices; gameplay remains deferred.
+The full goal remains active.
+
 **2026-10-04 — source UV channel selection:** Static mesh import now offers
 **Source UV channel**, default `TEXCOORD_0`, populated from the selected scene's
 qualified section inventory. Standard consecutive channels 0 through 7 are

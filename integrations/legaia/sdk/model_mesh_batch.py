@@ -9,6 +9,7 @@ from .scene_preview import source_key
 
 
 def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False,scene_index=None,uv_set=0):
+    if type(uv_set) is not int or not 0<=uv_set<=7:raise ProjectError('Choose a default source UV set from 0 through 7')
     _,effective,_,_,_,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh donor mapping')
@@ -17,10 +18,10 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
         raise ProjectError('Map every GLB primitive exactly once, within the 16-section batch budget')
     donors={face['face_id']:face for face in topology['faces']};replaced=set()
     for index,row in enumerate(mappings):
-        if (not isinstance(row,dict) or set(row)!={'primitive_index','donor_face_id','replace_group'}
+        if (not isinstance(row,dict) or set(row) not in ({'primitive_index','donor_face_id','replace_group'},{'primitive_index','donor_face_id','replace_group','uv_set'})
                 or type(row['primitive_index']) is not int or row['primitive_index']!=index
                 or not isinstance(row['donor_face_id'],str) or row['donor_face_id'] not in donors
-                or type(row['replace_group']) is not bool):
+                or type(row['replace_group']) is not bool or type(row.get('uv_set',uv_set)) is not int or not 0<=row.get('uv_set',uv_set)<=7):
             raise ProjectError('Mesh donor mappings require exact source order, Current faces and boolean replacement choices')
         donor=donors[row['donor_face_id']];group=(donor['object_index'],donor['group_index'])
         if group in replaced:raise ProjectError('A replaced donor group cannot supply another section in the same batch')
@@ -40,7 +41,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
     for row in mappings:
         key=source_key(view);source=model_mesh_append.source(view,asset_id,key)
         candidate,binding,report=model_mesh_append.prepare(view,asset_id,content,row['donor_face_id'],
-            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors,scene_index=scene_index,uv_set=uv_set)
+            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors,scene_index=scene_index,uv_set=row.get('uv_set',uv_set))
         candidates[binding['asset_sha256']]=candidate;view.model_overrides[asset_id]=deepcopy(binding)
         steps.append(dict(source=source,review=report))
     report=dict(schema_version='legaia.model-mesh-batch-review.v1',asset_id=asset_id,
@@ -51,6 +52,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
         project_changed=False,gameplay_verified=False,
         limitations=['All source primitives are mapped in source order to existing native triangle donors.',
             'Each section creates an independent native packet group in its donor object.',
+            'Each mapping may choose its source UV set; omitted choices use the batch default. Missing selected UVs retain donor values.',
             'Only explicitly selected donor groups are replaced; shared replacement ownership is rejected.',
             'Native donor layouts and texture bindings supply materials; no new images, packet families or animation channels are allocated.',
             'Review is read-only and Apply publishes the complete mapping in one Undo entry. Gameplay is unverified.'])

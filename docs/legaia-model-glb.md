@@ -18,8 +18,11 @@ are listed as ignored. A channel choice remains bound to the review key even whe
 it produces identical native bytes.
 
 Source material `texCoord` assignments are not inferred. For sections needing
-different source UV channels, import those sections with their explicit choices
-in separate reviewed transactions. Source images, sampler wrapping and new native
+different source UV channels, choose the channel in each row of **Map donors for
+all sections**. The complete mapping still applies as one reviewed transaction.
+The initial file/import UV choice seeds every row; **UV channel for all sections**
+resets them together. Changing a row requires another Review, and scene inspection
+and Return retain all row choices. Source images, sampler wrapping and new native
 texture allocation remain unsupported. Selected coordinates must fit 0..1 when
 consumed by a textured donor. Standard UV channel/accessor semantics follow the
 [Khronos glTF specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#meshes).
