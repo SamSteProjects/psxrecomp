@@ -33,7 +33,8 @@ def inspect_append_mesh(content):
         rows.append(dict(primitive_index=index,triangle_count=count//3 if mode==4 else count-2,
             source_mode=mode,material_index=material,material_name=name))
     return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=geometry['glb_sha256'],
-        primitives=rows,triangle_count=len(geometry['triangles']),read_only=True)
+        primitives=rows,triangle_count=len(geometry['triangles']),read_only=True,
+        **({'node_transform':geometry['node_transform']} if 'node_transform' in geometry else {}))
 
 
 def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None):
@@ -53,15 +54,8 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
     if (not isinstance(node,dict) or type(node.get('mesh')) is not int or node['mesh']!=0
             or any(key in node for key in ('skin','weights','children','extensions'))):
         raise ImportError('Mesh append node must own one unskinned mesh without children')
-    transforms={'translation':[0,0,0],'rotation':[0,0,0,1],'scale':[1,1,1],
-                'matrix':[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}
-    if 'matrix' in node and any(key in node for key in ('translation','rotation','scale')):
-        raise ImportError('Mesh append cannot combine a matrix with TRS')
-    for key,identity in transforms.items():
-        if key in node and (not isinstance(node[key],list) or len(node[key])!=len(identity)
-                or any(type(value) not in (int,float) or not math.isfinite(value) or value!=expected
-                       for value,expected in zip(node[key],identity))):
-            raise ImportError('Apply mesh object transforms before appending geometry')
+    from .model_mesh_transform import node_transform,transform_point,transform_normal,IDENTITY
+    transform=node_transform(node)
     mesh=meshes[0]
     if not isinstance(mesh,dict) or any(key in mesh for key in ('weights','extensions')):
         raise ImportError('Mesh append cannot import morph weights or mesh extensions')
@@ -126,10 +120,10 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
         for triangle in source_triangles:
             current=[];directions=[];texture_points=[];color_points=[]
             # Reflect Y and reverse winding to preserve the SDK GLB convention.
-            for index in (triangle[0],triangle[2],triangle[1]):
+            for index in ((triangle[0],triangle[2],triangle[1]) if transform['winding_reversed'] else triangle):
                 owner=(attrs['POSITION'],index)
                 if owner not in owners:
-                    values=[positions[index][0],-positions[index][1],positions[index][2]]
+                    values=transform_point(transform,positions[index]);values[1]=-values[1]
                     quantized=[round(value) for value in values]
                     if any(not -32768<=value<=32767 for value in quantized):
                         raise ImportError('Mesh append positions exceed signed native coordinates')
@@ -142,7 +136,7 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
                     if any(not 0<=value<=1 for value in colors[index]):raise ImportError('Mesh COLOR_0 must remain within the normalized 0..1 range')
                     color_points.append(list(colors[index]))
                 if normals is not None:
-                    direction=[normals[index][0],-normals[index][1],normals[index][2]]
+                    direction=transform_normal(transform,normals[index]);direction[1]=-direction[1]
                     length=math.hypot(*direction)
                     if length<=1e-12:raise ImportError('Mesh append requires nonzero referenced normals')
                     scaled=[value/length*4096 for value in direction]
@@ -159,4 +153,7 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
         vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')
     if preserve_primitives:result.update(schema_version='legaia.model-mesh-append-geometry.v5',primitive_ranges=primitive_ranges)
+    if transform['matrix']!=IDENTITY:
+        result['node_transform']=transform
+        result['coordinate_conversion']='bake node transform; [x,-y,z]; preserve oriented triangle winding'
     return result

@@ -1,5 +1,29 @@
 # Source-bound model GLB editing
 
+## Static object transforms
+
+Static GLB mesh import now accepts the sole node's TRS or affine column-major
+matrix. The importer bakes translation, rotation and scale before signed native
+coordinate rounding. Normals use the inverse transpose; mirrored transforms
+adjust triangle order together with the SDK's Y reflection. UV/color/normal
+corners stay attached to their source vertices. The original GLB hash and computed
+transform evidence remain bound into Review, including section selection and
+multi-donor batch imports.
+
+Transform components must be finite and bounded by 1e9; scale columns must be
+nonzero with length at least 1e-9. Quaternion length must be within 1e-5 of unity;
+it is normalized within that tolerance. Matrices must be affine and decomposable
+into TRS without shear. Singular/sheared matrices, matrix plus TRS, coordinate
+overflow and triangles degenerate after rounding reject before Apply. Input units
+still map directly to native source units; no automatic meter/unit calibration,
+node hierarchy, multiple meshes, skinning or animation is inferred.
+
+Transform order and quaternion/matrix conventions follow the
+[Khronos glTF 2.0 specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#transformations).
+The node transform changes imported mesh geometry; it does not move a scene entity
+or create native animation channels. Save/Open and normal Build retain the baked
+native candidate. Gameplay remains unverified.
+
 ## Map donors for all sections
 
 Choose a GLB in **Import GLB mesh**, then **Map donors for all sections**. For

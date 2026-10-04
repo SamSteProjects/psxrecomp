@@ -52,7 +52,7 @@ class MeshBatchTests(unittest.TestCase):
     def test_review_history_persistence_and_exact_build(self):
         helper=fixtures.MeshAppendTests();self.addCleanup(helper.doCleanups)
         p,asset,donor=helper.fixture();self.enterContext(patch('sdk.model_mesh_batch.source_key',return_value='a'*64))
-        source=model_mesh_append.source(p,asset,'a'*64);content=sections()
+        source=model_mesh_append.source(p,asset,'a'*64);content=sections(dict(translation=[10,20,30],scale=[-1,2,1]))
         mappings=[dict(primitive_index=i,donor_face_id=donor,replace_group=False) for i in range(2)]
         args=(asset,content,mappings,source['effective_sha256'],'a'*64)
         before=deepcopy((p._document(),p.undo_stack,p.redo_stack));files=set((p.root/'Authored'/'Models').iterdir())
@@ -85,7 +85,7 @@ class MeshBatchTests(unittest.TestCase):
         script="""import {decodeMeshBatchReview} from './integrations/legaia/editor/model-mesh-batch.js';
 import assert from 'node:assert/strict';let data='';for await(const c of process.stdin)data+=c;
 const {source,report}=JSON.parse(data);decodeMeshBatchReview(report,source,report.glb_sha256,report.mappings);
-for(const mutate of [r=>r.steps[1].source.effective_sha256='0'.repeat(64),r=>r.mappings.reverse(),r=>r.preview.vertices[0][0]++,r=>r.steps[1].review.selected_primitive_index=0]){const r=structuredClone(report);mutate(r);assert.throws(()=>decodeMeshBatchReview(r,source,report.glb_sha256,report.mappings));}"""
+for(const mutate of [r=>r.steps[1].source.effective_sha256='0'.repeat(64),r=>r.mappings.reverse(),r=>r.preview.vertices[0][0]++,r=>r.steps[1].review.selected_primitive_index=0,r=>r.steps[0].review.geometry.node_transform.normal_matrix[0][0]++]){const r=structuredClone(report);mutate(r);assert.throws(()=>decodeMeshBatchReview(r,source,report.glb_sha256,report.mappings));}"""
         out=subprocess.run([node,'--input-type=module','-e',script],input=json.dumps(dict(source=source,report=report)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
         self.assertEqual(out.returncode,0,out.stderr)
 

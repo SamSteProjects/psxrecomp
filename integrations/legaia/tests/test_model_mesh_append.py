@@ -73,7 +73,7 @@ class MeshAppendTests(unittest.TestCase):
         self.assertEqual(report['ignored_attributes'],[])
         self.assertEqual(report['triangle_normals'],[[[0,-4096,0]]*3]*2)
         with self.assertRaises(ImportError):decode_append_mesh(glb(normals=[[0,0,0]]*4))
-        for mutation in (lambda d:d['nodes'][0].update(translation=[1,0,0]),lambda d:d['scenes'][0].update(nodes=[False]),
+        for mutation in (lambda d:d['nodes'][0].update(scale=[0,1,1]),lambda d:d['scenes'][0].update(nodes=[False]),
             lambda d:d['nodes'][0].update(children=[]),lambda d:d.update(animations=[{}]),
             lambda d:d['meshes'][0]['primitives'][0].update(mode=1),lambda d:d['meshes'][0]['primitives'][0]['attributes'].update(JOINTS_0=0),
             lambda d:d['bufferViews'][0].update(buffer=False),lambda d:d['accessors'][1].update(count=5),

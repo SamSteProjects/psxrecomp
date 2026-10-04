@@ -1,5 +1,26 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — static GLB node transforms:** Static mesh import now bakes the
+sole node's translation/rotation/scale or column-major affine matrix before native
+coordinate rounding. Normals use the inverse transpose followed by Y reflection
+and Q12 normalization. Negative determinant mirrors combine with Y reflection to
+preserve oriented triangle winding and matching UV/color/normal corners. Identity
+imports retain the existing geometry contract. Nonidentity reports retain the
+matrix, determinant, normal matrix and winding choice, qualified by browser DTOs
+and the source GLB hash. Batch sections require the same file transform evidence.
+
+Twelve focused checks pass, including independent TRS/matrix equivalence,
+nonuniform normals, mirrored corner order, malformed/singular/sheared/overflow
+rejection and existing import/normal/batch workflows. A subsequent four-check
+construction run verifies transformed batch DTOs and forged-normal rejection,
+one-step history, Save/Open and exact normal Build model readback. An actual
+private Retail editor smoke loads a rotated/mirrored/nonuniform GLB, maps its two
+sections to distinct native objects, inspects the combined scene and returns to
+the retained review. Authored files and history remain unchanged; no browser
+Apply, Save or Run occurs. Native units, one mesh node, no hierarchy/skinning/
+morph/animation and existing allocation budgets still apply. Gameplay stays
+deferred and the full solo SDK goal remains active.
+
 **2026-10-04 — atomic multi-donor GLB sections:** Import GLB mesh now opens
 Map donors for all sections. Each of 1–16 source primitives chooses a Current
 native triangle donor and can explicitly replace its donor group. Sections create

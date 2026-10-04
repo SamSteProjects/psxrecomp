@@ -16,7 +16,7 @@ export function decodeMeshBatchReview(value,source,glbHash,mappings){
     const current=decodeMeshAppendSource(step.source,source.asset_id,step.source?.project_source_key);
     if(i===0?!same(current,source):current.source_sha256!==source.source_sha256||current.effective_sha256!==previous.proposed_sha256||!same(current.preview,previous.preview)||!same(current.topology,previous.topology))fail('Mesh donor mapping breaks the native candidate chain.');
     previous=decodeMeshAppendReview(step.review,current,mapping.donor_face_id,glbHash,true,mapping.replace_group,false,i);
-    if(previous.geometry.triangles.length!==inventory.primitives[i].triangle_count)fail('Mapped geometry differs from the selected source section count.');
+    if(previous.geometry.triangles.length!==inventory.primitives[i].triangle_count||!same(previous.geometry.node_transform??null,inventory.node_transform??null))fail('Mapped geometry differs from the selected source section count.');
   }
   if(value.proposed_sha256!==previous.proposed_sha256||!same(value.current_preview,source.preview)||!same(value.preview,previous.preview)||!same(value.topology,previous.topology)||!Array.isArray(value.limitations)||!value.limitations.length||value.limitations.some(line=>typeof line!=='string'||line.length>4096))fail('Mesh donor mapping final geometry or scope differs from its qualified steps.');
   return structuredClone(value);

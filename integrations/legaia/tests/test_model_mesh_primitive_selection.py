@@ -20,8 +20,9 @@ import test_model_mesh_append as fixtures
 from test_model_primitive_workflow import http_server
 
 
-def sections():
+def sections(transform=None):
     def change(doc):
+        if transform is not None:doc['nodes'][0].update(transform)
         first=doc['meshes'][0]['primitives'][0]
         second=deepcopy(first);second['attributes'].pop('TEXCOORD_0')
         first['material']=0;second['material']=1
