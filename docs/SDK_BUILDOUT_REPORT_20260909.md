@@ -1,5 +1,22 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — allocated initial assignment Build delivery:** Normal Build and
+read-only Build review now compose retained clip assignments into fixed-layout
+MAN headers and deliver them with the expanded compressed ANM bank. UUID/hash
+resolve to current native selectors; allocated headers use exact donor/model
+qualification and reject overlapping header edits. Existing position and script
+edits share the normal source-bound serializer. Final MAN decode must match the
+complete composed candidate; archive readback checks the expanded bank.
+
+Retail package readback recovered the exact bank and the assigned selector after
+another retained clip was retired. Synthetic composition checks preserve placement
+and reject overlap. Assignment persistence/clear checks remain supported. Editor
+assignment controls are next. Raw ANM relocation and combining allocated headers
+with appended NPC MAN records remain explicit blockers, rather than silently
+omitting assignments. No game was launched; runtime selection, scripts, cadence
+and lifecycle remain deferred gameplay verification. The full solo goal is active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — persistent allocated initial actor assignment:** Source-bound
 Review and explicit API Apply now store an `ActorAllocatedAnimation` component
 using scene, retained UUID, record hash and exact model identity. Native selectors

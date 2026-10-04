@@ -8,7 +8,7 @@ in a scene-owned `AnimationRecords` component with ordinary Undo/Redo and
 Save/Open. The editor now exposes creation, Review, posed Preview and explicit
 Apply. Normal Build delivers expanded banks in qualified compressed ANM carriers.
 Persistent initial actor assignment is available through reviewed APIs and scene
-Preview; assignment Build delivery, editor controls and raw streaming bank
+Preview and normal Build for qualified compressed carriers; editor controls and raw streaming bank
 relocation remain unavailable.
 Existing GLB channel import remains a separate complete
 workflow for fixed-layout clips.
@@ -222,8 +222,8 @@ Retail importer case was skipped in that synthetic run). The Retail SDK test
 covers read-only Review/Pose, exact captured record, Current geometry, selector
 71→70 after another clip's retirement, and stale/missing/incompatible request
 rejection. This was the read-only qualification milestone; persistence and scene
-projection were subsequently added below. Normal Build header composition and
-editor controls remain unavailable. Carrying
+projection and normal Build delivery were subsequently added below. Editor
+controls remain unavailable. Carrying
 an allocated bank and qualifying a MAN proposal do not establish runtime selection
 or playback suitability. No game was launched.
 
@@ -256,8 +256,32 @@ interchange and capture from assigned allocated clips remain unsupported and
 reject explicitly rather than substituting the imported clip. Ordinary shared
 channel authoring remains attached to imported channel ownership.
 
-Normal Build reports an explicit MAN header composition blocker while an actor
-has this component. Expanded compressed bank delivery without actor assignments
-remains supported. Build header integration and editor assignment controls are
-the next work; runtime script selection, timing and suitability remain deferred
-gameplay checks. No game was launched.
+Normal Build now composes this component into the initial MAN header alongside
+the expanded compressed ANM bank, as described below. Editor assignment controls
+remain the next work; runtime script selection, timing and suitability remain
+deferred gameplay checks. No game was launched.
+
+## Normal Build initial header delivery (2026-10-04)
+
+Build resolves all assigned retained UUIDs against the freshly composed bank.
+Each exact capture/hash and inherited model is requalified through the native
+MAN context. Its audited initial model/animation byte changes merge with normal
+fixed-layout header, position and script edits; overlapping header bytes reject.
+An inherited appearance assignment for the same actor is represented by the
+allocated proposal's exact model header instead of being written a second time.
+No ordinal is written back into the saved project.
+
+Final compressed MAN readback must equal the whole composed decoded candidate,
+and its audit includes retained UUID/hash, native ordinal and captured model.
+`allocated_initial_MAN_header_readback` marks this qualification. The existing
+format-7 relocation package applies MAN overlays before ANM bank relocation and
+independently reopens all expanded bank descriptors. Retail package testing
+recovers the exact bank and selector 70 after another capture is retired, with
+saved project metadata and overrides unchanged. Synthetic composition preserves
+placement and rejects conflicting header edits.
+
+This covers initial source headers, not a runtime assignment observation. Raw
+streaming ANM relocation and joint composition with appended NPC MAN records
+remain explicit unsupported combinations. Build rejects them before package
+publication. Gameplay selection, script changes, cadence and lifecycle are still
+deferred; no game was launched or installed.

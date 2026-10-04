@@ -71,8 +71,7 @@ class AllocatedAnimationAssignment(unittest.TestCase):
             with self.assertRaises(ProjectError):ProjectService.open(path)
             path.write_bytes(saved)
             files={str(p.relative_to(project.root)):p.read_bytes() for p in project.root.rglob('*') if p.is_file()}
-            assessment=build_review(reopened);self.assertFalse(assessment['normal_build_ready'])
-            self.assertIn('MAN header composition',assessment['blockers'][0]['message'])
+            assessment=build_review(reopened);self.assertTrue(assessment['normal_build_ready'],assessment['blockers'])
             self.assertEqual(files,{str(p.relative_to(project.root)):p.read_bytes() for p in project.root.rglob('*') if p.is_file()})
             with http_server(reopened) as (_,post):
                 request=dict(entity_id=owner,record_id=None,expected_source_key=source_key(reopened))

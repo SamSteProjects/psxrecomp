@@ -454,14 +454,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     trigger_edits = {}
     animation_edits = {}
     animation_ledgers = set()
+    allocated_assignments = {}
     entity_lookup = {actor["semantic_id"]: (scene_id, actor)
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
-        if isinstance(components,dict) and 'ActorAllocatedAnimation' in components:
-            from .allocated_animation_assignment import validate_binding
-            validate_binding(project,identifier,components['ActorAllocatedAnimation'],verify_disc=True)
-            raise BuildError('Allocated initial actor clip requires normal Build MAN header composition; this assignment delivery is not implemented yet')
         if isinstance(components,dict) and 'AnimationRecords' in components:
             from .animation_record_ledger import validate as validate_animation_records
             ledger = validate_animation_records(project,identifier,components['AnimationRecords'],verify_disc=True)
@@ -599,10 +596,15 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             raise BuildError(f"Authored entity has no imported provenance: {identifier}")
         scene_id, actor = entity_lookup[identifier]
         if (not isinstance(components, dict) or not components or
-                set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue"}):
+                set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue"}):
             raise BuildError(f"{identifier}: only authored Transform.position, initial appearance/animation and bounded Dialogue runs can be built")
         edits = scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {}, "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {}, "model_selectors": {}, "branches": {}})
         record = actor["source_record"]["record_index"]
+        if 'ActorAllocatedAnimation' in components:
+            from .allocated_animation_assignment import validate_binding
+            value=components['ActorAllocatedAnimation']
+            validate_binding(project,identifier,value,verify_disc=True)
+            allocated_assignments.setdefault(scene_id,{})[identifier]=deepcopy(value)
         if "Transform" in components:
             transform = components["Transform"]
             if not isinstance(transform, dict) or set(transform) != {"position"}:
@@ -611,7 +613,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if not isinstance(position, dict) or not position or set(position) - {"x", "z"}:
                 raise BuildError(f"{identifier}: only X/Z placement can be built; height and other fields are unsupported")
             edits["positions"][record] = position
-        if "ActorAppearance" in components:
+        if "ActorAppearance" in components and 'ActorAllocatedAnimation' not in components:
             appearance = components["ActorAppearance"]
             if (not isinstance(appearance, dict) or set(appearance) != {"donor_entity_id"} or
                     not isinstance(appearance["donor_entity_id"], str)):
@@ -799,6 +801,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if document["source"]["disc_identity"] != "sha256:" + disc_hash:
                 raise BuildError(f"Source disc identity does not match {scene_id}")
             if scene_id in draft_scenes:
+                if scene_id in allocated_assignments:
+                    raise BuildError('Allocated initial clips with appended NPC MAN records require joint header composition; this combination is not implemented yet')
                 from .npc_build import prepare_npc_overlays
                 candidate_overlays, candidate_edits, metadata = prepare_npc_overlays(project, scene_id, archive)
                 overlays.extend(candidate_overlays)
@@ -813,6 +817,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             body = archive.read_entry(entry)
             stream_offset = carrier.payload_offset
             original_span = body[stream_offset:stream_offset + consumed]
+            allocated=allocated_assignments.get(scene_id,{})
+            if allocated:
+                baseline=carrier.payload
+                changed,changes=baseline,[]
             if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
                 baseline = carrier.payload
                 changed, changes = baseline, []
@@ -840,7 +848,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                     if animation:
                         change.update(assignment_kind='ActorAnimation', animation_asset_id=animation['animation_asset_id'],
                                       assignment_source_record_sha256=animation['source_record_sha256'])
-            if raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
+            if allocated:
+                from .allocated_animation_build import patch_assignments
+                changed,allocated_changes=patch_assignments(project,scene_id,allocated,baseline,changed)
+                changes.extend(allocated_changes)
+            if allocated or raw_man or edits["assignments"] or edits["dialogues"] or edits["transitions"] or edits["movements"] or edits["facings"] or edits["flags"] or edits["waits"] or edits["model_selectors"] or edits["branches"]:
                 changed, position_changes = patch_man_positions(changed, scene, edits["positions"])
                 changes.extend(position_changes)
                 if edits["dialogues"]:
@@ -1009,6 +1021,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 raise BuildError("MAN patch altered bytes outside its original compressed span")
             after_man = patched[stream_offset:stream_offset+consumed] if raw_man else decompress_lzs(patched[stream_offset:], descriptor.size)[0]
             before_man = original_span if raw_man else decompress_lzs(original_span, descriptor.size)[0]
+            if allocated and after_man!=changed:
+                raise BuildError('Allocated initial MAN headers differ after final serialization readback')
             if raw_man:
                 reopened = parse_man(after_man,scene)
                 before_layout = [(a.record_index,a.byte_offset,a.byte_length,a.local_count) for a in carrier.parsed.actors]
@@ -1114,6 +1128,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         audit['validation']['script_branch_source_boundary_round_trip'] = True
     if any(row.get('scope') == 'worldmap-menu-record-only' for row in audit_edits):
         audit['validation']['worldmap_menu_round_trip'] = True
+    if allocated_assignments:
+        audit['validation']['allocated_initial_MAN_header_readback'] = True
     if relocation:
         audit['relocation'] = relocation_audit
         audit['relocation_payload'] = {k:v for k,v in relocation.items() if k != 'payload'}

@@ -4,7 +4,7 @@ from hashlib import sha256
 
 from importer.man_assignments import load_man_assignment_context
 from importer.pipeline import _disc_context
-from .animation_record_ledger import validate as validate_ledger,compose
+from .animation_record_ledger import validate as validate_ledger,compose,verified_source
 from .animation_allocation import pose_saved_record
 from .project import ProjectError,digest
 from .scene_preview import source_key
@@ -54,7 +54,7 @@ def review(project,entity_id,record_id,expected_source_key):
             record_id=None,project_source_key=key,before=before,proposed_component=None,animation_id=None,
             native_animation_id=model['placement_fields']['animation_id'],candidate_man_sha256=sha256(candidate).hexdigest(),
             changes=changes,project_change=True,project_changed=False,gameplay_verified=False,
-            capabilities=dict(review=True,pose_preview=False,apply=True,build_assignment=False),
+            capabilities=dict(review=True,pose_preview=False,apply=True,build_assignment=True),
             limitations=['Clear restores the inherited appearance initial clip; scripts and gameplay remain unverified.'])
         if source_key(project)!=key:
             raise ProjectError('Project changed during allocated initial clip clear review')
@@ -70,6 +70,9 @@ def review(project,entity_id,record_id,expected_source_key):
         if model['model_reference'].get('asset_semantic_id')!=entry['donor_asset_id']:
             raise ProjectError('Allocated initial clip requires its exact captured model source; retargeting is unsupported')
         bank,allocation=compose(project,scene)
+        _,catalog=verified_source(project,scene)
+        build_supported=(catalog.source_bank()[1].get('source_kind')!='raw_streaming_anm'
+            and not any(d['scene_id']==scene for d in project.actor_drafts.values()))
         row=next(item for item in allocation['allocated_records'] if item['record_id']==record_id)
         context=load_man_assignment_context(project.disc_path,document['scene']['name'])
         donor=next(a for a in document['actors'] if a['semantic_id']==entry['channel_owner_entity_id'])
@@ -90,10 +93,10 @@ def review(project,entity_id,record_id,expected_source_key):
         before=before,project_change=before!=dict(scene_id=scene,record_id=record_id,record_sha256=entry['record_sha256'],model_asset_id=entry['donor_asset_id'])
             or 'ActorAnimation' in project.overrides.get(entity_id,{}),
         displaced_initial_assignment=deepcopy(project.overrides.get(entity_id,{}).get('ActorAnimation')),
-        capabilities=dict(review=True,pose_preview=True,apply=True,build_assignment=False),
+        capabilities=dict(review=True,pose_preview=True,apply=True,build_assignment=build_supported),
         limitations=['Initial MAN header only; scripts can later select another model or clip.',
             'The stable record identity is portable; its current MAN byte selector must be re-resolved after ledger changes.',
-            'Persistent actor identities are supported; normal Build MAN assignment composition is not implemented yet.',
+            'Normal Build supports qualified compressed banks and fixed-layout MAN headers; raw ANM relocation and appended NPC header composition remain unsupported.',
             'Cadence, looping, script compatibility and gameplay suitability remain unverified.'])
     report['review_key']=digest(report)
     return report

@@ -16,6 +16,7 @@ from importer.disc_relocation_package import decode_relocation_package
 from importer.model_pack_archive import _archive
 from sdk.animation_allocation import prepare_record_allocation,prepare_record_activation
 from sdk.animation_record_ledger import compose
+from sdk.allocated_animation_assignment import review as assignment_review
 from sdk.build import build_project,BuildError
 from sdk.project import ProjectError
 from sdk.scene_preview import source_key
@@ -41,14 +42,21 @@ class AnimationGrowthBuild(unittest.TestCase):
                 animation_id=options['binding']['semantic_id'],source_record_sha256=options['binding']['source_record']['record_sha256'],
                 edits=[dict(frame_index=0,object_index=0,translation={'x':retail^1})])))
             expected,allocation=compose(project,project.active_scene)
+            request=dict(entity_id=owner,record_id=ids[1],expected_source_key=source_key(project))
+            assignment=assignment_review(project,**request)
+            project.command(dict(type='set_actor_allocated_animation',**request,review_key=assignment['review_key']))
             metadata=project.save().read_bytes();overrides=json.dumps(project.overrides,sort_keys=True)
             build=build_project(project)
             audit=json.loads(Path(build['audit']).read_text(encoding='utf-8'))
             self.assertTrue(audit['validation']['allocated_animation_bank_readback'])
+            self.assertTrue(audit['validation']['allocated_initial_MAN_header_readback'])
             self.assertTrue(audit['validation']['lz_decode_round_trip'])
             self.assertEqual(audit['animation_growth']['carriers'][0]['active_records'][0]['record_id'],ids[1])
             self.assertFalse(audit['animation_growth']['carriers'][0]['runtime_assigned'])
-            self.assertEqual(audit['overlays'],[],'shared bank edits must be composed once, not separately patched')
+            self.assertEqual(len(audit['overlays']),1,'only the MAN header is patched; shared ANM axes compose once')
+            self.assertEqual(audit['overlays'][0]['scene'],'town01')
+            assigned=[row for row in audit['edits'] if row.get('assignment_kind')=='ActorAllocatedAnimation']
+            self.assertTrue(assigned);self.assertEqual({row['record_id'] for row in assigned},{ids[1]})
             with zipfile.ZipFile(build['path']) as package:
                 manifest=tomllib.loads(package.read('manifest.toml').decode('utf-8'))
                 self.assertEqual(manifest['format_version'],7)
@@ -59,11 +67,35 @@ class AnimationGrowthBuild(unittest.TestCase):
             offset=carrier_audit['table_offset'];descriptor=parse_scene_assets(carrier,0,offset).descriptors[carrier_audit['descriptor_index']]
             delivered,_=decompress_lzs(carrier[offset+descriptor.data_offset:],descriptor.size)
             self.assertEqual(delivered,expected)
+            from importer.man_source import read_man_source
+            from importer.core import parse_man
+            from importer.man_assignments import load_man_assignment_context
+            from importer.pipeline import _disc_context
+            with _disc_context(project.disc_path) as (_,_,mapping,original_archive):
+                from sdk.build import _bounded_scene_range
+                bounds=_bounded_scene_range(original_archive,mapping,'town01')
+                original_man=read_man_source(original_archive,*bounds,'town01').payload
+                context=load_man_assignment_context(project.disc_path,'town01')
+                donor=project._actor(owner)['source_record']['record_index']
+                proposed,_=context.patch_allocated(expected,sha256(expected).hexdigest(),{donor:dict(
+                    donor_record_index=donor,allocated_record_index=69,record_sha256=project.overrides[owner]['ActorAllocatedAnimation']['record_sha256'])})
+            delivered_man=read_man_source(archive,*bounds,'town01').payload
+            self.assertEqual(delivered_man,proposed)
+            actor=next(a for a in parse_man(delivered_man,'town01').actors if a.record_index==donor)
+            self.assertEqual(actor.animation_id,70)
+            self.assertNotEqual(delivered_man,original_man)
             self.assertEqual(len(animation_record_ranges(delivered)),70)
             start,end=animation_record_ranges(delivered)[-1]
             self.assertEqual(sha256(delivered[start:end]).hexdigest(),project.overrides[project.active_scene]['AnimationRecords']['records'][1]['record_sha256'])
             self.assertEqual(metadata,(project.root/'project.legaia.json').read_bytes())
             self.assertEqual(overrides,json.dumps(project.overrides,sort_keys=True))
+            rejected_npc=project.root/'RejectedNpcCombination'
+            project.actor_drafts={'draft':dict(scene_id=project.active_scene)}
+            with patch.object(project,'_validate_actor_draft'):
+                with self.assertRaisesRegex(BuildError,'joint header composition'):
+                    build_project(project,rejected_npc)
+            self.assertFalse(rejected_npc.exists())
+            project.actor_drafts.clear()
             unsupported=SimpleNamespace(source_bank=lambda:(b'',{'source_kind':'raw_streaming_anm'}))
             rejected=project.root/'RejectedStreamingBuild'
             with patch('sdk.animation_growth.verified_source',return_value=(b'',unsupported)):
