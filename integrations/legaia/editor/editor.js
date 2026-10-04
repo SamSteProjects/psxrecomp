@@ -1,3 +1,4 @@
+import {highlightSceneFaceDocument,highlightSceneFaceProposal} from '/model-face-scene-selection.js';
 import {openTextureSlotEditor} from '/texture-slots.js';
 import {openTextureResizeEditor} from '/texture-resize.js';
 import {decodeRetailComparison,retailComparisonLabel} from '/texture-comparison.js';
@@ -3939,7 +3940,8 @@ const sceneInspectionIsolation=document.createElement('button');sceneInspectionI
 sceneInspectionIsolation.onclick=()=>{if(busy||!scenePose?.inspectionEntityIds?.length||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;scenePose.inspectionIsolated=!scenePose.inspectionIsolated;sceneInspectionIsolation.setAttribute('aria-pressed',String(scenePose.inspectionIsolated));draw();};
 function configureSceneInspectionComparison(proposalDocument=null){
   sceneInspectionLayer.hidden=!proposalDocument;sceneInspectionLayer.querySelector('select').value='proposed';sceneInspectionIsolation.hidden=!proposalDocument||!scenePose?.inspectionEntityIds?.length;sceneInspectionIsolation.setAttribute('aria-pressed',String(!!scenePose?.inspectionIsolated));
-  sceneInspectionLayer.querySelector('[value=proposed]').textContent=scenePose?.preview?.frames?'Inspected animation · not applied':'Proposed · not applied';
+  sceneInspectionLayer.querySelector('[value=current]').textContent=scenePose?.faceSelectionHighlight?'Current - face highlight (display only)':'Current authored scene';
+  sceneInspectionLayer.querySelector('[value=proposed]').textContent=scenePose?.faceSelectionHighlight?'Proposed - face highlight (display only)':scenePose?.preview?.frames?'Inspected animation · not applied':'Proposed · not applied';
   for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]')])control.disabled=false;
   if(scenePose){scenePose.inspectionLayer='proposed';scenePose.proposalDocument=proposalDocument?structuredClone(proposalDocument):null;scenePose.proposalLabel=scenePoseBar.querySelector('span').textContent;}
 }
@@ -3948,12 +3950,12 @@ sceneInspectionLayer.querySelector('select').onchange=()=>{
   if(!scenePose?.proposalDocument||!scenePreviewCurrent()||scenePose.key!==sceneKey||state.project.mode!=='edit'){clearScenePose();notify('Scene proposal is stale. Reopen the Inspector to preview it again.',true);draw();return;}
   try{
     stopScenePosePlayback();
-    const current=sceneInspectionLayer.querySelector('select').value==='current',failures=sceneRenderer.load(structuredClone(current?scenePreview:scenePose.proposalDocument));
+    const current=sceneInspectionLayer.querySelector('select').value==='current',failures=sceneRenderer.load(structuredClone(current?(scenePose.currentDocument??scenePreview):scenePose.proposalDocument));
     if(failures.length)throw new Error(failures.join('; '));
     scenePose.inspectionLayer=current?'current':'proposed';
     const animated=!!scenePose.preview?.frames;if(animated)scenePoseBar.querySelector('input').value=scenePose.frame;
     for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]')])control.disabled=current&&animated;
-    scenePoseBar.querySelector('span').textContent=current?(animated?'Current authored scene · inspected animation retained, not applied':'Current authored scene · proposal retained, not applied'):scenePose.proposalLabel;
+    scenePoseBar.querySelector('span').textContent=current?(scenePose.faceSelectionHighlight?'Current authored scene - GLB-selected faces highlighted yellow (display only)':animated?'Current authored scene · inspected animation retained, not applied':'Current authored scene · proposal retained, not applied'):scenePose.proposalLabel;
     draw();
   }catch(error){clearScenePose();notify(error.message,true);draw();}
 };
@@ -4350,7 +4352,7 @@ async function inspectModelPrimitives(initial=null){
     onError:error=>notify(error.message??String(error),true),
     onApplied:next=>{applied=true;state=next;render();notify('Model faces updated. Save project to persist.');},
     onInspectNormal:async(target,source)=>{if(busy||asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||source.project_source_key!==state.scene_preview_source_key)return false;normalNavigation=true;modelPrimitiveEditor?.dispose();await openModel(asset,null,null,state.model_overrides?.[asset]?'authored':'imported');if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id])||source.project_source_key!==state.scene_preview_source_key)return false;await openModelVectors(target);return true;},
-    onScenePreview:async(report,edits,source,{returnToEditor})=>{
+    onScenePreview:async(report,edits,source,{returnToEditor,faceSelection=null})=>{
       if(!scenePreviewCurrent()||sceneRepresentation!=='authored'||scenePreview.project_source_key!==source.project_source_key)throw new Error('Load the current authored scene before inspecting proposed faces.');
       const instances=scenePreview.entities.filter(e=>e.asset_id===asset&&e.renderable);
       if(!instances.length)throw new Error('This model has no supported scene instances.');
@@ -4359,10 +4361,10 @@ async function inspectModelPrimitives(initial=null){
       const response=await fetch('/api/model-primitive-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:asset,expected_sha256:source.effective_sha256,source_key:source.project_source_key,edits,proposed_sha256:report.proposed_sha256,entity_id:entityId,all_instances:true})}),posed=await response.json();
       if(!response.ok||posed.error)throw new Error(posed.error||'Scene face proposal failed');
       if(!modelPrimitiveEditor?.dialog.open||context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey||!scenePreviewCurrent()||posed.project_source_key!==source.project_source_key||posed.proposed_sha256!==report.proposed_sha256)throw new Error('Scene changed during face proposal inspection.');
-      stopScenePosePlayback();const isolated=sceneShapeProposalDocument(scenePreview,posed,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
+      stopScenePosePlayback();const displayed=faceSelection?highlightSceneFaceProposal(posed,source,faceSelection):posed,currentDocument=faceSelection?highlightSceneFaceDocument(scenePreview,source,faceSelection):null,isolated=sceneShapeProposalDocument(scenePreview,displayed,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
       const back=()=>{if(context!==JSON.stringify([state.project.path,state.scene.id])||loadedKey!==sceneKey||state.scene_preview_source_key!==source.project_source_key)return false;$('model-dialog').showModal();return returnToEditor();};
-      scenePose={key:sceneKey,geometryKey:isolated.geometryKey,preview:posed.preview,name:'Proposed faces · not applied',returnToFile:back,afterRestore:back};
-      scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed faces · not applied · ${sceneShapeProposalLabel(posed,entityId)}`;configureSceneInspectionComparison(isolated.document);
+      scenePose={currentDocument,faceSelectionHighlight:!!faceSelection,inspectionEntityIds:posed.proposal_instances.map(row=>row.entity_id),key:sceneKey,geometryKey:isolated.geometryKey,preview:displayed.preview,name:'Proposed faces · not applied',returnToFile:back,afterRestore:back};
+      scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed faces · not applied · ${sceneShapeProposalLabel(posed,entityId)}${faceSelection?' - '+faceSelection.face_count+' native faces highlighted yellow (display only)':''}`;configureSceneInspectionComparison(isolated.document);
       for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
       const button=scenePoseBar.querySelector('[data-return-file]');button.hidden=false;button.textContent='Return to face editor';
       $('model-dialog').close();frameShapeProposal(posed,entityId);draw();return {restore:()=>{clearScenePose();draw();}};

@@ -1,5 +1,35 @@
 # Reviewed model UV rectangle retargeting
 
+## 2026-10-04: Qualified native face highlights in placed scene context
+
+The model face editor now carries a qualified GLB face highlight into **Inspect
+proposed faces in scene**. Keep **Highlight GLB face selection (yellow)** enabled
+after the readonly model inspection. Both Current and Proposed scene inspection
+layers show the selected native surfaces in their existing placed/posed context,
+with explicit display-only captions. Shared pose groups retain their source
+vertices, geometry keys and instance placement matrices. Other scene assets stay
+unchanged. **Isolate inspected instances** is available for shared face proposals;
+**Return to face editor** restores the original scene and retains the face review.
+A no-change face Preview can inspect the selection in scene without enabling Apply.
+
+Highlights are detached display copies. Scene/project keys, exact effective model
+identity, complete native face ownership, triangle/quad counts and geometry-owner
+matching are checked before display. Missing/duplicate Current geometry and foreign
+proposal geometry reject inspection. Existing source revalidation, review hashes,
+Apply/Save/Build and stale-context restoration remain authoritative. This feature
+does not infer runtime ownership or prove editor/gameplay coordinate parity.
+
+Verification: focused Node checks covered shared posed geometry, unchanged vertices,
+triangles, placements, review hashes and unrelated scene assets, plus stale/foreign
+and missing/duplicate geometry rejection. The existing primitive editor suite passed.
+A private Town01 browser showed five selected faces in the full placed scene, switched
+Current/Proposed, isolated the supported instance and returned with no project/history
+change and Apply disabled for the no-change review. It then completed UV staging,
+review invalidation, Apply/Save/reload, Undo/Redo, offline Open and exact normal Build
+model/TIM readback with unchanged decoded neighbors. Screenshots were inspected.
+Evidence: `local-output/sdk-20260909/model-face-scene-selection-20261004/parent/proof.json`.
+No game launched; later gameplay verification remains separate.
+
 ## 2026-10-04: Readonly GLB native face highlight
 
 After qualifying a GLB material/image face set in the face editor, **Inspect GLB

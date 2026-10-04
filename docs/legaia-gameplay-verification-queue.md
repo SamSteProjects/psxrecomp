@@ -1,5 +1,18 @@
 # Deferred gameplay verification
 
+## 2026-10-04: Placed-scene native face highlight aid
+
+The face editor can now display GLB-qualified faces in yellow in both Current and
+Proposed scene layers, with supported-instance isolation and Return. Use this aid
+when checking a later model/UV/texture change at its placed location in Town01.
+Compare the highlighted surface and instance with the game and live coordinates;
+this readonly display is not proof of gameplay position or runtime ownership.
+
+Private automated evidence passed scene layer switching, isolation, Return without
+project/history changes, followed by ordinary Apply/Save/Open/history and exact
+normal Build readback. `local-output/sdk-20260909/model-face-scene-selection-20261004/parent/proof.json`
+records zero game launches. The display aid adds no immediate gameplay gate.
+
 ## 2026-10-04: GLB-selected native UV rectangle remap
 
 Queued for later manual verification: select the intended GLB material/image face

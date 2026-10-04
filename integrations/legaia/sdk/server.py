@@ -821,6 +821,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/model-materials.js': ('model-materials.js', 'text/javascript'),
                  '/model-glb-material-selection.js': ('model-glb-material-selection.js', 'text/javascript'),
                  '/model-face-selection-view.js': ('model-face-selection-view.js', 'text/javascript'),
+                 '/model-face-scene-selection.js': ('model-face-scene-selection.js', 'text/javascript'),
                  '/model-material-donor.js': ('model-material-donor.js', 'text/javascript'),
                  '/model-texture-binding.js': ('model-texture-binding.js', 'text/javascript'),
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),

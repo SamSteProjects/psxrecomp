@@ -1,5 +1,14 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: Placed-scene qualified face selection inspection
+
+Implemented: GLB-qualified native face highlights can be inspected in Current and
+Proposed scene layers across supported shared pose groups. Display copies preserve
+placements and source geometry; isolation and Return keep ordinary face review
+intact. Unit ownership/pose checks and private Town01 browser plus exact Build
+readback passed. [Selection workflow](legaia-model-uv-rectangle.md) describes use.
+Live ownership and gameplay coordinate parity remain separate verification.
+
 ## 2026-10-04: Visual GLB native face selection inspection
 
 Implemented in the model face editor: inspect freshly qualified GLB material/image
