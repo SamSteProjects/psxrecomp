@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — larger GLB inventories with bounded imports:** File inspection
+now qualifies each static section independently, reusing one parsed GLB and scene
+ownership graph. A scene may expose up to 128 qualified sections, each within its
+existing 128-triangle geometry limit, with up to 16,384 inventory triangles. This
+is read-only inventory; it does not allocate one oversized native mesh.
+
+Single all-section import and atomic donor mapping still require at most 128
+selected triangles per transaction. The single dialog explains oversized complete
+scenes and keeps section selection/donor mapping available. The batch dialog shows
+the selected triangle budget and disables Review and Select all when over budget;
+the native service and browser qualifier independently enforce the same limit.
+Ten focused construction checks passed. A 144-triangle source qualifies as two
+72-triangle sections; full import rejects, a subset publishes in one history entry,
+Save/Open preserves it, and normal Build reads back the exact native candidate.
+Malformed sections remain rejected. Actual Retail editor smoke loads a 153-triangle
+inventory and reviews its explicit 1/17 subset, blocks a combined 144-triangle
+mapping and reviews its 72-triangle subset, then verifies the existing scene/Return
+workflow. Screenshot inspected; authored state/files unchanged, no Apply or Run.
+Private evidence: `local-output/sdk-20260909/glb-large-inventory-20261004/parent/`.
+No larger native allocation, malformed-section bypass, maximum-load performance
+acceptance or gameplay appearance is claimed. The full SDK goal remains active.
+
 **2026-10-04 — selective GLB section donor mapping:** **Map section donors**
 now offers **Import this section**, **Select all sections** and **Clear selection**.
 Choose 1–16 qualified source sections; unchecked rows keep their choices but

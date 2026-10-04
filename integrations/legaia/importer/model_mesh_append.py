@@ -23,50 +23,57 @@ def mesh_source_scale(value):
 
 
 def inspect_append_mesh(content,*,scene_index=None,source_scale=1):
-    """Qualified file inventory; material names describe source slots, not bindings."""
+    """Qualify bounded sections independently; inventory is not a mesh allocation."""
     source_scale=mesh_source_scale(source_scale)
-    doc,binary=_read_glb(content)
+    doc,binary=_read_glb(content);content_hash=sha256(content).hexdigest()
     sources,canonical,scope=mesh_sources(doc,scene_index,allow_empty=True,with_scope=True)
     selection=scene_source(doc,scene_index)
     if not sources:
-        return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=sha256(content).hexdigest(),primitives=[],triangle_count=0,read_only=True,scene_source=selection,
+        return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=content_hash,primitives=[],triangle_count=0,read_only=True,scene_source=selection,
                     **({'static_scope':scope} if scope else {}),**({'source_scale':source_scale} if source_scale!=1 else {}))
-    geometry=decode_append_mesh(content,scene_index=scene_index,source_scale=source_scale)
     materials=doc.get('materials',[])
     if not isinstance(materials,list) or len(materials)>128:
         raise ImportError('Mesh material inventory exceeds its bounded source slots')
-    reader=_Accessors(doc,binary);rows=[]
-    sources,canonical=mesh_sources(doc,scene_index)
+    rows=[];uv_sets=[];first=None
     for index,source in enumerate(sources):
-        primitive=source['primitive']
-        material=primitive.get('material');name=None
+        # Reuse parsed immutable input and qualified scene ownership. Geometry remains
+        # local to one section so inventory never claims an oversized native append.
+        geometry=_decode_mesh(doc,binary,content_hash,sources,canonical,scope,
+                              primitive_index=index,scene_index=scene_index,source_scale=source_scale)
+        if first is None:first=geometry
+        if 'uv_sources' in geometry:uv_sets.append(geometry['uv_sources'][0]['sets'])
+        primitive=source['primitive'];material=primitive.get('material');name=None
         if material is not None:
             if type(material) is not int or not 0<=material<len(materials) or not isinstance(materials[material],dict):
                 raise ImportError('Mesh primitive material slot is missing')
             name=materials[material].get('name')
             if name is not None and (not isinstance(name,str) or len(name)>256 or any(ord(c)<32 for c in name)):
                 raise ImportError('Mesh primitive material name is invalid')
-        accessor=primitive.get('indices',primitive['attributes']['POSITION'])
-        count=reader.accessors[accessor]['count'];mode=primitive.get('mode',4)
-        rows.append(dict(primitive_index=index,triangle_count=count//3 if mode==4 else count-2,
-            source_mode=mode,material_index=material,material_name=name))
-    return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=geometry['glb_sha256'],
-        primitives=rows,triangle_count=len(geometry['triangles']),read_only=True,
+        rows.append(dict(primitive_index=index,triangle_count=len(geometry['triangles']),
+            source_mode=primitive.get('mode',4),material_index=material,material_name=name))
+    return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=content_hash,
+        primitives=rows,triangle_count=sum(row['triangle_count'] for row in rows),read_only=True,
         **({'source_scale':source_scale} if source_scale!=1 else {}),
-        **({'static_scope':geometry['static_scope']} if 'static_scope' in geometry else {}),
-        **({'uv_sets':[row['sets'] for row in geometry['uv_sources']]} if 'uv_sources' in geometry else {}),
-        **({'scene_source':geometry['scene_source']} if 'scene_source' in geometry else {}),
-        **({'node_transform':geometry['node_transform']} if 'node_transform' in geometry else {}),
+        **({'static_scope':scope} if scope else {}),
+        **({'uv_sets':uv_sets} if uv_sets else {}),
+        **({'scene_source':first['scene_source']} if 'scene_source' in first else {}),
+        **({'node_transform':first['node_transform']} if 'node_transform' in first else {}),
         **({'node_sources':[source_binding(row) for row in sources]} if not canonical else {}))
 
 
 def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None,uv_set=0,source_scale=1):
     source_scale=mesh_source_scale(source_scale)
+    doc,binary=_read_glb(content)
+    sources,canonical,scope=mesh_sources(doc,scene_index,with_scope=True)
+    return _decode_mesh(doc,binary,sha256(content).hexdigest(),sources,canonical,scope,
+                        preserve_primitives=preserve_primitives,primitive_index=primitive_index,
+                        material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale)
+
+
+def _decode_mesh(doc,binary,content_hash,sources,canonical,scope,*,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1):
     if type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ImportError('Mesh primitive preservation and material RGB choices must be boolean')
     if type(uv_set) is not int or not 0<=uv_set<=7:raise ImportError('Choose a source UV set from 0 through 7')
-    doc,binary=_read_glb(content)
-    sources,canonical,scope=mesh_sources(doc,scene_index,with_scope=True)
     primitives=sources
     if primitive_index is not None and (type(primitive_index) is not int or not 0<=primitive_index<len(primitives)):
         raise ImportError('Choose an existing GLB primitive index')
@@ -180,7 +187,7 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
         uv_sources[-1]['triangle_count']=len(triangles)-first_triangle
         if factor is not None:factor.update(first_triangle=first_triangle,triangle_count=len(triangles)-first_triangle)
         primitive_ranges.append(dict(primitive_index=primitive_index,first_triangle=first_triangle,triangle_count=len(triangles)-first_triangle,source_mode=mode))
-    result=dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=sha256(content).hexdigest(),
+    result=dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=content_hash,
         vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')
     if uv_set or any(isinstance(row['primitive'],dict) and isinstance(row['primitive'].get('attributes'),dict) and 'TEXCOORD_1' in row['primitive']['attributes'] for row in sources):result.update(uv_set=uv_set,uv_sources=uv_sources)

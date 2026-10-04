@@ -2,6 +2,7 @@
 from copy import copy,deepcopy
 from hashlib import sha256
 from importer.model_mesh_append import inspect_append_mesh
+from importer.model_face_addition import MAX_NEW_FACES
 from . import model_mesh_append
 from .model_face_addition import _context,_budget
 from .project import ProjectError,digest
@@ -30,6 +31,8 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,mat
             if any((donors[prior['donor_face_id']]['object_index'],donors[prior['donor_face_id']]['group_index'])==group for prior in mappings[:index]):
                 raise ProjectError('A donor group used by another section cannot be replaced in the same batch')
             replaced.add(group)
+    if sum(inventory['primitives'][row['primitive_index']]['triangle_count'] for row in mappings)>MAX_NEW_FACES:
+        raise ProjectError(f'Selected GLB sections exceed the {MAX_NEW_FACES}-triangle native transaction budget')
     # A detached overlay view keeps intermediate native candidates in memory.
     # It has no command/history or disk publication path.
     view=copy(project);view.model_overrides=deepcopy(project.model_overrides)

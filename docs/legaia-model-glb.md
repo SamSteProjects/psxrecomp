@@ -1,5 +1,29 @@
 # Source-bound model GLB editing
 
+## Import a subset from a larger source scene
+
+File inventory qualifies static sections independently from one parsed GLB.
+It may list up to 128 sections, each containing at most 128 triangles, with a
+maximum total of 16,384 triangles. Every listed section must still qualify;
+unsupported or malformed sections reject the file. This inventory does not imply
+that all listed geometry can be written into one native transaction.
+
+Each single or mapped mesh import retains its 128-triangle transaction limit.
+When a source scene exceeds it, choose one **Source mesh section** or open
+**Map section donors** and select a fitting subset. **Review mesh import** remains
+disabled for an oversized all-section choice while the picker and mapping dialog
+remain available. The batch dialog shows selected triangles against the 128
+limit and blocks Review and Select all if the combined choice is too large.
+At most 16 sections may be selected in one donor mapping, subject to that same
+triangle limit. Existing native object/vector/group budgets also still apply.
+
+The native service freshly qualifies the source and selected geometry before
+Apply; it rejects an oversized transaction even if called directly through HTTP.
+Review/Apply, scene inspection, source-unit scale, UV choices, one-step history,
+persistence and normal Build retain their existing ownership requirements.
+Large inventories reuse parsed source data, but maximum-size performance has not
+been accepted or benchmarked.
+
 ## Choose the sections to import
 
 Open **Map section donors** and check **Import this section** for each section
@@ -12,7 +36,7 @@ the complete inventory fits the 16-section transaction budget.
 
 Inventories with at most 16 sections start fully selected, preserving the prior
 all-section workflow. Larger inventories start with none selected and require
-explicit choices. The existing whole-file geometry/inventory bounds still apply;
+explicit choices. The source scene remains bounded to individually qualified sections;
 skipping a section does not bypass malformed source geometry or increase those
 bounds. This feature selects within a qualified file rather than repairing it.
 
