@@ -1,5 +1,13 @@
 # Deferred gameplay verification
 
+Model pack PROT relocation checkpoint (2026-10-03): physical carrier growth,
+sector alignment, later start relocation and reopened model-pack verification
+pass offline. A bounded logical start-table fixture with the fresh Town01 carrier
+forces one sector of growth while retaining neighboring models/resources/archive
+payloads. This is not a full Retail archive or normal Build. Project/editor/ISO
+integration remains required; deferred gameplay checks are unchanged. No install,
+gameplay or new immediate manual gate occurred.
+
 Model pack/carrier growth checkpoint (2026-10-03): selected ledger-qualified
 members and later directory/resource offsets can now grow offline. Town01 slot 9
 passes exact reconstruction within its physical PROT span, with all 113 neighboring

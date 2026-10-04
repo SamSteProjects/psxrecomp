@@ -179,3 +179,47 @@ compose PROT physical allocation/TOC or ISO relocation, create project asset
 bindings, integrate removal/GLB, or expose editor Review/Apply/history/normal Build.
 No gameplay or installation ran. The next integration must use consecutive-start
 physical ownership, preserve every archive neighbor, and read back after reopening.
+
+
+## PROT physical allocation and reopened pack validation
+
+`importer.model_pack_archive.rebuild_model_pack_entry` accepts the complete source
+archive/hash, stable entry index, explicit model descriptor index, decoded pack
+hash and slot/ledger replacements. It locates the owner's consecutive-start
+physical span through `prot_layout`; the larger legacy read window is never used
+as available capacity. The scene-resource writer operates only on that span.
+After growth, the carrier is zero-aligned to sectors and `replace_physical_entry`
+rewrites every later raw start, preserving end sentinels and terminal zero words.
+The supported PROT header offsets remain 0 and 2,048 bytes.
+
+The writer then creates a fresh `ProtArchive` over the result. Readable entry
+identities must match; the relocated physical span must have the exact emitted
+length/bytes. Its native directory reparses and the model resource decompresses
+to the ledger-qualified pack hash. Every physical payload before and after the
+target remains byte-exact. Failure at any boundary rejects the result; there is
+no installation side effect. Audit includes both resource and archive relocation,
+reopened-pack validation and whether ISO relocation is required. It deliberately
+remains `build_ready=False` until integrated with SDK project/Build qualification.
+
+Four new regressions, together with existing focused suites, pass 44 cases.
+They cover both supported header offsets, moved later starts/end sentinels,
+neighbor payload preservation, no-op whole-archive identity, source/model/type
+rejection and a descriptor that attempts to borrow a following physical entry
+through an overlapping read window.
+
+The private proof wraps a **fresh Retail Town01 227,328-byte physical carrier**
+in a bounded synthetic PROT start table. That distinction matters: no full Retail
+PROT or disc build is claimed. The two previously saved quads fit in place. A
+third ledger batch adds 32 UV-varied quads, making 34 authored faces total and
+forcing a 155,052-byte compressed pack stream against 154,547 bytes of original
+capacity. Four-byte resource alignment adds 508 bytes; sector alignment then grows
+the physical carrier to 229,376 bytes, one sector. Later starts update accordingly.
+The reopened pack matches independent whole-pack assembly, all 113 other models
+are preserved, other compressed resource bytes are unchanged, and both earlier
+and later logical archive payloads remain byte-exact.
+
+Private proof: `local-output/sdk-20260909/model-pack-archive-20261003/parent/`.
+ISO relocation, persisted SDK asset bindings/history/Save/Open, removal and GLB
+composition, editor Review/Apply/preview and normal Build remain unfinished.
+No gameplay or installation ran. The next integration must carry this same
+source/ledger/carrier qualification into the actual SDK project and Build path.
