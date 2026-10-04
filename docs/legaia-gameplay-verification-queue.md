@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Native raw-sector checkpoint (2026-10-03): codec/mapping regressions pass and
+64 varied native sectors match Python byte-for-byte. Replacement/metadata Form 1
+protection regenerates; shifted XA payload/protection stays exact. ISOReader/CD
+controller wiring, qualified activation and normal Build packaging remain offline
+work. No game or full-disc export ran; no immediate gameplay gate is added.
+
 Native logical mapper checkpoint (2026-10-03): offline C++ regression passes for
 inserted payloads, shifted sectors/metadata, sector count and failure isolation.
 It is not yet connected to package activation or CD reads. Raw Mode 2 framing

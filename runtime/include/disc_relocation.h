@@ -1,5 +1,7 @@
 #pragma once
 
+#include "cd_sector.h"
+
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -18,6 +20,8 @@ public:
     static constexpr uint32_t kSectorBytes = 2048;
     using Sector = std::array<uint8_t, kSectorBytes>;
     using SourceReader = std::function<bool(uint32_t, uint8_t*)>;
+    // Callback must fill one 2352-byte raw sector, not a 2048-byte user sector.
+    using RawSourceReader = std::function<bool(uint32_t, uint8_t*)>;
     struct Plan {
         uint32_t source_sector_count = 0;
         uint32_t prot_lba = 0;
@@ -61,6 +65,27 @@ public:
         sector_count_ = static_cast<uint32_t>(total);
         active_ = true;
         if (error) error->clear();
+        return true;
+    }
+
+    bool ReadRawSector(uint32_t lba, uint8_t* output, const RawSourceReader& reader) const {
+        Address address;
+        if (!output || !reader || !Resolve(lba, address)) return false;
+        CDSector::Raw candidate{};
+        uint32_t source_lba = address.source_lba;
+        if (address.kind == Address::Kind::Replacement) {
+            const uint64_t final_lba = uint64_t(plan_.prot_lba) + plan_.replacement.size() / kSectorBytes - 1;
+            source_lba = lba == final_lba ? plan_.prot_lba + plan_.source_prot_sectors - 1 : plan_.prot_lba;
+        }
+        if (!reader(source_lba, candidate.data())) return false;
+        if (address.kind != Address::Kind::Source) {
+            const uint8_t* payload = address.kind == Address::Kind::Replacement
+                ? plan_.replacement.data() + address.replacement_offset : plan_.metadata.at(lba).data();
+            std::memcpy(candidate.data() + 24, payload, kSectorBytes);
+            if (!CDSector::EncodeForm1(candidate)) return false;
+        }
+        if (source_lba != lba && !CDSector::RelocateMode2(candidate, lba)) return false;
+        std::memcpy(output, candidate.data(), candidate.size());
         return true;
     }
 

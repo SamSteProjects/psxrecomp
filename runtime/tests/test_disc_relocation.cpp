@@ -82,5 +82,41 @@ int main() {
     require(mapper.SectorCount() == 60 && mapper.GrowthSectors() == 0, "same-size count changed");
     require(mapper.Resolve(59, address) && address.source_lba == 59, "same-size tail mapping changed");
     mapper.Clear(); require(!mapper.Active() && !mapper.Resolve(0, address), "clear must discard mapping");
+    require(mapper.Configure(plan), "raw fixture configuration failed");
+    auto raw_reader = [](uint32_t lba, uint8_t* out) {
+        PS1::CDSector::Raw raw{}; raw.fill(static_cast<uint8_t>(lba));
+        raw[0] = raw[11] = 0; for (unsigned i = 1; i < 11; ++i) raw[i] = 0xFF;
+        raw[15] = 2; raw[16] = 0; raw[17] = 1;
+        raw[18] = lba == 31 ? 0x89 : (lba == 48 ? 0x28 : 0x08); raw[19] = 0;
+        std::memcpy(raw.data() + 20, raw.data() + 16, 4);
+        require(PS1::CDSector::RelocateMode2(raw, lba), "source raw MSF failed");
+        if (lba != 48) require(PS1::CDSector::EncodeForm1(raw), "source raw encoding failed");
+        std::memcpy(out, raw.data(), raw.size()); return true;
+    };
+    for (uint32_t lba = 0; lba < 62; ++lba) {
+        PS1::CDSector::Raw raw{};
+        require(mapper.ReadRawSector(lba, raw.data(), raw_reader), "raw mapped read failed");
+        require(mapper.Resolve(lba, address), "raw address failed");
+        Mapper::Sector user{};
+        require(mapper.ReadUserSector(lba, user.data(), reader), "raw companion user read failed");
+        require(std::memcmp(raw.data() + 24, user.data(), user.size()) == 0, "raw/user payload mismatch");
+        require(raw[18] == (lba == 33 ? 0x89 : (lba == 50 ? 0x28 : 0x08)), "raw terminal/XA flags changed");
+        if (address.kind != Mapper::Address::Kind::Source) {
+            auto check = raw; require(PS1::CDSector::EncodeForm1(check) && check == raw, "mapped Form 1 protection differs");
+        }
+        if (lba == 50) {
+            PS1::CDSector::Raw source_raw{}; raw_reader(48, source_raw.data());
+            require(std::memcmp(raw.data() + 15, source_raw.data() + 15, raw.size() - 15) == 0, "shifted XA bytes changed");
+        }
+    }
+    PS1::CDSector::Raw raw_sentinel{}; raw_sentinel.fill(0xAA); const auto raw_before = raw_sentinel;
+    require(!mapper.ReadRawSector(30, raw_sentinel.data(), [&](uint32_t old, uint8_t* out){
+        raw_reader(old,out); out[22] ^= 1; return true;
+    }) && raw_sentinel == raw_before, "malformed replacement template must reject unchanged");
+    require(!mapper.ReadRawSector(34, raw_sentinel.data(), [&](uint32_t old, uint8_t* out){
+        raw_reader(old,out); out[15] = 1; return true;
+    }) && raw_sentinel == raw_before, "shifted non-Mode 2 source must reject unchanged");
+    require(!mapper.ReadRawSector(0, raw_sentinel.data(), [](uint32_t, uint8_t*){return false;}) && raw_sentinel == raw_before,
+            "failed raw reader must reject unchanged");
     std::cout << "disc relocation mapping checks passed\n";
 }

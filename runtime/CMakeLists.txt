@@ -396,6 +396,10 @@ if(BUILD_TESTING)
     target_include_directories(disc_relocation_test PRIVATE include)
     add_test(NAME disc_relocation_test COMMAND disc_relocation_test)
 
+    add_executable(cd_sector_test tests/test_cd_sector.cpp)
+    target_include_directories(cd_sector_test PRIVATE include)
+    add_test(NAME cd_sector_test COMMAND cd_sector_test)
+
     if(WIN32)
         add_executable(autocompile_publication_test
             tests/test_autocompile_publication.c

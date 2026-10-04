@@ -439,3 +439,26 @@ not run. This mapper is not yet wired to ISOReader/CD controller or package
 activation. Raw Mode 2 framing/error protection and normal Build packaging remain
 required. Private executable lives under
 `local-output/sdk-20260909/native-disc-relocation-20261003/parent/`.
+
+
+## Native raw Mode 2 sectors
+
+`runtime/include/cd_sector.h` supplies Form 1 EDC/P/Q regeneration and MSF address
+relocation, cross-checked byte-for-byte against the existing Python codec.
+`DiscRelocation::ReadRawSector` borrows raw source sectors, replaces user data for
+PROT/metadata and rebuilds Form 1 protection. The final replacement PROT sector
+uses original terminal framing; intermediate sectors use first-sector framing.
+Metadata retains the original source LBA for framing. Shifted Mode 2 source
+sectors change only their MSF header; XA/Form 2 payload/protection bytes stay
+exact. Invalid framing and failed source reads leave caller buffers unchanged.
+Activation must qualify uniform PROT stream framing/provenance before use.
+
+Both native regressions pass with warnings treated as errors. Sixty-four varied
+codec outputs match Python completely, including the highest supported address;
+150,528 compared bytes have SHA256
+`fbf8154320112dac223168df7ea5d1278882ded7de0952775c85b519f4801089`.
+Mapping tests cover raw/user agreement, terminal/XA flags and malformed-frame
+rejection. The CMake codec target is registered; full runtime suite not run.
+Private proof: `local-output/sdk-20260909/native-raw-disc-relocation-20261003/parent/`.
+ISOReader/CD controller wiring, package activation and normal Build integration
+remain required. No game, installation or full-disc export ran.
