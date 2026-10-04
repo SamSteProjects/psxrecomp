@@ -111,6 +111,33 @@ class TextureSlotsWorkflow(unittest.TestCase):
         self.assertFalse(report['can_apply'])
         self.assertTrue(any(row['asset_id']==result['asset_id'] for row in report['footprint']['rows']))
 
+    def test_http_exact_fields_pixels_stale_review_and_one_apply(self):
+        import base64
+        from test_model_primitive_workflow import http_server
+        from importer.texture_png import decode_png
+        p,context,archive,blob,ids=self.setup_project()
+        content=tim(16,image=block(640,32,2,1,b'\x00\x80'*2))
+        body=dict(anchor_asset_id=ids[0],source_key=source_key(p),label='HTTP texture',
+                  accept_potential_overlap=True,content_base64=base64.b64encode(content).decode('ascii'))
+        before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+        with http_server(p) as (_,post):
+            for bad in (dict(body,extra=1),dict(body,content_base64='!'),dict(body,source_key='stale'),dict(body,accept_potential_overlap=1)):
+                status,_=post('/api/texture-slot-review',bad);self.assertEqual(status,400)
+            status,report=post('/api/texture-slot-review',body);self.assertEqual(status,200,report)
+            pixels=dict(body,review_key=report['review_key'],palette_index=0)
+            status,result=post('/api/texture-slot-pixels',pixels);self.assertEqual(status,200,result)
+            self.assertEqual(result['report'],report)
+            image=decode_png(base64.b64decode(result['proposed_png_base64']));self.assertEqual((image['width'],image['height']),(2,1))
+            for bad in (dict(pixels,palette_index=True),dict(pixels,review_key='0'*64),dict(pixels,palette_index=1)):
+                status,_=post('/api/texture-slot-pixels',bad);self.assertEqual(status,400)
+            self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+            status,result=post('/api/texture-slot-apply',dict(body,review_key=report['review_key']));self.assertEqual(status,200,result)
+            self.assertTrue(result['texture_slot_report']['project_changed'])
+            self.assertIn(result['texture_slot_report']['asset_id'],result['texture_additions'])
+            self.assertTrue(result['project']['dirty'])
+            self.assertEqual(len(p.undo_stack),1)
+            status,_=post('/api/texture-slot-apply',dict(body,review_key=report['review_key']));self.assertEqual(status,400)
+
     def test_two_additions_resize_and_payload_edit_share_one_pack_reopen(self):
         for compressed in (False, True):
             p, context, archive, blob, ids = self.setup_project(compressed)

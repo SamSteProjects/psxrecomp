@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {decodeSlotReview,decodeSlotPixels} from '../editor/texture-slots.js';
+const hash=c=>c.repeat(64),file={sha256:hash('a'),size:148},request={anchor_asset_id:'texture://fixture/1/raw/0',source_key:hash('b'),label:'New TIM',accept_potential_overlap:false};
+const report={schema_version:'legaia.texture-slot-review.v1',project_source_key:request.source_key,source_scene_id:'scene://fixture',anchor_asset_id:request.anchor_asset_id,source_pack_sha256:hash('c'),source_slot_count:2,pack_entry_index:1,pack_descriptor_index:-1,slot_index:2,proposed_sha256:file.sha256,byte_length:148,label:request.label,image_layout:{bpp:16,x:640,y:32,width:8,height:8,width_words:8},allocation:{schema_version:'legaia.texture-pack-slot-allocation.v1',source_sha256:hash('c'),source_slot_count:2,slot_count:3,standalone:true,native_members_verified:true,opaque_tails_preserved:true,gameplay_verified:false,proposed_sha256:hash('d'),proposed_byte_length:512,added_slot_indices:[2],members:[{slot_index:0},{slot_index:1},{slot_index:2,added:true,tim_sha256:file.sha256,tim_byte_length:file.size}]},footprint:{potential_overlap_count:0,rows:[],rows_truncated:false,coverage:'known-static-scene-authored-and-boot-uploads',runtime_residency_verified:false},accept_potential_overlap:false,can_apply:true,project_changed:false,gameplay_verified:false,palette_count:0,review_key:hash('e')};
+assert.deepEqual(decodeSlotReview(report,request,file),report);
+for(const bad of [{...report,proposed_sha256:hash('f')},{...report,byte_length:149},{...report,label:'Changed'},{...report,project_source_key:'stale'},{...report,extra:true},{...report,slot_index:3},{...report,can_apply:false},{...report,palette_count:1},{...report,image_layout:{...report.image_layout,width:9}},{...report,allocation:{...report.allocation,source_sha256:hash('f')}},{...report,allocation:{...report.allocation,added_slot_indices:[]}},{...report,footprint:{...report.footprint,potential_overlap_count:1}}])assert.throws(()=>decodeSlotReview(bad,request,file));
+const id='texture-new://00000000-0000-4000-8000-000000000000';
+assert.deepEqual(decodeSlotReview({...report,project_changed:true,asset_id:id},request,file,true),{...report,project_changed:true,asset_id:id});
+assert.throws(()=>decodeSlotReview({...report,project_changed:true,asset_id:'texture-new://bad'},request,file,true));
+const overlap={...report,can_apply:false,footprint:{...report.footprint,potential_overlap_count:1,rows:[{asset_id:id,kind:'image',proposed_kind:'image',overlap_words:2,rectangle:{x:640,y:32,width_words:2,height:1}}]}};
+assert.deepEqual(decodeSlotReview(overlap,request,file),overlap);
+assert.throws(()=>decodeSlotReview({...overlap,footprint:{...overlap.footprint,rows:[{...overlap.footprint.rows[0],asset_id:'texture-new://bad'}]}},request,file));
+const png=Buffer.alloc(33);Buffer.from([137,80,78,71,13,10,26,10]).copy(png);png.writeUInt32BE(13,8);png.write('IHDR',12);png.writeUInt32BE(8,16);png.writeUInt32BE(8,20);
+const pixels={report,palette_index:0,proposed_png_base64:png.toString('base64')};assert.match(decodeSlotPixels(pixels,report,request,file,0),/^data:image\/png;base64,/);
+assert.throws(()=>decodeSlotPixels({...pixels,palette_index:1},report,request,file,0));
+assert.throws(()=>decodeSlotPixels({...pixels,report:{...report,review_key:hash('f')}},report,request,file,0));
+png.writeUInt32BE(9,16);assert.throws(()=>decodeSlotPixels({...pixels,proposed_png_base64:png.toString('base64')},report,request,file,0));
+console.log('New TIM review/file/context/slot/overlap and pixel decoding checks passed.');

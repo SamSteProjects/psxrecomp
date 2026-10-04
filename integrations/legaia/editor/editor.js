@@ -1,3 +1,4 @@
+import {openTextureSlotEditor} from '/texture-slots.js';
 import {openTextureResizeEditor} from '/texture-resize.js';
 import {decodeRetailComparison,retailComparisonLabel} from '/texture-comparison.js';
 import {openTextureSourceRetention} from '/texture-source-retention.js';
@@ -680,6 +681,7 @@ function setBusy(value) {
   if($('texture-undo'))updateTextureActions();
   texturePngEditor?.updateState();
   textureResizeEditor?.update();
+  textureSlotEditor?.update();
   sceneAnimationController?.updateState();
   modelMaterialsEditor?.updateState();
   if($('shape-materials'))$('shape-materials').disabled=value||Boolean(shapeDraft)||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
@@ -1437,6 +1439,7 @@ function synchronizeResources(){
   modelGlbEditor?.updateState();
   texturePngEditor?.updateState();
   textureResizeEditor?.update();
+  textureSlotEditor?.update();
   if(transitionsDialog.open&&transitionsDialog.dataset.sourceContext!==transitionsContext(transitionsDialog.dataset.projectWide==='true'))transitionsDialog.close();
   if(flagsDialog.open&&flagsDialog.dataset.sourceContext!==flagContext(flagsDialog.dataset.projectWide==='true'))flagsDialog.close();
   if(textDialog.open&&textDialog.dataset.sourceContext!==textContextKey(textDialog.dataset.projectWide==='true'))textDialog.close();
@@ -2228,6 +2231,16 @@ async function openTexturePng(){
     canPreviewScene:()=>scenePreviewCurrent()&&sceneRepresentation==='authored',
     onScenePreview:(request,report,controls)=>inspectReviewedTextureProposal('/api/texture-png-scene-preview',assetId,request,report,controls,'PNG texture','Return to PNG review')});
 }
+let textureSlotEditor=null;
+function openNewTextureSlot(){
+  if(busy||!canEditTexture()||!textureSession||!texturePreview||$('texture-file')?.files?.length||!state.capabilities?.texture_slot_authoring)return;
+  const assetId=textureSession.record.id;
+  textureSlotEditor?.dispose();textureDialog.close();
+  textureSlotEditor=openTextureSlotEditor({assetId,
+    getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
+    busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
+    onApplied:next=>{state=next;render();notify('New texture slot applied. Save project to persist.');}});
+}
 let textureResizeEditor=null;
 async function openTextureResize(){
   if(busy||!canEditTexture()||!textureSession||!texturePreview||$('texture-file')?.files?.length||!state.capabilities?.texture_resize_authoring)return;
@@ -2267,6 +2280,7 @@ function updateTextureActions(){
   $('texture-preview-file').disabled=busy||!canEditTexture()||!pending;$('texture-file').disabled=busy||!canEditTexture();$('texture-apply').disabled=busy||!canEditTexture()||!pending;
   $('texture-discard').hidden=!pending;$('texture-discard').disabled=busy;
   $('texture-clear').disabled=busy||pending||!canEditTexture()||!authored;
+  if($('texture-new-slot'))$('texture-new-slot').disabled=busy||pending||!canEditTexture()||!state.capabilities?.texture_slot_authoring||!texturePreview;
   if($('texture-resize'))$('texture-resize').disabled=busy||pending||!canEditTexture()||!state.capabilities?.texture_resize_authoring||!texturePreview;
   if($('texture-png'))$('texture-png').disabled=busy||pending||!canEditTexture()||!state.capabilities?.texture_png_authoring||!texturePreview;
   $('texture-undo').disabled=busy||pending||!canEditTexture()||!state.history?.can_undo;
@@ -2289,14 +2303,14 @@ async function openTexture(record,paletteIndex=0,layer='effective'){
   if(!continuing&&resourceKey!==key&&!trustedAuthored){notify('Refresh scene resources or open a current authored texture binding to inspect this texture.',true);return;}
   if(!continuing){
     textureSession={record,projectKey:textureProjectKey(),paletteIndex,layer};texturePreview=null;
-    textureDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-texture" aria-label="Close texture preview">×</button></div><div id="texture-history" class="texture-history" hidden><button id="texture-undo">Undo</button><button id="texture-redo">Redo</button><button id="texture-save">Save project</button><span id="texture-project-status"></span></div><div class="texture-view-controls"><label id="texture-layer-label" hidden>Preview layer<select id="texture-layer" aria-label="Texture preview layer"><option value="effective">Effective</option><option value="imported">Imported</option></select></label><label id="texture-palette-label" hidden>Palette<select id="texture-palette" aria-label="Texture palette"></select></label></div><p id="texture-summary">Verifying texture source…</p><div class="texture-bitmap-wrap"><canvas id="texture-bitmap" aria-label="Decoded texture pixels"></canvas></div><section id="texture-authoring" hidden><h3>Authored replacement</h3><p id="texture-authored"></p><button id="texture-source">Download original TIM</button><button id="texture-glb-source">Download retained GLB source</button><button id="texture-glb-retain">Retain original GLB source</button><button id="texture-source-json">Download retail texture JSON</button><button id="texture-effective-json">Download effective texture JSON</button><button id="texture-png">Edit texture through PNG</button><button id="texture-resize">Resize image</button><button id="texture-scene-uses">Inspect scene texture uses</button><button id="texture-edit-palette">Edit selected palette</button><button id="texture-fill-rectangle">Fill indexed rectangle</button><button id="texture-copy-rectangle">Copy indexed rectangle</button><label>Replacement TIM or indexed JSON<input id="texture-file" type="file" accept=".tim,.json" aria-label="Replacement TIM or JSON file"></label><p id="texture-file-status" class="field-note">Choose TIM up to 1 MiB or source-bound indexed JSON up to 16 MiB. Keep dimensions, bit depth, palette counts and pixel rows fixed.</p><div class="run-actions"><button id="texture-preview-file" disabled>Preview selected texture</button><button id="texture-apply" class="accent" disabled>Apply replacement</button><button id="texture-discard" hidden>Discard selected file</button><button id="texture-clear" disabled>Clear override</button></div></section><p class="field-note">Shift-click an indexed texture pixel to edit its palette index. Palette and layer selection only affect inspection. Static texture candidates do not establish runtime VRAM residency. PSX semi-transparent blending is not reconstructed.</p><details class="resource-provenance"><summary>Texture source and limitations</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;
+    textureDialog.innerHTML=`<div class="dialog-heading"><h2>${escapeHTML(record.label)}</h2><button id="close-texture" aria-label="Close texture preview">×</button></div><div id="texture-history" class="texture-history" hidden><button id="texture-undo">Undo</button><button id="texture-redo">Redo</button><button id="texture-save">Save project</button><span id="texture-project-status"></span></div><div class="texture-view-controls"><label id="texture-layer-label" hidden>Preview layer<select id="texture-layer" aria-label="Texture preview layer"><option value="effective">Effective</option><option value="imported">Imported</option></select></label><label id="texture-palette-label" hidden>Palette<select id="texture-palette" aria-label="Texture palette"></select></label></div><p id="texture-summary">Verifying texture source…</p><div class="texture-bitmap-wrap"><canvas id="texture-bitmap" aria-label="Decoded texture pixels"></canvas></div><section id="texture-authoring" hidden><h3>Authored replacement</h3><p id="texture-authored"></p><button id="texture-source">Download original TIM</button><button id="texture-glb-source">Download retained GLB source</button><button id="texture-glb-retain">Retain original GLB source</button><button id="texture-source-json">Download retail texture JSON</button><button id="texture-effective-json">Download effective texture JSON</button><button id="texture-png">Edit texture through PNG</button><button id="texture-resize">Resize image</button><button id="texture-new-slot">Import new texture slot</button><button id="texture-scene-uses">Inspect scene texture uses</button><button id="texture-edit-palette">Edit selected palette</button><button id="texture-fill-rectangle">Fill indexed rectangle</button><button id="texture-copy-rectangle">Copy indexed rectangle</button><label>Replacement TIM or indexed JSON<input id="texture-file" type="file" accept=".tim,.json" aria-label="Replacement TIM or JSON file"></label><p id="texture-file-status" class="field-note">Choose TIM up to 1 MiB or source-bound indexed JSON up to 16 MiB. Keep dimensions, bit depth, palette counts and pixel rows fixed.</p><div class="run-actions"><button id="texture-preview-file" disabled>Preview selected texture</button><button id="texture-apply" class="accent" disabled>Apply replacement</button><button id="texture-discard" hidden>Discard selected file</button><button id="texture-clear" disabled>Clear override</button></div></section><p class="field-note">Shift-click an indexed texture pixel to edit its palette index. Palette and layer selection only affect inspection. Static texture candidates do not establish runtime VRAM residency. PSX semi-transparent blending is not reconstructed.</p><details class="resource-provenance"><summary>Texture source and limitations</summary><pre class="diagnostic-detail"></pre></details><p class="dialog-error" role="alert"></p>`;
     $('close-texture').onclick=()=>textureDialog.close();
     $('texture-undo').onclick=()=>textureProjectAction('/api/undo',{});$('texture-redo').onclick=()=>textureProjectAction('/api/redo',{});$('texture-save').onclick=()=>textureProjectAction('/api/project/save',{});
     $('texture-clear').onclick=()=>textureProjectAction('/api/command',{type:'clear_texture_replacement',asset_id:record.id});
     $('texture-glb-retain').onclick=()=>{if(busy)return;const session=textureSession;openTextureSourceRetention({assetId:session.record.id,binding:structuredClone(textureAuthored()),getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),busy:()=>busy,setBusy,onApplied:next=>{state=next;render();notify('Original GLB retained. Save project to persist.');}});};
     $('texture-glb-source').onclick=downloadTextureGlbSource;$('texture-preview-file').onclick=previewTextureFile;$('texture-source').onclick=downloadOriginalTexture;$('texture-apply').onclick=applyTextureReplacement;
     $('texture-source-json').onclick=()=>downloadTextureJSON('imported');$('texture-effective-json').onclick=()=>downloadTextureJSON('effective');
-    $('texture-png').onclick=openTexturePng;$('texture-resize').onclick=openTextureResize;
+    $('texture-png').onclick=openTexturePng;$('texture-resize').onclick=openTextureResize;$('texture-new-slot').onclick=openNewTextureSlot;
     $('texture-discard').onclick=()=>{$('texture-file').value='';$('texture-file-status').textContent='No replacement file selected.';updateTextureActions();};
     $('texture-file').onchange=()=>{const file=$('texture-file').files?.[0];if(file&&(!/\.(tim|json)$/i.test(file.name)||file.size<1||file.size>(/\.json$/i.test(file.name)?16777216:1048576))){$('texture-file').value='';$('texture-file-status').textContent='Choose a nonempty TIM up to 1 MiB or indexed JSON up to 16 MiB.';}else $('texture-file-status').textContent=file?`${file.name} · ${file.size} bytes · not applied`:'No replacement file selected.';updateTextureActions();};
     $('texture-layer').onchange=()=>openTexture(record,textureSession.paletteIndex,$('texture-layer').value);

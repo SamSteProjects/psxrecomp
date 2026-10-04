@@ -1,5 +1,28 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: new TIM slot import editor
+
+The texture resource dialog now opens **Import new texture slot** for its native
+pack. Complete TIM files receive readonly placement/overlap review and Proposed
+pixel inspection with an existing palette. File/name/overlap changes withdraw
+the review; pixel Return retains it. One explicit Apply uses the exact reviewed
+file hash/context, returns updated project state and creates one Undo entry.
+Save/reload and normal Build preserve the slot. The resize decoder also accepts
+qualified authored-slot identities in later overlap reports.
+
+Four focused Python workflow cases and two Node suites passed. Private Town01
+browser evidence passed file/review, blocked and accepted overlap choices,
+review invalidation, pixels/Return, readonly project/history checks, Apply,
+Save/reload and normal Build assessment. Independent package readback matched
+the complete added TIM at slot 96; Undo/Redo and offline reopen retained it.
+Parent visual inspection led to enlarging small Proposed images. Evidence:
+`local-output/sdk-20260909/texture-slot-editor-20261004/parent/`.
+
+Next: saved new-slot catalog/scene visibility, material assignment and content
+editing, broader image conversion and automatic VRAM placement. No game was
+launched or installed. Runtime upload/residency and appearance verification
+remain deferred; the goal remains active.
+
 ## 2026-10-04: authored TIM slot persistence and normal Build
 
 New TIM slots now have persistent `texture-new://` UUIDs, explicit native append

@@ -1,5 +1,30 @@
 # Native TIM slot allocation
 
+## Editor import workflow
+
+Open a Retail texture in the resource browser and choose **Import new texture
+slot**. The selected texture identifies the target native pack. Choose a complete
+TIM up to 1 MiB, give it a name, and review the proposed slot, pixel dimensions,
+bit depth, image origin, palette count and known upload overlaps. Changing the
+file, name or overlap choice withdraws the review. Palette selection is readonly
+and controls Proposed pixel inspection. Return preserves the reviewed choices.
+
+Apply requires the exact reviewed file hash, source context and overlap choice.
+It returns the updated authored collection and creates one Undo entry. Save the
+project to persist; normal Build includes the appended slot. The dialog rejects
+stale project/scene/mode contexts and bounds requests/responses. Closing cancels
+readonly work; closing during Apply is disabled. Small images are enlarged with
+nearest pixel display and transparency backing for inspection.
+
+HTTP routes are `/api/texture-slot-review`, `/api/texture-slot-pixels` and
+`/api/texture-slot-apply`; requests have exact fields and bounded base64 TIM
+bytes. Pixel inspection reconstructs the current review and verifies the PNG's
+reviewed dimensions. No arbitrary file paths or archive locators are accepted.
+
+Current catalog/scene visibility, material assignment to new slots, editing a
+saved new slot, source-image conversion and automatic VRAM placement remain next
+integration work. This dialog does not infer materials or runtime upload order.
+
 ## 2026-10-04: authored TIM slot persistence and normal Build
 
 New TIM slots now have persistent `texture-new://` UUIDs, explicit native append

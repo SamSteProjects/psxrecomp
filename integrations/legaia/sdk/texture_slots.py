@@ -190,10 +190,28 @@ def review(project, anchor, content, expected_source_key, label, accept_potentia
                   allocation=allocation, footprint=footprint, accept_potential_overlap=accept_potential_overlap,
                   can_apply=not footprint['potential_overlap_count'] or accept_potential_overlap,
                   project_changed=False, gameplay_verified=False)
+    tim=validate_added_tim(content)
+    report['palette_count']=len(tim.clut.data)//((1<<tim.bpp)*2) if tim.bpp in (4,8) and tim.clut else 0
     report['review_key'] = digest(report)
     if source_key(project) != key:
         raise ProjectError('Texture slot source changed during review')
     return report
+
+
+def pixels(project, anchor, content, expected_source_key, label, accept_potential_overlap, review_key, palette_index):
+    import base64
+    from importer.texture_png import export_texture_png
+    report=review(project,anchor,content,expected_source_key,label,accept_potential_overlap)
+    if report['review_key']!=review_key:
+        raise ProjectError('Texture slot pixel inspection requires the current review')
+    if type(palette_index) is not int or not 0<=palette_index<max(1,report['palette_count']):
+        raise ProjectError('Texture slot pixel inspection requires an existing palette')
+    png,_,_=export_texture_png(content,palette_index)
+    if len(png)>8*1024*1024:
+        raise ProjectError('New texture pixel PNG exceeds the inspection budget')
+    if source_key(project)!=expected_source_key:
+        raise ProjectError('Texture slot source changed during pixel inspection')
+    return dict(report=report,palette_index=palette_index,proposed_png_base64=base64.b64encode(png).decode('ascii'))
 
 
 def apply(project, anchor, content, expected_source_key, label, accept_potential_overlap, review_key):
