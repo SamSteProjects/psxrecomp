@@ -1,5 +1,18 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — allocated records (saved library/lifecycle stage):** Active and
+retired captures are now listed per actor, with exact saved-record pose preview
+over Current donor-model geometry and reviewed retirement/restoration. Retired
+preview does not restore a clip; Return retains selection and lifecycle Review.
+Source/selection/late/close guards and export restrictions are integrated.
+
+Node checks, two Retail HTTP tests and a real Edge smoke pass, including Save/Open,
+frozen transforms after shared donor edits, Current geometry, retained Return,
+retired Preview and restoration of the same UUID/hash. Screenshots were inspected.
+Saved content editing, runtime assignment and native descriptor/carrier Build
+delivery remain missing. Model-viewer qualification does not establish gameplay
+or allocated scene-inspection behavior. [Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — new animation records (editor creation/pose stage):** Actor editor
 controls now support bounded explicit frame sequences, Review, proposed posed
 Preview and explicit Apply. The preview decodes the exact new record against

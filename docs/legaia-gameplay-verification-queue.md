@@ -1,5 +1,16 @@
 # Deferred gameplay verification
 
+**2026-10-04 — saved allocated clips:** Actor editor inspection now covers active
+and retired captures, exact retained-record posing over Current geometry and
+reviewed retirement/restoration. Node/HTTP checks and an actual Edge editor smoke
+pass, including unchanged Preview state, retained Return, retired inspection and
+restoration of the same UUID/hash. Screenshots were inspected.
+
+No immediate gameplay verification is required. These clips are still unassigned
+and native descriptor/carrier Build delivery remains unfinished. Runtime clip
+selection, cadence/looping, compatibility and lifecycle checks stay deferred until
+offline delivery is implemented and qualified. No game was launched.
+
 **2026-10-04 — allocated clip creator/posed preview:** Editor creation, source-bound
 Review, exact proposed-record pose preview and explicit Apply are implemented.
 Focused Node lifecycle/provenance, one Retail HTTP pose test and an actual Edge

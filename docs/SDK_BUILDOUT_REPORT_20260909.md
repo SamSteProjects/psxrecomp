@@ -1,5 +1,19 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — saved allocated clip library:** Added verified retained clip
+summaries and standalone native record pose APIs, plus actor editor Preview and
+reviewed retirement/restoration controls. Retired captures remain previewable
+without mutation; Current geometry is posed using frozen saved transforms. The
+viewer labels saved clips unassigned and prevents exporting a Retail donor instead.
+Return retains library selection and Review; stale/late/close guards cover actions.
+
+Focused Node checks, two Retail HTTP tests and an actual Edge lifecycle smoke pass.
+Save/Open and later shared donor changes preserve captured transforms; restoration
+preserves UUID/hash. Screenshots were inspected and the private server stopped.
+Saved content editing, actor assignment and bank descriptor/carrier Build delivery
+remain. [Details](legaia-animation-allocation.md). No gameplay was launched; the
+full SDK goal remains active and work stays solo.
+
 **2026-10-04 — allocated animation editor and posed preview:** Implemented an
 actor clip creator with explicit frame ranges/repeats/reversal, donor/budget
 options, source-bound Review, exact record pose preview and explicit Apply.

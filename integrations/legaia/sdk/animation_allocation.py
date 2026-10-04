@@ -187,6 +187,65 @@ def apply_command(project, command):
     publish(project,project.active_scene,report['proposed_ledger'])
 
 
+def record_library(project, scene_id, expected_source_key):
+    """Verify saved captures before exposing their stable identities to the editor."""
+    key = source_key(project)
+    if project.mode != 'edit' or scene_id != project.active_scene or not key or key != expected_source_key:
+        raise ProjectError('Allocated clip library requires the current editable scene source')
+    ledger = project.overrides.get(scene_id,{}).get('AnimationRecords')
+    records = []
+    if ledger is not None:
+        validate(project,scene_id,ledger,verify_disc=True)
+        for entry in ledger['records']:
+            records.append(dict(record_id=entry['record_id'],
+                animation_id=f"animation://{project.imports[scene_id]['scene']['name']}/authored-record/{entry['record_id']}",
+                entity_id=entry['entity_id'],channel_owner_entity_id=entry['channel_owner_entity_id'],
+                model_source_entity_id=entry['model_source_entity_id'],donor_asset_id=entry['donor_asset_id'],
+                donor_animation_id=entry['donor_animation_id'],record_sha256=entry['record_sha256'],
+                frame_count=len(entry['source_frame_indices']),object_count=entry['object_count'],
+                active=entry['record_id'] not in ledger['removed_record_ids'],runtime_assigned=False))
+    if source_key(project) != key:
+        raise ProjectError('Project changed while loading allocated clips')
+    return dict(schema_version='legaia.animation-record-library.v1',scene_id=scene_id,
+        project_source_key=key,revision=(ledger or {}).get('revision',0),records=records,
+        activation_available=(ledger or {}).get('revision',0)<64,
+        build_available=False,gameplay_verified=False)
+
+
+def pose_saved_record(project, scene_id, record_id, expected_source_key):
+    library = record_library(project,scene_id,expected_source_key)
+    row = next((item for item in library['records'] if item['record_id'] == record_id),None)
+    if row is None:
+        raise ProjectError('Saved clip preview requires a retained record identity')
+    ledger = deepcopy(project.overrides[scene_id]['AnimationRecords'])
+    # Retired clips remain inspectable, without assigning a native bank ordinal
+    # or silently restoring them in the project.
+    ledger['removed_record_ids'] = []
+    from .animation_record_ledger import verified_source
+    source,catalog = verified_source(project,scene_id)
+    payload = next(item['record'] for item in reconstruct(source,ledger) if item['record_id'] == record_id)
+    entry = next(item for item in ledger['records'] if item['record_id'] == record_id)
+    document = project.imports[scene_id]
+    asset = next(item for item in document['assets']['models'] if item['semantic_id'] == entry['donor_asset_id'])
+    actor = next(item for item in document['actors'] if item['semantic_id'] == entry['channel_owner_entity_id'])
+    with _disc_context(project.disc_path):
+        animation = catalog._animation_preview(actor,asset,
+            int(entry['donor_animation_id'].rsplit('/',1)[1]),decode_animation_record(payload))
+    donor_source = animation['source_record']
+    animation.update(semantic_id=row['animation_id'],entity_id=entry['entity_id'],actor_semantic_id=entry['entity_id'],
+        clip_id='allocated-record',label='Saved allocated clip',representation='allocated_record',
+        source_clip_id=entry['donor_animation_id'],saved_record=deepcopy(row),
+        source_record=dict(source_kind='authored_animation_record',record_id=record_id,
+            record_sha256=entry['record_sha256'],byte_length=len(payload),
+            byte_coordinate_space='retained_native_animation_record',donor_source=donor_source),
+        association=dict(kind='captured_donor_channel_prefix_for_unassigned_allocated_clip',runtime_assigned=False,
+            channel_owner_entity_id=entry['channel_owner_entity_id'],model_source_entity_id=entry['model_source_entity_id'],
+            active_object_indices=list(range(entry['object_count']))))
+    if source_key(project) != expected_source_key:
+        raise ProjectError('Project changed during saved clip pose preview')
+    return animation,deepcopy(asset)
+
+
 def prepare_record_activation(project, scene_id, record_id, active, expected_source_key):
     if project.mode != 'edit' or scene_id != project.active_scene:
         raise ProjectError('Animation record activation requires the active scene in Edit mode')

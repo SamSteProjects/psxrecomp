@@ -75,7 +75,7 @@ effective shared edits, assigned witnesses, exact reviewed Apply, one-step histo
 stale review rejection, frozen donor snapshots, Save/Open (including metadata-only
 offline Open), UUID/tombstone preservation and unchanged Build-review files.
 
-Still unfinished: saved-clip management, new clip assignment,
+Still unfinished: editing saved clip content, new clip assignment,
 expanded bank descriptor/carrier relocation and normal Build. Active allocated
 clips explicitly block normal Build and Build review with the missing
 descriptor/carrier relocation requirement; they are never silently omitted.
@@ -115,3 +115,40 @@ the seven-frame proposal without page errors, retained Review on Return and left
 project source/overrides unchanged. Repeated donor frames rendered identically;
 the review and posed-model screenshots were inspected. This qualification covers
 the model viewer, not gameplay or allocated scene-inspection acceptance.
+
+## Saved clip inspection and lifecycle (2026-10-04)
+
+The actor animation editor's **Manage allocated clips** opens the actor's active
+and retired captures. Each clip retains its authored UUID, frame/object counts
+and record hash. **Preview saved clip** verifies the source and replays the saved
+donor snapshot, including captured axes, before posing Current geometry for that
+captured model. Retired clips remain inspectable without restoration or mutation.
+The viewer identifies them as saved unassigned clips and disables unsupported
+exports. Closing it returns to the retained library selection and lifecycle Review.
+
+**Review retirement** or **Review restoration** computes the proposed bank and
+ledger; **Apply reviewed change** is a separate explicit action. The existing
+ledger command provides Undo/Redo and Save/Open. Changing source/selection or
+closing the library invalidates pending work. Revision exhaustion disables new
+lifecycle reviews; retained clips remain inspectable. Retired identities and
+captured bytes stay reserved rather than being deleted or reassigned.
+
+`POST /api/animation-record-library` accepts exactly `scene_id` and
+`expected_source_key`, validates Retail witnesses/replay and returns bounded clip
+summaries. `POST /api/animation-record-pose` additionally requires `record_id`.
+Saved pose provenance names the standalone retained native record; it does not
+invent a runtime assignment or a native bank ordinal for retired records.
+
+Focused Node checks cover library/provenance validation, lifecycle Review,
+explicit Apply, retained model-viewer Return and stale/late/close guards. Two
+Retail HTTP checks (saved library and existing proposal preview) pass. The saved
+test covers retirement, Save/Open, preview without mutation, source invalidation,
+Current geometry, frozen transforms after later shared donor changes and exact
+identity/hash preservation through restoration. Assignment and normal Build
+descriptor/carrier relocation remain separate unfinished work.
+
+An actual Edge editor smoke additionally passed active/retired model Preview,
+Return with retained lifecycle Review and explicit retirement/restoration on a
+private fixture. Preview left project state unchanged; restoration retained the
+same UUID/hash. There were no page errors. Saved-pose and restoration-review
+screenshots were inspected, and the private server was stopped afterward.

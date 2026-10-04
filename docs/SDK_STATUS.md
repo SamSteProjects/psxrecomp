@@ -1,5 +1,19 @@
 # Legaia SDK status — 2026-10-04
 
+**Saved allocated clip library (2026-10-04):** The actor editor now lists active
+and retired allocated captures, previews their exact retained records against
+Current donor-model geometry, and reviews/applies retirement or restoration.
+Retired clips remain inspectable without being restored. Returning from the model
+viewer retains selection and lifecycle Review; source/selection/late/close guards
+protect Apply. Unsupported exports are disabled and clips remain unassigned.
+
+Focused Node checks and two Retail HTTP checks pass, including Save/Open, frozen
+transforms after shared donor edits and Current geometry. An actual Edge editor
+smoke passed active/retired Preview, retained Return and retirement/restoration
+with identical UUID/hash and no page errors; screenshots were inspected. Saved
+content editing, assignment and native Build relocation remain unfinished. No
+immediate gameplay verification is required. [Guide](legaia-animation-allocation.md).
+
 **Allocated clip creator and posed Review (2026-10-04):** The actor animation
 editor now creates independent clips from explicit source-frame sequences, with
 bounded ranges/repetition/reversal, source-bound Review, posed Preview and explicit

@@ -767,6 +767,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
+                 "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript")}
         if route not in files:
@@ -1851,6 +1852,26 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         self.server.project.command(dict(type='set_animation_record_active',**body))
                         self._json(200,self.server.state())
+                    return
+                if route in ('/api/animation-record-library','/api/animation-record-pose'):
+                    expected = {'scene_id','expected_source_key'}
+                    if route == '/api/animation-record-pose':
+                        expected.add('record_id')
+                    if set(body) != expected:
+                        raise ProjectError('Allocated clip inspection requires exact scene, source and record fields')
+                    from .animation_allocation import record_library, pose_saved_record
+                    if route == '/api/animation-record-library':
+                        self._json(200,record_library(self.server.project,body['scene_id'],body['expected_source_key']))
+                    else:
+                        animation,asset = pose_saved_record(self.server.project,body['scene_id'],body['record_id'],body['expected_source_key'])
+                        geometry = animation.pop('geometry')
+                        geometry['frames'] = animation.pop('frames')
+                        preview = self.server.model_preview(asset,prepared=geometry,effective_shape=True)
+                        preview['animation'] = animation
+                        preview['animation_support'] = dict(supported=True,
+                            clips=[dict(id='allocated-record',label='Saved allocated clip')],
+                            evidence='retained_unassigned_clip_not_runtime_verified')
+                        self._json(200,preview)
                     return
                 if route == '/api/animation-record-source':
                     if set(body) - {'entity_id', 'layer', 'format'} or not isinstance(body.get('entity_id'), str) or not body['entity_id'].strip():
