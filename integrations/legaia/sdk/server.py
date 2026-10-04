@@ -1799,6 +1799,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                         apply_import(self.server.project, body['entity_id'], payload, body['binding'], body['review_key'])
                         self._json(200, self.server.state())
                     return
+                if route == '/api/animation-record-allocation-preview':
+                    if (set(body) != {'entity_id', 'source_frame_indices', 'edits', 'expected_source_key'} or
+                            not isinstance(body['entity_id'], str) or not 1 <= len(body['entity_id']) <= 512 or
+                            not isinstance(body['expected_source_key'], str) or
+                            len(body['expected_source_key']) != 64 or
+                            any(c not in '0123456789abcdef' for c in body['expected_source_key'])):
+                        raise ProjectError('Animation allocation review requires actor, frame sequence, edits and current source key')
+                    from .animation_allocation import preview_record_allocation
+                    self._json(200, preview_record_allocation(self.server.project, body['entity_id'],
+                        body['source_frame_indices'], body['edits'], body['expected_source_key']))
+                    return
                 if route == '/api/animation-record-source':
                     if set(body) - {'entity_id', 'layer', 'format'} or not isinstance(body.get('entity_id'), str) or not body['entity_id'].strip():
                         raise ProjectError('Animation source requires actor identity and optional layer and format only')

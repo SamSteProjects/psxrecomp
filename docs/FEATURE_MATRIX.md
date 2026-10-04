@@ -1,5 +1,18 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — new animation records (partial):** Native donor-based allocation
+and project/source-bound HTTP review are implemented. Explicit frame sequences
+allow new frame counts while preserving donor mode/object count/opaque channels.
+All old records remain byte-exact as the absolute table grows. Seven native and
+two Retail HTTP checks pass, including Town01 69→70 records, full old-record/LZS
+readback, effective shared edits, assigned witnesses and read-only project state.
+UUID identity is review metadata; a persistent ledger is still required.
+
+Missing: commands/persistence, editor/pose integration, new-clip assignment and
+expanded bank delivery through normal Build. Those capabilities report false;
+fixed-layout Build still rejects resized banks. Gameplay cadence/selection and
+lifecycle remain deferred. See [allocation](legaia-animation-allocation.md).
+
 **2026-10-04 — animation GLB cubic tracks:** CUBICSPLINE rigid translation and
 rotation are implemented for existing clips. Hermite sampling scales tangents by
 each segment's seconds; cubic quaternion signs/derivatives are retained before

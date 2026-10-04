@@ -1,5 +1,19 @@
 # Legaia SDK status — 2026-10-04
 
+**Animation record allocation — native codec and SDK review (2026-10-04):** New
+donor-based rigid clips now support explicit frame repetition/reordering/extension
+and exact axis edits. The expanded bank rebases its absolute offset table while
+preserving all existing records and opaque padding. A source-bound SDK HTTP review
+resolves current clip/model witnesses and copies effective shared edits into the
+new clip without authoring files/history. Seven codec and two Retail HTTP checks
+pass, including a 69→70-record Town01 bank and LZS readback.
+
+This is allocation infrastructure, not delivered clip authoring. Apply, Build and
+new-clip assignment are explicitly unavailable; ledger/persistence, editor/pose
+integration and bank/carrier relocation are next. See
+[animation allocation](legaia-animation-allocation.md). No game was launched;
+the full SDK goal remains incomplete and continues solo.
+
 **Cubic animation GLB import (2026-10-04):** Existing rigid clips now accept
 CUBICSPLINE translation and rotation tracks alongside STEP/LINEAR. Segment-time
 scaled Hermite sampling preserves quaternion derivative magnitudes/signs and

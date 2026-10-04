@@ -1,5 +1,19 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — animation record allocation codec/review:** Implemented explicit
+donor frame sequences plus exact source-axis edits for new native rigid records.
+The bank count/absolute-offset table grows without altering existing record bytes,
+indices or opaque padding. Source-bound HTTP review includes actor/model/clip
+witnesses, effective shared edits, UUID-based authored review identity and exact
+bank/record audits, with unchanged project files/history.
+
+Seven codec and two Retail HTTP construction checks pass; Town01 69→70 records,
+complete old-record preservation and LZS decompression readback pass. Existing GLB
+numerical checks pass. [Allocation details](legaia-animation-allocation.md) keep the
+remaining work explicit: project ledger/commands/Save/Open, editor/pose/new-clip
+assignment, bank descriptor/carrier relocation and normal Build. Review reports
+Apply/Build/assignment unavailable. No runtime or gameplay acceptance is claimed.
+
 **2026-10-04 — cubic animation interchange:** Implemented glTF CUBICSPLINE
 translation/rotation import into existing source frames, including unequal key
 spacing, segment-second derivative scaling, rotation normalization without

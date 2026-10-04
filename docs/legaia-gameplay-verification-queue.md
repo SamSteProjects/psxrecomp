@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+**2026-10-04 — animation allocation infrastructure:** Native bank construction
+and read-only SDK review pass seven codec and two Retail HTTP checks, including
+complete preservation of the 69 existing Town01 records when a 70th record is
+appended. This is not a gameplay-ready package: persistence, editor/pose/assignment
+and expanded bank/carrier Build delivery remain implementation work.
+
+No new manual gameplay action is required for this stage. Once delivery is
+implemented and offline qualified, add runtime selection, object compatibility,
+frame progression/looping and lifecycle checks for an allocated clip. No rate is
+inferred from the explicit donor frame sequence. See
+[animation allocation](legaia-animation-allocation.md).
+
 **2026-10-04 — cubic animation interchange:** Offline import now accepts
 CUBICSPLINE TR tracks and samples them into existing source frames. Focused
 numerical/malformed-input checks and a private Retail Town01 HTTP Review/Pose,
