@@ -1,5 +1,44 @@
 # Authored TIM replacement
 
+## 2026-10-04: source PNG conversion for new and saved authored slots
+
+The slot editor now offers Convert source PNG. Its readonly conversion dialog
+constructs a complete 4/8/16/24-bit TIM from bounded PNG samples with explicit
+image/CLUT word coordinates and STP policy. Indexed output has one full local
+palette using deterministic RGB5 median-cut; RGB16 uses nearest expanded RGB5
+samples and RGB24 preserves opaque RGB8 samples. Partial alpha, incomplete native
+words, unsupported PNG metadata and invalid placement fail before a draft returns.
+Indexed CLUT origins must be 16-word aligned. No scaling, padding or placement is
+inferred. An optional same-size black/white STP PNG overrides the default policy;
+transparent/STP1 and opaque rounded-black/STP0 conflicts are rejected.
+
+The dialog reports maximum/RMS RGB error, changed visible pixels, palette usage
+and required black/transparent STP corrections. Source, plane or native choices
+invalidate the conversion. Use converted TIM draft returns to slot Review and
+Proposed pixel inspection; it does not apply to the project. The browser qualifies
+source hashes, output TIM hash and native headers. Editing starts from Current
+mode and coordinates. Existing reviewed Apply, history, Save/reopen and normal
+Build deliver the resulting immutable TIM under the stable slot ID and index.
+
+Ten focused Python checks and both slot/conversion Node decoder suites passed.
+Independent packet expectations covered indexed nibble order, complete CLUTs,
+direct RGB16/RGB24, binary alpha and separate STP; construction checks covered
+quantization determinism, bounds and native pack delivery. Private Town01 browser
+proof covered new 4-bit PNG conversion, draft invalidation, quantization inspection,
+readonly draft/Review/pixels/Return, Apply/Save, saved-slot conversion to RGB16,
+Current/Proposed comparison, second Apply and Save/reload/Build assessment. Normal
+package readback matched final slot 96 exactly and every Retail TIM member stayed
+unchanged. Undo/Redo and offline reopen passed. Parent visual inspection covered
+conversion and comparison. Evidence:
+`local-output/sdk-20260909/texture-image-conversion-20261004/parent/qualified/proof.json`.
+The earlier failed resource-search harness attempt remains preserved alongside it.
+
+Conversion evidence is available while drafting; original PNG/STP source retention
+and a persistent conversion receipt remain next work. General Retail mode/CLUT
+allocation, automatic material retargeting, dynamic residency, upload order, STP
+blending and gameplay acceptance remain separate or unverified. No game was
+launched and no installed runtime or physical disc was changed.
+
 ## 2026-10-04: authored slot editing and full TIM interchange
 
 Saved authored slots now expose Edit authored texture slot and exact Current TIM

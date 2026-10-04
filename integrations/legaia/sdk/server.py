@@ -842,6 +842,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/texture-png.js": ("texture-png.js", "text/javascript"),
                  "/texture-comparison.js": ("texture-comparison.js", "text/javascript"),
                  "/texture-resize.js": ("texture-resize.js", "text/javascript"),
+                 "/texture-image-conversion.js": ("texture-image-conversion.js", "text/javascript"),
                  "/texture-slots.js": ("texture-slots.js", "text/javascript"),
                  "/texture-source-retention.js": ("texture-source-retention.js", "text/javascript")}
         if route not in files:
@@ -870,6 +871,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-source','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
                 request_limit = 2 * 1024 * 1024
+            if urlsplit(self.path).path=='/api/texture-image-convert':
+                request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
@@ -1748,6 +1751,19 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route=='/api/texture-image-convert':
+                    if set(body)!={'asset_id','source_key','png_base64','stp_png_base64','options'}:
+                        raise ProjectError('Image conversion requires exact source, PNG and native options')
+                    def decode_image(value):
+                        if not isinstance(value,str) or not 1<=len(value)<=11184812:
+                            raise ProjectError('Choose a PNG no larger than eight MiB')
+                        try:return base64.b64decode(value,validate=True)
+                        except ValueError as exc:raise ProjectError('PNG conversion requires valid base64') from exc
+                    png=decode_image(body['png_base64'])
+                    stp=decode_image(body['stp_png_base64']) if body['stp_png_base64'] is not None else None
+                    from .texture_image_conversion import convert
+                    self._json(200,convert(self.server.project,body['asset_id'],body['source_key'],png,body['options'],stp))
                     return
                 if route=='/api/texture-slot-edit-source':
                     if set(body)!={'asset_id','source_key'}:raise ProjectError('Authored slot source requires exact identity and context')
