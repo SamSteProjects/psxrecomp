@@ -4,7 +4,7 @@ from hashlib import sha256
 import struct
 from importer.assets import decode_tmd
 from importer.model_face_ledger import (append_group_ledger,_apply_group_allocation,_operations,
-    _reserved_faces,MAX_LEDGER_FACES,MAX_BATCHES,MAX_OPERATIONS,MAX_METADATA_BYTES)
+    _reserved_faces,_reserved_groups,MAX_LEDGER_FACES,MAX_BATCHES,MAX_OPERATIONS,MAX_METADATA_BYTES)
 from importer.model_group_allocation import MAX_NEW_GROUPS
 from importer.model_primitives import inspect_model_primitives
 from importer.model_face_removal import _groups
@@ -61,7 +61,7 @@ def prepare(project,asset_id,requests,expected_sha256,expected_key):
         raise ProjectError('Model changed since group allocation inspection')
     candidate,updated,audit=append_group_ledger(base,ledger,requests)
     operations=_operations(ledger)
-    reserved_groups={group['group_id'] for op in operations if op['kind']=='allocate_groups' for group in op['requests']}
+    reserved_groups=_reserved_groups(operations)
     independent,_,allocation=_apply_group_allocation(effective,{row['face_id']:row for row in current['faces']},
         requests,_reserved_faces(operations),reserved_groups)
     if independent!=candidate:raise ProjectError('Group allocation differs from complete ledger replay')

@@ -25,6 +25,7 @@ def _ledger_origins(original,ledger):
     origins={identity:(face['object_index'],face['group_index']) for identity,face in initial.items()}
     ranks={identity:index for index,identity in enumerate(initial)}
     next_group={}
+    owner_count=int.from_bytes(original[8:12],'little')
     for owner,*_ in _groups(original,_qualified_model(original)[0]):
         next_group[owner]=next_group.get(owner,0)+1
     for operation in _operations(ledger):
@@ -32,6 +33,12 @@ def _ledger_origins(original,ledger):
             for request in operation['additions']:
                 origins[request['face_id']]=origins[request['donor_face_id']]
                 ranks[request['face_id']]=len(ranks)
+        elif operation['kind']=='allocate_objects':
+            for request in operation['requests']:
+                owner=owner_count;owner_count+=1;next_group[owner]=len(request['groups'])
+                for root,group in enumerate(request['groups']):
+                    for face in group['faces']:
+                        origins[face['face_id']]=(owner,root);ranks[face['face_id']]=len(ranks)
         elif operation['kind']=='allocate_groups':
             for group in operation['requests']:
                 owner=origins[group['donor_face_id']][0]

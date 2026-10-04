@@ -1304,6 +1304,13 @@ class ProjectService:
             raise ProjectError('Group allocation identities or fields differ from the reviewed draft')
         self._publish_model_ledger(asset_id,content,binding,expected_key,'Group allocation')
 
+    def apply_model_object_allocations(self,asset_id,requests,expected_sha256,expected_key,review_key):
+        from .model_object_allocation import prepare
+        content,binding,report=prepare(self,asset_id,requests,expected_sha256,expected_key)
+        if review_key!=report['review_key']:
+            raise ProjectError('Object allocation identities differ from the reviewed draft')
+        self._publish_model_ledger(asset_id,content,binding,expected_key,'Object allocation')
+
     def apply_model_mesh_append(self,asset_id,content,donor_face_id,expected_sha256,expected_key,review_key):
         from .model_mesh_append import prepare
         candidate,binding,report=prepare(self,asset_id,content,donor_face_id,expected_sha256,expected_key)
