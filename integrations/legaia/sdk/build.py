@@ -94,6 +94,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-facing-sector-only': 'script facing operands',
         'script-branch-target-only': 'script branch destinations',
         'worldmap-menu-record-only': 'world-map landmarks',
+        'model-pack-topology-relocation': 'model topology and shared pack edits',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'TMD-existing-layout-content': 'model faces, UVs and baked colors',
         'TMD-existing-layout-material-content': 'model material bindings and shared primitive group transparency',
@@ -656,14 +657,21 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         worldmap_overlays, worldmap_changes = prepare_worldmap_overlay(project, _image, disc_hash)
         overlays.extend(worldmap_overlays)
         audit_edits.extend(worldmap_changes)
+        growth_requests, growth_audit = [], None
+        if any(binding.get('format') == 'tmd-face-addition-v1' for binding in getattr(project, 'model_overrides', {}).values()):
+            from .model_growth import prepare_model_growth
+            growth_requests, growth_audit = prepare_model_growth(project, archive)
+        deferred_models = set(growth_audit['deferred_model_ids']) if growth_audit else set()
         from importer.model_authoring import model_shape_overlays
         model_assets, model_payloads = {}, {}
         for identifier, binding in sorted(getattr(project, 'model_overrides', {}).items()):
+            if identifier in deferred_models:
+                continue
             model_payloads[identifier] = project.read_model_replacement(identifier, binding)
             document = project.imports[binding['source_scene_id']]
             model_assets[identifier] = next(a for a in document['assets']['models'] if a['semantic_id'] == identifier)
         shape_overlays, shape_changes = model_shape_overlays(archive, model_assets, model_payloads,
-                                                          removal_bindings=project.model_overrides)
+                                                          removal_bindings={k:v for k,v in getattr(project, "model_overrides", {}).items() if k not in deferred_models})
         for overlay in shape_overlays:
             if _hash(_image.read_user(0, overlay['offset'], overlay['size'], (_image.size // 2352)*2048)) != overlay['expected_sha256']:
                 raise BuildError('Model shape overlay differs from its original disc span')
@@ -1046,7 +1054,19 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 overlays.append({**overlay, "file": f"assets/{scene}-texture-{offset:08x}.bin"})
     from .worldmap_placements import build as build_world_placements
     audit_edits.extend(build_world_placements(project,overlays))
-    build_kind = "authored" if overlays else "retail"
+    relocation, relocation_audit = None, None
+    if growth_requests:
+        from .build_relocation import prepare_build_relocation
+        with _disc_context(project.disc_path) as (image, fresh_hash, mapping, archive):
+            if fresh_hash != disc_hash:
+                raise BuildError('Source disc changed while preparing relocation')
+            relocation, relocation_audit = prepare_build_relocation(image, archive, growth_requests, overlays)
+        audit_edits.extend(dict(semantic_id=identifier, field='model.shape', scope='model-pack-topology-relocation',
+                               before_sha256=_hash(project._model_source(identifier, project.model_overrides[identifier]['source_scene_id'])),
+                               after_sha256=_hash(project.read_model_replacement(identifier, project.model_overrides[identifier])),
+                               scene=project.imports[project.model_overrides[identifier]['source_scene_id']]['scene']['name'])
+                           for identifier in sorted(deferred_models))
+    build_kind = "authored" if overlays or relocation else "retail"
     ordered = sorted(overlays, key=lambda item: item["offset"])
     if any(a["offset"] + a["size"] > b["offset"] for a, b in zip(ordered, ordered[1:])):
         raise BuildError("Generated scene overlays overlap; refusing ambiguous build")
@@ -1071,6 +1091,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         audit['validation']['script_branch_source_boundary_round_trip'] = True
     if any(row.get('scope') == 'worldmap-menu-record-only' for row in audit_edits):
         audit['validation']['worldmap_menu_round_trip'] = True
+    if relocation:
+        audit['relocation'] = relocation_audit
+        audit['relocation_payload'] = {k:v for k,v in relocation.items() if k != 'payload'}
+        audit['overlay_application'] = 'composed_before_relocation'
+        audit['model_growth'] = growth_audit
+        audit['validation']['relocation_package_readback'] = True
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
     # Package identity follows emitted content, including no-op/cleared builds.
     # Separate immutable receipts retain each authored metadata context.
@@ -1154,8 +1180,13 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         feature_name = 'Source NPC candidates and authored scene data'
         description = 'Private fixed-span MAN donor candidates and supported authored scene data. Native spawning and behavior are unverified.'
         feature_description += ' NPC additions are source-structural candidates: allocation, scheduling, opaque script references and gameplay require verification.'
+    if relocation:
+        package_suffix = " authored scene data"
+        feature_name = "Authored scene data"
+        description = "Private source-bound scene edits and model topology with relocated disc reads."
+        feature_description = "Apply composed scene edits and rebuilt model packs against the matching source disc."
     lines = [
-        "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
+        "format_version = 7" if relocation else "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix, ensure_ascii=False)}",
         'author = "Local SDK project"', f"description = {json.dumps(description)}",
         'license = "Private user-owned retail derivative; not for redistribution"', 'resolver = "declarative"',
@@ -1164,7 +1195,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         f"description = {json.dumps(feature_description)}",
         'group = "Scene authoring"', "default_enabled = false",
     ]
-    for overlay in overlays:
+    package_assets = [relocation] if relocation else overlays
+    if relocation:
+        lines.extend(['', '[[disc_relocation]]', 'feature = "placements"',
+                      f'file = "{relocation["file"]}"', f'sha256 = "{relocation["sha256"]}"'])
+    for overlay in ([] if relocation else overlays):
         lines.extend(["", "[[overlay]]", 'feature = "placements"', 'target = "disc_user"',
                       f'offset = {overlay["offset"]}', f'file = "{overlay["file"]}"',
                       f'sha256 = "{overlay["sha256"]}"', f'expected_sha256 = "{overlay["expected_sha256"]}"'])
@@ -1172,7 +1207,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     import tomllib
     manifest = ("\n".join(lines) + "\n").encode("utf-8")
     tomllib.loads(manifest.decode("utf-8"))
-    expected_files = {"manifest.toml", *(overlay["file"] for overlay in overlays)}
+    expected_files = {"manifest.toml", *(overlay["file"] for overlay in package_assets)}
     if package_dir.exists():
         _guard_output(package_dir, boundary)
         present_files = set()
@@ -1183,7 +1218,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         if present_files - expected_files:
             raise BuildError("Package directory contains unrelated files; choose a new output directory")
     if review_only:
-        for path,content in [(destination / '.gitignore',b'*\n'),(package_dir / 'manifest.toml',manifest),(destination / 'build-audit.json',audit_bytes),*((package_dir / overlay['file'],overlay['payload']) for overlay in overlays)]:
+        for path,content in [(destination / '.gitignore',b'*\n'),(package_dir / 'manifest.toml',manifest),(destination / 'build-audit.json',audit_bytes),*((package_dir / overlay['file'],overlay['payload']) for overlay in package_assets)]:
             _validate_exact(path,content,boundary)
         return dict(report=build_report(audit),build_kind=build_kind,change_kinds=package_change_kinds(audit_edits),
                     audit_sha256=_hash(audit_bytes),manifest_sha256=_hash(manifest),overlay_count=len(overlays),
@@ -1192,7 +1227,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     if authored_state_key(project) != input_key:
         raise BuildError('Project inputs changed during Build')
     _write_exact(destination / ".gitignore", b"*\n", boundary)
-    for overlay in overlays:
+    for overlay in package_assets:
         _write_exact(package_dir / overlay["file"], overlay["payload"], boundary)
     _write_exact(package_dir / "manifest.toml", manifest, boundary)
     _write_exact(destination / "build-audit.json", audit_bytes, boundary)
@@ -1212,7 +1247,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     with zipfile.ZipFile(archive_path) as archive_file:
         if archive_file.read("manifest.toml") != manifest:
             raise BuildError("Packaged manifest changed during packing")
-        for overlay in overlays:
+        for overlay in package_assets:
             if _hash(archive_file.read(overlay["file"])) != overlay["sha256"]:
                 raise BuildError("Packaged overlay payload hash mismatch")
     if authored_state_key(project) != input_key:
@@ -1248,5 +1283,5 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
            {"changed_fields_unit": "authored fields/runs"} if has_dialogue else {}),
         "runtime_status": "package_built_not_launched", "feature_id": "placements",
         "install_instruction": (f"Import the .psxmod in the runtime mod manager, enable {feature_name}, then launch against the matching stock disc."
-                                if overlays else "This verified retail baseline has no modified bytes. Build & Run starts a fresh private run without previous placement overlays."),
+                                if overlays or relocation else "This verified retail baseline has no modified bytes. Build & Run starts a fresh private run without previous placement overlays."),
     }

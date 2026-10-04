@@ -1,6 +1,6 @@
 """Gather all authored members of packs requiring topology relocation.
 
-Produces source-bound archive requests; normal package output is not connected yet.
+Produces source-bound archive requests consumed by normal Build relocation.
 """
 from copy import deepcopy
 from hashlib import sha256

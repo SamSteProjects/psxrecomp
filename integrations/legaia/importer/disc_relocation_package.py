@@ -1,7 +1,7 @@
-"""Source-bound logical relocation payload for future feature package activation.
+"""Source-bound logical relocation payload for feature package activation.
 
 Binary v1: 96-byte header, PROT user bytes, then 2120-byte metadata records.
-Native manifest parsing/activation is not connected yet.
+Native format 7 manifests and runtime activation consume this binary format.
 """
 from hashlib import sha256
 import struct
