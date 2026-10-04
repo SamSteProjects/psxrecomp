@@ -1,5 +1,24 @@
 # Source-bound model GLB editing
 
+## Map donors for all sections
+
+Choose a GLB in **Import GLB mesh**, then **Map donors for all sections**. For
+1–16 source primitives, choose a native triangle donor per section. Each section
+creates an independent packet group in that donor's object. Optional **Replace
+the existing donor group** retires that group; a group used by another section
+cannot also be replaced in the batch.
+
+**Review all sections** composes the complete candidate without writing files or
+history. Current/Proposed comparison and **Inspect mapped mesh in scene** show the
+combined proposal. Return retains the mappings. Changing a donor or replacement
+choice requires a fresh Review. **Apply all reviewed sections** publishes one
+Undo step; Save/Open and normal Build retain the complete native ledger.
+
+GLB material names identify sections. The chosen native donor supplies packet
+layout and material/texture bindings. New textures/images, arbitrary material
+allocation and rig/channel creation remain unsupported. Existing native vector,
+face, group, operation and metadata budgets still apply. Gameplay is unverified.
+
 ## Import a source primitive
 
 In **Import GLB mesh**, choose a file, then select **All GLB primitives** or a

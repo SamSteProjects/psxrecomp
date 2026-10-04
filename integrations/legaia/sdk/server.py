@@ -785,6 +785,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-group-allocation.js": ("model-group-allocation.js", "text/javascript"),
                  "/model-object-allocation.js": ("model-object-allocation.js", "text/javascript"),
                  "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
+                 "/model-mesh-batch.js": ("model-mesh-batch.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
@@ -856,7 +857,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-file', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                 request_limit = 44 * 1024 * 1024
@@ -1145,6 +1146,30 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Model allocation inspection requires model and source key only')
                     from .model_allocation import source
                     self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    return
+                if route in ('/api/model-mesh-batch-preview','/api/model-mesh-batch','/api/model-mesh-batch-scene-preview'):
+                    fields={'asset_id','content_base64','mappings','expected_sha256','source_key'}
+                    if route!='/api/model-mesh-batch-preview':fields.add('review_key')
+                    if route.endswith('-scene-preview'):fields.update(('proposed_sha256','entity_id','all_instances'))
+                    if set(body)!=fields or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512 or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key]) for key in fields & {'source_key','expected_sha256','review_key','proposed_sha256'}):
+                        raise ProjectError('Mesh donor mapping requires exact model, source and review identities')
+                    if not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:
+                        raise ProjectError('Mesh donor mapping requires bounded GLB bytes')
+                    try:payload=base64.b64decode(body['content_base64'],validate=True)
+                    except ValueError as exc:raise ProjectError('Mesh donor mapping requires valid base64') from exc
+                    if not 28<=len(payload)<=32*1024*1024:raise ProjectError('Mesh donor mapping GLB exceeds byte bounds')
+                    from . import model_mesh_batch
+                    args=(body['asset_id'],payload,body['mappings'],body['expected_sha256'],body['source_key'])
+                    if route=='/api/model-mesh-batch':
+                        model_mesh_batch.apply(self.server.project,*args,review_key=body['review_key'])
+                        self._json(200,self.server.state())
+                    else:
+                        candidate,binding,report=model_mesh_batch.prepare(self.server.project,*args)
+                        if route.endswith('-scene-preview'):
+                            if type(body['all_instances']) is not bool or not isinstance(body['entity_id'],str) or not 0<len(body['entity_id'])<=512 or report['review_key']!=body['review_key'] or report['proposed_sha256']!=body['proposed_sha256']:
+                                raise ProjectError('Mesh donor mapping scene proposal differs from Review')
+                            self._json(200,self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],candidate,report,body['source_key'],body['all_instances'],prepared_binding=binding))
+                        else:self._json(200,report)
                     return
                 if route=='/api/model-mesh-file':
                     if set(body)!={'content_base64'} or not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:

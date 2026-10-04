@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — atomic multi-donor GLB sections:** Import GLB mesh now opens
+Map donors for all sections. Each of 1–16 source primitives chooses a Current
+native triangle donor and can explicitly replace its donor group. Sections create
+independent native packet groups in their respective donor objects. Shared donor
+groups cannot also be replaced. The SDK composes qualified intermediate ledgers
+in a detached in-memory view; Review writes nothing and Apply publishes the final
+candidate with one Undo entry. The full mapping/file/source is review-bound.
+
+Four focused construction checks pass: chained browser DTO qualification and
+forgery rejection, distinct-object group replacement, stale HTTP Apply rejection,
+atomic HTTP Apply/history, Save/Open and exact normal Build model readback, plus
+single-section compatibility. An actual private Retail browser workflow maps two
+sections to donors in different objects, Reviews, inspects all supported scene
+instances, toggles isolation/Current/Proposed and returns to the retained mapping.
+A second Retail browser smoke changes both distinct-group replacement choices,
+invalidates the prior review, and retains the re-reviewed replacement proposal.
+Authored files and history remain unchanged; no Apply, Save or Run occurs in that
+browser smoke. Source material names label sections; existing native bindings
+supply materials. New images, packet families, rigs and arbitrary material
+allocation remain unfinished. Gameplay remains deferred and the solo SDK goal
+is active.
+
 **2026-10-04 — source GLB primitive selection:** Import GLB mesh now offers
 All primitives or one explicit source primitive. A native-qualified file inventory
 shows source material slots/names and triangle counts. Only the selected section's

@@ -1,0 +1,64 @@
+import {SceneRenderer} from './scene-renderer.js';
+import {decodeMeshAppendSource,decodeMeshAppendReview,decodeMeshFile} from './model-mesh-append.js';
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
+const fail=message=>{throw new Error(message);};
+
+export function decodeMeshBatchReview(value,source,glbHash,mappings){
+  source=decodeMeshAppendSource(source,source.asset_id,source.project_source_key);
+  if(value?.schema_version!=='legaia.model-mesh-batch-review.v1'||value.asset_id!==source.asset_id||value.project_source_key!==source.project_source_key||value.effective_sha256!==source.effective_sha256||value.source_sha256!==source.source_sha256||value.glb_sha256!==glbHash||!same(value.mappings,mappings)||!hash(value.review_key)||!hash(value.proposed_sha256)||value.project_changed!==false||value.gameplay_verified!==false||!Array.isArray(value.steps)||value.steps.length!==mappings.length||!mappings.length||mappings.length>16)fail('Mesh donor mapping differs from the reviewed file, source or section choices.');
+  const inventory=decodeMeshFile(value.inventory,glbHash);
+  if(inventory.primitives.length!==mappings.length)fail('Map every GLB primitive.');
+  let previous=null;
+  for(const [i,step] of value.steps.entries()){
+    const mapping=mappings[i];
+    if(!mapping||Object.keys(mapping).sort().join(',')!=='donor_face_id,primitive_index,replace_group'||mapping.primitive_index!==i||typeof mapping.replace_group!=='boolean'||!source.topology.faces.some(face=>face.face_id===mapping.donor_face_id))fail('Invalid Current native donor mapping.');
+    const current=decodeMeshAppendSource(step.source,source.asset_id,step.source?.project_source_key);
+    if(i===0?!same(current,source):current.source_sha256!==source.source_sha256||current.effective_sha256!==previous.proposed_sha256||!same(current.preview,previous.preview)||!same(current.topology,previous.topology))fail('Mesh donor mapping breaks the native candidate chain.');
+    previous=decodeMeshAppendReview(step.review,current,mapping.donor_face_id,glbHash,true,mapping.replace_group,false,i);
+    if(previous.geometry.triangles.length!==inventory.primitives[i].triangle_count)fail('Mapped geometry differs from the selected source section count.');
+  }
+  if(value.proposed_sha256!==previous.proposed_sha256||!same(value.current_preview,source.preview)||!same(value.preview,previous.preview)||!same(value.topology,previous.topology)||!Array.isArray(value.limitations)||!value.limitations.length||value.limitations.some(line=>typeof line!=='string'||line.length>4096))fail('Mesh donor mapping final geometry or scope differs from its qualified steps.');
+  return structuredClone(value);
+}
+
+export function openModelMeshBatch({assetId,source,inventory,content,glbHash,getContext,busy,setBusy,onError,onApplied,onScenePreview}){
+  const context=structuredClone(getContext());source=decodeMeshAppendSource(source,assetId,context.sourceKey);inventory=decodeMeshFile(inventory,glbHash);
+  if(context.mode!=='edit'||busy()||inventory.primitives.length>16)fail('Donor mapping requires Edit mode and at most 16 GLB sections.');
+  const dialog=document.createElement('dialog');dialog.className='diagnostic-dialog';
+  dialog.innerHTML='<h2>Map GLB section donors</h2><p>Map every source section to a native triangle donor. Each creates an independent packet group in that donor object. Source material names identify sections; native donor bindings supply materials. New images and animation channels are not allocated.</p><div data-mappings></div><button data-review>Review all sections</button><button data-apply>Apply all reviewed sections</button><button data-scene>Inspect mapped mesh in scene</button><button data-close>Close</button><p role="status"></p><section data-comparison hidden><label>Comparison layer<select data-layer><option value="proposed">Proposed</option><option value="current">Current</option></select></label><canvas aria-label="Mapped mesh comparison"></canvas></section>';
+  const rows=[],host=dialog.querySelector('[data-mappings]');
+  for(const primitive of inventory.primitives){
+    const row=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=`Primitive ${primitive.primitive_index} · ${primitive.triangle_count} triangles · ${primitive.material_name??(primitive.material_index===null?'no source material':`material ${primitive.material_index}`)}`;
+    const donor=document.createElement('select');donor.setAttribute('aria-label',`Donor for primitive ${primitive.primitive_index}`);
+    for(const face of source.topology.faces){const packet=source.objects[face.object_index].primitives[face.current_primitive_index];if(packet.corner_count!==3)continue;const option=document.createElement('option');option.value=face.face_id;option.textContent=`Object ${face.object_index} · face ${face.current_primitive_index} · ${packet.baked_colors?'Unlit':'Lit'} ${packet.gouraud?'Gouraud':'Flat'}`;donor.append(option);}
+    donor.style.width='100%';
+    const label=document.createElement('label'),replace=document.createElement('input');replace.type='checkbox';replace.style.width='auto';label.style.display='flex';label.style.flexDirection='row';label.style.alignItems='center';label.style.gap='8px';replace.setAttribute('aria-label',`Replace donor group for primitive ${primitive.primitive_index}`);label.append(replace,document.createTextNode('Replace the existing donor group'));
+    row.append(legend,donor,label);host.append(row);rows.push({donor,replace});
+  }
+  const reviewButton=dialog.querySelector('[data-review]'),applyButton=dialog.querySelector('[data-apply]'),sceneButton=dialog.querySelector('[data-scene]'),close=dialog.querySelector('[data-close]'),status=dialog.querySelector('[role=status]'),comparison=dialog.querySelector('[data-comparison]'),layer=dialog.querySelector('[data-layer]'),canvas=dialog.querySelector('canvas');
+  canvas.style.width='100%';canvas.style.height='360px';sceneButton.hidden=typeof onScenePreview!=='function';
+  let closed=false,pending=false,applying=false,ownedBusy=false,review=null,controller=null,generation=0,sceneRestore=null,renderer=null,drag=null;
+  const view={yaw:.65,pitch:.4,zoom:1};
+  const current=()=>!closed&&same(context,getContext());
+  const mappings=()=>rows.map(({donor,replace},primitive_index)=>({primitive_index,donor_face_id:donor.value,replace_group:replace.checked}));
+  const body=()=>({asset_id:assetId,content_base64:content,mappings:mappings(),expected_sha256:source.effective_sha256,source_key:context.sourceKey});
+  function restore(){const handle=sceneRestore;sceneRestore=null;handle?.restore?.();}
+  function invalidate(){restore();generation++;review=null;comparison.hidden=true;updateState();}
+  function updateState(){if(!current()){review=null;comparison.hidden=true;restore();}const blocked=pending||busy()||!current();for(const {donor,replace} of rows)donor.disabled=replace.disabled=blocked;reviewButton.disabled=blocked||rows.some(row=>!row.donor.value);applyButton.disabled=sceneButton.disabled=reviewButton.disabled||!review;layer.disabled=blocked||!review;close.disabled=applying;}
+  function begin(){pending=true;ownedBusy=true;setBusy(true);updateState();}
+  function end(){pending=false;controller=null;if(ownedBusy){ownedBusy=false;setBusy(false);}updateState();}
+  function dispose(){if(closed)return;closed=true;restore();generation++;controller?.abort();renderer?.dispose();if(ownedBusy){ownedBusy=false;setBusy(false);}dialog.remove();globalThis.removeEventListener('resize',draw);}
+  async function request(route,body){controller=new AbortController();const response=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal}),value=await response.json();if(!response.ok||value.error)fail(value.error??'Mesh donor mapping failed');return value;}
+  function draw(){if(!review||comparison.hidden||!current()||!renderer)return;const rect=canvas.getBoundingClientRect(),bounds=review.preview.bounds,center=bounds.min.map((v,i)=>(v+bounds.max[i])/2),radius=Math.max(1,Math.hypot(...bounds.max.map((v,i)=>v-bounds.min[i]))/2),c=Math.cos(view.yaw),s=Math.sin(view.yaw),cp=Math.cos(view.pitch),sp=Math.sin(view.pitch);renderer.draw({width:rect.width,height:rect.height,positions:new Map(),wireframe:true,grid:false,camera:{target:{x:center[0],y:-center[1],z:center[2]},distance:radius*3/view.zoom},basis:{right:{x:c,y:0,z:s},up:{x:sp*s,y:cp,z:-sp*c},forward:{x:-cp*s,y:sp,z:cp*c}}});}
+  function load(){renderer??=new SceneRenderer(canvas);const failures=renderer.load({assets:[{geometry_key:'mapped',preview:layer.value==='current'?review.current_preview:review.preview}],entities:[{entity_id:'mapped',geometry_key:'mapped',renderable:true,model_to_scene:[1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1]}]});if(failures.length)fail(failures.join('; '));draw();}
+  for(const row of rows)row.donor.onchange=row.replace.onchange=invalidate;
+  reviewButton.onclick=async()=>{updateState();if(reviewButton.disabled)return;invalidate();const token=generation,asked=body();begin();try{const value=await request('/api/model-mesh-batch-preview',asked);if(!current()||token!==generation||!same(asked.mappings,mappings()))return;review=decodeMeshBatchReview(value,source,glbHash,asked.mappings);comparison.hidden=false;layer.value='proposed';load();status.textContent=`${review.steps.length} sections reviewed as one change. Nothing applied.`;}catch(error){if(current()&&error.name!=='AbortError'){invalidate();status.textContent=error.message;onError(error);}}finally{end();}};
+  applyButton.onclick=async()=>{updateState();if(applyButton.disabled)return;const accepted=review,asked=body();if(!same(asked.mappings,accepted.mappings)){invalidate();return;}applying=true;begin();try{const value=await request('/api/model-mesh-batch',{...asked,review_key:accepted.review_key});if(!current())return;applying=false;dispose();await onApplied(value);}catch(error){if(current()){invalidate();status.textContent=error.message;onError(error);}}finally{applying=false;end();}};
+  sceneButton.onclick=async()=>{updateState();if(sceneButton.disabled||typeof onScenePreview!=='function')return;const accepted=review,token=generation,asked={...body(),review_key:review.review_key,proposed_sha256:review.proposed_sha256};if(!same(asked.mappings,accepted.mappings)){invalidate();return;}const live=()=>current()&&review===accepted&&generation===token;const returnToEditor=()=>{if(!live()){dispose();return false;}restore();dialog.dataset.sceneInspection='false';if(!dialog.open)dialog.showModal();updateState();draw();return true;};begin();controller=new AbortController();try{const result=await onScenePreview(asked,accepted,{returnToEditor,isCurrent:live,signal:controller.signal});if(result===false||!live()){result?.restore?.();return;}sceneRestore=result;dialog.dataset.sceneInspection='true';dialog.close();}catch(error){if(current()&&error.name!=='AbortError'){status.textContent=error.message;onError(error);}}finally{end();}};
+  layer.onchange=()=>{if(review&&current()&&!pending)try{load();}catch(error){invalidate();status.textContent=error.message;onError(error);}};canvas.addEventListener('wheel',event=>{if(review){event.preventDefault();view.zoom=Math.max(.15,Math.min(8,view.zoom*Math.exp(-event.deltaY*.001)));draw();}},{passive:false});
+  canvas.tabIndex=0;canvas.onpointerdown=event=>{if(event.button!==0||!review)return;drag={x:event.clientX,y:event.clientY};canvas.setPointerCapture(event.pointerId);};canvas.onpointermove=event=>{if(!drag)return;view.yaw+=(event.clientX-drag.x)*.012;view.pitch=Math.max(-1.4,Math.min(1.4,view.pitch+(event.clientY-drag.y)*.012));drag={x:event.clientX,y:event.clientY};draw();};canvas.onpointerup=canvas.onpointercancel=()=>{drag=null;};
+  canvas.onkeydown=event=>{if(!review)return;if(event.key==='+'||event.key==='=')view.zoom=Math.min(8,view.zoom*1.2);else if(event.key==='-')view.zoom=Math.max(.15,view.zoom/1.2);else if(event.key==='ArrowLeft')view.yaw-=.12;else if(event.key==='ArrowRight')view.yaw+=.12;else if(event.key==='ArrowUp')view.pitch=Math.max(-1.4,view.pitch-.12);else if(event.key==='ArrowDown')view.pitch=Math.min(1.4,view.pitch+.12);else return;event.preventDefault();draw();};
+  close.onclick=()=>{if(!applying)dispose();};dialog.oncancel=event=>{if(applying)event.preventDefault();};dialog.onclose=()=>{if(!dialog.open&&dialog.dataset.sceneInspection!=='true')dispose();};globalThis.addEventListener('resize',draw);document.body.append(dialog);dialog.showModal();updateState();
+  return {dialog,dispose,updateState};
+}

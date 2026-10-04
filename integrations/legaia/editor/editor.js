@@ -4016,7 +4016,7 @@ async function inspectMeshSceneProposal(request,report,{returnToEditor,isCurrent
   const instances=scenePreview.entities.filter(e=>e.asset_id===request.asset_id&&e.renderable);
   if(!instances.length)throw new Error('This model has no supported scene instances.');
   const entityId=instances.some(e=>e.entity_id===environmentSelection)?environmentSelection:instances[0].entity_id,loadedKey=sceneKey,context=sceneRequestKey();
-  const response=await fetch('/api/model-mesh-append-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({...request,entity_id:entityId,all_instances:true})}),posed=await response.json();
+  const response=await fetch(request.mappings?'/api/model-mesh-batch-scene-preview':'/api/model-mesh-append-scene-preview',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({...request,entity_id:entityId,all_instances:true})}),posed=await response.json();
   if(!response.ok||posed.error)throw new Error(posed.error||'Scene mesh proposal failed');
   if(signal.aborted||!isCurrent()||context!==sceneRequestKey()||loadedKey!==sceneKey||!scenePreviewCurrent()||posed.asset_id!==request.asset_id||posed.entity_id!==entityId||posed.project_source_key!==report.project_source_key||posed.proposed_sha256!==report.proposed_sha256||posed.review_key!==report.review_key)throw new Error('Scene changed during mesh inspection.');
   stopScenePosePlayback();const isolated=sceneShapeProposalDocument(scenePreview,posed,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
