@@ -9,6 +9,21 @@ from .model_face_addition import _context,_budget,FORMAT
 from .scene_preview import source_key
 from .project import ProjectError,digest
 
+
+def source(project,asset_id,expected_key):
+    from .model_group_allocation import source as group_source
+    from importer.model_face_removal import _groups
+    from importer.model_primitives import _qualified_model
+    report=group_source(project,asset_id,expected_key)
+    _,_,base,_,_,audit=_context(project,asset_id,expected_key)
+    next_indices=[0]*len(report['objects'])
+    for owner,*_ in _groups(base,_qualified_model(base)[0]):next_indices[owner]+=1
+    for row in audit.get('allocated_groups',[]):
+        next_indices[row['object_index']]=max(next_indices[row['object_index']],row['origin_group_index']+1)
+    report['next_group_origin_indices']=next_indices
+    if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh append inspection')
+    return report
+
 LIMITATIONS=[
     'Imports static standard GLB POSITION and triangle lists, strips or fans into the selected donor object in native source units.',
     'Reflects Y and reverses triangle winding; rounds positions to signed integer native coordinates.',

@@ -1071,6 +1071,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_allocation import source
                     self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
                     return
+                if route=='/api/model-mesh-append-source':
+                    if set(body)!={'asset_id','source_key'} or not isinstance(body['asset_id'],str) or not isinstance(body['source_key'],str):
+                        raise ProjectError('Mesh source requires exact model and source identities')
+                    from .model_mesh_append import source
+                    self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    return
                 if route in ('/api/model-mesh-append-preview','/api/model-mesh-append'):
                     fields={'asset_id','content_base64','donor_face_id','expected_sha256','source_key'}
                     if 'new_group' in body:fields.add('new_group')

@@ -2,6 +2,10 @@
 from copy import deepcopy
 from hashlib import sha256
 import base64
+import json
+from pathlib import Path
+import shutil
+import subprocess
 import tomllib
 import unittest
 import zipfile
@@ -15,6 +19,7 @@ from test_model_object_ledger import clone_request
 from sdk.project import ProjectError,ProjectService
 from sdk.build import build_project
 import test_model_mesh_append as fixtures
+import test_model_mesh_append_normals as normal_fixtures
 from test_model_primitive_workflow import http_server
 
 
@@ -65,6 +70,8 @@ class MeshAppendGroupTests(unittest.TestCase):
         body=dict(asset_id=asset,content_base64=base64.b64encode(fixtures.glb()).decode(),donor_face_id=donor,
             expected_sha256=sha256(before).hexdigest(),source_key='a'*64,new_group=True)
         with http_server(p) as (server,post),patch.object(server,'state',return_value={'applied':True}):
+            status,source=post('/api/model-mesh-append-source',dict(asset_id=asset,source_key='a'*64))
+            self.assertEqual(status,200);self.assertEqual(source['next_group_origin_indices'],[1])
             for value in (None,1,'true',[],{}):
                 self.assertEqual(post('/api/model-mesh-append-preview',{**body,'new_group':value})[0],400)
             status,report=post('/api/model-mesh-append-preview',body);self.assertEqual(status,200)
@@ -90,6 +97,41 @@ class MeshAppendGroupTests(unittest.TestCase):
         self.assertEqual(report['topology']['allocated_group_count'],source['topology']['allocated_group_count']+1)
         group=report['topology']['allocated_groups'][-1];self.assertEqual(group['object_index'],1)
         self.assertEqual(group['face_ids'],[face['face_id'] for face in report['additions']])
+
+    def test_actual_browser_new_group_review_and_mode_qualification(self):
+        node=shutil.which('node')
+        if not node:self.skipTest('Node unavailable')
+        p,asset,donor=self.fixture();content=fixtures.glb();cases=[]
+        for _ in range(2):
+            source=model_mesh_append.source(p,asset,'a'*64)
+            report=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64,new_group=True)
+            legacy=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64)
+            cases.append(dict(source=source,report=report,legacy=legacy,donor=donor))
+            p.apply_model_mesh_append(asset,content,donor,source['effective_sha256'],'a'*64,report['review_key'],new_group=True)
+            donor=report['additions'][0]['face_id']
+        with patch('sdk.model_object_allocation.source_key',return_value='a'*64):
+            object_source=model_object_allocation.source(p,asset,'a'*64)
+            requests=[clone_request(object_source['topology'],object_source['object_identities'][0],1800)]
+            clone=model_object_allocation.review(p,asset,requests,object_source['effective_sha256'],'a'*64)
+            p.apply_model_object_allocations(asset,requests,object_source['effective_sha256'],'a'*64,clone['review_key'])
+        source=model_mesh_append.source(p,asset,'a'*64);donor=next(face['face_id'] for face in source['topology']['faces'] if face['object_index']==1)
+        report=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64,new_group=True)
+        legacy=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64)
+        cases.append(dict(source=source,report=report,legacy=legacy,donor=donor))
+        helper=normal_fixtures.MeshAppendNormalTests();self.addCleanup(helper.doCleanups)
+        p,asset,donor=helper.fixture(0x14);content=fixtures.glb(normals=normal_fixtures.NORMALS)
+        source=model_mesh_append.source(p,asset,'a'*64)
+        report=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64,new_group=True)
+        legacy=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64)
+        cases.append(dict(source=source,report=report,legacy=legacy,donor=donor))
+        script="""import assert from 'node:assert/strict';import {decodeMeshAppendSource,decodeMeshAppendReview} from './integrations/legaia/editor/model-mesh-append.js';
+let data='';for await(const chunk of process.stdin)data+=chunk;for(const {source,report,legacy,donor} of JSON.parse(data)){
+decodeMeshAppendSource(source,source.asset_id,source.project_source_key);decodeMeshAppendReview(report,source,donor,report.geometry.glb_sha256,true);decodeMeshAppendReview(legacy,source,donor,legacy.geometry.glb_sha256);
+assert.throws(()=>decodeMeshAppendReview(report,source,donor,report.geometry.glb_sha256));assert.throws(()=>decodeMeshAppendReview(legacy,source,donor,legacy.geometry.glb_sha256,true));
+for(const mutate of [r=>r.group_requests[0].group_id='bad',r=>r.topology.allocated_groups.at(-1).origin_group_index++,r=>r.topology.allocated_groups.at(-1).current_group_index++,r=>r.topology.allocated_groups.at(-1).mode++,r=>r.topology.operation_count--,r=>r.topology.faces.at(-1).group_index--,r=>r.preview.triangles.at(-1)[0]++,r=>r.preview.triangle_normals[0]=[[1,0,0],[1,0,0],[1,0,0]],r=>r.preview.bounds.max[0]++,r=>r.allocation_mode='existing']){const bad=structuredClone(report);mutate(bad);assert.throws(()=>decodeMeshAppendReview(bad,source,donor,report.geometry.glb_sha256,true));}}
+"""
+        result=subprocess.run([node,'--input-type=module','-e',script],input=json.dumps(cases),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
+        self.assertEqual(result.returncode,0,result.stderr)
 
 
 if __name__=='__main__':unittest.main()
