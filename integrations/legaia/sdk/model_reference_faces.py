@@ -68,10 +68,16 @@ def addition_group_ownership(project, asset_id, retail, effective, binding):
         for face in obj['primitives']:
             index=face['primitive_index'];original=source[owner]['primitives'][inverse[index]]
             origins[f'face://source/{base_hash}/{owner}/{index}']=(owner,original['group_index'])
+    next_owner=len(initial)
     for operation in _operations(binding['ledger']):
         if operation['kind']=='add_faces':
             for request in operation['additions']:
                 origins[request['face_id']]=origins[request['donor_face_id']]
+        elif operation['kind']=='allocate_objects':
+            for request in operation['requests']:
+                owner=next_owner;next_owner+=1
+                for group in request['groups']:
+                    for face in group['faces']:origins[face['face_id']]=(owner,None)
         elif operation['kind']=='allocate_groups':
             for group in operation['requests']:
                 owner=origins[group['donor_face_id']][0]

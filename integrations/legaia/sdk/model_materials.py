@@ -75,8 +75,12 @@ def _snapshot(project, asset_id):
             binding.update(schema_version='legaia.model-material-source.v3', authored_faces=authored_faces)
             from .model_reference_faces import addition_group_ownership
             binding['group_mappings'],authored_groups=addition_group_ownership(project,asset_id,retail,effective,authored)
-            if authored['ledger']['schema_version']=='legaia.model-face-addition-ledger.v6':
+            if authored['ledger']['schema_version'] in ('legaia.model-face-addition-ledger.v6','legaia.model-face-addition-ledger.v7'):
                 binding.update(schema_version='legaia.model-material-source.v4',authored_groups=authored_groups)
+            if authored['ledger']['schema_version']=='legaia.model-face-addition-ledger.v7':
+                from .model_reference_faces import addition_object_ownership
+                owners,_=addition_object_ownership(project,asset_id,retail,effective,authored)
+                binding.update(schema_version='legaia.model-material-source.v5',object_mappings=owners)
     _bounded(binding, 'Model material source'); _current(project, binding)
     return dict(binding=binding, retail=retail, effective=effective)
 
@@ -140,7 +144,7 @@ def prepare(project, asset_id, edits, expected_sha256, expected_source_key):
     report.update(schema_version='legaia.model-material-review.v1', proposed_sha256=sha256(candidate).hexdigest(),
                   coordinate_changes=changes, changes_from_current=pending, project_changed=False,
                   gameplay_verified=False, limitations=list(LIMITATIONS))
-    if binding['schema_version'] in ('legaia.model-material-source.v3','legaia.model-material-source.v4'):
+    if binding['schema_version'] in ('legaia.model-material-source.v3','legaia.model-material-source.v4','legaia.model-material-source.v5'):
         report.update(schema_version='legaia.model-material-review.v2', comparison='current_addition_topology')
     report['review_key'] = digest(dict(binding=binding, edits=edits, proposed_sha256=report['proposed_sha256'],
                                       changes=changes, pending=pending))

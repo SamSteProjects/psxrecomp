@@ -17,6 +17,9 @@ from .core import ImportError
 
 def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     """Compose candidate content through already-verified rigid pose channels."""
+    if binding.get('format')=='tmd-face-addition-v1' and binding.get('ledger',{}).get('schema_version')=='legaia.model-face-addition-ledger.v7':
+        from .model_object_preview import preview_object_model
+        return preview_object_model(preview,replacement,binding)
     from copy import deepcopy
     from .animation import pose_vertices, _bounds
     result = deepcopy(preview)
