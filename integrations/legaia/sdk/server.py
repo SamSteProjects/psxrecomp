@@ -413,7 +413,7 @@ class EditorServer(ThreadingHTTPServer):
             atomic_write(output / ".gitignore", b"*\n")
         return result
 
-    def scene_shape_proposal(self, asset_id: str, entity_id: str, replacement: bytes, report: dict, key: str, all_instances: bool = False, material_content: bool = False) -> dict:
+    def scene_shape_proposal(self, asset_id: str, entity_id: str, replacement: bytes, report: dict, key: str, all_instances: bool = False, material_content: bool = False, *, prepared_binding: dict | None = None) -> dict:
         from .scene_preview import source_key, preview_shape_instance, preview_shape_instances
         from importer.scene_animation import load_scene_actor_animation_catalog
         from importer.environment import load_environment_preview_catalog
@@ -429,6 +429,15 @@ class EditorServer(ThreadingHTTPServer):
         existing = self.project.model_overrides.get(asset_id, {})
         if existing.get('format') == 'tmd-face-removal-v1':
             proposal_binding.update(format=existing['format'], removed_faces=[dict(row) for row in existing['removed_faces']])
+        if prepared_binding is not None:
+            from copy import deepcopy
+            from hashlib import sha256
+            if (prepared_binding.get('format') != 'tmd-face-addition-v1'
+                    or prepared_binding.get('asset_sha256') != report['proposed_sha256']
+                    or prepared_binding.get('asset_sha256') != sha256(replacement).hexdigest()
+                    or prepared_binding.get('byte_length') != len(replacement)):
+                raise ProjectError('Scene topology proposal differs from its prepared binding')
+            proposal_binding = deepcopy(prepared_binding)
         report['preview'] = preview_shape_instance(scene,asset_id,entity_id,replacement,proposal_binding)
         if all_instances:
             report.update(preview_shape_instances(scene,asset_id,replacement,proposal_binding))
@@ -783,7 +792,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-append-preview', '/api/model-mesh-append'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview', '/api/texture-png-pixels-preview', '/api/texture-png-scene-preview', '/api/texture-png-import'):
                 request_limit = 24 * 1024 * 1024
@@ -1077,15 +1086,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_mesh_append import source
                     self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
                     return
-                if route in ('/api/model-mesh-append-preview','/api/model-mesh-append'):
+                if route in ('/api/model-mesh-append-preview','/api/model-mesh-append','/api/model-mesh-append-scene-preview'):
                     fields={'asset_id','content_base64','donor_face_id','expected_sha256','source_key'}
                     if 'new_group' in body:fields.add('new_group')
                     if 'replace_group' in body:fields.add('replace_group')
                     if route=='/api/model-mesh-append':fields.add('review_key')
+                    if route=='/api/model-mesh-append-scene-preview':fields.update(('review_key','proposed_sha256','entity_id','all_instances'))
                     if (set(body)!=fields or type(body.get('new_group',False)) is not bool or type(body.get('replace_group',False)) is not bool or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
                             or not isinstance(body['donor_face_id'],str) or not 0<len(body['donor_face_id'])<=512
                             or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key])
-                                   for key in fields & {'source_key','expected_sha256','review_key'})):
+                                   for key in fields & {'source_key','expected_sha256','review_key','proposed_sha256'})):
                         raise ProjectError('Mesh append requires exact source, donor, model and review identities')
                     encoded=body['content_base64']
                     if not isinstance(encoded,str) or not 0<len(encoded)<=44739244:
@@ -1094,7 +1104,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                     except ValueError as exc:raise ProjectError('Mesh append requires valid base64') from exc
                     if not 28<=len(payload)<=32*1024*1024:raise ProjectError('Mesh append GLB exceeds its byte bounds')
                     args=(body['asset_id'],payload,body['donor_face_id'],body['expected_sha256'],body['source_key'])
-                    if route.endswith('-preview'):
+                    if route=='/api/model-mesh-append-scene-preview':
+                        if not isinstance(body['entity_id'],str) or not 0<len(body['entity_id'])<=512 or type(body['all_instances']) is not bool:
+                            raise ProjectError('Mesh scene inspection requires an exact instance and boolean scope')
+                        from .model_mesh_append import prepare
+                        candidate,binding,report=prepare(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False))
+                        if report['review_key']!=body['review_key'] or report['proposed_sha256']!=body['proposed_sha256']:
+                            raise ProjectError('Mesh scene proposal differs from the reviewed file or mode')
+                        self._json(200,self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],candidate,report,body['source_key'],body['all_instances'],prepared_binding=binding))
+                    elif route.endswith('-preview'):
                         from .model_mesh_append import review
                         self._json(200,review(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False)))
                     else:
