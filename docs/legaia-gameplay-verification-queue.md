@@ -1,5 +1,47 @@
 # Deferred gameplay verification
 
+## 2026-10-04: GLB image dependency views and retained image selection
+
+Both embedded-PNG pickers now show which standard GLB material texture links use
+the selected image: base color, metallic/roughness, normal, occlusion and emissive.
+The readonly graph records material names/indices, channel roles, UV-set indices,
+sampler references and GLB mesh/primitive uses. Shared images and unused materials
+remain visible; images with no standard references are labelled accordingly. The
+view presents up to 64 material links and 32 primitive uses per link, with complete
+bounded graph evidence available below it. Names are displayed as text.
+
+Authored-slot Load retained PNG/STP recipe freshly inspects the retained GLB and
+restores its image selector. Another embedded image can be selected without an
+external upload. This invalidates the earlier conversion/review, re-extracts exact
+image bytes and carries the new image identity into the existing conversion and
+source-retention workflow. Identical image bytes at another GLB image index still
+require a fresh provenance review. Metadata-only source retention preserves Current
+TIM and creates one Undo entry; native changes use the existing combined Apply.
+
+The dependency report is display evidence, not native face, TPage, CLUT, UV, blend
+or shader authority. Extension-owned references remain unresolved. URI images
+are excluded and never fetched. Graph limits: existing 32 MiB GLB/64 images,
+256 textures/materials/samplers, 1024 meshes, 4096 primitives, 2 MiB response.
+Malformed references and over-budget graphs reject dependency inspection. Both
+pickers visibly fall back to the separate strict PNG catalog, so unsupported mesh
+or shader metadata does not prevent an otherwise qualified image extraction.
+Abort propagates without a fallback request; invalid PNG catalogs still fail.
+
+Qualification: seven focused Python cases across existing GLB texture import,
+new graph/HTTP/Node decoder coverage and authored-slot GLB retention; three Node
+suites for PNG editing, conversion and slot review. The final private browser
+proof covers both pickers, retained graph reload, switching to an unused embedded
+image with metadata Apply/Save/reload, unchanged native TIM, Undo/Redo, offline
+Open and exact source snapshot retention. A final readonly pass covers graph
+failure fallback and conversion plus zero URI requests. Evidence:
+`local-output/sdk-20260909/texture-glb-dependencies-20261004/parent/qualified/proof.json`.
+
+No game/installed runtime was launched or changed. Native material dependency
+routing, broader GLB extension policy, general Retail mode/CLUT allocation, runtime
+VRAM policy, scripting/scheduling, live scene identity/parity, world-map/MAPDSIP and
+release/performance/gameplay acceptance remain open. The overall goal stays active;
+manual gameplay checks can remain queued.
+
 ## 2026-10-04: GLB embedded images feed authored TIM conversion
 
 Convert source PNG now accepts a bounded GLB and explicitly selected embedded PNG.

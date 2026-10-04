@@ -857,6 +857,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/texture-comparison.js": ("texture-comparison.js", "text/javascript"),
                  "/texture-resize.js": ("texture-resize.js", "text/javascript"),
                  "/texture-image-conversion.js": ("texture-image-conversion.js", "text/javascript"),
+                 "/texture-glb-dependencies.js": ("texture-glb-dependencies.js", "text/javascript"),
                  "/texture-slots.js": ("texture-slots.js", "text/javascript"),
                  "/texture-source-retention.js": ("texture-source-retention.js", "text/javascript")}
         if route not in files:
@@ -891,7 +892,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image','/api/texture-glb-dependencies','/api/texture-glb-retain-review','/api/texture-glb-retain', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                 request_limit = 44 * 1024 * 1024
@@ -1893,6 +1894,14 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,dict(schema_version='legaia.texture-glb-source.v1',asset_id=body['asset_id'],
                         effective_sha256=binding['asset_sha256'],source=binding['glb_source'],glb_base64=base64.b64encode(content).decode(),
                         read_only=True,project_changed=False))
+                    return
+                if route=='/api/texture-glb-dependencies':
+                    if set(body)!={'content_base64'} or not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:
+                        raise ProjectError('GLB dependencies require exact bounded source bytes')
+                    try:payload=base64.b64decode(body['content_base64'],validate=True)
+                    except ValueError as exc:raise ProjectError('GLB dependencies require valid base64') from exc
+                    from importer.texture_glb_dependencies import inspect_glb_dependencies
+                    self._json(200,inspect_glb_dependencies(payload))
                     return
                 if route in ('/api/texture-glb-images','/api/texture-glb-image'):
                     fields={'content_base64'} if route.endswith('images') else {'content_base64','image_index','glb_sha256','png_sha256'}
