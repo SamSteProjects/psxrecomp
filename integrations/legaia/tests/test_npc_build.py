@@ -110,9 +110,11 @@ class NPCBuildGuards(unittest.TestCase):
             with patch('sdk.npc_build._prepare_draft_scene', return_value=(prot, a)), self.assertRaisesRegex(ProjectError, message):
                 prepare_npc_overlays(p, 'scene://fixture', archive)
         project.imports['scene://fixture']['actors'] = [{'source_record': {'scene_bundle': {'kind': 'raw_streaming_man'}}}]
-        with patch('sdk.npc_build._prepare_draft_scene') as prepare, self.assertRaisesRegex(ProjectError, 'Streaming'):
+        raw_audit=deepcopy(audit)
+        raw_audit['_rebuild_request']['chunk_header_offset']=0
+        with patch('sdk.npc_build._prepare_draft_scene',return_value=(prot,raw_audit)) as prepare, self.assertRaisesRegex(ProjectError, 'Streaming'):
             prepare_npc_overlays(project, 'scene://fixture', archive)
-        prepare.assert_not_called()
+        prepare.assert_called_once()
         project.imports['scene://fixture']['actors'] = []
         def drift(*args, **kwargs):
             project.name = 'changed'

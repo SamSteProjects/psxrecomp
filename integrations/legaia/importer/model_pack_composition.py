@@ -1,4 +1,4 @@
-"""Compose source-addressed patches before qualified model and ANM relocation."""
+"""Compose source-addressed patches before qualified model, ANM and MAN relocation."""
 from hashlib import sha256
 
 from .core import ImportError, parse_scene_assets, decompress_lzs
@@ -24,17 +24,21 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
     for request in requests:
         animation = isinstance(request,dict) and request.get('kind') == 'animation-bank'
         streaming = isinstance(request,dict) and request.get('kind') == 'streaming-animation-bank'
-        fields = ({'kind','entry_index','chunk_header_offset','expected_bank_sha256','bank'} if streaming else
+        streaming_man = isinstance(request,dict) and request.get('kind') == 'streaming-man'
+        raw_resource = streaming or streaming_man
+        fields = ({'kind','entry_index','chunk_header_offset','source_man_sha256','candidate'} if streaming_man else
+                  {'kind','entry_index','chunk_header_offset','expected_bank_sha256','bank'} if streaming else
                   {'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'} if animation else
                   {'entry_index', 'descriptor_index', 'expected_pack_sha256', 'replacements'})
         if (not isinstance(request, dict) or set(request) != fields
-                or type(request['entry_index']) is not int or type(request['chunk_header_offset'] if streaming else request['descriptor_index']) is not int):
+                or type(request['entry_index']) is not int or type(request['chunk_header_offset'] if raw_resource else request['descriptor_index']) is not int):
             raise ImportError('Model composition relocation request is malformed')
-        if streaming:
-            if request['chunk_header_offset']<0 or request['chunk_header_offset']%4 or request['entry_index'] in tables:
-                raise ImportError('Raw ANM composition requires one word-aligned resource per physical owner')
-            tables[request['entry_index']]={'streaming'}
-            identities.add((request['entry_index'],'streaming',request['chunk_header_offset']))
+        if raw_resource:
+            kinds=tables.setdefault(request['entry_index'],set())
+            if request['chunk_header_offset']<0 or request['chunk_header_offset']%4 or request['kind'] in kinds or any(kind not in ('streaming-man','streaming-animation-bank') for kind in kinds):
+                raise ImportError('Raw composition requires one word-aligned resource of each type per physical owner')
+            kinds.add(request['kind'])
+            identities.add((request['entry_index'],request['kind'],request['chunk_header_offset']))
             continue
         table_offset = request.get('table_offset',0)
         if type(table_offset) is not int or table_offset<0:
@@ -68,10 +72,17 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         working[start:start+len(payload)] = payload
     working = bytes(working)
     patched_sha256 = sha256(working).hexdigest()
-    reports = []
+    reports = [];completed=[]
     ordered=sorted(requests,key=lambda row:(row['entry_index'],row.get('table_offset',row.get('chunk_header_offset',0)),row.get('descriptor_index',0)))
     for request in ordered:
-        if request.get('kind') == 'streaming-animation-bank':
+        if request.get('kind') in ('streaming-animation-bank','streaming-man'):
+            from .streaming_animation_bank import remap_streaming_header
+            request=dict(request,chunk_header_offset=remap_streaming_header(request['entry_index'],request['chunk_header_offset'],3 if request['kind']=='streaming-man' else 5,reports))
+        if request.get('kind') == 'streaming-man':
+            from .prot_rebuild import rebuild_streaming_man_entry
+            working,report=rebuild_streaming_man_entry(working,sha256(working).hexdigest(),
+                **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
+        elif request.get('kind') == 'streaming-animation-bank':
             from .streaming_animation_bank import rebuild_streaming_animation_bank_entry
             working,report=rebuild_streaming_animation_bank_entry(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
@@ -83,11 +94,22 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
             working, report = rebuild_model_pack_entry(working, sha256(working).hexdigest(),
                 **request, header_offset=header_offset)
         reports.append(report)
+        completed.append(request)
     reopened = _archive(working)
-    for request,report in zip(ordered,reports):
-        if request.get('kind')=='streaming-animation-bank':
-            from .streaming_animation_bank import verify_rebuilt_streaming_animation_banks
-            verify_rebuilt_streaming_animation_banks(working,[request])
+    for index,(request,report) in enumerate(zip(completed,reports)):
+        if request.get('kind') in ('streaming-animation-bank','streaming-man'):
+            from .streaming_animation_bank import remap_streaming_header,verify_rebuilt_streaming_animation_banks
+            final_offset=remap_streaming_header(request['entry_index'],request['chunk_header_offset'],3 if request['kind']=='streaming-man' else 5,reports[index+1:])
+            if request['kind']=='streaming-animation-bank':
+                verify_rebuilt_streaming_animation_banks(working,[dict(request,chunk_header_offset=final_offset)])
+            else:
+                from .streaming_man import streaming_chunks
+                raw=reopened.read_entry(reopened.entry(request['entry_index']))
+                chunks,terminated=streaming_chunks(raw)
+                target=next((c for c in chunks if c['header_offset']==final_offset and c['type_byte']==3),None)
+                candidate=request['candidate']
+                if not terminated or target is None or target['size']!=len(candidate) or raw[final_offset+4:final_offset+4+len(candidate)]!=candidate:
+                    raise ImportError('Resource composition final reopened streaming MAN changed')
             continue
         entry = reopened.entry(request['entry_index'])
         span = locate_physical_span(reopened, entry.start_lba*2048)
@@ -103,5 +125,5 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
     return working, dict(schema_version='legaia.model-pack-composition.v1', source_sha256=expected_sha256,
         patched_sha256=patched_sha256, proposed_sha256=sha256(working).hexdigest(),
         patch_count=len(prepared), patched_bytes=sum(len(payload) for _,payload in prepared),
-        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,growth_bytes=len(working)-len(source),
+        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,growth_bytes=len(working)-len(source),
         disc_relocation_required=len(working)!=len(source), build_ready=False, gameplay_verified=False)

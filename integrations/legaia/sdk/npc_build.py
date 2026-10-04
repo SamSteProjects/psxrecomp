@@ -1,4 +1,4 @@
-"""Fixed source-span NPC donor candidates for the ordinary overlay package.
+"""Qualified NPC candidates for fixed-span overlays or raw MAN relocation.
 
 This establishes serialization only, without claiming guest actor allocation,
 spawn scheduling or acceptance of opaque script paths.
@@ -38,9 +38,6 @@ def prepare_npc_overlays(project, scene_id, archive):
         raise ProjectError('NPC Build requires an imported source scene and disc in Edit mode')
     before = authored_state_key(project)
     document = project.imports[scene_id]
-    if any(actor.get('source_record', {}).get('scene_bundle', {}).get('kind') == 'raw_streaming_man'
-           for actor in document.get('actors', [])):
-        raise ProjectError('Streaming NPC additions require the supported experimental growth export; fixed-span normal Build is unavailable')
     view = copy(project)
     view.overrides = {owner: deepcopy(value) for owner, value in project.overrides.items()
                       if owner == scene_id or isinstance(owner, str) and owner.startswith(scene_id + '/')}
@@ -61,6 +58,8 @@ def prepare_npc_overlays(project, scene_id, archive):
     if {doc['source']['disc_identity'] for doc in project.imports.values()} != {'sha256:' + audit['source_disc_sha256']}:
         raise ProjectError('NPC Build candidate disc differs from imported source identity')
     request = audit.get('_rebuild_request')
+    if isinstance(request,dict) and 'chunk_header_offset' in request:
+        return _prepare_streaming_candidate(project,view,scene_id,archive,prot,audit,request,before)
     if (not isinstance(request, dict) or set(request) != {'entry_index', 'table_offset', 'source_man_sha256', 'candidate'} or
             type(request['entry_index']) is not int or type(request['table_offset']) is not int):
         raise ProjectError('NPC Build requires one qualified compressed MAN carrier')
@@ -166,3 +165,36 @@ def prepare_npc_overlays(project, scene_id, archive):
     if project.mode != 'edit' or authored_state_key(project) != before:
         raise ProjectError('Project build inputs changed during fixed-span NPC preparation')
     return overlays, edits, metadata
+
+
+def _prepare_streaming_candidate(project,view,scene_id,archive,prot,audit,request,before):
+    from importer.streaming_man import grow_streaming_man
+    if (set(request)!={'entry_index','chunk_header_offset','source_man_sha256','candidate'} or
+            type(request['entry_index']) is not int or type(request['chunk_header_offset']) is not int or
+            not isinstance(request['candidate'],bytes) or not 0<len(request['candidate'])<=MAX_CANDIDATE_BYTES):
+        raise ProjectError('Streaming NPC Build requires a bounded qualified MAN growth request')
+    entry=archive.entry(request['entry_index']);span=locate_physical_span(archive,entry.start_lba*2048)
+    if span['entry_index']!=request['entry_index'] or span['offset_within_span']!=0:
+        raise ProjectError('Streaming NPC Build has no unique physical owner')
+    carrier=prot[span['byte_offset']:span['byte_offset']+span['byte_length']]
+    _,native=grow_streaming_man(carrier,sha256(carrier).hexdigest(),request['chunk_header_offset'],request['source_man_sha256'],request['candidate'])
+    audit['actor_pool_evidence']=actor_pool_assessment(archive,request['candidate'])
+    scene=view.imports[scene_id]['scene']['name'];edits=[]
+    for row in audit['actor_changes']['drafts']:
+        identifier=row['draft_id']
+        edits.append(dict(scene=scene,semantic_id=identifier,field='npc.appended_record',before_value=None,
+            after_value=row['record_index'],scope='source-man-donor-append-candidate',
+            donor_entity_id=view.actor_drafts[identifier]['donor_entity_id'],changes=_public(row)))
+    for family,changes in audit.items():
+        if family.endswith('_changes') and changes:
+            edits.append(dict(scene=scene,semantic_id=scene_id,field='npc.composed.'+family,before_value=None,
+                after_value=len(changes) if isinstance(changes,(list,dict)) else 1,
+                scope='source-man-draft-composed-overrides',composition_changes=_public(changes)))
+    metadata=dict(schema_version='legaia.npc-streaming-growth-build.v1',scene_id=scene_id,
+        authored_state_key=before,draft_audit=_public(audit),physical_owner=deepcopy(span),
+        native_growth=_public(native),validation=dict(exact_man_readback=True,terminated_chunk_chain=True),
+        gameplay_verified=False,allocation_verified=False,spawn_scheduling_verified=False,opaque_script_paths_verified=False,
+        _relocation_request=dict(kind='streaming-man',**request))
+    if project.mode!='edit' or authored_state_key(project)!=before:
+        raise ProjectError('Project build inputs changed during streaming NPC preparation')
+    return [],edits,metadata

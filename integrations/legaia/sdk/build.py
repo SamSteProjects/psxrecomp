@@ -803,6 +803,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if scene_id in draft_scenes:
                 from .npc_build import prepare_npc_overlays
                 candidate_overlays, candidate_edits, metadata = prepare_npc_overlays(project, scene_id, archive)
+                native_request=metadata.pop('_relocation_request',None)
+                if native_request is not None:growth_requests.append(native_request)
                 overlays.extend(candidate_overlays)
                 audit_edits.extend(candidate_edits)
                 npc_candidates[scene_id] = metadata
@@ -1219,7 +1221,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     if npc_candidates:
         package_suffix = ' source NPC candidates'
         feature_name = 'Source NPC candidates and authored scene data'
-        description = 'Private fixed-span MAN donor candidates and supported authored scene data. Native spawning and behavior are unverified.'
+        description = 'Private MAN donor candidates with qualified fixed-span or streaming relocation delivery and supported authored scene data. Native spawning and behavior are unverified.'
         feature_description += ' NPC additions are source-structural candidates: allocation, scheduling, opaque script references and gameplay require verification.'
     if relocation:
         package_suffix = " authored scene data"

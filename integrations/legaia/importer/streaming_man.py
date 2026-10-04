@@ -124,6 +124,12 @@ def grow_streaming_man(source: bytes, expected_sha256: str, header_offset: int,
                 for c in chunks]
     if streaming_chunks(result) != (expected, True):
         raise ImportError('Streaming MAN growth changed the expected chunk chain')
+    for chunk in chunks:
+        if chunk['header_offset']==header_offset:continue
+        old=chunk['header_offset'];new=old+delta if old>header_offset else old
+        length=4+chunk['size']
+        if source[old:old+length]!=result[new:new+length]:
+            raise ImportError('Streaming MAN growth changed an overlapping opaque chunk')
     return result, dict(header_offset=header_offset, payload_offset=start,
                         original_payload_size=old_size, payload_size=new_size, growth_bytes=delta,
                         source_sha256=expected_sha256, result_sha256=sha256(result).hexdigest(),

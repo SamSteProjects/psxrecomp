@@ -1,8 +1,15 @@
 # Source NPC candidates in normal Build
 
+**2026-10-04:** Retail dolk2 normal Build package readback passes both NPC-only
+raw growth and combined NPC/retained-animation growth, shared channel edits,
+allocated initial assignment and placement. Inclusive read-only Review Build also
+passes the combined case. Native synthetic composition covers both chunk orders,
+duplicate rejection and opaque header overlap rejection. The editor v2 review
+scope is now `qualified_man_source_candidates`. Gameplay remains deferred.
+
 Saved donor-based NPC drafts can enter **Review Build** and **Build** when their
-scene uses a qualified compressed MAN container and the composed candidate fits
-the original consumed compressed stream. This is source packaging support;
+scene uses a qualified compressed MAN container whose composed candidate fits
+the original consumed compressed stream, or a qualified raw streaming MAN carrier. This is source packaging support;
 native allocation, spawning, scheduling and opaque script paths remain unverified. Normal Build also qualifies the [retail actor-pool lower bound](legaia-npc-actor-pool.md) and rejects unavoidable initial-placement overflow before compression; other consumers and safe headroom remain unknown.
 
 Review includes all supported authored inputs. Its v2 result counts requested
@@ -20,9 +27,12 @@ Any unused part of that stream retains original bytes. Carrier size, descriptor
 pointers, neighboring payloads, TOC and ISO layout remain unchanged. Supported
 model, animation, MAP and texture overlays still use the normal Build pipeline.
 
-Streaming MAN additions and candidates that exceed original consumed capacity
-remain rejected by normal Build. The existing experimental growth export is a
-separate workflow. No relocation or zero-padding allocation is inferred here.
+Raw streaming candidates use a source-bound MAN relocation request and a format-7
+package. One MAN and one ANM growth request can share a physical carrier. The
+composer applies original-address patches first, replays completed native header
+relocations, preserves opaque chunks and reads back the exact final MAN/ANM bytes.
+Compressed candidates exceeding original consumed capacity remain rejected by
+normal Build. Experimental growth export remains a separate workflow.
 Passing source checks does not prove that copied scripts initialize a new NPC
 correctly, refer to appropriate story state or permit valid runtime identity.
 

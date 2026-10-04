@@ -5,7 +5,7 @@ const key='a'.repeat(64);
 const review=()=>({schema_version:'legaia.build-review.v2',source_key:key,read_only:true,
   status:'ready_for_build',normal_build_ready:true,blockers:[],excluded_npc_draft_count:0,included_npc_draft_count:2,
   assessment_scope:'all_supported_authored_content_including_source_qualified_npc_drafts',
-  npc_build_scope:'fixed_span_compressed_man_source_candidates',npc_gameplay_verified:false,
+  npc_build_scope:'qualified_man_source_candidates',npc_gameplay_verified:false,
   limitations:['Source candidates; no gameplay acceptance.'],assessment:{output_written:false,
     archive_packing:'not_run',runtime_status:'not_run',audit_sha256:key,manifest_sha256:key,source_disc_sha256:key,
     overlay_count:1,build_kind:'authored',change_kinds:['npc_draft'],report:{schema_version:'legaia.build-report.v1',

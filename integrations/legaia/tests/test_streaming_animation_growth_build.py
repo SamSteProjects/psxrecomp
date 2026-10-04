@@ -23,6 +23,32 @@ import test_streaming_normal_build as workflow
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class StreamingAnimationGrowthBuild(unittest.TestCase):
     def test_raw_bank_frozen_capture_shared_axes_assigned_header_and_placement(self):
+        self._run()
+
+    def test_raw_bank_and_npc_growth_with_allocated_header(self):
+        self._run(npc=True)
+
+    def test_npc_only_raw_growth_package(self):
+        from sdk.streaming_build import prepare_streaming_scene
+        with tempfile.TemporaryDirectory() as directory:
+            project=workflow.StreamingNormalBuild().project(directory);scene=project.active_scene
+            project.command(dict(type='create_actor_draft',donor_entity_id='scene://dolk2/actors/man-p1/0001',
+                position=dict(x=832,z=896),name='Deferred raw NPC'))
+            _,prepared=prepare_streaming_scene(project,scene,animation_growth_managed=True)
+            candidate=prepared['_rebuild_request']['candidate'];result=build_project(project)
+            audit=json.loads(Path(result['audit']).read_text(encoding='utf-8'))
+            self.assertNotIn('animation_growth',audit)
+            with zipfile.ZipFile(result['path']) as package:
+                manifest=tomllib.loads(package.read('manifest.toml').decode());self.assertEqual(manifest['format_version'],7)
+                row=manifest['disc_relocation'][0]
+                payload=decode_relocation_package(package.read(row['file']),row['sha256'])['replacement']
+            archive=_archive(payload);index=prepared['_rebuild_request']['entry_index']
+            raw=archive.read_entry(archive.entry(index));chunks,terminated=streaming_chunks(raw);self.assertTrue(terminated)
+            man=next(c for c in chunks if c['type_byte']==3)
+            self.assertEqual(raw[man['header_offset']+4:man['header_offset']+4+man['size']],candidate)
+            self.assertTrue(audit['relocation']['composition']['final_streaming_man_verified'])
+
+    def _run(self,npc=False):
         with tempfile.TemporaryDirectory() as directory:
             project=workflow.StreamingNormalBuild().project(directory);scene=project.active_scene
             owner='scene://dolk2/actors/man-p1/0001';other='scene://dolk2/actors/man-p1/0011'
@@ -38,6 +64,12 @@ class StreamingAnimationGrowthBuild(unittest.TestCase):
             carrier,_,_=workflow.StreamingNormalBuild().source(project);baseline=carrier.payload
             position=parse_man(baseline,'dolk2').actors[10].world_x+64
             project.overrides[other]=dict(Transform=dict(position=dict(x=position)))
+            candidate=None
+            if npc:
+                from sdk.streaming_build import prepare_streaming_scene
+                project.command(dict(type='create_actor_draft',donor_entity_id=owner,position=dict(x=832,z=896),name='Deferred streaming NPC'))
+                _,prepared=prepare_streaming_scene(project,scene,animation_growth_managed=True)
+                candidate=prepared['_rebuild_request']['candidate']
             expected,_=compose(project,scene);library=record_library(project,scene,source_key(project));self.assertTrue(library['build_available'])
             assessed=build_review(project);self.assertTrue(assessed['normal_build_ready'],assessed['blockers'])
             result=build_project(project);audit=json.loads(Path(result['audit']).read_text(encoding='utf-8'))
@@ -52,7 +84,14 @@ class StreamingAnimationGrowthBuild(unittest.TestCase):
             man=next(c for c in chunks if c['type_byte']==3);emitted=raw[man['header_offset']+4:man['header_offset']+4+man['size']]
             actors=parse_man(emitted,'dolk2').actors;self.assertEqual(actors[10].world_x,position)
             self.assertEqual(actors[0].animation_id,assignment['native_animation_id'])
-            self.assertEqual(sha256(emitted).hexdigest(),next(o['decoded_after_sha256'] for o in audit['overlays'] if o.get('source_kind')=='raw_streaming_man'))
+            if npc:
+                self.assertEqual(emitted,candidate)
+                self.assertEqual(len(actors),len(parse_man(baseline,'dolk2').actors)+1)
+                self.assertEqual(audit['npc_candidates'][scene]['schema_version'],'legaia.npc-streaming-growth-build.v1')
+                self.assertTrue(audit['relocation']['composition']['final_streaming_man_verified'])
+                self.assertFalse(audit['npc_candidates'][scene]['gameplay_verified'])
+            else:
+                self.assertEqual(sha256(emitted).hexdigest(),next(o['decoded_after_sha256'] for o in audit['overlays'] if o.get('source_kind')=='raw_streaming_man'))
 
 
 if __name__=='__main__':unittest.main()

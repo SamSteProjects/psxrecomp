@@ -1,5 +1,22 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — streaming NPC candidates in normal Build:** Qualified raw MAN
+append now enters normal Build's format-7 relocation package. The native composer
+accepts one MAN and one ANM growth request in a shared raw physical owner, remaps
+headers in operation order and reads back both exact final payloads. Fixed-span
+compressed NPC delivery remains available; oversized compressed candidates remain
+unsupported. Raw MAN growth also rejects changed declared opaque neighbors,
+including odd-sized payloads overlapping a rewritten header.
+
+Retail dolk2 smoke passes inclusive read-only Build review and actual package
+readback with NPC append, retained animation allocation, shared axes, allocated
+initial selector and existing actor placement. A separate NPC-only raw Build
+passes exact package MAN readback. Fifteen focused native/carrier/export/guard
+checks and both editor Build-review contract suites pass. Source NPC allocation,
+spawning, scripts and scheduling still need deferred gameplay acceptance. No
+game, physical Retail disc export or installed-runtime change was performed.
+The full solo goal remains active. [NPC guide](legaia-npc-build-candidates.md).
+
 **2026-10-04 — managed raw streaming experimental export:** Raw scene
 preparation now composes retained allocated initial MAN assignments with donor NPC
 append. Shared channel edits enter the expanded ANM bank once. Experimental archive

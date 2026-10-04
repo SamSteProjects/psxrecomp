@@ -63,6 +63,15 @@ class StreamingAnimationBank(unittest.TestCase):
             self.assertEqual(remap_streaming_header(1,anm_at,5,[first_man]),proposed_anm)
             reverse,final_bank=rebuild_streaming_animation_bank_entry(other,sha256(other).hexdigest(),1,proposed_anm,sha256(bank).hexdigest(),expanded)
             self.assertEqual(result,reverse);self.assertEqual(result[-8*2048:],source[-8*2048:])
+            from importer.model_pack_composition import compose_model_pack_archive
+            requests=[dict(kind='streaming-animation-bank',entry_index=1,chunk_header_offset=anm_at,
+                expected_bank_sha256=sha256(bank).hexdigest(),bank=expanded),
+                dict(kind='streaming-man',entry_index=1,chunk_header_offset=man_at,
+                source_man_sha256=sha256(man).hexdigest(),candidate=candidate)]
+            composed,composition=compose_model_pack_archive(source,sha256(source).hexdigest(),list(reversed(requests)))
+            self.assertEqual(composed,result);self.assertTrue(composition['final_streaming_man_verified'])
+            for duplicated in (requests+[requests[0]],requests+[requests[1]]):
+                with self.assertRaises(ImportError):compose_model_pack_archive(source,sha256(source).hexdigest(),duplicated)
             archive=_archive(result);raw=archive.read_entry(archive.entry(1));chunks,terminated=streaming_chunks(raw)
             self.assertTrue(terminated);new_bank=next(c for c in chunks if c['type_byte']==5);new_man=next(c for c in chunks if c['type_byte']==3)
             self.assertEqual(raw[new_bank['header_offset']+4:new_bank['header_offset']+4+new_bank['size']],expanded)
@@ -78,6 +87,10 @@ class StreamingAnimationBank(unittest.TestCase):
                 with self.assertRaises(ImportError):rebuild_streaming_man_entry(grown,sha256(grown).hexdigest(),1,man_at,sha256(man).hexdigest(),candidate)
                 invalid=dict(audit,carrier=dict(audit['carrier'],archive_relocation_verified=False))
                 with self.assertRaisesRegex(ImportError,'completed'):remap_streaming_header(1,man_at,3,[invalid])
+        from importer.streaming_man import grow_streaming_man
+        overlapping=struct.pack('<I',(1<<24)|3)+chunk(3,man)+bytes(4)
+        with self.assertRaisesRegex(ImportError,'overlapping opaque'):
+            grow_streaming_man(overlapping,sha256(overlapping).hexdigest(),4,sha256(man).hexdigest(),candidate)
 
 
 if __name__=='__main__':unittest.main()
