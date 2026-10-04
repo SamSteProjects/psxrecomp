@@ -1315,10 +1315,11 @@ class ProjectService:
             return
         if asset_id not in self.model_overrides and len(self.model_overrides) >= 128:
             raise ProjectError('Project supports at most 128 model replacements')
-        binding = dict(format='tmd-face-removal-v1', source_scene_id=self.active_scene,
+        retained_ledger = report.pop('_binding', None)
+        binding = retained_ledger or dict(format='tmd-face-removal-v1', source_scene_id=self.active_scene,
                        source_sha256=report['source_sha256'], asset_sha256=report['proposed_sha256'],
                        byte_length=len(content), removed_faces=removed)
-        if not removed:
+        if not removed and retained_ledger is None:
             from importer.model_authoring import replace_model_content
             original = self._model_source(asset_id, self.active_scene)
             _, changes = replace_model_content(original, report['source_sha256'], content, allow_normal_references=True)
