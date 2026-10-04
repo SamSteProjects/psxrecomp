@@ -105,5 +105,13 @@ class VectorAllocationProjectTests(unittest.TestCase):
             with self.assertRaises(ProjectError):p.apply_model_vector_allocations(asset,self.requests(),source['effective_sha256'],'a'*64,report['proposed_sha256'])
         self.assertEqual((p.model_overrides,p.undo_stack,p.redo_stack),state)
 
+    def test_editor_server_serves_allocation_module(self):
+        from urllib.request import urlopen
+        p,_=self.fixture()
+        with http_server(p) as (server,_):
+            with urlopen(f'http://127.0.0.1:{server.server_port}/model-vector-allocation.js',timeout=10) as response:
+                self.assertEqual(response.status,200)
+                self.assertIn('openModelVectorAllocation',response.read().decode('utf-8'))
+
 
 if __name__=='__main__':unittest.main()

@@ -52,6 +52,9 @@ def append_model_vectors(data,expected_sha256,requests):
     candidate=bytearray();previous=0;allocations=[]
     for at,rows in sorted(events.items()):
         candidate.extend(data[previous:at])
+        # Extend a table ending here before creating unused tables at EOF.
+        # Otherwise the new table would interrupt the existing vector span.
+        rows.sort(key=lambda row:(not bool(row['count']),row['owner'],row['kind']))
         for row in rows:
             row['new_rows_start']=len(candidate)
             candidate.extend(row['payload'])

@@ -127,6 +127,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_material_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["model_face_removal"] = bool(self.project.disc_path)
         state["capabilities"]["model_face_addition"] = bool(self.project.disc_path)
+        state["capabilities"]["model_vector_allocation"] = bool(self.project.disc_path)
         state["capabilities"]["model_allocation_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["draft_output_review"] = bool(self.project.disc_path and self.project.actor_drafts)
@@ -708,6 +709,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-vertex-users.js": ("model-vertex-users.js", "text/javascript"),
                  "/model-face-removal.js": ("model-face-removal.js", "text/javascript"),
                  "/model-face-addition.js": ("model-face-addition.js", "text/javascript"),
+                 "/model-vector-allocation.js": ("model-vector-allocation.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),

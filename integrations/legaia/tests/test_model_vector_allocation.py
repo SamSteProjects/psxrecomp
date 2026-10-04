@@ -86,5 +86,20 @@ class VectorAllocationTests(unittest.TestCase):
         with patch('importer.model_vector_allocation.MAX_MODEL_BYTES',len(candidate)-1):
             with self.assertRaises(ImportError):append_model_vectors(original,sha256(original).hexdigest(),[request])
 
+    def test_existing_vertex_end_precedes_new_empty_normal_table_at_same_EOF(self):
+        source=bytearray(synthetic(((0x22,),)))
+        normal=12+struct.unpack_from('<I',source,20)[0]
+        del source[normal:];struct.pack_into('<II',source,20,0,0)
+        original=bytes(source)
+        candidate,audit=append_model_vectors(original,sha256(original).hexdigest(),[
+            dict(object_index=0,kind='normals',vectors=[[4096,0,0]]),
+            dict(object_index=0,kind='vertices',vectors=[[11,22,33]])])
+        vertex=12+struct.unpack_from('<I',candidate,12)[0]
+        normal=12+struct.unpack_from('<I',candidate,20)[0]
+        self.assertEqual(candidate[vertex+5*8:vertex+6*8],struct.pack('<4h',11,22,33,0))
+        self.assertEqual(normal,vertex+6*8)
+        self.assertEqual(candidate[normal:],struct.pack('<4h',4096,0,0,0))
+        self.assertEqual([row['kind'] for row in audit['new_vectors']],['vertices','normals'])
+
 
 if __name__=='__main__':unittest.main()

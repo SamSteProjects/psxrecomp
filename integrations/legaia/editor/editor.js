@@ -654,6 +654,7 @@ function setBusy(value) {
   if($('shape-remove-faces'))$('shape-remove-faces').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_face_removal;
   if($('shape-allocation'))$('shape-allocation').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_allocation_inspection;
   if($('shape-add-face'))$('shape-add-face').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_face_addition;
+  if($('shape-add-vectors'))$('shape-add-vectors').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_vector_allocation;
   document.querySelectorAll('[data-axis],[data-component-property]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   document.querySelectorAll('[data-animation-edit]').forEach(button=>button.disabled=value||state.project.mode!=='edit');
@@ -1409,6 +1410,7 @@ function synchronizeResources(){
   modelFaceRemovalEditor?.updateState();
   modelAllocationEditor?.updateState();
   modelFaceAdditionEditor?.updateState();
+  modelVectorAllocationEditor?.updateState();
   modelPrimitiveEditor?.updateState();
   modelMaterialsEditor?.updateState();
   sceneAnimationController?.updateState();
@@ -3897,6 +3899,14 @@ const vectorDialog=document.createElement('dialog');vectorDialog.id='model-vecto
 let modelFaceRemovalEditor=null;
 let modelAllocationEditor=null;
 let modelFaceAdditionEditor=null;
+let modelVectorAllocationEditor=null;
+const vectorAllocationButton=document.createElement('button');vectorAllocationButton.id='shape-add-vectors';vectorAllocationButton.type='button';vectorAllocationButton.textContent='Add vertices or normals';$('shape-primitives').after(vectorAllocationButton);
+vectorAllocationButton.onclick=async()=>{
+  if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit'||!state.capabilities?.model_vector_allocation)return;
+  modelVectorAllocationEditor?.dispose();const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]),module=await import('/model-vector-allocation.js');
+  if(busy||asset!==modelAssetId||state.project.mode!=='edit'||context!==JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]))return;
+  modelVectorAllocationEditor=await module.openModelVectorAllocation({assetId:asset,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Model vectors added. Save project to persist.');await openModel(asset,null,null,'authored');}});
+};
 const faceAdditionButton=document.createElement('button');faceAdditionButton.id='shape-add-face';faceAdditionButton.type='button';faceAdditionButton.textContent='Add model face';$('shape-primitives').after(faceAdditionButton);
 faceAdditionButton.onclick=async()=>{
   if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit')return;
@@ -4226,6 +4236,7 @@ function updateShapeDraft(){
   modelMaterialsButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_material_authoring;
   faceRemovalButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_face_removal;
   allocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_allocation_inspection;
+  vectorAllocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_vector_allocation;
   if(state.model_overrides?.[modelAssetId]?.format==='tmd-face-removal-v1'){$('shape-status').textContent='Count-changing face removal applied. Vector edits, object transforms and same-layout TMD/OBJ/JSON edits retain removals. Retained-face editing is available. Material editing is available. GLB export/import retains the qualified Current layout; downloads, further removals, Undo/Redo and Clear are available.';}
 }
 $('shape-file').onchange=()=>{const file=$('shape-file').files?.[0];shapeDraft=file?{file,asset:modelAssetId,context:JSON.stringify([state.project.path,state.scene.id])}:null;updateShapeDraft();if(file)$('shape-status').textContent=`Selected ${file.name} · not applied. Apply or discard before changing model views.`;};
