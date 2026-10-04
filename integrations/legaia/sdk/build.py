@@ -160,7 +160,7 @@ def build_report(audit) -> dict:
             "overlay_bytes": sum(overlay["size"] for overlay in audit["overlays"]),
             **({'resource_relocation':dict(package_bytes=audit['relocation_payload']['size'],
                  archive_growth_bytes=audit['relocation']['composition']['growth_bytes'],
-                 texture_pack_count=sum(row.get('kind')=='texture-pack' for row in audit['relocation']['composition']['resources']))}
+                 texture_pack_count=sum(row.get('kind') in ('texture-pack','texture-layout-pack','texture-layout-raw') for row in audit['relocation']['composition']['resources']))}
                if audit.get('relocation') else {}),
             **({'npc_candidates': deepcopy(audit['npc_candidates'])}
                if audit.get('npc_candidates') else {})}

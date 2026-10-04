@@ -55,3 +55,29 @@ and return to normal ground colors for `texture://town01/5/raw/0`. Both runs
 used the same verified executable and no savestates. See
 `texture-runtime-acceptance.md` for the precise scope. Other texture families,
 conditional residency and palette/blend behavior still need runtime evidence.
+
+## Image allocation codec stage — 2026-10-04
+
+`texture_layout_allocation.resize_tim_image` constructs a resized native image at
+the original VRAM origin, preserving mode and CLUT data. Widths must contain whole
+native words (multiples of four pixels at 4 bpp, two at 8/24 bpp, one at 16 bpp).
+New rows/columns receive an explicit encoded palette index, PSX word or RGB value;
+the overlapping top-left region keeps exact encoded pixels. No sampling or UV
+retargeting occurs. Palette headers/shape stay fixed; image bounds must fit VRAM.
+
+`texture_pack_allocation.allocate_texture_pack` verifies each edited slot's source
+TIM hash, preserves unedited TIMs and all opaque member tails, rebases word offsets
+and audits added alignment padding. The shared resource composer accepts qualified
+`texture-layout-pack` and `texture-layout-raw` requests. The raw codec retains
+physical capacity for smaller images; compressed carriers update decoded size and
+rebase following descriptor payloads. Both re-open exact output and preserve
+physical neighbors. The legacy `texture-pack` path continues requiring fixed TIM
+layouts unless an explicit allocation edit list is supplied.
+
+This is native infrastructure, not a completed editor resize feature. Project
+bindings, source-qualified Review/Apply, footprint/conflict reporting, subsequent
+palette/PNG composition and normal Build collection remain to be connected.
+Changing footprint can affect other uploads or material sampling even when the
+serialized bytes are correct. No gameplay acceptance is claimed. Private read-only
+Retail transformation evidence is in
+`local-output/sdk-20260909/texture-layout-allocation-20261004/parent/`.

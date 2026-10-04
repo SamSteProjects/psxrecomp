@@ -1,5 +1,37 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — native texture image-allocation groundwork:** Added source-bound
+TIM resizing for 4/8/16/24-bpp images. It keeps overlapping encoded pixels, fills
+new pixels with an explicit encoded value and supports cropping without resampling.
+Flags, pixel mode, CLUT headers/count/layout and image VRAM origin remain fixed;
+new dimensions must contain whole native words and fit VRAM. The constructor
+preserves the complete CLUT payload. The allocation validator also permits ordinary
+palette/image payload edits while keeping the allocation's structural constraints.
+
+Existing pack slots remain stable while their word offsets are rebased. Unedited
+TIMs and each member's opaque tail remain byte-exact; additional alignment bytes
+are audited. Standalone raw and compressed descriptor packs rebuild inside unique
+physical PROT owners. Compressed decoded-size fields and later descriptor offsets
+are updated; smaller raw allocations retain physical capacity. Both allocation
+paths now participate in the shared resource composer with exact final readback.
+
+Twenty-four focused Python construction checks passed, covering all four modes,
+fill/crop/no-op behavior, typed and stale-source guards, alignment, raw/compressed
+carriers, both PROT header positions and existing model/texture/animation Build
+regressions. Private Town01 raw and Dolk2 compressed probes verify resized native
+TIMs, all unedited members, opaque tails, neighbors and exact shared-composer
+output. Evidence: `local-output/sdk-20260909/texture-layout-allocation-20261004/parent/`.
+No project Apply, resized-texture normal Build collection, browser authoring, game,
+installed runtime or physical disc export ran.
+
+**Still required for the resized-texture workflow:** versioned project bindings,
+Review/Apply/history/Save/Open, static footprint/conflict reporting, composition
+with subsequent palette/PNG edits, normal Build collection and editor comparison
+controls. These codecs do not establish safe upload ordering, material/UV matching
+or runtime rendering. This stage is not ready for manual gameplay acceptance; the
+existing fixed-layout texture workflow remains the supported editor path. The
+full SDK goal stays active.
+
 **2026-10-04 — compressed texture carrier growth in normal Build:** Layout-compatible
 TIM edits no longer fail normal Build solely because their compressed pack exceeds
 the original consumed stream span. Source-qualified TIM packs now join the existing
