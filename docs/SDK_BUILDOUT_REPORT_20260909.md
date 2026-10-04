@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — multiple static GLB mesh roots:** Mesh import now enumerates the
+sole scene's ordered static root mesh nodes, including distinct meshes and shared
+mesh instances. Each node's transform is baked independently; vertex ownership
+includes node identity, preventing accidental merging of shared accessors across
+instances. Global section ordinals retain node, mesh and source primitive IDs plus
+transform evidence. The file selector and donor-mapping rows expose Node/Mesh
+labels. Single-section and batch Review qualify these bindings against the file;
+canonical single-node imports retain their earlier contract.
+
+Nine existing transform/import/batch checks and seven source/group construction
+checks pass. New checks cover root order, shared accessor isolation, source
+selection, duplicate/invalid roots and child rejection, forged source ownership,
+one-step history, Save/Open and exact normal Build readback for distinct meshes.
+An actual private Retail editor smoke loads two transformed mesh nodes, maps the
+sections to distinct native donor objects, inspects all scene instances and returns
+to the retained mapping. Authored files/history remain unchanged; no browser
+Apply, Save or Run is issued. Limits remain one scene, 64 declared nodes/meshes,
+128 source sections and existing face/vector/group budgets (16 sections per batch).
+Only selected scene roots are instantiated; unused resources are not guessed into
+geometry. Child hierarchies, skinning, morphs, animation, arbitrary images/material
+allocation and gameplay parity remain unfinished. The solo SDK goal stays active.
+
 **2026-10-04 — static GLB node transforms:** Static mesh import now bakes the
 sole node's translation/rotation/scale or column-major affine matrix before native
 coordinate rounding. Normals use the inverse transpose followed by Y reflection

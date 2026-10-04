@@ -1,5 +1,28 @@
 # Source-bound model GLB editing
 
+## Multiple static mesh nodes
+
+The static GLB importer accepts multiple independent root mesh nodes in its sole
+scene. The file's root order followed by each mesh's primitive order defines the
+section list. Each section shows its Node/Mesh identity, triangle count and material
+label. Nodes sharing one mesh remain independent instances; shared position
+accessors are not merged across node identities. Each node's static transform is
+baked before native rounding.
+
+Select a source section for one donor transaction, or use **Map donors for all
+sections** to assign every section to native triangle donors as one Undo step.
+Review and scene inspection retain the full source binding. Save/Open and normal
+Build deliver the composed native model ledger. Importing nodes does not create
+native objects, scene entities or animation channels; those remain determined by
+the chosen existing donors.
+
+The source is limited to one scene, at most 64 declared nodes/meshes and 128 source
+sections; native geometry budgets remain authoritative and batch mapping admits
+at most 16 sections. Only scene roots are instantiated; unused resources do not
+become geometry. Duplicate/invalid roots and child hierarchy fields reject.
+Skinning, morphs, animation and new material/image allocation remain unsupported.
+Gameplay acceptance is deferred.
+
 ## Static object transforms
 
 Static GLB mesh import now accepts the sole node's TRS or affine column-major

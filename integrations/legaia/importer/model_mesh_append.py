@@ -10,6 +10,8 @@ from .model_glb import _Accessors
 from .core import ImportError
 from .model_face_addition import MAX_NEW_FACES
 from .model_vector_allocation import MAX_NEW_VECTORS
+from .model_mesh_sources import mesh_sources,source_binding
+from .model_mesh_transform import transform_point,transform_normal,IDENTITY
 
 
 def inspect_append_mesh(content):
@@ -20,7 +22,9 @@ def inspect_append_mesh(content):
     if not isinstance(materials,list) or len(materials)>128:
         raise ImportError('Mesh material inventory exceeds its bounded source slots')
     reader=_Accessors(doc,binary);rows=[]
-    for index,primitive in enumerate(doc['meshes'][0]['primitives']):
+    sources,canonical=mesh_sources(doc)
+    for index,source in enumerate(sources):
+        primitive=source['primitive']
         material=primitive.get('material');name=None
         if material is not None:
             if type(material) is not int or not 0<=material<len(materials) or not isinstance(materials[material],dict):
@@ -34,34 +38,16 @@ def inspect_append_mesh(content):
             source_mode=mode,material_index=material,material_name=name))
     return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=geometry['glb_sha256'],
         primitives=rows,triangle_count=len(geometry['triangles']),read_only=True,
-        **({'node_transform':geometry['node_transform']} if 'node_transform' in geometry else {}))
+        **({'node_transform':geometry['node_transform']} if 'node_transform' in geometry else {}),
+        **({'node_sources':[source_binding(row) for row in sources]} if not canonical else {}))
 
 
 def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None):
     if type(preserve_primitives) is not bool:
         raise ImportError('Mesh primitive preservation must be boolean')
     doc,binary=_read_glb(content)
-    if doc.get('animations') or doc.get('skins'):
-        raise ImportError('Mesh append requires static geometry without skinning or animation')
-    nodes,meshes,scenes=(doc.get(key) for key in ('nodes','meshes','scenes'))
-    if any(not isinstance(rows,list) or len(rows)!=1 for rows in (nodes,meshes,scenes)):
-        raise ImportError('Mesh append requires one scene, one mesh and one mesh node')
-    if (not isinstance(scenes[0],dict) or scenes[0].get('nodes')!=[0]
-            or any(type(index) is not int for index in scenes[0].get('nodes',[]))
-            or type(doc.get('scene',0)) is not int or doc.get('scene',0)!=0):
-        raise ImportError('Mesh append requires the sole mesh in its default scene')
-    node=nodes[0]
-    if (not isinstance(node,dict) or type(node.get('mesh')) is not int or node['mesh']!=0
-            or any(key in node for key in ('skin','weights','children','extensions'))):
-        raise ImportError('Mesh append node must own one unskinned mesh without children')
-    from .model_mesh_transform import node_transform,transform_point,transform_normal,IDENTITY
-    transform=node_transform(node)
-    mesh=meshes[0]
-    if not isinstance(mesh,dict) or any(key in mesh for key in ('weights','extensions')):
-        raise ImportError('Mesh append cannot import morph weights or mesh extensions')
-    primitives=mesh.get('primitives')
-    if not isinstance(primitives,list) or not 1<=len(primitives)<=MAX_NEW_FACES:
-        raise ImportError('Mesh append requires a bounded set of triangle primitives')
+    sources,canonical=mesh_sources(doc)
+    primitives=sources
     if primitive_index is not None and (type(primitive_index) is not int or not 0<=primitive_index<len(primitives)):
         raise ImportError('Choose an existing GLB primitive index')
     selected=primitives if primitive_index is None else [primitives[primitive_index]]
@@ -74,7 +60,8 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
         raise ImportError('Mesh append buffer views must own the embedded buffer')
     vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];triangle_colors=[];owners={};ignored=set();error=0.0;normal_error=0.0
     primitive_ranges=[]
-    for primitive_index,primitive in enumerate(selected):
+    for primitive_index,source in enumerate(selected):
+        primitive=source['primitive'];transform=source['node_transform']
         first_triangle=len(triangles)
         if (not isinstance(primitive,dict) or type(primitive.get('mode',4)) is not int
                 or primitive.get('mode',4) not in (4,5,6) or any(key in primitive for key in ('targets','extensions'))):
@@ -121,7 +108,7 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
             current=[];directions=[];texture_points=[];color_points=[]
             # Reflect Y and reverse winding to preserve the SDK GLB convention.
             for index in ((triangle[0],triangle[2],triangle[1]) if transform['winding_reversed'] else triangle):
-                owner=(attrs['POSITION'],index)
+                owner=(source['node_index'],attrs['POSITION'],index)
                 if owner not in owners:
                     values=transform_point(transform,positions[index]);values[1]=-values[1]
                     quantized=[round(value) for value in values]
@@ -153,7 +140,10 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
         vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')
     if preserve_primitives:result.update(schema_version='legaia.model-mesh-append-geometry.v5',primitive_ranges=primitive_ranges)
-    if transform['matrix']!=IDENTITY:
+    if not canonical:
+        result['node_sources']=[source_binding(row) for row in selected]
+        result['coordinate_conversion']='bake node transforms; [x,-y,z]; preserve oriented triangle winding'
+    elif transform['matrix']!=IDENTITY:
         result['node_transform']=transform
         result['coordinate_conversion']='bake node transform; [x,-y,z]; preserve oriented triangle winding'
     return result
