@@ -31,7 +31,25 @@ export function decodeFaceAdditionSource(value,asset,key){
   const removed=audit.removed_face_ids??[];
   if(!Array.isArray(removed)||removed.length>65536||new Set(removed).size!==removed.length||removed.some(id=>ids.has(id)||!authored(id)&&!(typeof id==='string'&&id.startsWith(`face://source/${audit.source_sha256}/`)&&/^face:\/\/source\/[0-9a-f]{64}\/\d+\/\d+$/.test(id))))fail('Invalid deleted donor identities.');
   if(added+removed.filter(authored).length!==audit.authored_face_count)fail('Historical authored face count differs.');
-  for(const row of audit.faces)if(row.origin==='authored'&&!removed.includes(row.donor_face_id)&&!audit.faces.some(d=>d.face_id===row.donor_face_id&&d.object_index===row.object_index&&d.group_index===row.group_index))fail('Authored donor provenance is missing.');
+  const groupOwners=new Map();
+  if(audit.allocated_groups!==undefined||audit.allocated_group_count!==undefined||audit.group_allocation_count!==undefined){
+    if(!integer(audit.allocated_group_count,64)||!integer(audit.group_allocation_count,audit.batch_count)||audit.group_allocation_count>audit.allocated_group_count||(audit.allocated_group_count===0)!==(audit.group_allocation_count===0)||audit.allocated_group_count>audit.authored_face_count||!Array.isArray(audit.allocated_groups)||audit.allocated_groups.length!==audit.allocated_group_count)fail('Invalid allocated group budget.');
+    const groupIds=new Set(),origins=new Set();
+    for(const group of audit.allocated_groups){
+      const origin=`${group.object_index}:${group.origin_group_index}`,owner=`${group.object_index}:${group.current_group_index}`;
+      if(typeof group.group_id!=='string'||!/^group:\/\/authored\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(group.group_id)||groupIds.has(group.group_id)||!integer(group.object_index,objects.length-1)||!integer(group.origin_group_index,65535)||origins.has(origin)||!integer(group.flags,0x27)||group.flags<0x10||!integer(group.mode,255)||!Array.isArray(group.face_ids)||typeof group.donor_face_id!=='string'||!ids.has(group.donor_face_id)&&!removed.includes(group.donor_face_id))fail('Invalid stable allocated group ownership.');
+      groupIds.add(group.group_id);origins.add(origin);
+      if(group.current_group_index===null){if(group.face_ids.length)fail('Absent group retains active face identities.');continue;}
+      if(!integer(group.current_group_index,65535)||groupOwners.has(owner))fail('Duplicate Current allocated group owner.');
+      const faces=audit.faces.filter(face=>face.object_index===group.object_index&&face.group_index===group.current_group_index).sort((a,b)=>a.current_primitive_index-b.current_primitive_index);
+      if(!faces.length||!same(group.face_ids,faces.map(face=>face.face_id))||faces.some(face=>face.origin!=='authored'||objects[face.object_index].primitives[face.current_primitive_index].flags!==group.flags))fail('Allocated group has incomplete authored packet ownership.');
+      groupOwners.set(owner,group);
+    }
+  }
+  for(const row of audit.faces)if(row.origin==='authored'&&!removed.includes(row.donor_face_id)){
+    const donor=audit.faces.find(d=>d.face_id===row.donor_face_id);
+    if(!donor||donor.object_index!==row.object_index||donor.group_index!==row.group_index&&!groupOwners.has(`${row.object_index}:${row.group_index}`))fail('Authored donor provenance is missing.');
+  }
   if(!value.preview||!Array.isArray(value.preview.vertices)||!Array.isArray(value.preview.objects)||value.preview.objects.length!==objects.length)fail('Missing Current geometry.');
   return structuredClone(value);
 }

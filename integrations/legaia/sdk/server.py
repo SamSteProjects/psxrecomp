@@ -128,6 +128,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_face_removal"] = bool(self.project.disc_path)
         state["capabilities"]["model_face_addition"] = bool(self.project.disc_path)
         state["capabilities"]["model_vector_allocation"] = bool(self.project.disc_path)
+        state["capabilities"]["model_group_allocation"] = bool(self.project.disc_path)
         state["capabilities"]["model_mesh_append"] = bool(self.project.disc_path)
         state["capabilities"]["model_allocation_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
@@ -1086,6 +1087,24 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self._json(200,review(self.server.project,*args))
                     else:
                         self.server.project.apply_model_mesh_append(*args,body['review_key'])
+                        self._json(200,self.server.state())
+                    return
+                if route in ('/api/model-group-allocation-source','/api/model-group-allocation-preview','/api/model-group-allocation'):
+                    fields={'asset_id','source_key'}
+                    if route!='/api/model-group-allocation-source':fields.update({'requests','expected_sha256'})
+                    if route=='/api/model-group-allocation':fields.add('review_key')
+                    if (set(body)!=fields or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
+                            or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key])
+                                   for key in fields & {'source_key','expected_sha256','review_key'})
+                            or 'requests' in fields and (not isinstance(body['requests'],list) or not 0<len(body['requests'])<=64)):
+                        raise ProjectError('Group allocation requires exact model, stable requests, source and review key')
+                    from .model_group_allocation import source,review
+                    if route.endswith('-source'):
+                        self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    elif route.endswith('-preview'):
+                        self._json(200,review(self.server.project,body['asset_id'],body['requests'],body['expected_sha256'],body['source_key']))
+                    else:
+                        self.server.project.apply_model_group_allocations(body['asset_id'],body['requests'],body['expected_sha256'],body['source_key'],body['review_key'])
                         self._json(200,self.server.state())
                     return
                 if route in ('/api/model-vector-allocation-source','/api/model-vector-allocation-preview','/api/model-vector-allocation'):
