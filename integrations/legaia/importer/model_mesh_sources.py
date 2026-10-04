@@ -1,18 +1,18 @@
 """Stable depth-first source order for a static glTF scene forest."""
 from .core import ImportError
+from .model_mesh_scene import scene_source
 from .model_mesh_transform import node_transform,compose_node_transform
 
 
-def mesh_sources(doc):
+def mesh_sources(doc,scene_index=None,*,allow_empty=False):
     if doc.get('animations') or doc.get('skins'):
         raise ImportError('Mesh append requires static geometry without skinning or animation')
     nodes,meshes,scenes=(doc.get(key) for key in ('nodes','meshes','scenes'))
-    if any(not isinstance(rows,list) or not 1<=len(rows)<=64 for rows in (nodes,meshes)) or not isinstance(scenes,list) or len(scenes)!=1:
-        raise ImportError('Mesh append requires one scene and bounded static mesh nodes')
-    if not isinstance(scenes[0],dict) or type(doc.get('scene',0)) is not int or doc.get('scene',0)!=0:
-        raise ImportError('Mesh append requires its sole default scene')
-    roots=scenes[0].get('nodes')
-    if not isinstance(roots,list) or not 1<=len(roots)<=64 or any(type(index) is not int or not 0<=index<len(nodes) for index in roots) or len(set(roots))!=len(roots):
+    if any(not isinstance(rows,list) or not 1<=len(rows)<=64 for rows in (nodes,meshes)) :
+        raise ImportError('Mesh append requires bounded static mesh nodes')
+    selection=scene_source(doc,scene_index)
+    roots=selection['scenes'][selection['scene_index']]['roots']
+    if not isinstance(roots,list) or not (0 if allow_empty else 1)<=len(roots)<=64 or any(type(index) is not int or not 0<=index<len(nodes) for index in roots) or len(set(roots))!=len(roots):
         raise ImportError('Mesh append requires unique existing static scene roots')
     children=[];parents={}
     for index,node in enumerate(nodes):
@@ -56,7 +56,7 @@ def mesh_sources(doc):
                 mesh_primitive_index=primitive_index,node_transform=transform,primitive=primitive,
                 **({'node_path':path} if len(path)>1 else {})))
     for root in roots:visit(root,[])
-    if not sources:raise ImportError('Mesh scene contains no selected static mesh sections')
+    if not sources and not allow_empty:raise ImportError('Mesh scene contains no selected static mesh sections')
     return sources,len(nodes)==len(meshes)==1 and roots==[0]
 
 

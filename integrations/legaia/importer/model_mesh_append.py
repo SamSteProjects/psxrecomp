@@ -11,19 +11,24 @@ from .core import ImportError
 from .model_face_addition import MAX_NEW_FACES
 from .model_vector_allocation import MAX_NEW_VECTORS
 from .model_mesh_material import color_factor
+from .model_mesh_scene import scene_source
 from .model_mesh_sources import mesh_sources,source_binding
 from .model_mesh_transform import transform_point,transform_normal,IDENTITY
 
 
-def inspect_append_mesh(content):
+def inspect_append_mesh(content,*,scene_index=None):
     """Qualified file inventory; material names describe source slots, not bindings."""
-    geometry=decode_append_mesh(content)
     doc,binary=_read_glb(content)
+    sources,canonical=mesh_sources(doc,scene_index,allow_empty=True)
+    selection=scene_source(doc,scene_index)
+    if not sources:
+        return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=sha256(content).hexdigest(),primitives=[],triangle_count=0,read_only=True,scene_source=selection)
+    geometry=decode_append_mesh(content,scene_index=scene_index)
     materials=doc.get('materials',[])
     if not isinstance(materials,list) or len(materials)>128:
         raise ImportError('Mesh material inventory exceeds its bounded source slots')
     reader=_Accessors(doc,binary);rows=[]
-    sources,canonical=mesh_sources(doc)
+    sources,canonical=mesh_sources(doc,scene_index)
     for index,source in enumerate(sources):
         primitive=source['primitive']
         material=primitive.get('material');name=None
@@ -39,15 +44,16 @@ def inspect_append_mesh(content):
             source_mode=mode,material_index=material,material_name=name))
     return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=geometry['glb_sha256'],
         primitives=rows,triangle_count=len(geometry['triangles']),read_only=True,
+        **({'scene_source':geometry['scene_source']} if 'scene_source' in geometry else {}),
         **({'node_transform':geometry['node_transform']} if 'node_transform' in geometry else {}),
         **({'node_sources':[source_binding(row) for row in sources]} if not canonical else {}))
 
 
-def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False):
+def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False,scene_index=None):
     if type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ImportError('Mesh primitive preservation and material RGB choices must be boolean')
     doc,binary=_read_glb(content)
-    sources,canonical=mesh_sources(doc)
+    sources,canonical=mesh_sources(doc,scene_index)
     primitives=sources
     if primitive_index is not None and (type(primitive_index) is not int or not 0<=primitive_index<len(primitives)):
         raise ImportError('Choose an existing GLB primitive index')
@@ -154,6 +160,8 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
     result=dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=sha256(content).hexdigest(),
         vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')
+    selection=scene_source(doc,scene_index)
+    if len(selection['scenes'])>1:result['scene_source']=selection
     if material_colors:result.update(material_colors=True,material_factors=material_factors,source_triangle_colors=source_triangle_colors)
     if preserve_primitives:result.update(schema_version='legaia.model-mesh-append-geometry.v5',primitive_ranges=primitive_ranges)
     if not canonical:

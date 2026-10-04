@@ -1,5 +1,27 @@
 # Source-bound model GLB editing
 
+## Choose a source scene
+
+A static GLB can contain up to 64 source scenes. After choosing the file, use
+**Source GLB scene** to choose its named scene. The initial selection follows the
+file's default scene; if omitted, the first scene is shown. Scene labels remain
+source descriptions and do not rename SDK scenes or assets. Only the selected
+scene's roots and descendants become mesh sections. Shared source nodes may appear
+in different source scenes; each import follows that selected scene's declared
+root order and existing transform rules.
+
+Changing scene reloads its sections, resets primitive selection and invalidates
+Review. Empty source scenes show no sections and disable mesh Review/Apply; choose
+another scene from the same file. File bytes and SHA stay unchanged. **Map donors
+for all sections** carries the selected scene into its review, scene inspection
+and Return. A new scene choice requires a new review key even if native model
+bytes happen to match. Batch Apply remains one Undo entry, and normal Build emits
+the selected native geometry.
+
+This imports static geometry into native donor objects. It does not create an SDK
+scene or infer actor placement, skinning or animation channels. Source-scene
+semantics follow the [Khronos glTF specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#scenes).
+
 ## Optional material RGB factors
 
 Enable **Bake opaque material RGB factors (unlit donors only)** to multiply each
@@ -27,7 +49,7 @@ Factor semantics follow the [Khronos glTF specification](https://registry.khrono
 ## Static child hierarchies
 
 Static GLB import now accepts transform-only group nodes and child mesh nodes.
-The sole scene's roots and each node's children are traversed in declared,
+The selected source scene's roots and each node's children are traversed in declared,
 depth-first order. Section labels retain the source Node/Mesh and **Path** from
 root to mesh. Duplicate children, cycles, multiple parents and roots that also
 have parents reject before geometry decoding. An empty selected scene rejects.

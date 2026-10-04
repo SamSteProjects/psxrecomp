@@ -1,5 +1,26 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — choose a static GLB source scene:** Mesh import now supports
+bounded files containing several static scenes. **Source GLB scene** starts at the
+file's declared default (or first scene when unspecified). Choosing another scene
+refreshes section inventory, resets primitive selection and invalidates Review.
+Empty scenes remain selectable in the read-only inventory, with Review/Apply
+unavailable; a usable scene can be chosen without replacing the file. The selected
+scene index, root/name inventory and node ownership travel through single/selected
+imports, atomic donor batches, full-scene proposals and Return. Review keys bind
+scene choice even when two scenes produce identical native model bytes. Other
+source scenes are not imported by that transaction. Single-scene imports retain
+their existing default behavior. Static-only and native allocation bounds remain.
+
+Fifteen focused construction checks passed, including malformed scene/index guards,
+shared nodes across scenes, empty inventory, changed-choice HTTP rejection, one
+Undo, Redo, Save/Open and exact normal Build model bytes. The actual Retail editor
+smoke selected a usable hierarchy from an empty default, switched scenes, reviewed,
+inspected Current/Proposed and returned with scene/donor/RGB choices retained.
+Private evidence: `local-output/sdk-20260909/glb-source-scenes-20261004/parent/`.
+No authored state, saved files or history changed in that smoke. Gameplay remains
+deferred, and the full goal remains active.
+
 **2026-10-04 — optional GLB material RGB baking:** Static imports now offer
 **Bake opaque material RGB factors**, default off, in single/selected/group imports
 and atomic section-donor batches. Standard `baseColorFactor` RGB multiplies linear

@@ -1150,6 +1150,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route in ('/api/model-mesh-batch-preview','/api/model-mesh-batch','/api/model-mesh-batch-scene-preview'):
                     fields={'asset_id','content_base64','mappings','expected_sha256','source_key'}
                     if 'material_colors' in body:fields.add('material_colors')
+                    if 'scene_index' in body:fields.add('scene_index')
                     if route!='/api/model-mesh-batch-preview':fields.add('review_key')
                     if route.endswith('-scene-preview'):fields.update(('proposed_sha256','entity_id','all_instances'))
                     if set(body)!=fields or type(body.get('material_colors',False)) is not bool or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512 or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key]) for key in fields & {'source_key','expected_sha256','review_key','proposed_sha256'}):
@@ -1162,10 +1163,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from . import model_mesh_batch
                     args=(body['asset_id'],payload,body['mappings'],body['expected_sha256'],body['source_key'])
                     if route=='/api/model-mesh-batch':
-                        model_mesh_batch.apply(self.server.project,*args,review_key=body['review_key'],material_colors=body.get('material_colors',False))
+                        model_mesh_batch.apply(self.server.project,*args,review_key=body['review_key'],material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'))
                         self._json(200,self.server.state())
                     else:
-                        candidate,binding,report=model_mesh_batch.prepare(self.server.project,*args,material_colors=body.get('material_colors',False))
+                        candidate,binding,report=model_mesh_batch.prepare(self.server.project,*args,material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'))
                         if route.endswith('-scene-preview'):
                             if type(body['all_instances']) is not bool or not isinstance(body['entity_id'],str) or not 0<len(body['entity_id'])<=512 or report['review_key']!=body['review_key'] or report['proposed_sha256']!=body['proposed_sha256']:
                                 raise ProjectError('Mesh donor mapping scene proposal differs from Review')
@@ -1173,13 +1174,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                         else:self._json(200,report)
                     return
                 if route=='/api/model-mesh-file':
-                    if set(body)!={'content_base64'} or not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:
+                    if set(body) not in ({'content_base64'},{'content_base64','scene_index'}) or not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:
                         raise ProjectError('Mesh file inspection requires bounded GLB bytes only')
                     try:payload=base64.b64decode(body['content_base64'],validate=True)
                     except ValueError as exc:raise ProjectError('Mesh file requires valid base64') from exc
                     if not 28<=len(payload)<=32*1024*1024:raise ProjectError('Mesh file exceeds its byte bounds')
                     from importer.model_mesh_append import inspect_append_mesh
-                    self._json(200,inspect_append_mesh(payload))
+                    self._json(200,inspect_append_mesh(payload,scene_index=body.get('scene_index')))
                     return
                 if route=='/api/model-mesh-append-source':
                     if set(body)!={'asset_id','source_key'} or not isinstance(body['asset_id'],str) or not isinstance(body['source_key'],str):
@@ -1194,6 +1195,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if 'preserve_primitives' in body:fields.add('preserve_primitives')
                     if 'primitive_index' in body:fields.add('primitive_index')
                     if 'material_colors' in body:fields.add('material_colors')
+                    if 'scene_index' in body:fields.add('scene_index')
                     if route=='/api/model-mesh-append':fields.add('review_key')
                     if route=='/api/model-mesh-append-scene-preview':fields.update(('review_key','proposed_sha256','entity_id','all_instances'))
                     if (set(body)!=fields or any(type(body.get(choice,False)) is not bool for choice in ('new_group','replace_group','preserve_primitives','material_colors')) or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
@@ -1212,15 +1214,15 @@ class EditorHandler(BaseHTTPRequestHandler):
                         if not isinstance(body['entity_id'],str) or not 0<len(body['entity_id'])<=512 or type(body['all_instances']) is not bool:
                             raise ProjectError('Mesh scene inspection requires an exact instance and boolean scope')
                         from .model_mesh_append import prepare
-                        candidate,binding,report=prepare(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False),primitive_index=body.get('primitive_index'),material_colors=body.get('material_colors',False))
+                        candidate,binding,report=prepare(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False),primitive_index=body.get('primitive_index'),material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'))
                         if report['review_key']!=body['review_key'] or report['proposed_sha256']!=body['proposed_sha256']:
                             raise ProjectError('Mesh scene proposal differs from the reviewed file or mode')
                         self._json(200,self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],candidate,report,body['source_key'],body['all_instances'],prepared_binding=binding))
                     elif route.endswith('-preview'):
                         from .model_mesh_append import review
-                        self._json(200,review(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False),primitive_index=body.get('primitive_index'),material_colors=body.get('material_colors',False)))
+                        self._json(200,review(self.server.project,*args,new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False),primitive_index=body.get('primitive_index'),material_colors=body.get('material_colors',False),scene_index=body.get('scene_index')))
                     else:
-                        self.server.project.apply_model_mesh_append(*args,body['review_key'],new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False),primitive_index=body.get('primitive_index'),material_colors=body.get('material_colors',False))
+                        self.server.project.apply_model_mesh_append(*args,body['review_key'],new_group=body.get('new_group',False),replace_group=body.get('replace_group',False),preserve_primitives=body.get('preserve_primitives',False),primitive_index=body.get('primitive_index'),material_colors=body.get('material_colors',False),scene_index=body.get('scene_index'))
                         self._json(200,self.server.state())
                     return
                 if route in ('/api/model-object-allocation-source','/api/model-object-allocation-preview','/api/model-object-allocation'):

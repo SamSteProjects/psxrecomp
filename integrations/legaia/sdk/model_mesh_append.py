@@ -37,7 +37,7 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False):
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None):
     if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and not new_group:
@@ -54,7 +54,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -169,8 +169,12 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report['review_key']=digest(dict(base_review_key=report['review_key'],preserve_primitives=True,primitive_ranges=geometry['primitive_ranges']))
     if primitive_index is not None:
         report['selected_primitive_index']=primitive_index
-        report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index,material_colors=material_colors))
+        report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index))
         report['limitations'].append('Only the selected source GLB primitive is imported; other source primitives remain outside this transaction.')
+    if scene_index is not None:
+        report['selected_scene_index']=scene_index
+        report['review_key']=digest(dict(base_review_key=report['review_key'],selected_scene_index=scene_index))
+        report['limitations'].append('Only the selected GLB source scene is imported; other file scenes are outside this transaction.')
     if material_colors:
         report['material_colors']=True
         report['review_key']=digest(dict(base_review_key=report['review_key'],material_colors=True,material_factors=geometry['material_factors']))
