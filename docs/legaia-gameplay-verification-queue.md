@@ -1,5 +1,27 @@
 # Deferred gameplay verification
 
+**2026-10-04 — explicit GLB source units:** Static mesh import now offers
+**Native units per GLB unit**, default 1. A finite positive factor from 0.000001
+through 1000000 scales baked positions and node translations together before
+signed native rounding. Normals, UVs, colors and winding retain their existing
+conversion. File inventory qualifies at the chosen scale, allowing a smaller
+factor to recover an oversized mesh without editing the external file.
+
+Changing scale withdraws Review immediately and requalifies the selected scene,
+retaining UV/section choices. Single import, atomic donor mapping, scene proposals
+and Apply bind the same optional `source_scale`; older callers remain at 1.
+Eight focused checks passed, including scaled hierarchy coordinates, exact normal
+Build readback, one Undo/Redo entry, Save/Open, typed/range/degeneracy guards,
+changed-scale HTTP rejection and distinct review keys for identical rounded bytes.
+Actual Retail editor evidence:
+`local-output/sdk-20260909/glb-source-scale-20261004/parent/`. The browser smoke
+recovers a large single-scene mesh at a smaller scale, withdraws its review on
+change, retains mixed UV mappings and the scale through scene inspection/Return,
+and checks desktop/narrow comparison bounds. Screenshot inspected; authored files
+and history unchanged. No Apply or game launch occurred. Runtime coordinate
+parity and native appearance still require deferred gameplay checks; the full
+SDK goal remains active.
+
 **2026-10-04 — static scene import from mixed GLBs:** Static mesh qualification
 now resolves bounded animation channel targets instead of rejecting every GLB
 with an animation or skin table. The entire selected node hierarchy must stay

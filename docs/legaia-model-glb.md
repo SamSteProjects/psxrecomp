@@ -1,5 +1,32 @@
 # Source-bound model GLB editing
 
+## Set the source unit scale
+
+Set **Native units per GLB unit** before Review. The default 1 preserves the
+existing native-unit workflow. Choose a smaller factor to shrink a model or a
+larger factor to enlarge it. The factor multiplies positions after the complete
+source node hierarchy is baked, including node translations, then native Y
+reflection and integer rounding apply. It scales around the source scene origin;
+it does not recenter or reposition the geometry. Unit normals, UV coordinates,
+RGB and source winding keep their existing conversion.
+
+The finite positive range is 0.000001 through 1000000. Native signed coordinate,
+vector/face budgets and nondegenerate-triangle checks still apply. Smaller values
+can bring oversized source coordinates within range; very small values can make
+triangles degenerate after rounding and therefore reject qualification.
+
+Changing the field immediately withdraws Review. Leaving the field requalifies
+the chosen scene at the new scale and retains its UV and section choices. A file
+that failed coordinate qualification remains loaded so the factor can be changed
+and retried. Choose the factor before opening **Map donors for all sections**;
+that dialog displays and uses one fixed factor for every section. Scene inspection
+and Return retain it. Scale is bound to Review and Apply even when native rounding
+produces the same bytes. API callers may pass optional `source_scale` in file
+inventory, single import or batch requests; omitted values retain 1.
+
+This is an authored source-unit choice. It does not establish runtime actor/model
+coordinate parity or infer game placement units from a GLB.
+
 ## Choose a static scene in a mixed file
 
 A GLB may contain static and animated scenes. Choose a source scene whose entire

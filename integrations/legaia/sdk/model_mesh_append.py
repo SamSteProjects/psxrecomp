@@ -37,7 +37,7 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0):
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1):
     if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and not new_group:
@@ -54,7 +54,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index,uv_set=uv_set,source_scale=source_scale)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -171,6 +171,10 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report['selected_primitive_index']=primitive_index
         report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index))
         report['limitations'].append('Only the selected source GLB primitive is imported; other source primitives remain outside this transaction.')
+    if geometry.get('source_scale',1)!=1:
+        report['source_scale']=geometry['source_scale']
+        report['review_key']=digest(dict(base_review_key=report['review_key'],source_scale=geometry['source_scale']))
+        report['limitations'].append(f"All baked source positions and node translations use {geometry['source_scale']} native units per GLB unit before signed coordinate rounding; normals and UVs retain their existing conversion.")
     if uv_set:
         report['uv_set']=uv_set
         report['review_key']=digest(dict(base_review_key=report['review_key'],uv_set=uv_set))
