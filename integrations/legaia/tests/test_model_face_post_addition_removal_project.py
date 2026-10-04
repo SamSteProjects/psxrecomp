@@ -38,7 +38,7 @@ class AddedRemovalProjectTests(unittest.TestCase):
         p.redo();self.assertEqual(p.read_model_replacement(asset,p.model_overrides[asset]),current)
         p.set_model_vector(asset,0,'vertices',0,[17,23,-5],sha256(current).hexdigest())
         final=p.read_model_replacement(asset,p.model_overrides[asset]);saved=deepcopy(p.model_overrides[asset])
-        self.assertEqual(model_face_removal.source(p,asset,'a'*64)['schema_version'],'legaia.model-face-removal-source.v3')
+        self.assertEqual(model_face_removal.source(p,asset,'a'*64)['schema_version'],'legaia.model-face-removal-source.v4')
         p.save()
         with patch.object(ProjectService,'_model_source',side_effect=p._model_source):
             reopened=ProjectService.open(p.root)
@@ -70,13 +70,14 @@ class AddedRemovalProjectTests(unittest.TestCase):
             self.assertEqual(post('/api/model-face-removal',dict(body,proposed_sha256=report['proposed_sha256']))[0],400)
             self.assertEqual((p.model_overrides,p.undo_stack,p.redo_stack),state)
         source=model_face_removal.source(p,asset,'a'*64)
-        self.assertEqual(source['removed_face_ids'],[added['face_id']]);self.assertFalse(source['restoration_available'])
+        self.assertEqual(source['removed_face_ids'],[added['face_id']]);self.assertTrue(source['restoration_available'])
         self.assertFalse(any(row['origin']=='authored' for row in source['face_topology']))
         current=p.read_model_replacement(asset,p.model_overrides[asset])
         noop=model_face_removal.review(p,asset,[],sha256(current).hexdigest(),'a'*64)
         p.apply_model_face_removal(asset,[],sha256(current).hexdigest(),'a'*64,noop['proposed_sha256'])
         self.assertEqual((p.model_overrides,p.undo_stack,p.redo_stack),state)
-        with self.assertRaises(ProjectError):model_face_removal.review(p,asset,[],sha256(current).hexdigest(),'a'*64,restore=True)
+        noop=model_face_removal.review(p,asset,[],sha256(current).hexdigest(),'a'*64,restore=True)
+        self.assertEqual(noop['proposed_sha256'],sha256(current).hexdigest())
 
 
 if __name__=='__main__':unittest.main()

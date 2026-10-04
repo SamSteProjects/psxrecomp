@@ -30,3 +30,39 @@ const sourceFirst={...ledgerSource,face_topology:[{...sourceFace,group_index:0},
 const authoredOnly={...ledgerReport,selections:dropSource,removed_face_ids:[sourceFace.face_id],topology:{proposed_sha256:'b'.repeat(64),faces:[{...authoredFace,group_index:0,current_primitive_index:0}],removed_face_ids:[sourceFace.face_id]},preview:{...mesh,objects:[{...mesh.objects[0],triangle_count:2}]}};
 decodeFaceRemovalReview(authoredOnly,sourceFirst,dropSource);
 console.log('V3 stable removal source and V2 review validate authored deletions, authored-only survivors, group compaction and reject identity/count tampering.');
+
+const stableRestoreSource={...ledgerSource,schema_version:'legaia.model-face-removal-source.v4',
+  objects:[{...source.objects[0],primitives:[source.objects[0].primitives[0]]}],
+  face_topology:[sourceFace],removed_face_ids:[authoredFace.face_id],restoration_available:true,
+  restorable_faces:[{face:authoredFace,origin_group_index:1,stable_order:1,corner_count:4}],
+  restoration_owners:[{face_id:sourceFace.face_id,origin_group_index:0,stable_order:0}]};
+decodeFaceRemovalSource(stableRestoreSource,asset,key);
+const stableSelections=faceRestorationSelections(stableRestoreSource,0,'0');
+assert.deepEqual(stableSelections,[{face_id:authoredFace.face_id}]);
+for(const text of ['1','0,0','-1','NaN'])assert.throws(()=>faceRestorationSelections(stableRestoreSource,0,text));
+const stableRestore={...ledgerReport,schema_version:'legaia.model-face-restoration.v2',selections:stableSelections,
+  restored_face_ids:[authoredFace.face_id],previous_removed_face_ids:[authoredFace.face_id],
+  topology:{proposed_sha256:'b'.repeat(64),faces:[sourceFace,authoredFace],removed_face_ids:[]},
+  current_preview:report.preview,preview:mesh};
+delete stableRestore.removed_face_ids;
+decodeFaceRestorationReview(stableRestore,stableRestoreSource,stableSelections);
+for(const mutate of [v=>v.restorable_faces[0].face.face_id=sourceFace.face_id,
+  v=>v.restorable_faces[0].stable_order=0,v=>v.restorable_faces[0].corner_count=5,
+  v=>v.restoration_owners=[],v=>v.restoration_owners[0].face_id=authoredFace.face_id,
+  v=>v.restoration_available=false,v=>v.restorable_faces[0].face.packet_hex='00',
+  v=>v.face_topology[0].group_index=1]){
+  const bad=structuredClone(stableRestoreSource);mutate(bad);assert.throws(()=>decodeFaceRemovalSource(bad,asset,key));
+}
+for(const mutate of [v=>v.restored_face_ids=[],v=>v.previous_removed_face_ids=[],
+  v=>v.topology.removed_face_ids=[authoredFace.face_id],v=>v.topology.faces[1].group_index=0,
+  v=>v.topology.faces[1].current_primitive_index=0,v=>v.preview.objects[0].triangle_count=2,
+  v=>v.proposed_sha256=key,v=>v.current_preview.vertices=[[99,0,0],[1,0,0],[0,1,0]]]){
+  const bad=structuredClone(stableRestore);mutate(bad);assert.throws(()=>decodeFaceRestorationReview(bad,stableRestoreSource,stableSelections));
+}
+const stableNoop={...stableRestore,selections:[],restored_face_ids:[],proposed_sha256:key,
+  topology:{proposed_sha256:key,faces:[sourceFace],removed_face_ids:[authoredFace.face_id]},preview:report.preview};
+decodeFaceRestorationReview(stableNoop,stableRestoreSource,[]);
+const removeNoop={...ledgerReport,selections:[],removed_face_ids:[],previous_removed_face_ids:[authoredFace.face_id],
+  proposed_sha256:key,topology:stableNoop.topology,current_preview:report.preview,preview:report.preview};
+decodeFaceRemovalReview(removeNoop,stableRestoreSource,[]);
+console.log('V4 stable restoration source and V2 review qualify deleted selections, restored order/groups, preserved vectors, no-op hashes and existing removal routing.');

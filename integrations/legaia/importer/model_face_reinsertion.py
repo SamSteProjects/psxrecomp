@@ -15,6 +15,12 @@ from .model_face_ledger import _replay_face_ledger, _source_faces, _operations
 
 def reinsert_ledger_faces(original,ledger,face_ids):
     current,audit,deleted=_replay_face_ledger(original,ledger,capture=True)
+    origins,ranks=_ledger_origins(original,ledger)
+    return _reinsert_faces(current,audit['faces'],deleted,origins,ranks,face_ids)
+
+
+def _ledger_origins(original,ledger):
+    """Recover immutable origin groups/order after the caller qualifies replay."""
     initial=_source_faces(original,sha256(original).hexdigest())
     origins={identity:(face['object_index'],face['group_index']) for identity,face in initial.items()}
     ranks={identity:index for index,identity in enumerate(initial)}
@@ -23,7 +29,7 @@ def reinsert_ledger_faces(original,ledger,face_ids):
             for request in operation['additions']:
                 origins[request['face_id']]=origins[request['donor_face_id']]
                 ranks[request['face_id']]=len(ranks)
-    return _reinsert_faces(current,audit['faces'],deleted,origins,ranks,face_ids)
+    return origins,ranks
 
 
 def _reinsert_faces(current,faces,deleted,origins,ranks,face_ids):
