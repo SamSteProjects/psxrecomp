@@ -456,6 +456,15 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
     for identifier, components in sorted(project.overrides.items()):
+        if isinstance(components,dict) and 'AnimationRecords' in components:
+            from .animation_record_ledger import validate as validate_animation_records
+            ledger = validate_animation_records(project,identifier,components['AnimationRecords'],verify_disc=True)
+            removed = set(ledger['removed_record_ids'])
+            if any(row['record_id'] not in removed for row in ledger['records']):
+                raise BuildError('Allocated animation records require bank descriptor/carrier relocation; normal Build delivery is not implemented yet')
+            components = {k:v for k,v in components.items() if k != 'AnimationRecords'}
+            if not components:
+                continue
         if isinstance(components, dict) and 'WorldMapPlacements' in components:
             from .worldmap_placements import validate
             if set(components) != {'WorldMapPlacements'}:

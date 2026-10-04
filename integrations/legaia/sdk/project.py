@@ -103,7 +103,7 @@ class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions",
                                   "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
-                                  "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells"})
+                                  "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
         self.root = root.resolve()
@@ -1681,6 +1681,14 @@ class ProjectService:
     def _command(self, command: dict) -> None:
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'allocate_animation_record':
+            from .animation_allocation import apply_command
+            apply_command(self,command)
+            return
+        if command.get('type') == 'set_animation_record_active':
+            from .animation_allocation import apply_activation_command
+            apply_activation_command(self,command)
+            return
         if command.get('type') == 'set_actor_animation':
             from .actor_animation import apply
             apply(self, command)
@@ -2551,6 +2559,10 @@ class ProjectService:
         self._apply_history(self.redo_stack, self.undo_stack, "after")
 
     def save(self) -> Path:
+        from .animation_record_ledger import validate as validate_animation_records
+        for identifier,components in self.overrides.items():
+            if 'AnimationRecords' in components:
+                validate_animation_records(self,identifier,components['AnimationRecords'])
         for asset_id, binding in self.model_overrides.items():
             self.read_model_replacement(asset_id, binding)
         for binding in self.texture_overrides.values():
@@ -2610,7 +2622,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "Collision", "RegionBounds", "TriggerCells", "WorldMapMenu", "WorldMapPlacements"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
@@ -2636,6 +2648,10 @@ class ProjectService:
             if "Collision" in components:
                 result._validate_collision(identifier, components["Collision"])
                 result.overrides.setdefault(identifier, {})["Collision"] = deepcopy(components["Collision"])
+            if 'AnimationRecords' in components:
+                from .animation_record_ledger import validate as validate_animation_records
+                validate_animation_records(result,identifier,components['AnimationRecords'])
+                result.overrides.setdefault(identifier,{})['AnimationRecords'] = deepcopy(components['AnimationRecords'])
             if "AnimationChannels" in components:
                 result._validate_animation_override(identifier, components["AnimationChannels"])
                 result.overrides.setdefault(identifier, {})["AnimationChannels"] = deepcopy(components["AnimationChannels"])
@@ -2937,6 +2953,11 @@ class ProjectService:
             environment = self.overrides.get(scene_id, {}).get("Environment")
             collision = self.overrides.get(scene_id, {}).get("Collision")
             scene_changes, scene_authored = [], {}
+            animation_records = self.overrides.get(scene_id,{}).get('AnimationRecords')
+            if animation_records:
+                active_count = len(animation_records['records'])-len(animation_records['removed_record_ids'])
+                scene_changes.append(f'Allocated animation clips: {active_count} active records; Build relocation pending')
+                scene_authored['AnimationRecords'] = deepcopy(animation_records)
             if environment:
                 scene_changes.append(f"Scenery transforms: {len(environment.get('edits', []))} shared records, {len(environment.get('instances', []))} individual cells")
                 scene_authored["Environment"] = deepcopy(environment)

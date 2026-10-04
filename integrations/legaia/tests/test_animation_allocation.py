@@ -7,7 +7,7 @@ import unittest
 from uuid import uuid4
 
 from importer.animation import animation_record_ranges, decode_animation_record
-from importer.animation_allocation import allocate_animation_record, append_animation_records
+from importer.animation_allocation import allocate_animation_record, append_animation_records, append_animation_record_payloads
 from importer.core import ImportError, decompress_lzs
 from importer.serialization import compress_lzs
 from test_animation_glb import record
@@ -28,6 +28,24 @@ def request(index=0, frames=None, edits=None):
 
 
 class AnimationAllocationTests(unittest.TestCase):
+    def test_prepared_payloads_and_empty_identity_composition(self):
+        donor = record([[([1,2,3],[4,5,6])]])
+        original = bank([donor,b'opaque-neighbor'],b'KEEP')
+        unchanged,audit = append_animation_record_payloads(original,sha256(original).hexdigest(),[])
+        self.assertEqual(unchanged,original)
+        self.assertEqual(audit['table_growth_bytes'],0)
+        self.assertEqual(audit['allocated_records'],[])
+        identity = str(uuid4())
+        changed,audit = append_animation_record_payloads(original,sha256(original).hexdigest(),
+            [dict(record_id=identity,record=donor)])
+        a,b = animation_record_ranges(changed)[-1]
+        self.assertEqual(changed[a:b],donor)
+        self.assertEqual(audit['allocated_records'][0]['record_id'],identity)
+        for rows in ([dict(record_id=identity,record=bytearray(donor))],
+                     [dict(record_id=identity,record=b'bad')],
+                     [dict(record_id=identity,record=donor)]*2):
+            with self.assertRaises(ImportError): append_animation_record_payloads(original,sha256(original).hexdigest(),rows)
+
     def test_frame_sequence_and_edits_keep_source_modes_and_opaque_channels(self):
         donor = record([[([i,-i,7], [i,2,255]), ([-2048,2047,0], [8,9,10])]
                         for i in range(3)])

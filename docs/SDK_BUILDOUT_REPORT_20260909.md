@@ -1,5 +1,20 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — persistent animation allocation ledger:** Allocation Apply now
+reconstructs the proposed bank independently, then publishes one scene component
+and history entry. The ledger stores exact captured donor axes and frame mappings,
+Retail preimages and stable clip UUIDs. Undo/Redo, Save/Open, source-key invalidation,
+authored component review and reviewed retirement/restoration are integrated.
+Retired clip metadata/identities stay reserved; active native ordinals can rebase.
+
+32 focused checks pass, including actual Retail HTTP Apply/lifecycle, two allocated
+clips, frozen bytes after shared donor changes, offline metadata Open, malformed
+ledger rejection and explicit Build/review blockage without files being written.
+Project limits cover 64 retained identities/revisions, 4096 cumulative channels and
+2 MiB ledger metadata. [Details](legaia-animation-allocation.md). Remaining work:
+editor/pose/assignment and bank descriptor/carrier relocation/normal Build. No
+runtime acceptance is claimed; the full SDK goal remains active and solo.
+
 **2026-10-04 — animation record allocation codec/review:** Implemented explicit
 donor frame sequences plus exact source-axis edits for new native rigid records.
 The bank count/absolute-offset table grows without altering existing record bytes,

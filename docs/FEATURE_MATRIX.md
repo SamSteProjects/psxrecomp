@@ -1,5 +1,19 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — new animation records (persistent authoring stage):** Reviewed
+Apply, source-bound `AnimationRecords` ledger, ordinary Undo/Redo, Save/Open and
+retirement/restoration are implemented. Captured donor edits freeze allocated clip
+bytes independently of later shared-source edits. Stable UUIDs and retained
+tombstones survive native ordinal rebasing. Scene source keys and authored
+asset/component reviews include the ledger.
+
+32 focused checks pass, including Retail HTTP lifecycle, multiple clips,
+retirement/restoration, frozen captures, offline metadata Open and rejection of
+malformed/corrupt ledger inputs. Normal Build/review explicitly block active clips
+until descriptor/carrier relocation is implemented. Editor controls/pose preview,
+new-clip assignment and native delivery remain missing. Offline Open validates
+metadata, not Retail payload truth. See [allocation](legaia-animation-allocation.md).
+
 **2026-10-04 — new animation records (partial):** Native donor-based allocation
 and project/source-bound HTTP review are implemented. Explicit frame sequences
 allow new frame counts while preserving donor mode/object count/opaque channels.

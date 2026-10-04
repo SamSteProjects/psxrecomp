@@ -1,5 +1,19 @@
 # Legaia SDK status — 2026-10-04
 
+**Persistent allocated animation clips (2026-10-04):** Reviewed allocation now
+publishes one scene-owned `AnimationRecords` command. The ledger freezes the
+donor's current shared contribution, retains stable clip UUIDs, supports ordinary
+Undo/Redo and Save/Open, and reviews retirement/restoration with retained
+identities. Later edits to a shared source clip do not change its allocated copies.
+Authored asset/component review and scene source-key invalidation are integrated.
+
+32 focused native, Retail HTTP, ledger and GLB numerical checks pass, including
+two clips (69→71 records), retirement (→70), byte-exact restoration, frozen donor
+edits, offline metadata Open and unchanged Build-review files. Active allocated
+clips explicitly block Build/review pending descriptor/carrier relocation; no clip
+is silently omitted. Editor/pose/assignment and delivery remain unfinished. See
+[allocation](legaia-animation-allocation.md). No gameplay was launched; work stays solo.
+
 **Animation record allocation — native codec and SDK review (2026-10-04):** New
 donor-based rigid clips now support explicit frame repetition/reordering/extension
 and exact axis edits. The expanded bank rebases its absolute offset table while

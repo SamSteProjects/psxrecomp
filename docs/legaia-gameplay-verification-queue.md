@@ -1,5 +1,16 @@
 # Deferred gameplay verification
 
+**2026-10-04 — persistent animation allocation:** Offline SDK authoring now
+supports reviewed Apply, Undo/Redo, Save/Open and retirement/restoration of
+independent allocated clips. Thirty-two focused checks pass, including Retail HTTP
+lifecycle and preservation of captured clip bytes after shared source edits.
+
+No immediate gameplay action is required. Active allocated clips cannot yet be
+built: normal Build/review explicitly report pending descriptor/carrier relocation.
+Editor/pose/assignment and delivery are the remaining implementation steps before
+an allocated clip can enter later gameplay checks. Existing deferred gameplay
+requirements remain; no runtime or manual acceptance is claimed.
+
 **2026-10-04 — animation allocation infrastructure:** Native bank construction
 and read-only SDK review pass seven codec and two Retail HTTP checks, including
 complete preservation of the 69 existing Town01 records when a 70th record is

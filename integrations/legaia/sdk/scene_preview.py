@@ -77,6 +77,8 @@ def source_key(project, *, geometry_only=False) -> str | None:
                    "animation_assignments": {a['semantic_id']: deepcopy(project.overrides[a['semantic_id']]['ActorAnimation'])
                                              for a in document['actors'] if 'ActorAnimation' in project.overrides.get(a['semantic_id'], {})},
                    "model_shapes": deepcopy(project.model_overrides),
+                   **({'animation_records': deepcopy(project.overrides[project.active_scene]['AnimationRecords'])}
+                      if 'AnimationRecords' in project.overrides.get(project.active_scene,{}) else {}),
                    "actor_transforms": None if geometry_only else {
                        actor["semantic_id"]: deepcopy(project.overrides[actor["semantic_id"]]["Transform"])
                        for actor in document["actors"]

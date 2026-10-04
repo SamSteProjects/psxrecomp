@@ -104,6 +104,43 @@ def append_animation_records(original: bytes, expected_sha256: str,
         allocated.append((candidate, dict(audit, record_id=identity, donor_record_index=index,
             donor_byte_offset=start, donor_byte_length=end-start,
             record_index=len(ranges)+len(allocated))))
+    return _append_prepared(original, expected_sha256, ranges, allocated, channels)
+
+
+def append_animation_record_payloads(original: bytes, expected_sha256: str,
+                                     requests: list[dict]) -> tuple[bytes, dict]:
+    """Append already reconstructed records without borrowing a changed donor.
+
+    Project consumers verify frozen donor provenance before calling this. This
+    function verifies every payload's supported wire layout and exact readback.
+    """
+    _source(original, expected_sha256, 'Animation bank')
+    ranges = animation_record_ranges(original)
+    if (not isinstance(requests, list) or len(requests) > MAX_ALLOCATED_RECORDS or
+            len(ranges) + len(requests) > MAX_RECORDS):
+        raise ImportError('Animation allocation request/record count exceeds bounds')
+    identities, allocated, channels = set(), [], 0
+    for request in requests:
+        if not isinstance(request, dict) or set(request) != {'record_id', 'record'}:
+            raise ImportError('Prepared animation requires record identity and immutable record bytes')
+        identity = _record_id(request['record_id'])
+        if identity in identities:
+            raise ImportError('Duplicate allocated animation record identity')
+        identities.add(identity)
+        record = request['record']
+        if not isinstance(record, bytes):
+            raise ImportError('Prepared animation requires immutable record bytes')
+        decoded = decode_animation_record(record)
+        channels += decoded['frame_count'] * decoded['bone_count']
+        if channels > MAX_ALLOCATED_CHANNELS:
+            raise ImportError('Animation allocation exceeds the cumulative channel budget')
+        allocated.append((record, dict(record_id=identity, record_index=len(ranges)+len(allocated),
+            candidate_record_sha256=sha256(record).hexdigest(), frame_count=decoded['frame_count'],
+            object_count=decoded['bone_count'], byte_length=len(record))))
+    return _append_prepared(original, expected_sha256, ranges, allocated, channels)
+
+
+def _append_prepared(original, expected_sha256, ranges, allocated, channels):
     shift = len(allocated) * 4
     proposed_size = len(original) + shift + sum(len(record) for record, _ in allocated)
     if proposed_size > MAX_BUNDLE_BYTES:
