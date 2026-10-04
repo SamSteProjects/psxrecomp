@@ -113,9 +113,9 @@ class AnimationGrowthBuild(unittest.TestCase):
             unsupported=SimpleNamespace(source_bank=lambda:(b'',{'source_kind':'raw_streaming_anm'}))
             rejected=project.root/'RejectedStreamingBuild'
             with patch('sdk.animation_growth.verified_source',return_value=(b'',unsupported)):
-                with self.assertRaisesRegex((ProjectError,BuildError),'raw chunk relocation'):
+                with self.assertRaisesRegex((ProjectError,BuildError),'raw ANM source chunk'):
                     build_project(project,rejected)
-            self.assertFalse(rejected.exists(),'unsupported carrier must not write a partial package')
+            self.assertFalse(rejected.exists(),'unqualified raw carrier must not write a partial package')
 
 
 if __name__=='__main__':unittest.main()

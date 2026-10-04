@@ -1,5 +1,27 @@
 # Deferred gameplay verification
 
+**2026-10-04 — raw streaming allocated ANM in normal Build:** Source-bound
+animation growth now prepares raw type-5 chunk requests as well as compressed
+bank requests. The archive composer applies guarded MAN/asset overlays at original
+addresses before raw ANM growth, relocates the unique physical owner and verifies
+the final bank after all resource composition. Raw owners accept one unambiguous
+ANM request and cannot mix descriptor-table resource relocation in the same owner.
+Scene/chunk offsets, payload length/hash and native bank contents must agree with
+fresh imported evidence. Editor allocation/library/assignment Build capabilities
+now include this qualified raw path rather than reporting it unavailable.
+
+A Retail dolk2 normal Build smoke passes capture allocation, current shared axes,
+allocated initial MAN assignment and placement together. Read-only Build review
+succeeds; the actual format-7 package reopens with the exact expanded bank and
+MAN payload, native selector, placement and fresh readback audit. Ten focused
+native composition regressions and two editor lifecycle suites pass. Compressed
+carrier Retail regression also passes, including allocated NPC composition and
+rejection of unqualified raw metadata before package output. No game was
+launched, Retail disc exported or runtime installation changed. Streaming NPC
+addition in normal Build and managed raw streaming experimental export remain
+separate pending integrations. Gameplay stays deferred and the full solo goal
+stays active. [Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — native raw streaming ANM growth foundation:** A source-qualified
 codec now grows a word-aligned type-5 animation bank inside a complete terminated
 DATA_FIELD chain, preserving the native bank's existing records/table padding,

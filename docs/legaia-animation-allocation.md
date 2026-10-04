@@ -1,5 +1,32 @@
 # Persistent native animation record allocation
 
+Normal **Build** now delivers retained allocated ANM banks in raw streaming
+carriers too. `sdk/animation_growth.py` qualifies imported chunk-header/payload
+coordinates, exact payload length/hash and its physical PROT owner before
+preparing a `streaming-animation-bank` request. The native archive composer first
+applies guarded source-addressed MAN and asset overlays, then grows the bank and
+relocates the TOC, retaining those edits as their chunks move. Final raw readback
+requires the exact bank bytes at the qualified owner-relative chunk locator.
+
+Requests have exactly `kind`, `entry_index`, `chunk_header_offset`,
+`expected_bank_sha256`, `bank`. They are internal immutable delivery inputs,
+not an HTTP upload format. A raw physical owner admits one ANM request and cannot
+mix descriptor-table resource growth in that owner. Multiple distinct owners
+can compose alongside compressed resources. Allocated initial header assignments
+use the existing source-qualified MAN serializer, including raw MAN; current
+shared channel edits enter the expanded bank once. Retained captures stay frozen.
+Allocation, saved-library and assignment Build capability flags include this path;
+actual Build review still qualifies the whole project and can reject unsupported
+families/capacities.
+
+Retail dolk2 smoke verifies actual format-7 package delivery, expanded/frozen bank,
+shared axes, allocated initial selector and placement with exact MAN/bank readback.
+No physical Retail disc export, game launch, installed-runtime change or gameplay
+acceptance is claimed. Streaming NPC append in normal Build remains unavailable.
+Managed raw experimental export and post-MAN-growth locator composition remain
+pending; the earlier native codec tests demonstrate the required explicit remaps
+but do not establish those SDK paths.
+
 Raw streaming ANM delivery now has native transforms in
 `importer/streaming_animation_bank.py`. `grow_streaming_animation_bank` qualifies
 the carrier hash, typed chunk-header offset, original bank hash and candidate

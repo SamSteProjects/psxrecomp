@@ -23,11 +23,19 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
     identities = set();tables = {}
     for request in requests:
         animation = isinstance(request,dict) and request.get('kind') == 'animation-bank'
-        fields = ({'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'} if animation else
+        streaming = isinstance(request,dict) and request.get('kind') == 'streaming-animation-bank'
+        fields = ({'kind','entry_index','chunk_header_offset','expected_bank_sha256','bank'} if streaming else
+                  {'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'} if animation else
                   {'entry_index', 'descriptor_index', 'expected_pack_sha256', 'replacements'})
         if (not isinstance(request, dict) or set(request) != fields
-                or type(request['entry_index']) is not int or type(request['descriptor_index']) is not int):
+                or type(request['entry_index']) is not int or type(request['chunk_header_offset'] if streaming else request['descriptor_index']) is not int):
             raise ImportError('Model composition relocation request is malformed')
+        if streaming:
+            if request['chunk_header_offset']<0 or request['chunk_header_offset']%4 or request['entry_index'] in tables:
+                raise ImportError('Raw ANM composition requires one word-aligned resource per physical owner')
+            tables[request['entry_index']]={'streaming'}
+            identities.add((request['entry_index'],'streaming',request['chunk_header_offset']))
+            continue
         table_offset = request.get('table_offset',0)
         if type(table_offset) is not int or table_offset<0:
             raise ImportError('Resource composition table locator is malformed')
@@ -61,9 +69,13 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
     working = bytes(working)
     patched_sha256 = sha256(working).hexdigest()
     reports = []
-    ordered=sorted(requests,key=lambda row:(row['entry_index'],row.get('table_offset',0),row['descriptor_index']))
+    ordered=sorted(requests,key=lambda row:(row['entry_index'],row.get('table_offset',row.get('chunk_header_offset',0)),row.get('descriptor_index',0)))
     for request in ordered:
-        if request.get('kind') == 'animation-bank':
+        if request.get('kind') == 'streaming-animation-bank':
+            from .streaming_animation_bank import rebuild_streaming_animation_bank_entry
+            working,report=rebuild_streaming_animation_bank_entry(working,sha256(working).hexdigest(),
+                **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
+        elif request.get('kind') == 'animation-bank':
             from .animation_bank_growth import rebuild_animation_bank_entry
             working,report=rebuild_animation_bank_entry(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
@@ -73,6 +85,10 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         reports.append(report)
     reopened = _archive(working)
     for request,report in zip(ordered,reports):
+        if request.get('kind')=='streaming-animation-bank':
+            from .streaming_animation_bank import verify_rebuilt_streaming_animation_banks
+            verify_rebuilt_streaming_animation_banks(working,[request])
+            continue
         entry = reopened.entry(request['entry_index'])
         span = locate_physical_span(reopened, entry.start_lba*2048)
         raw = working[span['byte_offset']:span['byte_offset']+span['byte_length']]

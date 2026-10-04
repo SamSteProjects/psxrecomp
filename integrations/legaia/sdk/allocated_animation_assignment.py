@@ -71,7 +71,8 @@ def review(project,entity_id,record_id,expected_source_key):
             raise ProjectError('Allocated initial clip requires its exact captured model source; retargeting is unsupported')
         bank,allocation=compose(project,scene)
         _,catalog=verified_source(project,scene)
-        build_supported=catalog.source_bank()[1].get('source_kind')!='raw_streaming_anm'
+        catalog.source_bank()
+        build_supported=True
         row=next(item for item in allocation['allocated_records'] if item['record_id']==record_id)
         context=load_man_assignment_context(project.disc_path,document['scene']['name'])
         donor=next(a for a in document['actors'] if a['semantic_id']==entry['channel_owner_entity_id'])
@@ -95,7 +96,7 @@ def review(project,entity_id,record_id,expected_source_key):
         capabilities=dict(review=True,pose_preview=True,apply=True,build_assignment=build_supported),
         limitations=['Initial MAN header only; scripts can later select another model or clip.',
             'The stable record identity is portable; its current MAN byte selector must be re-resolved after ledger changes.',
-            'Normal Build supports qualified compressed banks and source-qualified MAN/NPC composition; raw ANM relocation remains unsupported and NPC compression capacity is checked during Build.',
+            'Normal Build supports qualified compressed or raw ANM banks and source-qualified MAN headers. NPC additions still require compressed MAN candidates that fit their guarded capacity; streaming NPC additions remain unavailable in normal Build.',
             'Cadence, looping, script compatibility and gameplay suitability remain unverified.'])
     report['review_key']=digest(report)
     return report

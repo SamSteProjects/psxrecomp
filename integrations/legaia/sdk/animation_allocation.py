@@ -95,8 +95,8 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
         candidate_bank_sha256=sha256(candidate).hexdigest(), allocation=allocation,
         project_changed=False, gameplay_verified=False,
         proposed_ledger=ledger,
-        capabilities=dict(review=True, apply=True, build=provenance.get('source_kind')!='raw_streaming_anm', actor_assignment=False),
-        limitations=['Compressed ANM carriers support normal Build relocation; raw streaming bank relocation is not implemented.',
+        capabilities=dict(review=True, apply=True, build=True, actor_assignment=False),
+        limitations=['Qualified compressed and raw streaming ANM carriers support normal Build relocation; final source, carrier and package readback are required.',
                      'The frame sequence has no verified retail rate or runtime clip-selection evidence.',
                      'Existing shared clip edits are copied into the new record; existing records remain unchanged.'])
     report['review_key'] = digest(report)
@@ -127,7 +127,8 @@ def allocation_options(project, entity_id, expected_source_key):
         if ledger is not None:
             validate(project,project.active_scene,ledger,verify_disc=True)
         catalog = load_scene_actor_animation_catalog(project.disc_path,document['scene']['name'])
-        delivery = catalog.source_bank()[1].get('source_kind') != 'raw_streaming_anm'
+        catalog.source_bank()
+        delivery = True
     used = sum(len(row['source_frame_indices'])*row['object_count'] for row in (ledger or {}).get('records',[]))
     remaining = 4096-used
     maximum = min(512,remaining//binding['bone_count'])
@@ -203,7 +204,8 @@ def record_library(project, scene_id, expected_source_key):
         validate(project,scene_id,ledger,verify_disc=True)
         with _disc_context(project.disc_path):
             catalog=load_scene_actor_animation_catalog(project.disc_path,project.imports[scene_id]['scene']['name'])
-            delivery=catalog.source_bank()[1].get('source_kind')!='raw_streaming_anm'
+            catalog.source_bank()
+            delivery=True
         for entry in ledger['records']:
             records.append(dict(record_id=entry['record_id'],
                 animation_id=f"animation://{project.imports[scene_id]['scene']['name']}/authored-record/{entry['record_id']}",

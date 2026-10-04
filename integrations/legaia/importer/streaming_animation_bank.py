@@ -9,6 +9,7 @@ import struct
 from .core import ImportError
 from .streaming_man import streaming_chunks
 from .animation_bank_growth import qualify_animation_bank
+from .animation import animation_record_ranges
 from .model_pack_archive import _archive
 from .prot_layout import locate_physical_span
 from .prot_rebuild import replace_physical_entry
@@ -78,3 +79,26 @@ def rebuild_streaming_animation_bank_entry(source,expected_sha256,entry_index,ch
     return result,dict(entry_index=entry_index,carrier=report,archive=audit,
         reopened_bank_verified=True,physical_neighbors_preserved=True,disc_relocation_required=audit['disc_relocation_required'],
         build_ready=False,gameplay_verified=False)
+
+
+def verify_rebuilt_streaming_animation_banks(source,requests):
+    if not isinstance(source,bytes) or not isinstance(requests,list) or not 1<=len(requests)<=32:
+        raise ImportError('Final raw ANM readback requires immutable archive and bounded requests')
+    archive=_archive(source);reports=[];seen=set()
+    for request in requests:
+        fields={'kind','entry_index','chunk_header_offset','expected_bank_sha256','bank'}
+        if not isinstance(request,dict) or set(request)!=fields or request['kind']!='streaming-animation-bank':
+            raise ImportError('Final raw ANM request is malformed')
+        index,offset,bank=request['entry_index'],request['chunk_header_offset'],request['bank']
+        if type(index) is not int or type(offset) is not int or offset<0 or offset%4 or not isinstance(bank,bytes) or not 0<len(bank)<=4*1024*1024:
+            raise ImportError('Final raw ANM locator or bank exceeds bounds')
+        if index in seen:raise ImportError('Final raw ANM requests require distinct physical owners')
+        seen.add(index);entry=archive.entry(index);span=locate_physical_span(archive,entry.start_lba*2048)
+        if span['entry_index']!=index or span['offset_within_span']!=0:raise ImportError('Final raw ANM physical owner changed')
+        raw=source[span['byte_offset']:span['byte_offset']+span['byte_length']]
+        chunks,terminated=streaming_chunks(raw);target=next((row for row in chunks if row['header_offset']==offset),None)
+        if not terminated or target is None or target['type_byte']!=5 or target['size']!=len(bank) or raw[offset+4:offset+4+len(bank)]!=bank:
+            raise ImportError('Final raw ANM bank differs after resource composition')
+        reports.append(dict(entry_index=index,chunk_header_offset=offset,bank_sha256=sha256(bank).hexdigest(),
+            record_count=len(animation_record_ranges(bank)),final_bank_verified=True))
+    return reports
