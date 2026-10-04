@@ -24,11 +24,21 @@ def _ledger_origins(original,ledger):
     initial=_source_faces(original,sha256(original).hexdigest())
     origins={identity:(face['object_index'],face['group_index']) for identity,face in initial.items()}
     ranks={identity:index for index,identity in enumerate(initial)}
+    next_group={}
+    for owner,*_ in _groups(original,_qualified_model(original)[0]):
+        next_group[owner]=next_group.get(owner,0)+1
     for operation in _operations(ledger):
         if operation['kind']=='add_faces':
             for request in operation['additions']:
                 origins[request['face_id']]=origins[request['donor_face_id']]
                 ranks[request['face_id']]=len(ranks)
+        elif operation['kind']=='allocate_groups':
+            for group in operation['requests']:
+                owner=origins[group['donor_face_id']][0]
+                root=next_group.get(owner,0);next_group[owner]=root+1
+                for face in group['faces']:
+                    origins[face['face_id']]=(owner,root)
+                    ranks[face['face_id']]=len(ranks)
     return origins,ranks
 
 

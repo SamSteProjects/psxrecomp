@@ -6,6 +6,7 @@ additions without changing stable face identities. V3 also replays typed stable
 face removals, retaining historical authored identities and allocation ownership.
 V4 restores deleted identities from qualified replay-derived packet preimages.
 V5 allocates bounded new native vertex/normal rows before further face edits.
+V6 allocates stable authored groups without assigning them Retail group ownership.
 Restoration commands require separate project/editor integration.
 """
 import json
@@ -22,8 +23,10 @@ CONTENT_SCHEMA = 'legaia.model-face-addition-ledger.v2'
 REMOVAL_SCHEMA = 'legaia.model-face-addition-ledger.v3'
 RESTORATION_SCHEMA = 'legaia.model-face-addition-ledger.v4'
 VECTOR_SCHEMA = 'legaia.model-face-addition-ledger.v5'
-REMOVAL_VERSIONS = (REMOVAL_SCHEMA,RESTORATION_SCHEMA,VECTOR_SCHEMA)
-RESTORATION_VERSIONS = (RESTORATION_SCHEMA,VECTOR_SCHEMA)
+GROUP_SCHEMA = 'legaia.model-face-addition-ledger.v6'
+VECTOR_VERSIONS = (VECTOR_SCHEMA,GROUP_SCHEMA)
+REMOVAL_VERSIONS = (REMOVAL_SCHEMA,RESTORATION_SCHEMA,*VECTOR_VERSIONS)
+RESTORATION_VERSIONS = (RESTORATION_SCHEMA,*VECTOR_VERSIONS)
 MAX_LEDGER_VECTORS = 4096
 MAX_OPERATIONS = 64
 MAX_METADATA_BYTES = 2*1024*1024
@@ -104,6 +107,54 @@ def _operations(ledger):
     return ledger['operations']
 
 
+def _reserved_faces(operations):
+    reserved=set()
+    for operation in operations:
+        if operation['kind']=='add_faces':
+            reserved.update(row['face_id'] for row in operation['additions'])
+        elif operation['kind']=='allocate_groups':
+            reserved.update(face['face_id'] for group in operation['requests'] for face in group['faces'])
+    return reserved
+
+
+def _apply_group_allocation(current, faces, requests, reserved, group_reserved):
+    from .model_group_allocation import allocate_model_groups,MAX_NEW_GROUPS
+    if not isinstance(requests,list) or not 1<=len(requests)<=MAX_NEW_GROUPS:
+        raise ImportError('Face ledger group allocation requires bounded typed requests')
+    native=[];pending=set();donors={};count=0
+    for group in requests:
+        if (not isinstance(group,dict) or set(group)!={'group_id','donor_face_id','faces'}
+                or not isinstance(group['group_id'],str) or group['group_id'] in group_reserved
+                or not isinstance(group['donor_face_id'],str) or group['donor_face_id'] not in faces
+                or not isinstance(group['faces'],list) or not group['faces']):
+            raise ImportError('Face ledger group identity or stable donor changed')
+        count+=len(group['faces'])
+        if count>MAX_LEDGER_FACES:
+            raise ImportError('Face ledger group allocation exceeds its authored face budget')
+        donor=faces[group['donor_face_id']];rows=[]
+        for face in group['faces']:
+            if (not isinstance(face,dict) or set(face)!=REQUEST_KEYS
+                    or not isinstance(face['face_id'],str) or face['face_id'] in faces
+                    or face['face_id'] in reserved or face['face_id'] in pending
+                    or not isinstance(face['donor_face_id'],str) or face['donor_face_id'] not in faces):
+                raise ImportError('Face ledger group face identity or stable donor changed')
+            packet=faces[face['donor_face_id']]
+            if any(packet[key]!=donor[key] for key in ('object_index','group_index')):
+                raise ImportError('Allocated group face donors must belong to the selected Current group')
+            pending.add(face['face_id']);donors[face['face_id']]=face['donor_face_id']
+            rows.append(dict(face_id=face['face_id'],donor_primitive_index=packet['current_primitive_index'],
+                             fields=deepcopy(face['fields'])))
+        native.append(dict(group_id=group['group_id'],object_index=donor['object_index'],
+                           donor_group_index=donor['group_index'],faces=rows))
+    candidate,audit=allocate_model_groups(current,sha256(current).hexdigest(),native)
+    updated=deepcopy(faces)
+    for face in audit['new_faces']:
+        updated[face['face_id']]=dict(face_id=face['face_id'],origin='authored',
+            object_index=face['object_index'],group_index=face['group_index'],
+            current_primitive_index=face['current_primitive_index'],donor_face_id=donors[face['face_id']])
+    return candidate,updated,audit
+
+
 def _apply_content(current, operation):
     from .model_authoring import replace_model_content
     runs = operation['runs']
@@ -169,12 +220,17 @@ def _replay_face_ledger(original, ledger, *, capture=False):
         raise ImportError('Face ledger source binding changed')
     faces = _source_faces(original, source_hash)
     # Restoration consumes preimages in the same replay pass, never recursively.
-    capture = capture or any(isinstance(op,dict) and op.get('kind')=='restore_faces' for op in operations)
+    capture = capture or ledger['schema_version']==GROUP_SCHEMA or any(isinstance(op,dict) and op.get('kind')=='restore_faces' for op in operations)
     origins={identity:(face['object_index'],face['group_index']) for identity,face in faces.items()} if capture else {}
     ranks={identity:index for index,identity in enumerate(faces)} if capture else {}
     deleted_packets={}
     current, total, batches = original, 0, 0
     vector_total=0;vector_batches=0
+    group_total=0;group_batches=0;group_records=[];group_reserved=set()
+    next_group={}
+    if ledger['schema_version']==GROUP_SCHEMA:
+        for owner,*_ in _groups(original,_qualified_model(original)[0]):
+            next_group[owner]=next_group.get(owner,0)+1
     reserved=set();removed=[]
     for operation in operations:
         if (not isinstance(operation,dict) or operation.get('input_sha256') != sha256(current).hexdigest()):
@@ -196,7 +252,7 @@ def _replay_face_ledger(original, ledger, *, capture=False):
             if set(operation) != {'kind','input_sha256','proposed_sha256','runs'}:
                 raise ImportError('Face ledger content schema changed')
             current = _apply_content(current, operation)
-        elif operation.get('kind') == 'allocate_vectors' and ledger['schema_version'] == VECTOR_SCHEMA:
+        elif operation.get('kind') == 'allocate_vectors' and ledger['schema_version'] in VECTOR_VERSIONS:
             from .model_vector_allocation import append_model_vectors
             if set(operation) != {'kind','input_sha256','proposed_sha256','requests'}:
                 raise ImportError('Face ledger vector allocation schema changed')
@@ -204,6 +260,25 @@ def _replay_face_ledger(original, ledger, *, capture=False):
             vector_total+=sum(row['added_count'] for row in allocated['new_vectors']);vector_batches+=1
             if vector_total>MAX_LEDGER_VECTORS:
                 raise ImportError('Face ledger exceeds its allocated vector budget')
+        elif operation.get('kind') == 'allocate_groups' and ledger['schema_version']==GROUP_SCHEMA:
+            from .model_group_allocation import MAX_NEW_GROUPS
+            if set(operation)!={'kind','input_sha256','proposed_sha256','requests'}:
+                raise ImportError('Face ledger group allocation schema changed')
+            current,faces,allocated=_apply_group_allocation(current,faces,operation['requests'],reserved,group_reserved)
+            total+=len(allocated['new_faces']);batches+=1
+            group_total+=len(allocated['new_groups']);group_batches+=1
+            if total>MAX_LEDGER_FACES or batches>MAX_BATCHES or group_total>MAX_NEW_GROUPS:
+                raise ImportError('Face ledger exceeds its authored group, face or batch budget')
+            allocated_by_id={row['group_id']:row for row in allocated['new_groups']}
+            for group in operation['requests']:
+                row=allocated_by_id[group['group_id']];owner=row['object_index']
+                root=next_group.get(owner,0);next_group[owner]=root+1
+                group_records.append(dict(group_id=group['group_id'],object_index=owner,
+                    origin_group_index=root,donor_face_id=group['donor_face_id']))
+                group_reserved.add(group['group_id'])
+                for face in group['faces']:
+                    identity=face['face_id'];origins[identity]=(owner,root)
+                    ranks[identity]=len(ranks);reserved.add(identity)
         elif operation.get('kind') == 'remove_faces' and ledger['schema_version'] in REMOVAL_VERSIONS:
             if set(operation) != {'kind','input_sha256','proposed_sha256','face_ids'}:
                 raise ImportError('Face ledger removal schema changed')
@@ -244,8 +319,16 @@ def _replay_face_ledger(original, ledger, *, capture=False):
         authored_face_count=total, faces=list(faces.values()))
     if ledger['schema_version'] in REMOVAL_VERSIONS:
         audit['removed_face_ids']=removed
-    if ledger['schema_version'] == VECTOR_SCHEMA:
+    if ledger['schema_version'] in VECTOR_VERSIONS:
         audit.update(allocated_vector_count=vector_total,vector_allocation_count=vector_batches)
+    if ledger['schema_version']==GROUP_SCHEMA:
+        for group in group_records:
+            active=[face for face in faces.values() if origins[face['face_id']]==(group['object_index'],group['origin_group_index'])]
+            indices={face['group_index'] for face in active}
+            if len(indices)>1:raise ImportError('Allocated stable group split across Current groups')
+            group.update(current_group_index=next(iter(indices)) if indices else None,
+                face_ids=[face['face_id'] for face in sorted(active,key=lambda row:ranks[row['face_id']])])
+        audit.update(allocated_group_count=group_total,group_allocation_count=group_batches,allocated_groups=group_records)
     return current,audit,deleted_packets
 
 
@@ -292,7 +375,7 @@ def append_face_ledger(original, ledger, requests):
     current, audit = replay_face_ledger(original, ledger)
     if audit['batch_count'] >= MAX_BATCHES or len(_operations(ledger)) >= MAX_OPERATIONS or not isinstance(requests, list) or audit['authored_face_count'] + len(requests) > MAX_LEDGER_FACES:
         raise ImportError('Face ledger exceeds its batch or authored face budget')
-    reserved={row['face_id'] for operation in _operations(ledger) if operation['kind']=='add_faces' for row in operation['additions']}
+    reserved=_reserved_faces(_operations(ledger))
     candidate, _ = _apply_batch(current, {row['face_id']: row for row in audit['faces']}, requests,reserved)
     result = deepcopy(ledger)
     batch=dict(input_sha256=sha256(current).hexdigest(),proposed_sha256=sha256(candidate).hexdigest(),additions=deepcopy(requests))
@@ -324,7 +407,7 @@ def append_restoration_ledger(original,ledger,face_ids):
     if len(operations)>=MAX_OPERATIONS:
         raise ImportError('Face ledger exceeds its operation budget')
     candidate,restored=reinsert_ledger_faces(original,ledger,face_ids)
-    result=dict(schema_version=VECTOR_SCHEMA if ledger['schema_version']==VECTOR_SCHEMA else RESTORATION_SCHEMA,source_sha256=ledger['source_sha256'],
+    result=dict(schema_version=ledger['schema_version'] if ledger['schema_version'] in VECTOR_VERSIONS else RESTORATION_SCHEMA,source_sha256=ledger['source_sha256'],
                 source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
     result['operations'].append(dict(kind='restore_faces',input_sha256=restored['source_sha256'],
         proposed_sha256=restored['proposed_sha256'],face_ids=deepcopy(face_ids)))
@@ -341,9 +424,25 @@ def append_vector_ledger(original,ledger,requests):
     candidate,allocated=append_model_vectors(current,sha256(current).hexdigest(),requests)
     if audit.get('allocated_vector_count',0)+sum(row['added_count'] for row in allocated['new_vectors'])>MAX_LEDGER_VECTORS:
         raise ImportError('Face ledger exceeds its allocated vector budget')
-    result=dict(schema_version=VECTOR_SCHEMA,source_sha256=ledger['source_sha256'],
+    result=dict(schema_version=GROUP_SCHEMA if ledger['schema_version']==GROUP_SCHEMA else VECTOR_SCHEMA,source_sha256=ledger['source_sha256'],
                 source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
     result['operations'].append(dict(kind='allocate_vectors',input_sha256=sha256(current).hexdigest(),
+        proposed_sha256=allocated['proposed_sha256'],requests=deepcopy(requests)))
+    qualified,report=replay_face_ledger(original,result)
+    return qualified,result,report
+
+
+def append_group_ledger(original,ledger,requests):
+    current,audit=replay_face_ledger(original,ledger)
+    operations=_operations(ledger)
+    if len(operations)>=MAX_OPERATIONS:
+        raise ImportError('Face ledger exceeds its operation budget')
+    reserved_groups={group['group_id'] for op in operations if op['kind']=='allocate_groups' for group in op['requests']}
+    candidate,_,allocated=_apply_group_allocation(current,{row['face_id']:row for row in audit['faces']},
+        requests,_reserved_faces(operations),reserved_groups)
+    result=dict(schema_version=GROUP_SCHEMA,source_sha256=ledger['source_sha256'],
+        source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
+    result['operations'].append(dict(kind='allocate_groups',input_sha256=sha256(current).hexdigest(),
         proposed_sha256=allocated['proposed_sha256'],requests=deepcopy(requests)))
     qualified,report=replay_face_ledger(original,result)
     return qualified,result,report

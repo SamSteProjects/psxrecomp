@@ -54,7 +54,7 @@ def inspect(project, asset_id, object_index, normal_index, expected_sha256, expe
         report.update(schema_version='legaia.model-normal-users.v2', authored_faces=authored[object_index],
                       current_face_count=sum(row['current_index'] is not None for row in face_mapping)+len(authored[object_index]),
                       retail_model_byte_length=len(retail))
-        if binding['ledger']['schema_version']=='legaia.model-face-addition-ledger.v5':
+        if binding['ledger']['schema_version'] in ('legaia.model-face-addition-ledger.v5','legaia.model-face-addition-ledger.v6'):
             report.update(schema_version='legaia.model-normal-users.v3',
                 vector_origin='retail' if retail_owned else 'allocated',
                 retail_vector_count=retail_count,current_vector_count=current_count)

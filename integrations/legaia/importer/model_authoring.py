@@ -24,7 +24,7 @@ def preview_model_shape(preview: dict, replacement: bytes, binding: dict):
     objects = result['objects']
     topology_changed = binding.get('format') in ('tmd-face-removal-v1', 'tmd-face-addition-v1')
     vector_growth=None
-    if binding.get('format')=='tmd-face-addition-v1' and binding.get('ledger',{}).get('schema_version')=='legaia.model-face-addition-ledger.v5':
+    if binding.get('format')=='tmd-face-addition-v1' and binding.get('ledger',{}).get('schema_version') in ('legaia.model-face-addition-ledger.v5','legaia.model-face-addition-ledger.v6'):
         from .model_face_ledger import _operations,MAX_LEDGER_VECTORS
         from .model_primitives import _qualified_model
         _qualified_model(replacement)

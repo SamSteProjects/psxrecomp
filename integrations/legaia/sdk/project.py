@@ -1418,7 +1418,7 @@ class ProjectService:
             maps,authored=addition_mapping(self,asset_id,original,effective,self.model_overrides[asset_id])
             report.update(schema_version='legaia.model-primitives.v4',face_mappings=maps,authored_faces=authored)
             ledger = self.model_overrides[asset_id]['ledger']
-            if ledger['schema_version'] == 'legaia.model-face-addition-ledger.v5':
+            if ledger['schema_version'] in ('legaia.model-face-addition-ledger.v5','legaia.model-face-addition-ledger.v6'):
                 growth = [dict(object_index=obj['object_index'], vertices=0, normals=0)
                           for obj in report['objects']]
                 for operation in ledger['operations']:
