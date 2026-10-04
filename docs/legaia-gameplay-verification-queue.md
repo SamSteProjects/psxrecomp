@@ -1,5 +1,39 @@
 # Deferred gameplay verification
 
+## 2026-10-04: reopen retained conversion inputs directly in the editor
+
+For a saved slot with a source receipt, Convert source PNG now offers Load retained
+PNG/STP recipe. It loads the immutable PNG and optional STP plane into the file
+controls and restores the saved bit depth, image/CLUT coordinates and STP policy.
+No external file selection or download/re-upload is needed. Loading is readonly;
+it clears earlier drafts/reviews and requires Convert before using a draft.
+
+The browser checks exact Current identity/context, source/recipe equality, PNG/STP
+hashes and lengths, the recorded conversion report and Current TIM hash/header.
+Saved JSON key order does not affect receipt comparison. Stale, missing, tampered
+or mismatched inputs reject the load. Existing cancellation and busy-owner handling
+prevent a closed or changed context from receiving delayed inputs.
+
+Source and native choices remain editable after loading. Convert reproduces
+Current with unchanged options, or creates a new complete TIM with changed options.
+Use converted TIM draft goes through slot Review, Current/Proposed inspection and
+combined native/source Apply, retaining the original inputs and updated recipe in
+one Undo entry. Native material bindings remain an explicit separate edit.
+
+Both Node decoder suites passed, including wrong context/identity, altered PNG,
+missing STP, malformed receipts, Current TIM mismatch and reordered saved keys.
+Private Town01 browser proof loaded PNG/STP without external file selection,
+restored the recipe, reproduced Current exactly, changed RGB16 to 4-bit, passed
+choice invalidation, readonly Review/pixels/Return and combined Apply/Save/reload.
+Central checks passed Undo/Redo of content plus recipe, offline reopen, exact source
+snapshot files and exact normal Build slot 96 readback. Parent visual inspection
+covered the loaded reproduction dialog. Evidence:
+`local-output/sdk-20260909/texture-retained-reload-20261004/parent/proof.json`.
+
+Broader GLB/image dependencies, general Retail mode/CLUT allocation and runtime or
+gameplay acceptance remain outstanding. No game was launched and no installed
+runtime or physical disc was changed.
+
 ## 2026-10-04: combined converted TIM and source Apply
 
 Use converted TIM draft now carries the exact PNG, optional STP plane and native

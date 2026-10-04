@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {decodeImageConversion,decodeSourceRetention} from '../editor/texture-image-conversion.js';
+import {decodeImageConversion,decodeSourceRetention,decodeRetainedInputs} from '../editor/texture-image-conversion.js';
 const hash=v=>v.repeat(64),options={bpp:16,image_x:640,image_y:32,clut_x:0,clut_y:0,stp_mode:'opaque'};
 const bytes=Buffer.alloc(28);bytes.writeUInt32LE(16,0);bytes.writeUInt32LE(2,4);bytes.writeUInt32LE(20,8);bytes.writeUInt16LE(640,12);bytes.writeUInt16LE(32,14);bytes.writeUInt16LE(4,16);bytes.writeUInt16LE(1,18);bytes.writeUInt16LE(31,20);bytes.writeUInt16LE(31,22);bytes.writeUInt16LE(31,24);bytes.writeUInt16LE(31,26);
 const request={asset_id:'texture://fixture/1/raw/0',source_key:hash('a'),options};
@@ -21,3 +21,14 @@ const retained={schema_version:'legaia.texture-slot-source-retention.v1',asset_i
 assert.deepEqual(decodeSourceRetention(retained,retentionRequest,draft,{...input,stpSize:null}),retained);
 for(const bad of [{...retained,native_bytes_changed:true},{...retained,effective_sha256:hash('d')},{...retained,source:{...source,png_byte_length:99}},{...retained,source:{...source,conversion_report:{...report,byte_length:29}}},{...retained,changed:false}])assert.throws(()=>decodeSourceRetention(bad,retentionRequest,draft,{...input,stpSize:null}));
 console.log('Retention source/recipe/native hash, metadata-only status and Apply qualification passed.');
+
+const retainedPng=Buffer.alloc(100),pngHash=createHash('sha256').update(retainedPng).digest('hex'),retainedReport={...report,png_sha256:pngHash},retainedSource={...source,png_sha256:pngHash,conversion_report:retainedReport},download={asset_id:request.asset_id,project_source_key:request.source_key,effective_sha256:draft.sha256,source:retainedSource,png_base64:retainedPng.toString('base64'),stp_png_base64:null,read_only:true,project_changed:false};
+const retainedContext={sourceKey:request.source_key,sceneId:input.sceneId};
+assert.deepEqual((await decodeRetainedInputs(download,request.asset_id,retainedContext,draft.sha256,value.content_base64,retainedSource)).png,Uint8Array.from(retainedPng));
+assert.deepEqual((await decodeRetainedInputs({...download,source:Object.fromEntries(Object.entries(retainedSource).reverse())},request.asset_id,retainedContext,draft.sha256,value.content_base64,retainedSource)).options,options);
+for(const bad of [{...download,project_source_key:'stale'},{...download,effective_sha256:hash('d')},{...download,asset_id:'other'},{...download,project_changed:true},{...download,extra:true},{...download,png_base64:Buffer.alloc(99).toString('base64')},{...download,png_base64:Buffer.alloc(100,1).toString('base64')},{...download,stp_png_base64:'AAAA'},{...download,source:{...retainedSource,png_byte_length:99}}])await assert.rejects(decodeRetainedInputs(bad,request.asset_id,retainedContext,draft.sha256,value.content_base64,retainedSource));
+await assert.rejects(decodeRetainedInputs(download,request.asset_id,retainedContext,draft.sha256,Buffer.alloc(28).toString('base64'),retainedSource));
+console.log('Retained input load context, exact PNG/native hashes, recipe equality and saved key order qualification passed.');
+
+const missingPlaneReceipt={...retainedSource,stp_png_sha256:pngHash,stp_png_byte_length:retainedPng.length,conversion_report:{...retainedReport,stp_png_sha256:pngHash}};
+await assert.rejects(decodeRetainedInputs({...download,source:missingPlaneReceipt},request.asset_id,retainedContext,draft.sha256,value.content_base64,missingPlaneReceipt));
