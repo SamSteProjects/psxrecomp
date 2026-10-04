@@ -1,5 +1,19 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — new animation records (editor creation/pose stage):** Actor editor
+controls now support bounded explicit frame sequences, Review, proposed posed
+Preview and explicit Apply. The preview decodes the exact new record against
+Current geometry, labels it unassigned and retains the creator on Return.
+Source/selection/edit/late/close guards and donor/ledger budget checks are covered.
+Unsupported proposal export is disabled.
+
+Focused Node and Retail HTTP checks plus an actual Edge seven-frame editor smoke
+pass, including unchanged project state, retained Review and inspected screenshots.
+Saved-clip management, actor assignment and descriptor/carrier Build delivery are
+still missing; active allocated records continue to block normal Build/review.
+Model-viewer acceptance does not establish allocated scene or gameplay behavior.
+See [allocation](legaia-animation-allocation.md).
+
 **2026-10-04 — new animation records (persistent authoring stage):** Reviewed
 Apply, source-bound `AnimationRecords` ledger, ordinary Undo/Redo, Save/Open and
 retirement/restoration are implemented. Captured donor edits freeze allocated clip

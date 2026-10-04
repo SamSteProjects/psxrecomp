@@ -1,5 +1,19 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — allocated animation editor and posed preview:** Implemented an
+actor clip creator with explicit frame ranges/repeats/reversal, donor/budget
+options, source-bound Review, exact record pose preview and explicit Apply.
+Current authored geometry is used; returning from the viewer preserves Review.
+Selection/source changes, edited sequences, late responses and close are guarded.
+Allocated proposals remain visibly unassigned; unsupported exports are disabled.
+
+Focused Node checks and one Retail HTTP pose test pass. A real Edge editor smoke
+rendered seven proposed frames without page errors or project changes, with
+retained Return state and identical repeated donor poses. Screenshots were checked.
+Saved-clip management, assignment and normal Build relocation remain implementation
+work. [Guide](legaia-animation-allocation.md). No runtime/gameplay acceptance is
+claimed; the full goal remains active and solo.
+
 **2026-10-04 — persistent animation allocation ledger:** Allocation Apply now
 reconstructs the proposed bank independently, then publishes one scene component
 and history entry. The ledger stores exact captured donor axes and frame mappings,

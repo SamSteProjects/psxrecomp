@@ -105,6 +105,74 @@ def preview_record_allocation(project, entity_id, source_frame_indices, edits, e
     return prepare_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key)[1]
 
 
+def allocation_options(project, entity_id, expected_source_key):
+    if project.mode != 'edit':
+        raise ProjectError('Animation allocation requires Edit mode')
+    document = project.imports.get(project.active_scene)
+    actor = next((a for a in (document or {}).get('actors',[]) if a['semantic_id'] == entity_id),None)
+    key = source_key(project)
+    if actor is None or not key or key != expected_source_key:
+        raise ProjectError('Animation allocation requires the current imported actor and scene source')
+    model_source = actor
+    with _disc_context(project.disc_path):
+        if any(name in project.overrides.get(entity_id,{}) for name in ('ActorAppearance','ActorAnimation')):
+            from .actor_animation import source_actor
+            model_source = project.appearance_source_actor(entity_id,verify_disc=True)
+            actor = source_actor(project,entity_id,verify_disc=True)
+        options = project.animation_authoring_options(actor['semantic_id'])
+        binding = options['binding']
+        ledger = project.overrides.get(project.active_scene,{}).get('AnimationRecords')
+        if ledger is not None:
+            validate(project,project.active_scene,ledger,verify_disc=True)
+    used = sum(len(row['source_frame_indices'])*row['object_count'] for row in (ledger or {}).get('records',[]))
+    remaining = 4096-used
+    maximum = min(512,remaining//binding['bone_count'])
+    if len((ledger or {}).get('records',[])) >= 64 or (ledger or {}).get('revision',0) >= 64:
+        maximum = 0
+    if source_key(project) != key:
+        raise ProjectError('Project changed while loading animation allocation options')
+    return dict(schema_version='legaia.animation-record-allocation-options.v1',entity_id=entity_id,
+        scene_id=project.active_scene,project_source_key=key,donor_animation_id=binding['semantic_id'],
+        channel_owner_entity_id=actor['semantic_id'],model_source_entity_id=model_source['semantic_id'],
+        donor_asset_id=binding['asset_semantic_id'],donor_frame_count=binding['frame_count'],
+        object_count=binding['bone_count'],maximum_frame_count=maximum,
+        remaining_channel_count=remaining,remaining_record_count=64-len((ledger or {}).get('records',[])),
+        build_available=False,gameplay_verified=False)
+
+
+def pose_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key, review_key):
+    candidate,report = prepare_record_allocation(project,entity_id,source_frame_indices,edits,expected_source_key)
+    if report['review_key'] != review_key:
+        raise ProjectError('Animation pose differs from the reviewed allocation; review again')
+    entry = report['proposed_ledger']['records'][-1]
+    row = report['allocation']['allocated_records'][0]
+    start,end = animation_record_ranges(candidate)[row['record_index']]
+    decoded = decode_animation_record(candidate[start:end])
+    document = project.imports[project.active_scene]
+    asset = next(a for a in document['assets']['models'] if a['semantic_id'] == entry['donor_asset_id'])
+    actor = next(a for a in document['actors'] if a['semantic_id'] == entry['channel_owner_entity_id'])
+    with _disc_context(project.disc_path):
+        catalog = load_scene_actor_animation_catalog(project.disc_path,document['scene']['name'])
+        # The donor supplies the evidenced object/channel prefix. The new record
+        # is unassigned; do not label its ordinal as an existing MAN association.
+        index = int(entry['donor_animation_id'].rsplit('/',1)[1])
+        animation = catalog._animation_preview(actor,asset,index,decoded)
+    donor_source = animation['source_record']
+    animation.update(semantic_id=report['animation_id'],entity_id=entity_id,actor_semantic_id=entity_id,
+        clip_id='allocation-preview',label='Proposed allocated clip',representation='allocation_preview',
+        source_clip_id=entry['donor_animation_id'],proposal=report,
+        source_record=dict(source_kind='authored_animation_record',record_id=entry['record_id'],
+            record_sha256=entry['record_sha256'],bank_sha256=report['candidate_bank_sha256'],
+            record_index=row['record_index'],byte_offset=start,byte_length=end-start,
+            byte_coordinate_space='proposed_native_scene_anm_bank',donor_source=donor_source),
+        association=dict(kind='reviewed_donor_channel_prefix_for_unassigned_allocated_clip',runtime_assigned=False,
+            donor_animation_id=entry['donor_animation_id'],channel_owner_entity_id=entry['channel_owner_entity_id'],
+            model_source_entity_id=entry['model_source_entity_id'],active_object_indices=list(range(decoded['bone_count']))))
+    if source_key(project) != expected_source_key:
+        raise ProjectError('Project changed during allocated animation pose preview')
+    return animation,deepcopy(asset)
+
+
 def apply_command(project, command):
     if set(command) != {'type','entity_id','source_frame_indices','edits','expected_source_key','review_key'}:
         raise ProjectError('Animation allocation Apply requires the exact reviewed request')

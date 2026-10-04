@@ -1,5 +1,19 @@
 # Legaia SDK status — 2026-10-04
 
+**Allocated clip creator and posed Review (2026-10-04):** The actor animation
+editor now creates independent clips from explicit source-frame sequences, with
+bounded ranges/repetition/reversal, source-bound Review, posed Preview and explicit
+Apply. Preview reconstructs the exact allocated record over Current authored
+geometry; Return retains the reviewed sequence. Stale/late/closed work is guarded.
+Proposals are labeled unassigned, and unsupported allocated exports are disabled.
+
+Focused Node lifecycle/provenance checks and one actual Retail HTTP pose check
+pass. An actual Edge editor smoke rendered seven frames with no page errors,
+retained Review on Return and left project state unchanged; screenshots were
+inspected. Saved-clip management, assignment and descriptor/carrier Build delivery
+remain unfinished. No immediate gameplay verification is required; no game was
+launched. [Details](legaia-animation-allocation.md). The goal continues solo.
+
 **Persistent allocated animation clips (2026-10-04):** Reviewed allocation now
 publishes one scene-owned `AnimationRecords` command. The ledger freezes the
 donor's current shared contribution, retains stable clip UUIDs, supports ordinary

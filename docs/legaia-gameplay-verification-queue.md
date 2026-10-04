@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+**2026-10-04 — allocated clip creator/posed preview:** Editor creation, source-bound
+Review, exact proposed-record pose preview and explicit Apply are implemented.
+Focused Node lifecycle/provenance, one Retail HTTP pose test and an actual Edge
+editor smoke pass. Preview/Return preserve the reviewed sequence without project
+mutation, and Current authored geometry is posed. Screenshots were inspected.
+
+No immediate gameplay verification is required. Saved-clip management, actor clip
+assignment and native descriptor/carrier Build delivery remain implementation
+steps. The proposal is unassigned and cannot yet enter a normal Build. Later
+runtime selection, frame progression/looping, model compatibility and lifecycle
+checks remain deferred. No game was launched or gameplay acceptance claimed.
+
 **2026-10-04 — persistent animation allocation:** Offline SDK authoring now
 supports reviewed Apply, Undo/Redo, Save/Open and retirement/restoration of
 independent allocated clips. Thirty-two focused checks pass, including Retail HTTP

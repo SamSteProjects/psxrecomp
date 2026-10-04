@@ -5,8 +5,8 @@ review the proposed expanded native bank through
 `POST /api/animation-record-allocation-preview`, then Apply the exact request and
 `review_key` through `POST /api/animation-record-allocation`. Allocation is stored
 in a scene-owned `AnimationRecords` component with ordinary Undo/Redo and
-Save/Open. Editor controls, authored-clip assignment and normal Build delivery
-are still required; the response explicitly marks those capabilities unavailable.
+Save/Open. The editor now exposes creation, Review, posed Preview and explicit
+Apply. Authored-clip assignment and normal Build delivery remain unavailable.
 Existing GLB channel import remains a separate complete
 workflow for fixed-layout clips.
 
@@ -75,10 +75,43 @@ effective shared edits, assigned witnesses, exact reviewed Apply, one-step histo
 stale review rejection, frozen donor snapshots, Save/Open (including metadata-only
 offline Open), UUID/tombstone preservation and unchanged Build-review files.
 
-Still unfinished: scene/editor preview and controls, new clip assignment,
+Still unfinished: saved-clip management, new clip assignment,
 expanded bank descriptor/carrier relocation and normal Build. Active allocated
 clips explicitly block normal Build and Build review with the missing
 descriptor/carrier relocation requirement; they are never silently omitted.
 The fixed-layout serializer still rejects bank-size changes. Runtime
 animation selection, playback cadence, lifecycle and model compatibility require
 later qualification and deferred manual gameplay checks.
+
+## Editor creation and proposed pose preview (2026-10-04)
+
+Select an imported actor in Edit mode, open **Author animation channels**, then
+choose **Allocate independent animation clip**. Enter zero-based source frames,
+separated by commas; inclusive ranges may run forward or backward. For example,
+`0-2,2-0,0` creates seven frames, including repeated and reversed donor poses.
+The creator checks the donor frame count and remaining cumulative ledger budget
+before Review; it does not silently truncate an oversized sequence.
+
+Review binds the sequence, current source and resolved donor/model witnesses to
+the proposed ledger and bank hashes. **Preview reviewed clip** decodes the exact
+new record and poses Current authored model geometry. Closing the model viewer
+returns to the retained sequence/review. Preview does not publish project edits;
+**Apply allocated clip** is a separate explicit action. Editing the sequence,
+changing the source/selection or closing the creator invalidates pending work.
+Allocated proposal exports are unavailable rather than exporting the donor clip.
+
+`POST /api/animation-record-allocation-options` accepts `entity_id` and
+`expected_source_key` and returns the verified donor counts and remaining limits.
+`POST /api/animation-record-allocation-pose-preview` accepts the allocation request
+plus its exact `review_key`. It independently reconstructs the reviewed bank and
+labels the returned record as an unassigned proposal with bank/record provenance.
+The viewer's playback rate remains a preview setting, not inferred Retail timing.
+
+Focused Node checks cover bounded sequence parsing, response identity/provenance,
+explicit Apply and stale/late/close/Return lifecycle. One actual Retail HTTP test
+checks frame repetition, exact poses over Current translated geometry and stale
+review rejection without project mutation. An actual Edge editor smoke rendered
+the seven-frame proposal without page errors, retained Review on Return and left
+project source/overrides unchanged. Repeated donor frames rendered identically;
+the review and posed-model screenshots were inspected. This qualification covers
+the model viewer, not gameplay or allocated scene-inspection acceptance.

@@ -766,6 +766,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/texture-usage.js": ("texture-usage.js", "text/javascript"),
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
+                 "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript")}
         if route not in files:
@@ -1799,9 +1800,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                         apply_import(self.server.project, body['entity_id'], payload, body['binding'], body['review_key'])
                         self._json(200, self.server.state())
                     return
-                if route in ('/api/animation-record-allocation-preview','/api/animation-record-allocation'):
+                if route == '/api/animation-record-allocation-options':
+                    if set(body) != {'entity_id','expected_source_key'}:
+                        raise ProjectError('Animation allocation options require actor and current scene source')
+                    from .animation_allocation import allocation_options
+                    self._json(200,allocation_options(self.server.project,body['entity_id'],body['expected_source_key']))
+                    return
+                if route in ('/api/animation-record-allocation-preview','/api/animation-record-allocation',
+                             '/api/animation-record-allocation-pose-preview'):
                     expected = {'entity_id', 'source_frame_indices', 'edits', 'expected_source_key'}
-                    if route == '/api/animation-record-allocation':
+                    if route != '/api/animation-record-allocation-preview':
                         expected.add('review_key')
                     if (set(body) != expected or
                             not isinstance(body['entity_id'], str) or not 1 <= len(body['entity_id']) <= 512 or
@@ -1813,6 +1821,19 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if route == '/api/animation-record-allocation-preview':
                         self._json(200, preview_record_allocation(self.server.project, body['entity_id'],
                             body['source_frame_indices'], body['edits'], body['expected_source_key']))
+                    elif route == '/api/animation-record-allocation-pose-preview':
+                        from .animation_allocation import pose_record_allocation
+                        animation,asset = pose_record_allocation(self.server.project,body['entity_id'],
+                            body['source_frame_indices'],body['edits'],body['expected_source_key'],body['review_key'])
+                        geometry = animation.pop('geometry')
+                        geometry['frames'] = animation.pop('frames')
+                        preview = self.server.model_preview(asset,prepared=geometry,effective_shape=True)
+                        preview['report'] = animation['proposal']
+                        preview['animation'] = animation
+                        preview['animation_support'] = dict(supported=True,
+                            clips=[dict(id='allocation-preview',label='Proposed allocated clip')],
+                            evidence='reviewed_unassigned_clip_not_applied_or_runtime_verified')
+                        self._json(200,preview)
                     else:
                         self.server.project.command(dict(type='allocate_animation_record',**body))
                         self._json(200,self.server.state())
