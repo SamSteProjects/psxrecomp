@@ -1,5 +1,15 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: Visual GLB native face selection inspection
+
+Implemented in the model face editor: inspect freshly qualified GLB material/image
+faces as yellow surfaces in Current/Proposed, with the complete model for context
+and selected-surface framing. Display geometry is detached from all drafts and
+source bytes; a no-change Preview leaves Apply disabled. Native triangle/quad and
+cross-object ownership checks, editor lifecycle tests and private Town01 browser
+plus package readback passed. [UV/selection workflow](legaia-model-uv-rectangle.md)
+describes use. Live scene correlation and gameplay remain separate validation.
+
 ## 2026-10-04: GLB-selected UV rectangle scope
 
 Implemented: complete source-qualified GLB material/image face sets can receive

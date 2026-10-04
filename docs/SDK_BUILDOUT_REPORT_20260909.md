@@ -1,5 +1,34 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Readonly GLB native face highlight
+
+After qualifying a GLB material/image face set in the face editor, **Inspect GLB
+face selection** opens the ordinary Current/Proposed comparison without requiring
+an authored UV change. **Highlight GLB face selection (yellow)** recolors only the
+qualified native triangles in a detached display copy. The full model supplies
+context, and framing uses the selected surfaces in both views. Turning highlight
+off restores the selected-object comparison; the display toggle changes no draft,
+material, model bytes or project history. Normal-direction colors and the yellow
+selection diagnostic are mutually exclusive. Textures and wireframe remain usable.
+
+The ownership mapping verifies Current object vertex counts, contiguous preview
+triangle spans, native triangle/quad counts and complete face membership. A quad
+maps to both decoded triangles. Selections across objects retain their independent
+local face identities. Stale, duplicate, ambiguous or mismatched layout evidence
+is rejected. This is model-local inspection, not live scene/runtime correlation.
+
+Focused Node checks passed triangle/quad ownership, cross-object identities,
+unchanged geometry and original previews, isolated display colors, and rejection
+of stale/ambiguous/layout-mismatched selections. The existing primitive editor
+suite passed. Private Town01 browser evidence verified five native faces/five
+triangles in yellow before editing: Preview reported zero native changes and
+Apply remained disabled. Highlight/normal-direction toggles preserved project
+state. The UV editing workflow then passed review invalidation, Apply/Save/reload,
+Undo/Redo, offline Open and exact normal Build model/TIM readback with unchanged
+decoded neighbors. Evidence:
+`local-output/sdk-20260909/model-face-selection-view-20261004/parent/qualified/visual/proof.json`.
+No game launched; gameplay validation remains queued separately.
+
 ## 2026-10-04: UV rectangles for GLB-selected native faces
 
 The face editor now offers **Select UV faces from GLB image** inside **Retarget
