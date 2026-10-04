@@ -33,12 +33,20 @@ export function qualifySourceNormals(preview){
 
 // One frame at a time. Raw source arrays remain unchanged; translation never
 // affects directions. This matches animation.py's independent rigid channels.
+export function qualifyRigidPoseScope(scope,vertexCount,objects=null){
+  const keys=['kind','object_count','posed_object_count','unposed_object_indices','unposed_vertex_start'];
+  if(!scope||Object.keys(scope).length!==keys.length||keys.some(key=>!Object.hasOwn(scope,key))||scope.kind!=='existing_channel_prefix'||!Number.isSafeInteger(scope.object_count)||scope.object_count<2||scope.object_count>1024||!Number.isSafeInteger(scope.posed_object_count)||scope.posed_object_count<1||scope.posed_object_count>=scope.object_count||!Array.isArray(scope.unposed_object_indices)||JSON.stringify(scope.unposed_object_indices)!==JSON.stringify(Array.from({length:scope.object_count-scope.posed_object_count},(_,i)=>i+scope.posed_object_count))||!Number.isSafeInteger(scope.unposed_vertex_start)||scope.unposed_vertex_start<0||scope.unposed_vertex_start>vertexCount)throw new Error('Invalid explicit unposed native object scope.');
+  if(objects&&(objects.length!==scope.object_count||objects.slice(0,scope.posed_object_count).reduce((count,obj)=>count+obj.vertex_count,0)!==scope.unposed_vertex_start))throw new Error('Unposed native scope differs from its object ranges.');
+  return scope;
+}
 export function rigidFrameNormals(source,frame){
   if(source?.posed!==false||source.normal_preview?.status!=='source_unposed'||!qualifySourceNormals({...source,frames:undefined}))throw new Error('Rigid normals require qualified unposed source vectors.');
-  if(frame?.posed!==true||frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(source.objects)||!Array.isArray(frame.object_transforms)||source.objects.length!==frame.object_transforms.length||source.triangles.length>100000||source.vertices.length>100000)throw new Error('Rigid normal channel mapping is unavailable.');
+  if(frame?.posed!==true||frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(source.objects)||!Array.isArray(frame.object_transforms)||source.triangles.length>100000||source.vertices.length>100000)throw new Error('Rigid normal channel mapping is unavailable.');
+  const scope=source.pose_scope===undefined?null:qualifyRigidPoseScope(source.pose_scope,source.vertices.length,source.objects),known=scope?.posed_object_count??source.objects.length;
+  if(known!==frame.object_transforms.length)throw new Error('Rigid normal channel count differs from its explicit pose scope.');
   const normals=new Array(source.triangles.length),vertexOwners=new Int32Array(source.vertices.length).fill(-1),seen=new Set();
   for(let i=0;i<source.objects.length;i++){
-    const object=source.objects[i],channel=frame.object_transforms[i];
+    const object=source.objects[i],channel=i<known?frame.object_transforms[i]:{object_index:i,rotation_psx:[0,0,0],translation:[0,0,0]};
     if(!Number.isInteger(object.object_index)||object.object_index<0||seen.has(object.object_index)||channel?.object_index!==object.object_index)throw new Error('Rigid normal channel does not match its source object.');
     seen.add(object.object_index);
     for(const [start,count,bound] of [[object.vertex_start,object.vertex_count,source.vertices.length],[object.triangle_start,object.triangle_count,normals.length]])if(!Number.isInteger(start)||!Number.isInteger(count)||start<0||count<0||start+count>bound)throw new Error('Rigid normal object span is invalid.');
@@ -53,5 +61,5 @@ export function rigidFrameNormals(source,frame){
     }
   }
   if(vertexOwners.some(v=>v===-1)||normals.includes(undefined))throw new Error('Rigid normals leave geometry without an evidenced channel.');
-  return {triangle_normals:normals,normal_preview:{...source.normal_preview,status:'source_rigid_pose',coordinate_system:'retail_psx_actor_local_y_down',transform:'sdk_analytic_rz_ry_rx'},posed:true,frames:undefined};
+  return {triangle_normals:normals,normal_preview:{...source.normal_preview,status:'source_rigid_pose',coordinate_system:'retail_psx_actor_local_y_down',transform:'sdk_analytic_rz_ry_rx',...(scope?{pose_scope:structuredClone(scope)}:{})},posed:true,frames:undefined};
 }

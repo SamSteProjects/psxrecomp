@@ -125,7 +125,50 @@ def _json_size(value):
         raise ProjectError('Scene animation metadata is not bounded finite JSON') from exc
 
 
-def _normal_pose(loaded, baseline, frames, budget):
+def _object_pose_scope(loaded, baseline, frames):
+    """Keep a qualified V7 channel prefix without inventing clone channels."""
+    marker = 'verified_existing_channels_with_explicit_unposed_native_objects'
+    if loaded.get('pose_scope') != marker:
+        if baseline.get('pose_scope') == marker:
+            raise ProjectError('Scene animation lost its explicit unposed object scope')
+        return None
+    objects = loaded['objects']
+    excluded = loaded.get('unposed_object_indices')
+    if (baseline.get('pose_scope') != marker or
+            baseline.get('unposed_object_indices') != excluded or
+            not isinstance(excluded, list) or not excluded or
+            any(type(i) is not int for i in excluded)):
+        raise ProjectError('Scene animation unposed object scope differs from its canonical pose')
+    known = len(objects) - len(excluded)
+    if known < 1 or excluded != list(range(known, len(objects))) or loaded.get('posed') is not False:
+        raise ProjectError('Scene animation requires an evidenced existing channel prefix')
+    prefix = sum(obj['vertex_count'] for obj in objects[:known])
+    for frame in frames:
+        if (not isinstance(frame, dict) or frame.get('posed') is not True or
+                frame.get('coordinate_system') != 'retail_psx_actor_local_y_down' or
+                not isinstance(frame.get('object_transforms'), list) or
+                len(frame['object_transforms']) != known):
+            raise ProjectError('Scene animation cannot assign channels to unposed native objects')
+        for index, channel in enumerate(frame['object_transforms']):
+            if not isinstance(channel, dict) or type(channel.get('object_index')) is not int or channel['object_index'] != index:
+                raise ProjectError('Scene animation existing channel ownership is invalid')
+            angles = channel.get('rotation_psx')
+            if (not isinstance(angles, list) or len(angles) != 3 or
+                    any(type(a) is not int or not 0 <= a < 4096 for a in angles)):
+                raise ProjectError('Scene animation existing rotation words are invalid')
+            _vertices([channel.get('translation')])
+        try:
+            expected = pose_vertices(loaded['vertices'][:prefix], objects[:known], frame['object_transforms'])
+        except RetailImportError as exc:
+            raise ProjectError('Scene animation existing channel prefix is invalid') from exc
+        expected += loaded['vertices'][prefix:]
+        if frame.get('vertices') != expected:
+            raise ProjectError('Scene animation changed its evidenced pose or unposed native vectors')
+    return dict(kind='existing_channel_prefix', object_count=len(objects), posed_object_count=known,
+                unposed_object_indices=deepcopy(excluded), unposed_vertex_start=prefix)
+
+
+def _normal_pose(loaded, baseline, frames, budget, scope=None):
     """Optional source vectors and channels; never derive normals from positions."""
     metadata = loaded.get('normal_preview')
     if not isinstance(metadata, dict) or metadata.get('status') != 'source_unposed':
@@ -171,7 +214,12 @@ def _normal_pose(loaded, baseline, frames, budget):
             transforms.append(dict(object_index=channel.get('object_index'),
                                    rotation_psx=deepcopy(angles), translation=deepcopy(translation)))
         try:
-            expected = pose_vertices(loaded['vertices'], loaded['objects'], transforms)
+            if scope is None:
+                expected = pose_vertices(loaded['vertices'], loaded['objects'], transforms)
+            else:
+                prefix = scope['unposed_vertex_start']; known = scope['posed_object_count']
+                expected = pose_vertices(loaded['vertices'][:prefix], loaded['objects'][:known], transforms)
+                expected += loaded['vertices'][prefix:]
         except RetailImportError as exc:
             raise ProjectError('Scene normal channel mapping is invalid') from exc
         if expected != frame['vertices']:
@@ -180,6 +228,8 @@ def _normal_pose(loaded, baseline, frames, budget):
                              object_transforms=transforms))
     source = {key: deepcopy(loaded[key]) for key in
               ('posed','vertices','triangles','objects','triangle_normals','normal_preview')}
+    if scope is not None:
+        source['pose_scope'] = deepcopy(scope)
     return dict(source=source,frames=channels)
 
 
@@ -308,7 +358,10 @@ def prepare_scene_animation(project, scene, animation_loader, representation, ex
                     raise ProjectError('Scene animation frame 0 differs from the canonical scene pose')
                 track = dict(geometry_key=key, asset_id=asset['asset_id'], clip_id=clip_id,
                              pose_kind=asset['pose_kind'], frame_count=frame_count, vertex_count=count, frames=values)
-                normal_pose = _normal_pose(loaded, baseline, frames, MAX_FRAME_NORMAL_CORNERS-normal_corners)
+                scope = _object_pose_scope(loaded, baseline, frames)
+                if scope is not None:
+                    track['pose_scope'] = scope
+                normal_pose = _normal_pose(loaded, baseline, frames, MAX_FRAME_NORMAL_CORNERS-normal_corners, scope)
                 if normal_pose is not None:
                     track['normal_pose'] = normal_pose
                 used_bytes = _json_size(track)
