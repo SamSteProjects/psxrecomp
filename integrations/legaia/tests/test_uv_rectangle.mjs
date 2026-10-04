@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {remapUVs,uvRectangleDrafts} from '../editor/uv-rectangle.js';
+assert.deepEqual(remapUVs([[0,0],[255,255],[128,64]],[0,0,255,255],[16,32,80,160]),[[16,32],[80,160],[48,64]]);
+assert.deepEqual(remapUVs([[0,0],[255,255],[128,64]],[0,0,255,255],[255,255,0,0]),[[255,255],[0,0],[127,191]]);
+assert.deepEqual(remapUVs([[10,20],[30,40],[20,30]],[10,20,30,40],[0,0,255,255]),[[0,0],[255,255],[128,128]]);
+for(const from of [[0,0,0,255],[255,0,0,255],[0,0,256,255],[false,0,255,255]])assert.throws(()=>remapUVs([[0,0],[1,1],[2,2]],from,[0,0,255,255]));
+assert.throws(()=>remapUVs([[0,0],[100,20],[20,30]],[0,0,50,50],[0,0,255,255]));
+const row={primitive_index:0,group_index:2,vertices:[0,1,2],uvs:[[0,0],[255,255],[128,64]],colors:[[10,20,30]],normal_indices:null};
+const source={objects:[{object_index:0,primitives:[row,{...structuredClone(row),primitive_index:1},{...structuredClone(row),primitive_index:2,uvs:null},{...structuredClone(row),primitive_index:3,group_index:3}]}]};
+const selected={object_index:0,primitive_index:0,vertices:[2,1,0],uvs:[[1,1],[1,1],[1,1]],colors:[[99,20,30]]},before=structuredClone({source,selected});
+const edits=uvRectangleDrafts(source,selected,[0,0,255,255],[16,32,80,160],'group');
+assert.equal(edits.length,2);assert.deepEqual(edits[0].vertices,selected.vertices);assert.deepEqual(edits[0].colors,selected.colors);assert.deepEqual(edits[1].vertices,row.vertices);assert.deepEqual(edits[1].uvs,edits[0].uvs);assert.deepEqual({source,selected},before);
+assert.throws(()=>uvRectangleDrafts(source,selected,[0,0,100,100],[0,0,255,255],'group'));assert.deepEqual({source,selected},before);
+const large={objects:[{primitives:Array.from({length:257},(_,i)=>({...structuredClone(row),primitive_index:i}))}]};assert.throws(()=>uvRectangleDrafts(large,selected,[0,0,255,255],[0,0,128,128],'group'));

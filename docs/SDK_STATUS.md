@@ -1,5 +1,40 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: reviewed UV rectangle retargeting
+
+The model face editor now remaps an explicit Current UV rectangle into an
+explicit target rectangle for one textured primitive or all textured faces in
+its packet group. Inclusive byte endpoints support nearest-byte rounding and
+reversed target axes. All selected corners must fit the source rectangle;
+untextured faces are excluded and batches over 256 textured faces reject
+without partial draft publication. Copy preserves the selected face's other
+draft fields and all neighboring non-UV fields. It updates drafts only.
+
+The existing source-qualified Preview, Current/Proposed models, scene inspection
+and Return, one Apply, Undo/Redo, Save/Open and normal Build now carry the complete
+UV batch. Changing rectangle controls withdraws review; Discard/Reset clears
+neighboring batch drafts. Source packet/material ownership remains unchanged.
+See [the UV rectangle workflow](legaia-model-uv-rectangle.md) for exact behavior.
+
+Validation passed two Node suites and 17 focused Python cases (14 synthetic and
+three private Retail cases). A fresh private Town01 browser workflow remapped
+five wall primitives and passed review invalidation, immutable scene inspection /
+Return, one Apply, Save/reload and normal Build review. Independent native byte
+construction matched the candidate, Undo/Redo and reopening retained it, and
+normal Build decompression/readback preserved every neighboring decoded byte
+and the original compressed capacity. Parent visual inspection passed. Evidence:
+`local-output/sdk-20260909/model-uv-rectangle-20261004/parent/`.
+The initial browser harness had a wrong model-close selector; its failed log was
+retained and the corrected complete run passed. No game was launched.
+
+This connects explicit UV placement with the existing separate texture resizing
+and source material editors. It does not infer image/material assignment, create
+TIM slots or allocate VRAM. Automatic atlas placement and general imported
+material/image assignment remain unfinished; final appearance, texture windows,
+VRAM residency and palette animation remain deferred gameplay checks. The full
+SDK goal remains active and incomplete.
+
+
 ## 2026-10-04: nearest-neighbor texture scaling
 
 Resize image now offers **Crop and fill** and **Scale with nearest neighbor**.
