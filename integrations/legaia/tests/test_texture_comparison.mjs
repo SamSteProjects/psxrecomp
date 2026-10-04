@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {decodeRetailComparison,retailComparisonLabel} from '../editor/texture-comparison.js';
+import {decodeTexturePngReview} from '../editor/texture-png.js';
+const hash=c=>c.repeat(64),profile={bpp:4,width:4,height:2,palette_index:0,palette_count:1,entry_count:16,schema_version:'legaia.texture-png-profile.v1'};
+const comparison={schema_version:'legaia.texture-retail-comparison.v1',source_sha256:hash('a'),baseline_sha256:hash('b'),bpp:4,source_width:4,source_height:1,proposed_width:4,proposed_height:2,added_pixels:4,removed_pixels:0,fill_value:0,baseline:'Retail-top-left-overlap-with-zero-filled-new-pixels'};
+assert.deepEqual(decodeRetailComparison(comparison,hash('a'),profile),comparison);
+assert.equal(decodeRetailComparison(undefined,hash('a'),profile),null);
+assert.match(retailComparisonLabel(comparison),/4 added pixels zero-filled/);
+for(const bad of [{...comparison,added_pixels:3},{...comparison,removed_pixels:1},{...comparison,fill_value:7},{...comparison,baseline_sha256:hash('a')},{...comparison,source_width:3},{...comparison,unexpected:1}])assert.throws(()=>decodeRetailComparison(bad,hash('a'),profile));
+const context={projectPath:'C:/private/fixture',mode:'edit',sceneId:'scene://fixture',sourceKey:hash('c')},asset='texture://fixture/1/raw/0';
+const binding={schema_version:'legaia.texture-png-binding.v1',asset_id:asset,scene_id:context.sceneId,source_sha256:hash('a'),effective_sha256:hash('d'),project_source_key:context.sourceKey,profile};
+const audit=rows=>({palette_words_changed:0,pixel_indices_changed:rows.length,image_bytes_changed:rows.length,total_change_count:rows.length,changes:rows,changes_truncated:false});
+const report={schema_version:'legaia.texture-png-review.v1',asset_id:asset,scene_id:context.sceneId,source_sha256:hash('a'),effective_sha256:hash('d'),proposed_sha256:hash('b'),png_sha256:hash('e'),stp_png_sha256:null,project_source_key:context.sourceKey,palette_mode:'existing',palette_index:0,width:4,height:2,bpp:4,palette_count:1,changes:audit([]),pending_changes:audit([{kind:'pixel_index',x:0,y:1,before:7,after:0}]),quantization:{color_max_error:0,color_rms_error:0,quantized_pixel_count:0,distinct_requested_words:1,output_palette_size:16,stp_changed_pixels:0,forced_black_stp_pixels:0,forced_transparent_stp_pixels:0},limitations:[],review_key:hash('f'),project_changed:false,gameplay_verified:false,retail_comparison:comparison};
+assert.deepEqual(decodeTexturePngReview(report,binding,asset,0,context,hash('e'),null,'existing'),report);
+assert.throws(()=>decodeTexturePngReview({...report,retail_comparison:undefined},binding,asset,0,context,hash('e'),null,'existing'));
+assert.throws(()=>decodeTexturePngReview({...report,retail_comparison:{...comparison,baseline_sha256:hash('f')}},binding,asset,0,context,hash('e'),null,'existing'));

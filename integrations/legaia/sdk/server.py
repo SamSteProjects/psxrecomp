@@ -833,6 +833,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-record-glb.js": ("animation-record-glb.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript"),
+                 "/texture-comparison.js": ("texture-comparison.js", "text/javascript"),
                  "/texture-source-retention.js": ("texture-source-retention.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})

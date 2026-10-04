@@ -55,8 +55,9 @@ class TextureResizeWorkflow(unittest.TestCase):
         self.project.set_texture_index_rectangle(ASSET,0,1,4,1,2,sha256(changed).hexdigest())
         self.assertEqual(self.project.texture_overrides[ASSET]['image_layout'],binding['image_layout'])
         from sdk.texture_png import export_texture
-        with self.assertRaisesRegex(ProjectError,'not connected'):export_texture(self.project,ASSET)
-        with self.assertRaisesRegex(ProjectError,'not connected'):self.project.texture_json_source(ASSET,'effective')
+        _,_,_,png_report=export_texture(self.project,ASSET)
+        self.assertEqual(png_report['retail_comparison']['added_pixels'],4)
+        self.project.texture_json_source(ASSET,'effective')
         bad=deepcopy(binding);bad['image_layout']['height']+=1
         with self.assertRaises(ProjectError):reopened.read_texture_replacement(bad)
 

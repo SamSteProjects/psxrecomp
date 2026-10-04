@@ -1,5 +1,37 @@
 # Authored TIM replacement
 
+**2026-10-04 — resized-texture interchange and comparison reports connected:**
+Saved image allocations now support current PNG export/reimport, PNG pixel
+proposals and Apply, effective indexed JSON, and TIM/JSON file proposals.
+Following payload edits preserve the saved dimensions and allocation binding.
+Resized JSON uses `legaia.indexed-texture.v2` with both exact current TIM and
+Retail source hashes; changing either hash, layout or current content requires
+a fresh export. Existing fixed-layout JSON v1 remains supported.
+
+Retail comparisons explicitly fit Retail pixels into the proposed dimensions,
+preserve their top-left overlap, and zero-fill newly added pixels. Reports retain
+the true Retail hash, identify the separate comparison baseline hash and count
+added/removed pixels. Payload counts describe that baseline; they do not count
+removed pixels as remaining source data or conceal a resize as a payload-only edit.
+The PNG and file preview UI qualifies and labels this distinction. Current-to-
+proposed payload counts remain exact and gate PNG Apply/no-op behavior.
+
+Twenty-one focused Python checks and two Node suites passed. A private Town01
+browser smoke passed resized PNG review, pixel inspection/Return, Apply, Save/
+reload, JSON v2 file preview/Apply and Save. The saved result passed read-only
+normal Build review and exact native texture readback from normal Build. The
+new static comparison module was initially absent from the server allowlist;
+that registration was corrected before the successful browser smoke.
+Evidence: `local-output/sdk-20260909/texture-resize-interchange-20261004/parent/`.
+No game, installed runtime change or physical disc export ran.
+
+**Next:** editor resize controls and current-to-proposed resize pixel/scene
+inspection using the reviewed allocation request. The resize service, history,
+Save/Open, normal Build and following interchange paths are connected; the
+complete editor resize workflow is still pending. Runtime appearance, UV coverage,
+VRAM upload/residency and transition checks remain in the deferred gameplay queue.
+The broader SDK goal remains active.
+
 **2026-10-04 — saved texture resize bindings and normal Build (service stage):**
 Reviewed native image resizing now has project Apply, one-step Undo/Redo and
 Save/Open. The versioned `tim-image-layout-v1` binding retains the Retail TIM
@@ -140,3 +172,24 @@ Native `set_texture_replacement(..., image_allocation=True)` is the internal
 reviewed allocation publication path. The ordinary replacement HTTP endpoint
 cannot select this policy. Following ordinary TIM payload edits must preserve
 the current saved allocation. Clear override restores the Retail layer.
+
+## Indexed JSON after reviewed resizing
+
+An effective JSON export of a saved resized TIM uses
+`legaia.indexed-texture.v2`. Its `source_sha256` qualifies the exact effective
+TIM and `retail_source_sha256` qualifies the imported Retail TIM. All other
+native fields retain v1 semantics: bit depth, complete palette words and ordered
+pixel rows. Import edits the existing effective dimensions; JSON does not select
+new dimensions or bypass resize review. Repeated import after a content change
+requires a fresh effective export. Retail downloads and ordinary fixed-layout
+interchange retain v1.
+
+Resized PNG/file reports may include `retail_comparison` with schema
+`legaia.texture-retail-comparison.v1`. `baseline_sha256` identifies a virtual
+comparison TIM made from Retail overlap and zero-filled additions, with the
+same proposed dimensions. `added_pixels` and `removed_pixels` describe allocation
+changes independently. `changes` (PNG) or `retail_changes` (file preview) compare
+payloads against this explicitly labeled baseline. `pending_changes` (PNG) and
+`current_changes` (file preview) compare against the actual effective TIM.
+The true Retail source hash is retained throughout. This comparison does not
+assert resampling, runtime VRAM residency or gameplay correctness.

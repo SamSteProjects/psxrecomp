@@ -1196,17 +1196,18 @@ class ProjectService:
         from importer.texture_json import export_texture_json
         if layer not in ('imported','effective'):
             raise ProjectError('Choose imported or effective texture JSON')
-        if layer == 'effective' and self.texture_overrides.get(asset_id, {}).get('format') == 'tim-image-layout-v1':
-            raise ProjectError('Resized texture JSON export/import reporting is not connected yet; use native TIM and Build')
         context = self._texture_context(asset_id)
         original = context.original_tim(asset_id)
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if layer == 'effective' and asset_id in self.texture_overrides else original)
         self.validate_effective_texture(asset_id,effective,context=context)
         document = json.loads(export_texture_json(effective))
-        document['source_sha256'] = hashlib.sha256(original).hexdigest()
+        retail_hash=hashlib.sha256(original).hexdigest()
+        if layer=='effective' and self.texture_overrides.get(asset_id,{}).get('format')=='tim-image-layout-v1':
+            document.update(schema_version='legaia.indexed-texture.v2',retail_source_sha256=retail_hash)
+        else:document['source_sha256']=retail_hash
         content = (json.dumps(document,separators=(',',':'),sort_keys=True)+'\n').encode()
-        return {'asset_id':asset_id,'layer':layer,'source_sha256':document['source_sha256'],
+        return {'asset_id':asset_id,'layer':layer,'source_sha256':retail_hash,
                 'effective_sha256':hashlib.sha256(effective).hexdigest(),
                 'json_base64':base64.b64encode(content).decode('ascii')}
 
@@ -1214,27 +1215,37 @@ class ProjectService:
         from importer.texture_json import import_texture_json
         if self.mode != 'edit':
             raise ProjectError('Texture JSON authoring requires Edit mode')
-        original = self._texture_context(asset_id).original_tim(asset_id)
-        replacement = import_texture_json(original,hashlib.sha256(original).hexdigest(),content)
+        context=self._texture_context(asset_id);original=context.original_tim(asset_id)
+        replacement=self._import_texture_json_current(asset_id,original,content,context)
         self.set_texture_replacement(asset_id,replacement)
+
+    def _import_texture_json_current(self, asset_id, original, content, context):
+        from importer.texture_json import import_texture_json
+        retail_hash=hashlib.sha256(original).hexdigest()
+        binding=self.texture_overrides.get(asset_id)
+        if binding and binding['format']=='tim-image-layout-v1':
+            effective=self.read_texture_replacement(binding)
+            self.validate_effective_texture(asset_id,effective,context=context)
+            return import_texture_json(effective,hashlib.sha256(effective).hexdigest(),content,retail_sha256=retail_hash)
+        return import_texture_json(original,retail_hash,content)
 
     def _prepare_texture_file(self, asset_id: str, content: bytes, format: str,
                               palette_index: int = 0) -> tuple[bytes, dict]:
         import base64
-        from importer.texture_json import import_texture_json
         from importer.texture_authoring import texture_payload_changes
         from importer.textures import parse_tim, decode_tim
         if self.mode != 'edit' or format not in ('tim','json'):
             raise ProjectError('Texture file preview requires Edit mode and TIM or JSON')
-        if self.texture_overrides.get(asset_id, {}).get('format') == 'tim-image-layout-v1':
-            raise ProjectError('Resized texture file preview reporting is not connected yet; use native TIM and Build')
         context = self._texture_context(asset_id)
         original = context.original_tim(asset_id)
-        candidate = import_texture_json(original,hashlib.sha256(original).hexdigest(),content) if format == 'json' else content
-        context.validate_replacement(asset_id,candidate)
+        candidate = self._import_texture_json_current(asset_id,original,content,context) if format == 'json' else content
         effective = (self.read_texture_replacement(self.texture_overrides[asset_id])
                      if asset_id in self.texture_overrides else original)
         self.validate_effective_texture(asset_id,effective,context=context)
+        from importer.texture_authoring import _validate
+        from importer.texture_comparison import compare_payloads
+        _validate(effective,candidate)
+        retail_changes,comparison=compare_payloads(original,candidate)
         pixels = decode_tim(candidate,palette_index)
         return candidate, {'asset_id':asset_id,'input_format':format,'palette_index':palette_index,
                 'source_sha256':hashlib.sha256(original).hexdigest(),
@@ -1243,7 +1254,8 @@ class ProjectService:
                 'width':pixels['width'],'height':pixels['height'],'bpp':parse_tim(candidate).bpp,
                 'rgba_base64':base64.b64encode(pixels['rgba']).decode('ascii'),
                 'stp_base64':base64.b64encode(pixels['stp']).decode('ascii'),
-                'retail_changes':texture_payload_changes(original,candidate),
+                'retail_changes':retail_changes,
+                **({'retail_comparison':comparison} if comparison is not None else {}),
                 'current_changes':texture_payload_changes(effective,candidate),
                 'representation':'proposed_file','project_changed':False}
 

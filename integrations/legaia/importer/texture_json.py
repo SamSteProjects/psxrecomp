@@ -26,7 +26,7 @@ def export_texture_json(source: bytes) -> bytes:
     return content
 
 
-def import_texture_json(source: bytes, expected_sha256: str, content: bytes) -> bytes:
+def import_texture_json(source: bytes, expected_sha256: str, content: bytes, *, retail_sha256: str | None = None) -> bytes:
     if not isinstance(content, bytes) or not 1 <= len(content) <= MAX_JSON_BYTES:
         raise ImportError('Texture JSON requires at most 16 MiB')
     def unique(pairs):
@@ -40,8 +40,11 @@ def import_texture_json(source: bytes, expected_sha256: str, content: bytes) -> 
         document = json.loads(content.decode('utf-8-sig'),object_pairs_hook=unique)
     except (UnicodeError,ValueError,RecursionError) as exc:
         raise ImportError('Texture requires unambiguous JSON') from exc
-    if (not isinstance(document,dict) or set(document) != FIELDS or
-            document['schema_version'] != 'legaia.indexed-texture.v1' or
+    version='legaia.indexed-texture.v2' if retail_sha256 is not None else 'legaia.indexed-texture.v1'
+    fields=FIELDS | ({'retail_source_sha256'} if retail_sha256 is not None else set())
+    if (not isinstance(document,dict) or set(document) != fields or
+            document['schema_version'] != version or
+            retail_sha256 is not None and document.get('retail_source_sha256') != retail_sha256 or
             document['source_sha256'] != expected_sha256 or sha256(source).hexdigest() != expected_sha256):
         raise ImportError('Texture JSON schema or source binding differs')
     _validate(source, source)

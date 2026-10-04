@@ -69,10 +69,8 @@ def _snapshot(project, asset_id, palette_index):
             raise ProjectError(options.get('reason') or 'Texture carrier is not authorable')
         retail = context.original_tim(asset_id)
         authored = project.texture_overrides.get(asset_id)
-        if authored and authored['format'] == 'tim-image-layout-v1':
-            raise ProjectError('Resized texture PNG reporting is not connected yet; use native TIM and Build')
         effective = project.read_texture_replacement(authored) if authored else retail
-        context.validate_replacement(asset_id, effective)
+        project.validate_effective_texture(asset_id,effective,context=context)
         if len(retail) > 1024 * 1024 or len(effective) > 1024 * 1024:
             raise ProjectError('Texture PNG authoring requires a TIM of at most 1 MiB')
         png, stp, profile = export_texture_png(effective, palette_index)
@@ -105,9 +103,9 @@ def _quantization(analysis, profile):
 def _report(snapshot, png, stp, candidate, analysis, palette_mode):
     from importer.texture_authoring import texture_payload_changes, _validate
     binding = snapshot['binding']; profile = binding['profile']
-    _validate(snapshot['retail'], candidate)
+    from importer.texture_comparison import compare_payloads
     _validate(snapshot['effective'], candidate)
-    changes = texture_payload_changes(snapshot['retail'], candidate)
+    changes, comparison = compare_payloads(snapshot['retail'], candidate)
     pending = texture_payload_changes(snapshot['effective'], candidate)
     report = {key: binding[key] for key in BINDING_KEYS - {'schema_version', 'profile'}}
     report.update(schema_version='legaia.texture-png-review.v1',
@@ -118,7 +116,8 @@ def _report(snapshot, png, stp, candidate, analysis, palette_mode):
                   palette_count=profile['palette_count'], changes=changes, pending_changes=pending,
                   quantization=_quantization(analysis, profile), limitations=list(LIMITATIONS),
                   project_changed=False, gameplay_verified=False, scope='TIM-existing-layout-palette-and-image')
-    report['review_key'] = digest(dict(binding=binding, png_sha256=report['png_sha256'],
+    if comparison is not None:report['retail_comparison']=comparison
+    report['review_key'] = digest(dict(binding=binding, retail_comparison=comparison, png_sha256=report['png_sha256'],
                                      stp_png_sha256=report['stp_png_sha256'], palette_mode=palette_mode,
                                      proposed_sha256=report['proposed_sha256'], changes=changes,
                                      pending_changes=pending, quantization=report['quantization']))
