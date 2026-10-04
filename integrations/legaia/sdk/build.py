@@ -95,6 +95,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-branch-target-only': 'script branch destinations',
         'worldmap-menu-record-only': 'world-map landmarks',
         'model-pack-topology-relocation': 'model topology and shared pack edits',
+        'animation-bank-allocation-relocation': 'allocated animation records',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'TMD-existing-layout-content': 'model faces, UVs and baked colors',
         'TMD-existing-layout-material-content': 'model material bindings and shared primitive group transparency',
@@ -452,6 +453,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     region_edits = {}
     trigger_edits = {}
     animation_edits = {}
+    animation_ledgers = set()
     entity_lookup = {actor["semantic_id"]: (scene_id, actor)
                      for scene_id, document in project.imports.items()
                      for actor in document["actors"]}
@@ -461,7 +463,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             ledger = validate_animation_records(project,identifier,components['AnimationRecords'],verify_disc=True)
             removed = set(ledger['removed_record_ids'])
             if any(row['record_id'] not in removed for row in ledger['records']):
-                raise BuildError('Allocated animation records require bank descriptor/carrier relocation; normal Build delivery is not implemented yet')
+                animation_ledgers.add(identifier)
             components = {k:v for k,v in components.items() if k != 'AnimationRecords'}
             if not components:
                 continue
@@ -651,7 +653,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             "model_selectors": {}, "branches": {}})
     # Reimport before using authored locators: modified/stale metadata cannot
     # redirect an otherwise disc-identity-valid overlay onto unrelated bytes.
-    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits) | set(collision_edits) | set(region_edits)) or project.imports:
+    for scene_id in sorted(set(scene_edits) | set(texture_edits) | set(environment_edits) | set(animation_edits) | animation_ledgers | set(collision_edits) | set(region_edits)) or project.imports:
         document = project.imports[scene_id]
         fresh = import_scene(project.disc_path, document["scene"]["name"])
         if canonical_json(document) != canonical_json(fresh):
@@ -671,6 +673,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             from .model_growth import prepare_model_growth
             growth_requests, growth_audit = prepare_model_growth(project, archive)
         deferred_models = set(growth_audit['deferred_model_ids']) if growth_audit else set()
+        animation_growth_audit = None
+        if animation_ledgers:
+            from .animation_growth import prepare_animation_growth
+            animation_requests,animation_growth_audit,animation_changes=prepare_animation_growth(project,archive,animation_ledgers)
+            growth_requests.extend(animation_requests)
+            audit_edits.extend(animation_changes)
         from importer.model_authoring import model_shape_overlays
         model_assets, model_payloads = {}, {}
         for identifier, binding in sorted(getattr(project, 'model_overrides', {}).items()):
@@ -687,6 +695,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             overlays.append({**overlay, 'scene':'shared-model-source', 'file':f"assets/model-shape-{overlay['offset']:08x}.bin"})
         audit_edits.extend({**change, 'scene':project.imports[project.model_overrides[change['semantic_id']]['source_scene_id']]['scene']['name']} for change in shape_changes)
         for scene_id, bindings in sorted(animation_edits.items()):
+            if scene_id in animation_ledgers:
+                continue  # The expanded bank already composes all shared channel edits.
             from importer.scene_animation import load_scene_actor_animation_catalog
             from .animation_build import prepare_animation_patches
             scene = project.imports[scene_id]["scene"]["name"]
@@ -1105,7 +1115,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         audit['relocation_payload'] = {k:v for k,v in relocation.items() if k != 'payload'}
         audit['overlay_application'] = 'composed_before_relocation'
         audit['model_growth'] = growth_audit
+        if animation_growth_audit:
+            audit['animation_growth'] = animation_growth_audit
+            audit['validation']['allocated_animation_bank_readback'] = True
         audit['validation']['relocation_package_readback'] = True
+        audit['validation']['lz_decode_round_trip'] = True
     audit_bytes = (canonical_json(audit, pretty=True) + "\n").encode("utf-8")
     # Package identity follows emitted content, including no-op/cleared builds.
     # Separate immutable receipts retain each authored metadata context.
@@ -1192,8 +1206,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     if relocation:
         package_suffix = " authored scene data"
         feature_name = "Authored scene data"
-        description = "Private source-bound scene edits and model topology with relocated disc reads."
-        feature_description = "Apply composed scene edits and rebuilt model packs against the matching source disc."
+        description = "Private source-bound scene edits and rebuilt resources with relocated disc reads."
+        feature_description = "Apply composed scene edits, rebuilt model packs and animation banks against the matching source disc. Allocated clips remain unassigned; gameplay is unverified."
     lines = [
         "format_version = 7" if relocation else "format_version = 6", f"id = {json.dumps(package_id)}", f"version = {json.dumps(version)}",
         f"name = {json.dumps(project.name + package_suffix, ensure_ascii=False)}",

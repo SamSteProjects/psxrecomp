@@ -2826,7 +2826,7 @@ async function inspectAnimationAllocation(entity){
   animationAllocationEditor=await openAnimationAllocationEditor({entityId:entity.id,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
-    onApplied:next=>{state=next;render();notify('Animation clip allocated. Save project to persist. Build relocation is pending.');},
+    onApplied:next=>{state=next;render();notify('Animation clip allocated. Save project to persist. Gameplay assignment is pending.');},
     onPosePreview:async(data,{returnToEditor})=>{
       setBusy(false);
       await openModel(data.semantic_id,'allocation-preview',entity.id,'imported',null,data,returnToEditor);

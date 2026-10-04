@@ -1,5 +1,21 @@
 # Legaia SDK status — 2026-10-04
 
+**Expanded ANM bank delivery (2026-10-04):** Normal Build/review now deliver active
+allocated clips in qualified compressed type-5 scene carriers. Shared channel
+edits are composed once with frozen captures. The carrier updates decoded size,
+grows compressed slots as needed, rebases descriptors/PROT starts and enters the
+existing format-7 relocation package. Model and ANM growth may share one table.
+Retired clips remain metadata-only; allocated clips are still unassigned.
+
+Synthetic codec/composition, actual Retail package readback, generic package
+consumers and related ledger/pose/model-growth checks pass. The Retail package
+contains the exact 70-record composed bank with one capture retired and later
+shared edits included. Editor capability labels now advertise compressed delivery.
+Raw streaming banks and multiple distinct tables in one physical owner remain
+explicit unsupported relocation cases. Content editing and actor assignment are
+still unfinished; no game was launched or runtime acceptance claimed. No immediate
+manual gameplay check is required. [Guide](legaia-animation-allocation.md).
+
 **Saved allocated clip library (2026-10-04):** The actor editor now lists active
 and retired allocated captures, previews their exact retained records against
 Current donor-model geometry, and reviews/applies retirement or restoration.

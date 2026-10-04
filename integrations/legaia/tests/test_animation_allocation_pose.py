@@ -28,7 +28,7 @@ class AnimationAllocationPose(unittest.TestCase):
                 self.assertEqual(status,200,available)
                 self.assertEqual(available['donor_animation_id'],options['binding']['semantic_id'])
                 self.assertEqual(available['donor_frame_count'],options['binding']['frame_count'])
-                self.assertFalse(available['build_available'])
+                self.assertTrue(available['build_available'])
                 body = dict(entity_id=owner,expected_source_key=source_key(project),source_frame_indices=[1,0,1,0],edits=[])
                 status,review = post('/api/animation-record-allocation-preview',body)
                 self.assertEqual(status,200,review)

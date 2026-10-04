@@ -13,7 +13,6 @@ from importer.animation import animation_record_ranges
 from importer.core import ImportError as RetailImportError
 from importer.animation_allocation import allocate_animation_record
 from sdk.animation_record_ledger import SCHEMA, compose, reconstruct, validate
-from sdk.build import BuildError, build_project
 from sdk.build_review import review as build_review
 from sdk.project import ProjectError, ProjectService
 from sdk.scene_preview import source_key
@@ -94,7 +93,7 @@ class AnimationLedgerWorkflow(unittest.TestCase):
                  for row in audit['allocated_records']}
         return candidate,clips
 
-    def test_review_apply_history_frozen_donor_save_offline_open_and_build_blocker(self):
+    def test_review_apply_history_frozen_donor_save_offline_open_and_build_review(self):
         with tempfile.TemporaryDirectory() as directory:
             project = workflow.AnimationGlbWorkflow().project(directory)
             owner = 'scene://town01/actors/man-p1/0011'
@@ -143,9 +142,8 @@ class AnimationLedgerWorkflow(unittest.TestCase):
             path.write_bytes(saved)
             files = {str(p.relative_to(project.root)):p.read_bytes() for p in project.root.rglob('*') if p.is_file()}
             assessment = build_review(reopened)
-            self.assertFalse(assessment['normal_build_ready'])
-            self.assertIn('bank descriptor/carrier relocation',assessment['blockers'][0]['message'])
-            with self.assertRaisesRegex(BuildError,'bank descriptor/carrier relocation'): build_project(reopened)
+            self.assertTrue(assessment['normal_build_ready'],assessment['blockers'])
+            self.assertEqual(assessment['status'],'ready_for_build')
             self.assertEqual(files,{str(p.relative_to(project.root)):p.read_bytes() for p in project.root.rglob('*') if p.is_file()})
             malformed = json.loads(saved)
             malformed['authored']['scene://town01']['AnimationRecords']['records'].append(deepcopy(ledger['records'][0]))

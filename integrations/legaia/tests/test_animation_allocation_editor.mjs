@@ -13,6 +13,7 @@ assert.deepEqual(parseAnimationFrameSequence('0-2, 2-0, 0',3),request.source_fra
 for(const text of ['',',','-1','0.5','0-3','0,','99999999999999999999999','0-2,0-2'])assert.throws(()=>parseAnimationFrameSequence(text,3,5));
 assert.throws(()=>parseAnimationFrameSequence('0',3,0));
 const opt=decodeAnimationAllocationOptions(options(),entity,initial),review=decodeAnimationAllocationReview(report(request),opt,request);
+const deliveredOptions=decodeAnimationAllocationOptions({...options(),build_available:true},entity,initial),deliveredReport=report(request);deliveredReport.capabilities.build=true;decodeAnimationAllocationReview(deliveredReport,deliveredOptions,request);
 assert.equal(decodeAnimationAllocationPose(pose(review),review,opt).animation.clip_id,'allocation-preview');
 for(const edit of [v=>v.project_source_key='e'.repeat(64),v=>v.capabilities.build=true,v=>v.proposed_ledger.records[0].source_frame_indices=[2],v=>v.allocation.allocated_records[0].object_count=2,v=>v.proposed_ledger.removed_record_ids=[id]]){const value=report(request);edit(value);assert.throws(()=>decodeAnimationAllocationReview(value,opt,request));}
 for(const edit of [v=>v.animation.association.runtime_assigned=true,v=>v.animation.source_record.record_sha256='e'.repeat(64),v=>v.frames.pop()]){const value=pose(review);edit(value);assert.throws(()=>decodeAnimationAllocationPose(value,review,opt));}

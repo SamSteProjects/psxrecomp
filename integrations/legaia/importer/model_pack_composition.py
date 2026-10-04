@@ -1,4 +1,4 @@
-"""Compose existing-layout archive patches before qualified model relocation."""
+"""Compose source-addressed patches before qualified model and ANM relocation."""
 from hashlib import sha256
 
 from .core import ImportError, parse_scene_assets, decompress_lzs
@@ -20,12 +20,21 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         raise ImportError('Model composition archive header changed')
     if not isinstance(requests, (list, tuple)) or not 1 <= len(requests) <= 32:
         raise ImportError('Model composition requires a bounded relocation batch')
-    identities = set()
+    identities = set();tables = {}
     for request in requests:
-        if (not isinstance(request, dict) or set(request) != {'entry_index', 'descriptor_index', 'expected_pack_sha256', 'replacements'}
+        animation = isinstance(request,dict) and request.get('kind') == 'animation-bank'
+        fields = ({'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'} if animation else
+                  {'entry_index', 'descriptor_index', 'expected_pack_sha256', 'replacements'})
+        if (not isinstance(request, dict) or set(request) != fields
                 or type(request['entry_index']) is not int or type(request['descriptor_index']) is not int):
             raise ImportError('Model composition relocation request is malformed')
-        identity = (request['entry_index'], request['descriptor_index'])
+        table_offset = request.get('table_offset',0)
+        if type(table_offset) is not int or table_offset<0:
+            raise ImportError('Resource composition table locator is malformed')
+        tables.setdefault(request['entry_index'],set()).add(table_offset)
+        if len(tables[request['entry_index']])>1:
+            raise ImportError('Resource composition cannot relocate multiple distinct tables in one physical owner')
+        identity = (request['entry_index'],table_offset,request['descriptor_index'])
         if identity in identities:
             raise ImportError('Model composition duplicates a resource request')
         identities.add(identity)
@@ -52,23 +61,31 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
     working = bytes(working)
     patched_sha256 = sha256(working).hexdigest()
     reports = []
-    for request in sorted(requests, key=lambda row:(row['entry_index'], row['descriptor_index'])):
-        working, report = rebuild_model_pack_entry(working, sha256(working).hexdigest(),
-            **request, header_offset=header_offset)
+    ordered=sorted(requests,key=lambda row:(row['entry_index'],row.get('table_offset',0),row['descriptor_index']))
+    for request in ordered:
+        if request.get('kind') == 'animation-bank':
+            from .animation_bank_growth import rebuild_animation_bank_entry
+            working,report=rebuild_animation_bank_entry(working,sha256(working).hexdigest(),
+                **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
+        else:
+            working, report = rebuild_model_pack_entry(working, sha256(working).hexdigest(),
+                **request, header_offset=header_offset)
         reports.append(report)
     reopened = _archive(working)
-    for request,report in zip(sorted(requests, key=lambda row:(row['entry_index'], row['descriptor_index'])), reports):
+    for request,report in zip(ordered,reports):
         entry = reopened.entry(request['entry_index'])
         span = locate_physical_span(reopened, entry.start_lba*2048)
         raw = working[span['byte_offset']:span['byte_offset']+span['byte_length']]
-        table = parse_scene_assets(raw, entry.index)
+        table = parse_scene_assets(raw, entry.index,request.get('table_offset',0))
         descriptor = table.descriptors[request['descriptor_index']]
-        end = min([d.data_offset for d in table.descriptors if d.data_offset > descriptor.data_offset]+[len(raw)])
-        pack,_ = decompress_lzs(raw[descriptor.data_offset:end], descriptor.size)
-        if sha256(pack).hexdigest() != report['carrier']['pack_audit']['proposed_sha256']:
+        offset=request.get('table_offset',0)
+        end = min([offset+d.data_offset for d in table.descriptors if d.data_offset > descriptor.data_offset]+[len(raw)])
+        pack,_ = decompress_lzs(raw[offset+descriptor.data_offset:end], descriptor.size)
+        resource_audit='bank_audit' if request.get('kind')=='animation-bank' else 'pack_audit'
+        if sha256(pack).hexdigest() != report['carrier'][resource_audit]['proposed_sha256']:
             raise ImportError('Model composition final reopened pack changed')
     return working, dict(schema_version='legaia.model-pack-composition.v1', source_sha256=expected_sha256,
         patched_sha256=patched_sha256, proposed_sha256=sha256(working).hexdigest(),
         patch_count=len(prepared), patched_bytes=sum(len(payload) for _,payload in prepared),
-        resources=reports, final_packs_verified=True, growth_bytes=len(working)-len(source),
+        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,growth_bytes=len(working)-len(source),
         disc_relocation_required=len(working)!=len(source), build_ready=False, gameplay_verified=False)

@@ -93,8 +93,8 @@ def prepare_record_allocation(project, entity_id, source_frame_indices, edits,
         candidate_bank_sha256=sha256(candidate).hexdigest(), allocation=allocation,
         project_changed=False, gameplay_verified=False,
         proposed_ledger=ledger,
-        capabilities=dict(review=True, apply=True, build=False, actor_assignment=False),
-        limitations=['Allocated clips persist in project metadata; carrier relocation and normal Build are not implemented.',
+        capabilities=dict(review=True, apply=True, build=provenance.get('source_kind')!='raw_streaming_anm', actor_assignment=False),
+        limitations=['Compressed ANM carriers support normal Build relocation; raw streaming bank relocation is not implemented.',
                      'The frame sequence has no verified retail rate or runtime clip-selection evidence.',
                      'Existing shared clip edits are copied into the new record; existing records remain unchanged.'])
     report['review_key'] = digest(report)
@@ -124,6 +124,8 @@ def allocation_options(project, entity_id, expected_source_key):
         ledger = project.overrides.get(project.active_scene,{}).get('AnimationRecords')
         if ledger is not None:
             validate(project,project.active_scene,ledger,verify_disc=True)
+        catalog = load_scene_actor_animation_catalog(project.disc_path,document['scene']['name'])
+        delivery = catalog.source_bank()[1].get('source_kind') != 'raw_streaming_anm'
     used = sum(len(row['source_frame_indices'])*row['object_count'] for row in (ledger or {}).get('records',[]))
     remaining = 4096-used
     maximum = min(512,remaining//binding['bone_count'])
@@ -137,7 +139,7 @@ def allocation_options(project, entity_id, expected_source_key):
         donor_asset_id=binding['asset_semantic_id'],donor_frame_count=binding['frame_count'],
         object_count=binding['bone_count'],maximum_frame_count=maximum,
         remaining_channel_count=remaining,remaining_record_count=64-len((ledger or {}).get('records',[])),
-        build_available=False,gameplay_verified=False)
+        build_available=delivery,gameplay_verified=False)
 
 
 def pose_record_allocation(project, entity_id, source_frame_indices, edits, expected_source_key, review_key):
@@ -194,8 +196,12 @@ def record_library(project, scene_id, expected_source_key):
         raise ProjectError('Allocated clip library requires the current editable scene source')
     ledger = project.overrides.get(scene_id,{}).get('AnimationRecords')
     records = []
+    delivery = False
     if ledger is not None:
         validate(project,scene_id,ledger,verify_disc=True)
+        with _disc_context(project.disc_path):
+            catalog=load_scene_actor_animation_catalog(project.disc_path,project.imports[scene_id]['scene']['name'])
+            delivery=catalog.source_bank()[1].get('source_kind')!='raw_streaming_anm'
         for entry in ledger['records']:
             records.append(dict(record_id=entry['record_id'],
                 animation_id=f"animation://{project.imports[scene_id]['scene']['name']}/authored-record/{entry['record_id']}",
@@ -209,7 +215,7 @@ def record_library(project, scene_id, expected_source_key):
     return dict(schema_version='legaia.animation-record-library.v1',scene_id=scene_id,
         project_source_key=key,revision=(ledger or {}).get('revision',0),records=records,
         activation_available=(ledger or {}).get('revision',0)<64,
-        build_available=False,gameplay_verified=False)
+        build_available=delivery,gameplay_verified=False)
 
 
 def pose_saved_record(project, scene_id, record_id, expected_source_key):

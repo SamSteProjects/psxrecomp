@@ -1,4 +1,4 @@
-"""Compose normal Build patches and model growth into one runtime disc payload."""
+"""Compose normal Build patches and resource growth into one runtime disc payload."""
 from hashlib import sha256
 from importer.core import ImportError
 from importer.model_pack_composition import compose_model_pack_archive

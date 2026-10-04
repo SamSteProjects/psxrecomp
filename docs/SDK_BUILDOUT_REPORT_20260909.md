@@ -1,5 +1,21 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — expanded compressed animation bank Build:** Implemented bounded
+ANM bank qualification, type-5 descriptor/stream growth and physical PROT carrier
+relocation. Normal Build/review compose active frozen captures with current shared
+channels; retired captures are excluded. Source-addressed overlays precede model
+and ANM relocation in a shared table, and final resources are reopened. Format-7
+packages/audits carry the expanded bank and stable record provenance.
+
+Synthetic carrier/composition checks, Retail Build package readback, generic
+consumer checks and ledger/pose/model-growth regressions pass. Town01 delivery
+matches the exact composed 70-record bank with one retired capture and later
+shared edits. Project metadata stays unchanged. Raw streaming relocation and
+multiple distinct tables in one physical owner remain explicit rejection cases.
+Actor assignment and saved-content editing remain; no game/runtime qualification
+is claimed. [Details](legaia-animation-allocation.md). The full goal stays active,
+solo, with gameplay verification deferred.
+
 **2026-10-04 — saved allocated clip library:** Added verified retained clip
 summaries and standalone native record pose APIs, plus actor editor Preview and
 reviewed retirement/restoration controls. Retired captures remain previewable

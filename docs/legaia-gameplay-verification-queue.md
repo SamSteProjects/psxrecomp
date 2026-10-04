@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+**2026-10-04 — expanded compressed ANM delivery:** Normal Build/review now carry
+active allocated records in qualified compressed scene carriers. Independent
+Retail format-7 package readback recovers the exact composed 70-record bank;
+shared channel edits are included once and retired captures stay excluded.
+Synthetic combined model/animation relocation and related regression checks pass.
+
+No immediate manual gameplay verification is required: allocated records are
+still unassigned to actors. Implement source-qualified clip selection/assignment
+before checking runtime selection, cadence/looping, compatibility and lifecycle.
+Raw streaming bank relocation remains unfinished. No game was launched and no
+runtime/gameplay acceptance is claimed; existing deferred checks remain pending.
+
 **2026-10-04 — saved allocated clips:** Actor editor inspection now covers active
 and retired captures, exact retained-record posing over Current geometry and
 reviewed retirement/restoration. Node/HTTP checks and an actual Edge editor smoke

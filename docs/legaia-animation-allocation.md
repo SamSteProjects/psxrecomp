@@ -6,7 +6,8 @@ review the proposed expanded native bank through
 `review_key` through `POST /api/animation-record-allocation`. Allocation is stored
 in a scene-owned `AnimationRecords` component with ordinary Undo/Redo and
 Save/Open. The editor now exposes creation, Review, posed Preview and explicit
-Apply. Authored-clip assignment and normal Build delivery remain unavailable.
+Apply. Normal Build delivers expanded banks in qualified compressed ANM carriers.
+Authored-clip assignment and raw streaming bank relocation remain unavailable.
 Existing GLB channel import remains a separate complete
 workflow for fixed-layout clips.
 
@@ -75,11 +76,10 @@ effective shared edits, assigned witnesses, exact reviewed Apply, one-step histo
 stale review rejection, frozen donor snapshots, Save/Open (including metadata-only
 offline Open), UUID/tombstone preservation and unchanged Build-review files.
 
-Still unfinished: editing saved clip content, new clip assignment,
-expanded bank descriptor/carrier relocation and normal Build. Active allocated
-clips explicitly block normal Build and Build review with the missing
-descriptor/carrier relocation requirement; they are never silently omitted.
-The fixed-layout serializer still rejects bank-size changes. Runtime
+Still unfinished: editing saved clip content, new clip assignment and raw streaming
+bank relocation. Compressed carriers use the expanded-bank relocation path;
+unsupported streaming carriers explicitly block Build/review rather than omitting
+clips. The fixed-layout serializer remains limited to equal-length changes. Runtime
 animation selection, playback cadence, lifecycle and model compatibility require
 later qualification and deferred manual gameplay checks.
 
@@ -144,11 +144,48 @@ explicit Apply, retained model-viewer Return and stale/late/close guards. Two
 Retail HTTP checks (saved library and existing proposal preview) pass. The saved
 test covers retirement, Save/Open, preview without mutation, source invalidation,
 Current geometry, frozen transforms after later shared donor changes and exact
-identity/hash preservation through restoration. Assignment and normal Build
-descriptor/carrier relocation remain separate unfinished work.
+identity/hash preservation through restoration. Assignment and streaming bank
+relocation remain separate unfinished work.
 
 An actual Edge editor smoke additionally passed active/retired model Preview,
 Return with retained lifecycle Review and explicit retirement/restoration on a
 private fixture. Preview left project state unchanged; restoration retained the
 same UUID/hash. There were no page errors. Saved-pose and restoration-review
 screenshots were inspected, and the private server was stopped afterward.
+
+## Expanded compressed bank delivery (2026-10-04)
+
+Normal Build and Build review now reconstruct active ledger records together with
+all current shared channel edits. A source-qualified physical ANM owner carries
+the expanded bank: its type-5 descriptor gets the new decoded byte length, LZS is
+independently decoded, and compressed overflow grows the owned slot on a word
+boundary. Following descriptors move by that growth while neighboring payloads,
+table padding and opaque bank records remain preserved. PROT physical spans are
+sector-aligned and later TOC starts are rebased through the existing relocation
+pipeline. Existing record ordinals remain unchanged; active allocated ordinals
+follow them. Retired captures stay metadata-only and do not enter the bank.
+
+Source-addressed equal-span overlays are composed before relocation. Model and
+animation growth requests may share the same resource table; all final resources
+are reopened after all relocations. Multiple distinct tables in one physical
+owner are rejected pending explicit locator remapping. Raw streaming ANM carriers
+also reject with a specific unimplemented relocation reason. Neither case drops
+authored data. Native limits remain 4 MiB banks, 4096 records, 64 appended records,
+4096 new channels and 16 MiB physical scene carriers, with the existing 32-resource
+batch and 256 MiB native relocation package limits.
+
+Build emits a source-bound format-7 disc relocation package and includes record
+UUID/hash/count metadata in the audit. Allocated clips remain unassigned to MAN
+actors; carrying their bytes does not prove runtime selection or playback.
+Editor capability labels distinguish compressed delivery from unsupported raw
+streaming relocation. Passing capability checks is not a blanket Build readiness
+claim; the complete normal Build review still validates all authored content.
+
+Eight synthetic codec/composition checks passed, covering nonzero table offsets,
+both PROT header locations, simultaneous model/ANM growth, original-address patches,
+neighbor preservation, no-op identity and stale/aliased/opaque mutation rejection.
+A Retail Town01 normal Build test independently decoded the generated format-7
+package and recovered the exact composed 70-record bank (one of two captures
+retired), including later shared edits, while saved project metadata stayed
+unchanged. Generic package-consumer checks passed. No game was launched and no
+runtime/gameplay acceptance is claimed.

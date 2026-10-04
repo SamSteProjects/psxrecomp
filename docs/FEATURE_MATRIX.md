@@ -1,5 +1,19 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — allocated records (compressed bank Build stage):** Normal
+Build/review reconstruct active captures and current shared channels into expanded
+ANM banks. Native qualification preserves existing layout/opaque data, updates
+type-5 decoded sizes, moves following descriptors and rebases PROT starts. Model
+and ANM growth compose together; format-7 package readback verifies final banks.
+Retired records are excluded from delivery. Editor capability labels are updated.
+
+Synthetic codec/composition, actual Retail package, generic consumer and related
+ledger/pose/model-growth checks pass. The emitted Town01 bank matches all composed
+bytes (70 records). Raw streaming banks and multiple resource tables in one
+physical owner still reject pending relocation support. Saved-content editing and
+actor assignment remain missing; delivered records are unassigned, with gameplay
+unverified. See [allocation](legaia-animation-allocation.md).
+
 **2026-10-04 — allocated records (saved library/lifecycle stage):** Active and
 retired captures are now listed per actor, with exact saved-record pose preview
 over Current donor-model geometry and reviewed retirement/restoration. Retired
