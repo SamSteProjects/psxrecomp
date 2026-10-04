@@ -30,6 +30,7 @@ def source(project,asset_id,expected_source_key):
         slot_index=binding['slot_index'],image_layout=image_layout(content),
         palette_count=len(tim.clut.data)//((1<<tim.bpp)*2) if tim.bpp in (4,8) and tim.clut else 0,
         read_only=True,project_changed=False)
+    if 'image_source' in binding:result['image_source']=deepcopy(binding['image_source'])
     if source_key(project)!=key:raise ProjectError('Authored slot changed during source inspection')
     return content,result
 
@@ -106,6 +107,7 @@ def apply(project,asset_id,content,expected_sha256,expected_source_key,label,acc
     before=deepcopy(project.texture_additions[asset_id]);after=deepcopy(before)
     after.update(asset_sha256=report['proposed_sha256'],byte_length=len(content),label=label,
                  accept_potential_overlap=accept_potential_overlap)
+    if before['asset_sha256']!=after['asset_sha256']:after.pop('image_source',None)
     path=project.root/'Authored'/'Textures'/(after['asset_sha256']+'.tim')
     if not path.resolve().is_relative_to(project.root):raise ProjectError('Edited TIM path escapes the project')
     if path.exists():read(project,asset_id,after)

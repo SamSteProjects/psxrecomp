@@ -29,7 +29,7 @@ def validate_binding(project, identifier, binding):
     fields = {'format', 'source_scene_id', 'anchor_asset_id', 'source_pack_sha256',
               'source_slot_count', 'slot_index', 'asset_sha256', 'byte_length', 'label',
               'accept_potential_overlap', 'pack_entry_index', 'pack_descriptor_index'}
-    if not isinstance(binding, dict) or set(binding) != fields or binding['format'] != 'tim-slot-v1':
+    if not isinstance(binding, dict) or set(binding) not in (fields, fields | {'image_source'}) or binding['format'] != 'tim-slot-v1':
         raise ProjectError('Invalid authored TIM slot binding')
     try:
         if not isinstance(identifier, str) or not identifier.startswith('texture-new://'):
@@ -54,6 +54,10 @@ def validate_binding(project, identifier, binding):
             not binding['label'].strip() or any(ord(c) < 32 for c in binding['label'])):
         raise ProjectError('Authored texture slot identity, allocation or receipt is malformed')
 
+    if 'image_source' in binding:
+        from .texture_slot_sources import validate_receipt
+        validate_receipt(binding)
+
 
 def read(project, identifier, binding):
     validate_binding(project, identifier, binding)
@@ -64,6 +68,9 @@ def read(project, identifier, binding):
     if sha256(content).hexdigest() != binding['asset_sha256']:
         raise ProjectError('Authored texture slot content hash changed')
     validate_added_tim(content)
+    if 'image_source' in binding:
+        from .texture_slot_sources import read_sources
+        read_sources(project,binding,content)
     return content
 
 
@@ -71,6 +78,12 @@ def validate_collection(project):
     slots = project.texture_additions
     if not isinstance(slots, dict) or len(slots) > 128:
         raise ProjectError('Authored texture slots require a bounded mapping')
+    source_total = 0
+    for identifier,binding in slots.items():
+        validate_binding(project,identifier,binding)
+        if 'image_source' in binding:
+            receipt=binding['image_source'];source_total+=receipt['png_byte_length']+(receipt['stp_png_byte_length'] or 0)
+    if source_total>32*1024*1024:raise ProjectError('Retained slot image sources exceed 32 MiB')
     total = 0
     groups = {}
     for identifier, binding in slots.items():

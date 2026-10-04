@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {decodeImageConversion} from '../editor/texture-image-conversion.js';
+import {decodeImageConversion,decodeSourceRetention} from '../editor/texture-image-conversion.js';
 const hash=v=>v.repeat(64),options={bpp:16,image_x:640,image_y:32,clut_x:0,clut_y:0,stp_mode:'opaque'};
 const bytes=Buffer.alloc(28);bytes.writeUInt32LE(16,0);bytes.writeUInt32LE(2,4);bytes.writeUInt32LE(20,8);bytes.writeUInt16LE(640,12);bytes.writeUInt16LE(32,14);bytes.writeUInt16LE(4,16);bytes.writeUInt16LE(1,18);bytes.writeUInt16LE(31,20);bytes.writeUInt16LE(31,22);bytes.writeUInt16LE(31,24);bytes.writeUInt16LE(31,26);
 const request={asset_id:'texture://fixture/1/raw/0',source_key:hash('a'),options};
@@ -15,3 +15,9 @@ for(const at of [0,4,8,12,14,16,18]){
   await assert.rejects(decodeImageConversion(replaced,request,input));
 }
 console.log('PNG draft source/context/hash, diagnostics and independently checked native header qualification passed.');
+
+const draft=await decodeImageConversion(value,request,input),retentionRequest={...request,expected_sha256:draft.sha256},source={format:'png-tim-source-v1',png_sha256:input.pngSha256,png_byte_length:input.pngSize,stp_png_sha256:null,stp_png_byte_length:null,options,conversion_report:report};
+const retained={schema_version:'legaia.texture-slot-source-retention.v1',asset_id:request.asset_id,project_source_key:request.source_key,effective_sha256:draft.sha256,source,native_bytes_changed:false,changed:true,can_apply:true,project_changed:false,gameplay_verified:false,review_key:hash('c')};
+assert.deepEqual(decodeSourceRetention(retained,retentionRequest,draft,{...input,stpSize:null}),retained);
+for(const bad of [{...retained,native_bytes_changed:true},{...retained,effective_sha256:hash('d')},{...retained,source:{...source,png_byte_length:99}},{...retained,source:{...source,conversion_report:{...report,byte_length:29}}},{...retained,changed:false}])assert.throws(()=>decodeSourceRetention(bad,retentionRequest,draft,{...input,stpSize:null}));
+console.log('Retention source/recipe/native hash, metadata-only status and Apply qualification passed.');

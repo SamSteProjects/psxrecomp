@@ -871,7 +871,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-source','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
                 request_limit = 2 * 1024 * 1024
-            if urlsplit(self.path).path=='/api/texture-image-convert':
+            if urlsplit(self.path).path in ('/api/texture-image-convert','/api/texture-slot-source-review','/api/texture-slot-source-apply'):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
@@ -1751,6 +1751,27 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route=='/api/texture-slot-source-download':
+                    if set(body)!={'asset_id','expected_sha256','source_key'}:raise ProjectError('Source download requires exact Current identity and context')
+                    from .texture_slot_sources import download
+                    self._json(200,download(self.server.project,body['asset_id'],body['expected_sha256'],body['source_key']))
+                    return
+                if route in ('/api/texture-slot-source-review','/api/texture-slot-source-apply'):
+                    fields={'asset_id','expected_sha256','source_key','png_base64','stp_png_base64','options'}
+                    if route.endswith('-apply'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Source retention requires exact PNG, recipe and Current context')
+                    def decode_source(value):
+                        if not isinstance(value,str) or not 1<=len(value)<=11184812:raise ProjectError('Choose PNG sources up to eight MiB each')
+                        try:return base64.b64decode(value,validate=True)
+                        except ValueError as exc:raise ProjectError('Retained PNG requires valid base64') from exc
+                    png=decode_source(body['png_base64']);stp=decode_source(body['stp_png_base64']) if body['stp_png_base64'] is not None else None
+                    from .texture_slot_sources import review,apply
+                    args=(self.server.project,body['asset_id'],body['expected_sha256'],body['source_key'],png,body['options'],stp)
+                    if route.endswith('-review'):self._json(200,review(*args))
+                    else:
+                        report=apply(*args,body['review_key'])
+                        self._json(200,dict(self.server.state(),texture_source_report=report))
                     return
                 if route=='/api/texture-image-convert':
                     if set(body)!={'asset_id','source_key','png_base64','stp_png_base64','options'}:

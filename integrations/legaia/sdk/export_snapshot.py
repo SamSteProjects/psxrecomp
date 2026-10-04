@@ -27,6 +27,11 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     validate_collection(project)
     for identifier, binding in project.texture_additions.items():
         store(f"Authored/Textures/{binding['asset_sha256']}.tim",read(project,identifier,binding))
+        if 'image_source' in binding:
+            from .texture_slot_sources import read_sources
+            png,stp,_=read_sources(project,binding)
+            store(f"Authored/TextureSources/{binding['image_source']['png_sha256']}.png",png)
+            if stp is not None:store(f"Authored/TextureSources/{binding['image_source']['stp_png_sha256']}.png",stp)
     for binding in project.texture_overrides.values():
         payload = project.read_texture_replacement(binding)
         store(f"Authored/Textures/{binding['asset_sha256']}.tim",payload)

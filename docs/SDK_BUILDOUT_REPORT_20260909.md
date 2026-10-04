@@ -1,5 +1,41 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: retained PNG/STP sources and reproducible slot recipes
+
+Saved authored slots can now retain their original PNG, optional STP plane and
+conversion recipe. Open Edit authored texture slot, Convert source PNG, choose
+the exact inputs and options, and convert. Review source retention is enabled
+only when the draft reproduces Current TIM; Retain reviewed sources then adds one
+metadata Undo entry. It preserves the native bytes, asset UUID and slot index.
+Source or conversion choices invalidate retention review. Already-retained exact
+inputs are a no-op and cannot be applied again.
+
+Bindings have an optional source receipt with immutable PNG identities, lengths,
+options and the conversion report. Each source is at most 8 MiB; retained sources
+across slot bindings have a 32 MiB project budget. Save, offline Open, Current slot
+reads and snapshot capture verify file hashes and reproduce the whole TIM exactly.
+Missing/tampered files or inconsistent recipes fail closed. Snapshot inputs include
+the exact PNG/STP files. Download retained image sources provides both inputs and
+the recipe JSON after fresh Current/context/hash qualification.
+
+Label-only edits keep the receipt. A TIM-content edit withdraws the old receipt;
+Undo restores it. Immutable older files remain available for history. Source
+retention is explicit and separate from the earlier native TIM Apply, so each
+operation has its own reviewed history entry. Automatic retention during initial
+conversion Apply and broader GLB/image dependency integration remain next work.
+
+Twelve focused Python cases and both slot/conversion Node suites passed, including
+recipe mismatch, stale context, no-op refusal, source tampering, receipt withdrawal,
+history, offline Open and exact snapshot inputs. Private Town01 browser proof
+passed conversion/retention review, invalidation, readonly inspection, metadata
+Apply, Save/reload and exact PNG/STP/recipe downloads. Normal Build package readback
+matched the unchanged slot 96 TIM; native identity, Undo/Redo and snapshot inputs
+were checked centrally. Parent visual inspection covered the retention review.
+Evidence: `local-output/sdk-20260909/texture-slot-sources-20261004/parent/proof.json`.
+
+Gameplay, dynamic residency, upload order and STP blending remain unverified.
+No game was launched and no installed runtime or physical disc was changed.
+
 ## 2026-10-04: source PNG conversion for new and saved authored slots
 
 The slot editor now offers Convert source PNG. Its readonly conversion dialog
