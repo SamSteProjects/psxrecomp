@@ -1,5 +1,33 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — embedded GLB PNG source handoff:** The existing texture PNG
+editor now accepts a bounded GLB and explicitly selected embedded PNG image.
+Read-only inspection lists source image indices, names, dimensions and byte hashes;
+extraction rechecks the exact GLB/image hashes and PNG structure/CRC. URI, JPEG
+and extended image slots are excluded without fetching external content. Malformed
+embedded PNG ranges or payloads reject. Limits: 32 MiB GLB, 64 image slots,
+8 MiB PNG, 2,097,152 decoded pixels per image.
+
+**Use embedded PNG** fills the ordinary edited-PNG input and displays both source
+hashes. Supply the existing native binding JSON and optional STP plane; the normal
+palette conversion, Review, Current/Proposed pixels, scene proposal, explicit Apply,
+Undo/Redo and Save/Open paths remain in charge. Selecting another source/image
+withdraws review. No GLB material, UV, sampler, shader or automatic texture assignment
+is inferred. This replaces an existing fixed-layout TIM; new texture allocation
+remains unfinished. The saved native binding records PNG provenance, not a persistent
+GLB material association.
+
+Fourteen focused Python construction checks and the existing PNG browser lifecycle
+checks passed. An actual Retail Town01 editor smoke used the real resource refresh
+and texture card, extracted/reviewed the image, inspected pixels, returned with the
+file retained, and verified source/selection review invalidation without Apply or Run.
+Screenshots inspected; project files, authored state and history unchanged by that
+browser smoke. A subsequent private native Apply/Undo/Redo/Save/Open and normal Build
+read back the exact TIM package payload with other CLUT rows and STP unchanged.
+Private evidence: `local-output/sdk-20260909/texture-glb-20261004/parent/`.
+No game launched; appearance, live upload and hardware blending remain deferred.
+The full SDK goal remains active.
+
 **2026-10-04 — larger GLB inventories with bounded imports:** File inspection
 now qualifies each static section independently, reusing one parsed GLB and scene
 ownership graph. A scene may expose up to 128 qualified sections, each within its

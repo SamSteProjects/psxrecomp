@@ -857,7 +857,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-batch-preview', '/api/model-mesh-batch', '/api/model-mesh-batch-scene-preview', '/api/model-mesh-file','/api/model-mesh-scenes','/api/texture-glb-images','/api/texture-glb-image', '/api/model-mesh-append-preview', '/api/model-mesh-append', '/api/model-mesh-append-scene-preview'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/animation-record-glb-review','/api/animation-record-glb-pose','/api/animation-record-glb-import'):
                 request_limit = 44 * 1024 * 1024
@@ -1729,6 +1729,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route in ('/api/texture-glb-images','/api/texture-glb-image'):
+                    fields={'content_base64'} if route.endswith('images') else {'content_base64','image_index','glb_sha256','png_sha256'}
+                    if set(body)!=fields or not isinstance(body['content_base64'],str) or not 0<len(body['content_base64'])<=44739244:
+                        raise ProjectError('GLB image extraction requires bounded file bytes and exact source selection')
+                    try:payload=base64.b64decode(body['content_base64'],validate=True)
+                    except ValueError as exc:raise ProjectError('GLB image file requires valid base64') from exc
+                    from importer.texture_glb import inspect_glb_pngs,extract_glb_png
+                    result=(inspect_glb_pngs(payload) if route.endswith('images') else
+                            extract_glb_png(payload,body['image_index'],body['glb_sha256'],body['png_sha256']))
+                    self._json(200,result)
                     return
                 if route == '/api/texture-png-export':
                     if set(body) != {'asset_id', 'palette_index'} or not isinstance(body['asset_id'], str) or type(body['palette_index']) is not int:

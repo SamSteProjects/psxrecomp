@@ -14,6 +14,33 @@ The SDK can export the current verified TIM texture as a PNG, accept an external
 
 Apply requires the exact reviewed files, palette mode, proposed hash and current project/scene/source context. Changing files or context invalidates the review. Export a fresh binding after authored texture content changes. An external editor that strips alpha, adds unsupported color metadata or resizes the image must be configured to produce a supported PNG before review can succeed.
 
+## Embedded PNG source from GLB
+
+Instead of choosing an externally saved edited PNG, choose **GLB PNG source**,
+select **Embedded GLB PNG**, and select **Use embedded PNG**. The editor places
+those exact extracted bytes in **Edited texture PNG**, displays GLB and PNG SHA-256
+identities, and reads them through the same fixed-dimension/native-binding checks.
+Choose the binding JSON exported from this texture and the optional STP plane as
+usual; then Review and inspect before explicit Apply. Changing the GLB source or
+image selection withdraws any accepted review. Extraction itself changes no native
+asset, saved project file or history entry.
+
+The GLB must contain its JSON/BIN data in one file, no larger than 32 MiB, with
+1–64 image slots. Embedded `image/png` slots must own a plain bounded buffer view;
+each PNG is limited to 8 MiB and 2,097,152 pixels, and the server validates its PNG
+structure, CRC and supported pixel layout. Image indices and both source hashes are
+rechecked on extraction. URI images, JPEG and image extensions are excluded without
+network access. Malformed embedded PNG slots reject the source instead of silently
+substituting another image.
+
+This is image-byte extraction, not GLB material import. The source image need not
+be assigned to a GLB mesh. GLB texture bindings, UV sets, samplers, factors, shaders
+and material extensions are not transferred. No texture is newly allocated or
+automatically assigned to native primitives. After handoff, Review/Apply binds the
+PNG hash and current native texture context; saved authoring does not retain a GLB
+material relationship. Native image dimensions, palette capacity and existing TIM
+allocation remain fixed.
+
 ## PNG alpha and the PSX STP bit
 
 PNG uses unassociated alpha; RGB channels are not multiplied by alpha. Its general format allows partial transparency, but this TIM workflow accepts only binary alpha. See the primary [PNG specification, alpha representation](https://www.w3.org/TR/png-3/#6AlphaRepresentation).
