@@ -1233,7 +1233,13 @@ class ProjectService:
         from importer.model_face_removal import qualify_face_removal, FORMAT
         binding = self.model_overrides.get(asset_id)
         if binding and binding['format'] == 'tmd-face-addition-v1':
-            raise ProjectError('Existing-layout model edits do not yet compose with the face addition ledger')
+            effective = self.read_model_replacement(asset_id,binding)
+            from importer.core import ImportError as ModelImportError
+            try:
+                return replace_model_content(effective,hashlib.sha256(effective).hexdigest(),content,
+                                             allow_normal_references=True)[1]
+            except ModelImportError as error:
+                raise ProjectError(str(error)) from error
         if binding and binding['format'] == FORMAT:
             _, changes = qualify_face_removal(original, hashlib.sha256(original).hexdigest(),
                                               content, binding['removed_faces'])
@@ -1354,7 +1360,8 @@ class ProjectService:
                      if asset_id in self.model_overrides else original)
         if format == 'json':
             import json
-            vectors, _ = import_shape_json(original, digest, content)
+            json_source = effective if self.model_overrides.get(asset_id, {}).get('format') == 'tmd-face-addition-v1' else original
+            vectors, _ = import_shape_json(json_source, hashlib.sha256(json_source).hexdigest(), content)
             document = json.loads(export_shape_json(vectors))
             document['source_sha256'] = hashlib.sha256(effective).hexdigest()
             replacement, _ = import_shape_json(effective, document['source_sha256'], json.dumps(document).encode())
@@ -1367,7 +1374,7 @@ class ProjectService:
         _, pending = replace_model_content(effective, hashlib.sha256(effective).hexdigest(), replacement, allow_normal_references=True)
         return replacement, {'asset_id': asset_id, 'source_sha256': digest,
                              'proposed_sha256': hashlib.sha256(replacement).hexdigest(),
-                             'comparison': 'retail_source', 'coordinate_changes': changes,
+                             'comparison': ('current_addition_topology' if self.model_overrides.get(asset_id, {}).get('format') == 'tmd-face-addition-v1' else 'retail_source'), 'coordinate_changes': changes,
                              'changes_from_current': pending, 'project_changed': False}
 
     def model_primitive_source(self, asset_id: str) -> dict:
@@ -1386,6 +1393,10 @@ class ProjectService:
         if self.model_overrides.get(asset_id, {}).get('format') == 'tmd-face-removal-v1':
             from .model_reference_faces import mapping
             report.update(schema_version='legaia.model-primitives.v3', face_mappings=[mapping(original, effective, self.model_overrides[asset_id], obj['object_index']) for obj in report['objects']])
+        if self.model_overrides.get(asset_id, {}).get('format') == 'tmd-face-addition-v1':
+            from .model_reference_faces import addition_mapping
+            maps,authored=addition_mapping(self,asset_id,original,effective,self.model_overrides[asset_id])
+            report.update(schema_version='legaia.model-primitives.v4',face_mappings=maps,authored_faces=authored)
         if not key or source_key(self) != key:
             raise ProjectError('Scene changed during face inspection; reopen the editor')
         return report
@@ -1474,7 +1485,7 @@ class ProjectService:
             raise ProjectError('Model object preview requires operation values')
         # This edit preserves the qualified Current packet layout. The final
         # candidate is then audited against the actual Retail binding below.
-        operation_source = effective if self.model_overrides.get(asset_id, {}).get('format') == 'tmd-face-removal-v1' else original
+        operation_source = effective if self.model_overrides.get(asset_id, {}).get('format') in ('tmd-face-removal-v1','tmd-face-addition-v1') else original
         args = (operation_source, effective, expected_sha256, object_index)
         if operation == 'translation' and set(values) == {'offset'}:
             replacement = translate_shape_object(*args, values['offset'])
@@ -1566,6 +1577,16 @@ class ProjectService:
                               'tmd-content-v1' if any(row['kind'] == 'primitive' for row in audit) else 'tmd-shape'),
                    'source_scene_id':self.active_scene,'source_sha256':source_hash,
                    'asset_sha256':hashlib.sha256(content).hexdigest(),'byte_length':len(content)} if audit else None
+        if before and before['format'] == 'tmd-face-addition-v1':
+            from .model_face_addition import base_content
+            from importer.model_face_ledger import append_content_ledger
+            effective = self.read_model_replacement(asset_id,before)
+            if effective == content:
+                return
+            base = base_content(self,asset_id,original,before)
+            _,ledger,_ = append_content_ledger(base,before['ledger'],content)
+            binding = deepcopy(before)
+            binding.update(asset_sha256=hashlib.sha256(content).hexdigest(),byte_length=len(content),ledger=ledger)
         if before and before['format'] == 'tmd-face-removal-v1' and binding is not None:
             binding.update(format=before['format'], removed_faces=deepcopy(before['removed_faces']))
         if before == binding:

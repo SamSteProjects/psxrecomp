@@ -8,6 +8,14 @@ function source(){
   const objects=[{object_index:0,vertex_count:3,primitives:[row]}];
   return {schema_version:'legaia.model-primitives.v1',asset_id:assetId,source_sha256:retailHash,effective_sha256:currentHash,project_source_key:key,objects,retail_objects:structuredClone(objects)};
 }
+function additionSource(){
+const addition=source();addition.schema_version='legaia.model-primitives.v4';
+for(const objects of [addition.objects,addition.retail_objects]){objects[0].normal_count=4;objects[0].primitives[0].normal_indices=null;}
+const authored=structuredClone(addition.objects[0].primitives[0]);authored.primitive_index=1;authored.byte_offset=128;addition.objects[0].primitives.push(authored);
+addition.face_mappings=[[{retail_index:0,current_index:0}]];
+addition.authored_faces=[[{face_id:'face://authored/00000000-0000-4000-8000-000000000001',current_index:1}]];
+return addition;
+}
 function geometry(){return {schema_version:'legaia.model-preview.v1',semantic_id:assetId,coordinate_system:'retail_tmd_object_local',vertices:[[0,0,0],[100,0,0],[0,-100,0]],triangles:[[0,1,2]],triangle_colors:[[[128,80,40],[128,80,40],[128,80,40]]],triangle_uvs:[[[0,1],[20,30],[255,254]]],triangle_materials:[0],materials:[{blend:{mode:0,enabled:false}}],objects:[{object_index:0,vertex_start:0,vertex_count:3,triangle_start:0,triangle_count:1}],textures:[]};}
 function draft(report=source()){const row=report.objects[0].primitives[0];return modelPrimitiveDraft(report,0,0,{vertices:[1,1,2],uvs:row.uvs,colors:row.colors});}
 function preview(report=source(),edit=draft(report)){
@@ -86,6 +94,7 @@ try{
     isBusy=true;control.updateState();assert.equal(link.disabled,true);assert.equal(await link.onclick(),false);isBusy=false;
     ctx={...ctx,sourceKey:'e'.repeat(64)};control.updateState();assert.equal(await link.onclick(),false);control.dispose();ctx=structuredClone(context);
   }
+  ctx=structuredClone(context);isBusy=false;queue=[additionSource()];control=openModelPrimitiveEditor({...settings,initial:{object_index:0,primitive_index:1}});assert.equal(await control.ready,true);assert.equal(action(control,'retail').disabled,true);assert.equal(action(control,'discard').disabled,false);assert.equal(input(control,'Flat R').value,'128');input(control,'Flat R').value='77';input(control,'Flat R').oninput();assert.equal(action(control,'preview').disabled,false);action(control,'discard').onclick();assert.equal(input(control,'Flat R').value,'128');control.dispose();
 }finally{for(const [key,value] of Object.entries(globals)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 console.log('Model primitive source/layout/draft/audit validation and detached data; review hashes, reset, bounded fields, busy/stale/close/Apply and scene Return/Restore lifecycle passed.');
 
@@ -111,3 +120,10 @@ const compactReview=preview(compact,draft(compact));compactReview.coordinate_cha
 decodeModelPrimitivePreview(compactReview,compact,context,[draft(compact)]);
 compactReview.coordinate_changes.at(-1).primitive_index=1;assert.throws(()=>decodeModelPrimitivePreview(compactReview,compact,context,[draft(compact)]));
 console.log('V3 compacted face identity and removed Retail audit guards passed.');
+
+const addition=additionSource(),authored=addition.objects[0].primitives[1];
+const checkedAddition=decodeModelPrimitives(addition,assetId,context);
+assert.equal(checkedAddition.objects[0].primitives.length,2);
+assert.deepEqual(modelPrimitiveDraft(checkedAddition,0,1,{vertices:[1,0,2],uvs:authored.uvs,colors:authored.colors}).vertices,[1,0,2]);
+for(const mutation of [v=>v.authored_faces[0][0].current_index=0,v=>v.authored_faces[0]=[],v=>v.authored_faces[0][0].face_id='bad',v=>v.face_mappings[0][0].current_index=1,v=>v.authored_faces[0].push({...v.authored_faces[0][0]})]){const bad=structuredClone(addition);mutation(bad);assert.throws(()=>decodeModelPrimitives(bad,assetId,context));}
+console.log('V4 source/authored ownership and Current primitive drafts passed.');

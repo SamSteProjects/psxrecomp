@@ -41,6 +41,9 @@ class ModelGrowthNormalBuildTests(unittest.TestCase):
 
     def test_normal_build_packages_shared_growth_and_source_offset_patches_once(self):
         p,asset,other,image,archive=self.fixture()
+        current=p.read_model_replacement(asset,p.model_overrides[asset])
+        p.set_model_vector(asset,0,'vertices',0,[17,23,-5],sha256(current).hexdigest())
+        self.assertEqual(p.model_overrides[asset]['ledger']['schema_version'],'legaia.model-face-addition-ledger.v2')
         offset=archive.node.extent_lba*2048+4*2048+10
         payload=b'PATCH';before=image.read_user(0,offset,len(payload),image.size//2352*2048)
         row=dict(scene='fixture',offset=offset,size=len(payload),payload=payload,file='assets/patch.bin',

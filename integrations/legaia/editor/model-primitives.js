@@ -49,18 +49,21 @@ function objects(value,normalReferences=false){
 
 export function decodeModelPrimitives(value,assetId,context){
   context=modelPrimitiveContext(context);
-  if(typeof assetId!=='string'||!/^asset:\/\/[A-Za-z0-9_./-]{1,512}$/.test(assetId)||!exact(value,[...SOURCE_KEYS,...(value.schema_version==='legaia.model-primitives.v3'?['face_mappings']:[])])||!['legaia.model-primitives.v1','legaia.model-primitives.v2','legaia.model-primitives.v3'].includes(value.schema_version)||value.asset_id!==assetId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey)fail('Model primitive source is invalid or stale.');
-  const topology=value.schema_version==='legaia.model-primitives.v3',normalReferences=value.schema_version!=='legaia.model-primitives.v1';
+  if(typeof assetId!=='string'||!/^asset:\/\/[A-Za-z0-9_./-]{1,512}$/.test(assetId)||!exact(value,[...SOURCE_KEYS,...(['legaia.model-primitives.v3','legaia.model-primitives.v4'].includes(value.schema_version)?['face_mappings']:[]),...(value.schema_version==='legaia.model-primitives.v4'?['authored_faces']:[])])||!['legaia.model-primitives.v1','legaia.model-primitives.v2','legaia.model-primitives.v3','legaia.model-primitives.v4'].includes(value.schema_version)||value.asset_id!==assetId||!hash(value.source_sha256)||!hash(value.effective_sha256)||value.project_source_key!==context.sourceKey)fail('Model primitive source is invalid or stale.');
+  const additions=value.schema_version==='legaia.model-primitives.v4',topology=additions||value.schema_version==='legaia.model-primitives.v3',normalReferences=value.schema_version!=='legaia.model-primitives.v1';
   if(topology&&(!Array.isArray(value.face_mappings)||value.face_mappings.length!==value.objects.length))fail('Missing source face mappings.');objects(value.objects,normalReferences);objects(value.retail_objects,normalReferences);
   if(value.source_sha256===value.effective_sha256&&!equal(value.objects,value.retail_objects))fail('Equal source hashes require identical primitive values.');
   if(value.objects.length!==value.retail_objects.length)fail('Current model differs from the retail object layout.');
+  const authoredIds=new Set();
   for(const [index,entry] of value.objects.entries()){
     const retail=value.retail_objects[index];
     if(entry.normal_count!==retail.normal_count||entry.vertex_count!==retail.vertex_count||!topology&&entry.primitives.length!==retail.primitives.length)fail('Current model differs from retail vector/primitive counts.');
-    if(topology){let next=0;const map=value.face_mappings[index];if(!Array.isArray(map)||map.length!==retail.primitives.length)fail('Invalid Retail face mapping.');for(const [i,row] of map.entries()){if(!exact(row,['retail_index','current_index'])||row.retail_index!==i||row.current_index!==null&&row.current_index!==next)fail('Invalid retained face identity.');if(row.current_index!==null)next++;}if(next!==entry.primitives.length)fail('Current face mapping count differs.');}
+    if(topology){let next=0,previous=-1;const owned=new Set(),map=value.face_mappings[index];if(!Array.isArray(map)||map.length!==retail.primitives.length)fail('Invalid Retail face mapping.');for(const [i,row] of map.entries()){if(!exact(row,['retail_index','current_index'])||row.retail_index!==i||row.current_index!==null&&(!int(row.current_index,0,entry.primitives.length-1)||row.current_index<=previous||!additions&&row.current_index!==next))fail('Invalid retained face identity.');if(row.current_index!==null){previous=row.current_index;owned.add(row.current_index);next++;}}
+      if(additions){if(!Array.isArray(value.authored_faces)||value.authored_faces.length!==value.objects.length||!Array.isArray(value.authored_faces[index]))fail('Missing authored face identities.');const ids=authoredIds;for(const row of value.authored_faces[index]){if(!exact(row,['face_id','current_index'])||typeof row.face_id!=='string'||!/^face:\/\/authored\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(row.face_id)||ids.has(row.face_id)||!int(row.current_index,0,entry.primitives.length-1)||owned.has(row.current_index))fail('Invalid authored face identity.');ids.add(row.face_id);if(ids.size>128)fail('Authored face budget exceeded.');owned.add(row.current_index);}if(owned.size!==entry.primitives.length)fail('Unowned Current face.');}
+      else if(next!==entry.primitives.length)fail('Current face mapping count differs.');}
     const retained=topology?value.face_mappings[index].filter(face=>face.current_index!==null):null;
     for(const [i,row] of entry.primitives.entries()){
-      const old=retail.primitives[topology?retained[i].retail_index:i];
+      const identity=topology?retained.find(face=>face.current_index===i):null,old=retail.primitives[topology?identity?.retail_index:i];if(!old&&additions)continue;
       for(const field of ROW_KEYS.filter(key=>!['vertices','uvs','colors','material',...(topology?['primitive_index','group_index','byte_offset']:[])].includes(key)))if(!equal(row[field],old[field]))fail('Current model changed immutable primitive metadata.');
       for(const field of ['uvs','colors',...(normalReferences?['normal_indices']:[])])if((row[field]===null)!==(old[field]===null))fail('Current primitive changed the source attribute layout.');
       if(row.uvs!==null&&(((row.material.clut^old.material.clut)&~0x7fff)||((row.material.tpage^old.material.tpage)&~0x019f)))fail('Current material changed reserved source bits.');
@@ -70,10 +73,10 @@ export function decodeModelPrimitives(value,assetId,context){
 }
 
 function selectedRow(source,objectIndex,primitiveIndex,retail=false){
+  if(!int(objectIndex,0,source.objects.length-1)||!int(primitiveIndex,0,source.objects[objectIndex].primitives.length-1))fail('Select an existing object and primitive.');
   const entries=retail?source.retail_objects:source.objects;
-  if(!int(objectIndex,0,entries.length-1)||!int(primitiveIndex,0,entries[objectIndex].primitives.length-1))fail('Select an existing object and primitive.');
   const index=retail&&source.face_mappings?source.face_mappings[objectIndex].find(face=>face.current_index===primitiveIndex)?.retail_index:primitiveIndex;
-  if(index===undefined)fail('Current face has no retained Retail owner.');
+  if(index===undefined||!int(index,0,entries[objectIndex].primitives.length-1))fail('Current face has no retained Retail owner.');
   return entries[objectIndex].primitives[index];
 }
 
@@ -190,7 +193,7 @@ export function openModelPrimitiveEditor({assetId,getContext,busy,setBusy,onAppl
     for(const link of normalLinks)link.disabled=blocked||dirty();
     for(const input of inputs)input.disabled=blocked;objectSelect.disabled=primitiveSelect.disabled=blocked||!source;previous.disabled=blocked||page===0;next.disabled=blocked||!source||(page+1)*256>=source.objects[objectIndex].primitives.length;
     const reviewed=available&&modelPrimitiveReviewMatches(review,source,getContext(),edits);
-    reset.disabled=discard.disabled=blocked||!hasRow;preview.disabled=blocked||!edits;apply.disabled=blocked||!reviewed||review?.proposed_sha256===source?.effective_sha256;scene.disabled=blocked||!reviewed;close.disabled=pending==='apply';
+    discard.disabled=blocked||!hasRow;reset.disabled=blocked||!hasRow||!!source?.authored_faces?.[objectIndex]?.some(face=>face.current_index===primitiveIndex);preview.disabled=blocked||!edits;apply.disabled=blocked||!reviewed||review?.proposed_sha256===source?.effective_sha256;scene.disabled=blocked||!reviewed;close.disabled=pending==='apply';
     if(!available){invalidate();status.textContent='Project, scene or model source changed. Reopen the face editor.';}
   }
   function selectRows(){
@@ -199,7 +202,7 @@ export function openModelPrimitiveEditor({assetId,getContext,busy,setBusy,onAppl
   function displayRow(){
     invalidate();fields.replaceChildren();inputs=[];normalLinks=[];const entry=source.objects[objectIndex],row=entry.primitives[primitiveIndex];
     if(!row){metadata.textContent='This source object has no editable primitives.';refresh();return;}
-    metadata.textContent=`Object ${objectIndex} · Current primitive ${primitiveIndex} · Retail face ${source.face_mappings?source.face_mappings[objectIndex].find(face=>face.current_index===primitiveIndex).retail_index:primitiveIndex} · group ${row.group_index} · flags 0x${row.flags.toString(16)} · payload offset ${row.byte_offset} · ${row.gouraud?'Gouraud':'Flat'} · CLUT ${row.material.clut??'none'} · texture page ${row.material.tpage??'none'} · semitransparency ${row.material.semi_transparent?'enabled':'disabled'} (read-only).`;
+    metadata.textContent=`Object ${objectIndex} · Current primitive ${primitiveIndex} · Retail face ${source.face_mappings?(source.face_mappings[objectIndex].find(face=>face.current_index===primitiveIndex)?.retail_index??'none (authored)'):primitiveIndex} · group ${row.group_index} · flags 0x${row.flags.toString(16)} · payload offset ${row.byte_offset} · ${row.gouraud?'Gouraud':'Flat'} · CLUT ${row.material.clut??'none'} · texture page ${row.material.tpage??'none'} · semitransparency ${row.material.semi_transparent?'enabled':'disabled'} (read-only).`;
     hashes.textContent=JSON.stringify({asset_id:source.asset_id,retail_sha256:source.source_sha256,current_sha256:source.effective_sha256,project_source_key:source.project_source_key},null,2);
     const table=element('table'),head=element('tr');Object.assign(table.style,{width:'100%',borderCollapse:'collapse',fontSize:'12px',margin:'10px 0'});fields.style.overflowX='auto';for(const title of ['Corner','Local vertex','UV bytes','Baked RGB / normal reference']){const cell=element('th',title);Object.assign(cell.style,{padding:'4px 6px',textAlign:'left',borderBottom:'1px solid #344b4d'});head.append(cell);}table.append(head);
     const numberInput=(field,corner,axis,value,max,label)=>{const input=element('input');Object.assign(input.style,{width:'72px',maxWidth:'100%',minWidth:'0',padding:'5px 6px'});input.type='number';input.min='0';input.max=String(max);input.step='1';input.required=true;input.value=String(value);input.setAttribute('aria-label',label);input._primitive={field,corner,axis};input.oninput=()=>{invalidate();status.textContent='Draft changed. Preview again before Apply.';refresh();};inputs.push(input);return input;};

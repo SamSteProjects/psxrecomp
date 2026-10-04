@@ -1,8 +1,11 @@
 """Replayable model-only additions, with stable source and authored identities.
 
-This record is not an SDK asset override. Carrier allocation, removal and GLB
-composition must qualify this record before they can adopt it.
+The SDK retains this record beside its independently qualified base binding.
+V1 addition batches remain readable; V2 chains typed content edits between
+additions without changing stable face identities. Removal and GLB composition
+still require their own ownership qualification.
 """
+import json
 from copy import deepcopy
 from hashlib import sha256
 
@@ -12,6 +15,9 @@ from .model_face_removal import _groups
 from .model_primitives import _qualified_model
 
 SCHEMA = 'legaia.model-face-addition-ledger.v1'
+CONTENT_SCHEMA = 'legaia.model-face-addition-ledger.v2'
+MAX_OPERATIONS = 64
+MAX_METADATA_BYTES = 2*1024*1024
 MAX_BATCHES = 8
 MAX_LEDGER_FACES = MAX_NEW_FACES
 REQUEST_KEYS = {'face_id', 'donor_face_id', 'fields'}
@@ -67,40 +73,120 @@ def _apply_batch(current, faces, requests):
     return candidate, updated
 
 
+def _operations(ledger):
+    if not isinstance(ledger, dict):
+        raise ImportError('Face ledger requires an object')
+    version = ledger.get('schema_version')
+    member = 'batches' if version == SCHEMA else 'operations'
+    if (version not in (SCHEMA, CONTENT_SCHEMA)
+            or set(ledger) != {'schema_version','source_sha256','source_byte_length',member}
+            or not isinstance(ledger[member],list)
+            or len(ledger[member]) > (MAX_BATCHES if version == SCHEMA else MAX_OPERATIONS)):
+        raise ImportError('Face ledger schema or operation budget changed')
+    try:
+        if len(json.dumps(ledger,allow_nan=False).encode()) > MAX_METADATA_BYTES:
+            raise ImportError('Face ledger exceeds metadata budget')
+    except (TypeError, ValueError) as error:
+        raise ImportError('Face ledger requires finite JSON metadata') from error
+    if version == SCHEMA:
+        if any(not isinstance(batch,dict) or set(batch) != {'input_sha256','proposed_sha256','additions'} for batch in ledger['batches']):
+            raise ImportError('Face ledger batch schema changed')
+        return [dict(batch,kind='add_faces') for batch in ledger['batches']]
+    return ledger['operations']
+
+
+def _apply_content(current, operation):
+    from .model_authoring import replace_model_content
+    runs = operation['runs']
+    if not isinstance(runs,list) or not 0 < len(runs) <= 32768:
+        raise ImportError('Face ledger content requires bounded changed byte runs')
+    candidate = bytearray(current);end = -1
+    for run in runs:
+        if (not isinstance(run,dict) or set(run) != {'offset','before_hex','after_hex'}
+                or type(run['offset']) is not int or run['offset'] <= end
+                or not isinstance(run['before_hex'],str) or not isinstance(run['after_hex'],str)):
+            raise ImportError('Face ledger content run schema or order changed')
+        try:
+            before,after = bytes.fromhex(run['before_hex']),bytes.fromhex(run['after_hex'])
+        except ValueError as error:
+            raise ImportError('Face ledger content run requires hex bytes') from error
+        at = run['offset']
+        if (not before or len(before)!=len(after) or before.hex()!=run['before_hex'] or after.hex()!=run['after_hex']
+                or at<0 or at+len(before)>len(current) or before==after or current[at:at+len(before)]!=before):
+            raise ImportError('Face ledger content preimage or span changed')
+        candidate[at:at+len(after)] = after;end = at+len(before)-1
+    candidate = bytes(candidate)
+    replace_model_content(current,sha256(current).hexdigest(),candidate,allow_normal_references=True)
+    return candidate
+
+
 def replay_face_ledger(original, ledger):
     source_hash = sha256(original).hexdigest()
-    if (not isinstance(ledger, dict) or set(ledger) != {'schema_version', 'source_sha256', 'source_byte_length', 'batches'}
-            or ledger['schema_version'] != SCHEMA or ledger['source_sha256'] != source_hash
-            or type(ledger['source_byte_length']) is not int or ledger['source_byte_length'] != len(original)
-            or not isinstance(ledger['batches'], list) or len(ledger['batches']) > MAX_BATCHES):
-        raise ImportError('Face ledger schema or source binding changed')
+    operations = _operations(ledger)
+    if (ledger['source_sha256'] != source_hash or type(ledger['source_byte_length']) is not int
+            or ledger['source_byte_length'] != len(original)):
+        raise ImportError('Face ledger source binding changed')
     faces = _source_faces(original, source_hash)
-    current, total = original, 0
-    for batch in ledger['batches']:
-        if (not isinstance(batch, dict) or set(batch) != {'input_sha256', 'proposed_sha256', 'additions'}
-                or batch['input_sha256'] != sha256(current).hexdigest()
-                or not isinstance(batch['additions'], list)):
-            raise ImportError('Face ledger batch chain or schema changed')
-        total += len(batch['additions'])
-        if total > MAX_LEDGER_FACES:
-            raise ImportError('Face ledger exceeds its authored face budget')
-        current, faces = _apply_batch(current, faces, batch['additions'])
-        if batch['proposed_sha256'] != sha256(current).hexdigest():
+    current, total, batches = original, 0, 0
+    for operation in operations:
+        if (not isinstance(operation,dict) or operation.get('input_sha256') != sha256(current).hexdigest()):
+            raise ImportError('Face ledger operation chain changed')
+        if operation.get('kind') == 'add_faces':
+            if set(operation) != {'kind','input_sha256','proposed_sha256','additions'} or not isinstance(operation['additions'],list):
+                raise ImportError('Face ledger addition schema changed')
+            total += len(operation['additions']);batches += 1
+            if total > MAX_LEDGER_FACES or batches > MAX_BATCHES:
+                raise ImportError('Face ledger exceeds its authored face or batch budget')
+            current, faces = _apply_batch(current, faces, operation['additions'])
+        elif operation.get('kind') == 'edit_content':
+            if set(operation) != {'kind','input_sha256','proposed_sha256','runs'}:
+                raise ImportError('Face ledger content schema changed')
+            current = _apply_content(current, operation)
+        else:
+            raise ImportError('Face ledger operation kind is unknown')
+        if operation['proposed_sha256'] != sha256(current).hexdigest():
             raise ImportError('Face ledger proposed model hash changed')
     return current, dict(source_sha256=source_hash, proposed_sha256=sha256(current).hexdigest(),
         source_byte_length=len(original), proposed_byte_length=len(current),
-        growth_bytes=len(current)-len(original), batch_count=len(ledger['batches']),
+        growth_bytes=len(current)-len(original), batch_count=batches, operation_count=len(operations),
         authored_face_count=total, faces=list(faces.values()))
+
+
+def append_content_ledger(original, ledger, candidate):
+    from .model_authoring import replace_model_content
+    current, audit = replay_face_ledger(original, ledger)
+    replace_model_content(current,sha256(current).hexdigest(),candidate,allow_normal_references=True)
+    if candidate == current:
+        return current,deepcopy(ledger),audit
+    operations = _operations(ledger)
+    if len(operations) >= MAX_OPERATIONS:
+        raise ImportError('Face ledger exceeds its operation budget')
+    runs=[];at=0
+    while at < len(current):
+        if current[at] == candidate[at]:
+            at += 1;continue
+        start=at
+        while at < len(current) and current[at] != candidate[at]:at += 1
+        runs.append(dict(offset=start,before_hex=current[start:at].hex(),after_hex=candidate[start:at].hex()))
+    updated = dict(schema_version=CONTENT_SCHEMA,source_sha256=ledger['source_sha256'],
+        source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
+    updated['operations'].append(dict(kind='edit_content',input_sha256=sha256(current).hexdigest(),
+        proposed_sha256=sha256(candidate).hexdigest(),runs=runs))
+    qualified,report = replay_face_ledger(original,updated)
+    return qualified,updated,report
 
 
 def append_face_ledger(original, ledger, requests):
     current, audit = replay_face_ledger(original, ledger)
-    if len(ledger['batches']) >= MAX_BATCHES or not isinstance(requests, list) or audit['authored_face_count'] + len(requests) > MAX_LEDGER_FACES:
+    if audit['batch_count'] >= MAX_BATCHES or len(_operations(ledger)) >= MAX_OPERATIONS or not isinstance(requests, list) or audit['authored_face_count'] + len(requests) > MAX_LEDGER_FACES:
         raise ImportError('Face ledger exceeds its batch or authored face budget')
     candidate, _ = _apply_batch(current, {row['face_id']: row for row in audit['faces']}, requests)
     result = deepcopy(ledger)
-    result['batches'].append(dict(input_sha256=sha256(current).hexdigest(),
-        proposed_sha256=sha256(candidate).hexdigest(), additions=deepcopy(requests)))
+    batch=dict(input_sha256=sha256(current).hexdigest(),proposed_sha256=sha256(candidate).hexdigest(),additions=deepcopy(requests))
+    if result['schema_version'] == SCHEMA:
+        result['batches'].append(batch)
+    else:
+        result['operations'].append(dict(batch,kind='add_faces'))
     qualified, final_audit = replay_face_ledger(original, result)
     return qualified, result, final_audit
 
