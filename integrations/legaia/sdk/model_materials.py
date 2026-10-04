@@ -14,7 +14,7 @@ LIMITATIONS = [
     'Source-encoded ABR is read only: observed renderers clear those bits and combine caller state.',
     'Unknown/reserved bits, row color/command bytes, normal references, footers and layout remain source owned.',
     'Static texture associations do not prove live VRAM residency, palette animation or hardware blend appearance.',
-    'Normal Build retains source capacities; gameplay verification remains deferred.',
+    'Existing face additions retain their replay ledger and use the qualified growth Build path; gameplay verification remains deferred.',
 ]
 
 
@@ -59,14 +59,20 @@ def _snapshot(project, asset_id):
                    scene_id=project.active_scene, source_sha256=sha256(retail).hexdigest(),
                    effective_sha256=sha256(effective).hexdigest(), project_source_key=key,
                    objects=current['objects'], retail_objects=original['objects'], limitations=list(LIMITATIONS))
-    if authored and authored['format'] == 'tmd-face-removal-v1':
-        from .model_reference_faces import mapping
-        faces = [mapping(retail, effective, authored, obj['object_index']) for obj in current['objects']]
+    if authored and authored['format'] in ('tmd-face-removal-v1', 'tmd-face-addition-v1'):
+        from .model_reference_faces import mapping, addition_mapping
+        added = authored['format'] == 'tmd-face-addition-v1'
+        if added:
+            faces, authored_faces = addition_mapping(project, asset_id, retail, effective, authored)
+        else:
+            faces = [mapping(retail, effective, authored, obj['object_index']) for obj in current['objects']]
         groups = []
         for obj, face_map in zip(original['objects'], faces):
             retained = {row['retail_index'] for row in face_map if row['current_index'] is not None}
             groups.append([group['group_index'] for group in obj['groups'] if any(row['primitive_index'] in retained for row in group['primitives'])])
         binding.update(schema_version='legaia.model-material-source.v2', face_mappings=faces, group_mappings=groups)
+        if added:
+            binding.update(schema_version='legaia.model-material-source.v3', authored_faces=authored_faces)
     _bounded(binding, 'Model material source'); _current(project, binding)
     return dict(binding=binding, retail=retail, effective=effective)
 
@@ -130,6 +136,8 @@ def prepare(project, asset_id, edits, expected_sha256, expected_source_key):
     report.update(schema_version='legaia.model-material-review.v1', proposed_sha256=sha256(candidate).hexdigest(),
                   coordinate_changes=changes, changes_from_current=pending, project_changed=False,
                   gameplay_verified=False, limitations=list(LIMITATIONS))
+    if binding['schema_version'] == 'legaia.model-material-source.v3':
+        report.update(schema_version='legaia.model-material-review.v2', comparison='current_addition_topology')
     report['review_key'] = digest(dict(binding=binding, edits=edits, proposed_sha256=report['proposed_sha256'],
                                       changes=changes, pending=pending))
     report['preview'] = decode_tmd(candidate); report['current_preview'] = decode_tmd(source['effective'])
