@@ -48,8 +48,8 @@ def decode_append_mesh(content):
     vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];triangle_colors=[];owners={};ignored=set();error=0.0;normal_error=0.0
     for primitive in primitives:
         if (not isinstance(primitive,dict) or type(primitive.get('mode',4)) is not int
-                or primitive.get('mode',4)!=4 or any(key in primitive for key in ('targets','extensions'))):
-            raise ImportError('Mesh append supports triangle lists without morph targets or extensions')
+                or primitive.get('mode',4) not in (4,5,6) or any(key in primitive for key in ('targets','extensions'))):
+            raise ImportError('Mesh append supports triangle lists, strips and fans without morph targets or extensions')
         attrs=primitive.get('attributes')
         if (not isinstance(attrs,dict) or 'POSITION' not in attrs
                 or not set(attrs)<={'POSITION','NORMAL','TEXCOORD_0','COLOR_0','TANGENT'}):
@@ -73,13 +73,25 @@ def decode_append_mesh(content):
         if 'indices' in primitive:
             indices=[row[0] for row in reader.read(primitive['indices'],1,'append indices',indices=True)]
         else:indices=list(range(len(positions)))
-        if not indices or len(indices)%3 or len(indices)//3+len(triangles)>MAX_NEW_FACES:
+        mode=primitive.get('mode',4)
+        face_count=len(indices)//3 if mode==4 else len(indices)-2
+        if (len(indices)<3 or (mode==4 and len(indices)%3)
+                or face_count+len(triangles)>MAX_NEW_FACES):
             raise ImportError('Mesh append exceeds the native face budget or has incomplete triangles')
-        for begin in range(0,len(indices),3):
+        if any(not 0<=index<len(positions) for index in indices):
+            raise ImportError('Mesh append index exceeds POSITION count')
+        if mode==4:
+            source_triangles=[indices[begin:begin+3] for begin in range(0,len(indices),3)]
+        elif mode==5:
+            # Strip parity changes source ordering before the coordinate reflection.
+            source_triangles=[(indices[begin+(begin%2)],indices[begin+1-(begin%2)],indices[begin+2])
+                              for begin in range(face_count)]
+        else:
+            source_triangles=[(indices[0],indices[begin+1],indices[begin+2]) for begin in range(face_count)]
+        for triangle in source_triangles:
             current=[];directions=[];texture_points=[];color_points=[]
             # Reflect Y and reverse winding to preserve the SDK GLB convention.
-            for index in (indices[begin],indices[begin+2],indices[begin+1]):
-                if not 0<=index<len(positions):raise ImportError('Mesh append index exceeds POSITION count')
+            for index in (triangle[0],triangle[2],triangle[1]):
                 owner=(attrs['POSITION'],index)
                 if owner not in owners:
                     values=[positions[index][0],-positions[index][1],positions[index][2]]

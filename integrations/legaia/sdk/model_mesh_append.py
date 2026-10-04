@@ -10,7 +10,7 @@ from .scene_preview import source_key
 from .project import ProjectError,digest
 
 LIMITATIONS=[
-    'Imports static standard GLB POSITION and triangle lists into the selected donor object in native source units.',
+    'Imports static standard GLB POSITION and triangle lists, strips or fans into the selected donor object in native source units.',
     'Reflects Y and reverses triangle winding; rounds positions to signed integer native coordinates.',
     'GLB NORMAL directions are normalized, reflected in Y and converted to Q12 stored normals for lit packets. Flat donors require equal corner normals.',
     'Mesh UVs map to the Current UV region of the selected native texture binding, using texel centers and clamped crop edges. Wrapping outside 0..1 is unsupported.',

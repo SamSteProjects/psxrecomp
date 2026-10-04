@@ -16,15 +16,17 @@ import test_model_growth_normal_build as build_fixtures
 from test_model_primitive_workflow import http_server
 
 
-def glb(changes=None,positions=None,normals=None,uvs=None,colors=None,color_component=5126):
+def glb(changes=None,positions=None,normals=None,uvs=None,colors=None,color_component=5126,indices=None,mode=4):
     positions=positions or [[0,0,0],[100,0,0],[0,100,0],[100,100,0]]
-    binary=b''.join(struct.pack('<3f',*row) for row in positions)+struct.pack('<6H',0,1,2,1,3,2)
+    indices=[0,1,2,1,3,2] if indices is None else indices
+    binary=b''.join(struct.pack('<3f',*row) for row in positions)+struct.pack('<'+str(len(indices))+'H',*indices)
+    binary+=b'\0'*(-len(binary)%4)
     doc=dict(asset={'version':'2.0'},scene=0,scenes=[{'nodes':[0]}],nodes=[{'mesh':0}],
-        meshes=[{'primitives':[{'attributes':{'POSITION':0},'indices':1,'mode':4}]}],
+        meshes=[{'primitives':[{'attributes':{'POSITION':0},'indices':1,'mode':mode}]}],
         buffers=[{'byteLength':len(binary)}],bufferViews=[{'buffer':0,'byteOffset':0,'byteLength':len(positions)*12},
-        {'buffer':0,'byteOffset':len(positions)*12,'byteLength':12}],
+        {'buffer':0,'byteOffset':len(positions)*12,'byteLength':len(indices)*2}],
         accessors=[{'bufferView':0,'componentType':5126,'count':len(positions),'type':'VEC3'},
-                   {'bufferView':1,'componentType':5123,'count':6,'type':'SCALAR'}])
+                   {'bufferView':1,'componentType':5123,'count':len(indices),'type':'SCALAR'}])
     if normals is not None:
         offset=len(binary);binary+=b''.join(struct.pack('<3f',*row) for row in normals)
         doc['buffers'][0]['byteLength']=len(binary)
@@ -73,7 +75,7 @@ class MeshAppendTests(unittest.TestCase):
         with self.assertRaises(ImportError):decode_append_mesh(glb(normals=[[0,0,0]]*4))
         for mutation in (lambda d:d['nodes'][0].update(translation=[1,0,0]),lambda d:d['scenes'][0].update(nodes=[False]),
             lambda d:d['nodes'][0].update(children=[]),lambda d:d.update(animations=[{}]),
-            lambda d:d['meshes'][0]['primitives'][0].update(mode=5),lambda d:d['meshes'][0]['primitives'][0]['attributes'].update(JOINTS_0=0),
+            lambda d:d['meshes'][0]['primitives'][0].update(mode=1),lambda d:d['meshes'][0]['primitives'][0]['attributes'].update(JOINTS_0=0),
             lambda d:d['bufferViews'][0].update(buffer=False),lambda d:d['accessors'][1].update(count=5),
             lambda d:d['accessors'][0].update(count=2)):
             with self.assertRaises(ImportError):decode_append_mesh(glb(mutation))
