@@ -34,3 +34,11 @@ const source={schema_version:'legaia.texture-slot-edit-source.v1',asset_id:id,pr
 assert.deepEqual(await decodeSlotSource(source,id,context),source);
 for(const bad of [{...source,current_sha256:hash('a')},{...source,byte_length:25},{...source,project_source_key:'stale'},{...source,asset_id:'texture-new://bad'},{...source,image_layout:{...source.image_layout,width:3}},{...source,palette_count:1},{...source,extra:true}])await assert.rejects(decodeSlotSource(bad,id,context));
 console.log('Current source download hash, length, layout and context qualification passed.');
+
+const converted={...file,conversion:{schema_version:'legaia.texture-image-conversion.v1',png_sha256:hash('c'),png_byte_length:100,stp_png_sha256:null,options:{bpp:16,image_x:640,image_y:32,clut_x:0,clut_y:0,stp_mode:'opaque'}}};
+const conversion_source={png_base64:'AAAA',stp_png_base64:null,options:converted.conversion.options},withSources={...request,conversion_source};
+const receipt={format:'png-tim-source-v1',png_sha256:hash('c'),png_byte_length:100,stp_png_sha256:null,stp_png_byte_length:null,options:conversion_source.options,conversion_report:converted.conversion},combined={...report,image_source:receipt};
+assert.deepEqual(decodeSlotReview(combined,withSources,converted),combined);
+for(const bad of [{...combined,image_source:{...receipt,png_sha256:hash('f')}},{...combined,image_source:{...receipt,png_byte_length:99}},{...combined,image_source:{...receipt,stp_png_byte_length:1}},{...combined,image_source:{...receipt,options:{...receipt.options,image_x:0}}},{...combined,image_source:{...receipt,conversion_report:{...converted.conversion,png_byte_length:99}}}])assert.throws(()=>decodeSlotReview(bad,withSources,converted));
+assert.throws(()=>decodeSlotReview(report,withSources,converted));assert.throws(()=>decodeSlotReview(combined,request,file));
+console.log('Combined slot Apply source recipe, input identities and exact optional receipt qualification passed.');

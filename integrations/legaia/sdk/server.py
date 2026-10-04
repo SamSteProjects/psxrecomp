@@ -15,6 +15,18 @@ from importer.core import ImportError as RetailImportError
 from .project import ProjectError, ProjectService
 
 
+def _slot_conversion_source(body):
+    if 'conversion_source' not in body:return None
+    source=body['conversion_source']
+    if not isinstance(source,dict) or set(source)!={'png_base64','stp_png_base64','options'}:
+        raise ProjectError('Converted slot requires exact PNG/STP source fields')
+    def decode(value):
+        if not isinstance(value,str) or not 1<=len(value)<=11184812:raise ProjectError('Converted PNG source exceeds eight MiB')
+        try:return base64.b64decode(value,validate=True)
+        except ValueError as exc:raise ProjectError('Converted PNG source requires valid base64') from exc
+    return dict(png=decode(source['png_base64']),stp=decode(source['stp_png_base64']) if source['stp_png_base64'] is not None else None,options=source['options'])
+
+
 def _transition_authoring_report(project, identifier):
     """Unsupported authoring must not suppress the read-only script report."""
     try:
@@ -871,6 +883,8 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-source','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
                 request_limit = 2 * 1024 * 1024
+            if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
+                request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-image-convert','/api/texture-slot-source-review','/api/texture-slot-source-apply'):
                 request_limit = 24 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
@@ -1796,32 +1810,34 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'asset_id','expected_sha256','source_key','label','accept_potential_overlap','content_base64'}
                     if route!='/api/texture-slot-edit-review':fields.add('review_key')
                     if route=='/api/texture-slot-edit-pixels':fields.add('palette_index')
-                    if set(body)!=fields or not isinstance(body['content_base64'],str) or not 1<=len(body['content_base64'])<=1398104:
+                    if set(body) not in (fields,fields|{'conversion_source'}) or not isinstance(body['content_base64'],str) or not 1<=len(body['content_base64'])<=1398104:
                         raise ProjectError('Edited texture slot requires exact context and bounded complete TIM bytes')
                     try:payload=base64.b64decode(body['content_base64'],validate=True)
                     except ValueError as exc:raise ProjectError('Edited TIM requires valid base64') from exc
                     from .texture_slot_edit import review,pixels,apply
                     args=(self.server.project,body['asset_id'],payload,body['expected_sha256'],body['source_key'],body['label'],body['accept_potential_overlap'])
-                    if route=='/api/texture-slot-edit-review':self._json(200,review(*args))
-                    elif route=='/api/texture-slot-edit-pixels':self._json(200,pixels(*args,body['review_key'],body['palette_index']))
+                    conversion_source=_slot_conversion_source(body)
+                    if route=='/api/texture-slot-edit-review':self._json(200,review(*args,conversion_source=conversion_source))
+                    elif route=='/api/texture-slot-edit-pixels':self._json(200,pixels(*args,body['review_key'],body['palette_index'],conversion_source=conversion_source))
                     else:
-                        report=apply(*args,body['review_key'])
+                        report=apply(*args,body['review_key'],conversion_source=conversion_source)
                         self._json(200,dict(self.server.state(),texture_slot_report=report))
                     return
                 if route in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply'):
                     fields={'anchor_asset_id','source_key','label','accept_potential_overlap','content_base64'}
                     if route!='/api/texture-slot-review':fields.add('review_key')
                     if route=='/api/texture-slot-pixels':fields.add('palette_index')
-                    if set(body)!=fields or not isinstance(body['content_base64'],str) or not 1<=len(body['content_base64'])<=1398104:
+                    if set(body) not in (fields,fields|{'conversion_source'}) or not isinstance(body['content_base64'],str) or not 1<=len(body['content_base64'])<=1398104:
                         raise ProjectError('New texture slot requires exact context and bounded complete TIM bytes')
                     try:payload=base64.b64decode(body['content_base64'],validate=True)
                     except ValueError as exc:raise ProjectError('New texture TIM requires valid base64') from exc
                     from .texture_slots import review,apply,pixels
                     args=(self.server.project,body['anchor_asset_id'],payload,body['source_key'],body['label'],body['accept_potential_overlap'])
-                    if route=='/api/texture-slot-review':self._json(200,review(*args))
-                    elif route=='/api/texture-slot-pixels':self._json(200,pixels(*args,body['review_key'],body['palette_index']))
+                    conversion_source=_slot_conversion_source(body)
+                    if route=='/api/texture-slot-review':self._json(200,review(*args,conversion_source=conversion_source))
+                    elif route=='/api/texture-slot-pixels':self._json(200,pixels(*args,body['review_key'],body['palette_index'],conversion_source=conversion_source))
                     else:
-                        report=apply(*args,body['review_key'])
+                        report=apply(*args,body['review_key'],conversion_source=conversion_source)
                         self._json(200,dict(self.server.state(),texture_slot_report=report))
                     return
                 if route == '/api/texture-resize-source':

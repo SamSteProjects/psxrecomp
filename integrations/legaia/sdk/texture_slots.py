@@ -194,7 +194,7 @@ def _footprint(project, context, candidate, *, exclude_asset_id=None):
                 coverage='known-static-scene-authored-and-boot-uploads', runtime_residency_verified=False)
 
 
-def review(project, anchor, content, expected_source_key, label, accept_potential_overlap=False):
+def review(project, anchor, content, expected_source_key, label, accept_potential_overlap=False, *, conversion_source=None):
     if project.mode != 'edit' or type(accept_potential_overlap) is not bool:
         raise ProjectError('Texture slot review requires Edit mode and an explicit overlap choice')
     key = source_key(project)
@@ -239,16 +239,19 @@ def review(project, anchor, content, expected_source_key, label, accept_potentia
                   project_changed=False, gameplay_verified=False)
     tim=validate_added_tim(content)
     report['palette_count']=len(tim.clut.data)//((1<<tim.bpp)*2) if tim.bpp in (4,8) and tim.clut else 0
+    if conversion_source is not None:
+        from .texture_slot_sources import prepare_recipe
+        report['image_source']=prepare_recipe(project,content,conversion_source)
     report['review_key'] = digest(report)
     if source_key(project) != key:
         raise ProjectError('Texture slot source changed during review')
     return report
 
 
-def pixels(project, anchor, content, expected_source_key, label, accept_potential_overlap, review_key, palette_index):
+def pixels(project, anchor, content, expected_source_key, label, accept_potential_overlap, review_key, palette_index, *, conversion_source=None):
     import base64
     from importer.texture_png import export_texture_png
-    report=review(project,anchor,content,expected_source_key,label,accept_potential_overlap)
+    report=review(project,anchor,content,expected_source_key,label,accept_potential_overlap,conversion_source=conversion_source)
     if report['review_key']!=review_key:
         raise ProjectError('Texture slot pixel inspection requires the current review')
     if type(palette_index) is not int or not 0<=palette_index<max(1,report['palette_count']):
@@ -261,8 +264,8 @@ def pixels(project, anchor, content, expected_source_key, label, accept_potentia
     return dict(report=report,palette_index=palette_index,proposed_png_base64=base64.b64encode(png).decode('ascii'))
 
 
-def apply(project, anchor, content, expected_source_key, label, accept_potential_overlap, review_key):
-    report = review(project, anchor, content, expected_source_key, label, accept_potential_overlap)
+def apply(project, anchor, content, expected_source_key, label, accept_potential_overlap, review_key, *, conversion_source=None):
+    report = review(project, anchor, content, expected_source_key, label, accept_potential_overlap,conversion_source=conversion_source)
     if report['review_key'] != review_key or not report['can_apply']:
         raise ProjectError('Texture slot Apply requires the current applicable review')
     identifier = 'texture-new://' + str(uuid4())
@@ -270,6 +273,10 @@ def apply(project, anchor, content, expected_source_key, label, accept_potential
                'source_slot_count', 'slot_index', 'byte_length', 'label', 'accept_potential_overlap',
                'pack_entry_index', 'pack_descriptor_index')}
     binding.update(format='tim-slot-v1', asset_sha256=report['proposed_sha256'])
+    if 'image_source' in report:
+        binding['image_source']=deepcopy(report['image_source'])
+        from .texture_slot_sources import write_recipe
+        write_recipe(project,binding,conversion_source)
     validate_binding(project, identifier, binding)
     path = project.root / 'Authored' / 'Textures' / (binding['asset_sha256'] + '.tim')
     if not path.resolve().is_relative_to(project.root):

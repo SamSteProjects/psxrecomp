@@ -1,5 +1,44 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: combined converted TIM and source Apply
+
+Use converted TIM draft now carries the exact PNG, optional STP plane and native
+options into slot Review, Proposed pixel inspection and Apply. Review reproduces
+the whole proposed TIM from those sources and includes the immutable source
+receipt in its review digest. A mismatched or altered recipe, malformed source
+fields, stale context or old review key rejects the operation before project state
+changes. Converted command bodies are bounded at 24 MiB, each PNG at 8 MiB, native
+TIM at 1 MiB, and retained slot sources at the existing 32 MiB project budget.
+
+Apply retains the TIM and reproducible source receipt together under one binding
+and one Undo entry, both for a new slot and for an edited saved slot. The persistent
+UUID and native index remain stable. Undo/Redo restore native content and recipe
+together; Save/reopen, retained-source downloads and input snapshots use the same
+immutable source files. All source file targets are preflighted before writes.
+Filesystem failures can leave unreferenced immutable files, but cannot publish a
+partial project binding or history operation.
+
+Manual TIM interchange continues to use the previous source-receipt preservation
+and withdrawal rules. Pure source-receipt changes for an otherwise unchanged TIM
+remain available through Review source retention / Retain reviewed sources; a
+native no-op is not turned into an implicit Apply. The slot review identifies when
+PNG/STP sources will be retained with the native edit.
+
+Fourteen focused Python cases and both slot/conversion Node suites passed. Raw and
+compressed construction checks covered combined append/edit, STP input retention,
+readonly review/pixels, recipe-dependent stale keys, malformed/mismatched sources,
+one Undo per Apply, snapshot inputs and native carrier readback. Private Town01
+browser proof passed new 4-bit conversion/Apply, saved-slot RGB16 conversion/Apply,
+review invalidation, readonly pixels/Return, Save/reload and normal Build assessment.
+Central checks confirmed two combined history entries, recipe restoration on Undo,
+offline reopen, exact PNG snapshot input, exact final slot 96 TIM in the normal
+package and unchanged Retail TIM members. Evidence:
+`local-output/sdk-20260909/texture-slot-conversion-apply-20261004/parent/proof.json`.
+
+Broader GLB/image dependency integration, general Retail mode/CLUT allocation and
+runtime/gameplay acceptance remain outstanding. No game was launched and no
+installed runtime or physical disc was changed.
+
 ## 2026-10-04: retained PNG/STP sources and reproducible slot recipes
 
 Saved authored slots can now retain their original PNG, optional STP plane and

@@ -17,7 +17,7 @@ export async function decodeImageConversion(v,request,input){
   const native=new DataView(bytes.buffer),bpp=r.options.bpp,capacity=bpp<=8?1<<bpp:0,at=capacity?20+capacity*2:8;
   if(![4,8,16,24].includes(bpp)||native.getUint32(0,true)!==16||native.getUint32(4,true)!==([4,8,16,24].indexOf(bpp)|(capacity?8:0))||at+12>bytes.length||native.getUint32(at,true)!==12+r.width*r.height*bpp/8||native.getUint16(at+4,true)!==r.options.image_x||native.getUint16(at+6,true)!==r.options.image_y||native.getUint16(at+8,true)*16!==r.width*bpp||native.getUint16(at+10,true)!==r.height||at+native.getUint32(at,true)!==bytes.length||r.options.image_x+r.width*bpp/16>1024||r.options.image_y+r.height>512)fail('Converted TIM image header differs from the native choices.');
   if(capacity&&(native.getUint32(8,true)!==12+capacity*2||native.getUint16(12,true)!==r.options.clut_x||native.getUint16(14,true)!==r.options.clut_y||native.getUint16(16,true)!==capacity||native.getUint16(18,true)!==1))fail('Converted TIM palette header differs from the native choices.');
-  return {sha256:r.proposed_sha256,size:r.byte_length,base64:v.content_base64,conversion:structuredClone(r)};
+  return {sha256:r.proposed_sha256,size:r.byte_length,base64:v.content_base64,conversion:structuredClone(r),conversionSource:{png_base64:request.png_base64,stp_png_base64:request.stp_png_base64,options:structuredClone(request.options)}};
 }
 export function decodeSourceRetention(v,request,draft,input,applied=false){
   const fields=['schema_version','asset_id','project_source_key','effective_sha256','source','native_bytes_changed','changed','can_apply','project_changed','gameplay_verified','review_key'];

@@ -47,20 +47,44 @@ def read_sources(project,binding,native=None):
     return png,stp,report
 
 
+def prepare_recipe(project,native,source,exclude_asset_id=None):
+    if not isinstance(source,dict) or set(source)!={'png','stp','options'}:
+        raise ProjectError('Converted slot requires exact immutable PNG/STP sources and options')
+    png,stp,options=source['png'],source['stp'],source['options']
+    candidate,conversion=convert_png(png,options,stp)
+    if candidate!=native:raise ProjectError('Supplied PNG recipe must reproduce the reviewed TIM exactly')
+    receipt=dict(format='png-tim-source-v1',png_sha256=sha256(png).hexdigest(),png_byte_length=len(png),
+        stp_png_sha256=sha256(stp).hexdigest() if stp is not None else None,
+        stp_png_byte_length=len(stp) if stp is not None else None,options=deepcopy(options),conversion_report=conversion)
+    total=sum(b['image_source']['png_byte_length']+(b['image_source']['stp_png_byte_length'] or 0)
+        for i,b in project.texture_additions.items() if i!=exclude_asset_id and 'image_source' in b)
+    if total+len(png)+len(stp or b'')>32*1024*1024:
+        raise ProjectError('Retained slot image sources exceed their 32 MiB project budget')
+    return receipt
+
+
+def write_recipe(project,binding,source):
+    receipt=validate_receipt(binding)
+    writes=[]
+    for prefix,content in (('png',source['png']),('stp_png',source['stp'])):
+        if content is None and prefix=='stp_png' and receipt['stp_png_sha256'] is None:continue
+        if not isinstance(content,bytes) or len(content)!=receipt[prefix+'_byte_length'] or sha256(content).hexdigest()!=receipt[prefix+'_sha256']:
+            raise ProjectError('PNG source differs from its reviewed immutable receipt')
+        path=project.root/'Authored'/'TextureSources'/(receipt[prefix+'_sha256']+'.png')
+        if not path.resolve().is_relative_to(project.root):raise ProjectError('PNG source path escapes the project')
+        if path.exists():
+            if path.stat().st_size!=len(content) or path.read_bytes()!=content:raise ProjectError('Existing retained PNG content changed')
+        else:writes.append((path,content))
+    for path,content in writes:atomic_write(path,content)
+    read_sources(project,binding)
+
+
 def review(project,asset_id,expected_sha256,expected_source_key,png,options,stp=None):
     from .texture_slot_edit import source
     native,original=source(project,asset_id,expected_source_key)
     if original['current_sha256']!=expected_sha256:
         raise ProjectError('Current TIM changed; review image-source retention again')
-    candidate,conversion=convert_png(png,options,stp)
-    if candidate!=native:raise ProjectError('Supplied PNG recipe must reproduce Current TIM exactly')
-    receipt=dict(format='png-tim-source-v1',png_sha256=sha256(png).hexdigest(),png_byte_length=len(png),
-        stp_png_sha256=sha256(stp).hexdigest() if stp is not None else None,
-        stp_png_byte_length=len(stp) if stp is not None else None,options=deepcopy(options),conversion_report=conversion)
-    total=sum(b['image_source']['png_byte_length']+(b['image_source']['stp_png_byte_length'] or 0)
-        for i,b in project.texture_additions.items() if i!=asset_id and 'image_source' in b)
-    if total+len(png)+len(stp or b'')>32*1024*1024:
-        raise ProjectError('Retained slot image sources exceed their 32 MiB project budget')
+    receipt=prepare_recipe(project,native,dict(png=png,stp=stp,options=options),asset_id)
     changed=project.texture_additions[asset_id].get('image_source')!=receipt
     result=dict(schema_version='legaia.texture-slot-source-retention.v1',asset_id=asset_id,
         project_source_key=expected_source_key,effective_sha256=expected_sha256,source=receipt,
@@ -75,14 +99,7 @@ def apply(project,asset_id,expected_sha256,expected_source_key,png,options,stp,r
     if report['review_key']!=review_key or not report['can_apply']:
         raise ProjectError('Image-source retention requires the applicable current review')
     before=deepcopy(project.texture_additions[asset_id]);after=deepcopy(before);after['image_source']=deepcopy(report['source'])
-    for prefix,content in (('png',png),('stp_png',stp)):
-        if content is None:continue
-        path=project.root/'Authored'/'TextureSources'/(report['source'][prefix+'_sha256']+'.png')
-        if not path.resolve().is_relative_to(project.root):raise ProjectError('PNG source path escapes the project')
-        if path.exists():
-            if path.stat().st_size!=len(content) or path.read_bytes()!=content:raise ProjectError('Existing retained PNG content changed')
-        else:atomic_write(path,content)
-    read_sources(project,after)
+    write_recipe(project,after,dict(png=png,stp=stp,options=options))
     project.texture_additions[asset_id]=after
     project.undo_stack.append(dict(target='texture_additions',asset_id=asset_id,before=before,after=deepcopy(after)))
     project.redo_stack.clear()
