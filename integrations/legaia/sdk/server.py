@@ -712,6 +712,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-face-removal.js": ("model-face-removal.js", "text/javascript"),
                  "/model-face-addition.js": ("model-face-addition.js", "text/javascript"),
                  "/model-vector-allocation.js": ("model-vector-allocation.js", "text/javascript"),
+                 "/model-group-allocation.js": ("model-group-allocation.js", "text/javascript"),
                  "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
