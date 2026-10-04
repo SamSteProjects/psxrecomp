@@ -1062,6 +1062,24 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_allocation import source
                     self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
                     return
+                if route in ('/api/model-vector-allocation-source','/api/model-vector-allocation-preview','/api/model-vector-allocation'):
+                    fields={'asset_id','source_key'}
+                    if route!='/api/model-vector-allocation-source':fields.update({'requests','expected_sha256'})
+                    if route=='/api/model-vector-allocation':fields.add('proposed_sha256')
+                    if (set(body)!=fields or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
+                            or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key])
+                                   for key in fields & {'source_key','expected_sha256','proposed_sha256'})
+                            or 'requests' in fields and (not isinstance(body['requests'],list) or not 0<len(body['requests'])<=2048)):
+                        raise ProjectError('Vector allocation requires exact typed model, requests, source and reviewed hashes')
+                    from .model_vector_allocation import source,review
+                    if route.endswith('-source'):
+                        self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    elif route.endswith('-preview'):
+                        self._json(200,review(self.server.project,body['asset_id'],body['requests'],body['expected_sha256'],body['source_key']))
+                    else:
+                        self.server.project.apply_model_vector_allocations(body['asset_id'],body['requests'],body['expected_sha256'],body['source_key'],body['proposed_sha256'])
+                        self._json(200,self.server.state())
+                    return
                 if route in ('/api/model-face-addition-source', '/api/model-face-addition-preview', '/api/model-face-addition'):
                     fields = {'asset_id', 'source_key'}
                     if route != '/api/model-face-addition-source':

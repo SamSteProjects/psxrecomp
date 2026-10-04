@@ -1285,21 +1285,33 @@ class ProjectService:
 
     def apply_model_face_additions(self, asset_id, requests, expected_sha256, expected_key, proposed_sha256):
         from .model_face_addition import prepare
-        from .scene_preview import source_key
         content, binding, report = prepare(self, asset_id, requests, expected_sha256, expected_key)
         if proposed_sha256 != report['proposed_sha256']:
             raise ProjectError('Face addition differs from its reviewed candidate')
+        self._publish_model_ledger(asset_id,content,binding,expected_key,'Face addition')
+
+    def apply_model_vector_allocations(self, asset_id, requests, expected_sha256, expected_key, proposed_sha256):
+        from .model_vector_allocation import prepare
+        content,binding,report=prepare(self,asset_id,requests,expected_sha256,expected_key)
+        if proposed_sha256!=report['proposed_sha256']:
+            raise ProjectError('Vector allocation differs from its reviewed candidate')
+        self._publish_model_ledger(asset_id,content,binding,expected_key,'Vector allocation')
+
+    def _publish_model_ledger(self,asset_id,content,binding,expected_key,operation):
+        from .scene_preview import source_key
         if asset_id not in self.model_overrides and len(self.model_overrides) >= 128:
             raise ProjectError('Project supports at most 128 model replacements')
         path = self.root / 'Authored' / 'Models' / (binding['asset_sha256'] + '.tmd')
         if not path.resolve().is_relative_to(self.root):
-            raise ProjectError('Face addition path escapes project')
+            raise ProjectError(operation+' path escapes project')
         if source_key(self) != expected_key:
-            raise ProjectError('Project changed while preparing face addition')
+            raise ProjectError('Project changed while preparing '+operation.lower())
         if path.exists():
             self.read_model_replacement(asset_id, binding)
         else:
             atomic_write(path, content)
+        if source_key(self)!=expected_key:
+            raise ProjectError('Project changed before publishing '+operation.lower())
         before = deepcopy(self.model_overrides.get(asset_id))
         self.model_overrides[asset_id] = deepcopy(binding)
         self.undo_stack.append(dict(target='model_overrides', asset_id=asset_id, before=before, after=deepcopy(binding)))
