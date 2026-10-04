@@ -28,6 +28,28 @@ try{
     const layer=tree(host).find(node=>node.tagName==='select');layer.value='retail';layer.onchange();
     tree(host).find(node=>node.textContent==='Inspect current face 2').onclick();assert.equal(selected.at(-1).primitive_index,2);assert.equal(selected.at(-1).face_id,undefined);
     live=false;control.refresh();assert.ok(!tree(host).some(node=>node.textContent==='Inspect current face 2'));control.close();
+    const index=noun==='vertex'?5:4,allocatedBinding={...binding,[noun+'_index']:index};
+    const allocated={...report,schema_version:`legaia.model-${noun}-users.v3`,[noun+'_index']:index,
+      vector_origin:'allocated',retail_vector_count:index,current_vector_count:index+2,
+      retail_coordinates:null,retail_users:[],current_users:report.current_users.map(row=>({...row,[noun+'_index']:index}))};
+    decode(allocated,allocatedBinding);
+    for(const change of [v=>v.vector_origin='retail',v=>v.retail_coordinates=[0,1,2],
+      v=>v.retail_users=[{...row,[noun+'_index']:index}],v=>v.current_vector_count=index,
+      v=>v.retail_vector_count=index+3,v=>delete v.vector_origin]){
+      const bad=structuredClone(allocated);change(bad);assert.throws(()=>decode(bad,allocatedBinding));
+    }
+    const retained={...report,schema_version:`legaia.model-${noun}-users.v3`,vector_origin:'retail',retail_vector_count:index,current_vector_count:index+2};
+    decode(retained,binding);
+    const allocatedHost=new Element('main'),allocatedSelected=[];live=true;
+    globalThis.fetch=async()=>({ok:true,json:async()=>structuredClone(allocated)});
+    const allocatedControl=mount({host:allocatedHost,assetId:binding.asset_id,expectedSha:hash,sourceKey:hash,getSelection:()=>({object_index:0,[noun+'_index']:index}),isCurrent:()=>live,onSelect:row=>allocatedSelected.push(row)});
+    await tree(allocatedHost).find(node=>node.dataset[noun+'Users']!==undefined).onclick();
+    assert.ok(tree(allocatedHost).some(node=>node.textContent.includes('allocated row; no Retail counterpart')));
+    const allocatedLayer=tree(allocatedHost).find(node=>node.tagName==='select');
+    assert.ok(allocatedLayer.children.find(node=>node.value==='retail').disabled);
+    tree(allocatedHost).find(node=>node.textContent==='Inspect current face 1').onclick();
+    assert.equal(allocatedSelected.at(-1)[noun+'_index'],index);assert.equal(allocatedSelected.at(-1).face_id,faceId);
+    live=false;allocatedControl.refresh();assert.ok(!tree(allocatedHost).some(node=>node.textContent==='Inspect current face 1'));allocatedControl.close();
   }
 }finally{for(const [key,value] of Object.entries(saved)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
-console.log('Added normal/vertex reference ownership, Retail gaps, authored navigation, current indices and stale withdrawal passed.');
+console.log('Added and allocated normal/vertex ownership, absent Retail counterparts, authored navigation and stale withdrawal passed.');

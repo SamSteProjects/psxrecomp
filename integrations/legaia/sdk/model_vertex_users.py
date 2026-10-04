@@ -35,20 +35,27 @@ def inspect(project, asset_id, object_index, vertex_index, expected_sha256, expe
         if sha256(effective).hexdigest() != expected_sha256:
             raise ProjectError('Model changed since vertex vector inspection')
         current_users = vertex_users(effective, object_index, vertex_index)
-        retail_users = vertex_users(retail, object_index, vertex_index)
+        retail_count=struct.unpack_from('<I',retail,12+object_index*28+4)[0]
+        current_count=struct.unpack_from('<I',effective,12+object_index*28+4)[0]
+        retail_owned=vertex_index<retail_count
+        retail_users = vertex_users(retail, object_index, vertex_index) if retail_owned else []
         def coordinates(data):
             offset = 12 + struct.unpack_from('<I', data, 12 + object_index * 28)[0] + vertex_index * 8
             return list(struct.unpack_from('<3h', data, offset))
         report = dict(schema_version='legaia.model-vertex-users.v1', asset_id=asset_id, scene_id=scene,
                       project_source_key=expected_key, source_sha256=source_hash, effective_sha256=expected_sha256,
                       object_index=object_index, vertex_index=vertex_index, model_byte_length=len(effective),
-                      retail_coordinates=coordinates(retail), current_coordinates=coordinates(effective),
+                      retail_coordinates=coordinates(retail) if retail_owned else None, current_coordinates=coordinates(effective),
                       retail_users=retail_users, current_users=current_users, face_mapping=face_mapping, read_only=True, gameplay_verified=False,
                       scope='qualified_stored_vertex_reference_operands_in_selected_object')
     if added:
         report.update(schema_version='legaia.model-vertex-users.v2', authored_faces=authored[object_index],
                       current_face_count=sum(row['current_index'] is not None for row in face_mapping)+len(authored[object_index]),
                       retail_model_byte_length=len(retail))
+        if binding['ledger']['schema_version']=='legaia.model-face-addition-ledger.v5':
+            report.update(schema_version='legaia.model-vertex-users.v3',
+                vector_origin='retail' if retail_owned else 'allocated',
+                retail_vector_count=retail_count,current_vector_count=current_count)
     if project.mode != 'edit' or project.active_scene != scene or source_key(project) != expected_key:
         raise ProjectError('Project changed while reading vertex references')
     if len(json.dumps(report, allow_nan=False).encode('utf-8')) > 4*1024*1024:
