@@ -128,6 +128,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["model_face_removal"] = bool(self.project.disc_path)
         state["capabilities"]["model_face_addition"] = bool(self.project.disc_path)
         state["capabilities"]["model_vector_allocation"] = bool(self.project.disc_path)
+        state["capabilities"]["model_mesh_append"] = bool(self.project.disc_path)
         state["capabilities"]["model_allocation_inspection"] = bool(self.project.disc_path)
         state["capabilities"]["scene_animation_preview"] = bool(self.project.disc_path)
         state["capabilities"]["draft_output_review"] = bool(self.project.disc_path and self.project.actor_drafts)
@@ -710,6 +711,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-face-removal.js": ("model-face-removal.js", "text/javascript"),
                  "/model-face-addition.js": ("model-face-addition.js", "text/javascript"),
                  "/model-vector-allocation.js": ("model-vector-allocation.js", "text/javascript"),
+                 "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
                  "/model-allocation.js": ("model-allocation.js", "text/javascript"),
                  "/script-operand-files.js": ("script-operand-files.js", "text/javascript"),
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
@@ -776,7 +778,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import'):
+            if urlsplit(self.path).path in ('/api/animation-glb-preview', '/api/animation-glb-pose-preview', '/api/animation-glb-import', '/api/model-glb-preview', '/api/model-glb-pose-preview', '/api/model-glb-import', '/api/model-mesh-append-preview', '/api/model-mesh-append'):
                 request_limit = 44 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview', '/api/texture-png-pixels-preview', '/api/texture-png-scene-preview', '/api/texture-png-import'):
                 request_limit = 24 * 1024 * 1024
@@ -1063,6 +1065,28 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError('Model allocation inspection requires model and source key only')
                     from .model_allocation import source
                     self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    return
+                if route in ('/api/model-mesh-append-preview','/api/model-mesh-append'):
+                    fields={'asset_id','content_base64','donor_face_id','expected_sha256','source_key'}
+                    if route=='/api/model-mesh-append':fields.add('review_key')
+                    if (set(body)!=fields or not isinstance(body['asset_id'],str) or not 0<len(body['asset_id'])<=512
+                            or not isinstance(body['donor_face_id'],str) or not 0<len(body['donor_face_id'])<=512
+                            or any(not isinstance(body[key],str) or len(body[key])!=64 or any(c not in '0123456789abcdef' for c in body[key])
+                                   for key in fields & {'source_key','expected_sha256','review_key'})):
+                        raise ProjectError('Mesh append requires exact source, donor, model and review identities')
+                    encoded=body['content_base64']
+                    if not isinstance(encoded,str) or not 0<len(encoded)<=44739244:
+                        raise ProjectError('Mesh append requires GLB bytes of at most 32 MiB')
+                    try:payload=base64.b64decode(encoded,validate=True)
+                    except ValueError as exc:raise ProjectError('Mesh append requires valid base64') from exc
+                    if not 28<=len(payload)<=32*1024*1024:raise ProjectError('Mesh append GLB exceeds its byte bounds')
+                    args=(body['asset_id'],payload,body['donor_face_id'],body['expected_sha256'],body['source_key'])
+                    if route.endswith('-preview'):
+                        from .model_mesh_append import review
+                        self._json(200,review(self.server.project,*args))
+                    else:
+                        self.server.project.apply_model_mesh_append(*args,body['review_key'])
+                        self._json(200,self.server.state())
                     return
                 if route in ('/api/model-vector-allocation-source','/api/model-vector-allocation-preview','/api/model-vector-allocation'):
                     fields={'asset_id','source_key'}

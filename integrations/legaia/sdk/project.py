@@ -1297,6 +1297,13 @@ class ProjectService:
             raise ProjectError('Vector allocation differs from its reviewed candidate')
         self._publish_model_ledger(asset_id,content,binding,expected_key,'Vector allocation')
 
+    def apply_model_mesh_append(self,asset_id,content,donor_face_id,expected_sha256,expected_key,review_key):
+        from .model_mesh_append import prepare
+        candidate,binding,report=prepare(self,asset_id,content,donor_face_id,expected_sha256,expected_key)
+        if review_key!=report['review_key']:
+            raise ProjectError('Mesh import differs from the reviewed geometry or donor')
+        self._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh append')
+
     def _publish_model_ledger(self,asset_id,content,binding,expected_key,operation):
         from .scene_preview import source_key
         if asset_id not in self.model_overrides and len(self.model_overrides) >= 128:

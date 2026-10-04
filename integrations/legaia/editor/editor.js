@@ -655,6 +655,7 @@ function setBusy(value) {
   if($('shape-allocation'))$('shape-allocation').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_allocation_inspection;
   if($('shape-add-face'))$('shape-add-face').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_face_addition;
   if($('shape-add-vectors'))$('shape-add-vectors').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_vector_allocation;
+  if($('shape-append-mesh'))$('shape-append-mesh').disabled=value||!!shapeDraft||state.project?.mode!=='edit'||!state.capabilities?.model_mesh_append;
   document.querySelectorAll('[data-axis],[data-component-property]').forEach(input=>input.disabled=value || !canEdit());
   document.querySelectorAll('[data-appearance-edit]').forEach(button=>button.disabled=value || !canEditAppearance() || button.dataset.unavailable==='true');
   document.querySelectorAll('[data-animation-edit]').forEach(button=>button.disabled=value||state.project.mode!=='edit');
@@ -1411,6 +1412,7 @@ function synchronizeResources(){
   modelAllocationEditor?.updateState();
   modelFaceAdditionEditor?.updateState();
   modelVectorAllocationEditor?.updateState();
+  modelMeshAppendEditor?.updateState();
   modelPrimitiveEditor?.updateState();
   modelMaterialsEditor?.updateState();
   sceneAnimationController?.updateState();
@@ -3900,6 +3902,15 @@ let modelFaceRemovalEditor=null;
 let modelAllocationEditor=null;
 let modelFaceAdditionEditor=null;
 let modelVectorAllocationEditor=null;
+let modelMeshAppendEditor=null;
+const meshAppendButton=document.createElement('button');meshAppendButton.id='shape-append-mesh';meshAppendButton.type='button';meshAppendButton.textContent='Append GLB mesh';$('shape-primitives').after(meshAppendButton);
+meshAppendButton.onclick=async()=>{
+  if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit'||!state.capabilities?.model_mesh_append)return;
+  modelMeshAppendEditor?.dispose();const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]),module=await import('/model-mesh-append.js');
+  if(busy||asset!==modelAssetId||state.project.mode!=='edit'||context!==JSON.stringify([state.project.path,state.scene?.id,state.scene_preview_source_key]))return;
+  modelMeshAppendEditor=await module.openModelMeshAppend({assetId:asset,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Mesh appended. Save project to persist.');await openModel(asset,null,null,'authored');}});
+};
+
 const vectorAllocationButton=document.createElement('button');vectorAllocationButton.id='shape-add-vectors';vectorAllocationButton.type='button';vectorAllocationButton.textContent='Add vertices or normals';$('shape-primitives').after(vectorAllocationButton);
 vectorAllocationButton.onclick=async()=>{
   if(busy||shapeDraft||!modelAssetId||state.project.mode!=='edit'||!state.capabilities?.model_vector_allocation)return;
@@ -4237,6 +4248,7 @@ function updateShapeDraft(){
   faceRemovalButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_face_removal;
   allocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_allocation_inspection;
   vectorAllocationButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_vector_allocation;
+  meshAppendButton.disabled=busy||pending||state.project?.mode!=='edit'||!state.capabilities?.model_mesh_append;
   if(state.model_overrides?.[modelAssetId]?.format==='tmd-face-removal-v1'){$('shape-status').textContent='Count-changing face removal applied. Vector edits, object transforms and same-layout TMD/OBJ/JSON edits retain removals. Retained-face editing is available. Material editing is available. GLB export/import retains the qualified Current layout; downloads, further removals, Undo/Redo and Clear are available.';}
 }
 $('shape-file').onchange=()=>{const file=$('shape-file').files?.[0];shapeDraft=file?{file,asset:modelAssetId,context:JSON.stringify([state.project.path,state.scene.id])}:null;updateShapeDraft();if(file)$('shape-status').textContent=`Selected ${file.name} · not applied. Apply or discard before changing model views.`;};
