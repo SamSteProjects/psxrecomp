@@ -1,5 +1,29 @@
 # Persistent native animation record allocation
 
+Experimental **Export disc** now delivers retained allocated banks through
+qualified compressed ANM carriers together with ordinary MAN edits and appended
+NPC records. It uses the same managed native assignment serializer as normal
+Build: authored UUID/hash references resolve into qualified appended ordinals,
+and the assigned original actor header stays distinct from a new donor NPC copy.
+The selected-NPC shortcut is bypassed whenever a retained ledger is present, so
+scene-owned allocation cannot be dropped or sent to the unmanaged path.
+
+Project export first composes original-address asset patches, prepares the fully
+qualified retained bank once, relocates compressed ANM carriers, then rebuilds
+MAN owners. `animation_growth.final_archive_banks` records exact final bank hashes
+and record counts after MAN relocation; `animation_container` records archive
+resource composition. The source disc identity is checked again before bank
+preparation. Shared table owners are supported when owner-relative tables remain
+qualified through both operations. Raw streaming ANM and relocation that requires
+remapping distinct tables inside a physical owner remain unsupported and fail
+before a successful export report. Other existing Export disc limitations remain.
+
+Synthetic routing and real native archive/Mode 2 writer smoke verify expanded
+bank plus appended MAN content, preserved authored payload patches, final exact
+readback and unchanged input. Source preparation is substituted in that smoke;
+no Retail full-disc export or gameplay acceptance is claimed. Exported discs are
+experimental; current runtime/gameplay verification remains on the deferred queue.
+
 **Manage allocated clips → Edit retained GLB** supports external channel editing
 of a saved active or retired capture. Choose an explicit 1–120 export FPS,
 Prepare retained GLB export, and download both the GLB and binding JSON. Preserve

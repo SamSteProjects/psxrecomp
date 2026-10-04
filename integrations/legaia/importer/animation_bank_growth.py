@@ -121,3 +121,34 @@ def rebuild_animation_bank_entry(source,expected_sha256,entry_index,table_offset
     return result,dict(entry_index=entry_index,carrier=report,archive=audit,
         reopened_bank_verified=True,physical_neighbors_preserved=True,
         disc_relocation_required=audit['disc_relocation_required'],build_ready=False,gameplay_verified=False)
+
+
+def verify_rebuilt_animation_banks(source,requests):
+    """Read qualified banks after other resource/MAN relocations have finished."""
+    if not isinstance(source,bytes) or not isinstance(requests,list) or not 1<=len(requests)<=32:
+        raise ImportError('Final animation bank verification requires immutable archive and bounded requests')
+    archive=_archive(source);reports=[];seen=set()
+    for request in requests:
+        fields={'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'}
+        if not isinstance(request,dict) or set(request)!=fields or request['kind']!='animation-bank':
+            raise ImportError('Final animation bank request is malformed')
+        entry_index,offset,index=(request[k] for k in ('entry_index','table_offset','descriptor_index'))
+        if any(type(v) is not int or v<0 for v in (entry_index,offset,index)) or not isinstance(request['bank'],bytes) or not 0<len(request['bank'])<=4*1024*1024:
+            raise ImportError('Final animation bank locator or payload is outside bounds')
+        identity=(entry_index,offset,index)
+        if identity in seen:raise ImportError('Final animation bank requests duplicate a resource')
+        seen.add(identity);entry=archive.entry(entry_index);span=locate_physical_span(archive,entry.start_lba*2048)
+        if span['entry_index']!=entry_index or span['offset_within_span']!=0:
+            raise ImportError('Final animation bank requires its unique physical owner')
+        raw=source[span['byte_offset']:span['byte_offset']+span['byte_length']]
+        table=parse_scene_assets(raw,entry_index,offset)
+        if table is None or not 0<=index<len(table.descriptors):raise ImportError('Final animation bank descriptor is missing')
+        descriptor=table.descriptors[index];start=offset+descriptor.data_offset
+        end=min([offset+d.data_offset for d in table.descriptors if d.data_offset>descriptor.data_offset]+[len(raw)])
+        if descriptor.type_byte!=5 or descriptor.size!=len(request['bank']) or not offset+8+8*len(table.descriptors)<=start<end<=len(raw) or sum(d.data_offset==descriptor.data_offset for d in table.descriptors)!=1:
+            raise ImportError('Final animation bank descriptor type, size or span changed')
+        decoded,_=decompress_lzs(raw[start:end],descriptor.size)
+        if decoded!=request['bank']:raise ImportError('Final animation bank differs after resource or MAN relocation')
+        reports.append(dict(entry_index=entry_index,table_offset=offset,descriptor_index=index,
+            bank_sha256=sha256(decoded).hexdigest(),record_count=len(animation_record_ranges(decoded)),final_bank_verified=True))
+    return reports

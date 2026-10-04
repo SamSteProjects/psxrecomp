@@ -1,0 +1,84 @@
+"""Synthetic ANM/MAN composition reaches a new physical disc without Retail bytes."""
+from contextlib import nullcontext
+from copy import deepcopy
+from hashlib import sha256
+from pathlib import Path
+import struct
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from importer.core import Mode2Image,ProtArchive,parse_scene_assets,decompress_lzs,parse_man,ImportError
+from importer.animation_bank_growth import verify_rebuilt_animation_banks
+from importer.model_pack_archive import _archive
+from importer.man_actor_structure import append_actor_candidates
+from importer.relocated_disc import RelocatedLogicalDisc
+from importer.disc_rebuild import write_grown_prot_disc
+from importer.serialization import compress_lzs
+from sdk.project import ProjectService,ProjectError
+from sdk.draft_build import prepare_draft_archive
+from tools.cd_sector import SYNC,encode_form1,relocate_mode2
+from test_animation_bank_growth import fixture as bank_fixture
+from test_man_actor_structure import fixture as man_fixture
+from test_model_pack_archive import archive_source
+from test_relocated_disc import LogicalSource
+
+
+class AnimationDraftExport(unittest.TestCase):
+    def test_shared_owner_growth_final_readback_and_synthetic_disc(self):
+        _,bank,expanded,_,_=bank_fixture();man=man_fixture()
+        candidate,_=append_actor_candidates(man,sha256(man).hexdigest(),[
+            dict(id='npc',donor_record_index=1,position=dict(x=832,z=896))])
+        payloads=[compress_lzs(bank),compress_lzs(man),b'KEEP',b'opaque3',b'opaque4',b'opaque5']
+        carrier=bytearray(56);struct.pack_into('<II',carrier,0,6,0xAABBCCDD)
+        for i,data in enumerate(payloads):
+            kind,size=(5,len(bank)) if i==0 else (3,len(man)) if i==1 else (1,len(data))
+            struct.pack_into('<II',carrier,8+8*i,(kind<<24)|size,len(carrier));carrier.extend(data)
+        source,starts=archive_source(bytes(carrier));table=parse_scene_assets(bytes(carrier),1)
+        resource=dict(kind='animation-bank',entry_index=1,table_offset=0,descriptor_index=0,
+            expected_bank_sha256=sha256(bank).hexdigest(),bank=expanded)
+        native_request=dict(entry_index=1,table_offset=0,source_man_sha256=sha256(man).hexdigest(),candidate=candidate)
+        with tempfile.TemporaryDirectory() as root:
+            project=ProjectService(Path(root)/'project');scene='scene://fixture'
+            project.imports={scene:{'scene':{'name':'fixture'},'actors':[]}}
+            project.overrides={scene:{'AnimationRecords':{'test_retained_identity':'stable'}},scene+'/actors/man-p1/0001':{'ActorAllocatedAnimation':{'record_id':'stable'}}}
+            project.actor_drafts={'npc':dict(scene_id=scene)};before=deepcopy(project.overrides)
+            base=LogicalSource();view=RelocatedLogicalDisc(base,source,sha256(base.read_file(base.find('PROT.DAT'))).hexdigest());sectors=[]
+            for lba in range(view.size//2352):
+                raw=bytearray(2352);raw[:12]=SYNC;raw[15]=2;raw[17]=1
+                raw[18]=0x89 if lba==view.prot_lba+len(source)//2048-1 else 0x08
+                raw[20:24]=raw[16:20];raw[24:2072]=view.user_sector(lba)
+                sectors.append(encode_form1(relocate_mode2(bytes(raw),lba)))
+            disc=Path(root)/'source.bin';disc.write_bytes(b''.join(sectors));project.disc_path=str(disc)
+            disc_hash=sha256(disc.read_bytes()).hexdigest();seen=[]
+            def prepare(p,selected,*,defer_rebuild,scene_id,animation_growth_managed):
+                self.assertTrue(animation_growth_managed);self.assertTrue(defer_rebuild);self.assertEqual(selected,'npc')
+                seen.append(scene_id)
+                return source,dict(_rebuild_request=native_request,source_disc_sha256=disc_hash,
+                    _asset_patches=[dict(offset=starts[1]*2048+table.descriptors[2].data_offset,
+                        expected_sha256=sha256(b'KEEP').hexdigest(),payload=b'EDIT')])
+            with patch('sdk.draft_build._prepare_draft_scene',side_effect=prepare),patch('sdk.draft_build._disc_context',return_value=nullcontext((None,disc_hash,None,_archive(source)))),patch('sdk.animation_growth.prepare_animation_growth',return_value=([resource],{'carriers':[]},[])):
+                result,audit=prepare_draft_archive(project,'npc')
+            self.assertEqual(seen,[scene]);self.assertEqual(project.overrides,before)
+            self.assertTrue(audit['animation_growth']['final_archive_banks'][0]['final_bank_verified'])
+            self.assertGreater(len(result),len(source));self.assertEqual(result[-8*2048:],source[-8*2048:])
+            archive=_archive(result);raw=archive.read_entry(archive.entry(1));new=parse_scene_assets(raw,1)
+            self.assertEqual(decompress_lzs(raw[new.descriptors[0].data_offset:],new.descriptors[0].size)[0],expanded)
+            emitted=decompress_lzs(raw[new.descriptors[1].data_offset:],new.descriptors[1].size)[0]
+            self.assertEqual(emitted,candidate);self.assertEqual(len(parse_man(emitted).actors),2)
+            self.assertEqual(raw[new.descriptors[2].data_offset:new.descriptors[2].data_offset+4],b'EDIT')
+            output=Path(root)/'export.bin'
+            report=write_grown_prot_disc(disc,disc_hash,result,sha256(source).hexdigest(),output)
+            self.assertTrue(report['reopened_prot_verified']);self.assertEqual(sha256(disc.read_bytes()).hexdigest(),disc_hash)
+            with Mode2Image(output) as image:
+                reopened=ProtArchive(image,image.find('PROT.DAT'));self.assertEqual(image.read_file(image.find('PROT.DAT')),result)
+                final=image.read_user(reopened.node.extent_lba,0,reopened.node.size,reopened.node.size)
+                self.assertEqual(verify_rebuilt_animation_banks(final,[resource]),audit['animation_growth']['final_archive_banks'])
+            bad=bytearray(result);descriptor_at=archive.entry(1).start_lba*2048+8
+            struct.pack_into('<I',bad,descriptor_at,(5<<24)|(len(expanded)+1))
+            with self.assertRaises(ImportError):verify_rebuilt_animation_banks(bytes(bad),[resource])
+            with patch('sdk.draft_build._prepare_draft_scene',side_effect=prepare),patch('sdk.draft_build._disc_context',return_value=nullcontext((None,'changed',None,_archive(source)))):
+                with self.assertRaisesRegex(ProjectError,'disc changed'):prepare_draft_archive(project,'npc')
+
+
+if __name__=='__main__':unittest.main()

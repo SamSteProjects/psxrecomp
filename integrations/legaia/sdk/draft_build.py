@@ -36,7 +36,8 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
         scene_ids.add(matches[0])
     if not scene_ids:
         raise ProjectError('Experimental export requires authored scene edits or NPC drafts')
-    if len(scene_ids)==1 and draft_id is not None:
+    animation_scenes={scene for scene in scene_ids if 'AnimationRecords' in project.overrides.get(scene,{})}
+    if len(scene_ids)==1 and draft_id is not None and not animation_scenes:
         document = project.imports[next(iter(scene_ids))]
         streaming = any(a.get('source_record', {}).get('scene_bundle', {}).get('kind') == 'raw_streaming_man'
                         for a in document.get('actors', []))
@@ -59,7 +60,8 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
         view.texture_overrides={key:deepcopy(value) for key,value in project.texture_overrides.items() if value['source_scene_id']==scene}
         view.actor_drafts={key:deepcopy(item) for key,item in project.actor_drafts.items() if item['scene_id']==scene}
         selected=sorted(view.actor_drafts)[0] if view.actor_drafts else None
-        prot,audit=_prepare_draft_scene(view,selected,defer_rebuild=True,scene_id=scene)
+        growth_options={'animation_growth_managed':True} if scene in animation_scenes else {}
+        prot,audit=_prepare_draft_scene(view,selected,defer_rebuild=True,scene_id=scene,**growth_options)
         if source_prot is not None and prot!=source_prot:
             raise ProjectError('Draft scenes disagree on source archive')
         source_prot=prot
@@ -73,7 +75,19 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
         scenes[scene]=audit
     source_hash=sha256(source_prot).hexdigest()
     composed,asset_audit=patch_archive_spans(source_prot,source_hash,asset_patches)
+    animation_requests=[];animation_audit=None;animation_container=None
+    if animation_scenes:
+        from .animation_growth import prepare_animation_growth
+        from importer.model_pack_composition import compose_model_pack_archive
+        with _disc_context(project.disc_path) as (_,disc_hash,_,archive):
+            if disc_hash!=next(iter(scenes.values()))['source_disc_sha256']:
+                raise ProjectError('Allocated export disc changed after scene preparation')
+            animation_requests,animation_audit,_=prepare_animation_growth(project,archive,animation_scenes)
+        composed,animation_container=compose_model_pack_archive(composed,sha256(composed).hexdigest(),animation_requests)
     rebuilt,container=rebuild_man_entries(composed,sha256(composed).hexdigest(),requests)
+    if animation_requests:
+        from importer.animation_bank_growth import verify_rebuilt_animation_banks
+        animation_audit['final_archive_banks']=verify_rebuilt_animation_banks(rebuilt,animation_requests)
     from .map_build import verify_rebuilt_maps
     map_audits=[audit['map_changes'] for audit in scenes.values() if audit.get('map_changes')]
     if map_audits:
@@ -92,7 +106,9 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
         selected_draft_id=draft_id,drafts=deepcopy(project.actor_drafts),scenes=scenes,
         authored_state_key=input_key,source_disc_sha256=next(iter(scenes.values()))['source_disc_sha256'],
         source_prot_sha256=source_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),
-        container=container,archive_asset_changes=asset_audit,gameplay_verified=False)
+        container=container,archive_asset_changes=asset_audit,
+        **({'animation_growth':animation_audit,'animation_container':animation_container} if animation_audit else {}),
+        gameplay_verified=False)
 
 
 def _prepare_draft_scene(project, draft_id: str | None, *, defer_rebuild=False, scene_id=None, animation_growth_managed=False) -> tuple[bytes, dict]:

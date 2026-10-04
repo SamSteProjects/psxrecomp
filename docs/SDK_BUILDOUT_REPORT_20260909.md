@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — allocated animation delivery in experimental disc export:**
+The project exporter now routes scenes with `AnimationRecords` through managed
+ANM delivery, including the single-selected-NPC path. Existing allocated initial
+assignments can be serialized with appended NPC MAN records instead of hitting
+the old normal-Build-only restriction. Source-addressed asset patches are composed
+first, qualified compressed ANM banks relocate once, then MAN owners rebuild.
+Final verification reopens every bank after all MAN relocation and compares its
+complete bytes to the qualified candidate. Export checks the disc identity again
+between scene preparation and bank preparation, and publishes no success on a
+changed source or failed final readback.
+
+A synthetic SDK routing/archive/disc smoke passes shared-owner ANM growth plus
+native NPC append, preserved authored neighbor patch, exact final bank/MAN bytes,
+unchanged source disc and reopening a newly written Mode 2 disc. It rejects changed
+bank metadata and disc identity. Nine focused archive/routing/export regressions
+and four allocated-MAN/assignment composition checks pass. The synthetic smoke
+substitutes source preparation; it does not establish a Retail full-disc export or
+gameplay acceptance. No Retail disc was exported, game launched or install changed.
+Raw streaming ANM relocation, multiple-table owner remapping and broader SDK work
+remain. Gameplay stays deferred and the full solo goal remains active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — retained GLB content interchange:** Actor inspector →
 Manage allocated clips → Edit retained GLB now exports the saved rigid clip and
 its current capture/source binding, downloads both files, reviews externally
