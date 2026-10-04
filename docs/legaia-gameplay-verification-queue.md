@@ -1,5 +1,26 @@
 # Deferred gameplay verification
 
+**2026-10-04 — model topology and NPC Build composition:** Normal Build now
+hands NPC preparation the exact authored model identities already owned by its
+qualified model-growth requests. The NPC scene serializer handles remaining model
+edits and records same-scene delegated identities; the parent delivers those
+models through relocation with final native pack readback. The default NPC path
+does not suppress model serialization. Unknown, malformed, duplicate and oversized
+handoff identities reject before scene preparation.
+
+A Retail Town01 construction smoke passes read-only review and actual format-7
+package readback with eight donor NPCs, a retained animation capture, shared ANM
+axes, an allocated initial selector and a TMD face addition together. Final MAN,
+ANM and authored model bytes match their candidates exactly; source directory
+coordinates identify the model slot even when imported metadata lacks pack_slot.
+Project overrides, model bindings and history stay unchanged. Eleven focused
+checks pass, including explicit/default handoff ownership, standard model-growth
+packaging and synthetic MAN/ANM/TMD growth in one descriptor table, both MAN/ANM
+orders and both PROT header positions, with neighboring patches retained.
+No game, physical Retail disc export or runtime installation change occurred.
+Gameplay verification stays deferred and the full solo SDK goal remains active.
+[NPC guide](legaia-npc-build-candidates.md).
+
 **2026-10-04 — compressed NPC growth in normal Build:** Donor NPC candidates
 that exceed their original consumed compressed MAN stream now enter normal Build's
 format-7 relocation package. Candidates that fit retain fixed-span delivery.

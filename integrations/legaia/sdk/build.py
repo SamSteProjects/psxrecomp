@@ -802,7 +802,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 raise BuildError(f"Source disc identity does not match {scene_id}")
             if scene_id in draft_scenes:
                 from .npc_build import prepare_npc_overlays
-                candidate_overlays, candidate_edits, metadata = prepare_npc_overlays(project, scene_id, archive)
+                candidate_overlays, candidate_edits, metadata = prepare_npc_overlays(project, scene_id, archive,
+                    **({'managed_model_ids':deferred_models} if deferred_models else {}))
                 native_request=metadata.pop('_relocation_request',None)
                 if native_request is not None:growth_requests.append(native_request)
                 overlays.extend(candidate_overlays)

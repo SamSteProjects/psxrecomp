@@ -1,5 +1,13 @@
 # Persistent native animation record allocation
 
+Retained ANM delivery now composes with NPC append and model topology growth in
+normal Build. Qualified model requests retain ownership of their authored payloads
+while NPC preparation serializes the MAN and remaining scene edits. A Retail
+Town01 eight-donor smoke verifies exact final MAN, expanded ANM and added-face
+model bytes in one format-7 package, including shared axes and allocated initial
+selector. The unchanged skeleton/object structure permits this source composition;
+gameplay animation and model rendering acceptance remain deferred.
+
 Normal Build now also delivers donor NPC candidates exceeding the original
 consumed compressed MAN capacity through qualified relocation. Compressed MAN and
 ANM growth can compose in a shared descriptor table; both final decoded payloads

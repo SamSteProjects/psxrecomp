@@ -50,6 +50,31 @@ def fixture(candidate=b'a' * 130):
 
 
 class NPCBuildGuards(unittest.TestCase):
+    def test_managed_model_handoff_is_explicit_scoped_and_nonmutating(self):
+        project,archive,prot,_,_,audit=fixture()
+        project.model_overrides={
+            'asset://fixture/model/grown':{'source_scene_id':'scene://fixture','format':'tmd-face-addition-v1'},
+            'asset://fixture/model/shape':{'source_scene_id':'scene://fixture','format':'tmd-shape'},
+            'asset://other/model/grown':{'source_scene_id':'scene://other','format':'tmd-face-addition-v1'}}
+        before=deepcopy(project.model_overrides)
+        def prepare(view,*args,**kwargs):
+            self.assertEqual(set(view.model_overrides),{'asset://fixture/model/shape'})
+            return prot,deepcopy(audit)
+        with patch('sdk.npc_build._prepare_draft_scene',side_effect=prepare):
+            _,_,metadata=prepare_npc_overlays(project,'scene://fixture',archive,
+                managed_model_ids=['asset://fixture/model/grown','asset://other/model/grown'])
+        self.assertEqual(metadata['draft_audit']['managed_model_ids'],['asset://fixture/model/grown'])
+        self.assertEqual(project.model_overrides,before)
+        with patch('sdk.npc_build._prepare_draft_scene',return_value=(prot,deepcopy(audit))) as prepare:
+            _,_,metadata=prepare_npc_overlays(project,'scene://fixture',archive)
+        self.assertEqual(set(prepare.call_args.args[0].model_overrides),{'asset://fixture/model/grown','asset://fixture/model/shape'})
+        self.assertEqual(metadata['draft_audit']['managed_model_ids'],[])
+        for ids in (None,{},['unknown'],[True],['asset://fixture/model/grown']*2):
+            with patch('sdk.npc_build._prepare_draft_scene') as prepare:
+                with self.assertRaisesRegex(ProjectError,'model delivery handoff'):
+                    prepare_npc_overlays(project,'scene://fixture',archive,managed_model_ids=ids)
+                prepare.assert_not_called()
+
     def setUp(self):
         # These fixtures isolate compressed carrier ownership, not executable/MAN decoding.
         helper = patch('sdk.npc_build.actor_pool_assessment', return_value={

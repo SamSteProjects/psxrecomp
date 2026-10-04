@@ -1,5 +1,20 @@
 # Source NPC candidates in normal Build
 
+**2026-10-04 — model growth composition:** Normal Build prepares qualified model
+relocation requests first, then passes their authored model IDs to NPC scene
+preparation. That handoff excludes only those models from the scene's fixed-layout
+model serializer; the parent delivers and verifies them. Same-scene delegated IDs
+appear in each NPC draft audit as `managed_model_ids`. Remaining model edits stay
+in the ordinary serializer. Empty/default handoff suppresses nothing; unknown,
+duplicate, malformed or over-budget IDs reject. The handoff is internal Build
+orchestration, not an editor setting or HTTP upload.
+
+Retail Town01 normal package readback passes eight NPC additions, retained ANM
+allocation/shared axes/initial assignment and a model face addition together.
+Synthetic composition also verifies MAN, ANM and TMD pack growth in one table,
+with exact payload readback and preserved neighboring patches. Runtime spawning,
+model rendering and animation suitability remain deferred gameplay checks.
+
 **2026-10-04 — compressed capacity growth:** Normal Build now relocates a
 qualified compressed MAN when its candidate cannot fit the original consumed
 stream, rather than rejecting the batch. Eight-donor Retail Town01 batches pass

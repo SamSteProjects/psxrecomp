@@ -32,11 +32,17 @@ def _public(value):
     return deepcopy(value)
 
 
-def prepare_npc_overlays(project, scene_id, archive):
+def prepare_npc_overlays(project, scene_id, archive, *,managed_model_ids=()):
+    """Caller delegates only model IDs carried by its qualified growth requests."""
     if (project.mode != 'edit' or not project.disc_path or not isinstance(scene_id, str) or
             not re.fullmatch(r'scene://[A-Za-z0-9_-]{1,128}', scene_id) or scene_id not in project.imports):
         raise ProjectError('NPC Build requires an imported source scene and disc in Edit mode')
     before = authored_state_key(project)
+    if (not isinstance(managed_model_ids,(list,tuple,set)) or len(managed_model_ids)>4096 or
+            any(not isinstance(identifier,str) or identifier not in project.model_overrides for identifier in managed_model_ids) or
+            len(set(managed_model_ids))!=len(managed_model_ids)):
+        raise ProjectError('NPC model delivery handoff requires bounded unique authored model identities')
+    delegated=set(managed_model_ids)
     document = project.imports[scene_id]
     view = copy(project)
     view.overrides = {owner: deepcopy(value) for owner, value in project.overrides.items()
@@ -44,12 +50,13 @@ def prepare_npc_overlays(project, scene_id, archive):
     view.actor_drafts = {owner: deepcopy(value) for owner, value in project.actor_drafts.items()
                          if value.get('scene_id') == scene_id}
     view.model_overrides = {owner: deepcopy(value) for owner, value in project.model_overrides.items()
-                            if value.get('source_scene_id') == scene_id}
+                            if value.get('source_scene_id') == scene_id and owner not in delegated}
     view.texture_overrides = {owner: deepcopy(value) for owner, value in project.texture_overrides.items()
                               if value.get('source_scene_id') == scene_id}
     if not 1 <= len(view.actor_drafts) <= 128:
         raise ProjectError('NPC Build requires 1..128 saved drafts in the source scene')
     prot, audit = _prepare_draft_scene(view, sorted(view.actor_drafts)[0], defer_rebuild=True, scene_id=scene_id,animation_growth_managed=True)
+    audit['managed_model_ids']=sorted(identifier for identifier in delegated if project.model_overrides[identifier]['source_scene_id']==scene_id)
     if not isinstance(prot, bytes) or not 0 < len(prot) <= MAX_PROT_BYTES or len(prot) != archive.node.size:
         raise ProjectError('NPC Build source PROT exceeds bounds or differs from the archive')
     current_prot = archive.image.read_user(archive.node.extent_lba, 0, archive.node.size, archive.node.size)
