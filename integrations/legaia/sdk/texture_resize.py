@@ -87,9 +87,59 @@ def review(project,asset_id,expected_sha256,expected_source_key,width,height,fil
     return _prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap)[1]
 
 
+def source(project,asset_id,expected_source_key):
+    from importer.textures import parse_tim
+    key=source_key(project)
+    if project.mode!='edit' or not key or key!=expected_source_key:
+        raise ProjectError('Texture resize source requires the current Edit context')
+    context=project._texture_context(asset_id);original=context.original_tim(asset_id)
+    binding=project.texture_overrides.get(asset_id)
+    current=project.read_texture_replacement(binding) if binding else original
+    project.validate_effective_texture(asset_id,current,context=context)
+    tim=parse_tim(current)
+    report=dict(schema_version='legaia.texture-resize-source.v1',asset_id=asset_id,project_source_key=key,
+        retail_sha256=sha256(original).hexdigest(),effective_sha256=sha256(current).hexdigest(),
+        current_layout=image_layout(current),byte_length=len(current),
+        palette_count=len(tim.clut.data)//((1<<tim.bpp)*2) if tim.bpp in (4,8) and tim.clut else 0,
+        read_only=True,project_changed=False)
+    if source_key(project)!=key:raise ProjectError('Texture source changed during resize inspection')
+    return report
+
+
+def reviewed(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key):
+    candidate,report=_prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap)
+    if report['review_key']!=review_key:
+        raise ProjectError('Texture resize proposal changed; review again before inspection')
+    return candidate,report
+
+
+def pixels(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key,palette_index):
+    import base64
+    from importer.texture_png import export_texture_png
+    from .texture_png import _json_size,MAX_PNG_BYTES
+    candidate,report=reviewed(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key)
+    if type(palette_index) is not int or not 0<=palette_index<=32767:
+        raise ProjectError('Resize pixel inspection requires an existing integer palette')
+    binding=project.texture_overrides.get(asset_id)
+    current=project.read_texture_replacement(binding) if binding else project._texture_context(asset_id).original_tim(asset_id)
+    if sha256(current).hexdigest()!=expected_sha256:raise ProjectError('Texture changed during resize pixel inspection')
+    current_png,_,_=export_texture_png(current,palette_index)
+    proposed_png,_,_=export_texture_png(candidate,palette_index)
+    if max(len(current_png),len(proposed_png))>MAX_PNG_BYTES:
+        raise ProjectError('Resize pixel PNG exceeds the inspection byte budget')
+    result=dict(report=report,palette_index=palette_index,current_png_base64=base64.b64encode(current_png).decode('ascii'),
+                proposed_png_base64=base64.b64encode(proposed_png).decode('ascii'))
+    _json_size(result,24*1024*1024,'Texture resize pixel preview')
+    if source_key(project)!=expected_source_key:raise ProjectError('Texture source changed during resize pixel inspection')
+    return result
+
+
 def apply(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key):
     candidate,report=_prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap)
     if report['review_key']!=review_key or not report['can_apply']:
         raise ProjectError('Texture resize requires an applicable current review and the reviewed overlap choice')
-    project.set_texture_replacement(asset_id,candidate,image_allocation=True)
+    if report['proposed_sha256']==report['retail_sha256']:
+        project.command(dict(type='clear_texture_replacement',asset_id=asset_id))
+    else:
+        project.set_texture_replacement(asset_id,candidate,image_allocation=True)
     return dict(report,project_changed=True)

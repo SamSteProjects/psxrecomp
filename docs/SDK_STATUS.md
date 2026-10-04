@@ -1,5 +1,40 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — reviewed texture resizing in the editor:** The selected texture
+Inspector now offers **Resize image**. It loads an exact current native source,
+reviews width/height and encoded fill, shows added/removed pixels and native byte
+lengths, and lists new overlap with known static scene/CLUT/boot uploads. Changing
+dimensions, fill or the explicit overlap choice withdraws the review. A no-op or
+unacknowledged new overlap cannot Apply. Native mode, image origin and CLUT layout
+remain fixed; this workflow does not resample or retarget UVs.
+
+The same source-qualified review drives side-by-side Current/Proposed pixel
+inspection, an immutable scene texture proposal with Return to resize review,
+and explicit Apply. Pixel inspection keeps the selected palette and qualifies
+both PNG dimensions. Scene proposals reuse the texture inspection path already
+used by PNG edits. Pending reads can be closed/aborted without publishing; stale
+project, scene, mode or source disables the review. Apply is one Undoable edit,
+followed by ordinary Save/Open and normal Build. Cropping back to the exact Retail
+TIM clears the override as one Undoable edit rather than retaining a no-op binding.
+
+Twenty focused Python checks passed, followed by four targeted checks including
+exact Retail restoration; three Node suites passed for source/audit qualification,
+review withdrawal, source changes, Apply and close/abort/busy ownership. A private
+Town01 browser smoke passed source/review, overlap-choice invalidation, pixels/
+Return, scene/Return, unchanged authored state during proposals, Apply, Save/reload
+and normal Build review. The saved texture passed Undo/Redo, reopen and exact
+normal-Build readback. A separate read-only PNG scene/Return regression passed
+through the shared proposal integration. Evidence:
+`local-output/sdk-20260909/texture-resize-editor-20261004/parent/`.
+No game, installed runtime change or physical disc export ran.
+
+The existing-TIM resize workflow now includes native allocation, project history,
+Save/Open, following PNG/JSON/TIM editing, reviewed editor proposals and normal
+Build. Broader allocation remains unfinished: new TIM slots, mode/CLUT growth,
+VRAM origin planning, UV retargeting and general imported material/image assignment.
+Runtime appearance, upload order/residency, UV coverage and scene transitions are
+still deferred gameplay checks. The full SDK goal remains active and incomplete.
+
 **2026-10-04 — resized-texture interchange and comparison reports connected:**
 Saved image allocations now support current PNG export/reimport, PNG pixel
 proposals and Apply, effective indexed JSON, and TIM/JSON file proposals.

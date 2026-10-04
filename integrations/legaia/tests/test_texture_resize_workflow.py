@@ -68,8 +68,36 @@ class TextureResizeWorkflow(unittest.TestCase):
             for bad in (dict(body,width=True),dict(body,source_key='stale'),dict(body,unexpected=1),dict(body,accept_potential_overlap=1)):
                 status,_=post('/api/texture-resize-preview',bad);self.assertEqual(status,400)
             status,review=post('/api/texture-resize-preview',body);self.assertEqual(status,200,review)
+            before=self.helper.snapshot()
+            status,source=post('/api/texture-resize-source',dict(asset_id=ASSET,source_key=body['source_key']))
+            self.assertEqual(status,200,source);self.assertEqual(source['effective_sha256'],body['expected_sha256'])
+            pixel_body=dict(body,review_key=review['review_key'],palette_index=0)
+            status,pixels=post('/api/texture-resize-pixels-preview',pixel_body)
+            self.assertEqual(status,200,pixels);self.assertEqual(pixels['report'],review)
+            from importer.texture_png import decode_png
+            import base64
+            for key,height in [('current_png_base64',1),('proposed_png_base64',2)]:
+                self.assertEqual(decode_png(base64.b64decode(pixels[key]))['height'],height)
+            for bad in (dict(pixel_body,review_key='0'*64),dict(pixel_body,height=3),dict(pixel_body,palette_index=True)):
+                status,_=post('/api/texture-resize-pixels-preview',bad);self.assertEqual(status,400)
+            from sdk.server import EditorServer
+            with patch.object(EditorServer,'scene_texture_proposal',side_effect=lambda asset,candidate,report,key:dict(report,scene_proposal=True)) as proposal:
+                status,result=post('/api/texture-resize-scene-preview',dict(body,review_key=review['review_key']))
+                self.assertEqual(status,200,result);self.assertTrue(result['scene_proposal']);proposal.assert_called_once()
+                status,_=post('/api/texture-resize-scene-preview',dict(body,review_key='0'*64));self.assertEqual(status,400)
+            self.assertEqual(self.helper.snapshot(),before)
             status,result=post('/api/texture-resize',dict(body,review_key=review['review_key']));self.assertEqual(status,200,result)
             self.assertTrue(result['resize_report']['project_changed'])
+
+    def test_crop_to_exact_retail_clears_binding_as_one_undoable_edit(self):
+        args=self.args(True);report=texture_resize.review(*args);texture_resize.apply(*args,report['review_key'])
+        binding=deepcopy(self.project.texture_overrides[ASSET]);current=self.project.read_texture_replacement(binding)
+        crop=(self.project,ASSET,sha256(current).hexdigest(),source_key(self.project),4,1,0,False)
+        before=len(self.project.undo_stack);report=texture_resize.review(*crop)
+        self.assertEqual(report['proposed_sha256'],sha256(self.source).hexdigest())
+        texture_resize.apply(*crop,report['review_key']);self.assertFalse(self.project.texture_overrides)
+        self.assertEqual(len(self.project.undo_stack),before+1)
+        self.project.undo();self.assertEqual(self.project.texture_overrides[ASSET],binding)
 
     def test_layout_and_fixed_edits_collect_one_complete_pack(self):
         for compressed in (False,True):

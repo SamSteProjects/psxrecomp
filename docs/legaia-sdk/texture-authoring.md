@@ -1,5 +1,40 @@
 # Authored TIM replacement
 
+**2026-10-04 — reviewed texture resizing in the editor:** The selected texture
+Inspector now offers **Resize image**. It loads an exact current native source,
+reviews width/height and encoded fill, shows added/removed pixels and native byte
+lengths, and lists new overlap with known static scene/CLUT/boot uploads. Changing
+dimensions, fill or the explicit overlap choice withdraws the review. A no-op or
+unacknowledged new overlap cannot Apply. Native mode, image origin and CLUT layout
+remain fixed; this workflow does not resample or retarget UVs.
+
+The same source-qualified review drives side-by-side Current/Proposed pixel
+inspection, an immutable scene texture proposal with Return to resize review,
+and explicit Apply. Pixel inspection keeps the selected palette and qualifies
+both PNG dimensions. Scene proposals reuse the texture inspection path already
+used by PNG edits. Pending reads can be closed/aborted without publishing; stale
+project, scene, mode or source disables the review. Apply is one Undoable edit,
+followed by ordinary Save/Open and normal Build. Cropping back to the exact Retail
+TIM clears the override as one Undoable edit rather than retaining a no-op binding.
+
+Twenty focused Python checks passed, followed by four targeted checks including
+exact Retail restoration; three Node suites passed for source/audit qualification,
+review withdrawal, source changes, Apply and close/abort/busy ownership. A private
+Town01 browser smoke passed source/review, overlap-choice invalidation, pixels/
+Return, scene/Return, unchanged authored state during proposals, Apply, Save/reload
+and normal Build review. The saved texture passed Undo/Redo, reopen and exact
+normal-Build readback. A separate read-only PNG scene/Return regression passed
+through the shared proposal integration. Evidence:
+`local-output/sdk-20260909/texture-resize-editor-20261004/parent/`.
+No game, installed runtime change or physical disc export ran.
+
+The existing-TIM resize workflow now includes native allocation, project history,
+Save/Open, following PNG/JSON/TIM editing, reviewed editor proposals and normal
+Build. Broader allocation remains unfinished: new TIM slots, mode/CLUT growth,
+VRAM origin planning, UV retargeting and general imported material/image assignment.
+Runtime appearance, upload order/residency, UV coverage and scene transitions are
+still deferred gameplay checks. The full SDK goal remains active and incomplete.
+
 **2026-10-04 — resized-texture interchange and comparison reports connected:**
 Saved image allocations now support current PNG export/reimport, PNG pixel
 proposals and Apply, effective indexed JSON, and TIM/JSON file proposals.
@@ -193,3 +228,28 @@ payloads against this explicitly labeled baseline. `pending_changes` (PNG) and
 `current_changes` (file preview) compare against the actual effective TIM.
 The true Retail source hash is retained throughout. This comparison does not
 assert resampling, runtime VRAM residency or gameplay correctness.
+
+## Resize image in the Inspector
+
+1. Open a scene texture and select **Resize image** in Edit mode.
+2. Set width, height and encoded fill. Width must contain whole native words:
+   multiples of four pixels for 4-bpp, two for 8/24-bpp, and one for 16-bpp.
+   The image must fit VRAM at its existing origin and remain within the TIM budget.
+3. Select **Review resize**. Review shows native lengths and added/removed pixels.
+   If the new area overlaps known uploads, inspect the listed source identities.
+   Accepting that potential overlap changes the authoring choice and requires
+   another review. It does not establish runtime safety or simultaneous residency.
+4. Use **Inspect resized pixels** or **Inspect resize in scene**, then Return to
+   resize review. These proposals do not change authored data or project history.
+5. Select **Apply reviewed resize**, then Save project. Undo/Redo, reopen and
+   normal Build use the existing project workflow. Ordinary file imports preserve
+   the current saved dimensions; selecting another size requires resize review.
+
+`POST /api/texture-resize-source` takes `asset_id` and current `source_key` and
+returns a read-only source snapshot, effective/Retail hashes and current layout.
+`POST /api/texture-resize-pixels-preview` takes the exact reviewed resize request
+plus `review_key` and integer `palette_index`. Its bounded response contains the
+same review and separate Current/Proposed PNGs at their respective dimensions.
+`POST /api/texture-resize-scene-preview` takes the exact reviewed request plus
+`review_key`; it returns a static source-address scene proposal. These endpoints
+reject stale or changed review choices and do not publish project replacements.

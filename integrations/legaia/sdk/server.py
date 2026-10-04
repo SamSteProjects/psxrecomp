@@ -214,6 +214,7 @@ class EditorServer(ThreadingHTTPServer):
         state['capabilities']['script_facing_authoring'] = bool(self.project.disc_path and self.project.active_scene)
         state["capabilities"]["texture_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["texture_replacement"] = state["capabilities"]["resource_catalog"]
+        state["capabilities"]["texture_resize_authoring"] = bool(state["capabilities"]["resource_catalog"] and self.project.mode=="edit")
         state["capabilities"]["field_map_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["trigger_script_preview"] = state["capabilities"]["resource_catalog"]
         state["capabilities"]["build"] = bool(self.project.disc_path and self.project.imports)
@@ -834,6 +835,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript"),
                  "/texture-comparison.js": ("texture-comparison.js", "text/javascript"),
+                 "/texture-resize.js": ("texture-resize.js", "text/javascript"),
                  "/texture-source-retention.js": ("texture-source-retention.js", "text/javascript")}
         if route not in files:
             self._json(404, {"error": "Unknown editor route"})
@@ -1732,18 +1734,29 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
                     return
-                if route in ('/api/texture-resize-preview', '/api/texture-resize'):
-                    fields = {'asset_id', 'expected_sha256', 'source_key', 'width', 'height', 'fill_value', 'accept_potential_overlap'}
-                    if route == '/api/texture-resize': fields.add('review_key')
-                    if set(body) != fields or not isinstance(body['asset_id'], str) or not 1 <= len(body['asset_id']) <= 512:
+                if route == '/api/texture-resize-source':
+                    if set(body)!={'asset_id','source_key'} or not isinstance(body['asset_id'],str) or not 1<=len(body['asset_id'])<=512:
+                        raise ProjectError('Texture resize source requires an asset and source key')
+                    from .texture_resize import source
+                    self._json(200,source(self.server.project,body['asset_id'],body['source_key']))
+                    return
+                if route in ('/api/texture-resize-preview','/api/texture-resize','/api/texture-resize-pixels-preview','/api/texture-resize-scene-preview'):
+                    fields={'asset_id','expected_sha256','source_key','width','height','fill_value','accept_potential_overlap'}
+                    if route!='/api/texture-resize-preview':fields.add('review_key')
+                    if route=='/api/texture-resize-pixels-preview':fields.add('palette_index')
+                    if set(body)!=fields or not isinstance(body['asset_id'],str) or not 1<=len(body['asset_id'])<=512:
                         raise ProjectError('Texture resize requires exact current texture context and encoded dimensions')
-                    from .texture_resize import review, apply
-                    args = (self.server.project, body['asset_id'], body['expected_sha256'], body['source_key'],
-                            body['width'], body['height'], body['fill_value'], body['accept_potential_overlap'])
-                    if route.endswith('preview'): self._json(200, review(*args))
+                    from .texture_resize import review,apply,pixels,reviewed
+                    args=(self.server.project,body['asset_id'],body['expected_sha256'],body['source_key'],
+                          body['width'],body['height'],body['fill_value'],body['accept_potential_overlap'])
+                    if route=='/api/texture-resize-preview':self._json(200,review(*args))
+                    elif route=='/api/texture-resize-pixels-preview':self._json(200,pixels(*args,body['review_key'],body['palette_index']))
+                    elif route=='/api/texture-resize-scene-preview':
+                        candidate,report=reviewed(*args,body['review_key'])
+                        self._json(200,self.server.scene_texture_proposal(body['asset_id'],candidate,report,body['source_key']))
                     else:
-                        report = apply(*args, body['review_key'])
-                        self._json(200, dict(self.server.state(), resize_report=report))
+                        report=apply(*args,body['review_key'])
+                        self._json(200,dict(self.server.state(),resize_report=report))
                     return
                 if route in ('/api/texture-glb-retain-review','/api/texture-glb-retain'):
                     fields={'asset_id','expected_sha256','source_key','content_base64'}
