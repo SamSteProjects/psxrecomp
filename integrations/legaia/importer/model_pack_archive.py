@@ -8,6 +8,45 @@ from .prot_layout import locate_physical_span
 from .prot_rebuild import replace_physical_entry
 
 
+def verify_rebuilt_model_packs(source,candidates):
+    """Read qualified expected pack hashes after all archive composition."""
+    if (not isinstance(source,bytes) or not 0<len(source)<=256*1024*1024 or len(source)%2048 or
+            not isinstance(candidates,list) or not 1<=len(candidates)<=32):
+        raise ImportError('Final model pack readback requires a bounded archive and candidate batch')
+    archive=_archive(source);seen=set();reports=[]
+    for row in candidates:
+        if (not isinstance(row,dict) or set(row)!={'entry_index','descriptor_index','pack_sha256'} or
+                type(row['entry_index']) is not int or row['entry_index']<0 or
+                type(row['descriptor_index']) is not int or row['descriptor_index']<0 or
+                not isinstance(row['pack_sha256'],str) or len(row['pack_sha256'])!=64 or
+                any(c not in '0123456789abcdef' for c in row['pack_sha256'])):
+            raise ImportError('Final model pack candidate identity or hash is malformed')
+        identity=(row['entry_index'],row['descriptor_index'])
+        if identity in seen:raise ImportError('Final model pack readback duplicates a resource')
+        seen.add(identity);entry=archive.entry(row['entry_index'])
+        span=locate_physical_span(archive,entry.start_lba*2048)
+        if span['entry_index']!=entry.index or span['offset_within_span']!=0:
+            raise ImportError('Final model pack readback lacks unique physical ownership')
+        raw=source[span['byte_offset']:span['byte_offset']+span['byte_length']]
+        table=parse_scene_assets(raw,entry.index)
+        index=row['descriptor_index']
+        if table is None or index>=len(table.descriptors) or table.descriptors[index].type_byte!=2:
+            raise ImportError('Final model pack resource descriptor changed')
+        table_end=8+8*len(table.descriptors)
+        if any(not table_end<=d.data_offset<=len(raw) for d in table.descriptors):
+            raise ImportError('Final model pack descriptor payload exceeds its carrier')
+        descriptor=table.descriptors[index]
+        if sum(d.data_offset==descriptor.data_offset for d in table.descriptors)!=1:
+            raise ImportError('Final model pack resource is aliased')
+        end=min([d.data_offset for d in table.descriptors if d.data_offset>descriptor.data_offset]+[len(raw)])
+        pack,_=decompress_lzs(raw[descriptor.data_offset:end],descriptor.size)
+        _qualified_pack(pack)
+        if sha256(pack).hexdigest()!=row['pack_sha256']:
+            raise ImportError('Final model pack bytes differ from the qualified candidate')
+        reports.append(dict(row,final_model_pack_verified=True))
+    return reports
+
+
 class _MemoryImage:
     def __init__(self, data):
         self.data = data

@@ -4,7 +4,7 @@ from hashlib import sha256
 import struct
 import unittest
 from importer.core import ImportError,parse_scene_assets,decompress_lzs,parse_man
-from importer.model_pack_archive import _archive
+from importer.model_pack_archive import _archive,verify_rebuilt_model_packs
 from importer.model_pack_composition import compose_model_pack_archive
 from importer.man_actor_structure import append_actor_candidates
 from importer.serialization import compress_lzs
@@ -51,6 +51,11 @@ class CompressedManComposition(unittest.TestCase):
                 self.assertEqual(raw[final.descriptors[3].data_offset:final.descriptors[3].data_offset+4],b'EDIT')
                 self.assertEqual(result[-8*2048:],source[-8*2048:])
                 self.assertTrue(audit['final_compressed_man_verified']);self.assertGreater(len(result),len(source))
+                expected=[dict(entry_index=1,descriptor_index=2,pack_sha256=sha256(expected_pack).hexdigest())]
+                self.assertTrue(verify_rebuilt_model_packs(result,expected)[0]['final_model_pack_verified'])
+                for invalid in (expected*2,[dict(expected[0],descriptor_index=True)],
+                    [dict(expected[0],pack_sha256='0'*64)],[dict(expected[0],descriptor_index=man_index)]):
+                    with self.assertRaises(ImportError):verify_rebuilt_model_packs(result,invalid)
                 for invalid in (requests+[requests[0]],[dict(requests[0],descriptor_index=anm_index)],
                     [dict(requests[0],source_man_sha256='0'*64)],[dict(requests[0],candidate=b'bad!')]):
                     with self.assertRaises(ImportError):

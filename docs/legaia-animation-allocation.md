@@ -1,5 +1,12 @@
 # Persistent native animation record allocation
 
+Experimental archive export now delivers qualified model topology alongside
+retained ANM and NPC edits. The shared native composer handles model and ANM
+growth before MAN rebuild; final model pack and bank readback occurs afterward.
+A read-only Retail Town01 combined smoke verifies all candidate payloads and the
+allocated initial selector. Synthetic physical-disc reopen covers the shared-owner
+case. No physical Retail export or gameplay acceptance is claimed.
+
 Retained ANM delivery now composes with NPC append and model topology growth in
 normal Build. Qualified model requests retain ownership of their authored payloads
 while NPC preparation serializes the MAN and remaining scene edits. A Retail

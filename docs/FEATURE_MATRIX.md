@@ -1,5 +1,24 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — model topology in experimental archive export:** Export now
+prepares source-qualified model-growth requests, keeps their authored pack members
+out of each scene's fixed-layout model serializer, and composes model and ANM
+growth after original-address asset patches. The selected single-scene shortcut
+cannot bypass model topology delivery. Scene audits retain delegated model IDs.
+After all MAN rebuilds, final model readback qualifies each unique physical owner,
+TMD descriptor and decoded pack against its expected native candidate hash.
+Malformed, duplicated, aliased, wrong-type or mismatched candidates reject.
+
+A read-only Retail Town01 smoke passes eight NPC additions, retained ANM
+allocation/shared axes/initial selector and a TMD face addition together, with
+exact final MAN, ANM and authored model bytes and unchanged project/history.
+Fifteen focused checks pass, including synthetic physical-disc output/reopen with
+MAN/ANM/TMD growth in a shared owner, model/MAN delivery without an ANM ledger,
+existing raw chunk orders, multi-scene routing and native final model verification
+at original/prefixed PROT headers. No physical Retail disc was exported, game
+launched or installed runtime changed. Gameplay remains deferred and the full
+solo goal stays active. [NPC guide](legaia-npc-build-candidates.md).
+
 **2026-10-04 — model topology and NPC Build composition:** Normal Build now
 hands NPC preparation the exact authored model identities already owned by its
 qualified model-growth requests. The NPC scene serializer handles remaining model

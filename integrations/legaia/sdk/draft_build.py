@@ -37,13 +37,20 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
     if not scene_ids:
         raise ProjectError('Experimental export requires authored scene edits or NPC drafts')
     animation_scenes={scene for scene in scene_ids if 'AnimationRecords' in project.overrides.get(scene,{})}
-    if len(scene_ids)==1 and draft_id is not None and not animation_scenes:
+    model_topology=any(binding.get('format')=='tmd-face-addition-v1' for binding in project.model_overrides.values())
+    if len(scene_ids)==1 and draft_id is not None and not animation_scenes and not model_topology:
         document = project.imports[next(iter(scene_ids))]
         streaming = any(a.get('source_record', {}).get('scene_bundle', {}).get('kind') == 'raw_streaming_man'
                         for a in document.get('actors', []))
         if not streaming:
             return _prepare_draft_scene(project,draft_id)
     input_key=authored_state_key(project)
+    model_requests=[];model_growth_audit=None;managed_models=set();model_disc_hash=None
+    if model_topology:
+        from .model_growth import prepare_model_growth
+        with _disc_context(project.disc_path) as (_,model_disc_hash,_,archive):
+            model_requests,model_growth_audit=prepare_model_growth(project,archive)
+        managed_models=set(model_growth_audit['deferred_model_ids'])
     scoped={scene:{} for scene in scene_ids}
     for identifier,value in project.overrides.items():
         matches=[scene for scene in scene_ids if identifier==scene or identifier.startswith(scene+'/')]
@@ -56,12 +63,16 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
     for scene in sorted(scene_ids):
         view=copy(project)
         view.overrides=scoped[scene]
-        view.model_overrides={key:deepcopy(value) for key,value in project.model_overrides.items() if value['source_scene_id']==scene}
+        view.model_overrides={key:deepcopy(value) for key,value in project.model_overrides.items() if value['source_scene_id']==scene and key not in managed_models}
         view.texture_overrides={key:deepcopy(value) for key,value in project.texture_overrides.items() if value['source_scene_id']==scene}
         view.actor_drafts={key:deepcopy(item) for key,item in project.actor_drafts.items() if item['scene_id']==scene}
         selected=sorted(view.actor_drafts)[0] if view.actor_drafts else None
         growth_options={'animation_growth_managed':True} if scene in animation_scenes else {}
         prot,audit=_prepare_draft_scene(view,selected,defer_rebuild=True,scene_id=scene,**growth_options)
+        if model_disc_hash is not None and audit['source_disc_sha256']!=model_disc_hash:
+            raise ProjectError('Model export disc changed after model preparation')
+        if model_growth_audit is not None:
+            audit['managed_model_ids']=sorted(identifier for identifier in managed_models if project.model_overrides[identifier]['source_scene_id']==scene)
         if source_prot is not None and prot!=source_prot:
             raise ProjectError('Draft scenes disagree on source archive')
         source_prot=prot
@@ -76,14 +87,15 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
     source_hash=sha256(source_prot).hexdigest()
     composed,asset_audit=patch_archive_spans(source_prot,source_hash,asset_patches)
     animation_requests=[];animation_audit=None;animation_container=None
-    if animation_scenes:
+    if animation_scenes or model_requests:
         from .animation_growth import prepare_animation_growth
         from importer.model_pack_composition import compose_model_pack_archive
         with _disc_context(project.disc_path) as (_,disc_hash,_,archive):
             if disc_hash!=next(iter(scenes.values()))['source_disc_sha256']:
-                raise ProjectError('Allocated export disc changed after scene preparation')
-            animation_requests,animation_audit,_=prepare_animation_growth(project,archive,animation_scenes)
-        composed,animation_container=compose_model_pack_archive(composed,sha256(composed).hexdigest(),animation_requests)
+                raise ProjectError('Resource export disc changed after scene preparation')
+            if animation_scenes:
+                animation_requests,animation_audit,_=prepare_animation_growth(project,archive,animation_scenes)
+        composed,animation_container=compose_model_pack_archive(composed,sha256(composed).hexdigest(),model_requests+animation_requests,header_offset=archive.header_offset)
         from importer.streaming_animation_bank import remap_streaming_header
         remapped=[];moves=[]
         for request in requests:
@@ -92,8 +104,14 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
                 request=dict(request,chunk_header_offset=after)
                 if before!=after:moves.append(dict(entry_index=request['entry_index'],before=before,after=after,type_byte=3))
             remapped.append(request)
-        requests=remapped;animation_audit['streaming_MAN_header_relocations']=moves
+        requests=remapped
+        if animation_audit is not None:animation_audit['streaming_MAN_header_relocations']=moves
     rebuilt,container=rebuild_man_entries(composed,sha256(composed).hexdigest(),requests)
+    if model_requests:
+        from importer.model_pack_archive import verify_rebuilt_model_packs
+        candidates=[dict(entry_index=row['entry_index'],descriptor_index=row['descriptor_index'],
+            pack_sha256=row['carrier']['pack_audit']['proposed_sha256']) for row in model_growth_audit['carriers']]
+        model_growth_audit['final_archive_packs']=verify_rebuilt_model_packs(rebuilt,candidates)
     if animation_requests:
         from importer.animation_bank_growth import verify_rebuilt_animation_banks
         from importer.streaming_animation_bank import remap_streaming_header,verify_rebuilt_streaming_animation_banks
@@ -126,6 +144,7 @@ def prepare_draft_archive(project, draft_id: str | None = None) -> tuple[bytes, 
         source_prot_sha256=source_hash,result_prot_sha256=sha256(rebuilt).hexdigest(),
         container=container,archive_asset_changes=asset_audit,
         **({'animation_growth':animation_audit,'animation_container':animation_container} if animation_audit else {}),
+        **({'model_growth':model_growth_audit,'model_container':animation_container} if model_growth_audit else {}),
         gameplay_verified=False)
 
 

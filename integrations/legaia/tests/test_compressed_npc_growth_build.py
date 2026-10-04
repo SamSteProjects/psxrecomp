@@ -28,7 +28,10 @@ class CompressedNpcGrowthBuild(unittest.TestCase):
     def test_oversized_donor_batch_with_allocated_animation_and_model_topology(self):
         self._run(allocated=True,topology=True)
 
-    def _run(self,allocated=False,topology=False):
+    def test_read_only_archive_export_with_npc_animation_and_model_topology(self):
+        self._run(allocated=True,topology=True,export_only=True)
+
+    def _run(self,allocated=False,topology=False,export_only=False):
         with tempfile.TemporaryDirectory() as directory:
             project=workflow.AnimationGlbWorkflow().project(directory);scene=project.active_scene
             owner='scene://town01/actors/man-p1/0011'
@@ -82,19 +85,26 @@ class CompressedNpcGrowthBuild(unittest.TestCase):
                 preparation=copy(project);preparation.model_overrides={}
             _,prepared=_prepare_draft_scene(preparation,sorted(project.actor_drafts)[0],defer_rebuild=True,scene_id=scene,animation_growth_managed=True)
             candidate=prepared['_rebuild_request']['candidate']
-            assessment=review(project);self.assertTrue(assessment['normal_build_ready'],assessment['blockers'])
-            self.assertEqual(assessment['included_npc_draft_count'],8)
-            self.assertFalse((Path(directory)/'Builds').exists())
-            result=build_project(project);audit=json.loads(Path(result['audit']).read_text(encoding='utf-8'))
-            metadata=audit['npc_candidates'][scene]
-            self.assertEqual(metadata['schema_version'],'legaia.npc-compressed-growth-build.v1')
-            self.assertTrue(metadata['native_growth']['original_consumed_span_exceeded'])
-            self.assertFalse(metadata['gameplay_verified'])
-            with zipfile.ZipFile(result['path']) as package:
-                manifest=tomllib.loads(package.read('manifest.toml').decode());self.assertEqual(manifest['format_version'],7)
-                self.assertNotIn('overlay',manifest)
-                row=manifest['disc_relocation'][0]
-                payload=decode_relocation_package(package.read(row['file']),row['sha256'])['replacement']
+            if export_only:
+                from sdk.draft_build import prepare_draft_archive
+                payload,audit=prepare_draft_archive(project,sorted(project.actor_drafts)[0])
+                metadata=dict(draft_audit=audit['scenes'][scene])
+                self.assertFalse(audit['gameplay_verified'])
+                self.assertFalse((Path(directory)/'Builds').exists())
+            else:
+                assessment=review(project);self.assertTrue(assessment['normal_build_ready'],assessment['blockers'])
+                self.assertEqual(assessment['included_npc_draft_count'],8)
+                self.assertFalse((Path(directory)/'Builds').exists())
+                result=build_project(project);audit=json.loads(Path(result['audit']).read_text(encoding='utf-8'))
+                metadata=audit['npc_candidates'][scene]
+                self.assertEqual(metadata['schema_version'],'legaia.npc-compressed-growth-build.v1')
+                self.assertTrue(metadata['native_growth']['original_consumed_span_exceeded'])
+                self.assertFalse(metadata['gameplay_verified'])
+                with zipfile.ZipFile(result['path']) as package:
+                    manifest=tomllib.loads(package.read('manifest.toml').decode());self.assertEqual(manifest['format_version'],7)
+                    self.assertNotIn('overlay',manifest)
+                    row=manifest['disc_relocation'][0]
+                    payload=decode_relocation_package(package.read(row['file']),row['sha256'])['replacement']
             request=prepared['_rebuild_request'];archive=_archive(payload)
             raw=archive.read_entry(archive.entry(request['entry_index']))
             table=parse_scene_assets(raw,request['entry_index'],request['table_offset'])
@@ -102,7 +112,7 @@ class CompressedNpcGrowthBuild(unittest.TestCase):
             emitted=decompress_lzs(raw[request['table_offset']+descriptor.data_offset:],descriptor.size)[0]
             self.assertEqual(emitted,candidate)
             self.assertEqual(len(parse_man(emitted,'town01').actors),len(project.imports[scene]['actors'])+8)
-            self.assertTrue(audit['relocation']['composition']['final_compressed_man_verified'])
+            if not export_only:self.assertTrue(audit['relocation']['composition']['final_compressed_man_verified'])
             if allocated:
                 carrier=audit['animation_growth']['carriers'][0];raw=archive.read_entry(archive.entry(carrier['entry_index']))
                 table=parse_scene_assets(raw,carrier['entry_index'],carrier['table_offset'])
@@ -111,7 +121,8 @@ class CompressedNpcGrowthBuild(unittest.TestCase):
                 self.assertEqual(bank,expected_bank)
                 actors=parse_man(emitted,'town01').actors
                 self.assertEqual(next(a for a in actors if a.record_index==11).animation_id,assignment['native_animation_id'])
-                self.assertTrue(audit['validation']['allocated_initial_MAN_header_readback'])
+                if export_only:self.assertTrue(audit['animation_growth']['final_archive_banks'][0]['final_bank_verified'])
+                else:self.assertTrue(audit['validation']['allocated_initial_MAN_header_readback'])
             if topology:
                 self.assertEqual(metadata['draft_audit']['managed_model_ids'],[model_id])
                 self.assertEqual(audit['model_growth']['deferred_model_ids'],[model_id])
@@ -121,7 +132,8 @@ class CompressedNpcGrowthBuild(unittest.TestCase):
                 pack=decompress_lzs(raw[descriptor.data_offset:],descriptor.size)[0]
                 start,_=_pack_ranges(pack)[model_slot]
                 self.assertEqual(pack[start:start+len(expected_model)],expected_model)
-                self.assertTrue(audit['relocation']['composition']['final_packs_verified'])
+                if export_only:self.assertTrue(audit['model_growth']['final_archive_packs'][0]['final_model_pack_verified'])
+                else:self.assertTrue(audit['relocation']['composition']['final_packs_verified'])
             self.assertEqual((project.overrides,project.actor_drafts,project.model_overrides,project.undo_stack),before)
 
 

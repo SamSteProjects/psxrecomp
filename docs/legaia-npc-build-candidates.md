@@ -1,5 +1,18 @@
 # Source NPC candidates in normal Build
 
+**2026-10-04 — experimental model composition:** Experimental archive export
+now uses qualified model-growth requests too. Those requests own every authored
+member in a relocating pack, while scene preparation serializes the MAN and
+remaining model edits. Original-address patches compose before model/ANM growth;
+MAN rebuild follows, and final model hashes are read back afterward. A selected
+single-scene export includes topology instead of entering the fixed-layout shortcut.
+
+Retail read-only Town01 preparation verifies eight NPCs, retained ANM/shared
+axes/allocated initial assignment and added-face model bytes together without
+writing a Retail disc. Synthetic discs reopen exact model/MAN output both with
+and without ANM allocation. Arbitrary model donor mapping, runtime spawning and
+interactive rendering remain separate acceptance work.
+
 **2026-10-04 — model growth composition:** Normal Build prepares qualified model
 relocation requests first, then passes their authored model IDs to NPC scene
 preparation. That handoff excludes only those models from the scene's fixed-layout
