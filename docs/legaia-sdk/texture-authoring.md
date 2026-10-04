@@ -1,5 +1,40 @@
 # Authored TIM replacement
 
+## 2026-10-04: scene texture assignment in the material editor
+
+The material editor now browses freshly qualified active-scene TIM assets,
+loads a selected Current texture/palette, and lists native page regions with
+inclusive UV byte bounds. Saved texture allocations participate in that source
+inspection. Copy a page binding into one textured primitive or its complete
+textured packet group, then use the normal material Review, Proposed/scene
+inspection and Return, and one explicit Apply. Indexed CLUT addresses are
+qualified against the aligned flattened strip; direct 16-bit assignments retain
+the model's CLUT word. UVs, geometry, normal references, group ABE drafts, ABR and
+reserved source bits remain unchanged. Whole group copies retain other drafts
+and reject batches over 256 entries without partial publication.
+
+Validation passed three Node suites and 15 focused Python cases (14 synthetic
+and one private Retail case). The private Town01 browser workflow loaded a
+256×257 authored texture as two page regions, assigned its first page to five
+wall primitives, and passed readonly catalog/source inspection, draft-copy
+review invalidation, immutable scene inspection/Return, Apply, Save/reload and
+normal Build review. Independent word-mask construction matched the complete
+TMD candidate; runtime Undo/Redo and reopening retained it. Readback from the
+combined relocated PROT package verified both the exact model candidate and
+resized TIM, preserving neighboring decoded model bytes. Parent visual checks
+passed. Proof-harness selector and carrier-span assumptions were corrected;
+failed logs were retained. Evidence:
+`local-output/sdk-20260909/material-texture-assignment-20261004/parent/`.
+No game was launched.
+
+See [the scene texture picker](../legaia-material-texture-picker.md). This supplies
+explicit existing texture address assignment beside texture resizing and UV
+retargeting. New TIM slots, VRAM allocation, automatic atlas placement and
+general external GLB material/image dependency import remain unfinished.
+Runtime residency, texture windows, palette animation and final visual
+suitability remain deferred gameplay checks. The full SDK goal stays active.
+
+
 ## 2026-10-04: reviewed UV rectangle retargeting
 
 The model face editor now remaps an explicit Current UV rectangle into an

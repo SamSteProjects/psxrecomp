@@ -802,6 +802,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/model-object-ownership.js': ('model-object-ownership.js', 'text/javascript'),
                  '/model-materials.js': ('model-materials.js', 'text/javascript'),
                  '/model-material-donor.js': ('model-material-donor.js', 'text/javascript'),
+                 '/model-texture-binding.js': ('model-texture-binding.js', 'text/javascript'),
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/component-references.js": ("component-references.js", "text/javascript"),
@@ -1019,6 +1020,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     replacement, report = self.server.project._prepare_model_object(body['asset_id'],body['object_index'],body['operation'],body['values'],body['expected_sha256'])
                     report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],replacement,report,key,body.get('all_instances',False))
                     self._json(200,report)
+                    return
+                if route in ('/api/material-texture-catalog','/api/material-texture-source'):
+                    fields={'source_key'} if route.endswith('catalog') else {'source_key','asset_id','palette_index'}
+                    if set(body)!=fields:raise ProjectError('Material texture inspection requires exact source-qualified fields')
+                    from .model_texture_binding import catalog,source
+                    self._json(200,catalog(self.server.project,body['source_key']) if route.endswith('catalog') else source(self.server.project,body['asset_id'],body['source_key'],body['palette_index']))
                     return
                 if route == '/api/model-material-donor-models':
                     if set(body) != {'source_key'} or not isinstance(body['source_key'], str):
