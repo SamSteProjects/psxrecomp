@@ -341,3 +341,39 @@ original selector, plus the exact composed ANM bank. Synthetic tests reject
 stale target headers and invalid partition growth, verify rebased audited byte
 coverage and preserve placement edits. No gameplay was run. Source qualification
 and package readback do not prove native NPC spawning, scripts, cadence or lifecycle.
+
+## Retained allocated GLB export (2026-10-04)
+
+Open a saved clip or reviewed initial-assignment pose, then use **Export GLB** for
+the displayed frame or **Export full clip GLB** with an explicit rate (1–120 fps).
+Retired captures can also be exported. The output contains Current geometry,
+embedded matched textures and either the baked selected pose or independent rigid
+TRS channels for the captured frame sequence. Retail timing is not inferred; full
+clips use STEP interpolation and hold the final frame for one selected interval.
+Looping remains controlled by the receiving application.
+
+`POST /api/export/allocated-animation` requires exactly `scene_id`, `record_id`,
+`expected_source_key`, `representation`, and one of `frame_index` or `clip_fps`.
+Supported representations are `allocated_record`, `allocated_assignment_preview`
+and `allocated_initial_assignment`. The latter two also require `entity_id`;
+proposed assignments additionally require the exact `review_key`. Assigned export
+checks that the requested retained identity is still the actor's assignment.
+Saved export reconstructs that capture even if retired. Proposal export repeats
+native Review. No output path, address, binary payload or geometry is accepted.
+
+Encoding completes privately in memory and the source key is rechecked before
+publication into project-controlled Exports. Invalid requests and source changes
+publish no new file. Export does not alter overrides, saved metadata or history.
+Both the audit sidecar and GLB extras preserve the retained UUID/hash and the
+saved/proposed/assigned representation. Unapplied allocation previews still need
+Apply to establish a retained identity before export. Allocated content GLB import
+remains separate unfinished work; the imported shared-channel sidecar is not an
+allocated-clip import binding.
+
+Retail HTTP checks cover active/retired/proposed/assigned exports, three-frame
+mapping with repeated first/third poses, exact retained identity, posed frame,
+invalid/stale requests, unchanged project/history and source changes during
+encoding without publication. Three editor workflow suites and actual private
+Edge export smoke pass. The exported proposed GLB was reopened to verify embedded
+identity and animation channels. The export dialog screenshot was inspected;
+staging was stopped. No game was launched or installed.

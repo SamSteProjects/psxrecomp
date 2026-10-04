@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {allocatedAnimationExportRequest as request} from '../editor/animation-record-library.js';
+const entity='scene://town01/actors/man-p1/0011',id='11111111-1111-4111-8111-111111111111';
+const context={projectPath:'C:/private',sceneId:'scene://town01',sourceKey:'a'.repeat(64),mode:'edit'};
+const record={record_id:id,record_sha256:'b'.repeat(64)},saved={representation:'allocated_record',source_record:record,saved_record:record,frame_count:3};
+assert.deepEqual(request(saved,context,2),{scene_id:context.sceneId,record_id:id,expected_source_key:context.sourceKey,representation:'allocated_record',frame_index:2});
+const proposed={...saved,representation:'allocated_assignment_preview',assignment_proposal:{entity_id:entity,record_id:id,project_source_key:context.sourceKey,review_key:'c'.repeat(64),proposed_component:record}};
+assert.equal(request(proposed,context,0,15).review_key,'c'.repeat(64));assert.equal(request(proposed,context,0,15).entity_id,entity);
+assert.throws(()=>request(proposed,{...context,sourceKey:'0'.repeat(64)},0,15));
+assert.throws(()=>request(saved,context,3));assert.throws(()=>request(saved,context,0,NaN));assert.throws(()=>request(saved,context,0,true));assert.throws(()=>request({...saved,representation:'imported'},context,0));
+const assigned={...saved,representation:'allocated_initial_assignment',entity_id:entity,authored_assignment:{...record,scene_id:context.sceneId}};
+assert.equal(request(assigned,context,0,30).entity_id,entity);assert.throws(()=>request({...assigned,authored_assignment:{...record,scene_id:'scene://other'}},context,0));
+console.log('Allocated GLB export requests retain identity and Review, reject stale/invalid inputs, and never request an imported clip.');

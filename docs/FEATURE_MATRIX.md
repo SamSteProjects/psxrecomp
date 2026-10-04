@@ -1,5 +1,24 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — retained allocated clip GLB export:** Saved active or retired
+clips, reviewed initial-assignment proposals and current allocated assignments
+now export their own posed frame or full rigid clip through
+`/api/export/allocated-animation`. The server reconstructs the exact retained
+record over Current geometry, enforces scene/source identity and proposal Review,
+and checks the source again after encoding before publishing. No client geometry,
+Retail selector substitution or caller output path is accepted. Audits and GLB
+extras retain the UUID/hash, representation and caller-selected rate.
+
+Retail HTTP checks pass for each representation, repeated frame/channel mapping,
+unchanged project/history, invalid/stale inputs and encoding-time source change
+with no published file. Three focused editor suites pass. Private Edge smoke
+exported saved pose, saved full clip and proposed full clip, verified embedded
+retained identity, unchanged project and no page errors; the export dialog was
+visually inspected and staging server stopped. Allocated GLB import/content
+editing, raw ANM relocation and full-disc allocation export remain work. No game
+was launched or installed; gameplay stays deferred and the full solo goal active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — allocated clip/NPC Build composition:** Normal Build now combines
 allocated initial animation assignments with appended source-qualified NPC MAN
 records. Native qualification rebases audited initial header bytes through the

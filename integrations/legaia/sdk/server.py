@@ -411,13 +411,51 @@ class EditorServer(ThreadingHTTPServer):
             preview['animation_support']['clips'] = [{'id':'authored-initial-animation', 'label':'Assigned initial animation'}]
             return preview
 
-    def export_preview(self, preview: dict, frame_index: int | None, clip_fps: float | None = None) -> dict:
+    def export_allocated_animation(self,body):
+        from .scene_preview import source_key
+        from .animation_allocation import pose_saved_record
+        from .allocated_animation_assignment import assigned_pose,pose_preview
+        representation=body.get('representation')
+        fields={'scene_id','record_id','expected_source_key','representation'}
+        if representation in ('allocated_assignment_preview','allocated_initial_assignment'):
+            fields.add('entity_id')
+        if representation=='allocated_assignment_preview':
+            fields.add('review_key')
+        choice={'clip_fps'} if 'clip_fps' in body else {'frame_index'}
+        if representation not in ('allocated_record','allocated_assignment_preview','allocated_initial_assignment') or set(body)!=fields|choice:
+            raise ProjectError('Allocated export requires exact retained identity, representation, current source and frame or rate')
+        frame,fps=_animation_export_choice(body)
+        key=source_key(self.project)
+        if not key or body['expected_source_key']!=key or body['scene_id']!=self.project.active_scene:
+            raise ProjectError('Allocated export source changed; reopen the clip Preview')
+        if representation=='allocated_record':
+            animation,asset=pose_saved_record(self.project,body['scene_id'],body['record_id'],key)
+        elif representation=='allocated_assignment_preview':
+            animation,asset,_=pose_preview(self.project,body['entity_id'],body['record_id'],key,body['review_key'])
+        else:
+            animation,asset=assigned_pose(self.project,body['entity_id'])
+            if animation['authored_assignment']['record_id']!=body['record_id']:
+                raise ProjectError('Allocated export differs from the current initial assignment')
+        geometry=animation.pop('geometry');geometry['frames']=animation.pop('frames')
+        preview=self.model_preview(asset,prepared=geometry,effective_shape=True)
+        animation['export_source_key']=key;preview['animation']=animation
+        return self.export_preview(preview,frame,fps,expected_source_key=key)
+
+    def export_preview(self, preview: dict, frame_index: int | None, clip_fps: float | None = None, *,expected_source_key=None) -> dict:
         from .build import _guard_output
         from .project import atomic_write
         from importer.export import write_model_export
         output = self.project.root / "Exports"
         _guard_output(output / ".gitignore", self.project.root)
-        result = write_model_export(preview, output, frame_index, clip_fps=clip_fps)
+        if expected_source_key is None:
+            result = write_model_export(preview, output, frame_index, clip_fps=clip_fps)
+        else:
+            from importer.export import encode_model_glb,write_encoded_glb
+            from .scene_preview import source_key
+            data,audit=encode_model_glb(preview,frame_index,clip_fps=clip_fps)
+            if source_key(self.project)!=expected_source_key:
+                raise ProjectError('Allocated source changed during GLB encoding; no export published')
+            result=write_encoded_glb(data,audit,output)
         if not (output / ".gitignore").exists():
             atomic_write(output / ".gitignore", b"*\n")
         return result
@@ -2055,6 +2093,9 @@ class EditorHandler(BaseHTTPRequestHandler):
                     if set(body) != {"entity_id"} or not isinstance(body["entity_id"], str) or not body["entity_id"]:
                         raise ProjectError("Script inspection accepts only an imported entity_id; bytes, addresses and paths are not accepted")
                     self._json(200, self.server.actor_script_preview(body["entity_id"]))
+                    return
+                if route=='/api/export/allocated-animation':
+                    self._json(200,self.server.export_allocated_animation(body))
                     return
                 if route in ("/api/actor-animation-preview", "/api/export/actor-animation"):
                     exporting = route == "/api/export/actor-animation"

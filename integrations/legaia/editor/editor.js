@@ -37,7 +37,7 @@ import {mountTransitionGraphWorkspace} from '/transition-graph-workspace.js';
 import {openModelPrimitiveEditor} from '/model-primitives.js';
 import {openAnimationGlbEditor} from '/animation-glb.js';
 import {openAnimationAllocationEditor} from '/animation-allocation.js';
-import {openAnimationRecordLibrary} from '/animation-record-library.js';
+import {openAnimationRecordLibrary,allocatedAnimationExportRequest} from '/animation-record-library.js';
 import {openModelGlbEditor} from '/model-glb.js';
 import {openModelMaterialsEditor} from '/model-materials.js';
 import {openTexturePngEditor} from '/texture-png.js';
@@ -4311,7 +4311,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
     $('shape-clear').disabled=state.project.mode!=='edit'||!shape;$('shape-authored').disabled=!shape;
     $('shape-status').textContent=`Viewing ${clipId==='allocated-record'?'SAVED unassigned clip · Current model geometry':clipId==='allocation-preview'?'PROPOSED unassigned clip · Current model geometry':shapeLayer==='authored'?'AUTHORED object-local shape':clipId==='authored-channels'?'AUTHORED shared animation':clipId==='authored-initial-animation'?'AUTHORED initial animation':clipId==='authored-appearance'?'AUTHORED appearance animation':clipId?'RETAIL assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
-    updateShapeDraft();$('model-export').disabled=['file-preview','allocation-preview','allocated-record','allocated-assignment-preview','authored-allocated-animation'].includes(clipId)||data.model_glb_proposal===true||data.representation==='model-material-proposal';exportClipControls.hidden=['file-preview','allocation-preview','allocated-record','allocated-assignment-preview','authored-allocated-animation'].includes(clipId)||!data.frames?.length;
+    updateShapeDraft();$('model-export').disabled=['file-preview','allocation-preview'].includes(clipId)||data.model_glb_proposal===true||data.representation==='model-material-proposal';exportClipControls.hidden=['file-preview','allocation-preview'].includes(clipId)||!data.frames?.length;
     if(data.model_glb_proposal===true){$('model-dialog').querySelector('h2').textContent='Proposed GLB model · not applied';$('model-description').textContent='Drag to orbit · Scroll to zoom · Proposed object-local positions and UVs · Not applied. Close to return to GLB review.';}
     if(!modelRenderer){const module=await import('/scene-renderer.js');modelRenderer=new module.SceneRenderer(modelCanvas,message=>{$('model-error').textContent=message??'';if(!message)requestAnimationFrame(drawModel);});}
     if(!$('model-dialog').open)$('model-dialog').showModal();
@@ -4439,14 +4439,16 @@ $('model-export-clip').onclick=()=>exportModel(true);
 async function exportModel(fullClip=false){
   if(modelSceneContext!==sceneRequestKey()){$('model-error').textContent='The scene or model source changed. Reopen the model preview before exporting.';return;}
   if(shapeDraft){$('model-error').textContent='Apply or discard the selected shape file before exporting.';return;}
-  if(['allocation_preview','allocated_record','allocated_assignment_preview','allocated_initial_assignment'].includes(model?.animation?.representation)){$('model-error').textContent='Allocated clip export is not implemented yet. This allocated clip cannot export the actor’s Retail clip.';return;}
+  if(model?.animation?.representation==='allocation_preview'){$('model-error').textContent='Apply the allocated clip before exporting its retained identity.';return;}
   if(model?.animation?.representation==='file_preview'){$('model-error').textContent='Import the file before exporting an applied animation.';return;}
   if(model?.model_glb_proposal){$('model-error').textContent='Apply the reviewed GLB before exporting the current model.';return;}
   if(busy||!modelAssetId)return;const fps=Number($('clip-export-rate').value);if(fullClip&&(!model?.frames?.length||!Number.isFinite(fps)||fps<1||fps>120)){$('model-error').textContent='Load a clip and choose an export rate from 1 to 120 fps.';return;}stopAnimation();setBusy(true);$('model-export').disabled=true;$('model-error').textContent='';
   const clip=model.animation?.clip_id,payload=modelEntityId?{entity_id:modelEntityId,frame_index:animationFrame,...(clip==='authored-channels'?{representation:'authored'}:{})}:{asset_id:modelAssetId,...(clip?{clip_id:clip,frame_index:animationFrame}:{})};
   if(fullClip){delete payload.frame_index;payload.clip_fps=fps;}
   try{
-    const response=await fetch(model.representation==='authored-shape'?'/api/export/model-shape':modelEntityId?(clip==='authored-initial-animation'?'/api/export/actor-initial-animation':clip==='authored-appearance'?'/api/export/actor-appearance':'/api/export/actor-animation'):'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const allocated=['allocated_record','allocated_assignment_preview','allocated_initial_assignment'].includes(model.animation?.representation);
+    const exportPayload=allocated?allocatedAnimationExportRequest(model.animation,{projectPath:state.project.path,sceneId:state.scene.id,mode:state.project.mode,sourceKey:state.scene_preview_source_key},animationFrame,fullClip?fps:null):payload;
+    const response=await fetch(allocated?'/api/export/allocated-animation':model.representation==='authored-shape'?'/api/export/model-shape':modelEntityId?(clip==='authored-initial-animation'?'/api/export/actor-initial-animation':clip==='authored-appearance'?'/api/export/actor-appearance':'/api/export/actor-animation'):'/api/export/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(exportPayload)});
     const result=await response.json();if(!response.ok||result.error)throw new Error(result.error ?? 'Model export failed');
     exportDialog.innerHTML=`<div class="dialog-heading"><h2>${result.audit.full_clip?'Animation clip exported':result.audit.posed?'Static posed model exported':'Object-local model exported'}</h2><button id="close-export" aria-label="Close">×</button></div><p>${result.audit.object_count} objects · ${result.audit.triangle_count} triangles · ${result.audit.texture_count} embedded textures${result.audit.posed?' · Frame '+(result.audit.frame_index+1):''}</p><label>Private GLB file<input readonly value="${escapeHTML(result.path)}"></label><p>Full model export${result.audit.posed?' with the displayed animation frame baked into geometry':''}. Source units are retained; physical meter scale is unknown. ${result.audit.full_clip?`Rigid animation channels exported at ${result.audit.export_fps} selected fps; ${result.audit.frame_count} decoded frames. Retail timing is unverified; looping is controlled by the receiving application.`:'Animation channels and skin hierarchy are not exported.'}</p><details><summary>Export provenance and limitations</summary><pre class="diagnostic-detail">${escapeHTML(JSON.stringify(result.audit,null,2))}</pre></details>`;
     $('close-export').onclick=()=>exportDialog.close();exportDialog.showModal();

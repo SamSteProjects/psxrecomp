@@ -6,6 +6,23 @@ const integer=(v,a,b)=>Number.isSafeInteger(v)&&v>=a&&v<=b;
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const fail=message=>{throw new Error(message);};
 const actor=(id,scene)=>typeof id==='string'&&id.startsWith(scene+'/actors/man-p1/')&&/^\d{4}$/.test(id.slice((scene+'/actors/man-p1/').length));
+export function allocatedAnimationExportRequest(animation,context,frameIndex,clipFps=null){
+  context=animationGlbContext(context);
+  const representation=animation?.representation,record=animation?.source_record;
+  if(!['allocated_record','allocated_assignment_preview','allocated_initial_assignment'].includes(representation)||!uuid(record?.record_id)||!hash(record.record_sha256))fail('Export requires a retained allocated clip identity.');
+  const request={scene_id:context.sceneId,record_id:record.record_id,expected_source_key:context.sourceKey,representation};
+  if(representation==='allocated_assignment_preview'){
+    const review=animation.assignment_proposal;
+    if(review?.project_source_key!==context.sourceKey||review.record_id!==record.record_id||review.proposed_component?.record_sha256!==record.record_sha256||!hash(review.review_key)||!actor(review.entity_id,context.sceneId))fail('Assignment export Review is stale or differs from the previewed record.');
+    request.entity_id=review.entity_id;request.review_key=review.review_key;
+  }else if(representation==='allocated_initial_assignment'){
+    if(animation.authored_assignment?.record_id!==record.record_id||animation.authored_assignment.record_sha256!==record.record_sha256||animation.authored_assignment.scene_id!==context.sceneId||!actor(animation.entity_id,context.sceneId))fail('Assigned export differs from its retained identity.');
+    request.entity_id=animation.entity_id;
+  }else if(animation.saved_record?.record_id!==record.record_id||animation.saved_record.record_sha256!==record.record_sha256)fail('Saved export differs from its captured record.');
+  if(clipFps===null){if(!integer(frameIndex,0,animation.frame_count-1))fail('Choose a retained animation frame.');request.frame_index=frameIndex;}
+  else{if(typeof clipFps!=='number'||!Number.isFinite(clipFps)||clipFps<1||clipFps>120)fail('Choose an explicit clip rate from 1 to 120 fps.');request.clip_fps=clipFps;}
+  return request;
+}
 export function decodeAnimationRecordLibrary(value,context){
   context=animationGlbContext(context);
   if(!object(value)||value.schema_version!=='legaia.animation-record-library.v1'||value.scene_id!==context.sceneId||value.project_source_key!==context.sourceKey||!integer(value.revision,0,64)||!Array.isArray(value.records)||value.records.length>64||typeof value.activation_available!=='boolean'||value.activation_available!==(value.revision<64)||typeof value.build_available!=='boolean'||value.gameplay_verified!==false)fail('Saved clip library differs from the current scene source.');
