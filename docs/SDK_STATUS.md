@@ -1,5 +1,19 @@
 # Legaia SDK status — 2026-10-04
 
+**Allocated initial clip assignment — native/read-only review stage (2026-10-04):**
+A saved clip UUID now resolves to its current active bank ordinal for a reviewed
+MAN header proposal. Native checks prove the donor/model/channel layout, reject
+aliased actors and byte-selector overflow, and patch only initial model/animation
+header bytes. SDK review/pose APIs bind actor, record/hash, bank and current source
+key; exact captured model identity is required. Pose uses Current geometry.
+
+Synthetic native checks pass. The Retail review test confirms an allocated
+selector rebases from 71 to 70 after another clip is retired while UUID/hash stay
+unchanged, and stale pose reviews reject. This remains read-only infrastructure:
+assignment Apply, persistent actor component, scene integration, normal Build
+header composition and editor controls are not implemented yet. No gameplay is
+required now or claimed verified. [Guide](legaia-animation-allocation.md).
+
 **Expanded ANM bank delivery (2026-10-04):** Normal Build/review now deliver active
 allocated clips in qualified compressed type-5 scene carriers. Shared channel
 edits are composed once with frozen captures. The carrier updates decoded size,

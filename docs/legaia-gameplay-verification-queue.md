@@ -1,5 +1,17 @@
 # Deferred gameplay verification
 
+**2026-10-04 — allocated initial clip assignment review:** Native MAN proposal
+qualification and read-only SDK Review/Pose now resolve a saved UUID to its current
+active ordinal with exact captured model/channel evidence. Synthetic and Retail
+checks cover bounded header changes, stable UUID/hash through ordinal rebasing,
+Current geometry and stale/incompatible request rejection.
+
+No immediate manual gameplay check is required. Apply/persistence, actor scene
+integration, normal Build MAN header composition and editor controls are still
+implementation work. Later gameplay must verify initial clip selection, scripts
+that change model/clip, frame progression, cadence/looping and lifecycle. No game
+was launched or runtime acceptance claimed.
+
 **2026-10-04 — expanded compressed ANM delivery:** Normal Build/review now carry
 active allocated records in qualified compressed scene carriers. Independent
 Retail format-7 package readback recovers the exact composed 70-record bank;

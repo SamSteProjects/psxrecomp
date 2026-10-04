@@ -190,6 +190,56 @@ class ManAssignmentContext:
                                 appended_man_sha256=_sha(candidate)))
         return bytes(result), rebased
 
+    def patch_allocated(self,bank: bytes,expected_bank_sha256: str,edits: dict,
+                        *,original: bytes | None=None) -> tuple[bytes,list[dict]]:
+        """Assign appended ANM ordinals through an evidenced same-model donor.
+
+        The caller resolves stable ledger identities to this exact bank. MAN's
+        one-byte initial clip selector is not a portable authored identity.
+        """
+        from .animation_bank_growth import qualify_animation_bank
+        if not isinstance(bank,bytes) or _sha(bank)!=expected_bank_sha256:
+            raise ImportError('Allocated MAN assignment bank preimage changed')
+        qualify_animation_bank(self._anm,bank)
+        if original is not None and original!=self._man:
+            raise ImportError('Allocated MAN assignment source differs from verified baseline')
+        if not isinstance(edits,dict) or not 0<len(edits)<=MAX_ACTORS:
+            raise ImportError('Allocated MAN assignment requires a bounded nonempty batch')
+        ranges=animation_record_ranges(bank);staged=[]
+        for record,value in edits.items():
+            target=self._actor(record)
+            if not isinstance(value,dict) or set(value)!={'donor_record_index','allocated_record_index','record_sha256'}:
+                raise ImportError('Allocated MAN assignment requires exact donor, ordinal and record digest')
+            donor=self._actor(value['donor_record_index']);index=value['allocated_record_index']
+            if type(index) is not int or not len(self._ranges)<=index<len(ranges) or index+1>255:
+                raise ImportError('Allocated clip ordinal exceeds the nonzero MAN byte selector')
+            self._validate(record,donor.model_index,donor.animation_id)
+            start,end=ranges[index];payload=bank[start:end]
+            if _sha(payload)!=value['record_sha256']:
+                raise ImportError('Allocated MAN assignment record digest changed')
+            decoded=decode_animation_record(payload)
+            a,b=self._ranges[donor.animation_id-1];original_donor=self._anm[a:b]
+            if (decoded['bone_count']!=self._models[donor.model_index] or payload[:2]!=original_donor[:2]
+                    or payload[4:8]!=original_donor[4:8] or payload[-8:]!=original_donor[-8:]):
+                raise ImportError('Allocated clip differs from its evidenced donor model/channel layout')
+            staged.append((record,target,donor,index,value['record_sha256']))
+        result=bytearray(self._man);audit=[]
+        for record,target,donor,index,record_hash in sorted(staged):
+            base=target.byte_offset+1+target.local_count*2
+            for field,value,delta in (('model_index',donor.model_index,0),('animation_id',index+1,1)):
+                if result[base+delta]!=value:
+                    before=result[base+delta];result[base+delta]=value
+                    audit.append(dict(record_index=record,field=field,decoded_byte_offset=base+delta,
+                        before_byte=before,after_byte=value,donor_record_index=donor.record_index,
+                        allocated_record_index=index,record_sha256=record_hash,bank_sha256=expected_bank_sha256,
+                        scope='initial-man-allocated-animation-header-only',script_compatibility='unverified'))
+        candidate=bytes(result);reparsed={a.record_index:a for a in parse_man(candidate,self.scene).actors}
+        for record,target,donor,index,_ in staged:
+            after=reparsed.get(record)
+            if after is None or (after.local_count,after.model_index,after.animation_id)!=(target.local_count,donor.model_index,index+1):
+                raise ImportError('Allocated MAN header assignment failed independent readback')
+        return candidate,audit
+
     def serialize(self, edits: dict[int, dict[str, int]]) -> tuple[bytes, list[dict], dict]:
         """Equal-span encoded replacement; reject compressed growth, no relocation."""
         changed, audit = self.patch(edits)

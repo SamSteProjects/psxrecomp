@@ -1,5 +1,18 @@
 # Legaia SDK feature matrix
 
+**2026-10-04 — allocated actor assignment (native review stage):** Appended ANM
+ordinals can now be qualified for initial MAN header proposals through an exact
+captured model and supported donor mapping. Native checks retain all other MAN
+bytes and reject aliases, count/layout mismatches and one-byte selector overflow.
+Source-bound SDK Review and posed Preview are read-only; proposed portable clip
+identity is distinct from its current native ordinal.
+
+Synthetic and Retail review/pose checks cover UUID/hash stability after 71→70
+ordinal rebasing, Current geometry and stale/incompatible requests. Persistent
+actor component/Apply, scene integration, normal Build header composition and
+editor assignment controls remain missing. These APIs do not assign a live actor
+or establish runtime playback. [Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — allocated records (compressed bank Build stage):** Normal
 Build/review reconstruct active captures and current shared channels into expanded
 ANM banks. Native qualification preserves existing layout/opaque data, updates

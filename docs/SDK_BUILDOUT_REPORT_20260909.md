@@ -1,5 +1,19 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — allocated initial animation assignment qualification/review:**
+Implemented native appended-ordinal MAN header qualification using an evidenced
+same-model donor and exact bank/record preimages. Only header bytes change;
+aliases, unsupported mappings, old ordinals, stale hashes and selector overflow
+reject. Read-only SDK actor/clip Review and posed Preview expose a portable
+proposed component separately from the current native byte selector.
+
+Synthetic checks pass. Retail HTTP review/pose checks prove stable clip identity
+through 71→70 ordinal rebasing, exact review keys, unchanged project/history and
+stale/incompatible input rejection. Assignment persistence/Apply, scene integration,
+normal Build MAN composition and editor controls remain the next work. Existing
+bank Build delivery remains implemented. [Details](legaia-animation-allocation.md).
+No game was launched; the full goal remains active and solo.
+
 **2026-10-04 — expanded compressed animation bank Build:** Implemented bounded
 ANM bank qualification, type-5 descriptor/stream growth and physical PROT carrier
 relocation. Normal Build/review compose active frozen captures with current shared

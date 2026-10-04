@@ -189,3 +189,37 @@ package and recovered the exact composed 70-record bank (one of two captures
 retired), including later shared edits, while saved project metadata stayed
 unchanged. Generic package-consumer checks passed. No game was launched and no
 runtime/gameplay acceptance is claimed.
+
+## Initial actor assignment qualification and review (2026-10-04)
+
+`ManAssignmentContext.patch_allocated` qualifies an expanded ANM bank against its
+Retail source, then checks an explicit imported donor/target pair and new record
+hash. Target and donor require non-aliased MAN partition-1 records, an evidenced
+compatible local model/channel mapping and supported donor headers/trailers.
+Only initial model/animation header bytes are patched; script, coordinate,
+partition, local and opaque bytes stay unchanged. Appended record index plus one
+must fit the nonzero MAN animation byte (1–255). Old record ordinals cannot be
+submitted as allocated clips. Current authored channel axes may be composed in
+the bank, with the native qualification still guarding old layouts/opaque data.
+
+`POST /api/allocated-animation-assignment-review` accepts exactly `entity_id`,
+`record_id` and `expected_source_key`. The clip must be active in the scene ledger
+and its captured asset must equal the target's inherited appearance model; no
+retargeting is inferred. Review resolves the stable UUID/hash to the current bank
+ordinal, checks the native MAN proposal, and reports a portable proposed component
+separately from its current native byte selector. No project state is published.
+
+`POST /api/allocated-animation-assignment-pose` adds the exact `review_key`,
+independently repeats Review and poses the frozen captured record over Current
+geometry. The response labels a proposed initial clip and marks it unapplied.
+Retiring another clip may rebase the selector without changing the selected
+UUID/hash; that source change invalidates the previous Review and pose request.
+
+Two new native tests plus eight existing synthetic MAN checks pass (the optional
+Retail importer case was skipped in that synthetic run). The Retail SDK test
+covers read-only Review/Pose, exact captured record, Current geometry, selector
+71→70 after another clip's retirement, and stale/missing/incompatible request
+rejection. Assignment Apply/persistence, actor scene projection, normal Build
+header composition and editor controls remain explicitly unavailable. Carrying
+an allocated bank and qualifying a MAN proposal do not establish runtime selection
+or playback suitability. No game was launched.
