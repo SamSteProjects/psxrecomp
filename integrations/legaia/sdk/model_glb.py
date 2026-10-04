@@ -33,7 +33,7 @@ LIMITATIONS = [
     'Normal edits use _LEGAIA_SOURCE_NORMAL signed source words; images and opaque bytes remain unchanged. Existing normal references may select another source normal in the same object; shared references and coordinates must agree.',
     'Material edits use _LEGAIA_SOURCE_MATERIAL [CLUT word, TPage word, group ABE]. Exact integer aliases must agree; reserved bits and source ABR remain unchanged. Shader assignments and images are ignored.',
     'The viewport does not reproduce retail normal-based lighting; exact normal words are reviewed as source fields.',
-    'Normal Build retains source capacities; gameplay remains unverified.',
+    'Existing face additions retain their replay ledger and qualified growth Build path; GLB does not allocate further topology. Gameplay remains unverified.',
 ]
 
 
@@ -171,6 +171,12 @@ def _snapshot(project, asset_id: str) -> dict:
                        profile=deepcopy(profile))
         if authored and authored['format'] == 'tmd-face-removal-v1':
             binding.update(schema_version='legaia.model-glb-binding.v2', removed_faces=deepcopy(authored['removed_faces']))
+        if authored and authored['format'] == 'tmd-face-addition-v1':
+            from .model_reference_faces import addition_mapping
+            maps, faces = addition_mapping(project, asset_id, retail, effective, authored)
+            binding.update(schema_version='legaia.model-glb-binding.v3',
+                           topology_sha256=digest(dict(face_mappings=maps, authored_faces=faces)),
+                           authored_face_count=sum(len(rows) for rows in faces))
         _json_size(binding, MAX_PROFILE_BYTES, 'Model GLB binding')
     if source_key(project) != key:
         raise ProjectError('Project changed while verifying the model GLB export')
@@ -190,6 +196,8 @@ def _audits(snapshot: dict, candidate: bytes) -> tuple[list, list]:
         removed = snapshot['binding']['removed_faces']
         _, changes = qualify_face_removal(snapshot['retail'], snapshot['binding']['source_sha256'], candidate, removed)
         changes += [dict(kind='primitive_removal', **row) for row in removed]
+    elif snapshot['binding']['schema_version'] == 'legaia.model-glb-binding.v3':
+        _, changes = replace_model_content(snapshot['effective'], snapshot['binding']['effective_sha256'], candidate, allow_normal_references=True)
     else:
         _, changes = replace_model_content(snapshot['retail'], snapshot['binding']['source_sha256'], candidate, allow_normal_references=True)
     _, pending = replace_model_content(snapshot['effective'], snapshot['binding']['effective_sha256'], candidate, allow_normal_references=True)
@@ -221,6 +229,9 @@ def _report(snapshot: dict, content: bytes, candidate: bytes, analysis: dict) ->
                   scope='TMD-existing-layout-content')
     if binding['schema_version'] == 'legaia.model-glb-binding.v2':
         report.update(schema_version='legaia.model-glb-review.v2', removed_faces=deepcopy(binding['removed_faces']))
+    if binding['schema_version'] == 'legaia.model-glb-binding.v3':
+        report.update(schema_version='legaia.model-glb-review.v3', comparison='current_addition_topology',
+                      topology_sha256=binding['topology_sha256'], authored_face_count=binding['authored_face_count'])
     report['review_key'] = digest(dict(binding=binding, glb_sha256=report['glb_sha256'],
                                      proposed_sha256=report['proposed_sha256'],
                                      changes=changes, pending_changes=pending,
@@ -244,8 +255,10 @@ def export_model(project, asset_id: str) -> tuple[bytes, dict, dict]:
 def _prepare(project, asset_id: str, content: bytes, binding: dict) -> tuple[bytes, dict]:
     from importer.model_glb import import_model_glb
     _content(content)
-    if (not isinstance(binding, dict) or set(binding) != (BINDING_KEYS | {'removed_faces'} if binding.get('schema_version') == 'legaia.model-glb-binding.v2' else BINDING_KEYS) or
-            binding.get('schema_version') not in ('legaia.model-glb-binding.v1', 'legaia.model-glb-binding.v2')):
+    extra = {'removed_faces'} if isinstance(binding, dict) and binding.get('schema_version') == 'legaia.model-glb-binding.v2' else \
+            {'topology_sha256', 'authored_face_count'} if isinstance(binding, dict) and binding.get('schema_version') == 'legaia.model-glb-binding.v3' else set()
+    if (not isinstance(binding, dict) or set(binding) != BINDING_KEYS | extra or
+            binding.get('schema_version') not in ('legaia.model-glb-binding.v1', 'legaia.model-glb-binding.v2', 'legaia.model-glb-binding.v3')):
         raise ProjectError('Choose the SDK model export binding JSON sidecar')
     _json_size(binding, MAX_PROFILE_BYTES, 'Model GLB binding')
     snapshot = _snapshot(project, asset_id)

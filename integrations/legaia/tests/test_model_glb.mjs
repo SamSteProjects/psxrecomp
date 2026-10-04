@@ -82,3 +82,12 @@ assert.deepEqual(decodeModelGlbReview(removalReport,removalBinding,assetId,conte
 for(const change of [v=>v.removed_faces=[],v=>v.changes.pop(),v=>v.changes.push(v.changes.at(-1)),v=>v.pending_changes.push(v.changes.at(-1))]){const bad=structuredClone(removalReport);change(bad);assert.throws(()=>decodeModelGlbReview(bad,removalBinding,assetId,context,glbHash));}
 for(const removed_faces of [[{object_index:true,primitive_index:0}],[{object_index:0,primitive_index:0},{object_index:0,primitive_index:0}],[]])assert.throws(()=>decodeModelGlbBinding({...removalBinding,removed_faces},assetId,context));
 console.log('V2 GLB removal bindings and complete Retail tombstone audit guards passed.');
+
+const additionBinding={...binding(),schema_version:'legaia.model-glb-binding.v3',topology_sha256:h('e'),authored_face_count:1};
+const additionReport={...report(),schema_version:'legaia.model-glb-review.v3',comparison:'current_addition_topology',topology_sha256:h('e'),authored_face_count:1,changes:report().pending_changes};
+assert.equal(decodeModelGlbBinding(additionBinding,assetId,context).authored_face_count,1);
+assert.equal(decodeModelGlbReview(additionReport,additionBinding,assetId,context,glbHash).comparison,'current_addition_topology');
+assert.equal(decodeModelGlbReview({...additionReport,proposed_sha256:additionBinding.effective_sha256,changes:[],pending_changes:[]},additionBinding,assetId,context,glbHash).changes.length,0);
+for(const change of [{topology_sha256:'bad'},{authored_face_count:true},{authored_face_count:0},{authored_face_count:129}])assert.throws(()=>decodeModelGlbBinding({...additionBinding,...change},assetId,context));
+for(const change of [{topology_sha256:h('d')},{authored_face_count:2},{comparison:'retail_source'},{changes:[]},{schema_version:'legaia.model-glb-review.v1'}])assert.throws(()=>decodeModelGlbReview({...additionReport,...change},additionBinding,assetId,context,glbHash));
+console.log('V3 GLB Current addition-topology binding, review, no-op and metadata tamper guards passed.');
