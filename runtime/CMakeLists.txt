@@ -392,6 +392,10 @@ if(BUILD_TESTING)
     target_link_libraries(mod_runtime_test PRIVATE chdr-static)
     add_test(NAME mod_runtime_test COMMAND mod_runtime_test)
 
+    add_executable(disc_relocation_test tests/test_disc_relocation.cpp)
+    target_include_directories(disc_relocation_test PRIVATE include)
+    add_test(NAME disc_relocation_test COMMAND disc_relocation_test)
+
     if(WIN32)
         add_executable(autocompile_publication_test
             tests/test_autocompile_publication.c

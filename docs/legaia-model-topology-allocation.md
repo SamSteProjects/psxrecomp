@@ -418,3 +418,24 @@ that physical reader; insertion cannot be represented by ordinary overlays alone
 Normal Build packaging and runtime mapping/sector-count support must use the
 verified logical mapping and remain unfinished. The view reports
 `runtime_connected=False`, `build_ready=False` and `gameplay_verified=False`.
+
+
+## Native sector mapping foundation
+
+`runtime/include/disc_relocation.h` provides `PS1::DiscRelocation`. Qualified
+activation supplies source sector count, PROT allocation, replacement user data
+and relocated ISO metadata keyed by proposed LBA. The mapper validates extents,
+no shrink, MSF address range and metadata ownership transactionally. Reads choose
+replacement/metadata payloads or a shifted source callback, copying to the caller
+only after success. Metadata addresses retain their old source LBA for future
+raw-sector framing. Clear discards the active plan. The class does not perform
+package hash/provenance or ISO metadata qualification; activation must do those.
+
+A standalone native C++17 regression passes with warnings treated as errors,
+covering every sector in the synthetic insertion, shifted tail/metadata, unchanged
+buffers on failed reads and invalid configuration retaining the old valid plan.
+The CMake `disc_relocation_test` target is registered; a full runtime suite was
+not run. This mapper is not yet wired to ISOReader/CD controller or package
+activation. Raw Mode 2 framing/error protection and normal Build packaging remain
+required. Private executable lives under
+`local-output/sdk-20260909/native-disc-relocation-20261003/parent/`.

@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Native logical mapper checkpoint (2026-10-03): offline C++ regression passes for
+inserted payloads, shifted sectors/metadata, sector count and failure isolation.
+It is not yet connected to package activation or CD reads. Raw Mode 2 framing
+and normal Build integration remain offline work; no immediate gameplay gate.
+No game, installation or full-disc export ran.
+
 Relocated logical ISO checkpoint (2026-10-03): composed model-pack growth now
 reopens through synthetic ISO lookup, including moved directories/path tables
 and unchanged following movie bytes. This is in-memory logical readback; no BIN
