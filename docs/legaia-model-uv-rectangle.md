@@ -1,5 +1,36 @@
 # Reviewed model UV rectangle retargeting
 
+## 2026-10-04: UV rectangles for GLB-selected native faces
+
+The face editor now offers **Select UV faces from GLB image** inside **Retarget
+a UV rectangle**. Qualify an exact Current SDK model GLB and fresh binding JSON,
+then choose a material/channel/image. This reuses the native roundtrip and complete
+source-corner ownership checks. Choosing the face set selects the new **Qualified
+GLB material faces** scope; explicit Source/Target byte rectangles still determine
+the UV mapping. Copy stages all selected UVs before publishing any draft. Preview
+faces and explicit Apply retain the existing model replacement workflow.
+
+Selections may span packet groups and objects. Draft identity now includes both
+object and local primitive index. Existing vertex/RGB/normal-reference drafts and
+other face drafts are preserved. The combined draft limit is 256, including the
+visible primitive. Current source UVs are mapped afresh; no image dimensions,
+texture-page address, GLB shader UVs, clipping or wrapping is inferred. Split
+material quads, untextured faces and stale bindings remain ineligible. After Apply,
+the face selector is withdrawn until a fresh Current export is qualified.
+
+Focused checks passed cross-object duplicate local indices, preservation of other
+drafts, source ownership and atomic failure. The real GLB codec tests passed the
+face-editor source adapter; existing UV and model-primitive Node suites passed.
+Private Town01 browser evidence passed five-face qualification, UV-only packet
+changes, clipping rejection with earlier drafts retained, review invalidation,
+Apply/Save/reload and normal Build review. Parent verification passed Undo/Redo,
+offline Open, stale binding rejection and exact normal Build model/TIM readback,
+with neighboring decoded model bytes unchanged. Evidence:
+`local-output/sdk-20260909/model-glb-uv-selection-20261004/parent/qualified/proof.json`.
+The first private browser harness expected the face editor to close after Apply;
+it was corrected to verify refreshed Current source on a fresh private project.
+No game launched; gameplay and live texture residency remain deferred.
+
 Open a model in Edit mode, choose **Edit faces, UVs and colors**, select a
 textured primitive and expand **Retarget a UV rectangle**. Choose inclusive
 Source and Target U/V endpoints in native byte coordinates (0–255). Source

@@ -1,5 +1,15 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: GLB-selected UV rectangle scope
+
+Implemented: complete source-qualified GLB material/image face sets can receive
+explicit native UV rectangle remaps across packet groups and objects. Copy preserves
+other face and vertex/RGB/normal-reference drafts; combined budget is 256. Existing
+Preview/Apply/Undo, Save/Open and normal Build composition remain authoritative.
+Focused client/native codec checks and the private five-face Town01 browser plus
+exact package readback passed. Gameplay remains deferred. See
+[UV workflow](legaia-model-uv-rectangle.md).
+
 ## 2026-10-04: GLB image-to-native-face material selection
 
 The material editor now offers **Select faces from GLB image**. Load an exact

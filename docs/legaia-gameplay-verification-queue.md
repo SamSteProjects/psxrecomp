@@ -1,5 +1,19 @@
 # Deferred gameplay verification
 
+## 2026-10-04: GLB-selected native UV rectangle remap
+
+Queued for later manual verification: select the intended GLB material/image face
+set from an exact Current model export, remap an explicit native UV rectangle,
+and confirm those wall faces display the intended pixel region in gameplay.
+Check other shared model instances and faces outside the selection. Native page,
+palette, blend and image pixels remain separate authoring choices.
+
+Automated qualification passed the five-face Town01 browser workflow, atomic
+clipping rejection, refreshed Current source after Apply, Undo/Redo, Save/Open
+and exact normal Build readback with unchanged neighboring decoded model bytes.
+Private proof is `local-output/sdk-20260909/model-glb-uv-selection-20261004/parent/qualified/proof.json`.
+Zero game launches; this deferred verification does not block further SDK buildout.
+
 ## 2026-10-04: GLB-selected native face texture-page assignment
 
 Queued for later manual gameplay verification: build a deliberate GLB-selected

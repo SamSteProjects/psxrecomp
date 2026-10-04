@@ -23,3 +23,15 @@ export function uvRectangleDrafts(source,selected,from,to,scope){
     base.uvs=remapUVs(v.uvs,from,to);return base;
   });
 }
+
+// Qualified GLB material selection owns the face identities; explicit byte
+// rectangles own this UV transformation. Construct and validate before publish.
+export function uvSelectionDrafts(source,selection,from,to,existing=[]){
+  if(selection?.asset_id!==source.asset_id||selection.project_source_key!==source.project_source_key||selection.effective_sha256!==source.effective_sha256||selection.can_stage!==true||!Array.isArray(selection.faces)||!selection.faces.length||selection.faces.length>256)fail('UV face selection is stale, ambiguous or exceeds its budget.');
+  const next=new Map(existing.map(row=>[`${row.object_index}:${row.primitive_index}`,structuredClone(row)])),owned=new Set();
+  for(const face of selection.faces){const obj=source.objects[face.object_index],row=obj?.primitives[face.primitive_index],key=`${face.object_index}:${face.primitive_index}`;if(!row||row.primitive_index!==face.primitive_index||row.group_index!==face.group_index||row.uvs===null||face.textured!==true||face.material_indices?.length!==1||face.material_indices[0]!==selection.material_index||owned.has(key))fail('UV face selection does not own complete Current textured faces.');owned.add(key);
+    const draft=next.get(key)??{object_index:face.object_index,primitive_index:face.primitive_index,vertices:structuredClone(row.vertices),...(row.colors===null?{}:{colors:structuredClone(row.colors)}),...(row.normal_indices==null?{}:{normal_indices:structuredClone(row.normal_indices)})};draft.uvs=remapUVs(row.uvs,from,to);next.set(key,draft);
+  }
+  if(next.size>256)fail('UV face selection exceeds the combined 256-entry draft budget.');
+  return [...next.values()].sort((a,b)=>a.object_index-b.object_index||a.primitive_index-b.primitive_index);
+}
