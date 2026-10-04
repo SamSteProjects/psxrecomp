@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Relocation package payload checkpoint (2026-10-03): source-bound PROT/metadata
+payload encoding and strict readback pass offline. The legacy derived-disc
+channel is forbidden for feature-style manifests. Native parser, feature conflict
+rules, activation and normal Build integration remain unfinished. No game or
+full-disc export ran; no immediate gameplay gate is added.
+
 ISOReader relocation checkpoint (2026-10-03): native user/raw reads, grown sector
 count, moved-root file lookup, virtual subchannel bounds and Clear/Close/Open
 pass offline. Existing SBI/CDDA tests still pass. No generated SDK package yet

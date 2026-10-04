@@ -487,3 +487,27 @@ replacement/movie payloads, raw terminal/tail, bounds and lifetime. CMake target
 registered; full runtime suite not run. MSVC reports existing libchdr/parser
 warnings. Private builds: `local-output/sdk-20260909/iso-reader-relocation-20261003/parent/`.
 No gameplay or full Retail disc export ran.
+
+
+## Relocation payload contract
+
+`importer.disc_relocation_package` defines binary v1 for feature package activation.
+The existing legacy `derived_disc` channel rejects feature-style manifests.
+This new codec is not a manifest declaration or an activation channel yet.
+
+The 96-byte little-endian header (`<8s6I32s32s`) stores magic `PSXDRLOC`, version
+1, original physical sector count, PROT starting LBA, original/proposed PROT
+sector counts, metadata record count and original/proposed PROT SHA256 digests.
+It is followed by complete proposed PROT user bytes. Each 2120-byte metadata
+record stores `<II32s32s`: original/proposed LBA, source/candidate sector hashes,
+then exactly 2048 candidate user bytes. Records sort by original LBA, exclude
+PROT ownership and obey the insertion mapping. Payloads have exact lengths,
+no shrink, MSF bounds, 1 GiB total/4096 metadata budgets and candidate readback.
+The entire binary is bound to its expected SHA256 when decoded.
+
+Activation must independently verify original PROT and metadata source hashes
+against the committed source disc. Native parsing, strict feature manifest
+ownership, conflict checks and activation are still required, followed by normal
+Build packaging. Eight focused package/logical-disc/ISO tests pass; package tests
+pass again after the preallocation guard. Output remains runtime/build/gameplay
+unconnected. No game, helper, installation or full-disc export ran.
