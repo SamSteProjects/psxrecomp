@@ -1,5 +1,37 @@
 # Authored TIM replacement
 
+## 2026-10-04: authored slot editing and full TIM interchange
+
+Saved authored slots now expose Edit authored texture slot and exact Current TIM
+download. A complete TIM edit preserves the persistent asset ID and native slot
+index, including when later authored slots exist in the same pack. Review checks
+the Current content hash and project context, reconstructs the whole native pack,
+and reports changes to mode, dimensions, palettes and VRAM placement. Static
+footprint review excludes the old upload for the selected slot while retaining
+other scene/authored/boot uploads and proposed image/CLUT intersections.
+
+Current/Proposed pixel inspection is read-only. Current uses palette zero when
+indexed; Proposed uses the selected local palette. File, name and overlap choices
+invalidate review. Apply adds one Undo entry, retains the previous immutable TIM
+for history, and refuses stale or unchanged proposals. Save/reopen and normal
+Build use the existing authored slot collection; material bindings remain explicit
+and must be reviewed again when mode, placement or palette addresses change.
+
+Seven focused Python checks and the expanded Node decoder suite passed. Raw and
+compressed construction checks covered editing a nonlast slot, mode/CLUT growth,
+neighbor retention and history. Private Town01 browser proof passed Current
+download, reviewed mode/palette change, Current/Proposed comparison, invalidation,
+Apply, Save/reload and Build assessment. Normal package readback matched edited
+slot 96 and unchanged slot 97 exactly. Undo/Redo and offline reopen passed; the
+parent inspected the comparison screenshot. A final readonly browser check also
+passed the edit labels, no-op refusal and reversed indexed/direct comparison. Evidence:
+`local-output/sdk-20260909/texture-slot-edit-20261004/parent/proof.json`.
+
+Gameplay/rendering, dynamic residency, upload order and STP blending remain
+unverified. This implementation concerns authored slots; general Retail mode or
+CLUT allocation and automatic image conversion remain separate work. No game was
+launched and no installed runtime or physical disc was changed.
+
 ## 2026-10-04: saved TIM slots in resources and material assignment
 
 Saved new TIM slots now appear in the active-scene resource catalog under their

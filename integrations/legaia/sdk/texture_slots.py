@@ -141,7 +141,7 @@ def metadata(identifier,binding,content):
         'Static upload addresses do not establish runtime residency or upload order.'])
 
 
-def _footprint(project, context, candidate):
+def _footprint(project, context, candidate, *, exclude_asset_id=None):
     new = validate_added_tim(candidate)
     proposed = [('image', (new.image.x, new.image.y, new.image.width_words, new.image.height))]
     if new.clut:
@@ -156,7 +156,7 @@ def _footprint(project, context, candidate):
         uploads.append((owner, tim))
     uploads.extend((identifier, parse_tim(read(project, identifier, binding)))
                    for identifier, binding in project.texture_additions.items()
-                   if binding['source_scene_id'] == project.active_scene)
+                   if binding['source_scene_id'] == project.active_scene and identifier!=exclude_asset_id)
     rectangles = []
     for owner, tim in uploads:
         rectangles.append((owner, 'image', (tim.image.x, tim.image.y, tim.image.width_words, tim.image.height)))

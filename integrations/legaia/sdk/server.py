@@ -868,7 +868,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 6 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/model-obj-replacement', '/api/model-json-replacement', '/api/model-file-preview', '/api/model-file-scene-preview', '/api/texture-json-replacement', '/api/texture-file-preview', '/api/texture-file-scene-preview'):
                 request_limit = 24 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply'):
+            if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-source','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
                 request_limit = 2 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
@@ -1748,6 +1748,28 @@ class EditorHandler(BaseHTTPRequestHandler):
                         raise ProjectError("Texture preview requires a resource identity and nonnegative palette index only")
                     from .resources import texture_preview
                     self._json(200, texture_preview(self.server.project, body["asset_id"], body["palette_index"], body.get("layer", "effective")))
+                    return
+                if route=='/api/texture-slot-edit-source':
+                    if set(body)!={'asset_id','source_key'}:raise ProjectError('Authored slot source requires exact identity and context')
+                    from .texture_slot_edit import source
+                    content,report=source(self.server.project,body['asset_id'],body['source_key'])
+                    self._json(200,dict(report,content_base64=base64.b64encode(content).decode('ascii')))
+                    return
+                if route in ('/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
+                    fields={'asset_id','expected_sha256','source_key','label','accept_potential_overlap','content_base64'}
+                    if route!='/api/texture-slot-edit-review':fields.add('review_key')
+                    if route=='/api/texture-slot-edit-pixels':fields.add('palette_index')
+                    if set(body)!=fields or not isinstance(body['content_base64'],str) or not 1<=len(body['content_base64'])<=1398104:
+                        raise ProjectError('Edited texture slot requires exact context and bounded complete TIM bytes')
+                    try:payload=base64.b64decode(body['content_base64'],validate=True)
+                    except ValueError as exc:raise ProjectError('Edited TIM requires valid base64') from exc
+                    from .texture_slot_edit import review,pixels,apply
+                    args=(self.server.project,body['asset_id'],payload,body['expected_sha256'],body['source_key'],body['label'],body['accept_potential_overlap'])
+                    if route=='/api/texture-slot-edit-review':self._json(200,review(*args))
+                    elif route=='/api/texture-slot-edit-pixels':self._json(200,pixels(*args,body['review_key'],body['palette_index']))
+                    else:
+                        report=apply(*args,body['review_key'])
+                        self._json(200,dict(self.server.state(),texture_slot_report=report))
                     return
                 if route in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply'):
                     fields={'anchor_asset_id','source_key','label','accept_potential_overlap','content_base64'}

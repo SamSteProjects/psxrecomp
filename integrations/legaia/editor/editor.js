@@ -2239,7 +2239,7 @@ function openNewTextureSlot(){
   textureSlotEditor=openTextureSlotEditor({assetId,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
-    onApplied:next=>{state=next;render();notify('New texture slot applied. Save project to persist.');}});
+    onApplied:next=>{state=next;render();notify('Authored texture slot applied. Save project to persist.');}});
 }
 let textureResizeEditor=null;
 async function openTextureResize(){
@@ -2291,8 +2291,9 @@ function updateTextureActions(){
   for(const id of ['texture-source-json','texture-effective-json'])$(id).disabled=busy||!texturePreview||![4,8].includes(texturePreview.bpp);
   const newSlot=textureSession?.record.id?.startsWith('texture-new://');
   if(newSlot){
+    $('texture-new-slot').textContent='Edit authored texture slot';
     $('texture-layer-label').hidden=true;
-    for(const id of ['texture-file','texture-preview-file','texture-apply','texture-clear','texture-source','texture-source-json','texture-effective-json','texture-edit-palette','texture-fill-rectangle','texture-copy-rectangle','texture-new-slot','texture-resize','texture-png','texture-glb-source','texture-glb-retain']){$(id).disabled=true;$(id).hidden=true;}
+    for(const id of ['texture-file','texture-preview-file','texture-apply','texture-clear','texture-source','texture-source-json','texture-effective-json','texture-edit-palette','texture-fill-rectangle','texture-copy-rectangle','texture-resize','texture-png','texture-glb-source','texture-glb-retain']){$(id).disabled=true;$(id).hidden=true;}
     $('texture-file').closest('label').hidden=true;
     $('texture-preview-file').parentElement.hidden=true;
     $('texture-authoring').querySelector('h3').textContent='Authored slot';

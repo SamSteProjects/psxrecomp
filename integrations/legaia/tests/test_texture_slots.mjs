@@ -1,5 +1,6 @@
+import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
-import {decodeSlotReview,decodeSlotPixels} from '../editor/texture-slots.js';
+import {decodeSlotReview,decodeSlotPixels,decodeSlotSource} from '../editor/texture-slots.js';
 const hash=c=>c.repeat(64),file={sha256:hash('a'),size:148},request={anchor_asset_id:'texture://fixture/1/raw/0',source_key:hash('b'),label:'New TIM',accept_potential_overlap:false};
 const report={schema_version:'legaia.texture-slot-review.v1',project_source_key:request.source_key,source_scene_id:'scene://fixture',anchor_asset_id:request.anchor_asset_id,source_pack_sha256:hash('c'),source_slot_count:2,pack_entry_index:1,pack_descriptor_index:-1,slot_index:2,proposed_sha256:file.sha256,byte_length:148,label:request.label,image_layout:{bpp:16,x:640,y:32,width:8,height:8,width_words:8},allocation:{schema_version:'legaia.texture-pack-slot-allocation.v1',source_sha256:hash('c'),source_slot_count:2,slot_count:3,standalone:true,native_members_verified:true,opaque_tails_preserved:true,gameplay_verified:false,proposed_sha256:hash('d'),proposed_byte_length:512,added_slot_indices:[2],members:[{slot_index:0},{slot_index:1},{slot_index:2,added:true,tim_sha256:file.sha256,tim_byte_length:file.size}]},footprint:{potential_overlap_count:0,rows:[],rows_truncated:false,coverage:'known-static-scene-authored-and-boot-uploads',runtime_residency_verified:false},accept_potential_overlap:false,can_apply:true,project_changed:false,gameplay_verified:false,palette_count:0,review_key:hash('e')};
 assert.deepEqual(decodeSlotReview(report,request,file),report);
@@ -16,3 +17,20 @@ assert.throws(()=>decodeSlotPixels({...pixels,palette_index:1},report,request,fi
 assert.throws(()=>decodeSlotPixels({...pixels,report:{...report,review_key:hash('f')}},report,request,file,0));
 png.writeUInt32BE(9,16);assert.throws(()=>decodeSlotPixels({...pixels,proposed_png_base64:png.toString('base64')},report,request,file,0));
 console.log('New TIM review/file/context/slot/overlap and pixel decoding checks passed.');
+
+const editRequest={asset_id:id,expected_sha256:hash('f'),source_key:request.source_key,label:request.label,accept_potential_overlap:false};
+const edit={...report,schema_version:'legaia.texture-slot-edit-review.v1',asset_id:id,current_sha256:hash('f'),current_byte_length:24,current_label:'Original',current_layout:{bpp:16,x:640,y:32,width:2,height:1,width_words:2},content_changed:true,layout_changed:true,changed:true,allocation:{...report.allocation,slot_count:4,added_slot_indices:[2,3],members:[...report.allocation.members,{slot_index:3,added:true,tim_sha256:hash('f'),tim_byte_length:24}]}};
+assert.deepEqual(decodeSlotReview(edit,editRequest,file,false,true),edit);
+for(const bad of [{...edit,asset_id:'texture-new://bad'},{...edit,current_sha256:hash('e')},{...edit,content_changed:false},{...edit,layout_changed:false},{...edit,changed:false},{...edit,allocation:{...edit.allocation,added_slot_indices:[2]}}])assert.throws(()=>decodeSlotReview(bad,editRequest,file,false,true));
+png.writeUInt32BE(8,16);const current=Buffer.from(png);current.writeUInt32BE(2,16);current.writeUInt32BE(1,20);
+const comparison={report:edit,palette_index:0,current_palette_index:0,current_png_base64:current.toString('base64'),proposed_png_base64:png.toString('base64')};
+assert.match(decodeSlotPixels(comparison,edit,editRequest,file,0,true).current,/^data:image/);
+assert.throws(()=>decodeSlotPixels({...comparison,current_palette_index:1},edit,editRequest,file,0,true));
+assert.throws(()=>decodeSlotPixels({...comparison,current_png_base64:png.toString('base64')},edit,editRequest,file,0,true));
+console.log('Existing nonlast slot identity, change flags and Current/Proposed PNG qualification passed.');
+
+const native=Buffer.alloc(24),nativeHash=createHash('sha256').update(native).digest('hex'),context={sourceKey:request.source_key,sceneId:report.source_scene_id};
+const source={schema_version:'legaia.texture-slot-edit-source.v1',asset_id:id,project_source_key:context.sourceKey,source_scene_id:context.sceneId,anchor_asset_id:request.anchor_asset_id,current_sha256:nativeHash,byte_length:24,label:'Current',slot_index:2,image_layout:edit.current_layout,palette_count:0,read_only:true,project_changed:false,content_base64:native.toString('base64')};
+assert.deepEqual(await decodeSlotSource(source,id,context),source);
+for(const bad of [{...source,current_sha256:hash('a')},{...source,byte_length:25},{...source,project_source_key:'stale'},{...source,asset_id:'texture-new://bad'},{...source,image_layout:{...source.image_layout,width:3}},{...source,palette_count:1},{...source,extra:true}])await assert.rejects(decodeSlotSource(bad,id,context));
+console.log('Current source download hash, length, layout and context qualification passed.');
