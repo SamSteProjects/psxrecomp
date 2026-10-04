@@ -1,5 +1,21 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+**2026-10-04 — actual Retail GLB scene inspection:** Mesh import inspection now
+starts with its affected instances isolated, so surrounding scene geometry does
+not obscure the reviewed proposal. The isolation control reflects the retained
+inspection state; users can restore the full scene and compare Current/Proposed
+without losing the mesh review.
+
+A real private Retail V7 project passed the native source, Review and full scene
+proposal HTTP endpoints without substituted scene geometry. The actual editor
+browser smoke loaded 261 scene meshes and two supported model instances, exercised
+isolation and Current/Proposed switching, and returned to the retained mesh review.
+Screenshots verified visible inspected instances. Six focused scene/group checks
+also pass. Authored files, project inputs and undo/redo history stayed unchanged;
+no Apply, Save or Run was issued by the browser smoke. This establishes editor
+inspection usability, not runtime coordinate or gameplay parity. Manual gameplay
+remains deferred and the full solo SDK goal remains active.
+
 **2026-10-04 — prefixed PROT export delivery:** The experimental parent
 export now parses the composed archive's actual PROT header location and passes
 it into the MAN batch rebuild. The deferred compressed scene path no longer
