@@ -2,7 +2,7 @@
 from hashlib import sha256
 from uuid import UUID
 from importer.model_mesh_append import decode_append_mesh
-from importer.model_face_ledger import append_vector_ledger,append_face_ledger
+from importer.model_face_ledger import append_vector_ledger,append_face_ledger,append_group_ledger
 from importer.model_primitives import inspect_model_primitives
 from importer.assets import decode_tmd
 from .model_face_addition import _context,_budget,FORMAT
@@ -22,7 +22,9 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key):
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False):
+    if type(new_group) is not bool:
+        raise ProjectError('Mesh packet-group choice must be boolean')
     original,effective,base,base_binding,ledger,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh append inspection')
@@ -104,7 +106,14 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key)
         if color_values[index] is not None:fields['colors']=color_values[index]
         additions.append(dict(face_id='face://authored/'+str(UUID(bytes=bytes(identity))),donor_face_id=donor_face_id,
             fields=fields))
-    candidate,updated,audit=append_face_ledger(base,updated,additions)
+    group_requests=None
+    if new_group:
+        identity=bytearray(sha256((expected_sha256+geometry['glb_sha256']+donor_face_id+'/group').encode('utf-8')).digest()[:16])
+        identity[6]=(identity[6]&15)|64;identity[8]=(identity[8]&63)|128
+        group_requests=[dict(group_id='group://authored/'+str(UUID(bytes=bytes(identity))),donor_face_id=donor_face_id,faces=additions)]
+        candidate,updated,audit=append_group_ledger(base,updated,group_requests)
+    else:
+        candidate,updated,audit=append_face_ledger(base,updated,additions)
     binding=dict(format=FORMAT,source_scene_id=project.active_scene,source_sha256=sha256(original).hexdigest(),
         asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),base_binding=base_binding,ledger=updated)
     report=dict(schema_version='legaia.model-mesh-append-review.v4',asset_id=asset_id,
@@ -116,8 +125,12 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key)
     report['review_key']=digest(dict(asset_id=asset_id,source_key=expected_key,effective_sha256=expected_sha256,
         glb_sha256=geometry['glb_sha256'],donor_face_id=donor_face_id,proposed_sha256=binding['asset_sha256'],
         allocations=allocations,additions=additions))
+    if new_group:
+        report.update(schema_version='legaia.model-mesh-append-review.v5',allocation_mode='new_group',group_requests=group_requests)
+        report['limitations'][-1]='Appends geometry in one independent native packet group in the donor object; retained faces and groups remain. No native object or animation channel is created. Gameplay remains unverified.'
+        report['review_key']=digest(dict(base_review_key=report['review_key'],allocation_mode='new_group',group_requests=group_requests))
     if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh append review')
     return candidate,binding,_budget(report,64*1024*1024)
 
 
-def review(*args):return prepare(*args)[2]
+def review(*args,**kwargs):return prepare(*args,**kwargs)[2]
