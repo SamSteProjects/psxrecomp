@@ -1,5 +1,30 @@
 # Persistent native animation record allocation
 
+Raw streaming ANM delivery now has native transforms in
+`importer/streaming_animation_bank.py`. `grow_streaming_animation_bank` qualifies
+the carrier hash, typed chunk-header offset, original bank hash and candidate
+bank. It requires a terminated chunk chain, type 5, word-aligned nonshrinking
+payloads (at most 4 MiB) and a final carrier at most 16 MiB. The existing bank
+qualifier preserves Retail ordinals, opaque table padding and unsupported old
+records while admitting qualified existing axes and up to 64 appended records
+within the cumulative 4096-channel limit. Only the bank header/payload and following
+chunk positions change; all declared opaque neighbor bytes must survive. An
+odd-sized preceding payload that overlaps the changed header causes rejection.
+
+`rebuild_streaming_animation_bank_entry` binds this transform to a unique physical
+PROT owner, rounds its allocation to sectors, relocates the TOC and reopens the
+exact emitted carrier/chunk chain. Its audit records `relocated_chunks` with
+before/after offsets, types and byte lengths. MAN/ANM edits in one owner must use
+these verified offsets after the first growth; old header offsets are unsafe.
+Synthetic native tests cover both orders and prove identical output after explicit
+remapping, including native NPC MAN append and unchanged archive neighbors.
+
+The codec does not yet participate in SDK animation growth requests or normal
+Build/Export disc. Those integrations and managed streaming assignment remain
+pending; the current raw-bank restriction stays in place until complete locator
+composition and final readback are connected. No Retail timing, runtime pointer
+behavior or gameplay acceptance is inferred from this native readback.
+
 Experimental **Export disc** now delivers retained allocated banks through
 qualified compressed ANM carriers together with ordinary MAN edits and appended
 NPC records. It uses the same managed native assignment serializer as normal

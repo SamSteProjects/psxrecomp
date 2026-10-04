@@ -1,5 +1,25 @@
 # Deferred gameplay verification
 
+**2026-10-04 — native raw streaming ANM growth foundation:** A source-qualified
+codec now grows a word-aligned type-5 animation bank inside a complete terminated
+DATA_FIELD chain, preserving the native bank's existing records/table padding,
+opaque chunks, prefix and suffix. It records following chunk relocation and can
+rebuild the unique physical PROT owner with whole-sector TOC relocation and exact
+reopened bank/chunk verification. Stale hashes/locators, malformed chains, wrong
+types, shrinkage, alignment failures and changed opaque neighbors reject. Declared
+neighbor payloads are checked too: truncated word traversal must not silently
+change an odd-sized payload that overlaps the rewritten ANM header.
+
+Two focused synthetic native checks pass for no-op identity, allocation growth,
+opaque preservation, both MAN/ANM chunk orders and explicit locator remapping;
+MAN-first and ANM-first operations produce identical final archives. Twelve
+existing streaming/bank/archive regressions pass. No proprietary disc output,
+game launch or installed-runtime change was performed. This is native delivery
+infrastructure: raw-bank SDK request routing, managed streaming actor assignment
+and final locator remapping still need integration, so the raw ANM Build/export
+restriction remains. Gameplay stays deferred and the full solo goal stays active.
+[Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — allocated animation delivery in experimental disc export:**
 The project exporter now routes scenes with `AnimationRecords` through managed
 ANM delivery, including the single-selected-NPC path. Existing allocated initial
