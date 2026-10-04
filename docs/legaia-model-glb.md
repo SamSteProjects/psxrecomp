@@ -1,5 +1,29 @@
 # Source-bound model GLB editing
 
+## Optional material RGB factors
+
+Enable **Bake opaque material RGB factors (unlit donors only)** to multiply each
+section's standard `pbrMetallicRoughness.baseColorFactor` RGB by linear vertex
+`COLOR_0`. Missing vertex colors are white. The option starts off, preserving the
+existing import behavior. It transfers to **Map donors for all sections** and
+remains selected after scene inspection and Return. Changing it invalidates Review.
+Review displays each source factor and the number of unlit faces that consume RGB.
+Lit packets ignore the result, even though the choice still binds the review key.
+
+Textured unlit donors use modulation RGB with neutral 128; untextured unlit donors
+use linear-to-sRGB display conversion. Flat donors still require identical corner
+colors. Native material and texture bindings remain. Source images, metallic and
+roughness shading are not imported. Baking requires OPAQUE mode, factor alpha 1,
+opaque vertex alpha and standard materials without extensions. Unsupported alpha
+is rejected rather than translated to native blend flags.
+
+The browser checks the original corner colors, section factors and exact linear
+multiplication before accepting the existing native color conversion. Batch Apply
+is one Undo entry; Save/Open and normal Build retain exact native packet RGB.
+This construction evidence does not establish in-game appearance.
+
+Factor semantics follow the [Khronos glTF specification](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#materials).
+
 ## Static child hierarchies
 
 Static GLB import now accepts transform-only group nodes and child mesh nodes.

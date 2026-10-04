@@ -10,6 +10,7 @@ from .model_glb import _Accessors
 from .core import ImportError
 from .model_face_addition import MAX_NEW_FACES
 from .model_vector_allocation import MAX_NEW_VECTORS
+from .model_mesh_material import color_factor
 from .model_mesh_sources import mesh_sources,source_binding
 from .model_mesh_transform import transform_point,transform_normal,IDENTITY
 
@@ -42,9 +43,9 @@ def inspect_append_mesh(content):
         **({'node_sources':[source_binding(row) for row in sources]} if not canonical else {}))
 
 
-def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None):
-    if type(preserve_primitives) is not bool:
-        raise ImportError('Mesh primitive preservation must be boolean')
+def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None, material_colors=False):
+    if type(preserve_primitives) is not bool or type(material_colors) is not bool:
+        raise ImportError('Mesh primitive preservation and material RGB choices must be boolean')
     doc,binary=_read_glb(content)
     sources,canonical=mesh_sources(doc)
     primitives=sources
@@ -59,9 +60,11 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
     if any(not isinstance(view,dict) or type(view.get('buffer')) is not int or view['buffer']!=0 for view in reader.views):
         raise ImportError('Mesh append buffer views must own the embedded buffer')
     vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];triangle_colors=[];owners={};ignored=set();error=0.0;normal_error=0.0
-    primitive_ranges=[]
+    primitive_ranges=[];material_factors=[];source_triangle_colors=[]
     for primitive_index,source in enumerate(selected):
         primitive=source['primitive'];transform=source['node_transform']
+        factor=color_factor(doc,primitive,source['primitive_index']) if material_colors else None
+        if factor is not None:material_factors.append(factor)
         first_triangle=len(triangles)
         if (not isinstance(primitive,dict) or type(primitive.get('mode',4)) is not int
                 or primitive.get('mode',4) not in (4,5,6) or any(key in primitive for key in ('targets','extensions'))):
@@ -86,6 +89,14 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
             elif key=='TEXCOORD_0':uvs=values
             elif key=='COLOR_0':colors=values
             else:ignored.add(key)
+        original_colors=colors
+        if material_colors:
+            colors=colors if colors is not None else [[1,1,1,1] for _ in positions]
+            if any(any(not 0<=v<=1 for v in row) for row in colors):
+                raise ImportError('Mesh COLOR_0 must remain within the normalized 0..1 range')
+            if any(len(row)==4 and row[3]!=1 for row in colors):
+                raise ImportError('Material RGB baking requires opaque vertex alpha')
+            colors=[[row[i]*factor['base_color_factor'][i] for i in range(3)]+[1] for row in colors]
         if 'indices' in primitive:
             indices=[row[0] for row in reader.read(primitive['indices'],1,'append indices',indices=True)]
         else:indices=list(range(len(positions)))
@@ -105,7 +116,7 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
         else:
             source_triangles=[(indices[0],indices[begin+1],indices[begin+2]) for begin in range(face_count)]
         for triangle in source_triangles:
-            current=[];directions=[];texture_points=[];color_points=[]
+            current=[];directions=[];texture_points=[];color_points=[];source_colors=[]
             # Reflect Y and reverse winding to preserve the SDK GLB convention.
             for index in ((triangle[0],triangle[2],triangle[1]) if transform['winding_reversed'] else triangle):
                 owner=(source['node_index'],attrs['POSITION'],index)
@@ -122,6 +133,7 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
                 if colors is not None:
                     if any(not 0<=value<=1 for value in colors[index]):raise ImportError('Mesh COLOR_0 must remain within the normalized 0..1 range')
                     color_points.append(list(colors[index]))
+                    if material_colors:source_colors.append(list(original_colors[index]) if original_colors is not None else [1,1,1,1])
                 if normals is not None:
                     direction=transform_normal(transform,normals[index]);direction[1]=-direction[1]
                     length=math.hypot(*direction)
@@ -135,10 +147,14 @@ def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=No
             if not any(u[(i+1)%3]*v[(i+2)%3]-u[(i+2)%3]*v[(i+1)%3] for i in range(3)):
                 raise ImportError('Mesh append contains a degenerate triangle after native quantization')
             triangles.append(current);triangle_normals.append(directions if normals is not None else None);triangle_uvs.append(texture_points if uvs is not None else None);triangle_colors.append(color_points if colors is not None else None)
+            if material_colors:
+                source_triangle_colors.append(source_colors)
+        if factor is not None:factor.update(first_triangle=first_triangle,triangle_count=len(triangles)-first_triangle)
         primitive_ranges.append(dict(primitive_index=primitive_index,first_triangle=first_triangle,triangle_count=len(triangles)-first_triangle,source_mode=mode))
     result=dict(schema_version='legaia.model-mesh-append-geometry.v4',glb_sha256=sha256(content).hexdigest(),
         vertices=vertices,triangles=triangles,vertex_max_error=error,triangle_normals=triangle_normals,normal_max_error=normal_error,triangle_uvs=triangle_uvs,triangle_colors=triangle_colors,
         ignored_attributes=sorted(ignored),coordinate_conversion='[x,-y,z]; reverse triangle winding')
+    if material_colors:result.update(material_colors=True,material_factors=material_factors,source_triangle_colors=source_triangle_colors)
     if preserve_primitives:result.update(schema_version='legaia.model-mesh-append-geometry.v5',primitive_ranges=primitive_ranges)
     if not canonical:
         result['node_sources']=[source_binding(row) for row in selected]

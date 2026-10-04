@@ -37,8 +37,8 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None):
-    if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool:
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False):
+    if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and not new_group:
         raise ProjectError('Mesh group replacement requires an independent new group')
@@ -54,7 +54,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index,material_colors=material_colors)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -169,8 +169,12 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report['review_key']=digest(dict(base_review_key=report['review_key'],preserve_primitives=True,primitive_ranges=geometry['primitive_ranges']))
     if primitive_index is not None:
         report['selected_primitive_index']=primitive_index
-        report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index))
+        report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index,material_colors=material_colors))
         report['limitations'].append('Only the selected source GLB primitive is imported; other source primitives remain outside this transaction.')
+    if material_colors:
+        report['material_colors']=True
+        report['review_key']=digest(dict(base_review_key=report['review_key'],material_colors=True,material_factors=geometry['material_factors']))
+        report['limitations'].append('Standard opaque baseColorFactor RGB multiplies COLOR_0 (white when missing). Only unlit native RGB packets consume these colors; lit packets ignore them. Native texture bindings remain; source images and PBR shading are not imported.')
     if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh append review')
     return candidate,binding,_budget(report,64*1024*1024)
 

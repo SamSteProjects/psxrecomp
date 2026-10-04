@@ -1,5 +1,24 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — optional GLB material RGB baking:** Static imports now offer
+**Bake opaque material RGB factors**, default off, in single/selected/group imports
+and atomic section-donor batches. Standard `baseColorFactor` RGB multiplies linear
+`COLOR_0`, using white when vertex colors are missing. Textured unlit native
+packets receive modulation RGB (neutral 128); untextured unlit packets receive
+sRGB display bytes. Lit packets ignore RGB and reviews state the consumed face
+count. The browser independently checks source colors, factor/range ownership,
+linear products and existing native conversions. Review keys, Apply and scene
+inspection bind the option even when lit native bytes match the default result.
+Nonopaque alpha, malformed factors and material extensions reject before Apply.
+Native texture/material bindings remain; no new images or PBR shading are imported.
+
+Twelve focused construction checks passed, covering exact packet RGB and normal
+Build readback, multi-section atomic HTTP Apply, rejected changed choices, one Undo,
+Redo, Save/Open and malformed review DTOs. Private actual Retail editor evidence is
+under `local-output/sdk-20260909/glb-material-colors-20261004/parent/`; its lit donors
+exercise review/scene/Return and report zero consumed RGB faces. This does not prove
+Retail RGB appearance. Gameplay remains deferred; the full goal remains active.
+
 **2026-10-04 — static GLB child hierarchies:** Mesh source ingestion now
 qualifies a bounded forest, rejects cycles/multiple parents/duplicate children and
 roots with parents, and traverses selected roots depth-first in declared child

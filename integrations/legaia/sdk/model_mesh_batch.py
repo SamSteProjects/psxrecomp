@@ -8,7 +8,7 @@ from .project import ProjectError,digest
 from .scene_preview import source_key
 
 
-def prepare(project,asset_id,content,mappings,expected_sha256,expected_key):
+def prepare(project,asset_id,content,mappings,expected_sha256,expected_key,*,material_colors=False):
     _,effective,_,_,_,topology=_context(project,asset_id,expected_key)
     if sha256(effective).hexdigest()!=expected_sha256:
         raise ProjectError('Model changed since mesh donor mapping')
@@ -40,7 +40,7 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key):
     for row in mappings:
         key=source_key(view);source=model_mesh_append.source(view,asset_id,key)
         candidate,binding,report=model_mesh_append.prepare(view,asset_id,content,row['donor_face_id'],
-            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'])
+            source['effective_sha256'],key,new_group=True,replace_group=row['replace_group'],primitive_index=row['primitive_index'],material_colors=material_colors)
         candidates[binding['asset_sha256']]=candidate;view.model_overrides[asset_id]=deepcopy(binding)
         steps.append(dict(source=source,review=report))
     report=dict(schema_version='legaia.model-mesh-batch-review.v1',asset_id=asset_id,
@@ -54,16 +54,19 @@ def prepare(project,asset_id,content,mappings,expected_sha256,expected_key):
             'Only explicitly selected donor groups are replaced; shared replacement ownership is rejected.',
             'Native donor layouts and texture bindings supply materials; no new images, packet families or animation channels are allocated.',
             'Review is read-only and Apply publishes the complete mapping in one Undo entry. Gameplay is unverified.'])
+    if material_colors:
+        report['material_colors']=True
+        report['limitations'].append('Opaque standard base-color factors multiply vertex RGB. Unlit donors consume the result; lit donors ignore RGB. Native texture bindings remain and source images/PBR shading are not imported.')
     report['review_key']=digest(report)
     if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh donor mapping review')
     return candidate,binding,_budget(report,64*1024*1024)
 
 
-def review(*args):return prepare(*args)[2]
+def review(*args,**kwargs):return prepare(*args,**kwargs)[2]
 
 
-def apply(project,*args,review_key):
-    candidate,binding,report=prepare(project,*args)
+def apply(project,*args,review_key,material_colors=False):
+    candidate,binding,report=prepare(project,*args,material_colors=material_colors)
     if report['review_key']!=review_key:raise ProjectError('GLB donor mappings changed after Review')
     asset_id,_,_,_,expected_key=args
     project._publish_model_ledger(asset_id,candidate,binding,expected_key,'Mesh donor mapping')
