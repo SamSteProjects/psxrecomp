@@ -1,5 +1,24 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — compressed NPC growth in normal Build:** Donor NPC candidates
+that exceed their original consumed compressed MAN stream now enter normal Build's
+format-7 relocation package. Candidates that fit retain fixed-span delivery.
+The source-qualified request identifies the physical owner, descriptor table and
+MAN descriptor, verifies native MAN structure and exact LZS readback, and composes
+with ANM growth in the same table. Final composition verifies the exact MAN bytes
+after all resource growth. Existing actor-pool and imported-source checks remain.
+
+Retail Town01 eight-donor batches pass inclusive read-only Build review and actual
+package readback, both alone and with retained animation allocation, shared channel
+edits and an allocated initial selector. Authored inputs and history stay unchanged.
+Sixteen focused composition/guard regressions and six existing MAN container/archive
+checks pass. Synthetic shared-table cases cover both descriptor orders, original
+and prefixed PROT headers, preserved neighboring edits and malformed/stale request
+rejection. The editor NPC review contract passes. No game, physical Retail disc
+export or installed-runtime modification occurred. NPC runtime allocation,
+spawning, scheduling and script behavior remain deferred gameplay checks. The full
+SDK goal remains active and solo. [NPC guide](legaia-npc-build-candidates.md).
+
 **2026-10-04 — streaming NPC candidates in normal Build:** Qualified raw MAN
 append now enters normal Build's format-7 relocation package. The native composer
 accepts one MAN and one ANM growth request in a shared raw physical owner, remaps

@@ -20,7 +20,7 @@ def review(project):
                 blockers=blockers,excluded_npc_draft_count=0,included_npc_draft_count=len(project.actor_drafts),assessment=assessment,
                 assessment_scope='all_supported_authored_content_including_source_qualified_npc_drafts',
                 npc_build_scope='qualified_man_source_candidates',npc_gameplay_verified=False,
-                limitations=['This review serializes all supported authored inputs without writing package files. NPC candidates use compressed MAN data within its original consumed span or qualified raw streaming MAN relocation. Oversized compressed candidates remain unsupported.',
+                limitations=['This review serializes all supported authored inputs without writing package files. NPC candidates use compressed MAN data within its original consumed span or qualified compressed/raw MAN relocation when capacity requires growth.',
                              'An assessment failure stops serialization; later changes are not claimed to have passed.',
                              'Archive packing, filesystem write capacity/permissions, installation and interactive gameplay are not tested here.',
                              'NPC candidates qualify the retail 143-slot actor pool and reject unavoidable initial-placement overflow. Scenery and two later setup allocations share the pool; intervening scripts and other channels remain unverified, so remaining slots are not a safe NPC budget.',

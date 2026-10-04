@@ -25,8 +25,10 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         animation = isinstance(request,dict) and request.get('kind') == 'animation-bank'
         streaming = isinstance(request,dict) and request.get('kind') == 'streaming-animation-bank'
         streaming_man = isinstance(request,dict) and request.get('kind') == 'streaming-man'
+        compressed_man = isinstance(request,dict) and request.get('kind') == 'compressed-man'
         raw_resource = streaming or streaming_man
-        fields = ({'kind','entry_index','chunk_header_offset','source_man_sha256','candidate'} if streaming_man else
+        fields = ({'kind','entry_index','table_offset','descriptor_index','source_man_sha256','candidate'} if compressed_man else
+                  {'kind','entry_index','chunk_header_offset','source_man_sha256','candidate'} if streaming_man else
                   {'kind','entry_index','chunk_header_offset','expected_bank_sha256','bank'} if streaming else
                   {'kind','entry_index','table_offset','descriptor_index','expected_bank_sha256','bank'} if animation else
                   {'entry_index', 'descriptor_index', 'expected_pack_sha256', 'replacements'})
@@ -86,6 +88,20 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
             from .streaming_animation_bank import rebuild_streaming_animation_bank_entry
             working,report=rebuild_streaming_animation_bank_entry(working,sha256(working).hexdigest(),
                 **{k:v for k,v in request.items() if k!='kind'},header_offset=header_offset)
+        elif request.get('kind') == 'compressed-man':
+            from .prot_rebuild import rebuild_man_entry
+            from .core import parse_man
+            if not isinstance(request['candidate'],bytes) or not 0<len(request['candidate'])<=4*1024*1024:
+                raise ImportError('Compressed MAN composition candidate exceeds its byte budget')
+            parse_man(request['candidate'])
+            current=_archive(working);raw=current.read_entry(current.entry(request['entry_index']))
+            table=parse_scene_assets(raw,request['entry_index'],request['table_offset'])
+            man_rows=[d for d in table.descriptors if d.type_byte==3 and d.size]
+            if len(man_rows)!=1 or man_rows[0].index!=request['descriptor_index']:
+                raise ImportError('Compressed MAN composition descriptor identity changed')
+            working,report=rebuild_man_entry(working,sha256(working).hexdigest(),
+                **{k:v for k,v in request.items() if k not in ('kind','descriptor_index')},header_offset=header_offset)
+            report['entry_index']=request['entry_index']
         elif request.get('kind') == 'animation-bank':
             from .animation_bank_growth import rebuild_animation_bank_entry
             working,report=rebuild_animation_bank_entry(working,sha256(working).hexdigest(),
@@ -119,11 +135,15 @@ def compose_model_pack_archive(source, expected_sha256, requests, patches=(), *,
         offset=request.get('table_offset',0)
         end = min([offset+d.data_offset for d in table.descriptors if d.data_offset > descriptor.data_offset]+[len(raw)])
         pack,_ = decompress_lzs(raw[offset+descriptor.data_offset:end], descriptor.size)
+        if request.get('kind')=='compressed-man':
+            if descriptor.type_byte!=3 or pack!=request['candidate']:
+                raise ImportError('Resource composition final reopened compressed MAN changed')
+            continue
         resource_audit='bank_audit' if request.get('kind')=='animation-bank' else 'pack_audit'
         if sha256(pack).hexdigest() != report['carrier'][resource_audit]['proposed_sha256']:
             raise ImportError('Model composition final reopened pack changed')
     return working, dict(schema_version='legaia.model-pack-composition.v1', source_sha256=expected_sha256,
         patched_sha256=patched_sha256, proposed_sha256=sha256(working).hexdigest(),
         patch_count=len(prepared), patched_bytes=sum(len(payload) for _,payload in prepared),
-        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,growth_bytes=len(working)-len(source),
+        resources=reports, final_packs_verified=True, final_animation_banks_verified=True,final_streaming_man_verified=True,final_compressed_man_verified=True,growth_bytes=len(working)-len(source),
         disc_relocation_required=len(working)!=len(source), build_ready=False, gameplay_verified=False)

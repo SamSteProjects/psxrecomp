@@ -1,5 +1,12 @@
 # Persistent native animation record allocation
 
+Normal Build now also delivers donor NPC candidates exceeding the original
+consumed compressed MAN capacity through qualified relocation. Compressed MAN and
+ANM growth can compose in a shared descriptor table; both final decoded payloads
+must match their candidates exactly. Retail Town01 eight-donor composition with a
+retained allocation, shared axes and allocated initial selector passes package
+readback. Native NPC allocation and gameplay suitability remain unverified.
+
 Normal **Build** now delivers retained allocated ANM banks in raw streaming
 carriers too. `sdk/animation_growth.py` qualifies imported chunk-header/payload
 coordinates, exact payload length/hash and its physical PROT owner before

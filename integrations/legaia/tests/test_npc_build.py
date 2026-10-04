@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from importer.core import decompress_lzs, parse_scene_table
+from importer.core import ImportError, decompress_lzs, parse_scene_table
 from sdk.build import authored_state_key
 from sdk.npc_build import prepare_npc_overlays
 from sdk.project import ProjectError
@@ -94,10 +94,11 @@ class NPCBuildGuards(unittest.TestCase):
         self.assertFalse(metadata['allocation_verified'])
         self.assertEqual(authored_state_key(project), key)
 
-    def test_capacity_identity_raw_and_stale_inputs_fail_without_writes(self):
+    def test_unqualified_growth_identity_raw_and_stale_inputs_fail_without_writes(self):
         project, archive, prot, _, _, audit = fixture(bytes(range(256)))
         with patch('sdk.npc_build._prepare_draft_scene', return_value=(prot, audit)):
-            with self.assertRaisesRegex(ProjectError, 'original consumed span'):
+            # Arbitrary bytes are not a structural MAN growth candidate.
+            with self.assertRaises(ImportError):
                 prepare_npc_overlays(project, 'scene://fixture', archive)
         project, archive, prot, _, _, audit = fixture()
         for mutate, message in [

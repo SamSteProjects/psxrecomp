@@ -96,7 +96,7 @@ def review(project,entity_id,record_id,expected_source_key):
         capabilities=dict(review=True,pose_preview=True,apply=True,build_assignment=build_supported),
         limitations=['Initial MAN header only; scripts can later select another model or clip.',
             'The stable record identity is portable; its current MAN byte selector must be re-resolved after ledger changes.',
-            'Normal Build supports qualified compressed or raw ANM banks and source-qualified MAN headers. NPC additions use fixed-span compressed MAN candidates or qualified streaming MAN relocation, subject to actor-pool and source capacity checks.',
+            'Normal Build supports qualified compressed or raw ANM banks and source-qualified MAN headers. NPC additions use fixed-span compressed MAN candidates or qualified compressed/raw MAN relocation, subject to actor-pool and source capacity checks.',
             'Cadence, looping, script compatibility and gameplay suitability remain unverified.'])
     report['review_key']=digest(report)
     return report

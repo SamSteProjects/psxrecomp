@@ -1,5 +1,11 @@
 # Source NPC candidates in normal Build
 
+**2026-10-04 — compressed capacity growth:** Normal Build now relocates a
+qualified compressed MAN when its candidate cannot fit the original consumed
+stream, rather than rejecting the batch. Eight-donor Retail Town01 batches pass
+read-only review and exact format-7 package readback, alone and with retained ANM
+allocation, shared axes and an allocated initial selector. Gameplay remains deferred.
+
 **2026-10-04:** Retail dolk2 normal Build package readback passes both NPC-only
 raw growth and combined NPC/retained-animation growth, shared channel edits,
 allocated initial assignment and placement. Inclusive read-only Review Build also
@@ -8,8 +14,9 @@ duplicate rejection and opaque header overlap rejection. The editor v2 review
 scope is now `qualified_man_source_candidates`. Gameplay remains deferred.
 
 Saved donor-based NPC drafts can enter **Review Build** and **Build** when their
-scene uses a qualified compressed MAN container whose composed candidate fits
-the original consumed compressed stream, or a qualified raw streaming MAN carrier. This is source packaging support;
+scene uses a qualified compressed or raw streaming MAN carrier. Compressed
+candidates that fit their consumed source stream use fixed-span overlays; larger
+candidates use a source-qualified relocation package. This is source packaging support;
 native allocation, spawning, scheduling and opaque script paths remain unverified. Normal Build also qualifies the [retail actor-pool lower bound](legaia-npc-actor-pool.md) and rejects unavoidable initial-placement overflow before compression; other consumers and safe headroom remain unknown.
 
 Review includes all supported authored inputs. Its v2 result counts requested
@@ -18,7 +25,7 @@ as a blocker. A successful review writes no package and does not launch a game.
 **Build reviewed inputs** binds the action to the reviewed authored snapshot.
 The generated feature is disabled by default and identifies source NPC candidates.
 
-The serializer appends immutable retail donor records, applies supported existing
+For fixed-span compressed delivery, the serializer appends immutable retail donor records, applies supported existing
 actor and partition-two edits after rebasing, and preserves the donor's scripts
 except for intended initial placement. A bounded optimal LZS fallback may fit a
 candidate when greedy compression cannot. Exactly two source-hashed overlay claims
@@ -31,8 +38,14 @@ Raw streaming candidates use a source-bound MAN relocation request and a format-
 package. One MAN and one ANM growth request can share a physical carrier. The
 composer applies original-address patches first, replays completed native header
 relocations, preserves opaque chunks and reads back the exact final MAN/ANM bytes.
-Compressed candidates exceeding original consumed capacity remain rejected by
-normal Build. Experimental growth export remains a separate workflow.
+Compressed candidates exceeding the consumed source stream use the native
+MAN encoder with descriptor-pointer relocation when its source slot must grow,
+then whole-sector PROT owner relocation. Original table/descriptor identity,
+decoded source hash, bounded native candidate and final exact payload are required.
+A compressed MAN and ANM request can share one table in either descriptor order.
+The qualified slot may admit a larger stream without physical growth; the package
+still uses verified relocated-disc delivery. Multiple distinct tables in one
+physical owner remain unsupported. Experimental growth export stays separate.
 Passing source checks does not prove that copied scripts initialize a new NPC
 correctly, refer to appropriate story state or permit valid runtime identity.
 

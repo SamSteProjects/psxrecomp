@@ -95,7 +95,7 @@ def prepare_npc_overlays(project, scene_id, archive):
         encoded = compress_lzs_optimal(candidate)
         strategy = 'bounded_optimal_lzs'
     if len(encoded) > consumed:
-        raise ProjectError(f'NPC Build {scene_id} requires {len(encoded)} compressed MAN bytes but its original consumed span holds {consumed}; use experimental growth export')
+        return _prepare_compressed_candidate(project,view,scene_id,audit,request,before,span,container,descriptor.index,consumed)
     if decompress_lzs(encoded, len(candidate)) != (candidate, len(encoded)):
         raise ProjectError('NPC Build candidate compression failed independent exact readback')
     original_span = container[start:start + consumed]
@@ -179,8 +179,25 @@ def _prepare_streaming_candidate(project,view,scene_id,archive,prot,audit,reques
     carrier=prot[span['byte_offset']:span['byte_offset']+span['byte_length']]
     _,native=grow_streaming_man(carrier,sha256(carrier).hexdigest(),request['chunk_header_offset'],request['source_man_sha256'],request['candidate'])
     audit['actor_pool_evidence']=actor_pool_assessment(archive,request['candidate'])
+    return _relocation_metadata(project,view,scene_id,audit,before,span,native,request,'streaming')
+
+
+def _prepare_compressed_candidate(project,view,scene_id,audit,request,before,span,container,descriptor_index,consumed):
+    from importer.core import parse_man
+    from importer.man_container import encode_man_candidate
+    parse_man(request['candidate'])
+    _,native=encode_man_candidate(container,sha256(container).hexdigest(),request['table_offset'],
+        request['source_man_sha256'],request['candidate'],allow_growth=True)
+    native['original_consumed_size']=consumed
+    native['original_consumed_span_exceeded']=True
+    native['strategy']='relocated_greedy_lzs'
+    return _relocation_metadata(project,view,scene_id,audit,before,span,native,
+        dict(request,descriptor_index=descriptor_index),'compressed')
+
+
+def _relocation_metadata(project,view,scene_id,audit,before,span,native,request,carrier_kind):
     scene=view.imports[scene_id]['scene']['name'];edits=[]
-    for row in audit['actor_changes']['drafts']:
+    for row in audit['actor_changes' if carrier_kind=='streaming' else 'actor']['drafts']:
         identifier=row['draft_id']
         edits.append(dict(scene=scene,semantic_id=identifier,field='npc.appended_record',before_value=None,
             after_value=row['record_index'],scope='source-man-donor-append-candidate',
@@ -190,11 +207,12 @@ def _prepare_streaming_candidate(project,view,scene_id,archive,prot,audit,reques
             edits.append(dict(scene=scene,semantic_id=scene_id,field='npc.composed.'+family,before_value=None,
                 after_value=len(changes) if isinstance(changes,(list,dict)) else 1,
                 scope='source-man-draft-composed-overrides',composition_changes=_public(changes)))
-    metadata=dict(schema_version='legaia.npc-streaming-growth-build.v1',scene_id=scene_id,
+    metadata=dict(schema_version=f'legaia.npc-{carrier_kind}-growth-build.v1',scene_id=scene_id,
         authored_state_key=before,draft_audit=_public(audit),physical_owner=deepcopy(span),
-        native_growth=_public(native),validation=dict(exact_man_readback=True,terminated_chunk_chain=True),
+        native_growth=_public(native),validation=dict(exact_man_readback=True,qualified_carrier_kind=carrier_kind,
+            **({'terminated_chunk_chain':True} if carrier_kind=='streaming' else {'lz_decode_round_trip':True})),
         gameplay_verified=False,allocation_verified=False,spawn_scheduling_verified=False,opaque_script_paths_verified=False,
-        _relocation_request=dict(kind='streaming-man',**request))
+        _relocation_request=dict(kind=carrier_kind+'-man',**request))
     if project.mode!='edit' or authored_state_key(project)!=before:
-        raise ProjectError('Project build inputs changed during streaming NPC preparation')
+        raise ProjectError('Project build inputs changed during NPC relocation preparation')
     return [],edits,metadata
