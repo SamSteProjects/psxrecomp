@@ -127,3 +127,12 @@ assert.equal(checkedAddition.objects[0].primitives.length,2);
 assert.deepEqual(modelPrimitiveDraft(checkedAddition,0,1,{vertices:[1,0,2],uvs:authored.uvs,colors:authored.colors}).vertices,[1,0,2]);
 for(const mutation of [v=>v.authored_faces[0][0].current_index=0,v=>v.authored_faces[0]=[],v=>v.authored_faces[0][0].face_id='bad',v=>v.face_mappings[0][0].current_index=1,v=>v.authored_faces[0].push({...v.authored_faces[0][0]})]){const bad=structuredClone(addition);mutation(bad);assert.throws(()=>decodeModelPrimitives(bad,assetId,context));}
 console.log('V4 source/authored ownership and Current primitive drafts passed.');
+
+const allocated=additionSource();allocated.schema_version='legaia.model-primitives.v5';
+allocated.vector_growth=[{object_index:0,vertices:2,normals:1}];
+allocated.objects[0].vertex_count=5;allocated.objects[0].normal_count=5;
+allocated.objects[0].primitives[1].vertices=[3,4,0];
+const checkedAllocated=decodeModelPrimitives(allocated,assetId,context);
+assert.deepEqual(modelPrimitiveDraft(checkedAllocated,0,0,{vertices:[4,1,2],uvs:checkedAllocated.objects[0].primitives[0].uvs,colors:checkedAllocated.objects[0].primitives[0].colors}).vertices,[4,1,2]);
+for(const mutation of [v=>v.vector_growth[0].vertices=1,v=>v.vector_growth[0].object_index=1,v=>v.vector_growth[0].normals=true,v=>v.vector_growth[0].extra=1,v=>v.vector_growth=[],v=>v.objects[0].vertex_count=8193]){const bad=structuredClone(allocated);mutation(bad);assert.throws(()=>decodeModelPrimitives(bad,assetId,context));}
+console.log('V5 allocated vector ownership and existing face references passed.');

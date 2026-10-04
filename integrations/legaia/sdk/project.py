@@ -1410,6 +1410,20 @@ class ProjectService:
             from .model_reference_faces import addition_mapping
             maps,authored=addition_mapping(self,asset_id,original,effective,self.model_overrides[asset_id])
             report.update(schema_version='legaia.model-primitives.v4',face_mappings=maps,authored_faces=authored)
+            ledger = self.model_overrides[asset_id]['ledger']
+            if ledger['schema_version'] == 'legaia.model-face-addition-ledger.v5':
+                growth = [dict(object_index=obj['object_index'], vertices=0, normals=0)
+                          for obj in report['objects']]
+                for operation in ledger['operations']:
+                    if operation['kind'] == 'allocate_vectors':
+                        for request in operation['requests']:
+                            growth[request['object_index']][request['kind']] += len(request['vectors'])
+                for current, retail, added in zip(report['objects'], report['retail_objects'], growth):
+                    if any(current[('vertex_count' if kind == 'vertices' else 'normal_count')] != retail[('vertex_count' if kind == 'vertices' else 'normal_count')] + added[kind]
+                           for kind in ('vertices', 'normals')):
+                        raise ProjectError('Vector allocation ownership differs from the Retail tables')
+                report.update(schema_version='legaia.model-primitives.v5', vector_growth=growth)
+
         if not key or source_key(self) != key:
             raise ProjectError('Scene changed during face inspection; reopen the editor')
         return report
