@@ -117,6 +117,7 @@ class ProjectService:
         self.scene_views: dict[str, dict] = {}
         self.actor_drafts: dict[str, dict] = {}
         self.texture_overrides: dict[str, dict] = {}
+        self.texture_additions: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
@@ -201,6 +202,7 @@ class ProjectService:
                 **({"scene_selection_sets": deepcopy(self.scene_selection_sets)} if self.scene_selection_sets else {}),
                 **({"actor_drafts": deepcopy(self.actor_drafts)} if self.actor_drafts else {}),
                 **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
+                **({"texture_additions": deepcopy(self.texture_additions)} if self.texture_additions else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
@@ -239,7 +241,7 @@ class ProjectService:
         labels = {"name": "Project name", "retail_source": "Retail source",
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
-                  "texture_overrides": "Texture replacements", "model_overrides": "Model content",
+                  "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content",
                   "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
@@ -249,7 +251,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "model_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -2658,7 +2660,7 @@ class ProjectService:
             collection, identifier = self.actor_selection_sets, entry['selection_set_id']
         elif entry.get('target') == 'actor_drafts':
             collection, identifier = self.actor_drafts, entry['entity_id']
-        elif entry.get("target") in ("texture_overrides", "model_overrides"):
+        elif entry.get("target") in ("texture_overrides", "texture_additions", "model_overrides"):
             collection, identifier = getattr(self, entry['target']), entry["asset_id"]
         else:
             collection = self.actor_templates if entry.get("target") == "actor_templates" else self.overrides
@@ -2676,6 +2678,8 @@ class ProjectService:
         self._apply_history(self.redo_stack, self.undo_stack, "after")
 
     def save(self) -> Path:
+        from .texture_slots import validate_collection
+        validate_collection(self)
         from .animation_record_ledger import validate as validate_animation_records
         for identifier,components in self.overrides.items():
             if 'AnimationRecords' in components:
@@ -2882,6 +2886,9 @@ class ProjectService:
             result.read_texture_replacement(binding)
             if 'glb_byte_length' in binding.get('glb_source',{}):result.read_texture_glb_source(binding)
         result.texture_overrides = deepcopy(textures)
+        result.texture_additions = deepcopy(raw.get("texture_additions", {}))
+        from .texture_slots import validate_collection
+        validate_collection(result)
         models = raw.get('model_overrides', {})
         if not isinstance(models, dict) or len(models) > 128:
             raise ProjectError('Invalid model shape collection')
@@ -3325,6 +3332,7 @@ class ProjectService:
                 "assets": deepcopy(list(self.assets.records.values())),
                 "model_references": self.model_references(), "selection": {"entity_id": self.selected},
                 "texture_overrides": deepcopy(self.texture_overrides),
+                "texture_additions": deepcopy(self.texture_additions),
                 "actor_drafts": deepcopy(self.actor_drafts),
                 "model_overrides": deepcopy(self.model_overrides),
                 "authored_assets": self.authored_assets(),

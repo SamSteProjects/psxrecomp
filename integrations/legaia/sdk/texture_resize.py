@@ -51,6 +51,12 @@ def footprint_report(project,context,asset_id,current,candidate):
         else:effective=tim
         if owner!=asset_id:inspect((effective.image.x,effective.image.y,effective.image.width_words,effective.image.height),owner,'image')
         if effective.clut:inspect((effective.clut.x,effective.clut.y,effective.clut.width_words*effective.clut.height,1),owner,'flattened-clut')
+    from .texture_slots import read
+    for owner,binding in getattr(project,'texture_additions',{}).items():
+        if binding['source_scene_id']!=project.active_scene:continue
+        effective=parse_tim(read(project,owner,binding))
+        inspect((effective.image.x,effective.image.y,effective.image.width_words,effective.image.height),owner,'image')
+        if effective.clut:inspect((effective.clut.x,effective.clut.y,effective.clut.width_words*effective.clut.height,1),owner,'flattened-clut')
     for index,(block,_) in enumerate(context._catalog.boot_uploads):
         inspect((block.x,block.y,block.width_words,block.height),None,'boot-upload',index)
     return dict(schema_version='legaia.texture-footprint.v1',examined_upload_count=examined,

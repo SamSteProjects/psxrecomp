@@ -8,6 +8,17 @@ from .texture_layout_allocation import _tim
 from .texture_pack_allocation import allocate_texture_pack
 
 
+def validate_added_tim(content):
+    tim = _tim(content)
+    if tim.image.x + tim.image.width_words > 1024 or tim.image.y + tim.image.height > 512:
+        raise ImportError('Added TIM image exceeds VRAM bounds')
+    if tim.bpp == 24 and tim.image.width_words * 2 % 3:
+        raise ImportError('Added RGB24 TIM must contain whole pixels')
+    if tim.clut and (tim.clut.x + tim.clut.width_words * tim.clut.height > 1024 or tim.clut.y >= 512):
+        raise ImportError('Added TIM flattened CLUT upload exceeds VRAM bounds')
+    return tim
+
+
 def append_texture_pack(source, expected_sha256, additions, *, edits=None, standalone=False):
     if (not isinstance(source, bytes) or not 0 < len(source) <= MAX_ENTRY_BYTES or
             sha256(source).hexdigest() != expected_sha256 or type(standalone) is not bool):
@@ -21,13 +32,7 @@ def append_texture_pack(source, expected_sha256, additions, *, edits=None, stand
         raise ImportError('Texture slot allocation exceeds the native slot budget')
     # Validate the entire input before allocating output or accepting old edits.
     for content in additions:
-        tim = _tim(content)
-        if tim.image.x + tim.image.width_words > 1024 or tim.image.y + tim.image.height > 512:
-            raise ImportError('Added TIM image exceeds VRAM bounds')
-        if tim.bpp == 24 and tim.image.width_words * 2 % 3:
-            raise ImportError('Added RGB24 TIM must contain whole pixels')
-        if tim.clut and (tim.clut.x + tim.clut.width_words * tim.clut.height > 1024 or tim.clut.y >= 512):
-            raise ImportError('Added TIM flattened CLUT upload exceeds VRAM bounds')
+        validate_added_tim(content)
     effective, edit_audit = (allocate_texture_pack(source, expected_sha256, edits, standalone=standalone)
                              if edits else (source, None))
     members = _pack_members(effective, standalone)

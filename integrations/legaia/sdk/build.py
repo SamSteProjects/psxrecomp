@@ -38,6 +38,7 @@ def authored_state_key(project) -> str:
                                 "overrides": project.overrides,
                                 "actor_drafts": getattr(project, "actor_drafts", {}),
                                 "textures": getattr(project, "texture_overrides", {}),
+                                "texture_additions": getattr(project, "texture_additions", {}),
                                 "models": getattr(project, "model_overrides", {})}).encode("utf-8"))
 
 
@@ -161,7 +162,7 @@ def build_report(audit) -> dict:
             "overlay_bytes": sum(overlay["size"] for overlay in audit["overlays"]),
             **({'resource_relocation':dict(package_bytes=audit['relocation_payload']['size'],
                  archive_growth_bytes=audit['relocation']['composition']['growth_bytes'],
-                 texture_pack_count=sum(row.get('kind') in ('texture-pack','texture-layout-pack','texture-layout-raw') for row in audit['relocation']['composition']['resources']))}
+                 texture_pack_count=sum(row.get('kind') in ('texture-pack','texture-layout-pack','texture-layout-raw','texture-addition-pack','texture-addition-raw') for row in audit['relocation']['composition']['resources']))}
                if audit.get('relocation') else {}),
             **({'npc_candidates': deepcopy(audit['npc_candidates'])}
                if audit.get('npc_candidates') else {})}
@@ -655,6 +656,11 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             raise BuildError('Texture override requires a verified private TIM binding and imported source scene') from exc
         texture_edits.setdefault(binding["source_scene_id"], {})[identifier] = binding
 
+    from .texture_slots import validate_collection
+    validate_collection(project)
+    for binding in project.texture_additions.values():
+        texture_edits.setdefault(binding['source_scene_id'], {})
+
     for scene_id in sorted(draft_scenes):
         scene_edits.setdefault(scene_id, {"positions": {}, "assignments": {}, "dialogues": {},
             "transitions": {}, "movements": {}, "facings": {}, "flags": {}, "waits": {},
@@ -1064,15 +1070,27 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                         _hash(payload) != binding["asset_sha256"]):
                     raise BuildError("Private texture replacement no longer matches its authored binding")
                 replacements[identifier] = payload
-            if any(binding['format'] == 'tim-image-layout-v1' for binding in bindings.values()):
+            if any(binding['format'] == 'tim-image-layout-v1' for binding in bindings.values()) or any(b['source_scene_id']==scene_id for b in project.texture_additions.values()):
                 from .texture_allocation_build import prepare
-                texture_overlays, texture_changes, texture_requests = prepare(project, bindings, replacements, context, archive)
+                texture_overlays, texture_changes, texture_requests = prepare(project, bindings, replacements, context, archive, scene_id=scene_id)
             else:
                 texture_overlays, texture_changes, texture_requests = context.build_patch(replacements)
             growth_requests.extend(texture_requests)
             changed_ids = set()
             for change in texture_changes:
                 identifier = change.get("semantic_id")
+                if identifier in project.texture_additions:
+                    from .texture_slots import read
+                    binding=project.texture_additions[identifier]
+                    payload=read(project,identifier,binding)
+                    if (binding['source_scene_id']!=scene_id or identifier in changed_ids or
+                            change.get('scope')!='TIM-new-slot-upload' or change.get('after_sha256')!=_hash(payload) or
+                            change.get('before_sha256') is not None or change.get('byte_length')!=len(payload) or
+                            change.get('slot_index')!=binding['slot_index']):
+                        raise BuildError('New texture slot audit differs from its qualified binding')
+                    changed_ids.add(identifier)
+                    audit_edits.append({**change,'scene':scene,'field':'texture.tim-slot'})
+                    continue
                 if (identifier not in replacements or identifier in changed_ids or
                         change.get("scope") != ('TIM-image-allocation-fixed-mode-and-VRAM-origin'
                             if bindings[identifier]['format'] == 'tim-image-layout-v1' else 'TIM-image-and-palette-payload-only') or
@@ -1085,6 +1103,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                     **({"glb_source":dict(bindings[identifier]["glb_source"])} if "glb_source" in bindings[identifier] else {})})
             expected_changes = {identifier for identifier, payload in replacements.items()
                                 if payload != context.original_tim(identifier)}
+            expected_changes.update(i for i,b in project.texture_additions.items() if b['source_scene_id']==scene_id)
             if changed_ids != expected_changes or bool(texture_overlays or texture_requests) != bool(texture_changes):
                 raise BuildError("Texture audit omits or invents an authored replacement")
             disc_user_size = (_image.size // 2352) * 2048

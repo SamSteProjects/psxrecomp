@@ -23,6 +23,10 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     store('project.legaia.json',canonical(project._document()))
     for document in project.imports.values():
         store(f'Imported/{digest(document)}.json',canonical(document))
+    from .texture_slots import validate_collection, read
+    validate_collection(project)
+    for identifier, binding in project.texture_additions.items():
+        store(f"Authored/Textures/{binding['asset_sha256']}.tim",read(project,identifier,binding))
     for binding in project.texture_overrides.values():
         payload = project.read_texture_replacement(binding)
         store(f"Authored/Textures/{binding['asset_sha256']}.tim",payload)

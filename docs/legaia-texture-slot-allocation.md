@@ -1,5 +1,32 @@
 # Native TIM slot allocation
 
+## 2026-10-04: authored TIM slot persistence and normal Build
+
+New TIM slots now have persistent `texture-new://` UUIDs, explicit native append
+indices and hash-qualified Retail pack receipts. Readonly service Review
+constructs the complete proposed pack with existing resize/payload edits and
+reports known static image, flattened CLUT, authored-slot and boot overlaps.
+One service Apply requires the current review and explicit overlap choice,
+retains immutable TIM bytes and creates one Undo entry. Save/offline reopening
+validate files, hashes, native TIM bounds, contiguous indices and pack receipts;
+project input snapshots retain the TIMs. Scene and Build keys include additions.
+Following resize reviews account for the new authored uploads.
+
+Normal Build merges append, resize and ordinary member edits into one native
+pack request, independently qualifies the source archive and audits each new
+slot. Eleven focused Python cases passed. Private Town01 raw and Dolk2
+compressed projects passed service Review/Apply, Undo/Redo, Save/reopen,
+readonly normal Build assessment and actual package readback. Slot 96 and slot
+50 respectively matched the complete added TIM; resized and payload-edited
+neighbors matched too. Both reported one relocated texture pack. Evidence:
+`local-output/sdk-20260909/texture-slot-project-20261004/parent/qualified/proof.json`.
+
+The next integration is HTTP/editor import, pixel inspection, Current/Proposed
+catalog/scene visibility and material assignment for new slots. Automatic VRAM
+placement, broader source-image conversion and runtime upload/residency remain
+unfinished. No game was launched or installed; gameplay verification stays
+queued and the goal remains active.
+
 `integrations/legaia/importer/texture_slot_allocation.py` exposes
 `append_texture_pack(source, expected_sha256, additions, *, edits=None,
 standalone=False)`. `additions` is a nonempty list of complete immutable TIM

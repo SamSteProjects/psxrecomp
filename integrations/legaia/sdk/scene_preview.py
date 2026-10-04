@@ -74,6 +74,7 @@ def source_key(project, *, geometry_only=False) -> str | None:
     return digest({"project": str(project.root), "scene": project.active_scene,
                    "import": digest(document), "disc_path": str(path),
                    "appearances": appearances, "textures": deepcopy(project.texture_overrides),
+                   "texture_additions": deepcopy(getattr(project,"texture_additions",{})),
                    "animation_assignments": {a['semantic_id']: deepcopy(project.overrides[a['semantic_id']]['ActorAnimation'])
                                              for a in document['actors'] if 'ActorAnimation' in project.overrides.get(a['semantic_id'], {})},
                    "model_shapes": deepcopy(project.model_overrides),
