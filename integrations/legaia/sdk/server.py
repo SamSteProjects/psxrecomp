@@ -1900,6 +1900,24 @@ class EditorHandler(BaseHTTPRequestHandler):
                         self.server.project.command(dict(type='set_animation_record_active',**body))
                         self._json(200,self.server.state())
                     return
+                if route in ('/api/animation-record-edit-review','/api/animation-record-edit-pose','/api/animation-record-edit'):
+                    fields={'scene_id','record_id','source_frame_indices','edits','expected_source_key'}
+                    if not route.endswith('-review'):fields.add('review_key')
+                    if set(body)!=fields:raise ProjectError('Retained edit requires exact scene, identity, frame mapping, axes and current source')
+                    from .animation_record_edit import prepare,pose
+                    if route.endswith('-review'):
+                        self._json(200,prepare(self.server.project,**body)[1])
+                    elif route.endswith('-pose'):
+                        animation,asset,report=pose(self.server.project,body)
+                        geometry=animation.pop('geometry');geometry['frames']=animation.pop('frames')
+                        preview=self.server.model_preview(asset,prepared=geometry,effective_shape=True)
+                        preview['animation']=animation
+                        preview['animation_support']=dict(supported=True,clips=[dict(id='allocated-record-edit-preview',label='Proposed retained clip content')])
+                        self._json(200,preview)
+                    else:
+                        self.server.project.command(dict(type='edit_animation_record',**body))
+                        self._json(200,self.server.state())
+                    return
                 if route in ('/api/allocated-animation-assignment-review','/api/allocated-animation-assignment-pose','/api/allocated-animation-assignment'):
                     expected={'entity_id','record_id','expected_source_key'}
                     if not route.endswith('-review'):

@@ -1,5 +1,22 @@
 # Deferred gameplay verification
 
+**2026-10-04 — retained animation content editing APIs:** Source-bound
+Review/Pose/Apply can now replace a retained clip's captured-donor frame mapping
+and integer channel axes while preserving its UUID, donor snapshot and retirement
+state. Native reconstruction qualifies the new record and expanded bank. Every
+referencing initial assignment is requalified and receives the new record hash
+in the same ordinary multi-entity Undo entry as the ledger. No-op Apply adds no
+history. Stale keys and invalid mappings/quantization reject before publication.
+
+The Retail workflow verifies proposed pose, read-only Review/Preview, exact Apply,
+atomic content/reference Undo/Redo, Save/Open and equivalent reconstructed banks,
+no-op/stale rejection and editing a retired clip without restoring it. Reopened
+assigned content also goes through normal Build review. Unapplied edit previews
+cannot fall back to exporting a Retail clip. Editor editing forms and allocated
+GLB import remain next; this is API infrastructure, not their completed workflow.
+No game was launched or installed. Gameplay stays deferred and the full solo
+goal remains active. [Guide](legaia-animation-allocation.md).
+
 **2026-10-04 — retained allocated clip GLB export:** Saved active or retired
 clips, reviewed initial-assignment proposals and current allocated assignments
 now export their own posed frame or full rigid clip through

@@ -377,3 +377,37 @@ encoding without publication. Three editor workflow suites and actual private
 Edge export smoke pass. The exported proposed GLB was reopened to verify embedded
 identity and animation channels. The export dialog screenshot was inspected;
 staging was stopped. No game was launched or installed.
+
+## Retained content edit APIs (2026-10-04)
+
+`POST /api/animation-record-edit-review` accepts exactly `scene_id`, `record_id`,
+`source_frame_indices`, `edits` and `expected_source_key`. The mapping indexes the
+original frozen captured donor, not the current allocated frame sequence or later
+shared channel changes. The complete axis contribution replaces the prior `edits`;
+untouched axes inherit the selected captured frame. Translation values are exact
+signed native integers; rotations retain the 16-unit native quantization. Existing
+512-frame, 64-object, 4096 cumulative channel, metadata and revision bounds apply.
+
+Review reconstructs the existing source witnesses, builds the new native record,
+updates its hash in a proposed ledger and reports every referencing initial actor
+assignment. Each proposed updated binding is independently native-qualified against
+the proposed bank. UUID, donor snapshot and active/retired state stay unchanged.
+A no-change request reports `project_change: false` without consuming a revision.
+
+`POST /api/animation-record-edit-pose` adds the exact `review_key`, replays Review
+and reconstructs proposed captured poses over Current geometry without publishing.
+Its `allocated_record_edit_preview` representation is explicitly unapplied and
+cannot export an imported substitute. `POST /api/animation-record-edit` accepts
+the same exact reviewed request and key, replays qualification, then publishes the
+scene ledger and all affected actor hashes in one `entity_overrides` history entry.
+Undo/Redo restore all affected components together. Retired clips remain retired.
+Source changes invalidate prior assignment/pose/export Reviews through normal keys.
+
+The Retail HTTP workflow covers active assigned editing, four-frame posed Preview
+with an exact changed native translation, read-only previews, malformed mapping
+and rotation rejection, wrong/stale review keys, one-entry content/reference
+Undo/Redo, no-op Apply, Save/Open and reconstructed bank equality, normal Build
+review of reopened assigned content, and retired two-frame editing without
+restoration. Editor forms and allocated GLB import are still implementation work;
+these APIs do not claim that UI workflow or runtime/gameplay acceptance. No game
+was launched or installed.

@@ -1694,6 +1694,10 @@ class ProjectService:
         self._command(command)
 
     def _command(self, command: dict) -> None:
+        if command.get('type')=='edit_animation_record':
+            from .animation_record_edit import apply
+            apply(self,command)
+            return
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
         if command.get('type') == 'allocate_animation_record':
