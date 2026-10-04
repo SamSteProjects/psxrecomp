@@ -297,7 +297,8 @@ let sceneHidden=new Set(),sceneHiddenScope=null;
 function hiddenSceneEntities(){
   const scope=JSON.stringify([state.project?.path,state.scene?.id]);
   if(scope!==sceneHiddenScope){sceneHidden.clear();sceneHiddenScope=scope;}
-  return new Set([...sceneHidden,...(activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id)]);
+  const inspectionHidden=scenePose?.inspectionIsolated?new Set((activeScenePreview()?.entities??[]).filter(e=>!scenePose.inspectionEntityIds?.includes(e.entity_id)).map(e=>e.entity_id)):new Set();
+  return new Set([...inspectionHidden,...sceneHidden,...(activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id)]);
 }
 function visibilitySelection(){return environmentSelection??npcDraftSelection??state.selection?.entity_id;}
 for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hide-model','Hide model instances',true],['show-hidden','Show hidden',null]]){
@@ -3792,8 +3793,10 @@ sceneAnimationController=createSceneAnimationController({
 document.querySelector('.viewport-toolbar').after(sceneAnimationController.element);
 document.addEventListener('beforetoggle',event=>{if(event.target instanceof HTMLDialogElement&&event.newState==='open'&&sceneAnimationController.active())sceneAnimationController.stop();},true);
 document.addEventListener('close',event=>{if(event.target instanceof HTMLDialogElement)sceneAnimationController.updateState();},true);
+const sceneInspectionIsolation=document.createElement('button');sceneInspectionIsolation.type='button';sceneInspectionIsolation.textContent='Isolate inspected instances';sceneInspectionIsolation.hidden=true;sceneInspectionIsolation.setAttribute('aria-pressed','false');sceneInspectionLayer.after(sceneInspectionIsolation);
+sceneInspectionIsolation.onclick=()=>{if(busy||!scenePose?.inspectionEntityIds?.length||!scenePreviewCurrent()||scenePose.key!==sceneKey)return;scenePose.inspectionIsolated=!scenePose.inspectionIsolated;sceneInspectionIsolation.setAttribute('aria-pressed',String(scenePose.inspectionIsolated));draw();};
 function configureSceneInspectionComparison(proposalDocument=null){
-  sceneInspectionLayer.hidden=!proposalDocument;sceneInspectionLayer.querySelector('select').value='proposed';
+  sceneInspectionLayer.hidden=!proposalDocument;sceneInspectionLayer.querySelector('select').value='proposed';sceneInspectionIsolation.hidden=!proposalDocument||!scenePose?.inspectionEntityIds?.length;sceneInspectionIsolation.setAttribute('aria-pressed','false');
   sceneInspectionLayer.querySelector('[value=proposed]').textContent=scenePose?.preview?.frames?'Inspected animation · not applied':'Proposed · not applied';
   for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]')])control.disabled=false;
   if(scenePose){scenePose.inspectionLayer='proposed';scenePose.proposalDocument=proposalDocument?structuredClone(proposalDocument):null;scenePose.proposalLabel=scenePoseBar.querySelector('span').textContent;}
@@ -3815,7 +3818,7 @@ sceneInspectionLayer.querySelector('select').onchange=()=>{
 const showScenePose=document.createElement('button');showScenePose.type='button';showScenePose.id='show-frame-in-scene';showScenePose.textContent='Inspect animation in scene';$('animation-frame-label').after(showScenePose);
 function clearScenePose(restore=true,retainReview=false){
   if(scenePose?.kind==='scene-animation'&&sceneAnimationController?.active()){sceneAnimationController.stop();return;}
-  stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;sceneInspectionLayer.hidden=true;
+  stopScenePosePlayback();const previous=scenePose;scenePose=null;scenePoseBar.hidden=true;sceneInspectionLayer.hidden=true;sceneInspectionIsolation.hidden=true;
   if(!retainReview)previous?.onDiscard?.();
   if(restore&&previous&&scenePreviewCurrent()&&sceneRenderer){const failures=sceneRenderer.load(structuredClone(scenePreview));if(failures.length)sceneError=failures.join('; ');}
 }
@@ -3943,7 +3946,7 @@ async function inspectMeshSceneProposal(request,report,{returnToEditor,isCurrent
   if(signal.aborted||!isCurrent()||context!==sceneRequestKey()||loadedKey!==sceneKey||!scenePreviewCurrent()||posed.asset_id!==request.asset_id||posed.entity_id!==entityId||posed.project_source_key!==report.project_source_key||posed.proposed_sha256!==report.proposed_sha256||posed.review_key!==report.review_key)throw new Error('Scene changed during mesh inspection.');
   stopScenePosePlayback();const isolated=sceneShapeProposalDocument(scenePreview,posed,entityId),failures=sceneRenderer.load(isolated.document);if(failures.length)throw new Error(failures.join('; '));
   const back=()=>{if(context!==sceneRequestKey()||loadedKey!==sceneKey||state.scene_preview_source_key!==report.project_source_key)return false;$('model-dialog').showModal();return returnToEditor();};
-  const owned={key:sceneKey,geometryKey:isolated.geometryKey,preview:posed.preview,name:'Proposed mesh import · not applied',returnToFile:back,afterRestore:back};scenePose=owned;
+  const owned={key:sceneKey,geometryKey:isolated.geometryKey,preview:posed.preview,name:'Proposed mesh import · not applied',returnToFile:back,afterRestore:back,inspectionEntityIds:posed.proposal_instances.map(row=>row.entity_id),inspectionIsolated:false};scenePose=owned;
   scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`Proposed mesh import · not applied · ${sceneShapeProposalLabel(posed,entityId)}`;configureSceneInspectionComparison(isolated.document);
   for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('label')])control.hidden=true;
   const button=scenePoseBar.querySelector('[data-return-file]');button.hidden=false;button.textContent='Return to mesh import';
