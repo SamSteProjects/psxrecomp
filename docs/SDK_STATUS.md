@@ -1,5 +1,22 @@
 # Legaia SDK status — 2026-10-04
 
+**2026-10-04 — recover unsupported GLB default scenes:** The editor now reads
+an independent, bounded scene catalog before qualifying mesh geometry. A default
+scene with an unsupported native transform or geometry can fail qualification
+while **Source GLB scene** remains available. Choosing a usable scene reuses the
+same file bytes/hash and performs fresh native qualification. Catalog DTOs state
+`geometry_qualified=false`; labels/roots alone never enable Review or Apply. The
+client checks chosen-scene inventory against the original catalog. Catalog HTTP
+requests accept file bytes only and publish no model/history/files.
+
+Eight focused construction checks passed, including unsupported-default recovery,
+HTTP request guards, forged catalog rejection, read-only state/file checks,
+selected-scene Apply/Undo and existing scene-selection/RGB/Build workflows. Actual
+Retail editor evidence: `local-output/sdk-20260909/glb-scene-catalog-20261004/parent/`.
+The smoke keeps the rejected default visible, selects a usable hierarchy, reviews
+and inspects it, and returns with the review/donor choices intact. Gameplay remains
+deferred; the full goal remains active.
+
 **2026-10-04 — choose a static GLB source scene:** Mesh import now supports
 bounded files containing several static scenes. **Source GLB scene** starts at the
 file's declared default (or first scene when unspecified). Choosing another scene

@@ -2,6 +2,14 @@
 
 ## Choose a source scene
 
+The scene picker loads from a separate file catalog before native geometry is
+qualified. If the default scene cannot import (for example, its transform has
+zero scale), its error is shown while the picker remains available. Select another
+scene without replacing the GLB. The same SHA qualifies its native geometry afresh.
+The catalog lists names/roots and explicitly makes no geometry qualification claim;
+Review/Apply stay disabled until native section inventory succeeds. Selected-scene
+inventory must match the original file catalog.
+
 A static GLB can contain up to 64 source scenes. After choosing the file, use
 **Source GLB scene** to choose its named scene. The initial selection follows the
 file's default scene; if omitted, the first scene is shown. Scene labels remain
