@@ -23,6 +23,13 @@ from test_model_primitive_workflow import http_server
 
 
 class MeshGroupReplacementTests(unittest.TestCase):
+    def qualify(self,source,report):
+        node=shutil.which('node')
+        if not node:self.skipTest('Node is required for browser qualification')
+        script="""import {decodeMeshAppendSource,decodeMeshAppendReview} from './integrations/legaia/editor/model-mesh-append.js';let data='';for await(const chunk of process.stdin)data+=chunk;const {source,report}=JSON.parse(data);const s=decodeMeshAppendSource(source,source.asset_id,source.project_source_key);const check=r=>decodeMeshAppendReview(r,s,r.donor_face_id,r.geometry.glb_sha256,true,true);check(report);for(const edit of [r=>r.removed_face_ids.pop(),r=>r.replaced_group.group_index++,r=>r.topology.faces[0].donor_face_id='forged',r=>r.topology.operation_count--,r=>r.preview.vertices[0][0]++,r=>r.preview.triangles[0].reverse(),r=>r.topology.allocated_groups.at(-1).current_group_index++]){const r=structuredClone(report);edit(r);let rejected=false;try{check(r);}catch{rejected=true;}if(!rejected)throw Error('Forged replacement accepted');}let rejected=false;try{decodeMeshAppendReview(report,s,report.donor_face_id,report.geometry.glb_sha256,true,false);}catch{rejected=true;}if(!rejected)throw Error('Wrong mode accepted');"""
+        result=subprocess.run([node,'--input-type=module','-e',script],input=json.dumps(dict(source=source,report=report)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
+        self.assertEqual(result.returncode,0,result.stderr)
+
     def fixture(self):
         h=fixtures.MeshAppendTests();self.addCleanup(h.doCleanups)
         p,asset,donor=h.fixture()
@@ -34,6 +41,7 @@ class MeshGroupReplacementTests(unittest.TestCase):
         before=p.read_model_replacement(asset,p.model_overrides[asset]);state=deepcopy((p._document(),p.undo_stack,p.redo_stack))
         files=set((p.root/'Authored'/'Models').iterdir());args=(asset,content,donor,source['effective_sha256'],'a'*64)
         report=model_mesh_append.review(p,*args,new_group=True,replace_group=True)
+        self.qualify(source,report)
         append=model_mesh_append.review(p,*args,new_group=True)
         self.assertEqual((p._document(),p.undo_stack,p.redo_stack),state);self.assertEqual(set((p.root/'Authored'/'Models').iterdir()),files)
         self.assertEqual(report['schema_version'],'legaia.model-mesh-append-review.v6')
@@ -82,6 +90,22 @@ class MeshGroupReplacementTests(unittest.TestCase):
             self.assertEqual(post('/api/model-mesh-append',{**body,'review_key':report['review_key']})[0],200)
             self.assertEqual(post('/api/model-mesh-append',{**body,'review_key':report['review_key']})[0],400)
 
+    def test_browser_qualifies_rebased_retained_authored_group(self):
+        p,asset,donor,content=self.fixture();source=model_mesh_append.source(p,asset,'a'*64)
+        args=(asset,content,donor,source['effective_sha256'],'a'*64)
+        append=model_mesh_append.review(p,*args,new_group=True)
+        p.apply_model_mesh_append(*args,append['review_key'],new_group=True)
+        source=model_mesh_append.source(p,asset,'a'*64)
+        report=model_mesh_append.review(p,asset,content,donor,source['effective_sha256'],'a'*64,new_group=True,replace_group=True)
+        self.qualify(source,report)
+        self.assertEqual(report['topology']['allocated_groups'][0]['current_group_index'],0)
+        p.apply_model_mesh_append(asset,content,donor,source['effective_sha256'],'a'*64,report['review_key'],new_group=True,replace_group=True)
+        source=model_mesh_append.source(p,asset,'a'*64)
+        authored=next(face['face_id'] for face in source['topology']['faces'] if face['group_index']==0)
+        report=model_mesh_append.review(p,asset,content,authored,source['effective_sha256'],'a'*64,new_group=True,replace_group=True)
+        self.qualify(source,report)
+        self.assertIsNone(report['topology']['allocated_groups'][0]['current_group_index'])
+
     def test_replacement_of_copied_group_retains_v7_and_inspectable_tombstones(self):
         p,asset,_,content=self.fixture()
         with patch('sdk.model_object_allocation.source_key',return_value='a'*64):
@@ -92,6 +116,7 @@ class MeshGroupReplacementTests(unittest.TestCase):
         source=model_mesh_append.source(p,asset,'a'*64);donor=next(face['face_id'] for face in source['topology']['faces'] if face['object_index']==1)
         args=(asset,content,donor,source['effective_sha256'],'a'*64)
         report=model_mesh_append.review(p,*args,new_group=True,replace_group=True)
+        self.qualify(source,report)
         p.apply_model_mesh_append(*args,report['review_key'],new_group=True,replace_group=True)
         self.assertEqual(p.model_overrides[asset]['ledger']['schema_version'],'legaia.model-face-addition-ledger.v7')
         self.assertEqual(report['topology']['objects'],source['topology']['objects'])
