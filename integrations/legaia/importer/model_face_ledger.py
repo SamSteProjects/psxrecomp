@@ -2,8 +2,9 @@
 
 The SDK retains this record beside its independently qualified base binding.
 V1 addition batches remain readable; V2 chains typed content edits between
-additions without changing stable face identities. Removal and GLB composition
-still require their own ownership qualification.
+additions without changing stable face identities. V3 also replays typed stable
+face removals, retaining historical authored identities and allocation ownership.
+Editor removal commands still need their own integration with this replay layer.
 """
 import json
 from copy import deepcopy
@@ -16,6 +17,7 @@ from .model_primitives import _qualified_model
 
 SCHEMA = 'legaia.model-face-addition-ledger.v1'
 CONTENT_SCHEMA = 'legaia.model-face-addition-ledger.v2'
+REMOVAL_SCHEMA = 'legaia.model-face-addition-ledger.v3'
 MAX_OPERATIONS = 64
 MAX_METADATA_BYTES = 2*1024*1024
 MAX_BATCHES = 8
@@ -42,7 +44,7 @@ def _source_faces(original, source_hash):
     return faces
 
 
-def _apply_batch(current, faces, requests):
+def _apply_batch(current, faces, requests, reserved=()):
     if not isinstance(requests, list) or not 0 < len(requests) <= MAX_NEW_FACES:
         raise ImportError('Face ledger requires a bounded nonempty addition batch')
     additions, pending = [], set()
@@ -50,7 +52,7 @@ def _apply_batch(current, faces, requests):
         if not isinstance(request, dict) or set(request) != REQUEST_KEYS:
             raise ImportError('Face ledger requires exact stable face and donor identities and fields')
         face_id, donor_id = request['face_id'], request['donor_face_id']
-        if not isinstance(face_id, str) or face_id in faces or face_id in pending:
+        if not isinstance(face_id, str) or face_id in faces or face_id in pending or face_id in reserved:
             raise ImportError('Face ledger authored identity is invalid or already exists')
         if not isinstance(donor_id, str) or donor_id not in faces:
             raise ImportError('Face ledger donor identity is missing from the preceding model')
@@ -78,7 +80,7 @@ def _operations(ledger):
         raise ImportError('Face ledger requires an object')
     version = ledger.get('schema_version')
     member = 'batches' if version == SCHEMA else 'operations'
-    if (version not in (SCHEMA, CONTENT_SCHEMA)
+    if (version not in (SCHEMA, CONTENT_SCHEMA, REMOVAL_SCHEMA)
             or set(ledger) != {'schema_version','source_sha256','source_byte_length',member}
             or not isinstance(ledger[member],list)
             or len(ledger[member]) > (MAX_BATCHES if version == SCHEMA else MAX_OPERATIONS)):
@@ -120,6 +122,38 @@ def _apply_content(current, operation):
     return candidate
 
 
+def _apply_removal(current, faces, identities):
+    """Remove active stable identities through the qualified allocation-preserving codec."""
+    from .model_face_removal import remove_faces
+    if (not isinstance(identities,list) or not 0 < len(identities) <= 4096
+            or any(not isinstance(identity,str) or identity not in faces for identity in identities)
+            or len(set(identities)) != len(identities)):
+        raise ImportError('Face ledger removal requires unique active stable identities')
+    chosen=set(identities)
+    selections=[dict(object_index=faces[identity]['object_index'],
+                     primitive_index=faces[identity]['current_primitive_index']) for identity in identities]
+    candidate,_=remove_faces(current,current,[],selections)
+    before=_qualified_model(current)[0];after=_qualified_model(candidate)[0]
+    omitted={(row['object_index'],row['primitive_index']) for row in selections}
+    indices={};groups={}
+    for obj in before['objects']:
+        owner=obj['object_index'];kept=[row for row in obj['primitives'] if (owner,row['primitive_index']) not in omitted]
+        if len(kept)!=len(after['objects'][owner]['primitives']):
+            raise ImportError('Face ledger removal ownership count changed')
+        for old,new in zip(kept,after['objects'][owner]['primitives']):
+            indices[owner,old['primitive_index']]=new['primitive_index']
+            pair=(owner,old['group_index'])
+            if pair in groups and groups[pair]!=new['group_index']:
+                raise ImportError('Face ledger removal split an existing packet group')
+            groups[pair]=new['group_index']
+    updated={identity:deepcopy(face) for identity,face in faces.items() if identity not in chosen}
+    for face in updated.values():
+        owner=face['object_index']
+        face['current_primitive_index']=indices[owner,face['current_primitive_index']]
+        face['group_index']=groups[owner,face['group_index']]
+    return candidate,updated
+
+
 def replay_face_ledger(original, ledger):
     source_hash = sha256(original).hexdigest()
     operations = _operations(ledger)
@@ -128,6 +162,7 @@ def replay_face_ledger(original, ledger):
         raise ImportError('Face ledger source binding changed')
     faces = _source_faces(original, source_hash)
     current, total, batches = original, 0, 0
+    reserved=set();removed=[]
     for operation in operations:
         if (not isinstance(operation,dict) or operation.get('input_sha256') != sha256(current).hexdigest()):
             raise ImportError('Face ledger operation chain changed')
@@ -137,19 +172,28 @@ def replay_face_ledger(original, ledger):
             total += len(operation['additions']);batches += 1
             if total > MAX_LEDGER_FACES or batches > MAX_BATCHES:
                 raise ImportError('Face ledger exceeds its authored face or batch budget')
-            current, faces = _apply_batch(current, faces, operation['additions'])
+            current, faces = _apply_batch(current, faces, operation['additions'],reserved)
+            reserved.update(row['face_id'] for row in operation['additions'])
         elif operation.get('kind') == 'edit_content':
             if set(operation) != {'kind','input_sha256','proposed_sha256','runs'}:
                 raise ImportError('Face ledger content schema changed')
             current = _apply_content(current, operation)
+        elif operation.get('kind') == 'remove_faces' and ledger['schema_version'] == REMOVAL_SCHEMA:
+            if set(operation) != {'kind','input_sha256','proposed_sha256','face_ids'}:
+                raise ImportError('Face ledger removal schema changed')
+            current,faces=_apply_removal(current,faces,operation['face_ids'])
+            removed.extend(operation['face_ids'])
         else:
             raise ImportError('Face ledger operation kind is unknown')
         if operation['proposed_sha256'] != sha256(current).hexdigest():
             raise ImportError('Face ledger proposed model hash changed')
-    return current, dict(source_sha256=source_hash, proposed_sha256=sha256(current).hexdigest(),
+    audit=dict(source_sha256=source_hash, proposed_sha256=sha256(current).hexdigest(),
         source_byte_length=len(original), proposed_byte_length=len(current),
         growth_bytes=len(current)-len(original), batch_count=batches, operation_count=len(operations),
         authored_face_count=total, faces=list(faces.values()))
+    if ledger['schema_version'] == REMOVAL_SCHEMA:
+        audit['removed_face_ids']=removed
+    return current,audit
 
 
 def append_content_ledger(original, ledger, candidate):
@@ -168,7 +212,7 @@ def append_content_ledger(original, ledger, candidate):
         start=at
         while at < len(current) and current[at] != candidate[at]:at += 1
         runs.append(dict(offset=start,before_hex=current[start:at].hex(),after_hex=candidate[start:at].hex()))
-    updated = dict(schema_version=CONTENT_SCHEMA,source_sha256=ledger['source_sha256'],
+    updated = dict(schema_version=REMOVAL_SCHEMA if ledger['schema_version']==REMOVAL_SCHEMA else CONTENT_SCHEMA,source_sha256=ledger['source_sha256'],
         source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
     updated['operations'].append(dict(kind='edit_content',input_sha256=sha256(current).hexdigest(),
         proposed_sha256=sha256(candidate).hexdigest(),runs=runs))
@@ -180,7 +224,8 @@ def append_face_ledger(original, ledger, requests):
     current, audit = replay_face_ledger(original, ledger)
     if audit['batch_count'] >= MAX_BATCHES or len(_operations(ledger)) >= MAX_OPERATIONS or not isinstance(requests, list) or audit['authored_face_count'] + len(requests) > MAX_LEDGER_FACES:
         raise ImportError('Face ledger exceeds its batch or authored face budget')
-    candidate, _ = _apply_batch(current, {row['face_id']: row for row in audit['faces']}, requests)
+    reserved={row['face_id'] for operation in _operations(ledger) if operation['kind']=='add_faces' for row in operation['additions']}
+    candidate, _ = _apply_batch(current, {row['face_id']: row for row in audit['faces']}, requests,reserved)
     result = deepcopy(ledger)
     batch=dict(input_sha256=sha256(current).hexdigest(),proposed_sha256=sha256(candidate).hexdigest(),additions=deepcopy(requests))
     if result['schema_version'] == SCHEMA:
@@ -189,6 +234,20 @@ def append_face_ledger(original, ledger, requests):
         result['operations'].append(dict(batch,kind='add_faces'))
     qualified, final_audit = replay_face_ledger(original, result)
     return qualified, result, final_audit
+
+
+def append_removal_ledger(original, ledger, face_ids):
+    current,audit=replay_face_ledger(original,ledger)
+    operations=_operations(ledger)
+    if len(operations)>=MAX_OPERATIONS:
+        raise ImportError('Face ledger exceeds its operation budget')
+    candidate,_=_apply_removal(current,{row['face_id']:row for row in audit['faces']},face_ids)
+    result=dict(schema_version=REMOVAL_SCHEMA,source_sha256=ledger['source_sha256'],
+                source_byte_length=ledger['source_byte_length'],operations=deepcopy(operations))
+    result['operations'].append(dict(kind='remove_faces',input_sha256=sha256(current).hexdigest(),
+                                    proposed_sha256=sha256(candidate).hexdigest(),face_ids=deepcopy(face_ids)))
+    qualified,report=replay_face_ledger(original,result)
+    return qualified,result,report
 
 
 def qualify_face_ledger(original, ledger, candidate):
