@@ -89,6 +89,30 @@ class TextureResizeWorkflow(unittest.TestCase):
             status,result=post('/api/texture-resize',dict(body,review_key=review['review_key']));self.assertEqual(status,200,result)
             self.assertTrue(result['resize_report']['project_changed'])
 
+    def test_nearest_http_review_pixels_apply_reopen_and_history(self):
+        import base64
+        body=dict(asset_id=ASSET,expected_sha256=sha256(self.source).hexdigest(),source_key=source_key(self.project),
+                  width=8,height=2,fill_value=0,accept_potential_overlap=True,resize_mode='nearest')
+        candidate,_=resize_tim_image(self.source,body['expected_sha256'],8,2,0,'nearest')
+        before=self.helper.snapshot()
+        with http_server(self.project) as (_,post):
+            for bad in (dict(body,resize_mode='linear'),dict(body,resize_mode=True),dict(body,fill_value=1)):
+                status,_=post('/api/texture-resize-preview',bad);self.assertEqual(status,400)
+            status,report=post('/api/texture-resize-preview',body);self.assertEqual(status,200,report)
+            self.assertEqual(report['resize_mode'],'nearest');self.assertEqual(report['proposed_sha256'],sha256(candidate).hexdigest())
+            status,result=post('/api/texture-resize-pixels-preview',dict(body,review_key=report['review_key'],palette_index=0))
+            self.assertEqual(status,200,result)
+            from importer.texture_png import decode_png
+            self.assertEqual(decode_png(base64.b64decode(result['proposed_png_base64']))['width'],8)
+            self.assertEqual(self.helper.snapshot(),before)
+            status,_=post('/api/texture-resize',dict(body,resize_mode='crop-fill',review_key=report['review_key']))
+            self.assertEqual(status,400)
+            status,result=post('/api/texture-resize',dict(body,review_key=report['review_key']));self.assertEqual(status,200,result)
+        self.assertEqual(self.project.read_texture_replacement(self.project.texture_overrides[ASSET]),candidate)
+        reopened=ProjectService.open(self.project.save())
+        self.assertEqual(reopened.read_texture_replacement(reopened.texture_overrides[ASSET]),candidate)
+        self.project.undo();self.assertFalse(self.project.texture_overrides);self.project.redo()
+
     def test_crop_to_exact_retail_clears_binding_as_one_undoable_edit(self):
         args=self.args(True);report=texture_resize.review(*args);texture_resize.apply(*args,report['review_key'])
         binding=deepcopy(self.project.texture_overrides[ASSET]);current=self.project.read_texture_replacement(binding)

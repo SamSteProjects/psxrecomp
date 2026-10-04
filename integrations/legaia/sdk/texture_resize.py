@@ -58,7 +58,7 @@ def footprint_report(project,context,asset_id,current,candidate):
                 coverage='known-static-scene-and-boot-uploads',runtime_residency_verified=False)
 
 
-def _prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap):
+def _prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,resize_mode="crop-fill"):
     from importer.texture_layout_allocation import resize_tim_image
     if project.mode!='edit' or type(accept_potential_overlap) is not bool:
         raise ProjectError('Texture resize requires Edit mode and an explicit overlap choice')
@@ -69,11 +69,11 @@ def _prepare(project,asset_id,expected_sha256,expected_source_key,width,height,f
     binding=project.texture_overrides.get(asset_id)
     current=project.read_texture_replacement(binding) if binding else original
     project.validate_effective_texture(asset_id,current,context=context)
-    candidate,allocation=resize_tim_image(current,expected_sha256,width,height,fill_value)
+    candidate,allocation=resize_tim_image(current,expected_sha256,width,height,fill_value,resize_mode)
     footprint=footprint_report(project,context,asset_id,current,candidate)
     report=dict(schema_version='legaia.texture-resize-review.v1',asset_id=asset_id,project_source_key=key,
                 retail_sha256=sha256(original).hexdigest(),effective_sha256=sha256(current).hexdigest(),
-                proposed_sha256=sha256(candidate).hexdigest(),width=width,height=height,fill_value=fill_value,
+                proposed_sha256=sha256(candidate).hexdigest(),width=width,height=height,fill_value=fill_value,resize_mode=resize_mode,
                 current_layout=image_layout(current),proposed_layout=image_layout(candidate),
                 allocation=allocation,footprint=footprint,accept_potential_overlap=accept_potential_overlap,
                 can_apply=allocation['changed'] and (not footprint['potential_overlap_count'] or accept_potential_overlap),
@@ -83,8 +83,8 @@ def _prepare(project,asset_id,expected_sha256,expected_source_key,width,height,f
     return candidate,report
 
 
-def review(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value=0,accept_potential_overlap=False):
-    return _prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap)[1]
+def review(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value=0,accept_potential_overlap=False,resize_mode="crop-fill"):
+    return _prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,resize_mode)[1]
 
 
 def source(project,asset_id,expected_source_key):
@@ -106,18 +106,18 @@ def source(project,asset_id,expected_source_key):
     return report
 
 
-def reviewed(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key):
-    candidate,report=_prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap)
+def reviewed(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key,resize_mode="crop-fill"):
+    candidate,report=_prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,resize_mode)
     if report['review_key']!=review_key:
         raise ProjectError('Texture resize proposal changed; review again before inspection')
     return candidate,report
 
 
-def pixels(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key,palette_index):
+def pixels(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key,palette_index,resize_mode="crop-fill"):
     import base64
     from importer.texture_png import export_texture_png
     from .texture_png import _json_size,MAX_PNG_BYTES
-    candidate,report=reviewed(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key)
+    candidate,report=reviewed(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key,resize_mode)
     if type(palette_index) is not int or not 0<=palette_index<=32767:
         raise ProjectError('Resize pixel inspection requires an existing integer palette')
     binding=project.texture_overrides.get(asset_id)
@@ -134,8 +134,8 @@ def pixels(project,asset_id,expected_sha256,expected_source_key,width,height,fil
     return result
 
 
-def apply(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key):
-    candidate,report=_prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap)
+def apply(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,review_key,resize_mode="crop-fill"):
+    candidate,report=_prepare(project,asset_id,expected_sha256,expected_source_key,width,height,fill_value,accept_potential_overlap,resize_mode)
     if report['review_key']!=review_key or not report['can_apply']:
         raise ProjectError('Texture resize requires an applicable current review and the reviewed overlap choice')
     if report['proposed_sha256']==report['retail_sha256']:

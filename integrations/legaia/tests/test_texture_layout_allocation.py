@@ -38,6 +38,26 @@ class TextureLayoutAllocation(unittest.TestCase):
             moved=bytearray(candidate);offset=8+(12+len(decoded.clut.data) if decoded.clut else 0);struct.pack_into('<H',moved,offset+4,1)
             with self.assertRaises(ImportError):validate_tim_allocation(source,bytes(moved))
 
+    def test_nearest_copies_encoded_pixels_in_all_modes(self):
+        for bpp,width in ((4,12),(8,6),(16,3),(24,2)):
+            source=tim(bpp,image=block(0,0,3,2,bytes([0,128,255,255,0,0,1,128,254,127,255,128])))
+            old=parse_tim(source)
+            for w,h in ((width*2,4),(width,2),(width,1)):
+                candidate,_=resize_tim_image(source,sha256(source).hexdigest(),w,h,0,'nearest')
+                decoded=parse_tim(candidate)
+                def pixel(image,x,y):
+                    start=y*image.image.width_words*2
+                    if bpp==4:return (image.image.data[start+x//2]>>(4*(x%2)))&15
+                    count=bpp//8;start+=x*count
+                    return image.image.data[start:start+count]
+                for y in range(h):
+                    for x in range(w):
+                        self.assertEqual(pixel(decoded,x,y),pixel(old,(2*x+1)*width//(2*w),(2*y+1)*2//(2*h)))
+                self.assertEqual(decoded.clut,old.clut)
+                if (w,h)==(width,2):self.assertEqual(candidate,source)
+            for mode,fill in ((None,0),(True,0),('linear',0),('nearest',1),('nearest',False)):
+                with self.assertRaises(ImportError):resize_tim_image(source,sha256(source).hexdigest(),width,2,fill,mode)
+
     def test_pack_offsets_rebase_with_exact_unedited_members_and_alignment_tails(self):
         for standalone in (False,True):
             _,archive,_,pack=texture_fixture(compressed=not standalone)

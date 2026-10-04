@@ -1744,18 +1744,19 @@ class EditorHandler(BaseHTTPRequestHandler):
                     fields={'asset_id','expected_sha256','source_key','width','height','fill_value','accept_potential_overlap'}
                     if route!='/api/texture-resize-preview':fields.add('review_key')
                     if route=='/api/texture-resize-pixels-preview':fields.add('palette_index')
-                    if set(body)!=fields or not isinstance(body['asset_id'],str) or not 1<=len(body['asset_id'])<=512:
+                    if set(body) not in (fields,fields|{'resize_mode'}) or not isinstance(body['asset_id'],str) or not 1<=len(body['asset_id'])<=512:
                         raise ProjectError('Texture resize requires exact current texture context and encoded dimensions')
                     from .texture_resize import review,apply,pixels,reviewed
                     args=(self.server.project,body['asset_id'],body['expected_sha256'],body['source_key'],
                           body['width'],body['height'],body['fill_value'],body['accept_potential_overlap'])
-                    if route=='/api/texture-resize-preview':self._json(200,review(*args))
-                    elif route=='/api/texture-resize-pixels-preview':self._json(200,pixels(*args,body['review_key'],body['palette_index']))
+                    mode=body.get('resize_mode','crop-fill')
+                    if route=='/api/texture-resize-preview':self._json(200,review(*args,resize_mode=mode))
+                    elif route=='/api/texture-resize-pixels-preview':self._json(200,pixels(*args,body['review_key'],body['palette_index'],resize_mode=mode))
                     elif route=='/api/texture-resize-scene-preview':
-                        candidate,report=reviewed(*args,body['review_key'])
+                        candidate,report=reviewed(*args,body['review_key'],resize_mode=mode)
                         self._json(200,self.server.scene_texture_proposal(body['asset_id'],candidate,report,body['source_key']))
                     else:
-                        report=apply(*args,body['review_key'])
+                        report=apply(*args,body['review_key'],resize_mode=mode)
                         self._json(200,dict(self.server.state(),resize_report=report))
                     return
                 if route in ('/api/texture-glb-retain-review','/api/texture-glb-retain'):

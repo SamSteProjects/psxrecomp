@@ -33,14 +33,20 @@ def validate_tim_allocation(source, candidate):
                 scope='TIM-image-allocation-fixed-mode-and-VRAM-origin',gameplay_verified=False)
 
 
-def resize_tim_image(source, expected_sha256, width, height, fill_value=0):
-    """Keep overlapping encoded pixels; fill newly allocated pixels explicitly.
+def resize_tim_image(source, expected_sha256, width, height, fill_value=0, resize_mode="crop-fill"):
+    """Resize with top-left crop/fill or nearest encoded-pixel scaling.
 
     Indexed fill values are palette indices, 16-bpp values are raw PSX words,
-    and 24-bpp values are raw RGB bytes in little-endian order. No resampling,
-    palette edits, UV retargeting or runtime upload-order assumptions occur.
+    and 24-bpp values are raw RGB bytes in little-endian order. Nearest scaling
+    copies encoded pixels; crop-fill retains the top-left overlap. Neither mode
+    edits palettes, retargets UVs or assumes runtime upload order.
+    Nearest maps destination pixel centers to source pixels using integer math.
     """
     old=_tim(source)
+    if type(resize_mode) is not str or resize_mode not in ('crop-fill','nearest'):
+        raise ImportError('Choose crop-fill or nearest texture resizing')
+    if resize_mode=='nearest' and (type(fill_value) is not int or fill_value!=0):
+        raise ImportError('Nearest resizing requires zero unused fill value')
     if sha256(source).hexdigest()!=expected_sha256:
         raise ImportError('Texture allocation source hash changed')
     if (type(width) is not int or type(height) is not int or width<1 or height<1 or
@@ -59,5 +65,19 @@ def resize_tim_image(source, expected_sha256, width, height, fill_value=0):
     for row in range(min(height,old.image.height)):
         count=min(stride,old_stride)
         data[row*stride:row*stride+count]=old.image.data[row*old_stride:row*old_stride+count]
+    if resize_mode=='nearest':
+        # Copy complete encoded pixels. Indexed values never pass through RGB,
+        # and PSX16 STP bits and RGB24 channel bytes retain their exact values.
+        data=bytearray(stride*height)
+        for y in range(height):
+            sy=min(old.image.height-1,(2*y+1)*old.image.height//(2*height))
+            for x in range(width):
+                sx=min(old.width-1,(2*x+1)*old.width//(2*width))
+                if old.bpp==4:
+                    value=(old.image.data[sy*old_stride+sx//2]>>(4*(sx%2)))&15
+                    data[y*stride+x//2]|=value<<(4*(x%2))
+                else:
+                    count=old.bpp//8;start=sy*old_stride+sx*count;target=y*stride+x*count
+                    data[target:target+count]=old.image.data[start:start+count]
     candidate=source[:prefix]+struct.pack('<I4H',12+len(data),old.image.x,old.image.y,words,height)+bytes(data)
     return candidate,validate_tim_allocation(source,candidate)

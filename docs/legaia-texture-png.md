@@ -1,5 +1,30 @@
 # Source-bound texture PNG authoring
 
+## 2026-10-04: nearest-neighbor texture scaling
+
+Resize image now offers **Crop and fill** and **Scale with nearest neighbor**.
+Nearest scaling copies encoded source pixels at destination pixel centers using
+integer mapping `floor((2*x+1)*source_width/(2*target_width))` (and the same
+mapping for Y). Palette indices, complete PSX16 words including STP, RGB24
+channel bytes, TIM mode, CLUT allocation and VRAM origin remain source-owned.
+Nearest mode disables fill and requires its unused encoded value to be zero.
+Changing methods withdraws the old review; method selection is bound into the
+review key used by pixel inspection, scene inspection and Apply. Existing API
+callers that omit `resize_mode` retain crop-fill behavior.
+
+Validation passed 12 focused Python cases, the Node resize guard suite and an
+additional high-bit/STP encoded-pixel check. A fresh private Town01 browser
+workflow passed Review, overlap-choice invalidation, pixels/Return,
+scene/Return, Apply, Save/reopen, Undo/Redo and normal Build review. Independent
+native readback verified every scaled row and the exact delivered TIM in the
+normal Build package. Parent visual inspection passed. Evidence is retained at
+`local-output/sdk-20260909/texture-nearest-resize-20261004/parent/`.
+No game was launched. Runtime appearance and upload-order verification remain
+in the deferred gameplay queue. Scaling does not retarget model UVs, introduce
+new TIM slots, change texture depth or implement VRAM placement planning.
+The overall SDK goal remains active and incomplete.
+
+
 **2026-10-04 — reviewed texture resizing in the editor:** The selected texture
 Inspector now offers **Resize image**. It loads an exact current native source,
 reviews width/height and encoded fill, shows added/removed pixels and native byte
