@@ -13,7 +13,8 @@ LIMITATIONS=[
     'Imports static standard GLB POSITION and triangle lists into the selected donor object in native source units.',
     'Reflects Y and reverses triangle winding; rounds positions to signed integer native coordinates.',
     'GLB NORMAL directions are normalized, reflected in Y and converted to Q12 stored normals for lit packets. Flat donors require equal corner normals.',
-    'UVs, baked RGB, packet flags and material bindings are inherited. Missing normals inherit donor references; unlit packets have no normal references.',
+    'Mesh UVs map to the Current UV region of the selected native texture binding, using texel centers and clamped crop edges. Wrapping outside 0..1 is unsupported.',
+    'Baked RGB, packet flags and material bindings are inherited. Missing normals/UVs retain donor values; unlit/untextured packets have no corresponding fields.',
     'Other GLB display attributes, materials and images are not imported. No external resources are fetched.',
     'Apply object transforms before export. One scene, one mesh node and no skinning, morph targets or animation.',
     'Appends geometry; it does not replace retained faces or create native objects or packet groups. Gameplay remains unverified.',
@@ -27,7 +28,8 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key)
     if not isinstance(donor_face_id,str):raise ProjectError('Mesh append requires a stable donor identity')
     donor=next((face for face in topology['faces'] if face['face_id']==donor_face_id),None)
     if donor is None:raise ProjectError('Mesh append donor is absent from Current topology')
-    obj=inspect_model_primitives(effective,include_normal_references=True)['objects'][donor['object_index']]
+    objects=inspect_model_primitives(effective,include_normal_references=True)['objects']
+    obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
     geometry=decode_append_mesh(content)
@@ -46,6 +48,29 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key)
         geometry['ignored_attributes']=sorted(geometry['ignored_attributes']+['NORMAL'])
     normal_import=dict(mode=('gouraud' if row['gouraud'] else 'flat') if imported_faces else 'inherited',
         first_normal_index=obj['normal_count'],vectors=normals,references=references,imported_face_count=imported_faces)
+    uv_region=None;uv_values=[];uv_faces=0;uv_error=0.0
+    if row['uvs'] is not None:
+        points=[point for owner in objects for packet in owner['primitives']
+                if packet['uvs'] is not None and all(packet['material'][key]==row['material'][key] for key in ('clut','tpage'))
+                for point in packet['uvs']]
+        origin=[min(point[axis] for point in points) for axis in range(2)]
+        size=[max(point[axis] for point in points)-origin[axis]+1 for axis in range(2)]
+        uv_region=dict(origin=origin,width=size[0],height=size[1],clut=row['material']['clut'],tpage=row['material']['tpage'])
+    for points in geometry['triangle_uvs']:
+        if uv_region is None or points is None:uv_values.append(None);continue
+        converted=[]
+        for point in points:
+            pair=[]
+            for axis,dimension in enumerate(('width','height')):
+                if not 0<=point[axis]<=1:raise ProjectError('Mesh UVs must remain within 0..1; texture wrapping is not imported')
+                raw=point[axis]*uv_region[dimension]+uv_region['origin'][axis]-.5
+                low=uv_region['origin'][axis];high=low+uv_region[dimension]-1
+                value=round(min(high,max(low,raw)));uv_error=max(uv_error,abs(raw-value));pair.append(value)
+            converted.append(pair)
+        uv_values.append(converted);uv_faces+=1
+    if uv_region is None and any(points is not None for points in geometry['triangle_uvs']):
+        geometry['ignored_attributes']=sorted(geometry['ignored_attributes']+['TEXCOORD_0'])
+    uv_import=dict(region=uv_region,values=uv_values,imported_face_count=uv_faces,uv_max_error=uv_error)
     allocations=[dict(object_index=donor['object_index'],kind='vertices',vectors=geometry['vertices'])]
     if normals:allocations.append(dict(object_index=donor['object_index'],kind='normals',vectors=normals))
     _,updated,_=append_vector_ledger(base,ledger,allocations)
@@ -55,15 +80,16 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key)
         identity[6]=(identity[6]&15)|64;identity[8]=(identity[8]&63)|128
         fields=dict(vertices=[obj['vertex_count']+value for value in triangle])
         if references[index] is not None:fields['normal_indices']=references[index]
+        if uv_values[index] is not None:fields['uvs']=uv_values[index]
         additions.append(dict(face_id='face://authored/'+str(UUID(bytes=bytes(identity))),donor_face_id=donor_face_id,
             fields=fields))
     candidate,updated,audit=append_face_ledger(base,updated,additions)
     binding=dict(format=FORMAT,source_scene_id=project.active_scene,source_sha256=sha256(original).hexdigest(),
         asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),base_binding=base_binding,ledger=updated)
-    report=dict(schema_version='legaia.model-mesh-append-review.v2',asset_id=asset_id,
+    report=dict(schema_version='legaia.model-mesh-append-review.v3',asset_id=asset_id,
         source_sha256=binding['source_sha256'],effective_sha256=expected_sha256,proposed_sha256=binding['asset_sha256'],
         project_source_key=expected_key,donor_face_id=donor_face_id,object_index=donor['object_index'],
-        first_vertex_index=obj['vertex_count'],geometry=geometry,normal_import=normal_import,allocations=allocations,additions=additions,topology=audit,
+        first_vertex_index=obj['vertex_count'],geometry=geometry,normal_import=normal_import,uv_import=uv_import,allocations=allocations,additions=additions,topology=audit,
         current_preview=decode_tmd(effective),preview=decode_tmd(candidate),limitations=list(LIMITATIONS),
         project_changed=False,gameplay_verified=False)
     report['review_key']=digest(dict(asset_id=asset_id,source_key=expected_key,effective_sha256=expected_sha256,
