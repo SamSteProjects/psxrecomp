@@ -1,5 +1,23 @@
 # Deferred gameplay verification
 
+**2026-10-04 — source GLB primitive selection:** Import GLB mesh now offers
+All primitives or one explicit source primitive. A native-qualified file inventory
+shows source material slots/names and triangle counts. Only the selected section's
+positions, faces and display attributes enter the native donor transaction; its
+source index is bound into Review and rechecked by scene inspection and Apply.
+Changing the section invalidates the review. Default whole-mesh behavior remains.
+
+Seven focused checks pass, including source inventory/selection bounds, stale
+selection rejection without mutation, browser DTO qualification, one-step
+Undo/Redo, Save/Open and exact selected-model readback in a normal Build package.
+An actual private Retail editor workflow reviewed four triangles from two source
+sections, selected Trim, re-reviewed two triangles, inspected the proposal in the
+full scene and returned to the retained selection. The browser issued no Apply,
+Save or Run; authored inputs and history stayed unchanged. Source material names
+identify GLB sections; native donor bindings still supply materials. This does
+not implement arbitrary material/image allocation or a multi-donor batch. Gameplay
+remains deferred and the full solo SDK goal remains active.
+
 **2026-10-04 — actual Retail GLB scene inspection:** Mesh import inspection now
 starts with its affected instances isolated, so surrounding scene geometry does
 not obscure the reviewed proposal. The isolation control reflects the retained

@@ -12,7 +12,31 @@ from .model_face_addition import MAX_NEW_FACES
 from .model_vector_allocation import MAX_NEW_VECTORS
 
 
-def decode_append_mesh(content, *, preserve_primitives=False):
+def inspect_append_mesh(content):
+    """Qualified file inventory; material names describe source slots, not bindings."""
+    geometry=decode_append_mesh(content)
+    doc,binary=_read_glb(content)
+    materials=doc.get('materials',[])
+    if not isinstance(materials,list) or len(materials)>128:
+        raise ImportError('Mesh material inventory exceeds its bounded source slots')
+    reader=_Accessors(doc,binary);rows=[]
+    for index,primitive in enumerate(doc['meshes'][0]['primitives']):
+        material=primitive.get('material');name=None
+        if material is not None:
+            if type(material) is not int or not 0<=material<len(materials) or not isinstance(materials[material],dict):
+                raise ImportError('Mesh primitive material slot is missing')
+            name=materials[material].get('name')
+            if name is not None and (not isinstance(name,str) or len(name)>256 or any(ord(c)<32 for c in name)):
+                raise ImportError('Mesh primitive material name is invalid')
+        accessor=primitive.get('indices',primitive['attributes']['POSITION'])
+        count=reader.accessors[accessor]['count'];mode=primitive.get('mode',4)
+        rows.append(dict(primitive_index=index,triangle_count=count//3 if mode==4 else count-2,
+            source_mode=mode,material_index=material,material_name=name))
+    return dict(schema_version='legaia.model-mesh-file.v1',glb_sha256=geometry['glb_sha256'],
+        primitives=rows,triangle_count=len(geometry['triangles']),read_only=True)
+
+
+def decode_append_mesh(content, *, preserve_primitives=False, primitive_index=None):
     if type(preserve_primitives) is not bool:
         raise ImportError('Mesh primitive preservation must be boolean')
     doc,binary=_read_glb(content)
@@ -44,16 +68,19 @@ def decode_append_mesh(content, *, preserve_primitives=False):
     primitives=mesh.get('primitives')
     if not isinstance(primitives,list) or not 1<=len(primitives)<=MAX_NEW_FACES:
         raise ImportError('Mesh append requires a bounded set of triangle primitives')
+    if primitive_index is not None and (type(primitive_index) is not int or not 0<=primitive_index<len(primitives)):
+        raise ImportError('Choose an existing GLB primitive index')
+    selected=primitives if primitive_index is None else [primitives[primitive_index]]
     if preserve_primitives:
         from .model_group_allocation import MAX_NEW_GROUPS
-        if len(primitives)>MAX_NEW_GROUPS:
+        if len(selected)>MAX_NEW_GROUPS:
             raise ImportError('Mesh primitive groups exceed the native group budget')
     reader=_Accessors(doc,binary)
     if any(not isinstance(view,dict) or type(view.get('buffer')) is not int or view['buffer']!=0 for view in reader.views):
         raise ImportError('Mesh append buffer views must own the embedded buffer')
     vertices=[];triangles=[];triangle_normals=[];triangle_uvs=[];triangle_colors=[];owners={};ignored=set();error=0.0;normal_error=0.0
     primitive_ranges=[]
-    for primitive_index,primitive in enumerate(primitives):
+    for primitive_index,primitive in enumerate(selected):
         first_triangle=len(triangles)
         if (not isinstance(primitive,dict) or type(primitive.get('mode',4)) is not int
                 or primitive.get('mode',4) not in (4,5,6) or any(key in primitive for key in ('targets','extensions'))):

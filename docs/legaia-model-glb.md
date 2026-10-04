@@ -1,5 +1,22 @@
 # Source-bound model GLB editing
 
+## Import a source primitive
+
+In **Import GLB mesh**, choose a file, then select **All GLB primitives** or a
+single **Source mesh section**. The list shows each source primitive ordinal,
+triangle count and material name/slot. Choose the native triangle donor and packet
+group mode, then Review. The proposal summary identifies the selected section;
+changing it requires another Review. Scene inspection and Return retain the choice.
+Apply uses one Undo entry. Save/Open and normal Build deliver the resulting native
+model ledger, as with whole-mesh imports.
+
+A section can be imported with its own chosen native donor in a separate reviewed
+transaction. Source material names are labels; GLB textures/images and arbitrary
+material allocation are still unsupported. Other source primitives are omitted
+from a selected-section transaction; existing native geometry follows the chosen
+Append/New/Replace group mode. All-file inventory remains bounded by the current
+static GLB importer limits. This is offline authoring; gameplay is not verified.
+
 The model GLB workflow imports existing object-local vertex positions, UV
 coordinates, qualified baked RGB, existing vertex/normal references, stored
 normal XYZ and qualified material fields into the SDK's normal model replacement path. It complements

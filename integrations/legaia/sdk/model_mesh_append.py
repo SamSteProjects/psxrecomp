@@ -37,7 +37,7 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False):
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None):
     if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
     if replace_group and not new_group:
@@ -54,7 +54,7 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     obj=objects[donor['object_index']]
     row=obj['primitives'][donor['current_primitive_index']]
     if row['corner_count']!=3:raise ProjectError('Select a native triangle donor for a triangle mesh')
-    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives)
+    geometry=decode_append_mesh(content,preserve_primitives=preserve_primitives,primitive_index=primitive_index)
     normals=[];references=[];imported_faces=0
     for directions in geometry['triangle_normals']:
         if row['normal_indices'] is None or directions is None:
@@ -167,6 +167,10 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report.update(schema_version='legaia.model-mesh-append-review.v7',preserve_primitives=True)
         report['limitations'][-1]=('Replaces the exact Current donor group' if replace_group else 'Appends geometry')+' with one independent native packet group per GLB primitive, preserving source order and shared position rows. All groups inherit the selected donor layout/material; GLB materials are not allocated. No native object or animation channel is created. Gameplay remains unverified.'
         report['review_key']=digest(dict(base_review_key=report['review_key'],preserve_primitives=True,primitive_ranges=geometry['primitive_ranges']))
+    if primitive_index is not None:
+        report['selected_primitive_index']=primitive_index
+        report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index))
+        report['limitations'].append('Only the selected source GLB primitive is imported; other source primitives remain outside this transaction.')
     if source_key(project)!=expected_key:raise ProjectError('Project changed during mesh append review')
     return candidate,binding,_budget(report,64*1024*1024)
 
