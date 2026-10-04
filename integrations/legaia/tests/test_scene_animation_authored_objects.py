@@ -54,13 +54,16 @@ class AuthoredObjectSceneAnimationTests(unittest.TestCase):
             sourceKey=source_key(helper.project),sceneSourceKey=scene['source_key'],representation='authored',ready=True,canStart=True)
         script="""import assert from 'node:assert/strict';
 import {decodeSceneAnimation,sceneAnimationSamples} from './integrations/legaia/editor/scene-animation.js';
-let data='';for await(const chunk of process.stdin)data+=chunk;const {report,context}=JSON.parse(data);
+import {rigidFrameNormals} from './integrations/legaia/editor/source-normal-view.js';
+let data='';for await(const chunk of process.stdin)data+=chunk;const {report,context,clip}=JSON.parse(data);
 const decoded=decodeSceneAnimation(report,context),samples=sceneAnimationSamples(decoded,1),source=decoded.tracks[0].normal_pose.source;
 assert.deepEqual(samples[0].normal_preview.triangle_normals[1],source.triangle_normals[1]);
 assert.ok(Math.abs(samples[0].normal_preview.triangle_normals[0][0][1]-4096)<1e-6);
+const modelNormals=rigidFrameNormals(clip,clip.frames[1]);assert.deepEqual(modelNormals.triangle_normals,samples[0].normal_preview.triangle_normals);
+for(const mutate of [c=>c.unposed_object_indices=[0],c=>c.pose_scope='unknown',c=>c.frames[1].object_transforms.push({object_index:1,rotation_psx:[0,0,0],translation:[0,0,0]})]){const bad=structuredClone(clip);mutate(bad);assert.throws(()=>rigidFrameNormals(bad,bad.frames[1]));}
 for(const mutate of [r=>r.tracks[0].pose_scope.unposed_object_indices=[0],r=>r.tracks[0].frames[1][5][0]++,r=>r.tracks[0].normal_pose.source.pose_scope.unposed_vertex_start++,r=>r.tracks[0].normal_pose.frames[1].object_transforms.push({object_index:1,rotation_psx:[0,0,0],translation:[0,0,0]})]){const bad=structuredClone(report);mutate(bad);assert.throws(()=>decodeSceneAnimation(bad,context));}
 """
-        result=subprocess.run([node,'--input-type=module','-e',script],input=json.dumps(dict(report=report,context=context)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
+        result=subprocess.run([node,'--input-type=module','-e',script],input=json.dumps(dict(report=report,context=context,clip=clip)),text=True,capture_output=True,cwd=Path(__file__).resolve().parents[3])
         self.assertEqual(result.returncode,0,result.stderr)
 
     def test_scope_and_forged_channels_reject_even_without_normal_budget(self):

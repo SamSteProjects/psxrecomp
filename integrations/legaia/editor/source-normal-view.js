@@ -42,7 +42,13 @@ export function qualifyRigidPoseScope(scope,vertexCount,objects=null){
 export function rigidFrameNormals(source,frame){
   if(source?.posed!==false||source.normal_preview?.status!=='source_unposed'||!qualifySourceNormals({...source,frames:undefined}))throw new Error('Rigid normals require qualified unposed source vectors.');
   if(frame?.posed!==true||frame.coordinate_system!=='retail_psx_actor_local_y_down'||!Array.isArray(source.objects)||!Array.isArray(frame.object_transforms)||source.triangles.length>100000||source.vertices.length>100000)throw new Error('Rigid normal channel mapping is unavailable.');
-  const scope=source.pose_scope===undefined?null:qualifyRigidPoseScope(source.pose_scope,source.vertices.length,source.objects),known=scope?.posed_object_count??source.objects.length;
+  let scopeValue=source.pose_scope;
+  if(scopeValue==='verified_existing_channels_with_explicit_unposed_native_objects'){
+    if(!Array.isArray(source.unposed_object_indices))throw new Error('Model preview lost its explicit unposed object indices.');
+    const known=source.objects.length-source.unposed_object_indices.length;
+    scopeValue={kind:'existing_channel_prefix',object_count:source.objects.length,posed_object_count:known,unposed_object_indices:source.unposed_object_indices,unposed_vertex_start:source.objects.slice(0,known).reduce((count,obj)=>count+obj.vertex_count,0)};
+  }
+  const scope=scopeValue===undefined?null:qualifyRigidPoseScope(scopeValue,source.vertices.length,source.objects),known=scope?.posed_object_count??source.objects.length;
   if(known!==frame.object_transforms.length)throw new Error('Rigid normal channel count differs from its explicit pose scope.');
   const normals=new Array(source.triangles.length),vertexOwners=new Int32Array(source.vertices.length).fill(-1),seen=new Set();
   for(let i=0;i<source.objects.length;i++){
