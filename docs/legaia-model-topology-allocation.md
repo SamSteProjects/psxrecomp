@@ -376,3 +376,24 @@ whole-pack assembly, 112 untouched models, five unchanged compressed resources
 and bounded archive reopening. Pack growth is 48 decoded bytes and eight carrier
 bytes. No full Retail archive/BIN export or gameplay ran.
 Private proof: `local-output/sdk-20260909/model-growth-preparation-20261003/parent/`.
+
+
+## Compose patches before relocation
+
+`importer.model_pack_composition.compose_model_pack_archive` accepts the source
+archive hash, prepared resource requests and equal-length patch payloads with
+original PROT-relative offsets and exact preimage hashes. It rejects header/TOC
+writes, out-of-bounds or overlapping patches, malformed/duplicate resource
+requests and changes to a selected pack's source. All patches apply before any
+resource or archive growth; each relocation then uses the current archive and
+its updated TOC. Final readback verifies every requested pack after all moves.
+The per-step qualified carrier/archive transforms preserve other payload bytes,
+including precomposed patches, while relocating resources and later entries.
+
+Seventeen focused composition/preparation/archive/pack tests pass. New coverage
+includes two growing carriers, two packs in one carrier, both supported header
+locations, edits in retained resources and shifted archive neighbors, and
+conflict/stale/ownership rejection. These are synthetic archive proofs, not a
+Retail disc build or native gameplay acceptance. This module is not yet called
+by normal Build; package and ISO metadata relocation integration remains required.
+Output continues to report `build_ready=False` and `gameplay_verified=False`.

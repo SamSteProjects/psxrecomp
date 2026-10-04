@@ -1,5 +1,11 @@
 # Deferred gameplay verification
 
+Model relocation composition checkpoint (2026-10-03): original-offset patches
+are verified and applied before pack/PROT growth. Synthetic tests preserve edits
+across multiple growing carriers/resources and shifted neighbors; final packs
+reopen. Normal Build package/ISO integration remains offline work. No game,
+installation or full-disc export ran; no immediate gameplay gate is added.
+
 Shared-pack preparation checkpoint (2026-10-03): retained-base additions and
 ordinary edited neighbors qualify together, with actual Town01 independent pack
 reconstruction and bounded PROT readback. The compressed carrier grows eight
