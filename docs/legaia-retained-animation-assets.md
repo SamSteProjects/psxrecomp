@@ -45,3 +45,31 @@ authoring/Build/Save/game requests; screenshots inspected. Private evidence:
 `local-output/sdk-20260909/retained-assets-20261005/proof.json`. Initial browser
 harness assumptions about responsive-only tabs, total authored counts and collapsed
 provenance text were corrected; prior attempts are preserved. No game launched.
+
+## Direct content editing
+
+In Edit mode, Edit retained content opens the existing frame/channel editor directly
+from the asset. It does not select its capture actor. The clip's project/scene/source
+context owns this workflow; changing an unrelated actor selection does not dispose
+it. The actor-library route retains its existing actor-selection lifetime.
+
+Change captured frame mapping or supported native channel axes, then Review. Preview
+reviewed content opens the ordinary model viewer as Proposed retained content, not
+applied; closing it returns to the reviewed editor. Apply uses the existing atomic
+command and updates authored initial assignment witnesses with the retained record.
+The stable clip identity persists. A retired clip remains retired after an edit.
+
+Successful Apply schedules a source-qualified resource refresh after command busy
+ownership releases. Inspect the same asset to see its new hash/status. Save project
+to persist; Undo/Redo remain normal project commands. Source changes, Live mode and
+missing animation authoring capability prevent direct editing. Review/options enforce
+existing format and revision budgets; these controls add no retargeting or timing
+semantics. Gameplay verification remains separate.
+
+Verification: 6 retail-enabled Python tests, 2 Node checks and 2 JavaScript syntax
+checks passed. The actual headless editor edited both assigned and retired assets
+through Review, proposed-pose Preview and Apply; actor selection and retail imports
+were preserved, with exactly two atomic commands. Undo/Redo and Save/Open round trips
+passed. The normal private Build passed native bank, initial assignment and relocation
+readback; package ZIP integrity and SHA-256 matched its receipt. No game was launched
+or installed. Evidence: `local-output/sdk-20260909/retained-asset-edit-20261005/proof.json`.

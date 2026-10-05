@@ -1,5 +1,31 @@
 # Legaia SDK feature matrix
 
+## Direct retained animation asset editing - 2026-10-05
+
+Retained asset inspection now offers Edit retained content in Edit mode with the
+animation authoring capability. It routes a detached verified capture row to the
+existing retained-content editor. Asset ownership is independent of actor selection;
+project/scene/mode/source freshness remains enforced by the reviewed editor. Actor
+library editing keeps its selection-bound lifetime. No serializer or new animation
+format is introduced by this entry point.
+
+Review and proposed-pose preview stay readonly. Apply uses the existing atomic
+command, preserving the clip UUID while updating its record hash and every authored
+initial reference together. Retired content can be edited without restoration.
+After successful asset-based Apply, a deferred source/busy/mode guard refreshes the
+resource catalog so the same asset exposes fresh witnesses. Save/Open and normal
+private Build remain the existing project workflow; runtime appearance/timing and
+playback acceptance remain deferred. See [direct editing workflow](legaia-retained-animation-assets.md#direct-content-editing).
+
+
+Verification: 6 retail-enabled Python tests, 2 Node checks and 2 JavaScript syntax
+checks passed. The actual headless editor edited both assigned and retired assets
+through Review, proposed-pose Preview and Apply; actor selection and retail imports
+were preserved, with exactly two atomic commands. Undo/Redo and Save/Open round trips
+passed. The normal private Build passed native bank, initial assignment and relocation
+readback; package ZIP integrity and SHA-256 matched its receipt. No game was launched
+or installed. Evidence: `local-output/sdk-20260909/retained-asset-edit-20261005/proof.json`.
+
 ## Retained animations in the Asset Database - 2026-10-05
 
 Refresh scene resources now registers active and retired saved clips as authored

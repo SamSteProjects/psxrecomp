@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const code=await readFile(new URL('../editor/retained-animation-assets.js',import.meta.url),'utf8');
-const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview,retainedAnimationEditContext}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const uuid='12345678-1234-4123-8123-123456789abc',id=`animation://fixture/authored-record/${uuid}`,actor='scene://fixture/actors/man-p1/0001',model='asset://legaia/models/global-special/00f0',hash='a'.repeat(64);
 const row={record_id:uuid,animation_id:id,entity_id:actor,channel_owner_entity_id:actor,model_source_entity_id:actor,donor_asset_id:model,donor_animation_id:'animation://fixture/scene-anm/0001',record_sha256:hash,frame_count:2,object_count:1,active:false,runtime_assigned:false,assigned_actor_ids:[]};
 const value={semantic_id:id,asset_kind:'animation',scope:'authored-retained',authored_animation_record:true,frame_count:2,bone_count:1,model_asset_id:model,retained_record:row,source_record:{source_kind:'authored_animation_record',record_id:uuid,record_sha256:hash,ledger_sha256:hash,donor_record_sha256:hash,donor_animation_id:row.donor_animation_id}};
@@ -18,3 +18,7 @@ const graph={schema_version:'legaia.asset-references.v1',asset_id:id,source_key:
 decodeAssetReferences(graph,id,hash);
 for(const mutate of [v=>v.outgoing[0].retained_capture_evidence.active='yes',v=>v.outgoing[0].retained_capture_evidence.frame_count=513,v=>v.outgoing[0].retained_capture_evidence.object_count=65,v=>v.outgoing[0].retained_capture_evidence.donor_record_sha256='bad',v=>v.outgoing[0].retained_capture_evidence.native_animation_id=1,v=>v.outgoing[0].layer='decoded',v=>v.outgoing[0].kind='recorded_model_clip_binding']){const bad=structuredClone(graph);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,id,hash));}
 console.log('Retained capture references: active/retired source witnesses and layers are qualified without asserting a native slot or runtime binding.');
+const state={project:{mode:'edit'},scene:{id:scene},capabilities:{actor_animation_authoring:true},scene_preview_source_key:hash};
+const edit=retainedAnimationEditContext(value,state);assert.equal(edit.assetId,id);assert.equal(edit.entityId,actor);assert.equal(edit.row.active,false);assert.equal(Object.hasOwn(edit.row,'assigned_actor_ids'),false);edit.row.record_sha256='bad';assert.equal(value.retained_record.record_sha256,hash);
+for(const change of [s=>s.project.mode='live',s=>s.capabilities.actor_animation_authoring=false,s=>s.scene.id='scene://other',s=>s.scene_preview_source_key='bad']){const bad=structuredClone(state);change(bad);assert.throws(()=>retainedAnimationEditContext(value,bad));}
+console.log('Direct retained asset editing: detached legacy row, captured owner, active scene/Edit/capability/source guards and retired eligibility passed.');

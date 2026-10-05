@@ -20,7 +20,13 @@ export function qualifyRetainedAnimationPreview(value,data){
   if(value?.semantic_id!==data.model_asset_id||value.animation.semantic_id!==data.semantic_id||value.animation.asset_semantic_id!==data.model_asset_id||value.animation.representation!=='allocated_record'||!same(actual.source_record,data.source_record)||!same(actual.retained_record,data.retained_record)||actual.model_asset_id!==data.model_asset_id||value.animation.frame_count!==data.frame_count||value.animation.bone_count!==data.bone_count||!Array.isArray(value.vertices)||!value.vertices.length||!value.vertices.every(vector)||!Array.isArray(value.frames)||value.frames.length!==data.frame_count||value.frames.some((frame,i)=>frame.frame_index!==i||!Array.isArray(frame.vertices)||frame.vertices.length!==value.vertices.length||!frame.vertices.every(vector))||value.animation.source_record?.record_sha256!==data.source_record.record_sha256)throw new Error('Retained preview differs from its inspected asset source. Refresh assets.');
   return value;
 }
-export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onError=()=>{}}){
+export function retainedAnimationEditContext(record,state){
+  const data=decodeRetainedAnimationAsset(record);
+  if(state?.project?.mode!=='edit'||state.capabilities?.actor_animation_authoring!==true||!hash(state.scene_preview_source_key)||state.scene?.id!=='scene://'+data.semantic_id.split('/')[2])throw new Error('Retained content editing requires its current scene in Edit mode.');
+  const row=structuredClone(data.retained_record);delete row.assigned_actor_ids;
+  return {assetId:data.semantic_id,entityId:row.entity_id,row};
+}
+export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onError=()=>{}}){
   if(busy())return;
   const data=decodeRetainedAnimationAsset(record),initial=getState(),key=initial.scene_preview_source_key,scene=initial.scene?.id,path=initial.project?.path;
   if(!hash(key)||scene!=='scene://'+data.semantic_id.split('/')[2])throw new Error('Retained clip requires its current scene source.');
@@ -32,15 +38,17 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
   add('p',data.semantic_id);add('p',`Authored initial assignments: ${data.retained_record.assigned_actor_ids.length}. Runtime playback and timing are unresolved.`);
   const status=add('p');status.setAttribute('role','status');const actions=add('div');actions.className='dialog-actions';
   const preview=add('button','Preview retained clip',actions),model=add('button','Inspect captured model',actions),owner=add('button','Select capture actor',actions);
+  const edit=add('button','Edit retained content',actions);edit.hidden=typeof onEdit!=='function'||initial.project?.mode!=='edit'||initial.capabilities?.actor_animation_authoring!==true;
+  edit.onclick=async()=>{try{guard();const context=retainedAnimationEditContext(data,getState());dialog.close();await onEdit(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
   const details=add('details');add('summary','Retained source and provenance',details);add('pre',JSON.stringify(data,null,2),details).className='diagnostic-detail';
   let controller=null,pending=false;
   const current=()=>dialog.open&&getState().scene_preview_source_key===key&&getState().scene?.id===scene&&getState().project?.path===path;
   const guard=()=>{if(!current())throw new Error('Project source changed. Reopen the retained clip.');if(busy()||pending)throw new Error('Finish the current operation before inspecting this clip.');};
   model.onclick=async()=>{try{guard();dialog.close();await onModel(data.model_asset_id);}catch(e){onError(e);}};
   owner.onclick=async()=>{try{guard();dialog.close();await onActor(data.retained_record.entity_id);}catch(e){onError(e);}};
-  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
+  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=edit.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
     const response=await fetch('/api/retained-animation-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:data.semantic_id,expected_source_key:key}),signal:controller.signal});const value=await response.json();
     if(!current()){if(dialog.open)status.textContent='Project source changed. Reopen the retained clip.';return;}if(!response.ok||value.error)throw new Error(value.error||'Retained clip preview failed.');qualifyRetainedAnimationPreview(value,data);dialog.close();await onPreview(data,value);
-  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open)preview.disabled=model.disabled=owner.disabled=!current();}};
+  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open)preview.disabled=model.disabled=owner.disabled=edit.disabled=!current();}};
   dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();return dialog;
 }

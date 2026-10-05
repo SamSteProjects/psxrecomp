@@ -1,5 +1,18 @@
 # Legaia SDK validation plan
 
+## Direct retained asset editing - 2026-10-05
+
+Open an assigned and retired clip from the Asset Database with a different actor
+selected. Verify source options finish loading before interacting, native axis
+Review, proposed-pose preview/return, exact Apply, unchanged actor selection and
+source-qualified automatic resource refresh. Require stable IDs, changed record
+hashes, updated assignment hashes, unchanged retirement/imported provenance and
+one atomic command per Apply. Cover Undo/Redo, Save/Open and normal package output.
+Check Edit/source-scene/capability guards, current project/source ownership and
+pending/disposed contexts. Actor-library selection lifetime must remain unchanged.
+Runtime appearance and timing remain separate deferred acceptance.
+
+
 ## Retained animation Asset Database workflow - 2026-10-05
 
 Discover assigned, unassigned and retired captures in active/Project catalogs;
