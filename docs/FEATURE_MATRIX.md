@@ -1,5 +1,35 @@
 # Legaia SDK feature matrix
 
+## Rotate mixed placements at native coordinate precision — 2026-10-05
+
+**Move scene placement group → Rotate positions -90°/+90°/180° in X/Z** accepts a
+selected imported actor or static-decoration anchor at its native integer position.
+Scenery anchors can lie between actor grid points. Signed quarter-turn permutations
+rotate Current distances around that fixed anchor; final actor positions round to
+64-unit coordinates with half steps away from zero, while scenery retains integer
+precision. The anchor stays fixed. Rounding can bring placements together; use the
+Retail/Current/Proposed review. This supersedes initial grid-only position rotation.
+
+The SDK and browser qualify exact operation/selection/source and full native proposals.
+Rotation has a distinct `native-coordinate-rotation.v1` review-key binding; old algorithm
+tokens reject. Actor source-coordinate limits, signed scenery offsets, full MAP allocation,
+atomic Apply/Undo and Save/Open remain. Heights, facing, object rotations, unselected
+placements, shared edits and collision resources stay unchanged. Rotation changes
+positions, not geometry, parenting or runtime placement semantics.
+
+Validation: 25 focused Python layout/group/HTTP cases, expanded mixed-placement Node
+checks and module syntax pass. Cover all signed quarter turns, integer/off-grid anchors,
+positive half rounding, actor bounds, scenery overflow, no-op/history, source withdrawal,
+old-token rejection and forged/safe-arithmetic guards. Actual private Town01 browser
+checks all three turns about an off-grid decoration, Current/Proposed GPU matrices,
+height/rotation preservation, operation withdrawal/Return and one Apply at 540px.
+Undo/Redo, Save/Open and normal Build pass with full MAP directory/ZIP and independent
+MAN coordinate/opaque-byte readback. Package SHA256:
+`e36c50f5dedac90d3a3625f19f1094526eeb3a45738513854884c152b10b11e1`.
+Evidence: `local-output/sdk-20260909/mixed-placement-native-rotation-20261005/proof.json`.
+No game, installation or full-disc export ran; gameplay remains deferred and the full
+SDK goal stays active. Implementation remains solo.
+
 ## Saved scene visibility and grid — 2026-10-05
 
 **Saved scene views** now retain manually hidden imported actors/static decorations/

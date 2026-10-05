@@ -2,7 +2,7 @@ from copy import deepcopy
 from hashlib import sha256
 import struct,tempfile,unittest
 from unittest.mock import patch
-from sdk.project import ProjectService,ProjectError
+from sdk.project import ProjectService,ProjectError,digest
 from sdk.scene_placement_group import layout_review
 import test_scene_placement_group as fixtures
 from test_scene_placement_group import SCENE,ACTOR,MIXED,IDS,source_map
@@ -82,7 +82,7 @@ class MixedRotationTests(unittest.TestCase):
     with self.assertRaises(ProjectError):p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']))
     p.name=before['name'];self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
    with patch.object(p,'_environment_source',return_value=source_map()):
-    with self.assertRaisesRegex(ProjectError,'grid'):layout_review(p,SCENE,MIXED,op)
+    native=layout_review(p,SCENE,MIXED,op);anchor=next(t for t in native['targets'] if t['entity_id']==IDS[0]);self.assertEqual(anchor['proposed'],anchor['current']);actor=next(t for t in native['targets'] if t['kind']=='actor');self.assertTrue(all(actor['proposed'][a]%64==0 for a in ('x','z')))
    with patch.object(p,'_environment_source',return_value=bytes(source)):
     p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=16384,z=16384)))
     with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(op,quarter_turns=2))
@@ -140,6 +140,37 @@ class MixedNativeScaleTests(unittest.TestCase):
    with patch.object(p,'_environment_source',return_value=bytes(source)):
     before=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
     with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(kind='scale',anchor_entity_id=ACTOR,percent=200))
+    self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
+
+class MixedNativeRotationTests(unittest.TestCase):
+ def test_native_anchor_all_turns_and_atomic_history(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory)
+   with patch.object(p,'_environment_source',return_value=source_map()):
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(y=77)));before=deepcopy(p._document());depth=len(p.undo_stack)
+    for turns in (-1,1,2):
+     op=dict(kind='rotate',anchor_entity_id=IDS[0],quarter_turns=turns);r=layout_review(p,SCENE,MIXED,op);anchor=next(t for t in r['targets'] if t['entity_id']==IDS[0]);self.assertEqual(anchor['proposed'],anchor['current']);self.assertTrue(any(anchor['current'][a]%64 for a in ('x','z')))
+     actor=next(t for t in r['targets'] if t['kind']=='actor');px,pz=(anchor['current'][a] for a in ('x','z'));dx,dz=actor['current']['x']-px,actor['current']['z']-pz;x,z=(-dz,dx) if turns==1 else (dz,-dx) if turns==-1 else (-dx,-dz)
+     self.assertEqual(actor['proposed'],{a:((abs(n)+32)//64)*64*(1 if n>=0 else -1) for a,n in [('x',px+x),('z',pz+z)]});self.assertEqual(p._document(),before)
+    old_key=digest(dict(project_source_key=r['project_source_key'],scene=SCENE,source_sha256=r['source_sha256'],entity_ids=r['entity_ids'],delta=r['delta'],operation=op,algorithm='source-grid-layout.v1',targets=sorted(r['targets'],key=lambda t:(t['kind']!='actor',t['entity_id']))))
+    self.assertNotEqual(old_key,r['review_key'])
+    with self.assertRaisesRegex(ProjectError,'changed since review'):p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=old_key))
+    self.assertEqual(p._document(),before)
+    p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.overrides[ACTOR]['Transform']['position']['y'],77);after=deepcopy(p.overrides);p.undo();self.assertEqual(p._document(),before);p.redo();self.assertEqual(ProjectService.open(p.save()).overrides,after)
+ def test_actor_positive_half_and_decoration_native_units(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,-112,0,48) # anchor (80,144), actor(128,256), 180 => (32,32) -> (64,64)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    r=layout_review(p,SCENE,MIXED,dict(kind='rotate',anchor_entity_id=IDS[0],quarter_turns=2));self.assertEqual(next(t for t in r['targets'] if t['kind']=='actor')['proposed'],dict(x=64,z=64));self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=80,z=144))
+   source=bytearray(source_map());struct.pack_into('<3h',source,4*32,-321,0,-65)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    r=layout_review(p,SCENE,MIXED,dict(kind='rotate',anchor_entity_id=ACTOR,quarter_turns=1));self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=127,z=-1))
+ def test_native_rotation_offset_overflow_is_atomic(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,32767,0,0)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    before=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
+    with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(kind='rotate',anchor_entity_id=ACTOR,quarter_turns=2))
     self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
 
 if __name__=='__main__':unittest.main()

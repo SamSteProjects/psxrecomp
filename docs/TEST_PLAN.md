@@ -1,5 +1,22 @@
 # Legaia SDK validation plan
 
+## Native-precision mixed rotation checkpoint — 2026-10-05
+
+25 focused Python layout/group/HTTP cases, mixed-placement Node checks and module
+syntax pass. Cover exact quarter turns, integer/off-grid anchors, final actor half
+rounding, fixed anchor, native bounds, scenery overflow, no-op/history, stale/old
+algorithm tokens and forged/safe arithmetic. Actual private Town01 browser checks
+-90/+90/180 about an off-grid decoration, operation withdrawal, Current/Proposed GPU
+matrices with height/rotation held, Return and 540px one Apply. Undo/Redo, Save/Open and
+normal Build pass, with complete MAP directory/ZIP and independent native MAN placement
+and opaque-byte readback. Screenshot inspected, no page errors. Proof:
+`local-output/sdk-20260909/mixed-placement-native-rotation-20261005/proof.json`.
+Campaign follow-up: maximum selections, extreme source/offset bounds, rounding
+coincidences, repeated turns and actor anchors with native integer scenery distances.
+Rotation changes positions only; actor facing, scenery rotation, collision consistency
+and script-driven runtime placement remain separate manual gates. No game,
+installation or full-disc export ran.
+
 ## Saved scene visibility/grid checkpoint — 2026-10-05
 
 Nine focused Python view cases, scene-view/camera Node suites and both editor syntax

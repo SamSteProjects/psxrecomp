@@ -1,5 +1,35 @@
 # Mixed scene placement groups
 
+## Rotate mixed placements at native coordinate precision — 2026-10-05
+
+**Move scene placement group → Rotate positions -90°/+90°/180° in X/Z** accepts a
+selected imported actor or static-decoration anchor at its native integer position.
+Scenery anchors can lie between actor grid points. Signed quarter-turn permutations
+rotate Current distances around that fixed anchor; final actor positions round to
+64-unit coordinates with half steps away from zero, while scenery retains integer
+precision. The anchor stays fixed. Rounding can bring placements together; use the
+Retail/Current/Proposed review. This supersedes initial grid-only position rotation.
+
+The SDK and browser qualify exact operation/selection/source and full native proposals.
+Rotation has a distinct `native-coordinate-rotation.v1` review-key binding; old algorithm
+tokens reject. Actor source-coordinate limits, signed scenery offsets, full MAP allocation,
+atomic Apply/Undo and Save/Open remain. Heights, facing, object rotations, unselected
+placements, shared edits and collision resources stay unchanged. Rotation changes
+positions, not geometry, parenting or runtime placement semantics.
+
+Validation: 25 focused Python layout/group/HTTP cases, expanded mixed-placement Node
+checks and module syntax pass. Cover all signed quarter turns, integer/off-grid anchors,
+positive half rounding, actor bounds, scenery overflow, no-op/history, source withdrawal,
+old-token rejection and forged/safe-arithmetic guards. Actual private Town01 browser
+checks all three turns about an off-grid decoration, Current/Proposed GPU matrices,
+height/rotation preservation, operation withdrawal/Return and one Apply at 540px.
+Undo/Redo, Save/Open and normal Build pass with full MAP directory/ZIP and independent
+MAN coordinate/opaque-byte readback. Package SHA256:
+`e36c50f5dedac90d3a3625f19f1094526eeb3a45738513854884c152b10b11e1`.
+Evidence: `local-output/sdk-20260909/mixed-placement-native-rotation-20261005/proof.json`.
+No game, installation or full-disc export ran; gameplay remains deferred and the full
+SDK goal stays active. Implementation remains solo.
+
 ## Scale mixed placements at native coordinate precision — 2026-10-05
 
 **Move scene placement group → Scale spacing at native precision** scales selected
@@ -167,9 +197,12 @@ No game was launched or installed; gameplay verification remains deferred.
 
 Choose **Rotate positions -90° / +90° / 180° in X/Z**, select an **Anchor**, then
 **Review group**. The anchor can be a selected imported actor or static decoration;
-its Current X and Z must both lie on the 64-unit actor grid. The anchor stays fixed.
+Current X/Z must be integers; decoration anchors can lie between actor grid points.
+The anchor stays fixed. Final actor coordinates round to 64 units, with half steps
+away from zero; scenery coordinates keep native integer precision.
 +90 maps relative (X,Z) to (-Z,X); -90 maps to (Z,-X); 180 negates both. The review
-shows exact Retail/Current/Proposed positions without publishing edits. Proposed actor
+shows native Retail/Current/Proposed positions without publishing edits. Rounding
+can bring placements together. Proposed actor
 coordinates must remain native-grid representable; decoration offsets and the complete
 MAP allocation must remain valid. Invalid anchors, turns or candidates reject atomically.
 
@@ -180,7 +213,7 @@ components stay unchanged. Changing the operation/anchor requires a new Review. 
 inspection has no shared-offset handles. One Apply records one Undo step; coincident
 positions are a no-op. Save/Open and normal Build preserve the result.
 
-Private evidence: `local-output/sdk-20260909/mixed-placement-rotation-20261005/` contains
+Historical grid-only checkpoint evidence: `local-output/sdk-20260909/mixed-placement-rotation-20261005/` contains
 retail browser proof/screenshots and independently decoded native package readback.
 This does not prove script-driven placement, collision or game visibility; gameplay
 verification remains in the deferred queue.
