@@ -78,6 +78,36 @@ def _merge_trigger_patch(original, current, changed, audit, scene, binding):
     return bytes(merged)
 
 
+def _merge_trigger_script_patch(original, current, changed, audit, scene, binding):
+    from importer.trigger_authoring import trigger_authoring_options
+    if not all(isinstance(v, bytes) and len(v) == 0x12000 for v in (original, current, changed)) or binding['source_sha256'] != _hash(original):
+        raise BuildError('Trigger script composition source changed')
+    records = {r['trigger_id']:r for r in trigger_authoring_options(original, scene)['records']}
+    expected = {}
+    for edit in binding['edits']:
+        record = records[edit['trigger_id']]
+        index = int(edit['script_id'].rsplit('/', 1)[1])
+        if record['table_kind'] != 1 or record['encoded']['gate'] != 1 or not 0 <= index <= 255:
+            raise BuildError('Trigger script composition requires gate-1 P2 bindings')
+        offset = record['byte_offset'] + 2
+        if original[offset] != index:
+            expected[offset] = dict(trigger_id=record['trigger_id'], target_script_id=edit['script_id'],
+                target_script_sha256=edit['script_sha256'], table_kind=1, record_index=record['record_index'],
+                field='trigger.record_index', byte_offset=offset, before_value=original[offset],
+                after_value=index, scope='source-MAP-trigger-P2-binding-only')
+    if (not isinstance(audit, list) or any(not isinstance(r, dict) for r in audit) or
+            len(audit) != len(expected) or {r.get('byte_offset'):r for r in audit} != expected or
+            {i:(a,b) for i,(a,b) in enumerate(zip(original,changed)) if a != b} !=
+            {i:(r['before_value'],r['after_value']) for i,r in expected.items()}):
+        raise BuildError('Trigger script serializer differs from stable bindings or exact byte audit')
+    merged = bytearray(current)
+    for offset, row in expected.items():
+        if current[offset] != original[offset]:
+            raise BuildError('Trigger script binding overlaps another authored MAP field')
+        merged[offset] = row['after_value']
+    return bytes(merged)
+
+
 def package_change_kinds(edits) -> list[str]:
     """Describe emitted audit scopes, without inferring unexecuted game behavior."""
     labels = {
@@ -101,6 +131,7 @@ def package_change_kinds(edits) -> list[str]:
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'TMD-existing-layout-content': 'model faces, UVs and baked colors',
         'TMD-existing-layout-material-content': 'model material bindings and shared primitive group transparency',
+        'source-MAP-trigger-P2-binding-only': 'trigger script bindings',
         'source-MAP-wall-bit-only': 'source collision walls',
         'source-MAP-region-bounds-only': 'source region bounds',
         'source-MAP-trigger-cell-only': 'source trigger cells',
@@ -458,6 +489,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
     collision_edits = {}
     region_edits = {}
     trigger_edits = {}
+    trigger_script_edits = {}
     animation_edits = {}
     animation_ledgers = set()
     allocated_assignments = {}
@@ -490,6 +522,13 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if value is not None:
                 region_edits[identifier] = value
             components = {k:v for k,v in components.items() if k != 'RegionBounds'}
+            if not components:
+                continue
+        if isinstance(components, dict) and 'TriggerScripts' in components:
+            value = project._validate_trigger_scripts(identifier, components['TriggerScripts'])
+            if value is not None:
+                trigger_script_edits[identifier] = value
+            components = {k:v for k,v in components.items() if k != 'TriggerScripts'}
             if not components:
                 continue
         if isinstance(components, dict) and 'TriggerCells' in components:
@@ -731,7 +770,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                                  "payload": payload, "sha256": _hash(payload), "expected_sha256": patch['expected_sha256'],
                                  'carrier': metadata['carriers'][index], **evidence})
             audit_edits.extend({**change, "scene": scene, "semantic_id": change["animation_id"]} for change in changes)
-        for scene_id in sorted(set(environment_edits) | set(collision_edits) | set(region_edits) | set(trigger_edits)):
+        for scene_id in sorted(set(environment_edits) | set(collision_edits) | set(region_edits) | set(trigger_edits) | set(trigger_script_edits)):
             binding = environment_edits.get(scene_id)
             from importer.environment_authoring import patch_environment_overrides
             from importer.environment import load_environment_placements
@@ -773,6 +812,12 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 triggers = trigger_edits[scene_id]
                 trigger_data, trigger_changes = patch_field_triggers(original, triggers['source_sha256'], scene, triggers['edits'])
                 changed = _merge_trigger_patch(original, changed, trigger_data, trigger_changes, scene, triggers)
+            script_trigger_changes = []
+            if scene_id in trigger_script_edits:
+                from importer.trigger_script_authoring import patch_trigger_scripts
+                bindings = trigger_script_edits[scene_id]
+                payload, script_trigger_changes = patch_trigger_scripts(original, bindings['source_sha256'], scene, bindings['edits'])
+                changed = _merge_trigger_script_patch(original, changed, payload, script_trigger_changes, scene, bindings)
             allowed = set()
             for row in changes:
                 if 'allocation' in row:
@@ -785,13 +830,14 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             allowed.update(row["byte_offset"] for row in wall_changes)
             allowed.update(row["byte_offset"] for row in region_changes)
             allowed.update(row["byte_offset"] for row in trigger_changes)
+            allowed.update(row["byte_offset"] for row in script_trigger_changes)
             if len(changed) != len(original) or any(a != b and i not in allowed for i,(a,b) in enumerate(zip(original,changed))):
                 raise BuildError("MAP patch changed bytes outside audited scenery, wall, region or trigger fields")
             location = (archive.node.extent_lba + entry.start_lba) * 2048
             disc_user_size = (_image.size // 2352) * 2048
             if _image.read_user(0, location, len(original), disc_user_size) != original:
                 raise BuildError("Environment MAP overlay differs from its original disc span")
-            if changes or wall_changes or region_changes or trigger_changes:
+            if changes or wall_changes or region_changes or trigger_changes or script_trigger_changes:
                 overlays.append({"scene":scene, "offset":location, "size":len(changed),
                                  "file":f"assets/{scene}-environment.map", "payload":changed,
                                  "sha256":_hash(changed), "expected_sha256":_hash(original)})
@@ -803,6 +849,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
                 audit_edits.extend({**row, "scene": scene, "semantic_id": f"collision://{scene}/field-map"} for row in wall_changes)
                 audit_edits.extend({**row, "scene": scene, "semantic_id": row["region_id"]} for row in region_changes)
                 audit_edits.extend({**row, "scene": scene, "semantic_id": row["trigger_id"]} for row in trigger_changes)
+                audit_edits.extend({**row, "scene": scene, "semantic_id": row["trigger_id"]} for row in script_trigger_changes)
         for scene_id, edits in sorted(scene_edits.items()):
             document = project.imports[scene_id]
             scene = document["scene"]["name"]

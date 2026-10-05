@@ -103,7 +103,7 @@ class ProjectService:
     FORMAT = "legaia.project.v1"
     REVIEW_COMPONENTS = frozenset({"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions",
                                   "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches",
-                                  "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells"})
+                                  "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells", "TriggerScripts"})
 
     def __init__(self, root: Path, name: str = "Legaia project") -> None:
         self.root = root.resolve()
@@ -624,6 +624,10 @@ class ProjectService:
         edits = [deepcopy(row) for row in value['edits']
                  if any(row[key] != records[row['trigger_id']]['encoded'][key] for key in ('tile_x', 'tile_z'))]
         return {'source_sha256': value['source_sha256'], 'edits': sorted(edits, key=lambda row: row['trigger_id'])} if edits else None
+
+    def _validate_trigger_scripts(self, identifier, value):
+        from .trigger_scripts import validate
+        return validate(self, identifier, value)
 
     def _validate_environment(self, identifier: str, value: dict) -> None:
         import re
@@ -2082,6 +2086,30 @@ class ProjectService:
                 self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': deepcopy(after)})
                 self.redo_stack.clear()
             return
+        if command.get('type') == 'apply_trigger_scripts':
+            from .trigger_scripts import apply
+            apply(self, command)
+            return
+        if command.get('type') == 'set_trigger_scripts':
+            if set(command) != {'type', 'entity_id', 'value'} or command['entity_id'] != self.active_scene:
+                raise ProjectError('Trigger scripts require the active scene and exact source binding')
+            identifier = command['entity_id']
+            before = deepcopy(self.overrides.get(identifier))
+            value = self._validate_trigger_scripts(identifier, deepcopy(command['value']))
+            after = deepcopy(before or {})
+            if value is None:
+                after.pop('TriggerScripts', None)
+            else:
+                after['TriggerScripts'] = value
+            after = after or None
+            if before != after:
+                if after is None:
+                    self.overrides.pop(identifier, None)
+                else:
+                    self.overrides[identifier] = after
+                self.undo_stack.append({'entity_id': identifier, 'before': before, 'after': deepcopy(after)})
+                self.redo_stack.clear()
+            return
         if command.get('type') == 'apply_trigger_cells':
             from .trigger_cells import apply
             apply(self, command)
@@ -2746,7 +2774,7 @@ class ProjectService:
         if saved_identity != actual_identity:
             raise ProjectError("Project retail identity disagrees with imported evidence")
         for identifier, components in raw.get("authored", {}).items():
-            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells", "WorldMapMenu", "WorldMapPlacements"}:
+            if not isinstance(components, dict) or not components or set(components) - {"Transform", "ActorAppearance", "ActorAnimation", "ActorAllocatedAnimation", "Dialogue", "Transitions", "ScriptMovement", "ScriptFlags", "ScriptWaits", "ScriptModelSelectors", "ScriptFacing", "ScriptBranches", "Environment", "AnimationChannels", "AnimationRecords", "Collision", "RegionBounds", "TriggerCells", "TriggerScripts", "WorldMapMenu", "WorldMapPlacements"}:
                 raise ProjectError("Unsupported authored component")
             if 'WorldMapPlacements' in components:
                 from .worldmap_placements import validate
@@ -2765,6 +2793,10 @@ class ProjectService:
                 value = result._validate_region_bounds(identifier, components['RegionBounds'])
                 if value is not None:
                     result.overrides.setdefault(identifier, {})['RegionBounds'] = value
+            if 'TriggerScripts' in components:
+                value = result._validate_trigger_scripts(identifier, components['TriggerScripts'])
+                if value is not None:
+                    result.overrides.setdefault(identifier, {})['TriggerScripts'] = value
             if 'TriggerCells' in components:
                 value = result._validate_trigger_cells(identifier, components['TriggerCells'])
                 if value is not None:
@@ -3108,6 +3140,10 @@ class ProjectService:
             if trigger_cells:
                 scene_changes.append(f"Trigger cells: {len(trigger_cells['edits'])} authored cells")
                 scene_authored['TriggerCells'] = deepcopy(trigger_cells)
+            trigger_scripts = self.overrides.get(scene_id, {}).get('TriggerScripts')
+            if trigger_scripts:
+                scene_changes.append(f"Trigger scripts: {len(trigger_scripts['edits'])} authored bindings")
+                scene_authored['TriggerScripts'] = deepcopy(trigger_scripts)
             if scene_authored:
                 records.append({"id":scene_id, "kind":"scene", "name":document["scene"]["name"],
                                 "scene_id":scene_id, "source_scene":document["scene"]["name"],

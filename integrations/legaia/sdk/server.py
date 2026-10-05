@@ -221,6 +221,7 @@ class EditorServer(ThreadingHTTPServer):
         state['scene_region_state_key'] = scene_region_state_key(self.project)
         state['scene_trigger_state_key'] = scene_trigger_state_key(self.project)
         state['capabilities']['field_trigger_authoring'] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
+        state['capabilities']['field_trigger_script_authoring'] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['capabilities']['field_region_authoring'] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
         state['scene_flag_state_key'] = scene_flag_state_key(self.project)
         state['project_flag_state_key'] = project_flag_state_key(self.project)
@@ -1785,6 +1786,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route == '/api/region-bounds-apply':
                     from .region_bounds import apply
+                    apply(self.server.project, body)
+                    self._json(200, self.server.state())
+                    return
+                if route == '/api/trigger-scripts-review':
+                    if set(body) != {'trigger_id', 'script_id', 'action'}:
+                        raise ProjectError('Trigger script review requires exact trigger, script and action fields')
+                    from .trigger_scripts import review
+                    self._json(200, review(self.server.project, body['trigger_id'], body['script_id'], body['action']))
+                    return
+                if route == '/api/trigger-scripts-apply':
+                    from .trigger_scripts import apply
                     apply(self.server.project, body)
                     self._json(200, self.server.state())
                     return

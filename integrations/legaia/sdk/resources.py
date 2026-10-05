@@ -117,7 +117,7 @@ def scene_trigger_state_key(project) -> str:
     """Invalidate source trigger layers without reloading model geometry."""
     from .project import digest
     scene = project.active_scene
-    return digest(dict(scene_id=scene, trigger_cells=deepcopy(project.overrides.get(scene, {}).get('TriggerCells'))))
+    return digest(dict(scene_id=scene, trigger_cells=deepcopy(project.overrides.get(scene, {}).get('TriggerCells')), trigger_scripts=deepcopy(project.overrides.get(scene, {}).get('TriggerScripts'))))
 
 
 def scene_region_state_key(project) -> str:
