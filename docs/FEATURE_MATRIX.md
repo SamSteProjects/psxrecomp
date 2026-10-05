@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Inspect individual vertex drafts in the placed scene - 2026-10-05
+
+Selected vertex scope now supports the same placed scene inspection as Entire
+object. Inspect movement draft in scene qualifies the exact object-local vertex
+index, signed16 XYZ, Current/native geometry, material words, bounds and source
+hash before requesting one supported instance or all shared model instances.
+The earlier object-only restriction is superseded. Placement and supported pose
+remain source-owned; no actor transform or pose channel is authored.
+
+The SDK now exposes read-only /api/model-vector-preview and
+/api/model-vector-scene-preview. Preview and existing Apply share the same native
+candidate preparation, preserving Current authored faces/materials and topology.
+Preview emits no command/history/file write. Exact HTTP envelopes, scene source
+keys, vector owner/kind/index/values and candidate identity are checked. Numeric
+bounds, source changes and stale replies reject; recomputed bounds match native
+geometry and known texture/blend display enrichment stays separate.
+
+Native Town01 model0000 object0 vertex1 draft368/-16/32 passed single/all-instance
+rendering, Current/Proposed comparison, Return/Restore retention and late changed-
+draft rejection. The complete project document/history/authored state remained
+unchanged, with zero writes and page errors. Screenshots inspected. Two focused
+API/candidate checks, three content/history/retained-topology checks, four existing
+allocated-vector pose checks and JavaScript geometry/review guards passed.
+Evidence: `local-output/sdk-20260909/vertex-scene-20261005/proof.json`.
+No game launched. This read-only integration adds no gameplay verification gate;
+actual appearance remains on the existing package queue. The SDK goal stays active.
+
+
 ## Inspect object movement drafts in the placed scene - 2026-10-05
 
 The 3D geometry movement workspace now offers a source-qualified Scene instance

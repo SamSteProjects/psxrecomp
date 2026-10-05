@@ -26,3 +26,8 @@ for(const mutation of [r=>r.object_index=0,r=>r.source_sha256='d'.repeat(64),r=>
 console.log('Movement review: complete Current/Proposed geometry, exact source/owner/hash, bounds and forged/no-op replies passed');
 assert.deepEqual(qualifyObjectMoveReview({...report,preview:Object.fromEntries(Object.entries(report.preview).reverse())},request,expected).preview,report.preview);
 const enriched=structuredClone(report);enriched.preview.textures=[];enriched.current_preview.animation_support={status:'unposed'};assert.deepEqual(qualifyObjectMoveReview(enriched,request,expected),enriched);
+
+const vectorRequest={...request,operation:'vector',kind:'vertices',vector_index:1,values:[16,17,18]},vectorExpected={...expected,preview:vertexMovePreview(source,1,1,vectorRequest.values)},vectorReport={...report,operation:'vector',kind:'vertices',vector_index:1,values:vectorRequest.values,preview:vectorExpected.preview};
+assert.deepEqual(qualifyObjectMoveReview(vectorReport,vectorRequest,vectorExpected),vectorReport);
+for(const changes of [{vector_index:0},{kind:'normals'},{values:[16,17,19]},{operation:'translation'}])assert.throws(()=>qualifyObjectMoveReview({...vectorReport,...changes},vectorRequest,vectorExpected));
+console.log('Vertex scene review: exact vector owner/index/kind/XYZ and candidate geometry passed');

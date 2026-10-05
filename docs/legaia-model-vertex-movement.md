@@ -117,8 +117,31 @@ and supported pose are retained; this does not prove runtime residency or visibi
 Use Current/Proposed comparison and isolation in the scene workspace. Return to
 movement draft and Restore scene preview both retain the draft and instance choice.
 Apply remains explicit after returning. Closing the movement editor withdraws any
-owned scene proposal. Changed scene/source/draft and late replies reject. Single
-vertex scope has no scene action yet. Native Town01 single/all-instance checks,
+owned scene proposal. Changed scene/source/draft and late replies reject. Selected vertex scope now supports the same scene action, as described below. Native Town01 single/all-instance checks,
 comparison, both returns, late changed-draft rejection and unchanged complete project/
 history/assets passed with zero writes/page errors. Screenshots and evidence:
 `local-output/sdk-20260909/movement-scene-final-check-20261005/`. No game was launched.
+
+
+## Inspect a vertex draft in the placed scene - 2026-10-05
+
+Selected vertex scope now supports Inspect movement draft in scene. Pick or choose
+an existing object-local vertex, edit signed16 XYZ, and choose one supported scene
+instance or all instances of the shared model. Preview and Apply share the same
+candidate serializer; no mutation is implicit. A read-only raw vector review is
+qualified against exact Current/Proposed geometry, native material words, bounds,
+object, kind, row and XYZ before a source-qualified placed proposal is displayed.
+The normal Return/Restore, Current/Proposed comparison and isolation controls apply.
+Source placement and supported pose stay fixed; this does not prove game visibility.
+
+API: /api/model-vector-preview takes asset_id, object_index, kind, vector_index,
+values (signed16 XYZ) and expected_sha256. /api/model-vector-scene-preview adds
+entity_id, source_key and optional boolean all_instances. Extra fields, stale source,
+invalid owner/row/XYZ and non-Edit mode reject. Neither route creates authored files
+or history. Existing /api/model-vector Apply remains the only vertex publication.
+
+Native Town01 model0000 object0 vertex1 draft368/-16/32 passed both instance modes,
+comparison, both return paths and changed-draft late-reply rejection with complete
+project/history/assets unchanged. Normal Apply parity and retention of authored
+face/topology content passed focused checks. Private native evidence and screenshots:
+`local-output/sdk-20260909/vertex-scene-20261005/`. Gameplay remains deferred.

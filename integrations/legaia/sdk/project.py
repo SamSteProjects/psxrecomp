@@ -1603,6 +1603,19 @@ class ProjectService:
 
     def set_model_vector(self, asset_id: str, object_index: int, kind: str, vector_index: int,
                          values: list[int], expected_sha256: str) -> None:
+        replacement, _ = self._prepare_model_vector(asset_id, object_index, kind, vector_index, values, expected_sha256)
+        self.set_model_replacement(asset_id, replacement)
+
+    def preview_model_vector(self, asset_id, object_index, kind, vector_index, values, expected_sha256):
+        from importer.assets import decode_tmd
+        replacement, effective = self._prepare_model_vector(asset_id, object_index, kind, vector_index, values, expected_sha256)
+        report = self.preview_model_file(asset_id, replacement)
+        report.update(effective_sha256=hashlib.sha256(effective).hexdigest(), object_index=object_index,
+                      operation='vector', kind=kind, vector_index=vector_index, values=list(values),
+                      preview=decode_tmd(replacement), current_preview=decode_tmd(effective))
+        return replacement, report
+
+    def _prepare_model_vector(self, asset_id, object_index, kind, vector_index, values, expected_sha256):
         import json
         from importer.model_json import export_shape_json, import_shape_json
         if self.mode != 'edit':
@@ -1623,7 +1636,7 @@ class ProjectService:
         vectors[vector_index] = values
         # Patch the effective source so a vector edit retains authored faces/UVs/colors.
         replacement, _ = import_shape_json(effective, expected_sha256, json.dumps(document).encode())
-        self.set_model_replacement(asset_id, replacement)
+        return replacement, effective
 
     def translate_model_object(self, asset_id: str, object_index: int, offset: list[int],
                                expected_sha256: str) -> None:

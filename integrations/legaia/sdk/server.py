@@ -1188,6 +1188,26 @@ class EditorHandler(BaseHTTPRequestHandler):
                             report[key] = self.server.model_preview(asset, prepared=report[key])
                     self._json(200, report)
                     return
+                if route in ('/api/model-vector-preview', '/api/model-vector-scene-preview'):
+                    fields = {'asset_id','object_index','kind','vector_index','values','expected_sha256'}
+                    scene_request = route.endswith('scene-preview')
+                    if scene_request:fields.update({'entity_id','source_key'})
+                    if (set(body) - ({'all_instances'} if scene_request else set()) != fields
+                            or not isinstance(body['asset_id'],str)
+                            or scene_request and (not isinstance(body['entity_id'],str) or type(body.get('all_instances',False)) is not bool)):
+                        raise ProjectError('Vector preview requires exact model/object/kind/vector, XYZ, hash and optional scene instance context')
+                    if scene_request:
+                        from .scene_preview import source_key
+                        if source_key(self.server.project) != body['source_key']:
+                            raise ProjectError('Scene changed; refresh before inspecting the vertex draft')
+                    candidate,report = self.server.project.preview_model_vector(body['asset_id'],body['object_index'],body['kind'],body['vector_index'],body['values'],body['expected_sha256'])
+                    if scene_request:
+                        report = self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],candidate,report,body['source_key'],body.get('all_instances',False))
+                    else:
+                        asset = self.server.project.assets.records[body['asset_id']]
+                        for key in ('preview','current_preview'):report[key] = self.server.model_preview(asset,prepared=report[key])
+                    self._json(200,report)
+                    return
                 if route == '/api/model-object-preview':
                     if set(body) != {'asset_id','object_index','operation','values','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Object preview requires model, object, operation, values and inspected hash')
