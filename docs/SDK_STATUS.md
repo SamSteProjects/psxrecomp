@@ -1,5 +1,23 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Component-directed script source navigation
+
+Registered Inspector actions now carry their component identity to their existing
+handler. Authored movement, flag, wait and model-selector actions open the source
+editor and focus the matching operand-family section. Other script/dialogue and
+asset actions retain their existing behavior. Navigation uses a fixed UI-section
+registry, does not parse source IDs or infer execution, and sends no authored
+command. Unknown or missing section targets receive no arbitrary selector focus.
+
+Focused section/dispatch/asset checks passed. A private Town01 browser workflow
+verified keyboard focus and visible wait targets, retail16 versus authored/effective17,
+unchanged project state/history/source key, Undo/Redo presence and Save/Open, with
+zero page errors. Screenshot inspected. Evidence: ignored
+`local-output/sdk-20260909/script-inspector-navigation-20261004/parent/proof.json`.
+The other three families have bounded section-registry coverage; gameplay remains
+deferred. No game launched or physical Retail disc exported.
+
+
 ## 2026-10-04: Authored script components in the entity Inspector
 
 Actors with authored movement, flag, wait or model-selector instruction overrides

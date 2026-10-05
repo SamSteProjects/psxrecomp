@@ -61,6 +61,7 @@ import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
+import {focusScriptInspectorFamily} from '/script-inspector-navigation.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
@@ -2866,7 +2867,7 @@ function renderInspector(){
     'manage-allocated-clips':{requiresEdit:true,canRun:()=>state.capabilities?.actor_animation_assignment===true,run:()=>inspectSavedAnimationRecords(entity)},
     'preview-allocated-initial-animation':{canRun:()=>Boolean(components.ActorAllocatedAnimation?.authored?.record_id),run:()=>openModel(components.ActorAllocatedAnimation.authored.model_asset_id,'authored-initial-animation',entity.id)},
     'inspect-model':{run:()=>openModel(components.ModelRenderer.asset_id)},
-    'inspect-script':{run:()=>openActorScript(entity)},
+    'inspect-script':{run:({componentId}={})=>openActorScript(entity,false,null,null,null,componentId)},
     'inspect-actor-candidate':{run:()=>openActorCandidate(entity)},
     'inspect-templates':{run:showTemplates},
     'preview-scene-animation':{canRun:()=>components.Animation?.preview_support?.supported===true,run:()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id)},
@@ -3259,7 +3260,7 @@ async function openActorCandidate(entity){
     }
   }catch(error){if(dialog.open)dialog.querySelector('p').textContent=String(error.message||error);}
 }
-async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null){
+async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null,focusComponent=null){
   if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;setBusy(true);
   if(!refresh){scriptEntity=entity;scriptDrafts.clear();
   scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Review source-qualified branch destinations below</p><div id="script-authoring-toolbar" class="script-authoring-toolbar" hidden><button id="script-undo">Undo</button><button id="script-redo">Redo</button><button id="script-save">Save project</button><span id="script-authoring-status"></span></div><div id="script-report"><p>Verifying the imported script record…</p></div><p class="dialog-error" role="alert"></p>`;
@@ -3303,6 +3304,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
       if(!instructionNavigation.select(focusInstruction))notify('The selected instruction was not found in the verified report.',true);
     }
   }catch(error){if(scriptDialog.open){scriptDialog.querySelector('.dialog-error').textContent=error.message;if(refresh){scriptReport=null;scriptDialog.querySelectorAll('.dialogue-run,.transition-entry,.transition-unresolved,.movement-authoring,.flag-authoring,.wait-authoring,.modelSelector-authoring,.facing-authoring,[data-clear-unresolved]').forEach(item=>item.remove());}}}finally{setBusy(false);if(focusRun&&scriptDialog.open){const input=[...scriptDialog.querySelectorAll('[data-run-input]')].find(item=>item.dataset.runInput===focusRun);if(input){if(focusRun.includes('/transition/'))input.scrollIntoView({block:'center'});input.focus({preventScroll:true});}}else if(focusDialogue&&scriptDialog.open){const cards=[...scriptDialog.querySelectorAll('.script-dialogue-card')],card=cards.find(item=>item.dataset.dialogueId===focusDialogue.semantic_id) ?? cards.find(item=>Number.isInteger(focusDialogue.pc)&&Number(item.dataset.dialoguePc)===focusDialogue.pc);if(card){card.classList.add('dialogue-focus');card.tabIndex=-1;card.scrollIntoView({block:'start'});card.focus({preventScroll:true});}else notify('The selected dialogue segment was not found in the verified report.',true);}}
+  if(focusComponent&&scriptDialog.open&&scriptEntity?.id===entity.id)focusScriptInspectorFamily(scriptDialog,focusComponent);
 }
 
 function renderMovementAuthoring(){

@@ -57,7 +57,7 @@ export function registeredActions(schema,id,component,capabilities,registry,edit
   return actions.filter(a=>Object.hasOwn(registry,a.id)&&capabilities?.[a.capability]===true&&(!a.when||at(component,a.when))).map(a=>({id:a.id,label:a.label,requiresEdit:a.requires_edit===true||registry[a.id].requiresEdit===true,disabled:(a.requires_edit===true||registry[a.id].requiresEdit===true)&&!editable}));
 }
 export function renderComponentActions(schema,id,component,capabilities,registry,editable=false){
-  return registeredActions(schema,id,component,capabilities,registry,editable).map(a=>`<button id="${escape(a.id)}" class="model-preview-button" data-inspector-action="${escape(a.id)}" data-inspector-edit="${a.requiresEdit}" ${a.disabled?'disabled':''}>${escape(a.label)}</button>`).join('');
+  return registeredActions(schema,id,component,capabilities,registry,editable).map(a=>`<button id="${escape(a.id)}" class="model-preview-button" data-inspector-component="${escape(id)}" data-inspector-action="${escape(a.id)}" data-inspector-edit="${a.requiresEdit}" ${a.disabled?'disabled':''}>${escape(a.label)}</button>`).join('');
 }
 export function bindComponentActions(root,registry,{current,editable,busy,onError}){
   for(const button of root.querySelectorAll('[data-inspector-action]')){
@@ -65,7 +65,7 @@ export function bindComponentActions(root,registry,{current,editable,busy,onErro
     if(!action||typeof action.run!=='function'){button.disabled=true;continue;}
     button.onclick=async()=>{
       if(busy()||!current()||(action.requiresEdit&&!editable())||(action.canRun&&!action.canRun()))return;
-      try{await action.run();}catch(error){onError(error);}
+      try{await action.run({componentId:button.dataset.inspectorComponent??null,actionId:button.dataset.inspectorAction});}catch(error){onError(error);}
     };
   }
 }
