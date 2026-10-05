@@ -816,6 +816,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
                  '/region-bounds.js': ('region-bounds.js', 'text/javascript'),
                  '/trigger-cells.js': ('trigger-cells.js', 'text/javascript'),
+                 '/trigger-scripts.js': ('trigger-scripts.js', 'text/javascript'),
                  '/transition-graph.js': ('transition-graph.js', 'text/javascript'),
                  '/transition-graph-workspace.js': ('transition-graph-workspace.js', 'text/javascript'),
                  '/model-primitives.js': ('model-primitives.js', 'text/javascript'),

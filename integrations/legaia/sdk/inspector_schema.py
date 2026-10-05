@@ -147,6 +147,7 @@ def inspector_schema():
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
     schema['components']['AssetTrigger']['actions'].append({'id': 'inspect-asset-trigger-cells', 'label': 'Edit trigger cell', 'capability': 'field_trigger_authoring'})
+    schema['components']['AssetTrigger']['actions'].append({'id': 'inspect-asset-trigger-scripts', 'label': 'Edit trigger script binding', 'capability': 'field_trigger_script_authoring'})
     schema['components']['AssetTrigger']['notes'].append('Primary source cell coordinates can be reviewed and built. Payloads remain unchanged; moving a cell may change first-match shadowing. Contact, height and activation are unverified.')
     schema['components']['AssetRegion']['actions'].append({'id': 'inspect-asset-region-bounds', 'label': 'Edit region bounds', 'capability': 'field_region_authoring'})
     schema['components']['AssetRegion']['notes'].append('Primary source corners can be reviewed, undone and built; region type, height and activation remain read-only or unknown.')

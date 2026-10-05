@@ -37,6 +37,7 @@ import {decodeTransitionResource,openTransitionResource} from '/transition-resou
 import {decodeFieldSpatial,drawFieldSpatial,hitFieldSpatial,fieldSpatialFrame} from '/field-spatial.js';
 import {openRegionBounds,decodeRegionBoundsAnnotations,regionBoundsGeometry} from '/region-bounds.js';
 import {openTriggerCells,decodeTriggerCellsAnnotations,triggerCellsGeometry} from '/trigger-cells.js';
+import {openTriggerScripts} from '/trigger-scripts.js';
 import {decodeTransitionGraph} from '/transition-graph.js';
 import {mountTransitionGraphWorkspace} from '/transition-graph-workspace.js';
 import {openModelPrimitiveEditor,decodeModelPrimitives} from '/model-primitives.js';
@@ -653,7 +654,7 @@ function setBusy(value) {
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
-  busy=value;updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;triggerScriptsDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
@@ -1693,6 +1694,7 @@ async function activateAsset(record,action=null){
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
   if(action==='inspect-asset-trigger-cells'){await inspectTriggerCells(record);return;}
+  if(action==='inspect-asset-trigger-scripts'){await inspectTriggerScripts(record);return;}
   if(record.type==='worldmap'){if(/^worldmap:\/\/map0[123]\/placements$/.test(record.id))worldPlacementControls?.open(record.id.split('/')[2]);else await worldmapControls?.open(record.id==='worldmap://legaia/menu'?null:record.id);return;}
   if(record.type==='template'){showTemplates();return;}
   if(record.authoredRecord&&['actor','texture','script','model'].includes(record.type)&&record.sceneId!==state.scene?.id){
@@ -1770,6 +1772,7 @@ let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMod
 let fieldSpatial=null,fieldSpatialKey=null,fieldSpatialAbort=null,fieldSpatialPending=false,fieldSpatialVisible=false,fieldSpatialPick=false;
 let regionAnnotations=[],regionInspection=null,regionBoundsDialog=null;
 let triggerAnnotations=[],triggerInspection=null,triggerCellsDialog=null;
+let triggerScriptsDialog=null;
 const fieldSpatialToggle=document.createElement('button');fieldSpatialToggle.id='field-spatial-toggle';fieldSpatialToggle.textContent='Source cells';fieldSpatialToggle.setAttribute('aria-pressed','false');collisionLayer.after(fieldSpatialToggle);
 const fieldSpatialPickButton=document.createElement('button');fieldSpatialPickButton.id='field-spatial-pick';fieldSpatialPickButton.textContent='Pick source cell';fieldSpatialPickButton.setAttribute('aria-pressed','false');fieldSpatialToggle.after(fieldSpatialPickButton);
 const fieldSpatialLayer=document.createElement('select');fieldSpatialLayer.id='field-spatial-layer';fieldSpatialLayer.setAttribute('aria-label','Source cell representation');for(const [value,label] of [['imported','Retail source cells'],['effective','Effective source cells']]){const option=document.createElement('option');option.value=value;option.textContent=label;fieldSpatialLayer.append(option);}fieldSpatialLayer.value='effective';fieldSpatialPickButton.after(fieldSpatialLayer);
@@ -1781,7 +1784,7 @@ function selectSceneResource(record,frameNow=false){
   cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;sceneResourceSelection=record.id;
   renderHierarchy();renderInspector();$('frame-selected').disabled=!['trigger','region'].includes(record.type);draw();if(frameNow){if(['trigger','region'].includes(record.type))frameSceneResource();else activateAsset(record);}
 }
-function clearFieldSpatial(){regionBoundsDialog?.dispose?.();triggerCellsDialog?.dispose?.();regionInspection=null;regionAnnotations=[];triggerInspection=null;triggerAnnotations=[];fieldSpatialAbort?.abort();fieldSpatialAbort=null;fieldSpatial=null;fieldSpatialKey=null;fieldSpatialPending=false;fieldSpatialVisible=false;fieldSpatialPick=false;fieldSpatialNote.hidden=true;}
+function clearFieldSpatial(){triggerScriptsDialog?.dispose?.();regionBoundsDialog?.dispose?.();triggerCellsDialog?.dispose?.();regionInspection=null;regionAnnotations=[];triggerInspection=null;triggerAnnotations=[];fieldSpatialAbort?.abort();fieldSpatialAbort=null;fieldSpatial=null;fieldSpatialKey=null;fieldSpatialPending=false;fieldSpatialVisible=false;fieldSpatialPick=false;fieldSpatialNote.hidden=true;}
 function updateFieldSpatialTools(){
   fieldSpatialToggle.hidden=!state.capabilities?.field_map_preview;fieldSpatialToggle.disabled=busy||fieldSpatialPending;fieldSpatialToggle.classList.toggle('active',fieldSpatialVisible&&!!fieldSpatialCurrent());fieldSpatialToggle.setAttribute('aria-pressed',String(fieldSpatialVisible&&!!fieldSpatialCurrent()));
   fieldSpatialPickButton.hidden=fieldSpatialToggle.hidden;fieldSpatialPickButton.disabled=busy||fieldSpatialPending||!fieldSpatialVisible||!fieldSpatialCurrent()||wallSelectMode||pickScriptTargets||pickRuntimeNodes||scenePlacementMode||actorBoxMode;
@@ -1842,6 +1845,16 @@ async function inspectRegionBounds(record){
     api:async(route,body)=>{const ok=await api(route,body);if(ok&&route==='/api/region-bounds-apply'&&state.scene?.id===sceneId&&state.project?.path===projectPath){fieldSpatialLayer.value='effective';await refreshResources();const next=assetRecords().find(row=>row.id===record.id);if(next){selectSceneResource(next);await loadFieldSpatial();}}return ok;},
     onInspection:(report,layer)=>{cancelViewportGesture();regionInspection=report?{report,layer,key:resourceStateKey()}:null;updateFieldSpatialTools();renderInspector();draw();},
     onFrame:(report,layer)=>{const framed=fieldSpatialFrame(regionBoundsGeometry(report,layer));camera.target={...framed.target};camera.distance=framed.distance;cameraRevision++;draw();},
+    onError:error=>notify(error.message,true)});
+}
+async function inspectTriggerScripts(record){
+  if(busy||!canEdit()||record.type!=='trigger'||resourceKey!==resourceStateKey())return;
+  const key=resourceStateKey(),snapshot=JSON.stringify(record),sceneId=state.scene?.id,projectPath=state.project?.path;
+  selectSceneResource(record);regionBoundsDialog?.dispose?.();triggerCellsDialog?.dispose?.();triggerScriptsDialog?.dispose?.();
+  const current=()=>key===resourceStateKey()&&resourceKey===key&&JSON.stringify(assetRecords().find(row=>row.id===record.id))===snapshot;
+  triggerScriptsDialog=openTriggerScripts({record,getState:()=>state,busy:()=>busy,setBusy,current,
+    api:async(route,body)=>{const ok=await api(route,body);if(ok&&state.scene?.id===sceneId&&state.project?.path===projectPath){await refreshResources();const next=assetRecords().find(row=>row.id===record.id);if(next)selectSceneResource(next);}return ok;},
+    onInspect:id=>openActorScript({id:id.replace('script://','scene://'),name:'Trigger target '+id,partitionTwo:true}),
     onError:error=>notify(error.message,true)});
 }
 async function inspectTriggerCells(record){

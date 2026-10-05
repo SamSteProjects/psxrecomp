@@ -52,7 +52,7 @@ class InspectorSchema(unittest.TestCase):
             definition=schema['components'][identifier]
             self.assertEqual(definition['layout'],'read-only-properties')
             self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
-            self.assertEqual(len(definition['actions']),2 if kind in ('worldmap','region','trigger') else 1)
+            self.assertEqual(len(definition['actions']),3 if kind == 'trigger' else 2 if kind in ('worldmap','region') else 1)
             self.assertNotIn('command',definition['actions'][0])
         self.assertEqual(schema['components']['AssetRegion']['actions'][1]['capability'],'field_region_authoring')
         schema['components']['AssetModel']['actions'][0]['label']='changed'

@@ -16,6 +16,7 @@ await button.onclick();assert.equal(calls,1);current=false;await button.onclick(
 for(const type of ['texture','animation','script','dialogue','flag','transition','collision'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
 assert.deepEqual(Object.keys(assetInspectorRegistry({type:'region'},()=>{})),['inspect-asset-field','inspect-asset-region-bounds']);
 assert.deepEqual(Object.keys(assetInspectorRegistry({type:'trigger'},()=>{})),['inspect-asset-field','inspect-asset-trigger-cells']);
+assert.deepEqual(Object.keys(assetInspectorRegistry({type:'trigger',id:'trigger://fixture/field-map/primary/kind-1/0000',data:{table_source:'primary',table_kind:1,encoded:{gate:1}}},()=>{})),['inspect-asset-field','inspect-asset-trigger-cells','inspect-asset-trigger-scripts']);
 for(const type of ['actor','scene','template'])assert.equal(Object.keys(assetInspectorRegistry({type},()=>{})).length,1);
 const landmark={id:'worldmap://fixture/1',type:'worldmap',data:{destination_source_label:'town01'}};
 const wmDefinition={layout:'read-only-properties',properties:[],actions:[{id:'open-asset-worldmap',capability:'worldmap_source_navigation'},{id:'inspect-landmark-destination',capability:'worldmap_source_navigation',when:['data','destination_source_label']}]};

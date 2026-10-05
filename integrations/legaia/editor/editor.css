@@ -245,3 +245,5 @@
 #reveal-hierarchy-selection{margin:0 10px 5px;font-size:10px;text-align:left}
 
 .script-family-navigation{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line);margin-bottom:12px}.script-family-navigation span{font-size:11px;color:var(--muted);flex-basis:100%}.script-family-navigation button{font-size:11px}
+
+#trigger-scripts-dialog table{width:100%;table-layout:fixed;margin:14px 0}#trigger-scripts-dialog th{width:85px;text-align:left;vertical-align:top}#trigger-scripts-dialog td{overflow-wrap:anywhere}#trigger-scripts-dialog select{width:100%;min-width:0}

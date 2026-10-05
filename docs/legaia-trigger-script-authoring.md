@@ -26,3 +26,25 @@ no primary gate-1 rows; no Retail row was invented. Evidence:
 Editor controls and effective-reference navigation remain next offline work. No
 game launched, installed runtime changed or Retail disc exported; activation and
 actual script dispatch remain unverified. The full SDK goal stays active and solo.
+
+## Reviewed trigger script binding editor - 2026-10-04
+
+The AssetTrigger registry now offers Edit trigger script binding for supported
+primary kind-1 gate-1 rows. The dialog lists only SDK-qualified P2 source targets,
+shows Retail/Authored/Current/Proposed binding identities and exact source/byte-audit
+metadata, and requires explicit Review then Apply. Changing the choice withdraws
+Apply. Retail reset uses the same reviewed backend. Current/Proposed inspection
+opens the corresponding existing source owner in the shared script Inspector,
+retaining the binding review for Return by closing that inspection. No runtime
+dispatch or reachability is inferred. Busy and project/source context guards apply.
+
+Real vell browser checks passed for read-only Review and Proposed owner inspection,
+review retention, changed-choice invalidation, one Apply and one Retail reset,
+resource refresh and unchanged SDK selection/imports. Zero page errors; desktop
+and540px screenshots inspected. Focused report/registry JavaScript checks and all8
+Inspector-schema Python checks pass. The schema test's old two-action expectation
+was updated for the new registered trigger action. Evidence:
+`local-output/sdk-20260909/trigger-script-editor-20261004/verified/proof.json`.
+No game launched or installed output changed. The prior16-test API/Build package
+acceptance remains separate; gameplay activation/dispatch and general effective
+asset-reference graph edges remain unfinished. The full SDK goal stays active.
