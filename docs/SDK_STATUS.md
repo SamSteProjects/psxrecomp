@@ -1,5 +1,30 @@
 # Legaia SDK status — 2026-10-05
 
+## Collapsible actor component Inspector - 2026-10-05
+
+Actor component headers now collapse or expand their existing contents. Left/Right
+collapse/expand; Up/Down and Home/End move focus among visible component headers.
+Enter/Space use normal button activation. Collapse/Expand visible components work
+with the existing search and authored-only filters, leaving filtered sections' layout
+choices intact. Header focus restores after a same-actor Inspector rerender; it is
+not transferred to another actor. Component layout is shared across actors within
+one project/editor session and resets on project changes. Reloading starts expanded.
+
+This is display state only: imported, authored, effective and live fields remain
+separate. Hidden inputs/actions retain their existing DOM nodes, values and handlers.
+No commands, authored metadata, native assets, Build or runtime behavior changed.
+Scene-resource/NPC draft Inspectors retain their existing specialized layouts.
+
+Native Town01 browser checks passed collapse/expand, keyboard focus, actor changes,
+filtered bulk controls, retained input nodes, same-scope rerender focus, stale dispatch
+and project/scope reset. Complete project document and Authored files were unchanged;
+zero mutation requests, page errors or game launches. Eight focused SDK Inspector
+schema tests and existing component/filter JavaScript checks passed. Screenshots
+inspected. Evidence: `local-output/sdk-20260909/inspector-sections-20261005/proof.json`.
+No new gameplay gate; existing package appearance and stability checks stay deferred.
+The full SDK goal remains active. See [Inspector component layout](legaia-inspector-sections.md).
+
+
 ## Selected vertex plane alignment - 2026-10-05
 
 Selected vertex group scope now offers Align group X/Y/Z at the selected rows'

@@ -841,6 +841,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/scene-animation.js': ('scene-animation.js', 'text/javascript'),
                  "/component-inspector.js": ("component-inspector.js", "text/javascript"),
                  "/inspector-component-filter.js": ("inspector-component-filter.js", "text/javascript"),
+                 "/inspector-sections.js": ("inspector-sections.js", "text/javascript"),
                  "/script-inspector-navigation.js": ("script-inspector-navigation.js", "text/javascript"),
                  "/script-component-reset.js": ("script-component-reset.js", "text/javascript"),
                  "/script-owner-inspector.js": ("script-owner-inspector.js", "text/javascript"),

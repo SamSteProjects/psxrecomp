@@ -68,6 +68,7 @@ import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
+import {mountInspectorSections,inspectorSectionSnapshot} from '/inspector-sections.js';
 import {focusScriptInspectorFamily,mountScriptFamilyNavigation} from '/script-inspector-navigation.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
@@ -2844,6 +2845,8 @@ async function exportNpcDrafts(entityId){
   finally{exporting=false;close.disabled=false;setBusy(false);}
 }
 const inspectorComponentFilterState={query:'',authoredOnly:false};
+const inspectorSectionsState={project:null,collapsed:new Set()};
+let inspectorSectionsScope=null;
 function renderInspector(){
   const resource=selectedSceneResource();if(resource){renderSceneResourceInspector(resource);return;}
   const npc=selectedNpcDraft();
@@ -3004,8 +3007,11 @@ function renderInspector(){
     renderedComponents.push(id);
   }
   html+=renderUnregisteredComponents(state.inspector_schema,components,renderedComponents);
+  const sectionSnapshot=inspectorSectionSnapshot($('inspector'),inspectorSectionsScope);
+  inspectorSectionsScope=JSON.stringify([state.project.path,state.scene?.id,entity.id]);
   $('inspector').innerHTML=html;
   mountInspectorComponentFilter($('inspector'),{authored:entity.authored_components??[],state:inspectorComponentFilterState,current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id});
+  mountInspectorSections($('inspector'),{state:inspectorSectionsState,project:state.project.path,scope:inspectorSectionsScope,snapshot:sectionSnapshot,current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id});
   bindComponentActions($('inspector'),actorActions,{current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id,editable:canEdit,busy:()=>busy,onError:error=>notify(error.message,true)});
   const inspectorContext=resourceStateKey();
   bindComponentReferences($('inspector'),{current:()=>inspectorContext===resourceStateKey()&&selected()?.id===entity.id,busy:()=>busy,records:()=>assetRecords(true),discover:()=>refreshResources(),open:record=>showAssetDetails(record,()=>assetRecords(true)),onError:error=>notify(error.message,true)});
