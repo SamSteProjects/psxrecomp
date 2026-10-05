@@ -106,3 +106,11 @@ or material drafts; apply/discard them first. Dragging continues to orbit. Picki
 uses the renderer's depth test and visible texture coverage, with complete native
 face ownership checks. It applies to the unposed model comparison rather than
 inferring source face ownership from a live runtime or placed-scene click.
+
+
+**Outline selected native face (cyan)** displays the active face's boundary in
+both model layers without replacing its texture/material fill. The quad diagonal
+is omitted, and hidden boundary edges are deliberately shown as a selection
+diagnostic. It is independent of the yellow GLB selection set and changes no
+native data, draft or review identity. The caption identifies the active native
+object/primitive; turning it off preserves selection and all editor state.

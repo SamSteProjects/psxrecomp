@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Active native face outline
+
+The model comparison now shows the selected native face's cyan boundary in both
+Current and Proposed views. Outline selected native face can be toggled independently
+of the yellow GLB face set. It preserves material fills, textures and geometry; a
+quad's shared triangle diagonal is omitted. The caption identifies the native
+object/primitive and states that hidden boundary edges are included. Picking,
+corner fields and the UV workspace retain the same selection. The outline is
+strictly display state and does not alter drafts, history, review hashes or Build.
+
+Native ownership and one/two-triangle boundary checks passed, including quad
+edge cancellation and malformed indices. The renderer caches only the boundary
+buffer, refreshes it after vertex updates and releases it on disposal. Existing
+face lifecycle and shared scene highlight checks passed. A private GPU test found
+cyan boundary pixels while interior pixels and depth/transparent-texel picking
+remained unchanged, with no WebGL error. Town01 browser selection/toggling stayed
+readonly; UV dragging, scene comparison/Return, combined Apply, Undo/Redo, Save/Open
+and exact normal Build model/TIM readback passed. Screenshot inspected:
+`local-output/sdk-20260909/model-face-outline-20261004/parent/proof.json`.
+No game launched; gameplay remains deferred and the full goal stays active.
+
+
 ## 2026-10-04: Direct native face selection in model comparison
 
 Click a visible surface in either Current or Proposed model view to select its

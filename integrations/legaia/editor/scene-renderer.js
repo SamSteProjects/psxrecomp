@@ -26,6 +26,12 @@ export function selectionPixelBounds(a,b,view,pixelWidth,pixelHeight){
   return right>left&&bottom>top?{x:left,y:pixelHeight-bottom,width:right-left,height:bottom-top}:null;
 }
 
+/** Display boundary only; shared quad diagonals are omitted. */
+export function selectedTriangleBoundary(triangles,indices){
+ if(!Array.isArray(triangles)||triangles.length>100000||!Array.isArray(indices)||!indices.length||indices.length>2||new Set(indices).size!==indices.length||indices.some(i=>!Number.isSafeInteger(i)||i<0||i>=triangles.length))throw new Error('Face outline requires one or two existing decoded triangles.');
+ const edges=new Map();for(const i of indices){const row=triangles[i];if(!Array.isArray(row)||row.length!==3||row.some(v=>!Number.isSafeInteger(v)||v<0||v>99999))throw new Error('Face outline has invalid vertex ownership.');for(const [a,b] of [[row[0],row[1]],[row[1],row[2]],[row[2],row[0]]]){if(a===b)continue;const key=[Math.min(a,b),Math.max(a,b)].join(':');if(edges.has(key))edges.delete(key);else edges.set(key,[a,b]);}}return [...edges.values()];
+}
+
 export class SceneRenderer {
   constructor(canvas,onStatus=()=>{}){
     this.canvas=canvas;this.onStatus=onStatus;this.meshes=new Map();this.instances=[];this.scene=null;this.lost=false;
@@ -70,7 +76,7 @@ export class SceneRenderer {
 
   clear(){
     const gl=this.gl;
-    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.normalBuffer)gl.deleteBuffer(batch.normalBuffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.trianglePickBuffer)gl.deleteBuffer(batch.trianglePickBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
+    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.normalBuffer)gl.deleteBuffer(batch.normalBuffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.trianglePickBuffer)gl.deleteBuffer(batch.trianglePickBuffer);if(batch.faceOutlineBuffer)gl.deleteBuffer(batch.faceOutlineBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
     this.meshes.clear();this.instances=[];this.scene=null;
     if(!this.lost){gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);}
   }
@@ -166,7 +172,7 @@ export class SceneRenderer {
       }
       batch.wireDirty=true;
     }
-    mesh.min=min;mesh.max=max;mesh.normalQualified=normalQualified;const asset=this.scene?.assets.find(item=>item.geometry_key===key);if(asset)asset.preview={...asset.preview,...(normalQualified?normalPreview:{triangle_normals:undefined,normal_preview:undefined}),vertices,posed:true};return true;
+    mesh.outlineDirty=true;mesh.min=min;mesh.max=max;mesh.normalQualified=normalQualified;const asset=this.scene?.assets.find(item=>item.geometry_key===key);if(asset)asset.preview={...asset.preview,...(normalQualified?normalPreview:{triangle_normals:undefined,normal_preview:undefined}),vertices,posed:true};return true;
   }
 
   hasEntity(identifier){return !this.lost&&this.instances.some(item=>item.entity_id===identifier);}
@@ -258,6 +264,7 @@ export class SceneRenderer {
     gl.uniform1i(l.semi,false);gl.uniform1i(l.pass,0);gl.uniform1i(l.normalDiagnostic,false);
     if(!picking&&view.wireframe)this.drawWireframe(view);
     if(!picking&&view.grid)this.drawGrid(view);
+    if(!picking&&view.selectedTriangles!==undefined)this.drawFaceOutline(view);
   }
 
   projectPoint(point,view){
@@ -268,6 +275,21 @@ export class SceneRenderer {
     const ndc=clip.slice(0,3).map(value=>value/clip[3]);
     if(ndc.some(value=>!finite(value)||Math.abs(value)>1))return null;
     return {x:(ndc[0]+1)*view.width/2,y:(1-ndc[1])*view.height/2,depth:ndc[2]};
+  }
+
+  drawFaceOutline(view){
+    if(this.instances.length!==1)throw new Error('Face outline requires one inspected model instance.');
+    const instance=this.instances[0];if(view.hiddenEntities?.has(instance.entity_id))return;
+    const mesh=this.meshes.get(instance.geometry_key),edges=selectedTriangleBoundary(mesh.triangles,view.selectedTriangles),batch=mesh.batches[0],key=JSON.stringify(view.selectedTriangles),gl=this.gl,l=this.locations;if(!edges.length)return;
+    if(batch.faceOutlineKey!==key||mesh.outlineDirty){
+      const wanted=new Set(edges.flat()),positions=new Map();for(const part of mesh.batches){for(let v=0;v<part.count&&positions.size<wanted.size;v++)if(wanted.has(part.vertexIndices[v]))positions.set(part.vertexIndices[v],part.data.subarray(v*8,v*8+3));if(positions.size===wanted.size)break;}
+      if(positions.size!==wanted.size)throw new Error('Face outline vertices differ from the uploaded mesh.');
+      const data=new Float32Array(edges.flatMap(edge=>edge.flatMap(v=>[...positions.get(v),0,1,1,0,0])));batch.faceOutlineBuffer??=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,batch.faceOutlineBuffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);batch.faceOutlineCount=data.length/8;batch.faceOutlineKey=key;mesh.outlineDirty=false;
+    }
+    // A selection diagnostic includes hidden boundary edges, like Wireframe.
+    gl.uniform1i(l.textured,false);gl.uniform1i(l.normalDiagnostic,false);gl.uniform1i(l.semi,false);gl.uniform1i(l.pass,0);gl.disable(gl.DEPTH_TEST);gl.depthMask(false);
+    try{gl.uniformMatrix4fv(l.model,false,columnMajor(this.matrix(instance,view.positions,view.transforms)));this.bind(batch.faceOutlineBuffer);gl.lineWidth(2);gl.drawArrays(gl.LINES,0,batch.faceOutlineCount);}
+    finally{gl.lineWidth(1);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);}
   }
 
   drawWireframe(view){
