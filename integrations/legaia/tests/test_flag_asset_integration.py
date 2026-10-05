@@ -124,6 +124,40 @@ class FlagAssetIntegration(unittest.TestCase):
         with self.assertRaisesRegex(ProjectError, 'source script'):
             assemble(self.project, broken, group['id'])
 
+    def test_current_graph_tracks_exact_operand_without_regrouping_retail(self):
+        retail_catalog = refresh_resource_catalog(self.project)
+        group = next(row for row in retail_catalog['records'] if row['kind'] == 'flag')
+        retail = assemble(self.project, retail_catalog, group['id'])
+        self.edit()
+        current_catalog = refresh_resource_catalog(self.project)
+        before = deepcopy((self.project._document(), self.project.undo_stack, self.project.redo_stack))
+        current = assemble(self.project, current_catalog, group['id'])
+        edge = next(e for e in current['incoming'] if e['kind'] == 'effective_script_flag_reference')
+        self.assertEqual((edge['layer'], edge['pc'], edge['target_id']), ('effective', 5, group['id']))
+        self.assertEqual(edge['flag_reference_evidence']['index'], 2)
+        self.assertEqual(edge['flag_binding_evidence']['effective_index'], 3)
+        self.assertEqual(edge['flag_binding_evidence']['operand_id'], self.key)
+        self.assertEqual(edge['flag_binding_evidence']['source_record_sha256'], group['source_record']['sha256'])
+        self.assertEqual([e for e in current['incoming'] if e['layer'] == 'decoded'], retail['incoming'])
+        self.assertEqual(before, (self.project._document(), self.project.undo_stack, self.project.redo_stack))
+        outgoing = assemble(self.project, current_catalog, group['script_id'])
+        self.assertIn(edge, outgoing['outgoing'])
+        project = assemble_project(self.project, {self.project.active_scene: current_catalog}, group['id'])
+        self.assertIn(edge, project['incoming'])
+        restored = ProjectService.open(self.project.save())
+        self.assertEqual(assemble(restored, current_catalog, group['id'])['incoming'], current['incoming'])
+        self.project.undo()
+        self.assertEqual(assemble(self.project, refresh_resource_catalog(self.project), group['id'])['incoming'], retail['incoming'])
+        self.project.redo()
+        self.assertEqual(assemble(self.project, refresh_resource_catalog(self.project), group['id'])['incoming'], current['incoming'])
+        with self.assertRaisesRegex(ProjectError, 'authored operand binding'):
+            assemble(self.project, retail_catalog, group['id'])
+        broken = deepcopy(current_catalog)
+        script = next(row for row in broken['records'] if row['id'] == group['script_id'])
+        script['source_record']['sha256'] = '0' * 64
+        with self.assertRaisesRegex(ProjectError, 'record hash'):
+            assemble(self.project, broken, group['id'])
+
 
 if __name__ == '__main__':
     unittest.main()

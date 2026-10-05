@@ -1,5 +1,26 @@
 # Legaia SDK feature matrix
 
+## Current flag operand references - 2026-10-04
+
+The reference browser now shows a separate Effective / Current relationship for
+saved ScriptFlags operands, alongside the unchanged Retail encoded reference.
+Each Current edge records the exact source instruction and operand ID, Retail and
+Current indices, source-record hash and authored component hash. Source-group asset
+IDs keep their Retail bank/index grouping; this does not create shared runtime flag
+identities or infer values, story meaning or execution. Unedited sites inherit Retail
+and do not receive duplicate Current edges. Stale annotations and mismatched source
+records are rejected. Both active-scene and project queries use the same evidence.
+
+Twenty-eight focused Python checks passed with the private disc enabled and no skips;
+JavaScript qualification and existing reference/filter guards passed. Native dolk2
+CFLAG_SET 24 -> 25 verified preserved Retail edges, Current inverse/project queries,
+Save/Open, Undo/Redo and styled desktop/narrow browser display with exact script
+navigation. Inspection left project data, history, dirty state and selection unchanged;
+no browser errors or game launches occurred. Gameplay behavior remains deferred.
+Private evidence: `local-output/sdk-20260909/current-flag-references-20261004/accepted/proof.json`.
+See [Current flag reference contract](legaia-current-flag-references.md).
+
+
 ## 2026-10-04: Reveal selection in the hierarchy
 
 **Reveal selection** clears the hierarchy search, expands the selected row's group,

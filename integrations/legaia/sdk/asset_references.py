@@ -157,7 +157,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -171,6 +171,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             value['source_catalog_key']=catalog['source_key']
         if reference_clip_evidence is not None:value['reference_clip_evidence']=deepcopy(reference_clip_evidence)
         if flag_evidence is not None:value['flag_reference_evidence']=deepcopy(flag_evidence)
+        if flag_binding_evidence is not None:
+            value['flag_binding_evidence']=deepcopy(flag_binding_evidence)
+            value['source_catalog_key']=catalog['source_key']
         if transition_evidence is not None:value['transition_reference_evidence']=deepcopy(transition_evidence)
         if trigger_evidence is not None:value['trigger_reference_evidence']=deepcopy(trigger_evidence)
         if trigger_binding_evidence is not None:
@@ -254,10 +257,27 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             target=record['script_id']
             if target not in nodes or nodes[target]['kind']!='script':
                 raise ProjectError('Flag reference has no verified source script')
+            scripts=source_scripts.get(target,[])
+            if len(scripts)!=1 or scripts[0].get('source_record')!=record['source_record']:
+                raise ProjectError('Flag reference differs from its unique source script or record hash')
+            component=project.overrides.get(record['owner_id'],{}).get('ScriptFlags')
+            if component is not None:project._validate_flags(record['owner_id'],component)
+            entries=component.get('entries',{}) if component is not None else {}
             for reference in record['references']:
+                operand=reference['flag_operand_id']
+                authored=entries.get(operand)
+                if reference['authored_index'] != (authored['bit'] if authored is not None else None):
+                    raise ProjectError('Flag reference differs from its authored operand binding')
                 proof={key:deepcopy(record[key]) for key in ('bank','index','scope','extended_target','grouping_layer')}
                 proof.update(operation=reference['operation'],mnemonic=reference['mnemonic'])
                 edge(target,identity,'script_flag_reference',scene,'decoded',reference['pc'],flag_evidence=proof)
+                if authored is not None:
+                    binding=dict(operand_id=operand,retail_index=reference['retail_index'],
+                                 effective_index=reference['effective_index'],
+                                 source_record_sha256=record['source_record']['sha256'],
+                                 component_sha256=digest(component))
+                    edge(target,identity,'effective_script_flag_reference',scene,'effective',reference['pc'],
+                         flag_evidence=proof,flag_binding_evidence=binding)
         elif kind=='transition':
             from .transition_assets import validate_transition_asset
             validate_transition_asset(record)

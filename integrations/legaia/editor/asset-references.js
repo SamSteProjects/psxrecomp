@@ -2,7 +2,7 @@ const kinds=new Set(['scene','actor','model','texture','animation','script','dia
 const relations=new Set(['scene_actor','scene_model_catalog','draft_donor','initial_model','effective_initial_model','actor_script_record','encoded_scene_change','script_dialogue_segment','initial_animation_binding','recorded_model_clip_binding','field_map_table_source','landmark_destination_source','static_material_texture_source']);
 relations.add('effective_initial_animation_binding');relations.add('draft_initial_animation_binding');relations.add('appearance_donor');
 relations.add('reference_pinned_model_clip');
-relations.add('script_flag_reference');
+relations.add('script_flag_reference');relations.add('effective_script_flag_reference');
 relations.add('script_transition_reference');relations.add('transition_destination_source');
 relations.add('field_trigger_script_reference');
 relations.add('effective_field_trigger_script_reference');
@@ -76,10 +76,15 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
       if(previous&&(transitionProofKeys.some(key=>previous.transition_reference_evidence[key]!==edge.transition_reference_evidence[key])||previous.source_import_sha256!==edge.source_import_sha256||previous.source_catalog_key!==edge.source_catalog_key||previous.scene_id!==edge.scene_id))throw new Error('Transition edges disagree about their verified source.');
       transitionProofs.set(transitionId,edge);
     }
-    if(Object.hasOwn(edge,'flag_reference_evidence')&&edge.kind!=='script_flag_reference')throw new Error('Flag evidence cannot assert another relationship.');
-    if(edge.kind==='script_flag_reference'){
-      const e=edge.flag_reference_evidence;
-      if(edge.layer!=='decoded'||nodes.get(edge.source_id).kind!=='script'||nodes.get(edge.target_id).kind!=='flag'||edge.pc===undefined||!exactKeys(e,['bank','index','scope','extended_target','grouping_layer','operation','mnemonic'])||!['local','global','context','system','extra'].includes(e.bank)||!Number.isSafeInteger(e.index)||e.index<0||e.index>(e.bank==='system'?65535:31)||!identity(e.scope)||e.grouping_layer!=='retail'||!['set','clear','test'].includes(e.operation)||!identity(e.mnemonic)||e.extended_target!==null&&(!Number.isSafeInteger(e.extended_target)||e.extended_target<0||e.extended_target>255)||edge.target_id!==`${edge.source_id.replace('script://','flag-reference://')}/${e.extended_target===null?'current':`extended-${e.extended_target}`}/${e.bank}/${e.index}`)throw new Error('Invalid source-scoped flag reference evidence.');
+    if(Object.hasOwn(edge,'flag_reference_evidence')&&!['script_flag_reference','effective_script_flag_reference'].includes(edge.kind))throw new Error('Flag evidence cannot assert another relationship.');
+    if(Object.hasOwn(edge,'flag_binding_evidence')&&edge.kind!=='effective_script_flag_reference')throw new Error('Authored flag evidence cannot assert another relationship.');
+    if(['script_flag_reference','effective_script_flag_reference'].includes(edge.kind)){
+      const e=edge.flag_reference_evidence,current=edge.kind==='effective_script_flag_reference';
+      if(edge.layer!==(current?'effective':'decoded')||nodes.get(edge.source_id).kind!=='script'||nodes.get(edge.target_id).kind!=='flag'||edge.pc===undefined||!exactKeys(e,['bank','index','scope','extended_target','grouping_layer','operation','mnemonic'])||!['local','global','context','system','extra'].includes(e.bank)||!Number.isSafeInteger(e.index)||e.index<0||e.index>(e.bank==='system'?65535:31)||!identity(e.scope)||e.grouping_layer!=='retail'||!['set','clear','test'].includes(e.operation)||!identity(e.mnemonic)||e.extended_target!==null&&(!Number.isSafeInteger(e.extended_target)||e.extended_target<0||e.extended_target>255)||edge.target_id!==`${edge.source_id.replace('script://','flag-reference://')}/${e.extended_target===null?'current':`extended-${e.extended_target}`}/${e.bank}/${e.index}`)throw new Error('Invalid source-scoped flag reference evidence.');
+      if(current){
+        const binding=edge.flag_binding_evidence,prefix={local:'LFLAG',global:'GFLAG',context:'CFLAG'}[e.bank],script=/^script:\/\/([a-z0-9_]+)\/(actors\/man-p1|scripts\/man-p2)\/[0-9]{4}$/.exec(edge.source_id);
+        if(!script||edge.scene_id!=='scene://'+script[1]||nodes.get(edge.source_id).scene_id!==edge.scene_id||nodes.get(edge.target_id).scene_id!==edge.scene_id||e.scope!=={local:'dispatch_context_local_flags',global:'host_global_flags',context:'dispatch_context_flags'}[e.bank]||!boundedInteger(edge.pc,0,65535)||!exactKeys(edge,['id','source_id','target_id','kind','scene_id','layer','runtime_binding','pc','source_import_sha256','source_catalog_key','flag_reference_evidence','flag_binding_evidence'])||!hash(edge.source_catalog_key)||!exactKeys(binding,['operand_id','retail_index','effective_index','source_record_sha256','component_sha256'])||binding.operand_id!==`${edge.source_id}/flag-bit/${edge.pc.toString(16).padStart(4,'0')}`||binding.retail_index!==e.index||!boundedInteger(binding.effective_index,0,31)||!hash(binding.source_record_sha256)||!hash(binding.component_sha256)||!prefix||e.mnemonic!==`${prefix}_${e.operation.toUpperCase()}`||e.bank==='local'&&(e.index>=16||binding.effective_index>=16)||e.mnemonic==='CFLAG_SET'&&(e.index===8||binding.effective_index===8)||e.mnemonic==='CFLAG_CLEAR'&&(e.index===10||binding.effective_index===10))throw new Error('Invalid Current authored flag operand evidence.');
+      }
     }
     if(Object.hasOwn(edge,'material_evidence')&&!['static_material_texture_source','effective_material_texture_source'].includes(edge.kind))throw new Error('Material evidence cannot assert another relationship.');
     if(['static_material_texture_source','effective_material_texture_source'].includes(edge.kind)){
@@ -112,14 +117,14 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
 }
 export const assetReferenceNavigationNode=(node,edge,scope='active')=>scope==='project'&&node.navigable_scene_ids.includes(edge.scene_id)?{...node,scene_id:edge.scene_id}:node;
 export function assetReferenceInstructionSite(edge,nodes,scope='active'){
-  const targets={script_dialogue_segment:'dialogue',script_flag_reference:'flag',script_transition_reference:'transition',encoded_scene_change:'scene'};
-  if(!Object.hasOwn(targets,edge?.kind)||edge.layer!=='decoded'||!boundedInteger(edge.pc,0,65535)||
+  const targets={script_dialogue_segment:'dialogue',script_flag_reference:'flag',effective_script_flag_reference:'flag',script_transition_reference:'transition',encoded_scene_change:'scene'};
+  if(!Object.hasOwn(targets,edge?.kind)||edge.layer!==(edge.kind==='effective_script_flag_reference'?'effective':'decoded')||!boundedInteger(edge.pc,0,65535)||
     !hash(edge.source_import_sha256)||!hash(edge.source_catalog_key)||edge.runtime_binding!=='not_asserted')return null;
   const source=nodes.get(edge.source_id),target=nodes.get(edge.target_id),match=/^script:\/\/([A-Za-z0-9_-]+)\/(actors\/man-p1|scripts\/man-p2)\/([0-9]{4})$/.exec(edge.source_id);
   if(!match||!source?.available||source.kind!=='script'||target?.kind!==targets[edge.kind]||edge.scene_id!=='scene://'+match[1])return null;
   const location=assetReferenceNavigationNode(source,edge,scope);
   if(location.scene_id!==edge.scene_id)return null;
-  const recordHash=edge.flag_reference_evidence?.source_record_sha256??edge.transition_reference_evidence?.source_record_sha256??null;
+  const recordHash=edge.flag_binding_evidence?.source_record_sha256??edge.flag_reference_evidence?.source_record_sha256??edge.transition_reference_evidence?.source_record_sha256??null;
   if(recordHash!==null&&!hash(recordHash))return null;
   return {script_id:source.id,owner_id:'scene://'+source.id.slice(9),scene_id:edge.scene_id,
     partition:match[2]==='actors/man-p1'?1:2,record_index:Number(match[3]),pc:edge.pc,
@@ -136,7 +141,7 @@ export function qualifyAssetReferenceInstructionSite(site,record,sourceKey){
     site.source_record_sha256!==null&&(!hash(site.source_record_sha256)||source.sha256!==site.source_record_sha256))throw new Error('Reference instruction source changed or could not be qualified. Refresh asset references.');
   return structuredClone(site);
 }
-export const assetReferenceRelationLabel=edge=>['static_material_texture_source','effective_material_texture_source'].includes(edge.kind)?`${edge.kind==='effective_material_texture_source'?'Current':'Retail'} static material to texture address match`:edge.kind==='reference_pinned_model_clip'?`pinned model/clip association · clip ${edge.reference_clip_evidence.clip_id} · actor playback unknown`:['field_trigger_script_reference','effective_field_trigger_script_reference'].includes(edge.kind)?`${edge.kind==='effective_field_trigger_script_reference'?'Current authored':'Retail encoded'} gate-1 trigger → partition 2 source record ${edge.trigger_reference_evidence.partition_two_record_index} · activation not evaluated`:transitionRelations.has(edge.kind)?`${edge.kind==='script_transition_reference'?'source script instruction':'encoded destination source'} · reachability not evaluated`:edge.kind.replaceAll('_',' ');
+export const assetReferenceRelationLabel=edge=>['script_flag_reference','effective_script_flag_reference'].includes(edge.kind)?`${edge.kind==='effective_script_flag_reference'?'Current authored':'Retail encoded'} ${edge.flag_reference_evidence.bank} flag operand ${edge.flag_binding_evidence?.effective_index??edge.flag_reference_evidence.index} · source group ${edge.flag_reference_evidence.index} · runtime binding unresolved`:['static_material_texture_source','effective_material_texture_source'].includes(edge.kind)?`${edge.kind==='effective_material_texture_source'?'Current':'Retail'} static material to texture address match`:edge.kind==='reference_pinned_model_clip'?`pinned model/clip association · clip ${edge.reference_clip_evidence.clip_id} · actor playback unknown`:['field_trigger_script_reference','effective_field_trigger_script_reference'].includes(edge.kind)?`${edge.kind==='effective_field_trigger_script_reference'?'Current authored':'Retail encoded'} gate-1 trigger → partition 2 source record ${edge.trigger_reference_evidence.partition_two_record_index} · activation not evaluated`:transitionRelations.has(edge.kind)?`${edge.kind==='script_transition_reference'?'source script instruction':'encoded destination source'} · reachability not evaluated`:edge.kind.replaceAll('_',' ');
 export function assetReferenceTriggerEvidenceLabel(edge){
   const proof=edge.trigger_reference_evidence;if(!proof)return null;
   const binding=edge.trigger_binding_evidence;
@@ -186,6 +191,7 @@ export function openAssetReferences({record,getState,busy,onNavigate,onInspectIn
           inspect.title=`${site.script_id} · PC 0x${site.pc.toString(16).toUpperCase()}`;inspect.onclick=()=>navigate(site,onInspectInstruction);row.append(inspect);
         }
         if(edge.transition_reference_evidence){const note=document.createElement('p');note.textContent=assetReferenceTransitionEvidenceLabel(edge);row.append(note);}
+        if(edge.flag_binding_evidence){const note=document.createElement('p'),proof=edge.flag_binding_evidence;note.textContent=`${proof.operand_id} · Retail index ${proof.retail_index} · Current index ${proof.effective_index}. Source record SHA-256 ${proof.source_record_sha256}; authored ScriptFlags SHA-256 ${proof.component_sha256}. Source groups retain Retail identities; runtime values and execution are unresolved.`;row.append(note);}
         if(edge.trigger_reference_evidence){const note=document.createElement('p');note.textContent=assetReferenceTriggerEvidenceLabel(edge);row.append(note);}
       }content.append(section);
     }
