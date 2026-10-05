@@ -3,11 +3,21 @@ import tempfile,json
 from pathlib import Path
 from unittest.mock import patch
 from sdk.project import ProjectService,ProjectError
-from sdk.material_references import verified_catalog
+from sdk.material_references import verified_catalog,with_current
 from test_project_workflow import synthetic_scene
 from importer.textures import TextureCatalog,Tim,TimBlock,associate_material
 
 class MaterialMetadata(unittest.TestCase):
+ def test_current_projection_does_not_mutate_imported_cache_and_rejects_drift(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.disc_path='source.bin'
+   imported=dict(models=[],unresolved_reference_count=1,limitations=['Retail only']);p.texture_additions['texture-new://fixture']={'source_scene_id':p.active_scene}
+   with patch('sdk.material_references.discover',return_value=dict(models=[],unresolved_reference_count=2)) as discovery:
+    result=with_current(p,imported);self.assertEqual(result['unresolved_reference_count'],3);discovery.assert_called_once_with(p,current=True)
+   self.assertEqual(imported,dict(models=[],unresolved_reference_count=1,limitations=['Retail only']))
+   def drift(project,**kwargs):project.texture_additions.clear();return dict(models=[],unresolved_reference_count=0)
+   with patch('sdk.material_references.discover',side_effect=drift):
+    with self.assertRaises(ProjectError):with_current(p,imported)
  def test_imported_cache_is_detached_bounded_and_source_keyed(self):
   with tempfile.TemporaryDirectory() as directory:
    p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.disc_path='source.bin';result=dict(models=[],unresolved_reference_count=0,limitations=[])

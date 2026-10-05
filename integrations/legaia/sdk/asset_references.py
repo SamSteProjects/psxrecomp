@@ -5,7 +5,8 @@ from .project import ProjectError,digest
 def source_key(project):
     return digest(dict(project_root=str(project.root),active_scene=project.active_scene,disc_path=project.disc_path,
                        imports={key:digest(doc) for key,doc in sorted(project.imports.items())},
-                       overrides=project.overrides,drafts=project.actor_drafts))
+                       overrides=project.overrides,drafts=project.actor_drafts,
+                       models=project.model_overrides,textures=project.texture_overrides,texture_additions=project.texture_additions))
 
 def _trigger_script_evidence(record,source_scripts,scene,document,*,target_index=None):
     """Qualify a source gate-1 MAP row and its Retail or authored P2 target."""
@@ -162,7 +163,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if pc is not None:value['pc']=pc
         value['source_import_sha256']=import_digests[scene]
         if layer=='decoded':value['source_catalog_key']=catalog['source_key']
-        if evidence is not None:value['material_evidence']=deepcopy(evidence)
+        if evidence is not None:
+            value['material_evidence']=deepcopy(evidence)
+            if layer=='effective':value['source_catalog_key']=catalog['source_key']
         if animation_evidence is not None:
             value['effective_animation_evidence']=deepcopy(animation_evidence)
             value['source_catalog_key']=catalog['source_key']
@@ -334,6 +337,15 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                 for target in material['source_ids']:
                     node(target,'texture',scene,available=target in nodes)
                     edge(model['model_id'],target,'static_material_texture_source',scene,'decoded',evidence=evidence)
+        for model in materials.get('current_models',[]):
+            for material in model['materials']:
+                if material['status']!='address_match':continue
+                evidence={key:deepcopy(material[key]) for key in ('material_index','tpage','clut','uv_bounds','evidence')}
+                evidence.update(model_source_sha256=model['retail_sha256'],model_current_sha256=model['source_sha256'],
+                                authored_materials_sha256=materials['current_state_key'])
+                for target in material['source_ids']:
+                    node(target,'texture',scene,available=target in nodes)
+                    edge(model['model_id'],target,'effective_material_texture_source',scene,'effective',evidence=evidence)
     if _full_graph:
         for identity,value in nodes.items():
             value['scene_ids']=sorted(memberships[identity]);value['_navigation_scene_ids']=sorted(navigation.get(identity,set()))
@@ -347,6 +359,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                          nodes=[nodes[key] for key in sorted(neighbors)],incoming=incoming,outgoing=outgoing,
                          coverage=dict(verified_scene_ids=sorted(project.imports),resource_scene_id=scene,unresolved_reference_count=unresolved),
                          material_diagnostics=deepcopy(next((row for row in (materials or {}).get('models',[]) if row['model_id']==identifier),None)),
+                         current_material_diagnostics=deepcopy(next((row for row in (materials or {}).get('current_models',[]) if row['model_id']==identifier),None)),
                          limitations=['Imported scene/model membership and initial assignments are project-wide. Derived resources cover the active scene only.',
                                       'Script model pools, field trigger dispatch and live animation state are not resolved here.',
                                       'Edges describe recorded references, not runtime residency, successful scheduling or gameplay reachability.',*(materials or {}).get('limitations',['Material source relationships were not requested.']),*catalog.get('limitations',[])]))
@@ -359,8 +372,8 @@ def inspect(project,identifier):
     key=source_key(project)
     with _disc_context(project.disc_path):
         for document in project.imports.values():_verify(project,document)
-        from .material_references import verified_catalog
-        catalog=refresh_resource_catalog(project);materials=verified_catalog(project);result=assemble(project,catalog,identifier,materials)
+        from .material_references import verified_catalog,with_current
+        catalog=refresh_resource_catalog(project);materials=with_current(project,verified_catalog(project));result=assemble(project,catalog,identifier,materials)
     if key!=source_key(project):raise ProjectError('Asset reference source changed during discovery')
     return result
 
@@ -460,12 +473,13 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
     if len(incoming)+len(outgoing)>4096:raise ProjectError('Asset reference neighborhood exceeds4096 edges')
     neighbors={identifier}|{e['source_id'] for e in incoming}|{e['target_id'] for e in outgoing}
     diagnostics=next((row for scene in sorted(materials_by_scene) for row in materials_by_scene[scene].get('models',[]) if row['model_id']==identifier),None)
+    current_diagnostics=next((row for scene in sorted(materials_by_scene) for row in materials_by_scene[scene].get('current_models',[]) if row['model_id']==identifier),None)
     for scene,materials in sorted(materials_by_scene.items()):
         limitations.extend(scene+': '+row for row in _reference_limitations(materials.get('limitations',[])))
     result=dict(schema_version='legaia.project-asset-references.v1',asset_id=identifier,source_key=source_key(project),read_only=True,
                 nodes=[nodes[key] for key in sorted(neighbors)],incoming=incoming,outgoing=outgoing,
                 coverage=dict(verified_scene_ids=sorted(project.imports),resource_scene_id=project.active_scene,
-                              unresolved_reference_count=unresolved,scenes=coverage),material_diagnostics=deepcopy(diagnostics),
+                              unresolved_reference_count=unresolved,scenes=coverage),material_diagnostics=deepcopy(diagnostics),current_material_diagnostics=deepcopy(current_diagnostics),
                 limitations=['Derived resource discovery covers every imported scene with explicit per-scene availability.',
                              'Edges describe recorded references, not runtime residency, successful scheduling or gameplay reachability.',
                              'Script model pools, field trigger dispatch and live animation state are not resolved here.',*list(dict.fromkeys(limitations))])
@@ -479,7 +493,7 @@ def inspect_project(project,identifier):
     from importer.pipeline import _disc_context
     from importer.core import ImportError as RetailImportError
     from .resources import _verify,refresh_resource_catalog
-    from .material_references import verified_catalog
+    from .material_references import verified_catalog,with_current
     from .project import AssetDatabase
     if not isinstance(identifier,str) or not identifier or len(identifier)>1024:
         raise ProjectError('Invalid asset reference identity')
@@ -500,7 +514,7 @@ def inspect_project(project,identifier):
             view.active_scene=scene
             try:
                 catalog=refresh_resource_catalog(view)
-                material=verified_catalog(view)
+                material=with_current(view,verified_catalog(view))
             except RetailImportError as error:
                 coverage[scene]=dict(status='unavailable',reason=str(error))
                 continue

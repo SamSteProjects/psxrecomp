@@ -1,9 +1,32 @@
-"""Imported material address evidence, without pixel payloads or runtime claims."""
+"""Separate Retail and qualified Current material evidence without pixel payloads."""
 from hashlib import sha256
 from importer.core import ImportError as RetailImportError
 from importer.assets import load_model_source,decode_tmd
 from importer.textures import load_scene_texture_catalog,load_asset_texture_catalog,associate_material
 from .project import ProjectError
+
+def current_state_key(project):
+    from .project import digest
+    return digest(dict(imported_source_key=source_key(project),models=project.model_overrides,
+                       textures=project.texture_overrides,texture_additions=project.texture_additions))
+
+def with_current(project, imported):
+    """Keep the cached Retail census immutable; decode qualified Current edits separately."""
+    from copy import deepcopy
+    result=deepcopy(imported)
+    ids={a['semantic_id'] for a in project.imports[project.active_scene]['assets'].get('models',[])}
+    changed=bool(ids.intersection(project.model_overrides)) or any(
+        b['source_scene_id']==project.active_scene for b in [*project.texture_overrides.values(),*project.texture_additions.values()])
+    if not changed:return result
+    key=current_state_key(project)
+    current=discover(project,current=True)
+    if current_state_key(project)!=key:raise ProjectError('Current material source changed during discovery')
+    result['current_models']=current['models'];result['current_state_key']=key
+    result['unresolved_reference_count']+=current['unresolved_reference_count']
+    result['limitations'].append('Current material edges are separately decoded from qualified saved model/texture edits. Their absence without edits means Retail inheritance; static address matches do not establish runtime residency.')
+    from .project import canonical
+    if len(canonical(result))>8*1024*1024:raise ProjectError('Combined material reference metadata exceeds8 MiB')
+    return result
 
 def source_key(project):
     from .project import digest
@@ -26,14 +49,20 @@ def verified_catalog(project):
     cache[key]=deepcopy(result)
     return deepcopy(result)
 
-def discover(project):
+def discover(project, *, current=False):
     document=project.imports[project.active_scene];assets=document['assets'].get('models',[])
     if len(assets)>512:raise ProjectError('Material reference discovery exceeds512 active scene models')
     catalog=load_scene_texture_catalog(project.disc_path,document['scene']['name']);rows=[];unresolved=0;remaining=8*1024*1024
+    if current:
+        from .resources import apply_texture_overrides
+        catalog=apply_texture_overrides(project,catalog)
     for asset in assets:
         row=dict(model_id=asset['semantic_id'],materials=[])
         try:
-            data=load_model_source(project.disc_path,asset);preview=decode_tmd(data);row['source_sha256']=sha256(data).hexdigest()
+            data=load_model_source(project.disc_path,asset);row['retail_sha256']=sha256(data).hexdigest()
+            if current and asset['semantic_id'] in project.model_overrides:
+                data=project.read_model_replacement(asset['semantic_id'],project.model_overrides[asset['semantic_id']])
+            preview=decode_tmd(data);row['source_sha256']=sha256(data).hexdigest()
             if len(preview['materials'])>256:raise RetailImportError('Model exceeds256 recorded material groups')
             textures=load_asset_texture_catalog(project.disc_path,asset,catalog)
             uvs={}

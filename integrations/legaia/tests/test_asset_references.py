@@ -46,6 +46,18 @@ class AssetReferences(unittest.TestCase):
    self.assertEqual(next(e for e in draft_result['outgoing'] if e['kind']=='draft_initial_animation_binding')['layer'],'authored')
    refs[0]['target_id']='asset://different';self.assertNotIn('effective_initial_animation_binding',{e['kind'] for e in assemble(self.p,self.catalog,actor2)['outgoing']})
 
+ def test_current_material_links_keep_retail_and_track_asset_bindings(self):
+  original=dict(material_index=0,tpage=256,clut=0,uv_bounds=[0,0,1,1],evidence='static_vram_addresses_not_runtime_residency',status='address_match',source_ids=['texture://fixture/retail'])
+  current={**original,'source_ids':['texture-new://fixture/current']};self.catalog['records'].append(dict(id=current['source_ids'][0],kind='texture'))
+  materials=dict(models=[dict(model_id=self.model,source_sha256='a'*64,materials=[original])],current_models=[dict(model_id=self.model,retail_sha256='a'*64,source_sha256='b'*64,materials=[current])],current_state_key='c'*64,unresolved_reference_count=0,limitations=[])
+  before=deepcopy(self.p._document());result=assemble(self.p,self.catalog,self.model,materials)
+  retail=next(e for e in result['outgoing'] if e['kind']=='static_material_texture_source');effective=next(e for e in result['outgoing'] if e['kind']=='effective_material_texture_source')
+  self.assertEqual(retail['target_id'],original['source_ids'][0]);self.assertEqual(effective['target_id'],current['source_ids'][0]);self.assertEqual(effective['layer'],'effective');self.assertEqual(effective['material_evidence']['model_current_sha256'],'b'*64);self.assertEqual(effective['source_catalog_key'],'a'*64)
+  inverse=assemble(self.p,self.catalog,current['source_ids'][0],materials);self.assertTrue(any(e['source_id']==self.model and e['kind']=='effective_material_texture_source' for e in inverse['incoming']))
+  self.assertEqual(self.p._document(),before)
+  for attribute in ['model_overrides','texture_overrides','texture_additions']:
+   key=source_key(self.p);getattr(self.p,attribute)['fixture']={'hash':'changed'};self.assertNotEqual(source_key(self.p),key)
+
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class RetailAssetReferences(unittest.TestCase):
  def test_fresh_sources_and_read_only_active_catalog(self):

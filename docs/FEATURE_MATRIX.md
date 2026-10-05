@@ -320,6 +320,29 @@ No game was launched and no physical Retail disc was exported.
 
 ## 2026-10-04: Front and Side orthographic scene views
 
+## Current material-to-texture reference graph - 2026-10-04
+
+The Asset Database now displays separate Retail and Current static material links.
+Current discovery qualifies saved model edits and effective scene textures, including
+new TIM slots, while retaining immutable imported links/cache. Authored slots expose
+Current model consumers in active and project-wide queries. Model roots offer separate
+Retail/Current diagnostics; missing, ambiguous and unsupported matches stay explicit.
+Source/catalog/import, Retail/Current model and authored-state hashes qualify Current
+edges. Reference freshness now includes model/texture overrides and texture additions.
+No reference view mutates project state, selection or history. These are static address
+matches, with runtime binding not asserted; live residency/appearance stay deferred.
+
+Twenty focused Python checks passed with private retail input and no skips, plus the
+reference/project-navigation JavaScript checks and new Current proof/diagnostic guards.
+A fresh native vell project assigned a new TIM slot to Model0000 through existing
+reviewed material authoring. Retail semantic evidence, Current/inverse/project queries,
+Save/Open and Undo/Redo passed. The styled editor displayed both link layers and the
+new slot's Current consumer, with project document/history/selection unchanged and
+zero page errors. Desktop/narrow screenshots were inspected. No runtime, serializer,
+installed build or game was changed. Full goal remains active and solo.
+Details: [Current material references](legaia-current-material-references.md).
+Evidence: `local-output/sdk-20260909/effective-material-references-20261004/accepted/proof.json`.
+
 ## Static VRAM upload map - 2026-10-04
 
 Find static free coordinates now displays Current image, palette and boot-upload
