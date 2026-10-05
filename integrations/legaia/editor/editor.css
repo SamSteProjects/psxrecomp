@@ -272,3 +272,5 @@
 .inspector-section-toggle{display:block;width:100%;text-align:left;white-space:normal;background:transparent;border:0;padding:4px 2px;font-weight:600}.inspector-section-toggle:before{content:"\25BE";display:inline-block;width:16px;color:var(--mint)}.inspector-section-toggle[aria-expanded=false]:before{content:"\25B8"}.inspector-section-body[hidden]{display:none}.inspector-section-tools{display:flex;flex-wrap:wrap;gap:5px;padding:6px 0}.inspector-section-tools button{font-size:10px;padding:5px 7px}
 .inspector-section-toggle small{margin-left:4px}.inspector-section-tools{padding:6px 10px}
 .component.inspector-section-collapsed>h3{margin-bottom:0}
+
+.script-bookmarks{padding:12px;margin:12px 0;border:1px solid var(--line);border-radius:6px}.script-bookmarks>input,.script-bookmarks>select{max-width:100%;margin:4px 6px 4px 0}

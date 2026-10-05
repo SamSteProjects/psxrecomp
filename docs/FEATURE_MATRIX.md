@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Source-qualified saved script bookmarks - 2026-10-05
+
+The Script and dialogue workspace now saves named original decoded instruction/
+dialogue boundaries as project navigation metadata. Stable UUIDs bind owner, imported
+scene witness, record SHA256, record-relative PC and mnemonic. Save/Update freshly
+verify imports and use the read-only inspector, without inheriting byte-serializer
+write restrictions. Up to256 records, names unique per script, exact bounded metadata.
+Recall requires the newly inspected original record and unique boundary; it only
+focuses a row. It does not infer execution, authored reachability or runtime PCs.
+
+Save/Rename/Update offset/Delete use ordinary commands, history and dirty tracking.
+Save/Open and project copy preserve records; Open validates portable metadata without
+a disc. Reimport cannot reinterpret records or their history. Pending script drafts
+lock mutations/history; source, busy and disposed-context guards remain explicit.
+Bookmarks stay separate from game overrides and Build inputs. See
+[script bookmark workflow](legaia-script-bookmarks.md).
+
+Native Town01 actor0044 browser CRUD, retarget, read-only recall, Undo/Redo and Save
+passed. A partition-two bookmark passed source qualification and Save/Open. Project
+copy retained metadata. Paired normal Builds with/without the library emitted an
+identical native asset payload. Complete imports, overrides and Authored files stayed
+unchanged. Reopened read-only layout/recall retained the complete document/files;
+screenshot inspected. Twenty focused bookmark/view/copy Python tests and JavaScript boundary/
+source guards passed; zero page errors or game launches. Private evidence:
+`local-output/sdk-20260909/script-bookmarks-final-20261005/proof.json`.
+No new gameplay gate; existing gameplay acceptance remains deferred. Full goal active.
+
+
 ## Collapsible actor component Inspector - 2026-10-05
 
 Actor component headers now collapse or expand their existing contents. Left/Right

@@ -117,6 +117,7 @@ class ProjectService:
         self.scene_selection_sets: dict[str, dict] = {}
         self.model_vertex_groups: dict[str, dict] = {}
         self.scene_views: dict[str, dict] = {}
+        self.script_bookmarks: dict[str, dict] = {}
         self.actor_drafts: dict[str, dict] = {}
         self.texture_overrides: dict[str, dict] = {}
         self.texture_additions: dict[str, dict] = {}
@@ -200,6 +201,7 @@ class ProjectService:
                 "active_scene": self.active_scene, "authored": deepcopy(self.overrides),
                 "actor_templates": deepcopy(self.actor_templates),
                 **({"scene_views": deepcopy(self.scene_views)} if self.scene_views else {}),
+                **({"script_bookmarks": deepcopy(self.script_bookmarks)} if self.script_bookmarks else {}),
                 **({"actor_selection_sets": deepcopy(self.actor_selection_sets)} if self.actor_selection_sets else {}),
                 **({"scene_selection_sets": deepcopy(self.scene_selection_sets)} if self.scene_selection_sets else {}),
                 **({"model_vertex_groups": deepcopy(self.model_vertex_groups)} if self.model_vertex_groups else {}),
@@ -245,7 +247,7 @@ class ProjectService:
                   "imports": "Imported scenes", "active_scene": "Active scene",
                   "authored": "Scene and game-data edits", "actor_templates": "Actor presets",
                   "texture_additions": "New texture slots", "texture_overrides": "Texture replacements", "model_overrides": "Model content",
-                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups"}
+                  "actor_drafts": "New NPC drafts", "actor_selection_sets": "Saved actor selections", "scene_selection_sets": "Saved scene selections", "scene_views": "Saved scene views", "model_vertex_groups": "Saved model vertex groups", "script_bookmarks": "Saved script bookmarks"}
         return [label for key, label in labels.items()
                 if digest(document.get(key)) != self.saved_sections.get(key)]
 
@@ -254,7 +256,7 @@ class ProjectService:
         self.saved_digest = digest(document)
         self.saved_sections = {key: digest(document.get(key)) for key in
                                ("name", "retail_source", "imports", "active_scene",
-                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups")}
+                                "authored", "actor_templates", "texture_overrides", "texture_additions", "model_overrides", "actor_drafts", "actor_selection_sets", "scene_selection_sets", "scene_views", "model_vertex_groups", "script_bookmarks")}
 
     def import_metadata(self, metadata: dict, disc_path: str | None = None) -> None:
         if not isinstance(metadata, dict) or not isinstance(metadata.get("scene"), dict) or not isinstance(metadata.get("source"), dict):
@@ -297,6 +299,8 @@ class ProjectService:
                 raise ProjectError('Imported evidence changed under saved scene selections or their history; resolve selections before reimport')
             if any(v['scene_id']==scene_id for v in self.model_vertex_groups.values()) or any(e.get('target')=='model_vertex_groups' and e.get('scene_id')==scene_id for e in self.undo_stack+self.redo_stack):
                 raise ProjectError('Imported evidence changed under saved model vertex groups or their history')
+            if any(v['scene_id']==scene_id for v in self.script_bookmarks.values()) or any(e.get('target')=='script_bookmarks' and e.get('scene_id')==scene_id for e in self.undo_stack+self.redo_stack):
+                raise ProjectError('Imported evidence changed under script bookmarks or their history; resolve bookmarks before reimport')
             if any(value['scene_id'] == scene_id for value in self.scene_views.values()) or any(entry.get('target') == 'scene_views' and entry.get('scene_id') == scene_id for entry in self.undo_stack + self.redo_stack):
                 raise ProjectError('Imported evidence changed under saved scene views or their history; resolve views before reimport')
             affected = set(ids) | {actor["semantic_id"] for actor in previous["actors"]}
@@ -1879,6 +1883,10 @@ class ProjectService:
             from .preset_batch import apply
             apply(self, command)
             return
+        from .script_bookmarks import COMMANDS as bookmark_commands, command as bookmark_command
+        if isinstance(command.get('type'),str) and command['type'] in bookmark_commands:
+            bookmark_command(self,command)
+            return
         from .scene_views import COMMANDS as view_commands, command as view_command
         if isinstance(command.get('type'), str) and command.get('type') in view_commands:
             view_command(self, command)
@@ -2719,7 +2727,9 @@ class ProjectService:
                     collection[identifier] = components
             target.append(entry)
             return
-        if entry.get('target') == 'model_vertex_groups':
+        if entry.get('target') == 'script_bookmarks':
+            collection, identifier = self.script_bookmarks, entry['bookmark_id']
+        elif entry.get('target') == 'model_vertex_groups':
             collection, identifier = self.model_vertex_groups, entry['group_id']
         elif entry.get('target') == 'scene_views':
             collection, identifier = self.scene_views, entry['view_id']
@@ -2958,6 +2968,16 @@ class ProjectService:
                 raise ProjectError('Duplicate saved scene view name in scene')
             view_names.add(name)
         result.scene_views = deepcopy(views)
+        from .script_bookmarks import validate as validate_bookmark
+        bookmarks=raw.get('script_bookmarks',{})
+        if not isinstance(bookmarks,dict) or len(bookmarks)>256:raise ProjectError('Invalid script bookmark collection')
+        bookmark_names=set()
+        for identifier,value in bookmarks.items():
+            validate_bookmark(result,identifier,value)
+            name=(value['owner_id'],value['name'].casefold())
+            if name in bookmark_names:raise ProjectError('Duplicate script bookmark name')
+            bookmark_names.add(name)
+        result.script_bookmarks=deepcopy(bookmarks)
         textures = raw.get("texture_overrides", {})
         if not isinstance(textures, dict) or len(textures) > 128:
             raise ProjectError("Invalid texture replacement collection")
@@ -3349,6 +3369,7 @@ class ProjectService:
     def state(self) -> dict:
         from .model_vertex_groups import review_key as vertex_group_review_key
         from .scene_views import review_key as view_review_key
+        from .script_bookmarks import review_key as bookmark_review_key
         from .scene_selection_sets import review_key as scene_selection_review_key
         from .selection_sets import review_key as selection_review_key
         from .inspector_schema import inspector_schema
@@ -3418,6 +3439,7 @@ class ProjectService:
                 "scenes": [{"id": key, "name": value["scene"]["name"]} for key, value in self.imports.items()],
                 "runtime_correlation": correlation,
                 "scene_view_source_key": digest(document) if document else None,
+                "script_bookmarks": [{**deepcopy(value),"review_key":bookmark_review_key(self,value)} for value in sorted(self.script_bookmarks.values(),key=lambda v:(v["owner_id"],v["name"].casefold(),v["id"]))],
                 "model_vertex_groups": [{**deepcopy(value),"review_key":vertex_group_review_key(self,value)} for value in sorted(self.model_vertex_groups.values(),key=lambda v:(v["asset_id"],v["name"].casefold(),v["id"]))],
                 "scene_views": [{**deepcopy(value), "review_key": view_review_key(self, value)} for value in sorted(self.scene_views.values(), key=lambda item: (item["scene_id"], item["name"].casefold(), item["id"]))],
                 "scene_selection_sets": [{**deepcopy(value),'review_key':scene_selection_review_key(self,value)} for value in sorted(self.scene_selection_sets.values(),key=lambda item:(item['scene_id'],item['name'].casefold(),item['id']))],
@@ -3437,5 +3459,5 @@ class ProjectService:
                 "diagnostics": ["Scene viewport uses verified model poses where supported and explicit markers otherwise; scripted visibility is not reconstructed.",
                                 "Retail Y and initial facing are unresolved; an authored Y is a project value.",
                                 "Build supports representable X/Z placements and qualified script-facing operands; authored height and generic Transform rotation are unsupported."],
-                "capabilities": {"project_settings": True, "project_navigation": True, "edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True, "saved_model_vertex_groups": True,
+                "capabilities": {"project_settings": True, "project_navigation": True, "edit_transform": True, "authored_transform_templates": True, "saved_scene_views": True, "saved_script_bookmarks": True, "saved_model_vertex_groups": True,
                                  "live_mode": False, "build": False, "model_preview": False}}

@@ -1,5 +1,20 @@
 # Legaia SDK validation plan
 
+## Saved script bookmark regression coverage - 2026-10-05
+
+Exercise original instruction and dialogue boundaries, actor and partition-two
+owners, exact record/import hashes, stale review keys, bool/noninteger/out-of-range
+PCs, unknown and ambiguous offsets, duplicate names, quota and Edit mode. Cover
+create/rename/retarget/delete, no-op history, Undo/Redo, Save/Open without disc access,
+project copy and reimport guards including deleted-record history. In the browser,
+verify Recall changes only focus; pending script drafts, busy/stale/closed contexts
+must prevent mutations. Compare native Build payloads with/without bookmark metadata.
+Existing evidence:20 focused bookmark/view/copy cases, JavaScript source qualification,
+Town01 browser CRUD/history/recall, partition-two persistence and paired normal Build
+payload equality. Private proof: `local-output/sdk-20260909/script-bookmarks-final-20261005/`.
+This feature needs no game launch. Broader runtime/gameplay acceptance stays deferred.
+
+
 **Retail NPC actor-pool lower bound (2026-10-03):** Normal Review Build/Build now qualify the complete SCUS executable and seven retail function spans, derive the143-slot/216-byte actor pool, and reject unavoidable initial-placement overflow before MAN encoding. Source setup evidence establishes the anchor plus partition-1 loop; successful audit metadata keeps other scenery/channel/script demand unknown. Candidate features stay disabled and runtime allocation/gameplay unverified. See [pool check and evidence](legaia-npc-actor-pool.md).
 
 Validation: six focused private-enabled Python checks and existing Node review guards pass. A bounded instruction harness executes the actual pool initializer/pop/failure path:143 distinct slots, then zero without memory changes. Six browser checks prove a normal one-draft package plus a real91-draft Town01 blocker (minimum144 nodes), disabled reviewed Build, unchanged authoring and540px layout. Independent full carrier readback preserves the earlier candidate MAN and fixed-span ownership. Package SHA256 `e8907db2b03619303d72cf3e09fbe2ac82bff7815534733d15c9337a00443c06`. Private proof: `local-output/sdk-20260909/npc-runtime-source-20261003/`. Helpers are closed; no game, install or disc export ran. Full runtime demand/acceptance remain deferred.

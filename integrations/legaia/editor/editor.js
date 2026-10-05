@@ -70,6 +70,7 @@ import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,r
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
 import {mountInspectorSections,inspectorSectionSnapshot} from '/inspector-sections.js';
 import {focusScriptInspectorFamily,mountScriptFamilyNavigation} from '/script-inspector-navigation.js';
+import {mountScriptBookmarks} from '/script-bookmarks.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
@@ -2314,7 +2315,7 @@ function appendScriptInstructions(host,report,identity=report.semantic_id??repor
     row.append(successors);body.append(row);
   }
   if(!instructions.length){status.textContent='No instructions were decoded.';wrap.hidden=true;}
-  return {select};
+  return {select,selected:()=>selectedPC};
 }
 function renderTriggerScript(result,report){
   const host=$('trigger-script-report');
@@ -3287,7 +3288,7 @@ async function openAppearanceOptions(entity){
 
 const scriptDialog=document.createElement('dialog');scriptDialog.id='script-dialog';document.body.append(scriptDialog);
 let scriptEntity=null,scriptReport=null,scriptDrafts=new Map(),scriptFacingControls=null,scriptBranchControls=null;
-scriptDialog.addEventListener('close',()=>{scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;});
+scriptDialog.addEventListener('close',()=>{scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;});
 function renderFacingAuthoring(){
   scriptFacingControls?.dispose();scriptFacingControls=null;
   if(!scriptReport?.facing_authoring)return;
@@ -3372,8 +3373,9 @@ async function openActorCandidate(entity){
     }
   }catch(error){if(dialog.open)dialog.querySelector('p').textContent=String(error.message||error);}
 }
+let scriptBookmarkControls=null;
 async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null,focusComponent=null){
-  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;setBusy(true);
+  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;setBusy(true);
   if(!refresh){scriptEntity=entity;scriptDrafts.clear();
   scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Review source-qualified branch destinations below</p><div id="script-authoring-toolbar" class="script-authoring-toolbar" hidden><button id="script-undo">Undo</button><button id="script-redo">Redo</button><button id="script-save">Save project</button><span id="script-authoring-status"></span></div><div id="script-report"><p>Verifying the imported script record…</p></div><p class="dialog-error" role="alert"></p>`;
   $('close-script').onclick=()=>scriptDialog.close();scriptDialog.showModal();
@@ -3390,10 +3392,16 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     if(opaque.length||stops.length){const warning=document.createElement('div');warning.className='script-warning';warning.textContent=`${opaque.length} opaque regions · ${stops.length} decoder stops. Unvisited bytes and unsupported behavior remain unresolved.`;$('script-warnings').append(warning);for(const region of opaque){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(region.pc)} · ${region.length} opaque bytes: ${region.reason}`;$('script-warnings').append(line);}for(const stop of stops){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(stop.pc)}: ${stop.reason}`;$('script-warnings').append(line);}}
     if(!dialogues.length)$('script-dialogue').textContent='No dialogue was decoded in the inspected paths.';
     for(const dialogue of dialogues){const card=document.createElement('article');card.className='script-dialogue-card';card.dataset.dialogueId=dialogue.semantic_id;card.dataset.dialoguePc=dialogue.pc;card.innerHTML=`<small>Imported segment · ${escapeHTML(scriptOffset(dialogue.pc))} · ${escapeHTML(dialogue.length)} bytes</small><p></p><details><summary>Text tokens and source span</summary><pre class="diagnostic-detail"></pre></details>`;card.querySelector('p').textContent=dialogue.text ?? '';card.querySelector('pre').textContent=JSON.stringify(dialogue,null,2);$('script-dialogue').append(card);}
-    const instructionNavigation=appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report,undefined,undefined,pc=>scriptBranchControls?.select(pc));
+    const instructionNavigation=appendScriptInstructions($('script-report').querySelector('.script-instructions > div'),report,undefined,undefined,pc=>{scriptBranchControls?.select(pc);scriptBookmarkControls?.updateState();});
 
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
     scriptReport=report;
+    if(state.capabilities?.saved_script_bookmarks){
+      const owner=scriptEntity.id,key=resourceStateKey(),accepted=report;
+      scriptBookmarkControls=mountScriptBookmarks($('script-report'),{owner,report,getRows:()=>state.script_bookmarks??[],getSelected:()=>instructionNavigation.selected(),select:instructionNavigation.select,
+        current:()=>scriptDialog.open&&key===resourceStateKey()&&scriptEntity?.id===owner&&scriptReport===accepted,busy:()=>busy,editable:()=>!sceneAnimationController?.active()&&state.project?.mode==='edit',draftPending:()=>scriptDrafts.size>0,
+        command:body=>api('/api/command',body),reopen:pc=>openActorScript(scriptEntity,true,null,null,pc),onError:error=>notify(error.message,true)});
+    }
     if(state.capabilities?.script_branch_authoring){
       const owner=scriptEntity.id,accepted=report;
       scriptBranchControls=mountScriptBranches($('script-report'),{owner,initialDrafts:new Map([...scriptDrafts].filter(([id])=>id.includes('/branch/'))),
@@ -3607,12 +3615,14 @@ function renderTransitionAuthoring(){
 
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
 function updateScriptActions(){
-  scriptFacingControls?.updateState();scriptBranchControls?.updateState();
+  scriptFacingControls?.updateState();scriptBranchControls?.updateState();scriptBookmarkControls?.updateState();
   const authoring=scriptReport?.dialogue_authoring;
   $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(state.capabilities?.script_branch_authoring||authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length||scriptReport?.flag_authoring?.supported||scriptReport?.flag_authoring?.unresolved_overrides?.length||scriptReport?.wait_authoring?.supported||scriptReport?.wait_authoring?.unresolved_overrides?.length||scriptReport?.model_selector_authoring?.supported||scriptReport?.model_selector_authoring?.unresolved_overrides?.length||scriptReport?.facing_authoring?.supported||scriptReport?.facing_authoring?.unresolved_overrides?.length);
+  if(scriptBookmarkControls&&state.capabilities?.saved_script_bookmarks)$('script-authoring-toolbar').hidden=false;
+  const bookmarkEdit=!!scriptBookmarkControls&&state.capabilities?.saved_script_bookmarks&&state.project?.mode==='edit'&&!sceneAnimationController?.active();
   const pending=scriptDrafts.size>0;
-  $('script-undo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_undo;
-  $('script-redo').disabled=busy||pending||!canEditDialogue()||!state.history?.can_redo;
+  $('script-undo').disabled=busy||pending||(!canEditDialogue()&&!bookmarkEdit)||!state.history?.can_undo;
+  $('script-redo').disabled=busy||pending||(!canEditDialogue()&&!bookmarkEdit)||!state.history?.can_redo;
   $('script-save').disabled=busy||pending||!state.project?.dirty;
   $('script-authoring-status').textContent=pending?`${scriptDrafts.size} unapplied draft(s) · Apply or discard before project actions`:busy?'Verifying…':projectSaveStatus();
   for(const button of scriptDialog.querySelectorAll('[data-text-file]'))button.disabled=busy||pending||!canEditDialogue();
