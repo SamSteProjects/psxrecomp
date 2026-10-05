@@ -34,6 +34,7 @@ import {mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspecto
 import {bindComponentReferences} from '/component-references.js';
 import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
 import {decodeTransitionResource,openTransitionResource} from '/transition-resource.js';
+import {decodeTransitionArrivalPreview,transitionArrivalCurrent,transitionArrivalMarkers,drawTransitionArrival} from '/transition-arrival-preview.js';
 import {decodeFieldSpatial,drawFieldSpatial,hitFieldSpatial,fieldSpatialFrame} from '/field-spatial.js';
 import {openRegionBounds,decodeRegionBoundsAnnotations,regionBoundsGeometry} from '/region-bounds.js';
 import {openTriggerCells,decodeTriggerCellsAnnotations,triggerCellsGeometry} from '/trigger-cells.js';
@@ -265,6 +266,17 @@ function drawScriptTargets(){
   ctx.restore();
   if(hiddenLabels)scriptTargetTools.querySelector('[role="status"]').textContent+=` · ${hiddenLabels} labels hidden at this zoom`;
 }
+let transitionArrivalOverlay=null,transitionArrivalHeight=0;
+const transitionArrivalTools=document.createElement('div');transitionArrivalTools.id='transition-arrival-tools';transitionArrivalTools.hidden=true;
+transitionArrivalTools.innerHTML='<span role="status"></span><label>Arrival reference Y <input type="number" step="any" value="0" min="-10000000" max="10000000"></label><button type="button" data-frame>Frame arrival comparison</button><button type="button" data-return>Return to source scene</button><button type="button" data-clear>Clear arrival comparison</button>';
+$('viewport-wrap').before(transitionArrivalTools);
+function currentTransitionArrival(){if(!transitionArrivalCurrent(transitionArrivalOverlay,state))transitionArrivalOverlay=null;return transitionArrivalOverlay;}
+function frameTransitionArrival(){const report=currentTransitionArrival();if(!report||busy)return;cancelViewportGesture();const points=transitionArrivalMarkers(report,transitionArrivalHeight).map(point=>displayPosition(point));for(const axis of ['x','y','z'])camera.target[axis]=(points[0][axis]+points[1][axis])/2;camera.distance=Math.max(1000,Math.hypot(points[0].x-points[1].x,points[0].z-points[1].z)*1.5);cameraRevision++;draw();}
+transitionArrivalTools.querySelector('[data-frame]').onclick=frameTransitionArrival;
+transitionArrivalTools.querySelector('[data-clear]').onclick=()=>{transitionArrivalOverlay=null;draw();};
+transitionArrivalTools.querySelector('[data-return]').onclick=async()=>{const report=currentTransitionArrival();if(!report||busy)return;await api('/api/scene',{scene_id:report.source_scene_id});};
+transitionArrivalTools.querySelector('input').oninput=event=>{const input=event.target,height=Number(input.value),valid=input.value.trim()!==''&&Number.isFinite(height)&&Math.abs(height)<=1e7;input.setAttribute('aria-invalid',String(!valid));if(valid){transitionArrivalHeight=height;draw();}};
+function drawArrivalComparison(){const report=currentTransitionArrival();transitionArrivalTools.hidden=!report;if(!report)return;const markers=transitionArrivalMarkers(report,transitionArrivalHeight);transitionArrivalTools.querySelector('[role="status"]').textContent=`Destination ${report.destination_scene_id} · ${report.asset_id} · Retail X ${markers[0].x} Z ${markers[0].z} · Current X ${markers[1].x} Z ${markers[1].z} · reference Y ${transitionArrivalHeight} (height unknown) · arrival only; execution unknown`;for(const button of transitionArrivalTools.querySelectorAll('button'))button.disabled=busy;transitionArrivalTools.querySelector('input').disabled=busy;drawTransitionArrival(ctx,report,transitionArrivalHeight,project,displayPosition,{width,height});}
 let coordinateProbe=null,locateSample=null,locateGeneration=0;
 const locateButton=document.createElement('button');locateButton.textContent='Locate coordinates';$('frame-selected').after(locateButton);
 const locateDialog=document.createElement('dialog');locateDialog.className='project-dialog';locateDialog.innerHTML='<form><h2>Locate guest coordinates</h2><p>Place a reference marker using game coordinates. This changes only the editor camera.</p><label>X <input name="x" type="number" step="any" required></label><label>Y <input name="y" type="number" step="any" required value="0"></label><label>Z <input name="z" type="number" step="any" required></label><button type="button" data-surface>Use source surface height</button><p data-surface-status role="status"></p><button type="submit">Locate</button><button type="button" data-clear>Clear marker</button><button type="button" data-close>Cancel</button></form>';document.body.append(locateDialog);
@@ -1729,7 +1741,7 @@ async function activateAsset(record,action=null){
 function inspectFlagResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
   const context=resourceStateKey(),snapshot=JSON.stringify(record);
-  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
+  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
   const data=decodeFlagResource(record.data),owner=data.partition===2?{id:data.owner_id,name:data.script_name,partitionTwo:true}:entities().find(entity=>entity.id===data.owner_id);
   flagResourceDialog=openFlagResource({record,current,busy:()=>busy,canInspect:()=>!!owner&&state.capabilities?.actor_script_preview===true,
     onInspect:async pc=>{if(!current()||busy||!owner)return false;await openActorScript(owner,false,null,null,pc);return true;},onError:error=>notify(error.message,true)});
@@ -1737,13 +1749,26 @@ function inspectFlagResource(record){
 function inspectTransitionResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
   const context=resourceStateKey(),snapshot=JSON.stringify(record);
-  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
+  const current=()=>context===resourceStateKey()&&resourceKey===context&&JSON.stringify(assetRecords().find(item=>item.id===record.id))===snapshot;
   try{
     const data=decodeTransitionResource(record.data),owner=data.partition===2?{id:data.owner_id,name:data.script_name,partitionTwo:true}:entities().find(entity=>entity.id===data.owner_id);
     const canNavigate=target=>state.capabilities?.project_navigation===true&&(state.scenes??[]).some(scene=>scene.id===target);
     transitionResourceDialog=openTransitionResource({record,current,busy:()=>busy,canInspect:()=>!!owner&&state.capabilities?.actor_script_preview===true,canNavigate,
       onInspect:async pc=>{if(!current()||busy||!owner)return false;await openActorScript(owner,false,null,null,pc);return scriptDialog.open&&scriptEntity?.id===owner.id;},
       onNavigate:async target=>{if(!current()||busy||!canNavigate(target))return false;transitionResourceDialog?.close();return !!await api('/api/scene',{scene_id:target});},
+      canPreview:()=>state.project?.mode==='edit'&&state.capabilities?.scene_preview===true,
+      onPreview:async()=>{
+        if(!current()||busy||!canNavigate(data.target)||state.project?.mode!=='edit')return false;
+        const sourceKey=state.scene_preview_source_key,projectKey=state.project_transition_state_key;setBusy(true);
+        try{
+          const response=await fetch('/api/transition-arrival-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id,source_key:sourceKey})}),value=await response.json();
+          if(!current()||!transitionResourceDialog?.open)return false;if(!response.ok)throw new Error(value.error||'Arrival inspection failed');
+          const report=decodeTransitionArrivalPreview(value,record.id,sourceKey,projectKey);
+          transitionResourceDialog.close();setBusy(false);if(!await api('/api/scene',{scene_id:report.destination_scene_id}))return false;
+          if(!transitionArrivalCurrent(report,state))throw new Error('Destination arrival context changed. Reopen the source transition.');
+          document.querySelector('.workspace-tabs [data-panel="viewport"]').click();transitionArrivalOverlay=report;transitionArrivalHeight=0;transitionArrivalTools.querySelector('input').value='0';transitionArrivalTools.querySelector('input').removeAttribute('aria-invalid');setBusy(false);frameTransitionArrival();return true;
+        }finally{setBusy(false);draw();}
+      },
       onError:error=>notify(error.message,true)});
   }catch(error){notify(error.message,true);}
 }
@@ -3810,7 +3835,7 @@ function draw(){
     }
   }
   if(sceneModelsReady()&&scenePlacementSelection.length){ctx.save();ctx.setLineDash([5,3]);for(const id of scenePlacementSelection){if(hiddenSceneEntities().has(id))continue;const actor=entities().some(e=>e.id===id);if(actor?!sceneLayers.actors:!sceneLayers.scenery)continue;const corners=previewBounds(id);if(corners.length!==8)continue;for(let corner=0;corner<8;corner++)for(const bit of [1,2,4])if(!(corner&bit))line(corners[corner],corners[corner|bit],'#8bd7e8',1.5);}ctx.restore();}
-  drawEnvironmentSelection();drawCoordinateProbe();drawScriptTargets();
+  drawEnvironmentSelection();drawCoordinateProbe();drawScriptTargets();drawArrivalComparison();
   if(actorGroupInspection){
     for(const id of actorGroupInspection.positions.keys()){
       const proposed=groupProposalPosition(id);
@@ -4737,4 +4762,4 @@ projectAssetControls=mountProjectAssets({host:projectAssetHost,getContext:projec
   getUnavailableReason:()=>state.project_assets_unavailable_reason,
   onChange:()=>{assetPageSignature=null;renderAssets();},onError:error=>notify(error.message,true)});
 
-mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools],onToggle:()=>{cancelViewportGesture();resize();}});
+mountSceneToolDrawer({toolbar:document.querySelector('.viewport-toolbar'),viewport:$('viewport-wrap'),keep:[runRibbon,fieldNote,scenePoseBar,actorGroupTools,scriptTargetTools,transitionArrivalTools],onToggle:()=>{cancelViewportGesture();resize();}});

@@ -218,6 +218,8 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["scene_flags"] = state["capabilities"]["resource_catalog"]
         from .resources import scene_flag_state_key, project_flag_state_key, scene_transition_state_key, scene_region_state_key, scene_trigger_state_key
         state['scene_transition_state_key'] = scene_transition_state_key(self.project)
+        from .resources import project_transition_state_key
+        state['project_transition_state_key'] = project_transition_state_key(self.project)
         state['scene_region_state_key'] = scene_region_state_key(self.project)
         state['scene_trigger_state_key'] = scene_trigger_state_key(self.project)
         state['capabilities']['field_trigger_authoring'] = bool(self.project.disc_path and self.project.active_scene and self.project.mode == 'edit')
@@ -813,6 +815,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
                  '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
+                 '/transition-arrival-preview.js': ('transition-arrival-preview.js', 'text/javascript'),
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
                  '/region-bounds.js': ('region-bounds.js', 'text/javascript'),
                  '/trigger-cells.js': ('trigger-cells.js', 'text/javascript'),
@@ -1727,6 +1730,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,{'schema_version':'legaia.actor-preset-scene.v1','scene_id':project.active_scene,
                                     'project_source_key':original_key,'review_key':report['review_key'],
                                     'scene':dict(proposed,representation='authored')})
+                    return
+                if route == "/api/transition-arrival-preview":
+                    if set(body) != {'asset_id','source_key'}:
+                        raise ProjectError('Transition arrival inspection requires only asset_id and source_key')
+                    from .transition_arrival import inspect
+                    self._json(200,inspect(self.server.project,body['asset_id'],body['source_key']))
                     return
                 if route == "/api/project-transitions":
                     if body:

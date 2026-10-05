@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Transition arrival viewport comparison - 2026-10-04
+
+Transition source resources now offer **Compare arrival in destination scene** when
+the named destination is already imported and Edit-mode preview is available. The
+service requalifies the source transition and destination import, records source and
+destination preview keys and a project-state key, and preserves Retail/Current entry
+layers. The main viewport opens the destination and shows blue Retail and gold Current
+arrival markers, encoded-facing labels, Frame, Return and Clear controls. Reference Y
+is editable for inspection and explicitly unknown; arrival markers are never presented
+as source triggers or observed runtime positions. Scene/project/source-key changes
+withdraw the overlay. Controls remain beside the viewport outside the Scene tools drawer.
+
+This native browser pass also fixed a real Inspector handoff bug: flag and transition
+dialog guards referenced a lookup local to Asset Details. They now use the shared asset
+catalog, retaining their exact resource snapshots and context guards.
+
+Ten focused Python checks passed with private-disc coverage and no skips, alongside
+JavaScript transition/arrival guards and editor syntax checks. Native Town01 -> map01
+showed Retail arrival (12352,3264), facing2048/4096 and Current (128,3264), facing1024/4096
+against loaded destination geometry. Desktop/narrow screenshots were inspected; reference
+Y, framing, Return, Clear, and flag/transition dialog actions passed with zero page errors.
+Authored data and Undo/Redo history stayed unchanged. Navigation changes the existing
+saved active-scene view state, so dirty status may change; it does not create an authored
+override. No gameplay or game launch occurred. Prior failed harness/layout attempts remain
+preserved. Private proof:
+`local-output/sdk-20260909/transition-arrival-viewport-20261004/final-verified/proof.json`.
+See [transition arrival preview](legaia-transition-arrival-preview.md).
+
+
 ## Current flag operand references - 2026-10-04
 
 The reference browser now shows a separate Effective / Current relationship for

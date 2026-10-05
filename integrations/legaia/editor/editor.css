@@ -260,3 +260,5 @@
 #asset-references-dialog .reference-filters input,
 #asset-references-dialog .reference-filters select { width: 100%; box-sizing: border-box; }
 #asset-references-dialog [data-reference-edge-id] { overflow-wrap: anywhere; }
+
+#transition-arrival-tools:not([hidden]){display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:#1b3035;border:1px solid #547078}#transition-arrival-tools [role=status]{flex:1 0 100%;overflow-wrap:anywhere}#transition-arrival-tools label{display:flex;align-items:center;gap:6px}#transition-arrival-tools input{width:110px}
