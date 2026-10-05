@@ -1,5 +1,19 @@
 # Legaia SDK validation plan
 
+## Inspector property-category checkpoint — 2026-10-05
+
+Focused Node checks cover category/query/actual authored-identity composition, empty
+categories and immutable inputs; component state/reference suites and syntax also pass.
+Actual retail browser evidence covers exact visible IDs, zero search results, category
+retention across two actors, Reset, asset navigation, 540px layout, collapse/keyboard
+restoration and unchanged document/history/files with zero authoring/Save/Build/Run.
+Private proof: `local-output/sdk-20260909/inspector-property-category-20261005/proof.json`.
+Campaign follow-up: an absent remembered category, translated/long labels, unregistered
+components, stale detached filter controls and alternate project/mode refresh. Category
+labels do not establish actual authored overrides or live observation; gameplay remains
+deferred separately.
+
+
 ## Inspector property-state checkpoint — 2026-10-05
 
 Focused checks cover catalog completeness/detachment/no capabilities, layer ownership,

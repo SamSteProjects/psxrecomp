@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Inspector property-category filtering — 2026-10-05
+
+The actor Inspector now offers **Property category** alongside text search and **Authored
+only**. Options come from the SDK property-state labels already rendered in the current
+component sections, coalescing multiple authored workflows under Authored. Filtering
+shows whole components containing the selected category, preserving their values and
+actions. It does not infer unknown values, authorship or live identity. Authored only
+continues to use exact SDK authored-component IDs, so an empty declared Authored layer
+is not treated as an override. Search, category and authored membership compose.
+
+Category selection is remembered across actor rerenders in the editor session. Reset
+filter clears all three controls. A selected category absent from the next entity stays
+available and yields no matching components. Collapse/expand and header navigation
+continue to operate only on visible components. This modifies display state only;
+project data, commands, Undo/Redo, persistence and Build remain unchanged.
+
+Validation: three focused Node suites and filter-module syntax pass. Actual private
+retail browser checks compare visible component IDs with declared categories, combine
+search/actual authored membership, exercise zero results, two-actor retention, Reset,
+asset navigation, 540px layout and collapse/keyboard restoration with no page errors.
+Project document/history, final scene/selection and every saved file stayed unchanged;
+no authoring, Save, Build or Run requests. Screenshot inspected. The first harness
+attempt navigated before selection readiness; explicit ready/identity waits corrected
+it, with failed evidence preserved. Private proof:
+`local-output/sdk-20260909/inspector-property-category-20261005/proof.json`.
+No game ran; manual gameplay stays deferred and full SDK buildout continues solo.
+
+
 ## SDK property-state labels in the Inspector — 2026-10-05
 
 The shared component/asset property renderer now displays SDK-declared property states:
