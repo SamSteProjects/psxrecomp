@@ -1,5 +1,32 @@
 # Legaia SDK feature matrix
 
+## Selected vertex group movement - 2026-10-05
+
+Move model geometry now supports a selected group of 1..4096 unique existing
+object-local vertex indices. Enter comma-separated indices or click points to
+toggle membership before moving. XYZ handles and numeric signed16 offsets move
+the group from Current, with a bounds-centred handle, snap and Escape cancellation.
+Dirty/invalid offsets lock membership and history; Discard restores zero offsets.
+Retail/Current/Draft layers retain the selection/draft. Unselected vertices,
+other objects, normals, topology and material words remain unchanged.
+
+The exact same qualified candidate drives read-only object/scene previews and
+/api/model-vertices-translation Apply. Index ownership, uniqueness, source hashes,
+scene keys, complete geometry and resulting signed16 bounds are checked. Apply
+creates one project history step; zero offsets create none. One/all-instance scene
+inspection retains the group on Return/Restore. No actor placement or pose edit.
+
+Native Town01 model0000 object0 group[0,2] offset[16,-8,32] passed point toggling,
+gizmo drag/Escape, invalid draft locks, scene Current/Proposed, all-instance mode,
+Apply, Undo/Redo and Save/Open. Complete document/authored files unchanged before
+Apply and throughout the separate interaction check. Full Retail-section directory
+and ZIP readback matches the exact two-row candidate; only eight model bytes change.
+Eight focused API/content/object/allocated-object checks and JavaScript guards pass.
+Screenshots inspected; zero page errors/game launches. Private evidence:
+`local-output/sdk-20260909/vertex-group-20261005/proof.json`.
+Package SHA256: `bd600024ab3ef57fd9905667eeff3497125ae5700e5e278a01a3c6deddc85f4f`.
+Game appearance remains deferred in the gameplay queue. The full SDK goal is active.
+
 ## Retail comparison and vertex reset in the movement workspace - 2026-10-05
 
 Move model geometry now offers Retail, Current and Draft layers. Retail loads the

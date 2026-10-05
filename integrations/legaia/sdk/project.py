@@ -1645,9 +1645,15 @@ class ProjectService:
         if report['changes_from_current']:
             self.set_model_replacement(asset_id, replacement)
 
+    def translate_model_vertices(self, asset_id, object_index, indices, offset, expected_sha256):
+        replacement, report = self._prepare_model_object(asset_id, object_index, 'vertex_translation',
+                                                          {'indices': indices, 'offset': offset}, expected_sha256)
+        if report['changes_from_current']:
+            self.set_model_replacement(asset_id, replacement)
+
     def _prepare_model_object(self, asset_id: str, object_index: int, operation: str,
                               values: dict, expected_sha256: str) -> tuple[bytes, dict]:
-        from importer.model_json import translate_shape_object, rotate_shape_object, scale_shape_object
+        from importer.model_json import translate_shape_object, translate_shape_vertices, rotate_shape_object, scale_shape_object
         from importer.model_normal_length import rescale_object_normals
         from importer.model_normal_retarget import retarget_object_normals
         from importer.model_vertex_references import retarget_object_vertices
@@ -1665,6 +1671,8 @@ class ProjectService:
         args = (operation_source, effective, expected_sha256, object_index)
         if operation == 'translation' and set(values) == {'offset'}:
             replacement = translate_shape_object(*args, values['offset'])
+        elif operation == 'vertex_translation' and set(values) == {'indices','offset'}:
+            replacement = translate_shape_vertices(*args, values['indices'], values['offset'])
         elif operation == 'rotation' and set(values) == {'axis', 'quarter_turns'}:
             replacement = rotate_shape_object(*args, values['axis'], values['quarter_turns'])
         elif operation == 'scale' and set(values) == {'percent'}:
@@ -1681,6 +1689,8 @@ class ProjectService:
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
                       preview=decode_tmd(replacement), current_preview=decode_tmd(effective))
+        if operation == 'vertex_translation':
+            report['values'] = deepcopy(values)
         return replacement, report
 
     def preview_model_object(self, asset_id: str, object_index: int, operation: str,

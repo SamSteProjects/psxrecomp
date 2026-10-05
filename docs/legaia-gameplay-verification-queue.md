@@ -1,5 +1,23 @@
 # Deferred gameplay verification
 
+## Selected vertex group translation - 2026-10-05
+
+Project: `local-output/sdk-20260909/vertex-group-20261005/project/`.
+Package: `local-output/sdk-20260909/vertex-group-20261005/build/legaia.sdk.0f096fa3c17d-0.1.0-13747bdd2d65ca33.psxmod`.
+SHA-256: `bd600024ab3ef57fd9905667eeff3497125ae5700e5e278a01a3c6deddc85f4f`.
+Proof: `local-output/sdk-20260909/vertex-group-20261005/proof.json`.
+
+Town01 model0000 object0 vertices0 and2 translate by X16/Y-8/Z32. All other
+vertices/objects, normals and topology remain exact. One Undo step, retained
+workspace, point membership, group gizmo/Escape, scene comparison, Save/Open and
+full decoded Retail-section Build directory/ZIP readback passed. Eight native
+model byte offsets change:1516/1518/1520/1521/1532/1534/1535/1536.
+
+Later establish the exact game consumer and compare these two rows against Retail,
+then verify pose, scene transitions and save/load stability. This separate example
+retains Town01 arrival X1664/Z3264/facing3. No game launched, runtime installed or
+Retail disc exported. Existing whole-object and earlier vertex examples remain separate.
+
 ## Whole-object model translation - 2026-10-05
 
 Project: `local-output/sdk-20260909/object-move-20261005/project/`.

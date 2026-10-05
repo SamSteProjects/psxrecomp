@@ -1453,6 +1453,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_vertex_users import inspect
                     self._json(200,inspect(self.server.project,body['asset_id'],body['object_index'],body['vertex_index'],body['expected_sha256'],body['source_key']))
                     return
+                if route == '/api/model-vertices-translation':
+                    if set(body) != {'asset_id','object_index','indices','offset','expected_sha256'} or not isinstance(body['asset_id'],str):
+                        raise ProjectError('Vertex group translation requires model, object, indices, XYZ offset and inspected hash')
+                    self.server.project.translate_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['offset'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
                 if route == '/api/model-object-translation':
                     if set(body) != {'asset_id','object_index','offset','expected_sha256'} or not isinstance(body['asset_id'], str):
                         raise ProjectError('Object translation requires asset, object, XYZ offset and inspected hash')

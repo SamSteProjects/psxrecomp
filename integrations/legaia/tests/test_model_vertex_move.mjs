@@ -41,3 +41,13 @@ for(const [owner,index] of [[0,3],[1,0],[-1,0],[0,-1],[0,.5]])assert.equal(retai
 for(const mutate of [p=>p.posed=true,p=>p.coordinate_system='scene',p=>p.objects[0].vertex_start=1,p=>p.objects[0].vertex_count=5,p=>p.objects[0].triangle_count=2,p=>p.triangles[0][0]=3,p=>p.vertices[0][0]=32768,p=>p.vertices[0][0]=.5]){const bad=structuredClone(current);mutate(bad.retail_preview);assert.throws(()=>retailMovementSource(bad));}
 assert.throws(()=>retailMovementSource({preview:current.preview}));
 console.log('Retail movement: independent topology, immutable source/row copies, absent appended rows/objects and malformed ranges/coordinates passed');
+
+const {parseVertexGroup,vertexGroupMovePreview}=await import('../editor/model-vertex-move.js');
+assert.deepEqual(parseVertexGroup('2, 0',3),[0,2]);
+for(const text of ['',',','0,0','-1','3','1.5','0,','x','1e0'])assert.throws(()=>parseVertexGroup(text,3));
+const grouped=vertexGroupMovePreview(source,1,[0,1],[16,-8,32]);assert.deepEqual(grouped,translated);assert.deepEqual(source,before);
+assert.deepEqual(vertexGroupMovePreview(source,1,[1],[1,2,3]).vertices,[[1,2,3],[4,5,6],[8,10,12]]);
+for(const [indices,offset] of [[[],[0,0,0]],[[0,0],[0,0,0]],[[2],[0,0,0]],[[true],[0,0,0]],[[0],[32767,0,0]]])assert.throws(()=>vertexGroupMovePreview(source,1,indices,offset));
+const groupRequest={...request,operation:'vertex_translation',values:{indices:[0,1],offset:[16,-8,32]}},groupReport={...report,operation:'vertex_translation',values:groupRequest.values};
+assert.deepEqual(qualifyObjectMoveReview(groupReport,groupRequest,expected),groupReport);assert.throws(()=>qualifyObjectMoveReview({...groupReport,values:{indices:[0],offset:[16,-8,32]}},groupRequest,expected));
+console.log('Vertex groups: bounded unique local indices, exact subset movement, immutable Current, overflow and scene review identity passed');

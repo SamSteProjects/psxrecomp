@@ -61,6 +61,34 @@ def translate_shape_object(original: bytes, effective: bytes, expected_sha256: s
     return replace_model_content(original,source_hash,replacement, allow_normal_references=True)[0]
 
 
+def translate_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
+                             object_index: int, indices: list[int], offset: list[int]) -> bytes:
+    """Translate one explicit bounded selection, retaining every other native word."""
+    if sha256(effective).hexdigest() != expected_sha256:
+        raise ImportError('Model changed since vertex group inspection')
+    if (not isinstance(indices,list) or not 1 <= len(indices) <= 4096 or
+            any(type(i) is not int or i < 0 for i in indices) or len(set(indices)) != len(indices)):
+        raise ImportError('Vertex group requires 1..4096 unique object-local indices')
+    if (not isinstance(offset,list) or len(offset) != 3 or
+            any(type(v) is not int or not -32768 <= v <= 32767 for v in offset)):
+        raise ImportError('Vertex group offset requires three signed16 integers')
+    source_hash=sha256(original).hexdigest()
+    replace_model_content(original,source_hash,effective,allow_normal_references=True)
+    document=json.loads(export_shape_json(effective))
+    if type(object_index) is not int or not 0 <= object_index < len(document['objects']):
+        raise ImportError('Choose an existing model object')
+    vertices=document['objects'][object_index]['vertices']
+    if any(i >= len(vertices) for i in indices):
+        raise ImportError('Vertex group escapes its object-local table')
+    for index in indices:
+        moved=[v+offset[a] for a,v in enumerate(vertices[index])]
+        if any(not -32768 <= v <= 32767 for v in moved):
+            raise ImportError('Vertex group translation exceeds signed16; nothing was applied')
+        vertices[index]=moved
+    replacement=import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
+    return replace_model_content(original,source_hash,replacement,allow_normal_references=True)[0]
+
+
 def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
                        object_index: int, percent: int) -> bytes:
     """Positive uniform vertex scaling; nearest integer, half away from zero."""
