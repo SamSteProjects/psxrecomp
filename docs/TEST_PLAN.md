@@ -1,5 +1,17 @@
 # Legaia SDK validation plan
 
+## Direct retained asset GLB workflow checks
+
+- Open assigned and retired animation assets without selecting their capture actor.
+- Prepare explicit-rate export and verify both downloads against the bound response.
+- Select changed rigid-channel GLB and original binding; Review and pose preview
+  remain readonly. Closing preview returns to the reviewed replacement editor.
+- Apply exactly once; verify stable UUID, new hash, atomic assignment witnesses,
+  preserved retirement, fresh resource catalog and unchanged retail imports.
+- Verify Undo/Redo, Save/Open and normal private Build readback.
+- Reject busy/stale source handoffs, Live mode, missing capability and stale bindings.
+- Defer game appearance/playback acceptance to manual gameplay verification.
+
 ## Direct retained asset editing - 2026-10-05
 
 Open an assigned and retired clip from the Asset Database with a different actor

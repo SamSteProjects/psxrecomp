@@ -1,5 +1,33 @@
 # Legaia SDK status — 2026-10-05
 
+## Direct retained asset GLB interchange - 2026-10-05
+
+A retained animation asset now offers Edit retained GLB in Edit mode when native
+animation authoring is available. The asset opens the existing captured-clip GLB
+workflow directly: prepare export, download the GLB and source binding, select
+externally edited files, Review, inspect the proposed pose, and Apply. Capture actor
+selection is not required. The actor-library route keeps its actor-owned lifetime;
+the asset route follows the project, scene, Edit mode and source revision.
+
+Exports use an explicit caller-selected FPS; retail timing is not inferred. Existing
+strict binding, native quantization, frame mapping and revision limits remain in
+force. Apply preserves the clip UUID, updates authored initial references atomically,
+and keeps a retired clip retired. Both direct editing routes share a guarded catalog
+refresh after Apply, so the asset's displayed source witnesses update. Save/Open,
+Undo/Redo and normal Build continue through the existing command and serializer.
+Game appearance/playback verification remains deferred. See
+[asset GLB workflow](legaia-retained-animation-assets.md#direct-glb-interchange).
+
+Verification: 3 retail-enabled Python tests, 2 Node workflow checks and 2 JavaScript
+syntax checks passed. The actual headless editor completed export and byte-verified
+GLB/binding downloads, external channel replacement, Review, proposed-pose Preview
+and exactly two Apply commands for assigned and retired assets. Capture actor
+selection and retail imports were unchanged; assigned reference hashes updated and
+retirement persisted. Undo/Redo, Save/Open and normal private Build passed, including
+native bank/initial-assignment/relocation readback and package ZIP/SHA verification.
+Both proposed screenshots were inspected. No game was launched or installed.
+Evidence: `local-output/sdk-20260909/retained-asset-glb-20261005/proof.json`.
+
 ## Direct retained animation asset editing - 2026-10-05
 
 Retained asset inspection now offers Edit retained content in Edit mode with the

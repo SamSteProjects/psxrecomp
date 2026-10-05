@@ -73,3 +73,30 @@ were preserved, with exactly two atomic commands. Undo/Redo and Save/Open round 
 passed. The normal private Build passed native bank, initial assignment and relocation
 readback; package ZIP integrity and SHA-256 matched its receipt. No game was launched
 or installed. Evidence: `local-output/sdk-20260909/retained-asset-edit-20261005/proof.json`.
+
+## Direct GLB interchange
+
+Open the retained asset and choose Edit retained GLB. Prepare retained GLB export at
+an explicit FPS, then download both GLB and binding JSON. Edit its supported rigid
+channels externally. Select the edited GLB and its original binding, choose the
+captured output-frame mapping, then Review GLB content. Preview reviewed GLB content
+opens the proposed pose without applying it; closing the viewer returns to Review.
+Apply reviewed GLB content performs the existing atomic content command. Refresh is
+automatic after a successful asset-based Apply; save the project to persist it.
+
+The asset editor does not select the capture actor and remains independent of
+unrelated actor selection. Project, scene, mode and source changes invalidate it.
+Busy and stale asset Inspectors cannot open a replacement workflow. Bindings must
+match the current saved capture; file/mesh changes do not imply model replacement.
+Retired clip imports preserve retirement. Runtime playback/timing and physical game
+verification remain separate acceptance gates.
+
+Verification: 3 retail-enabled Python tests, 2 Node workflow checks and 2 JavaScript
+syntax checks passed. The actual headless editor completed export and byte-verified
+GLB/binding downloads, external channel replacement, Review, proposed-pose Preview
+and exactly two Apply commands for assigned and retired assets. Capture actor
+selection and retail imports were unchanged; assigned reference hashes updated and
+retirement persisted. Undo/Redo, Save/Open and normal private Build passed, including
+native bank/initial-assignment/relocation readback and package ZIP/SHA verification.
+Both proposed screenshots were inspected. No game was launched or installed.
+Evidence: `local-output/sdk-20260909/retained-asset-glb-20261005/proof.json`.

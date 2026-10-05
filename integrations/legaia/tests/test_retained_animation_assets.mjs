@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const code=await readFile(new URL('../editor/retained-animation-assets.js',import.meta.url),'utf8');
-const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview,retainedAnimationEditContext}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview,retainedAnimationEditContext,openRetainedAnimationAsset}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const uuid='12345678-1234-4123-8123-123456789abc',id=`animation://fixture/authored-record/${uuid}`,actor='scene://fixture/actors/man-p1/0001',model='asset://legaia/models/global-special/00f0',hash='a'.repeat(64);
 const row={record_id:uuid,animation_id:id,entity_id:actor,channel_owner_entity_id:actor,model_source_entity_id:actor,donor_asset_id:model,donor_animation_id:'animation://fixture/scene-anm/0001',record_sha256:hash,frame_count:2,object_count:1,active:false,runtime_assigned:false,assigned_actor_ids:[]};
 const value={semantic_id:id,asset_kind:'animation',scope:'authored-retained',authored_animation_record:true,frame_count:2,bone_count:1,model_asset_id:model,retained_record:row,source_record:{source_kind:'authored_animation_record',record_id:uuid,record_sha256:hash,ledger_sha256:hash,donor_record_sha256:hash,donor_animation_id:row.donor_animation_id}};
@@ -22,3 +22,26 @@ const state={project:{mode:'edit'},scene:{id:scene},capabilities:{actor_animatio
 const edit=retainedAnimationEditContext(value,state);assert.equal(edit.assetId,id);assert.equal(edit.entityId,actor);assert.equal(edit.row.active,false);assert.equal(Object.hasOwn(edit.row,'assigned_actor_ids'),false);edit.row.record_sha256='bad';assert.equal(value.retained_record.record_sha256,hash);
 for(const change of [s=>s.project.mode='live',s=>s.capabilities.actor_animation_authoring=false,s=>s.scene.id='scene://other',s=>s.scene_preview_source_key='bad']){const bad=structuredClone(state);change(bad);assert.throws(()=>retainedAnimationEditContext(value,bad));}
 console.log('Direct retained asset editing: detached legacy row, captured owner, active scene/Edit/capability/source guards and retired eligibility passed.');
+// Exercise the actual Asset Inspector action with a minimal DOM; native browser
+// evidence covers the full existing GLB editor, download and Apply workflow.
+class Element{
+ constructor(tag){this.tag=tag;this.children=[];this.open=false;this.listeners={};}
+ append(child){this.children.push(child);}
+ setAttribute(){}
+ addEventListener(name,callback){this.listeners[name]=callback;}
+ showModal(){this.open=true;}
+ close(){this.open=false;this.listeners.close?.();}
+ remove(){this.removed=true;}
+}
+globalThis.document={createElement:tag=>new Element(tag),body:new Element('body')};
+const find=(node,text)=>node.textContent===text?node:node.children.map(c=>find(c,text)).find(Boolean);
+let current={...structuredClone(state),project:{mode:'edit',path:'fixture'}},pending=false,result=null,errors=[];
+const options={record:{id,data:value},getState:()=>current,busy:()=>pending,onGlb:context=>{result=context;},onError:e=>errors.push(e.message)};
+let dialog=openRetainedAnimationAsset(options);let action=find(dialog,'Edit retained GLB');assert.equal(action.hidden,false);
+pending=true;await action.onclick();assert.equal(result,null);assert.equal(dialog.open,true);assert.match(errors.pop(),/current operation/);
+pending=false;current.scene_preview_source_key='b'.repeat(64);await action.onclick();assert.equal(result,null);assert.match(errors.pop(),/source changed/);dialog.close();
+current=structuredClone({...state,project:{mode:'edit',path:'fixture'}});dialog=openRetainedAnimationAsset(options);await find(dialog,'Edit retained GLB').onclick();
+assert.equal(dialog.removed,true);assert.equal(result.assetId,id);assert.equal(result.row.active,false);assert.equal(Object.hasOwn(result.row,'assigned_actor_ids'),false);assert.deepEqual(errors,[]);
+current.project.mode='live';dialog=openRetainedAnimationAsset(options);action=find(dialog,'Edit retained GLB');assert.equal(action.hidden,true);result=null;await action.onclick();assert.equal(result,null);assert.match(errors.pop(),/Edit mode/);dialog.close();
+current.project.mode='edit';current.capabilities.actor_animation_authoring=false;dialog=openRetainedAnimationAsset(options);assert.equal(find(dialog,'Edit retained GLB').hidden,true);dialog.close();
+console.log('Retained asset GLB action: guarded detached capture handoff, close/disposal, busy/stale rejection and Live/capability visibility passed.');

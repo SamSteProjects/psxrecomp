@@ -1528,7 +1528,7 @@ function synchronizeResources(){
   if(animationAllocationEditor){if(selected()?.id!==animationAllocationEntityId)animationAllocationEditor.dispose();else animationAllocationEditor.updateState();}
   if(animationRecordLibrary){if(selected()?.id!==animationRecordEntityId)animationRecordLibrary.dispose();else animationRecordLibrary.updateState();}
   if(retainedAnimationEditor){if(retainedAnimationAssetId===null&&selected()?.id!==retainedAnimationEntityId)retainedAnimationEditor.dispose();else retainedAnimationEditor.updateState();}
-  if(retainedAnimationGlbEditor){if(selected()?.id!==retainedAnimationGlbEntityId)retainedAnimationGlbEditor.dispose();else retainedAnimationGlbEditor.updateState();}
+  if(retainedAnimationGlbEditor){if(retainedAnimationGlbAssetId===null&&selected()?.id!==retainedAnimationGlbEntityId)retainedAnimationGlbEditor.dispose();else retainedAnimationGlbEditor.updateState();}
   modelGlbEditor?.updateState();
   texturePngEditor?.updateState();
   textureResizeEditor?.update();
@@ -2704,6 +2704,7 @@ function openAnimationResource(record){
   if(record.data?.scope==='authored-retained'){
     openRetainedAnimationAsset({record,getState:()=>state,busy:()=>busy,onError:e=>notify(e.message,true),
       onEdit:({assetId,entityId,row})=>inspectRetainedAnimationContent({id:entityId},row,assetId),
+      onGlb:({assetId,entityId,row})=>inspectRetainedAnimationGlb({id:entityId},row,assetId),
       onModel:id=>openModel(id),onActor:async id=>{if(await api('/api/selection',{entity_id:id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}},
       onPreview:(data,value)=>openModel(data.model_asset_id,'allocated-record',data.retained_record.entity_id,'authored',null,value)});
     return;
@@ -3051,14 +3052,18 @@ let animationGlbEditor=null,animationGlbEntityId=null;
 let animationAllocationEditor=null,animationAllocationEntityId=null;
 let animationRecordLibrary=null,animationRecordEntityId=null;
 let retainedAnimationEditor=null,retainedAnimationEntityId=null,retainedAnimationAssetId=null;
-let retainedAnimationGlbEditor=null,retainedAnimationGlbEntityId=null;
-async function inspectRetainedAnimationGlb(entity,row){
+let retainedAnimationGlbEditor=null,retainedAnimationGlbEntityId=null,retainedAnimationGlbAssetId=null;
+function refreshRetainedAssetAfterApply(assetId){
+  if(assetId===null)return;
+  const appliedContext=resourceStateKey();setTimeout(()=>{if(!busy&&state.project.mode==='edit'&&resourceStateKey()===appliedContext)void refreshResources();},0);
+}
+async function inspectRetainedAnimationGlb(entity,row,assetId=null){
   if(busy||state.project.mode!=='edit')return;
-  retainedAnimationGlbEditor?.dispose();retainedAnimationGlbEntityId=entity.id;
+  retainedAnimationGlbEditor?.dispose();retainedAnimationGlbEntityId=entity.id;retainedAnimationGlbAssetId=assetId;
   retainedAnimationGlbEditor=await openRetainedAnimationGlbEditor({row,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
-    onApplied:next=>{state=next;render();notify('Retained GLB content and actor references updated. Save project to persist.');},
+    onApplied:next=>{state=next;render();notify('Retained GLB content and actor references updated. Save project to persist.');refreshRetainedAssetAfterApply(assetId);},
     onPosePreview:async(data,{returnToEditor})=>{setBusy(false);await openModel(data.semantic_id,data.animation.clip_id,entity.id,'imported',null,data,returnToEditor);
       if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open proposed retained GLB content.');
       $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});}
@@ -3071,7 +3076,7 @@ async function inspectRetainedAnimationContent(entity,row,assetId=null){
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
     onApplied:next=>{state=next;render();notify('Retained clip and actor references updated. Save project to persist.');
-      if(assetId!==null){const appliedContext=resourceStateKey();setTimeout(()=>{if(!busy&&state.project.mode==='edit'&&resourceStateKey()===appliedContext)void refreshResources();},0);}},
+      refreshRetainedAssetAfterApply(assetId);},
     onPosePreview:async(data,{returnToEditor})=>{setBusy(false);await openModel(data.semantic_id,data.animation.clip_id,entity.id,'imported',null,data,returnToEditor);
       if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open proposed retained content.');
       $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});}
