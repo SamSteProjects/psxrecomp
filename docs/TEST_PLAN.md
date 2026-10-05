@@ -1,5 +1,21 @@
 # Legaia SDK validation plan
 
+## Model vertex distribution checkpoint — 2026-10-05
+
+Six focused Python distribution/alignment cases cover signed extrema, nearest spacing,
+coordinate/index ties, endpoint/other-word preservation, stale/invalid HTTP requests,
+preview without mutation, no-op/history and allocated vector ownership. Expanded Node
+checks cover immutable local geometry and forged operation/value/source/full-preview
+replies; both changed editor-module syntax checks pass. Actual Town01 browser exercises
+locks, no-op/Discard, Current/Draft, single/all-instance scene comparison, Return/Restore,
+540px Apply and Undo/Redo with no page errors. Save/Open and normal Build pass, with
+complete decoded carrier directory/ZIP readback and a single changed model byte.
+Evidence: `local-output/sdk-20260909/vertex-distribution-20261005/proof.json`.
+Campaign follow-up: maximum selections, multiple objects and authored topology layouts,
+all three source axes, coincident results, source withdrawal and history across reopening.
+Normals/collision are retained; gameplay appearance remains a separate manual gate.
+No game, installation or full-disc export ran.
+
 ## Native-precision mixed placement scale checkpoint — 2026-10-05
 
 18 focused Python layout/group cases, expanded Node DTO checks and module syntax pass.

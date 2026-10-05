@@ -105,6 +105,19 @@ def align_shape_vertices(original: bytes, effective: bytes, expected_sha256: str
     return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]
 
 
+def distribute_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
+                              object_index: int, indices: list[int], axis: str) -> bytes:
+    """Evenly space selected source rows; retain endpoints and stable index ties."""
+    if axis not in ('x','y','z') or not isinstance(indices,list) or len(indices)<2:
+        raise ImportError('Vertex distribution requires X/Y/Z and at least two indices')
+    qualified=translate_shape_vertices(original,effective,expected_sha256,object_index,indices,[0,0,0])
+    document=json.loads(export_shape_json(qualified));vertices=document['objects'][object_index]['vertices'];a=('x','y','z').index(axis)
+    ordered=sorted(indices,key=lambda i:(vertices[i][a],i));low=vertices[ordered[0]][a];span=vertices[ordered[-1]][a]-low;intervals=len(ordered)-1
+    for rank,index in enumerate(ordered):vertices[index][a]=low+(2*span*rank+intervals)//(2*intervals)
+    replacement=import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
+    return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]
+
+
 def rotate_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
                           object_index: int, indices: list[int], axis: str, quarter_turns: int, pivot: str) -> bytes:
     """Rotate selected source rows, keeping stored normals and native ownership."""

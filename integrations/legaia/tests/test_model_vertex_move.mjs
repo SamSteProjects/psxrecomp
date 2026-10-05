@@ -86,3 +86,16 @@ console.log('Vertex group rotation: axes, origin/center pivots, half rounding, f
 const rotationRequest={asset_id:'asset://fixture',object_index:1,operation:'vertex_rotation',values:{indices:[0],axis:'y',quarter_turns:1,pivot:'origin'},expected_sha256:'b'.repeat(64)},rotationExpected={source_sha256:'a'.repeat(64),current_preview:source.preview,preview:vertexGroupRotatePreview(source,1,[0],'y',1,'origin')},rotationReport={...rotationRequest,source_sha256:rotationExpected.source_sha256,effective_sha256:rotationRequest.expected_sha256,proposed_sha256:'c'.repeat(64),project_changed:false,current_preview:rotationExpected.current_preview,preview:rotationExpected.preview};
 assert.deepEqual(qualifyObjectMoveReview(rotationReport,rotationRequest,rotationExpected),rotationReport);
 for(const forged of [{axis:'x'},{quarter_turns:-1},{pivot:'center'},{indices:[1]}])assert.throws(()=>qualifyObjectMoveReview({...rotationReport,values:{...rotationReport.values,...forged}},rotationRequest,rotationExpected));
+
+const {vertexGroupDistributePreview}=await import('../editor/model-vertex-move.js');
+const distSource={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:3}],vertices:[[-5,1,2],[-4,3,4],[4,5,6]],normals:[[0,4096,0]],triangles:[[0,1,2]]}},distBefore=structuredClone(distSource);
+const distributed=vertexGroupDistributePreview(distSource,0,[2,0,1],'x');assert.deepEqual(distributed.vertices,[[-5,1,2],[0,3,4],[4,5,6]]);assert.deepEqual(distributed.normals,distSource.preview.normals);assert.deepEqual(distributed.triangles,distSource.preview.triangles);assert.deepEqual(distSource,distBefore);
+assert.deepEqual(vertexGroupDistributePreview(distSource,0,[0,2],'x').vertices,distSource.preview.vertices);
+for(const [indices,axis] of [[[0],'x'],[[0,0],'x'],[[true,1],'x'],[[0,3],'x'],[[0,1],'w']])assert.throws(()=>vertexGroupDistributePreview(distSource,0,indices,axis));
+const ties=structuredClone(distSource);ties.preview.vertices[0][0]=-4;assert.deepEqual(vertexGroupDistributePreview(ties,0,[2,1,0],'x').vertices.map(r=>r[0]),[-4,0,4]);
+console.log('Vertex distribution: endpoint retention, signed nearest spacing, index ties, unchanged normals/topology and input guards passed.');
+
+const distRequest={asset_id:'asset://fixture/models/scene-tmd/0000',object_index:0,operation:'vertex_distribution',values:{indices:[0,1,2],axis:'x'},expected_sha256:'b'.repeat(64)},distExpected={source_sha256:'a'.repeat(64),current_preview:distSource.preview,preview:distributed},distReport={...distExpected,asset_id:distRequest.asset_id,object_index:0,operation:'vertex_distribution',values:distRequest.values,effective_sha256:distRequest.expected_sha256,proposed_sha256:'c'.repeat(64),project_changed:false};
+assert.deepEqual(qualifyObjectMoveReview(distReport,distRequest,distExpected),distReport);
+for(const change of [{operation:'vertex_alignment'},{values:{indices:[0,1,2],axis:'y'}},{preview:{...distributed,vertices:distSource.preview.vertices}},{effective_sha256:'d'.repeat(64)}])assert.throws(()=>qualifyObjectMoveReview({...distReport,...change},distRequest,distExpected));
+console.log('Vertex distribution scene review: exact operation/values/source and complete candidate geometry guards passed.');

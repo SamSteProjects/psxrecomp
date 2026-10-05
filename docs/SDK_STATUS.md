@@ -1,5 +1,35 @@
 # Legaia SDK status — 2026-10-05
 
+## Distribute selected model vertices along a source axis — 2026-10-05
+
+**Move model geometry → Selected vertex group → Distribute group X/Y/Z** stages even
+spacing between the selected Current axis endpoints. Select 2–4096 unique object-local
+rows. Ordering uses axis coordinate then native vertex index; integer spacing rounds
+half steps toward the positive axis. Endpoints and other coordinates stay fixed.
+Two rows or an already evenly spaced group produce no draft change. Normal words,
+primitive topology, ownership and unselected rows remain unchanged; no normal or
+collision recomputation is implied.
+
+Distribution is a distinct SDK operation with exact `{indices, axis}` values and an
+inspected Current model hash. The local draft locks conflicting selection/movement,
+supports Discard and Retail/Current/Draft comparison, and reaches single/all-instance
+Current/Proposed scene inspection with Return/Restore. The parent workspace qualifies
+its full geometry and exact operation values and labels the distribution axis. Apply
+uses the normal model override/history path; Save/Open and Build consume the result.
+
+Validation: six focused Python distribution/alignment cases, expanded vertex-movement
+Node checks and both changed editor-module syntax checks pass. Coverage includes signed
+extremes, stable coordinate/index ties, stale/invalid requests, appended vector ownership,
+immutable source, no-op and forged scene-review replies. Actual private Town01 browser
+checks draft locks, no-op/Discard, Current/Draft, single/all-instance scene comparison,
+Return/Restore, 540px Apply and Undo/Redo without page errors. Save/Open and normal Build
+pass; complete decoded carrier readback in the package directory and ZIP preserves all
+neighbors. This retail edit changes only model byte1524. Package SHA256:
+`59be7c6edc144766f4d51844f08d7004e8085df59e557a4b1ab38a44807d1ca8`.
+Evidence: `local-output/sdk-20260909/vertex-distribution-20261005/proof.json`.
+No game, installation or full-disc export ran. Gameplay appearance remains deferred;
+the full SDK goal stays active.
+
 ## Scale mixed placements at native coordinate precision — 2026-10-05
 
 **Move scene placement group → Scale spacing at native precision** scales selected
