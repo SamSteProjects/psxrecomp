@@ -13,7 +13,15 @@ export function transitionArrivalCurrent(report,state){
 export function transitionArrivalMarkers(report,height=0,proposal=null){
   if(!Number.isFinite(height)||Math.abs(height)>1e7)throw new Error('Arrival reference Y must be finite and within 10000000 units.');
   const markers=['imported','effective'].map((layer,index)=>({layer:layer==='imported'?'Retail':'Current',color:index?'#ffd878':'#84c9ff',...report.resource.arrival_layers[layer],y:height}));
-  if(proposal)markers.push({layer:'Proposed',color:'#91efa6',...proposal.proposed_arrival,y:height});return markers;
+  if(proposal)markers.push({layer:proposal.draft?'Draft · not reviewed':'Proposed',color:proposal.draft?'#e9abff':'#91efa6',...proposal.proposed_arrival,y:height});return markers;
+}
+export function arrivalDraftPoint(values){
+  if(!values||Object.keys(values).length!==3||!['x','z'].every(key=>Number.isInteger(values[key])&&values[key]>=64&&values[key]<=16384&&values[key]%64===0)||!Number.isInteger(values.facing_sector)||values.facing_sector<0||values.facing_sector>7)throw new Error('Arrival draft requires grid X/Z 64..16384 and facing sector 0..7.');
+  return {x:values.x,z:values.z,facing_angle_12bit:values.facing_sector*512};
+}
+export function arrivalFromGizmo(values){
+  if(values?.offset?.y!==0||!Number.isInteger(values.yaw_units)||values.yaw_units%512!==0)throw new Error('Arrival gizmo cannot author height or arbitrary facing.');
+  const arrival={x:values.offset.x,z:values.offset.z,facing_sector:values.yaw_units/512};arrivalDraftPoint(arrival);return arrival;
 }
 export function decodeTransitionArrivalReview(value,request){
   const keys=['schema_version','read_only','preview','arrival','proposed_encoded','proposed_arrival','source_byte_audit','authored_change','current_change_count','review_key'];
@@ -32,12 +40,13 @@ export function decodeTransitionArrivalReview(value,request){
   return structuredClone({...value,preview});
 }
 export function drawTransitionArrival(ctx,report,height,project,displayPosition,bounds,proposal=null){
-  const markers=transitionArrivalMarkers(report,height,proposal);ctx.save();ctx.lineWidth=2;ctx.font='12px "Segoe UI",sans-serif';
+  const markers=transitionArrivalMarkers(report,height,proposal),labels=[];ctx.save();ctx.lineWidth=2;ctx.font='12px "Segoe UI",sans-serif';
   for(const [index,marker] of markers.entries()){
     const point=project(displayPosition(marker));if(!point)continue;
     ctx.strokeStyle=marker.color;ctx.fillStyle=marker.color;ctx.beginPath();ctx.arc(point.x,point.y,index?11:7,0,Math.PI*2);ctx.moveTo(point.x-14,point.y);ctx.lineTo(point.x+14,point.y);ctx.moveTo(point.x,point.y-14);ctx.lineTo(point.x,point.y+14);ctx.stroke();
     const label=`${marker.layer} arrival X ${marker.x} Z ${marker.z} · facing ${marker.facing_angle_12bit}/4096`,labelWidth=ctx.measureText(label).width,
-      x=Math.max(4,Math.min(point.x+18,bounds.width-labelWidth-8)),y=Math.max(16,Math.min(point.y+(index===0?-18:index===1?24:46),bounds.height-6));
+      x=Math.max(4,Math.min(point.x+18,bounds.width-labelWidth-8)),initialY=Math.max(16,Math.min(point.y+(index===0?-18:index===1?24:46),bounds.height-6));
+    let y=initialY;for(let attempt=0;attempt<12;attempt++){if(!labels.some(box=>x<box.x+box.width&&x+labelWidth>box.x&&Math.abs(y-box.y)<20))break;y=initialY+(attempt%2===0?1:-1)*20*Math.ceil((attempt+1)/2);y=Math.max(16,Math.min(y,bounds.height-6));}labels.push({x,y,width:labelWidth});
     ctx.fillStyle='#101b20ed';ctx.fillRect(x-4,y-13,labelWidth+8,18);ctx.fillStyle=marker.color;ctx.fillText(label,x,y);
   }ctx.restore();
 }

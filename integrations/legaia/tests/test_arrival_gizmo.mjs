@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {arrivalDraftPoint,arrivalFromGizmo,transitionArrivalMarkers} from '../editor/transition-arrival-preview.js';
+import {translateOffset} from '../editor/worldmap-placement-gizmo.js';
+const v={x:256,z:3264,facing_sector:3};
+assert.deepEqual(arrivalDraftPoint(v),{x:256,z:3264,facing_angle_12bit:1536});
+const base={offset:{x:v.x,y:0,z:v.z},yaw_units:1536};
+const next=arrivalFromGizmo(translateOffset(base,'x',{x:32,y:0},{x:64,y:0},128,64));
+assert.deepEqual(next,{...v,x:320});assert.deepEqual(arrivalFromGizmo(base),v);
+for(const invalid of [{...v,x:0},{...v,z:16448},{...v,x:65},{...v,facing_sector:8},{...v,y:0}])assert.throws(()=>arrivalDraftPoint(invalid));
+for(const invalid of [{...base,offset:{...base.offset,y:64}},{...base,yaw_units:1},{...base,yaw_units:4096},null])assert.throws(()=>arrivalFromGizmo(invalid));
+const report={resource:{arrival_layers:{imported:arrivalDraftPoint(v),effective:arrivalDraftPoint(v)}}};
+const markers=transitionArrivalMarkers(report,123,{draft:true,proposed_arrival:arrivalDraftPoint(next)});
+assert.equal(markers[2].layer,'Draft · not reviewed');assert.equal(markers[2].x,320);assert.equal(markers[2].y,123);
+assert.equal(transitionArrivalMarkers(report,123,{proposed_arrival:arrivalDraftPoint(next)})[2].layer,'Proposed');
+console.log('Arrival X/Z grid, facing preservation, height rejection and draft/review marker distinction passed');

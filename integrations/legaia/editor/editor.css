@@ -264,3 +264,5 @@
 #transition-arrival-tools:not([hidden]){display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:#1b3035;border:1px solid #547078}#transition-arrival-tools [role=status]{flex:1 0 100%;overflow-wrap:anywhere}#transition-arrival-tools label{display:flex;align-items:center;gap:6px}#transition-arrival-tools input{width:110px}
 
 #transition-arrival-tools form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}#transition-arrival-tools form p{flex:1 0 100%;margin:0;overflow-wrap:anywhere}#transition-arrival-tools form details{flex:1 0 100%;max-height:160px;overflow:auto}#transition-arrival-tools form pre{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+#transition-arrival-tools input[type=checkbox]{width:auto;flex:none}

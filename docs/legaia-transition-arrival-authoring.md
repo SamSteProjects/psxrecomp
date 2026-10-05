@@ -15,8 +15,15 @@ component and serializer. This changes an existing source entry; destination nam
 record lengths, other source instructions and other authored entries remain intact.
 Only requested X/Z and low-three-bit facing change. Upper direction bits retain Current.
 Reference Y changes inspection only; height, source triggers and runtime pose are unknown.
-Scene/project/source changes withdraw the comparison/review. This is numeric authoring
-with a spatial preview; a drag gizmo is not yet implemented.
+Scene/project/source changes withdraw the comparison/review. Enable Move arrival draft
+to drag the X/Z handles in the destination viewport. The axes follow positive raw guest
+coordinates through the scene transform, and snap to the native 64-unit grid. Purple
+Draft is not reviewed; no request, override or history is created by the drag. Explicit
+Review replaces Draft with the green Proposed marker; Apply publishes the reviewed edit.
+Facing remains unchanged by dragging. Reference Y remains an inspection setting.
+Escape, camera/viewport/focus or context changes cancel an unfinished drag and restore
+the prior local draft/review only if its qualified source is still current. The numeric
+controls remain available. Out-of-range coordinates reject without publishing.
 
 Review endpoint: /api/transition-arrival-review accepts exactly asset_id,
 project_state_key, destination_source_key and arrival. Apply accepts those fields plus
@@ -36,3 +43,9 @@ review/provenance/byte-audit guards passed, including preserved direction bits a
 source/grid/key rejection. A latest native report qualified zero Current delta and two
 retained Retail-to-Current byte changes. No game was launched; execution remains queued
 for manual verification. Evidence and exact package are private local-output artifacts.
+
+Drag validation: the native editor moved X256 to X1664 while retaining Z3264 and
+facing3. No request/history during drag, Escape and camera cancellation, restored
+reviewed Apply, one-step Undo/Redo and Save/Open passed. Final Build directory and
+delivered ZIP full MAN readback match the expected native output. Zero browser errors.
+Evidence: `local-output/sdk-20260909/arrival-gizmo-final-20261004/`.

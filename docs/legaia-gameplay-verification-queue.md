@@ -1,5 +1,28 @@
 # Deferred gameplay verification
 
+## Arrival drag delivery - 2026-10-04
+
+Offline editor and native package validation passed; gameplay remains deferred.
+Project: `local-output/sdk-20260909/arrival-gizmo-final-20261004/project/`.
+Package: `local-output/sdk-20260909/arrival-gizmo-final-20261004/build/legaia.sdk.0f096fa3c17d-0.1.0-e44ec61400c4d1c3.psxmod`.
+SHA-256: `7e4a100debc5d0c252a3ff2e312436dc53f4f955fb4015ac666a698488603a80`.
+Proof: `local-output/sdk-20260909/arrival-gizmo-final-20261004/proof.json`.
+
+The same source `transition://town01/scripts/man-p2/0000/0016` now has saved
+X1664/Z3264, facing sector3, after a local X-handle draft from X256 followed by
+explicit Review/Apply. Both full decompressed MAN and ZIP readback match the native
+serializer, with only offsets28574/28576 changed against Retail. Drag itself created
+no history or Review/authoring requests; Apply created one Undo step. Escape restored
+both an unreviewed draft and a prior reviewed proof; camera input cancelled a Z drag.
+Save/Open, Undo/Redo and zero-browser-error checks passed.
+
+Later, execute the qualified Town01 source transition and compare map01 arrival
+position/facing with the saved entry and live inspector. Check movement, exits and
+save/load stability. Reference Y is not an authored height. This queue entry supersedes
+the prior X256 arrival package for this drag-control example only. No game was launched,
+package installed or Retail disc exported during validation.
+
+
 ## Reviewed destination arrival authoring - 2026-10-04
 
 Offline validation passed; gameplay is deferred. Private project:

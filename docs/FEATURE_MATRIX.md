@@ -1,5 +1,26 @@
 # Legaia SDK feature matrix
 
+## Arrival draft X/Z handles - 2026-10-04
+
+The destination viewport now has opt-in Move arrival draft handles. Raw guest X/Z
+axes use the same scene transform and camera as the geometry, snap to 64 units and
+reject points outside 64..16384. Facing remains unchanged; reference Y is never
+authored. Purple Draft is distinct from green reviewed Proposed. Dragging sends no
+Review or authoring request and creates no history; explicit Review and Apply retain
+the normal source-qualified serializer and one-step Undo workflow. Escape, camera,
+viewport, focus, move-mode and source-context changes cancel an unfinished drag.
+Cancellation restores the previous local draft/review only while its source remains
+current. Numeric controls remain available. Marker labels avoid each other.
+
+Focused grid/provenance guards and native Town01-to-map01 editor checks passed:
+draft-only movement, X/Z handles without Y, facing preservation, Escape/camera
+cancellation, restored reviewed Apply, refreshed Current, Save/Open and Undo/Redo.
+Normal Build directory and delivered ZIP MAN readback match the complete expected
+native output. Evidence: `local-output/sdk-20260909/arrival-gizmo-final-20261004/`.
+No game was launched; arrival execution remains queued for later manual verification.
+This completes the arrival drag control, not the full SDK buildout.
+
+
 ## Reviewed arrival authoring in the destination viewport - 2026-10-04
 
 The arrival comparison now authors the existing source transition through destination
