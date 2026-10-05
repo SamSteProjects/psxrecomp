@@ -51,3 +51,9 @@ for(const [indices,offset] of [[[],[0,0,0]],[[0,0],[0,0,0]],[[2],[0,0,0]],[[true
 const groupRequest={...request,operation:'vertex_translation',values:{indices:[0,1],offset:[16,-8,32]}},groupReport={...report,operation:'vertex_translation',values:groupRequest.values};
 assert.deepEqual(qualifyObjectMoveReview(groupReport,groupRequest,expected),groupReport);assert.throws(()=>qualifyObjectMoveReview({...groupReport,values:{indices:[0],offset:[16,-8,32]}},groupRequest,expected));
 console.log('Vertex groups: bounded unique local indices, exact subset movement, immutable Current, overflow and scene review identity passed');
+
+const {qualifyVertexGroupRecall}=await import('../editor/model-vertex-move.js');
+const savedGroup={id:'vertex-group://fixture',name:'Region',scene_id:'scene://fixture',import_sha256:'a'.repeat(64),asset_id:request.asset_id,object_index:1,indices:[0,1],source_sha256:'b'.repeat(64),allocation_key:null,review_key:'c'.repeat(64)},recall={schema_version:'legaia.model-vertex-group-review.v1',...savedGroup,project_source_key:'d'.repeat(64),read_only:true};
+assert.deepEqual(qualifyVertexGroupRecall(recall,savedGroup,recall.project_source_key,request.asset_id,source.preview.objects),recall);
+for(const changed of [{read_only:false},{indices:[1]},{object_index:0},{project_source_key:'a'.repeat(64)},{review_key:'a'.repeat(64)},{asset_id:'asset://other'}])assert.throws(()=>qualifyVertexGroupRecall({...recall,...changed},savedGroup,recall.project_source_key,request.asset_id,source.preview.objects));
+console.log('Saved vertex groups: exact source, object, membership, saved review identity and read-only recall qualification passed');

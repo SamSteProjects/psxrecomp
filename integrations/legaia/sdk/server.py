@@ -1454,6 +1454,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_vertex_users import inspect
                     self._json(200,inspect(self.server.project,body['asset_id'],body['object_index'],body['vertex_index'],body['expected_sha256'],body['source_key']))
                     return
+                if route == '/api/model-vertex-group-review':
+                    if set(body)!={'group_id','review_key','source_key'}:raise ProjectError('Saved group recall requires identity, review key and current scene source')
+                    from .model_vertex_groups import review
+                    self._json(200,review(self.server.project,body['group_id'],body['review_key'],body['source_key']))
+                    return
                 if route == '/api/model-vertices-translation':
                     if set(body) != {'asset_id','object_index','indices','offset','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Vertex group translation requires model, object, indices, XYZ offset and inspected hash')

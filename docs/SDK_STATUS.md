@@ -1,5 +1,35 @@
 # Legaia SDK status — 2026-10-05
 
+## Reusable saved model vertex groups - 2026-10-05
+
+Selected vertex group scope now has a project-local library: Save, Recall, Rename,
+Update membership and Delete. Up to128 named groups retain stable UUIDs, model/scene
+identity, object-local indices and source provenance. Names are unique per model.
+Save/Open and project copy preserve them. Create/rename/update/delete use ordinary
+project commands, dirty tracking and Undo/Redo; selection metadata never edits game
+geometry. Recall is read-only and fills the local group at zero offsets. Dirty,
+invalid offsets, gizmo/marquee gestures, pending requests and changed context lock library actions.
+
+Retail rows bind to the original model hash and retain ownership across coordinate
+and compatible content edits. Allocated rows/objects additionally bind to the typed
+vector/object allocation fingerprint. This fingerprint is deliberately strict:
+another allocation invalidates recall for allocated selections until explicitly
+updated against Current. It never silently substitutes a reused index. Group validation on Open checks
+portable metadata without disc access; recall requalifies Current row bounds, source,
+scene key and the saved review key. Reimport cannot reinterpret selections/history.
+The source import, authored geometry, pose and selection metadata stay separate.
+
+Native Town01 model0000 passed create, local recall, rename, membership update,
+delete/Undo/Redo, Save/Open, then recalled rows1/2 and applied X16 to exactly those
+rows. Recall still worked after the coordinate edit. All first-phase model content,
+imported records, scene overrides and Authored files stayed unchanged; metadata and
+geometry used separate history entries. Recall snapshots are read-only. Screenshots
+inspected, zero page errors/game launches. Paired normal Builds with/without the
+library emitted identical native payloads.25 focused project/library/copy/view/
+selection checks plus JavaScript exact-recall guards passed. Private evidence:
+`local-output/sdk-20260909/saved-vertex-groups-20261005/proof.json`.
+No new gameplay acceptance gate; existing movement output remains queued. Goal active.
+
 ## Marquee selection for model vertex groups - 2026-10-05
 
 In Selected vertex group scope, Shift-drag a rectangle to replace membership;
