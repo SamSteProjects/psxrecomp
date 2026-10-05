@@ -20,7 +20,7 @@ def source(project,asset_id,expected_key):
         addressable_table_limit=MAX_ADDRESSABLE_VECTORS,
         objects=[dict(object_index=obj['object_index'],vertex_count=obj['vertex_count'],normal_count=obj['normal_count'],
             primitive_count=len(obj['primitives'])) for obj in inspect_model_primitives(effective,include_normal_references=True)['objects']],
-        topology=deepcopy(audit),preview=decode_tmd(effective),project_changed=False,gameplay_verified=False)
+        topology=deepcopy(audit),preview=decode_tmd(effective),retail_preview=decode_tmd(original),project_changed=False,gameplay_verified=False)
     if source_key(project)!=expected_key:raise ProjectError('Project changed during vector allocation inspection')
     return _budget(report,64*1024*1024)
 

@@ -4,8 +4,11 @@ In Edit model vectors, select an existing vertex and choose **Move inspected ver
 in 3D**. The viewport shows object-local geometry with a wireframe overlay. Move
 the X/Y/Z handles, or type three signed16 coordinates. Positive source Y points
 down in the display. Snap steps are 1, 16 and 64 source units. Frame object changes
-only the camera. Current/Draft switches between inspected geometry and the local
-vertex draft; this viewport does not reconstruct Retail lighting or texture residency.
+only the camera. Retail/Current/Draft switches between imported geometry, inspected
+authored geometry and the local vertex draft. Retail uses original topology and
+disables picking/handles; this viewport does not reconstruct Retail lighting or
+texture residency. Reset draft vertex to Retail copies the original row into a
+local draft and still requires Apply. Appended rows/objects have no Retail reset.
 
 Only the selected native vertex row changes. Normals, topology, other vectors and
 other objects stay fixed. A dirty or invalid draft locks object/index selection
@@ -145,3 +148,29 @@ comparison, both return paths and changed-draft late-reply rejection with comple
 project/history/assets unchanged. Normal Apply parity and retention of authored
 face/topology content passed focused checks. Private native evidence and screenshots:
 `local-output/sdk-20260909/vertex-scene-20261005/`. Gameplay remains deferred.
+
+
+## Retail comparison and vertex reset in the movement workspace - 2026-10-05
+
+Move model geometry now offers Retail, Current and Draft layers. Retail loads the
+independently decoded imported geometry, including its original face topology;
+Current retains all authored changes. Layer switching retains the local draft and
+camera. Retail comparison hides handles and disables picking. Original object-local
+row identity is retained; appended vectors and copied objects have no Retail counterpart.
+
+Reset draft vertex to Retail copies only that original signed16 XYZ into the local
+draft. Explicit Apply uses the existing hash-qualified vector command and creates
+one ordinary history step. Whole-object reset is unavailable. Source qualification
+rejects malformed coordinates, ownership and face ranges; baseline reads write no
+project/history/authored files. Added source data remains under the existing response
+budget.
+
+Native Town01 model0000 object0 vertex0 reset from Current352/-32/241 to
+Retail320/-32/241 passed comparison, draft retention/locks, Apply, refreshed baseline,
+Undo/Redo and Save/Open. The complete project document and authored files were
+unchanged before Apply; only that vector changed, with vertex1's authored368/0/145
+retained. Zero page errors and game launches. Screenshots inspected. Focused source
+HTTP/history and JavaScript baseline/ownership/malformed-data checks passed.
+Evidence: `local-output/sdk-20260909/retail-movement-20261005/proof.json`.
+No new gameplay verification gate or package is required for this editor workflow;
+in-game appearance remains on the existing manual queue. The SDK goal stays active.

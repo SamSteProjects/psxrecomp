@@ -31,3 +31,13 @@ const vectorRequest={...request,operation:'vector',kind:'vertices',vector_index:
 assert.deepEqual(qualifyObjectMoveReview(vectorReport,vectorRequest,vectorExpected),vectorReport);
 for(const changes of [{vector_index:0},{kind:'normals'},{values:[16,17,19]},{operation:'translation'}])assert.throws(()=>qualifyObjectMoveReview({...vectorReport,...changes},vectorRequest,vectorExpected));
 console.log('Vertex scene review: exact vector owner/index/kind/XYZ and candidate geometry passed');
+
+const {retailMovementSource,retailMovementVertex}=await import('../editor/model-vertex-move.js');
+const retail={schema_version:'legaia.model-preview.v1',coordinate_system:'retail_tmd_object_local',posed:false,objects:[{object_index:0,vertex_start:0,vertex_count:3,triangle_start:0,triangle_count:1}],vertices:[[1,2,3],[4,5,6],[7,8,9]],triangles:[[0,1,2]]};
+const current={preview:{objects:[{object_index:0,vertex_count:4},{object_index:1,vertex_count:3}]},retail_preview:retail},baseline=retailMovementSource(current);
+assert.deepEqual(baseline,retail);assert.deepEqual(retailMovementVertex(baseline,0,1),[4,5,6]);
+const copied=retailMovementVertex(baseline,0,1);copied[0]=99;assert.equal(baseline.vertices[1][0],4);baseline.vertices[0][0]=99;assert.equal(retail.vertices[0][0],1);
+for(const [owner,index] of [[0,3],[1,0],[-1,0],[0,-1],[0,.5]])assert.equal(retailMovementVertex(baseline,owner,index),null);
+for(const mutate of [p=>p.posed=true,p=>p.coordinate_system='scene',p=>p.objects[0].vertex_start=1,p=>p.objects[0].vertex_count=5,p=>p.objects[0].triangle_count=2,p=>p.triangles[0][0]=3,p=>p.vertices[0][0]=32768,p=>p.vertices[0][0]=.5]){const bad=structuredClone(current);mutate(bad.retail_preview);assert.throws(()=>retailMovementSource(bad));}
+assert.throws(()=>retailMovementSource({preview:current.preview}));
+console.log('Retail movement: independent topology, immutable source/row copies, absent appended rows/objects and malformed ranges/coordinates passed');
