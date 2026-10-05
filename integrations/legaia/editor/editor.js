@@ -61,6 +61,7 @@ import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
+import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
 import {focusScriptInspectorFamily} from '/script-inspector-navigation.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
@@ -2740,6 +2741,7 @@ async function exportNpcDrafts(entityId){
   }catch(error){message.textContent=error.message;notify(error.message,true);}
   finally{exporting=false;close.disabled=false;setBusy(false);}
 }
+const inspectorComponentFilterState={query:'',authoredOnly:false};
 function renderInspector(){
   const resource=selectedSceneResource();if(resource){renderSceneResourceInspector(resource);return;}
   const npc=selectedNpcDraft();
@@ -2900,6 +2902,7 @@ function renderInspector(){
   }
   html+=renderUnregisteredComponents(state.inspector_schema,components,renderedComponents);
   $('inspector').innerHTML=html;
+  mountInspectorComponentFilter($('inspector'),{authored:entity.authored_components??[],state:inspectorComponentFilterState,current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id});
   bindComponentActions($('inspector'),actorActions,{current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id,editable:canEdit,busy:()=>busy,onError:error=>notify(error.message,true)});
   const inspectorContext=resourceStateKey();
   bindComponentReferences($('inspector'),{current:()=>inspectorContext===resourceStateKey()&&selected()?.id===entity.id,busy:()=>busy,records:()=>assetRecords(true),discover:()=>refreshResources(),open:record=>showAssetDetails(record,()=>assetRecords(true)),onError:error=>notify(error.message,true)});

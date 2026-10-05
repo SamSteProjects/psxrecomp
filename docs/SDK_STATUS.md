@@ -1,5 +1,30 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Actor Inspector component filtering
+
+The actor Inspector now has **Filter Inspector components**, **Authored only**
+and **Reset filter**. Text search matches component identity, heading and displayed
+values. Authored-only uses the SDK's explicit authored component list; matching
+words or live/derived values do not imply authored ownership. A visible/total count
+makes an empty result explicit. Registered and fallback components expose stable
+UI markers so filtering does not depend on guessed heading names.
+
+Filters are local display preferences retained across actor selections and panel
+refreshes. They write no project settings, overrides, history or Build input.
+Reset restores all sections. Existing source/reference/actions and separate
+retail/authored/live values remain in their sections; search does not decode or
+rewrite them. This first workspace filter applies to actor component Inspectors.
+
+Validation: focused identity/search checks, shared component renderer and asset
+action checks passed. A private Town01 browser workflow verified authored-only
+selection, ID search, empty results and exact Reset with unchanged component data,
+history, dirty flag and source key. The source-editor action still focused the
+wait family afterward; Undo/Redo presence and Save/Open passed. Screenshot inspected,
+zero page errors. Evidence: ignored
+`local-output/sdk-20260909/inspector-component-filter-20261004/parent/proof.json`.
+No game launched; gameplay acceptance remains deferred.
+
+
 ## 2026-10-04: Component-directed script source navigation
 
 Registered Inspector actions now carry their component identity to their existing

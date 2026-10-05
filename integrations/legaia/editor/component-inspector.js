@@ -15,6 +15,9 @@ export function componentDefinition(schema,id){
   return definition;
 }
 export function renderComponentProperties(schema,id,component,editable=false,referenceNavigation=false){
+  return `<div data-component-content="${escape(id)}">${renderPropertyContent(schema,id,component,editable,referenceNavigation)}</div>`;
+}
+function renderPropertyContent(schema,id,component,editable=false,referenceNavigation=false){
   const definition=componentDefinition(schema,id);
   if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(p,component,referenceNavigation)).join('')+notes(definition);
   if(definition.layout==='layered-properties'){
@@ -43,7 +46,7 @@ export function propertyCommand(schema,componentId,propertyId,entityId,text){
 
 export function renderUnregisteredComponents(schema,components,handled){
   if(schema?.unknown_component_policy!=='read-only-details')throw new Error('Unsupported component fallback');
-  return Object.entries(components).filter(([id])=>!handled.includes(id)).map(([id,value])=>`<section class="component"><h3>${escape(schema.components?.[id]?.label??id)} <small>Read only · no registered editor</small></h3><p class="field-note">Properties are displayed as supplied by the SDK. No authoring or runtime-write capability is inferred.</p><details><summary>SDK component details</summary><pre>${escape(JSON.stringify(value,null,2))}</pre></details></section>`).join('');
+  return Object.entries(components).filter(([id])=>!handled.includes(id)).map(([id,value])=>`<section class="component" data-component-content="${escape(id)}"><h3>${escape(schema.components?.[id]?.label??id)} <small>Read only · no registered editor</small></h3><p class="field-note">Properties are displayed as supplied by the SDK. No authoring or runtime-write capability is inferred.</p><details><summary>SDK component details</summary><pre>${escape(JSON.stringify(value,null,2))}</pre></details></section>`).join('');
 }
 
 export function renderComponentDetails(schema,id,component){
