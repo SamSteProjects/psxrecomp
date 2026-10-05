@@ -1,5 +1,33 @@
 # Legaia SDK status — 2026-10-04
 
+## Trigger group viewport comparison - 2026-10-04
+
+Reviewed trigger groups can now be inspected as Retail, Current or Proposed cells
+in the central scene viewport. All selected cells receive a distinct outline, and
+Frame reviewed group fits their combined bounds. The floating comparison control
+switches layers without Apply; Return to group review restores the source display
+and retains the accepted proposal and offsets. Restore source cells closes the tool.
+Changed drafts, closed reviews and stale sources remove temporary geometry. Busy
+and source/project guards apply. The Inspector reports the selected group's actual
+layer bounds. Cell geometry uses raw128-unit half-open X/Z cells on Y=0, explicitly
+an unknown-height reference plane; no floor or activation semantics are inferred.
+
+Focused geometry, renderer, group lifecycle and existing single-cell JavaScript
+checks passed, including bounded framing, byte-coordinate extremes, detached
+geometry, group highlighting/canvas state, layer switching, retained Return, busy
+Return and stale cleanup. A fresh native vell browser workflow verified Current
+and Proposed Inspector bounds, read-only viewport comparison, retained Return,
+then one Apply and one Retail reset. Project document and unrelated script binding
+were restored, SDK selection unchanged, two Undo steps, zero page errors. Current,
+Proposed and narrow review screenshots were inspected; the floating control gained
+an opaque panel for readability and the workflow was rerun. Evidence:
+`local-output/sdk-20260909/trigger-group-viewport-20261004/final/proof.json`.
+The prior native Build/ZIP byte-ownership check remains separate; no backend or
+serializer changed in this milestone. No game launched or installed output changed.
+Contact, shadowing, height and activation need gameplay acceptance. The full SDK
+goal stays active and solo.
+
+
 ## Atomic trigger group authoring - 2026-10-04
 
 The registered trigger Inspector now offers Move trigger cell group for existing

@@ -1,4 +1,5 @@
 import {triggerCellSource} from './trigger-cells.js';
+import {fieldSpatialFrame} from './field-spatial.js';
 const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const hash=v=>typeof v==='string'&&/^[0-9a-f]{64}$/.test(v);
 const cells=v=>exact(v,['tile_x','tile_z'])&&Object.values(v).every(n=>Number.isSafeInteger(n)&&n>=0&&n<=255);
@@ -33,8 +34,20 @@ export function decodeTriggerGroup(value,records,state,request){
   return structuredClone(value);
 }
 
+export function triggerGroupGeometry(report,layer='proposed'){
+  if(!['imported','current','proposed'].includes(layer)||report?.schema_version!=='legaia.trigger-group-review.v1'||report.read_only!==true||report.scope!=='source-MAP-trigger-cell-only'||report.height_status!=='unknown'||report.activation!=='not_evaluated'||report.gameplay_verified!==false||!Array.isArray(report.rows)||report.rows.length<1||report.rows.length>128||!Array.isArray(report.trigger_ids)||report.rows.length!==report.trigger_ids.length)fail('Trigger group geometry requires qualified source cells on an unknown-height reference plane.');
+  const seen=new Set();return report.rows.map((row,index)=>{
+    if(typeof row.trigger_id!=='string'||!/^trigger:\/\/[A-Za-z0-9_-]{1,128}\/field-map\/primary\/kind-[01]\/[0-9]{4}$/.test(row.trigger_id)||row.trigger_id!==report.trigger_ids[index]||'scene://'+row.trigger_id.split('/')[2]!==report.scene_id||Number(row.trigger_id.slice(-4))>2042||seen.has(row.trigger_id)||!cells(row.layers?.[layer]))fail('Trigger group geometry has invalid cell identities or coordinates.');
+    seen.add(row.trigger_id);const {tile_x:x,tile_z:z}=row.layers[layer];
+    return {id:row.trigger_id,kind:'trigger',world_bounds:{x_min:x*128,x_max:(x+1)*128,z_min:z*128,z_max:(z+1)*128},world_center:{x:(x+.5)*128,y:0,z:(z+.5)*128}};
+  });
+}
+export function triggerGroupFrame(report,layer='proposed'){
+  const rows=triggerGroupGeometry(report,layer),bounds={x_min:Math.min(...rows.map(row=>row.world_bounds.x_min)),x_max:Math.max(...rows.map(row=>row.world_bounds.x_max)),z_min:Math.min(...rows.map(row=>row.world_bounds.z_min)),z_max:Math.max(...rows.map(row=>row.world_bounds.z_max))};
+  return fieldSpatialFrame({id:rows[0].id,kind:'trigger',world_bounds:bounds,world_center:{x:(bounds.x_min+bounds.x_max)/2,y:0,z:(bounds.z_min+bounds.z_max)/2}});
+}
 const element=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
-export function openTriggerGroup({record,records,getState,current,busy,setBusy,api,onError=()=>{}}){
+export function openTriggerGroup({record,records,getState,current,busy,setBusy,api,onInspection=()=>{},onFrame=()=>{},onError=()=>{}}){
   if(busy()||!current()||getState().project?.mode!=='edit')return null;
   const state=getState(),key=state.project_copy_source_key,scene=state.scene.id,available=records.filter(row=>row.type==='trigger'&&row.sceneId===scene&&row.data?.table_source==='primary'&&[0,1].includes(row.data?.table_kind));
   for(const row of available)triggerCellSource(row,state);
@@ -47,12 +60,16 @@ export function openTriggerGroup({record,records,getState,current,busy,setBusy,a
   const controls=element('div');Object.assign(controls.style,{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:'12px'});const offsets={};for(const axis of ['x','z']){const label=element('label',`Tile offset ${axis.toUpperCase()}`),input=element('input');input.type='number';input.min='-255';input.max='255';input.step='1';input.value='0';input.setAttribute('aria-label',`Trigger group tile offset ${axis.toUpperCase()}`);Object.assign(input.style,{width:'100%',minWidth:'0'});label.append(input);controls.append(label);offsets[axis]=input;}
   const status=element('p');status.setAttribute('role','status');const output=element('div'),actions=element('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';
   const button=text=>{const node=element('button',text);node.type='button';actions.append(node);return node;},review=button('Review group move'),retail=button('Review Retail cells'),apply=button('Apply reviewed group');dialog.append(heading,note,list,controls,status,output,actions);
-  let closed=false,pending=false,controller=null,accepted=null,generation=0;
+  const inspectButtons=[];for(const [layer,label] of [['imported','Retail'],['current','Current'],['proposed','Proposed']]){const inspect=button(`Inspect ${label} group cells`);inspect.dataset.groupInspect=layer;inspectButtons.push(inspect);}
+  const frame=button('Frame reviewed group');
+  const strip=element('div');strip.id='trigger-group-preview';strip.hidden=true;strip.className='project-dialog';Object.assign(strip.style,{position:'fixed',bottom:'18px',right:'18px',zIndex:'100',width:'min(440px,90vw)',padding:'12px'});const previewNote=element('p'),layerChoice=element('select');layerChoice.setAttribute('aria-label','Trigger group inspection layer');for(const [layer,label] of [['imported','Retail'],['current','Current'],['proposed','Proposed · not applied']]){const option=element('option',label);option.value=layer;layerChoice.append(option);}const returnButton=element('button','Return to group review'),restore=element('button','Restore source cells');strip.append(previewNote,layerChoice,returnButton,restore);
+  let closed=false,pending=false,controller=null,accepted=null,generation=0,retainedClose=false,inspectionLayer=null;
   const fresh=()=>!closed&&current()&&getState().project?.mode==='edit'&&getState().project_copy_source_key===key;
   const selection=()=>choices.filter(input=>input.checked).map(input=>input.value).sort();
-  const withdraw=()=>{generation++;accepted=null;output.replaceChildren();status.textContent='Selection or offset changed. Review again.';refresh();};
-  function refresh(){const blocked=pending||busy()||!fresh(),count=selection().length;for(const input of [...choices,...Object.values(offsets)])input.disabled=blocked;review.disabled=retail.disabled=blocked||count<1||count>128;apply.disabled=blocked||!accepted?.project_change;}
-  function dispose(){if(closed)return;closed=true;generation++;controller?.abort();if(controller)setBusy(false);controller=null;if(dialog.open)dialog.close();dialog.remove();}
+  const restoreInspection=()=>{if(inspectionLayer!==null){inspectionLayer=null;onInspection(null);}strip.hidden=true;};
+  const withdraw=()=>{generation++;accepted=null;restoreInspection();output.replaceChildren();status.textContent='Selection or offset changed. Review again.';refresh();};
+  function refresh(){if(closed)return;if(!fresh()){dispose();return;}const blocked=pending||busy()||!fresh(),count=selection().length;for(const input of [...choices,...Object.values(offsets)])input.disabled=blocked;review.disabled=retail.disabled=blocked||count<1||count>128;apply.disabled=blocked||!accepted?.project_change;for(const button of [...inspectButtons,frame,returnButton])button.disabled=blocked||!accepted;layerChoice.disabled=blocked||!accepted;if(!fresh())restoreInspection();}
+  function dispose(){if(closed)return;closed=true;generation++;restoreInspection();controller?.abort();if(controller)setBusy(false);controller=null;if(dialog.open)dialog.close();dialog.remove();strip.remove();}
   async function load(action){if(pending||busy()||!fresh())return;accepted=null;output.replaceChildren();const delta=action==='retail'?{x:0,z:0}:Object.fromEntries(Object.entries(offsets).map(([axis,input])=>[axis,input.value.trim()?Number(input.value):NaN])),request={scene_id:scene,trigger_ids:selection(),delta,action};if(Object.values(delta).some(n=>!Number.isSafeInteger(n)||Math.abs(n)>255)){status.textContent='Enter integer tile offsets in -255..255.';refresh();return;}
     const active=new AbortController(),token=++generation;controller=active;pending=true;setBusy(true);refresh();status.textContent='Qualifying selected source cells…';
     try{const response=await fetch('/api/trigger-group-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request),signal:active.signal}),value=await response.json();if(!fresh()||active.signal.aborted||token!==generation)return;if(!response.ok||value.error)fail(value.error??'Trigger group review failed.');accepted=decodeTriggerGroup(value,available,getState(),request);
@@ -60,5 +77,9 @@ export function openTriggerGroup({record,records,getState,current,busy,setBusy,a
     }catch(error){if(!closed&&token===generation&&error.name!=='AbortError'){accepted=null;status.textContent=error.message;onError(error);}}finally{if(controller===active){controller=null;pending=false;setBusy(false);}refresh();}}
   for(const input of [...choices,...Object.values(offsets)])input.oninput=withdraw;
   review.onclick=()=>load('translate');retail.onclick=()=>load('retail');apply.onclick=async()=>{if(pending||busy()||!fresh()||!accepted?.project_change)return;const report=accepted;pending=true;refresh();try{if(await api('/api/trigger-group-apply',{type:'apply_trigger_group',scene_id:scene,trigger_ids:report.trigger_ids,delta:report.delta,action:report.action,review_key:report.review_key})){dispose();return;}withdraw();}catch(error){withdraw();status.textContent=error.message;onError(error);}finally{pending=false;refresh();}};
-  close.onclick=()=>dialog.close();dialog.addEventListener('close',dispose);dialog.dispose=dispose;dialog.refresh=refresh;document.body.append(dialog);dialog.showModal();refresh();status.textContent='Choose cells and review a move or Retail reset.';return dialog;
+  const inspect=layer=>{if(pending||busy()||!fresh()||!accepted||!['imported','current','proposed'].includes(layer))return false;triggerGroupGeometry(accepted,layer);inspectionLayer=layer;layerChoice.value=layer;previewNote.textContent=`${accepted.rows.length} ${layer==='imported'?'Retail':layer==='current'?'Current':'Proposed · not applied'} group cells · Y=0 reference plane · height and activation unknown`;strip.hidden=false;onInspection(accepted,layer);return true;};
+  for(const button of inspectButtons)button.onclick=()=>{if(!dialog.open||!inspect(button.dataset.groupInspect))return;retainedClose=true;dialog.close();onFrame(accepted,inspectionLayer);refresh();};
+  layerChoice.onchange=()=>{if(!strip.hidden)inspect(layerChoice.value);};frame.onclick=()=>{if(!pending&&!busy()&&fresh()&&accepted)onFrame(accepted,inspectionLayer??'proposed');};
+  returnButton.onclick=()=>{if(pending||busy()||!fresh()||!accepted)return;restoreInspection();dialog.showModal();refresh();};restore.onclick=dispose;
+  close.onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(retainedClose){retainedClose=false;return;}dispose();});dialog.dispose=dispose;dialog.refresh=refresh;document.body.append(dialog,strip);dialog.showModal();refresh();status.textContent='Choose cells and review a move or Retail reset.';return dialog;
 }

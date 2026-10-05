@@ -65,7 +65,8 @@ function projectedRecord(record,project){
   return {record,corners,center};
 }
 
-export function drawFieldSpatial(ctx,records,project,width,height,selectedId=null){
+export function drawFieldSpatial(ctx,records,project,width,height,selectedId=null,highlightIds=[]){
+  const highlighted=new Set(Array.isArray(highlightIds)&&highlightIds.length<=128?highlightIds:[]);highlighted.add(selectedId);
   if(!Array.isArray(records)||records.length>4096||typeof project!=='function'||!Number.isFinite(width)||!Number.isFinite(height)||width<=0||height<=0||width>32768||height>32768||!ctx||['save','restore','beginPath','rect','clip','moveTo','lineTo','closePath','fill','stroke','arc'].some(key=>typeof ctx[key]!=='function'))return 0;
   const visible=[];
   for(const record of records){
@@ -75,12 +76,12 @@ export function drawFieldSpatial(ctx,records,project,width,height,selectedId=nul
     visible.push(result);
   }
   // Keep the selected source row legible over other rows sharing its tile.
-  visible.sort((a,b)=>Number(a.record.id===selectedId)-Number(b.record.id===selectedId));
+  visible.sort((a,b)=>Number(highlighted.has(a.record.id))-Number(highlighted.has(b.record.id)));
   ctx.save();
   try{
     ctx.beginPath();ctx.rect(0,0,width,height);ctx.clip();
     for(const {record,corners,center} of visible){
-      const selected=record.id===selectedId,region=record.kind==='region';
+      const selected=highlighted.has(record.id),region=record.kind==='region';
       ctx.fillStyle=region?(selected?'rgba(247,191,79,.24)':'rgba(247,191,79,.10)'):(selected?'rgba(91,212,220,.28)':'rgba(91,212,220,.12)');
       ctx.strokeStyle=selected?'#f5f8ff':region?'#f7bf4f':'#5bd4dc';ctx.lineWidth=selected?2.5:1.2;
       ctx.beginPath();ctx.moveTo(corners[0].x,corners[0].y);for(const point of corners.slice(1))ctx.lineTo(point.x,point.y);ctx.closePath();ctx.fill();ctx.stroke();

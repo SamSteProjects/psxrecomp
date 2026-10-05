@@ -38,7 +38,7 @@ import {decodeFieldSpatial,drawFieldSpatial,hitFieldSpatial,fieldSpatialFrame} f
 import {openRegionBounds,decodeRegionBoundsAnnotations,regionBoundsGeometry} from '/region-bounds.js';
 import {openTriggerCells,decodeTriggerCellsAnnotations,triggerCellsGeometry} from '/trigger-cells.js';
 import {openTriggerScripts} from '/trigger-scripts.js';
-import {openTriggerGroup} from '/trigger-group.js';
+import {openTriggerGroup,triggerGroupGeometry,triggerGroupFrame} from '/trigger-group.js';
 import {decodeTransitionGraph} from '/transition-graph.js';
 import {mountTransitionGraphWorkspace} from '/transition-graph-workspace.js';
 import {openModelPrimitiveEditor,decodeModelPrimitives} from '/model-primitives.js';
@@ -1780,7 +1780,7 @@ let fieldMap=null,fieldKey=null,fieldAbort=null,fieldPending=false,wallSelectMod
 let fieldSpatial=null,fieldSpatialKey=null,fieldSpatialAbort=null,fieldSpatialPending=false,fieldSpatialVisible=false,fieldSpatialPick=false;
 let regionAnnotations=[],regionInspection=null,regionBoundsDialog=null;
 let triggerAnnotations=[],triggerInspection=null,triggerCellsDialog=null;
-let triggerScriptsDialog=null,triggerGroupDialog=null;
+let triggerScriptsDialog=null,triggerGroupDialog=null,triggerGroupInspection=null;
 const fieldSpatialToggle=document.createElement('button');fieldSpatialToggle.id='field-spatial-toggle';fieldSpatialToggle.textContent='Source cells';fieldSpatialToggle.setAttribute('aria-pressed','false');collisionLayer.after(fieldSpatialToggle);
 const fieldSpatialPickButton=document.createElement('button');fieldSpatialPickButton.id='field-spatial-pick';fieldSpatialPickButton.textContent='Pick source cell';fieldSpatialPickButton.setAttribute('aria-pressed','false');fieldSpatialToggle.after(fieldSpatialPickButton);
 const fieldSpatialLayer=document.createElement('select');fieldSpatialLayer.id='field-spatial-layer';fieldSpatialLayer.setAttribute('aria-label','Source cell representation');for(const [value,label] of [['imported','Retail source cells'],['effective','Effective source cells']]){const option=document.createElement('option');option.value=value;option.textContent=label;fieldSpatialLayer.append(option);}fieldSpatialLayer.value='effective';fieldSpatialPickButton.after(fieldSpatialLayer);
@@ -1792,12 +1792,12 @@ function selectSceneResource(record,frameNow=false){
   cancelViewportGesture();clearActorGroupSelection();clearEnvironmentGroupSelection();clearScenePlacementSelection();pendingEntityFrame=null;environmentSelection=null;npcDraftSelection=null;sceneResourceSelection=record.id;
   renderHierarchy();renderInspector();$('frame-selected').disabled=!['trigger','region'].includes(record.type);draw();if(frameNow){if(['trigger','region'].includes(record.type))frameSceneResource();else activateAsset(record);}
 }
-function clearFieldSpatial(){triggerGroupDialog?.dispose?.();triggerScriptsDialog?.dispose?.();regionBoundsDialog?.dispose?.();triggerCellsDialog?.dispose?.();regionInspection=null;regionAnnotations=[];triggerInspection=null;triggerAnnotations=[];fieldSpatialAbort?.abort();fieldSpatialAbort=null;fieldSpatial=null;fieldSpatialKey=null;fieldSpatialPending=false;fieldSpatialVisible=false;fieldSpatialPick=false;fieldSpatialNote.hidden=true;}
+function clearFieldSpatial(){triggerGroupDialog?.dispose?.();triggerScriptsDialog?.dispose?.();regionBoundsDialog?.dispose?.();triggerCellsDialog?.dispose?.();regionInspection=null;regionAnnotations=[];triggerGroupInspection=null;triggerInspection=null;triggerAnnotations=[];fieldSpatialAbort?.abort();fieldSpatialAbort=null;fieldSpatial=null;fieldSpatialKey=null;fieldSpatialPending=false;fieldSpatialVisible=false;fieldSpatialPick=false;fieldSpatialNote.hidden=true;}
 function updateFieldSpatialTools(){
   fieldSpatialToggle.hidden=!state.capabilities?.field_map_preview;fieldSpatialToggle.disabled=busy||fieldSpatialPending;fieldSpatialToggle.classList.toggle('active',fieldSpatialVisible&&!!fieldSpatialCurrent());fieldSpatialToggle.setAttribute('aria-pressed',String(fieldSpatialVisible&&!!fieldSpatialCurrent()));
   fieldSpatialPickButton.hidden=fieldSpatialToggle.hidden;fieldSpatialPickButton.disabled=busy||fieldSpatialPending||!fieldSpatialVisible||!fieldSpatialCurrent()||wallSelectMode||pickScriptTargets||pickRuntimeNodes||scenePlacementMode||actorBoxMode;
   if(fieldSpatialPickButton.disabled)fieldSpatialPick=false;fieldSpatialPickButton.classList.toggle('active',fieldSpatialPick);fieldSpatialPickButton.setAttribute('aria-pressed',String(fieldSpatialPick));
-  fieldSpatialLayer.hidden=fieldSpatialToggle.hidden;fieldSpatialLayer.disabled=busy||fieldSpatialPending||!fieldSpatialCurrent()||!!regionInspection||!!triggerInspection;
+  fieldSpatialLayer.hidden=fieldSpatialToggle.hidden;fieldSpatialLayer.disabled=busy||fieldSpatialPending||!fieldSpatialCurrent()||!!regionInspection||!!triggerInspection||!!triggerGroupInspection;
   fieldSpatialNote.hidden=!fieldSpatialVisible||!fieldSpatialCurrent();
 }
 async function loadFieldSpatial(){
@@ -1833,7 +1833,9 @@ async function frameSceneResource(){
 function fieldSpatialRows(){
   if(!fieldSpatialCurrent())return [];
   const byId=new Map([...regionAnnotations.map(row=>[row.region_id,row]),...triggerAnnotations.map(row=>[row.trigger_id,row])]);
+  const group=triggerGroupInspection?.key===resourceStateKey()?new Map(triggerGroupGeometry(triggerGroupInspection.report,triggerGroupInspection.layer).map(row=>[row.id,row])):new Map();
   return fieldSpatial.records.map(row=>{
+    if(group.has(row.id))return {...row,...group.get(row.id)};
     if(regionInspection?.key===resourceStateKey()&&regionInspection.report.region_id===row.id)return {...row,...regionBoundsGeometry(regionInspection.report,regionInspection.layer)};
     if(triggerInspection?.key===resourceStateKey()&&triggerInspection.report.trigger_id===row.id)return {...row,...triggerCellsGeometry(triggerInspection.report,triggerInspection.layer)};
     const annotation=fieldSpatialLayer.value==='effective'?byId.get(row.id):null;
@@ -1858,10 +1860,13 @@ async function inspectRegionBounds(record){
 async function inspectTriggerGroup(record){
   if(busy||!canEdit()||resourceKey!==resourceStateKey())return;
   const key=resourceStateKey(),snapshot=JSON.stringify(record),sceneId=state.scene?.id,projectPath=state.project?.path;
-  selectSceneResource(record);triggerGroupDialog?.dispose?.();triggerScriptsDialog?.dispose?.();triggerCellsDialog?.dispose?.();regionBoundsDialog?.dispose?.();
+  if(!await loadFieldSpatial()||key!==resourceStateKey())return;
+  selectSceneResource(record);fieldSpatialPick=false;triggerGroupDialog?.dispose?.();triggerScriptsDialog?.dispose?.();triggerCellsDialog?.dispose?.();regionBoundsDialog?.dispose?.();
   const current=()=>key===resourceStateKey()&&resourceKey===key&&JSON.stringify(assetRecords().find(row=>row.id===record.id))===snapshot;
   triggerGroupDialog=openTriggerGroup({record,records:assetRecords(),getState:()=>state,current,busy:()=>busy,setBusy,
     api:async(route,body)=>{const ok=await api(route,body);if(ok&&state.scene?.id===sceneId&&state.project?.path===projectPath){await refreshResources();const next=assetRecords().find(row=>row.id===record.id);if(next)selectSceneResource(next);}return ok;},
+    onInspection:(report,layer)=>{cancelViewportGesture();triggerGroupInspection=report?{report,layer,key:resourceStateKey()}:null;updateFieldSpatialTools();renderInspector();draw();},
+    onFrame:(report,layer)=>{const framed=triggerGroupFrame(report,layer);camera.target={...framed.target};camera.distance=framed.distance;cameraRevision++;draw();},
     onError:error=>notify(error.message,true)});
 }
 async function inspectTriggerScripts(record){
@@ -1903,7 +1908,7 @@ function renderSceneResourceInspector(record){
   if(['trigger','region'].includes(record.type)){
     const frameButton=document.createElement('button');frameButton.id='frame-source-cell';frameButton.textContent='Frame source cell';frameButton.disabled=busy;frameButton.onclick=()=>{if(current())frameSceneResource();};actions.append(frameButton);
     const row=fieldSpatialCurrent()?fieldSpatialRows().find(item=>item.id===record.id):null;
-    const summary=document.createElement('p');summary.className='field-note';summary.id='source-cell-coordinates';summary.textContent=row?`${triggerInspection?.key===resourceStateKey()&&triggerInspection.report.trigger_id===record.id?({imported:'Retail trigger cell',current:'Current trigger cell',proposed:'Proposed trigger cell'}[triggerInspection.layer]):regionInspection?.key===resourceStateKey()&&regionInspection.report.region_id===record.id?({imported:'Retail region bounds',current:'Current region bounds',proposed:'Proposed region bounds'}[regionInspection.layer]):fieldSpatialLayer.value==='effective'?'Effective source cells':'Retail source cells'} · X [${row.world_bounds.x_min}, ${row.world_bounds.x_max}) · Z [${row.world_bounds.z_min}, ${row.world_bounds.z_max}) · guest units · Y=0 reference plane, height unknown · Activation unverified`:'Frame source cell to load its verified X/Z bounds. Height and activation are unknown.';section.append(summary);
+    const summary=document.createElement('p');summary.className='field-note';summary.id='source-cell-coordinates';summary.textContent=row?`${triggerGroupInspection?.key===resourceStateKey()&&triggerGroupInspection.report.trigger_ids.includes(record.id)?({imported:'Retail group cell',current:'Current group cell',proposed:'Proposed group cell - not applied'}[triggerGroupInspection.layer]):triggerInspection?.key===resourceStateKey()&&triggerInspection.report.trigger_id===record.id?({imported:'Retail trigger cell',current:'Current trigger cell',proposed:'Proposed trigger cell'}[triggerInspection.layer]):regionInspection?.key===resourceStateKey()&&regionInspection.report.region_id===record.id?({imported:'Retail region bounds',current:'Current region bounds',proposed:'Proposed region bounds'}[regionInspection.layer]):fieldSpatialLayer.value==='effective'?'Effective source cells':'Retail source cells'} · X [${row.world_bounds.x_min}, ${row.world_bounds.x_max}) · Z [${row.world_bounds.z_min}, ${row.world_bounds.z_max}) · guest units · Y=0 reference plane, height unknown · Activation unverified`:'Frame source cell to load its verified X/Z bounds. Height and activation are unknown.';section.append(summary);
   }
   const details=document.createElement('button');details.id='source-resource-details';details.textContent='Asset details and references';details.disabled=busy;details.onclick=()=>{if(current()&&!busy)showAssetDetails(record);};actions.append(details);
   const source=document.createElement('details');source.className='resource-provenance';const title=document.createElement('summary');title.textContent='Source record and provenance';const pre=document.createElement('pre');pre.className='diagnostic-detail';pre.textContent=JSON.stringify(record.data,null,2);source.append(title,pre);section.append(source);
@@ -3786,7 +3791,7 @@ function draw(){
   if(pickRuntimeButton.disabled&&pickRuntimeNodes){pickRuntimeNodes=false;pickRuntimeButton.setAttribute('aria-pressed','false');}
 
   if(grid&&!sceneModelsReady()){const spacing=10**Math.floor(Math.log10(camera.distance/7)),half=spacing*12,cx=Math.round(camera.target.x/spacing)*spacing,cz=Math.round(camera.target.z/spacing)*spacing;for(let i=-12;i<=12;i++){line({x:cx+i*spacing,y:0,z:cz-half},{x:cx+i*spacing,y:0,z:cz+half},i===0?'#39504f88':'#33474c66');line({x:cx-half,y:0,z:cz+i*spacing},{x:cx+half,y:0,z:cz+i*spacing},i===0?'#39504f88':'#33474c66');}}
-  drawFieldMap();if(fieldSpatialVisible&&fieldSpatialCurrent())drawFieldSpatial(ctx,fieldSpatialRows(),project,width,height,sceneResourceSelection);drawWallSelection();
+  drawFieldMap();if(fieldSpatialVisible&&fieldSpatialCurrent())drawFieldSpatial(ctx,fieldSpatialRows(),project,width,height,sceneResourceSelection,triggerGroupInspection?.key===resourceStateKey()?triggerGroupInspection.report.trigger_ids:[]);drawWallSelection();
   const items=entities().map(entity=>{const world=sceneView().positions.get(entity.id)??position(entity);return {entity,world,p:project(world)};}).filter(item=>item.p).sort((a,b)=>b.p.depth-a.p.depth);
   for(const {entity,world,p} of items){
     if(!sceneLayers.actors||hiddenSceneEntities().has(entity.id))continue;

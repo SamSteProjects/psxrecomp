@@ -145,3 +145,6 @@ assert.throws(()=>fieldSpatialFrame({...rows[0],world_bounds:{x_min:1,x_max:1,z_
 assert.throws(()=>fieldSpatialFrame(null));
 const large={...broad,world_bounds:{x_min:-65536,x_max:65536,z_min:-65536,z_max:65536},world_center:{x:0,y:0,z:0}};assert.equal(fieldSpatialFrame(large).distance,65536);
 console.log('Field spatial source validation, projection, picking and framing passed.');
+
+const groupCanvas=new Canvas(),groupIds=rows.map(row=>row.id);groupCanvas.strokeStyle='original';drawFieldSpatial(groupCanvas,rows,projection,800,600,null,groupIds);assert.deepEqual(groupCanvas.calls.filter(call=>call[0]==='stroke').map(call=>call.slice(1)),[['#f5f8ff',2.5],['#f5f8ff',2.5]]);assert.deepEqual(groupIds,rows.map(row=>row.id));assert.equal(groupCanvas.depth,0);assert.equal(groupCanvas.strokeStyle,'original');
+console.log('Group cell highlighting retains source records and restores canvas state.');
