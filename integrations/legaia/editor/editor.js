@@ -1853,6 +1853,13 @@ function renderSceneResourceInspector(record){
   const section=document.createElement('section');section.className='component scene-resource-inspector';section.dataset.sceneResource=record.id;host.append(section);
   const current=()=>resourceKey===resourceStateKey()&&key===resourceStateKey()&&sceneResourceSelection===record.id;
   mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,activate:async (item,action)=>{if(current()&&!busy)await activateAsset(item,action);},onError:error=>notify(error.message,true)});
+  if(record.type==='script'&&record.data?.partition===2){
+    const owner=record.data.owner_semantic_id,projectPath=state.project?.path,sceneId=state.scene?.id;
+    if(typeof owner==='string')mountScriptOwnerInspector(host,{owner,getState:()=>state,current,editable:canEditDialogue,busy:()=>busy,api,placement:'end',
+      onInspect:component=>openActorScript({id:owner,name:record.label,partitionTwo:true},false,null,null,null,component),
+      onReset:async()=>{if(projectPath!==state.project?.path||sceneId!==state.scene?.id)return;await refreshResources();if(projectPath!==state.project?.path||sceneId!==state.scene?.id)return;const fresh=assetRecords().find(item=>item.id===record.id&&item.type==='script'&&item.sceneId===sceneId);if(fresh)selectSceneResource(fresh);},
+      onError:error=>notify(error.message,true)});
+  }
   const actions=document.createElement('div');actions.className='dialog-actions';section.append(actions);
   if(['trigger','region'].includes(record.type)){
     const frameButton=document.createElement('button');frameButton.id='frame-source-cell';frameButton.textContent='Frame source cell';frameButton.disabled=busy;frameButton.onclick=()=>{if(current())frameSceneResource();};actions.append(frameButton);

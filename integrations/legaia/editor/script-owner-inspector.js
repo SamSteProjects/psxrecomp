@@ -17,19 +17,20 @@ export function scriptOwnerComponents(record,sceneId){
   return components;
 }
 
-export function mountScriptOwnerInspector(host,{owner,getState,current,editable,busy,api,onReset,onError}){
+export function mountScriptOwnerInspector(host,{owner,getState,current,editable,busy,api,onReset,onError,onInspect,placement='start'}){
   const state=getState(),record=state.authored_assets?.find(row=>row.id===owner);
   const section=document.createElement('section');section.className='script-owner-inspector';
   const heading=document.createElement('h3');heading.textContent='Authored script components';section.append(heading);
   const components=record?scriptOwnerComponents(record,state.scene?.id):{};
-  if(!Object.keys(components).length){const note=document.createElement('p');note.className='field-note';note.textContent='This source owner has no authored script components. Supported source editors below retain their separate retail and effective values.';section.append(note);}
+  if(!Object.keys(components).length){const note=document.createElement('p');note.className='field-note';note.textContent='This source owner has no authored script components. Source inspection keeps retail and effective values separate.';section.append(note);}
   const entity={id:owner,components},actions={
-    'inspect-script':{run:({componentId})=>focusScriptInspectorFamily(host,componentId)},
+    'inspect-script':{run:({componentId})=>onInspect?onInspect(componentId):focusScriptInspectorFamily(host,componentId)},
     'reset-script-component':{requiresEdit:true,run:({componentId})=>openScriptComponentReset({entity,component:componentId,getState,current,editable,busy,api,onReset,onError})}
   };
   for(const [id,value] of Object.entries(components)){
     const part=document.createElement('section');part.className='component';const title=document.createElement('h4');title.textContent=state.inspector_schema.components[id].label;part.append(title);
     const content=document.createElement('div');content.innerHTML=renderComponentProperties(state.inspector_schema,id,value,false,true)+renderComponentActions(state.inspector_schema,id,value,state.capabilities,actions,editable())+renderComponentDetails(state.inspector_schema,id,value);part.append(content);section.append(part);
   }
-  host.prepend(section);bindComponentActions(section,actions,{current,editable,busy,onError});return section;
+  if(placement==='end')host.append(section);else host.prepend(section);
+  bindComponentActions(section,actions,{current,editable,busy,onError});return section;
 }

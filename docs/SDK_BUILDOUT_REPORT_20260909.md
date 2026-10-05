@@ -1,5 +1,25 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Hierarchy-selected script component Inspector
+
+Selecting a verified partition-two script in the scene Hierarchy now exposes
+its authored components in the central Inspector alongside source asset metadata.
+The shared component panel supports counts/details, source-family inspection and
+reviewed reset. Inspection opens the verified source editor at the chosen family.
+After a successful reset, the editor refreshes scene resources and restores the
+same script selection if project and scene still match. Empty authored state stays
+explicit. Existing actor selection, runtime observation and serializers are unchanged.
+
+Validation: shared owner/reset/component JavaScript checks passed. A real Town01
+browser workflow refreshed the catalog, selected partition-two script 0 through
+the hierarchy, inspected its native transition, cancelled a review without writing,
+then reset one component. Resource refresh restored the selected script with an
+empty component summary. One Undo entry, Undo/Redo, Save/Open, unchanged imported
+evidence and zero page errors passed. Screenshot inspected. Evidence: ignored
+`local-output/sdk-20260909/script-hierarchy-inspector-20261004/parent/proof.json`.
+No game launched; runtime execution remains unverified.
+
+
 ## 2026-10-04: Standalone source-owner component Inspector
 
 Verified partition-two script inspection now includes an **Authored script

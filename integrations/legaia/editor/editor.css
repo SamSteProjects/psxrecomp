@@ -237,3 +237,5 @@
 #script-dialog .dialogue-authoring-note,#script-dialog .transition-authoring{scroll-margin-top:90px}
 
 #script-dialog .script-owner-inspector{border:1px solid var(--line);padding:12px;margin:14px 0}#script-dialog .script-owner-inspector .component{border-top:1px solid var(--line);padding-top:10px}#script-dialog .script-owner-inspector h4{margin:8px 0}
+
+#inspector .script-owner-inspector{border-top:1px solid var(--line);margin-top:12px;padding-top:8px}#inspector .script-owner-inspector h4{margin:10px 0;font-size:12px}
