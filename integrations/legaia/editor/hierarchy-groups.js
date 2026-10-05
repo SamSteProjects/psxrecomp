@@ -30,7 +30,13 @@ export function mountHierarchyGroups(root,{state,scope,filter='',current,onVisib
     };
     const set=expanded=>{if(button.disabled||!current())return;if(expanded)state.collapsed.delete(id);else state.collapsed.add(id);update();onVisibility();};
     button.onclick=()=>set(!hierarchyGroupExpanded(id,state,filter));
-    button.onkeydown=event=>{if(!['ArrowLeft','ArrowRight'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;event.preventDefault();set(event.key==='ArrowRight');};
+    button.onkeydown=event=>{
+      if(!['ArrowLeft','ArrowRight'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey||button.disabled||!current())return;
+      event.preventDefault();
+      if(event.key==='ArrowRight'&&hierarchyGroupExpanded(id,state,filter)){
+        members.find(row=>!row.hidden&&!row.disabled)?.focus();
+      }else set(event.key==='ArrowRight');
+    };
     heading.replaceWith(button);update();
   }
 }

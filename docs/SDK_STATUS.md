@@ -1,5 +1,20 @@
 # Legaia SDK status — 2026-10-04
 
+## Hierarchy parent and child keyboard focus - 2026-10-04
+
+Right expands a collapsed group while keeping focus on the header; pressing Right
+again enters its first available child. Left on a child returns focus to its group;
+Left on the header collapses it. These keys only browse the hierarchy. Disabled
+search headers, hidden/disabled children and modifier keys are respected.
+
+Focused Node checks and a real Town01 browser workflow passed across Actors,
+Environment and Scripts, including a later child, one Tab entry and filtered-parent
+handling. SDK selection, authored data, history, dirty state and imports stayed
+unchanged; no navigation API writes or page errors occurred. Screenshot inspected.
+Private evidence: `local-output/sdk-20260909/hierarchy-parent-child-20261004/parent/proof.json`.
+No game launched; this feature requires no immediate gameplay verification.
+
+
 ## Focused stability recheck - 2026-10-04
 
 At SDK source `28bda1d7`, the inspected runtime/precompile source hashes still
