@@ -320,6 +320,26 @@ No game was launched and no physical Retail disc was exported.
 
 ## 2026-10-04: Front and Side orthographic scene views
 
+## Searchable reference browser - 2026-10-04
+
+Reference inspection now filters exact recorded layers and relationship directions,
+and searches neighbor IDs/labels/types, relation labels and provenance with bounded
+plain-text terms. Visible/total counts distinguish no matches from absent recorded
+relationships. Coverage, diagnostics and source proof remain unchanged. Filtering
+uses the accepted snapshot without requests; scope changes requalify while retaining
+filters. Close is beside the title, and controls use a responsive grid. Qualified
+navigation identity and stale/closed request rejection remain intact.
+
+Focused JavaScript filter and existing source/proof/project-navigation checks passed.
+A copied native vell project verified Current and Retail/source filtering, outgoing
+rows, authored-slot ID search, counts, no-match recovery, scope retention and exact
+Inspector navigation. Filter changes issued no reference requests; project document,
+selection and history stayed unchanged, with zero page errors. Desktop/narrow
+screenshots were inspected. No backend, serializer, installed output or game changed.
+Details: [reference browser filters](legaia-reference-browser-filters.md).
+Evidence: `local-output/sdk-20260909/reference-filters-20261004/final/proof.json`.
+The full goal remains active and solo; gameplay stays deferred.
+
 ## Guarded Current material reference reuse - 2026-10-04
 
 Repeated active/project-wide reference inspection now reuses up to two bounded,

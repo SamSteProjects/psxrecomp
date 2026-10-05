@@ -250,3 +250,13 @@
 
 #trigger-group-preview{background:#1b292b;border:1px solid #4f6b60;border-radius:8px;box-shadow:0 8px 24px #0008}
 #trigger-group-preview p{margin:0 0 8px}
+#asset-references-dialog .reference-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+#asset-references-dialog .reference-filters label { min-width: 0; }
+#asset-references-dialog .reference-filters label:last-child { grid-column: 1 / -1; }
+#asset-references-dialog .reference-filters input,
+#asset-references-dialog .reference-filters select { width: 100%; box-sizing: border-box; }
+#asset-references-dialog [data-reference-edge-id] { overflow-wrap: anywhere; }
