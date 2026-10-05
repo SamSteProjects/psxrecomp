@@ -47,11 +47,11 @@ def find_placement(width_words, height, palette_words, rectangles):
     return dict(status='no_fit',placement=None,pair_checks=checks,search_complete=True)
 
 
-def suggest(project, asset_id, expected_source_key, png_content, bpp):
+def _upload_context(project, asset_id, expected_source_key):
     key=source_key(project)
     if (project.mode!='edit' or key!=expected_source_key or not key or
-            type(bpp) is not int or bpp not in (4,8,16,24) or not isinstance(asset_id,str)):
-        raise ProjectError('Placement finder requires the current Edit source and a supported native mode')
+            not isinstance(asset_id,str)):
+        raise ProjectError('Static upload inspection requires the current Edit source')
     excluded=None
     if asset_id.startswith('texture-new://'):
         from .texture_slot_edit import source
@@ -64,6 +64,33 @@ def suggest(project, asset_id, expected_source_key, png_content, bpp):
     context=project._texture_context(anchor)
     with context._archive() as archive:
         native_pack(context,archive,anchor)
+    return key,context,excluded
+
+
+def _upload_evidence(rows):
+    return [dict(asset_id=owner,kind=kind,rectangle=dict(x=r[0],y=r[1],width_words=r[2],height=r[3])) for owner,kind,r in rows]
+
+
+def upload_map(project, asset_id, expected_source_key):
+    key,context,excluded=_upload_context(project,asset_id,expected_source_key)
+    rows=known_upload_rectangles(project,context,exclude_asset_id=excluded)
+    if len(rows)>8192:
+        raise ProjectError('Static upload map exceeds its rectangle budget')
+    evidence=_upload_evidence(rows)
+    report=dict(schema_version='legaia.texture-upload-map.v1',read_only=True,project_changed=False,
+                project_source_key=key,scene_id=project.active_scene,asset_id=asset_id,excluded_asset_id=excluded,
+                coverage='known-static-scene-authored-and-boot-uploads',runtime_residency_verified=False,
+                vram_width_words=1024,vram_height=512,known_rectangle_count=len(rows),
+                occupancy_sha256=digest(evidence),rectangles=evidence)
+    if source_key(project)!=key:
+        raise ProjectError('Texture source changed during static upload inspection')
+    return report
+
+
+def suggest(project, asset_id, expected_source_key, png_content, bpp):
+    if type(bpp) is not int or bpp not in (4,8,16,24):
+        raise ProjectError('Placement finder requires a supported native mode')
+    key,context,excluded=_upload_context(project,asset_id,expected_source_key)
     png=decode_png(png_content);width,height=png['width'],png['height']
     if width*bpp%16 or not 1<=width*bpp//16<=1024 or not 1<=height<=512:
         raise ProjectError('PNG dimensions must encode whole native words within VRAM')
@@ -72,7 +99,7 @@ def suggest(project, asset_id, expected_source_key, png_content, bpp):
         raise ProjectError('Planned TIM exceeds the authored content budget')
     rows=known_upload_rectangles(project,context,exclude_asset_id=excluded)
     result=find_placement(words,height,palette,[row[2] for row in rows])
-    evidence=[dict(asset_id=owner,kind=kind,rectangle=dict(x=r[0],y=r[1],width_words=r[2],height=r[3])) for owner,kind,r in rows]
+    evidence=_upload_evidence(rows)
     report=dict(schema_version='legaia.texture-placement.v1',read_only=True,project_changed=False,
                 project_source_key=key,scene_id=project.active_scene,asset_id=asset_id,excluded_asset_id=excluded,
                 png_sha256=sha256(png_content).hexdigest(),png_byte_length=len(png_content),

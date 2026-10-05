@@ -5,7 +5,7 @@ from pathlib import Path
 import base64, os, tempfile, unittest
 from unittest.mock import patch
 from types import SimpleNamespace
-from sdk.texture_placement import find_placement, suggest
+from sdk.texture_placement import find_placement, suggest, upload_map
 from sdk.scene_preview import source_key
 from sdk.project import ProjectService, ProjectError
 from importer.texture_png import _encode_png
@@ -46,6 +46,10 @@ class PlacementWorkflow(unittest.TestCase):
         with http_server(project) as (_,post):
             body=dict(asset_id=ids[0],source_key=key,png_base64=base64.b64encode(png).decode(),bpp=4)
             status,result=post('/api/texture-placement',body);self.assertEqual(status,200,result);self.assertEqual(result['status'],'found')
+            status,mapped=post('/api/texture-upload-map',dict(asset_id=ids[0],source_key=key));self.assertEqual(status,200,mapped)
+            self.assertEqual(mapped['occupancy_sha256'],result['occupancy_sha256']);self.assertEqual(len(mapped['rectangles']),result['known_rectangle_count'])
+            status,_=post('/api/texture-upload-map',dict(asset_id=ids[0],source_key='0'*64));self.assertEqual(status,400)
+            status,_=post('/api/texture-upload-map',dict(asset_id=ids[0],source_key=key,extra=True));self.assertEqual(status,400)
             self.assertEqual(result['png_sha256'],sha256(png).hexdigest());self.assertFalse(result['runtime_residency_verified']);self.assertTrue(result['read_only'])
             candidate,_=convert_png(png,dict(bpp=4,**result['placement'],stp_mode='opaque'))
             self.assertEqual(_footprint(project,context,candidate)['potential_overlap_count'],0)
@@ -60,6 +64,8 @@ class PlacementWorkflow(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             p=ProjectService(Path(raw));p.import_metadata(import_scene(os.environ['LEGAIA_DISC_BIN'],'vell'),os.environ['LEGAIA_DISC_BIN']);catalog=refresh_resource_catalog(p);anchor=next(row['id'] for row in catalog['records'] if row['kind']=='texture' and row['id'].startswith('texture://vell/'))
             png=_encode_png(8,8,bytes([255,0,0,255]*64));before=deepcopy(p._document());result=suggest(p,anchor,source_key(p),png,4)
+            mapped=upload_map(p,anchor,source_key(p));self.assertEqual(mapped['occupancy_sha256'],result['occupancy_sha256'])
+            self.assertTrue(any(row['kind']=='boot-upload' and row['rectangle']==dict(x=0,y=456,width_words=192,height=1) for row in mapped['rectangles']))
             self.assertIn(result['status'],('found','no_fit'));self.assertGreater(result['known_rectangle_count'],0)
             if result['status']=='found':
                 candidate,_=convert_png(png,dict(bpp=4,**result['placement'],stp_mode='opaque'));self.assertEqual(_footprint(p,p._texture_context(anchor),candidate)['potential_overlap_count'],0)

@@ -872,6 +872,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/texture-comparison.js": ("texture-comparison.js", "text/javascript"),
                  "/texture-resize.js": ("texture-resize.js", "text/javascript"),
                  "/texture-image-conversion.js": ("texture-image-conversion.js", "text/javascript"),
+                 "/texture-upload-map.js": ("texture-upload-map.js", "text/javascript"),
                  "/texture-glb-dependencies.js": ("texture-glb-dependencies.js", "text/javascript"),
                  "/texture-slots.js": ("texture-slots.js", "text/javascript"),
                  "/texture-source-retention.js": ("texture-source-retention.js", "text/javascript")}
@@ -1859,6 +1860,12 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         report=apply(*args,body['review_key'],glb_source=body.get('glb_source'))
                         self._json(200,dict(self.server.state(),texture_source_report=report))
+                    return
+                if route=='/api/texture-upload-map':
+                    if set(body)!={'asset_id','source_key'}:
+                        raise ProjectError('Static upload map requires exact texture and source context')
+                    from .texture_placement import upload_map
+                    self._json(200,upload_map(self.server.project,body['asset_id'],body['source_key']))
                     return
                 if route=='/api/texture-placement':
                     if set(body)!={'asset_id','source_key','png_base64','bpp'}:

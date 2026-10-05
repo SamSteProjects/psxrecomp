@@ -320,6 +320,31 @@ No game was launched and no physical Retail disc was exported.
 
 ## 2026-10-04: Front and Side orthographic scene views
 
+## Static VRAM upload map - 2026-10-04
+
+Find static free coordinates now displays Current image, palette and boot-upload
+footprints in a1024-word by512-row VRAM map, with proposed image/palette outlines.
+Click or use arrow keys to inspect exact word ownership and half-open bounds.
+The new read-only /api/texture-upload-map route shares native source qualification,
+normalized wrapped rectangles and authored-slot exclusion with placement search.
+The editor hashes the complete bounded census and requires exact agreement with
+the placement source, coverage, count and occupancy hash before rendering.
+Stale/closed requests cannot publish a map; conversion removes temporary geometry.
+Map inspection changes neither selection nor authored data/history. Static coverage
+is explicitly distinct from runtime residency and material compatibility.
+
+Four focused Python checks passed with private retail input and no skips; map,
+placement and existing conversion JavaScript checks passed. A fresh native vell
+styled-editor workflow verified92 footprints, wrapped-tail mouse/keyboard picking,
+separate conversion and closing a pending map. Project document, history and SDK
+selection stayed unchanged, with zero page errors. Desktop and narrow screenshots
+were inspected. Static module serving and border coordinate handling were corrected
+from browser evidence; screen-pixel quantization was accommodated in the harness
+before exact keyboard checks. No game launched or installed output changed.
+Details: [static VRAM upload inspection](legaia-texture-upload-map.md).
+Evidence: `local-output/sdk-20260909/texture-upload-map-20261004/final-verified/proof.json`.
+The full SDK goal remains active and solo; gameplay acceptance stays deferred.
+
 The existing Top/orthographic camera now also exposes **Front (X/Y)** and
 **Side (Z/Y)**. Exact level views preserve target/scale. Right-drag pans on the
 camera plane, including display Y, and scroll anchors the cursor's plane point.

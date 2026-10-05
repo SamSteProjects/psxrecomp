@@ -1,3 +1,4 @@
+import {decodeTextureUploadMap,renderTextureUploadMap} from './texture-upload-map.js';
 import {loadGlbImageDependencies,renderGlbDependencies} from './texture-glb-dependencies.js';
 import {decodeTextureGlbImage} from './texture-png.js';
 const fail=m=>{throw new Error(m);};
@@ -91,6 +92,7 @@ export function openImageConversion({assetId,getContext,busy,setBusy,onDraft,onE
     const source=await readPng(png.files[0]);if(!valid())return;const request={asset_id:assetId,source_key:context.sourceKey,png_base64:source.base64,bpp:Number(fields.bpp.value)};
     const response=await fetch('/api/texture-placement',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request),signal}),value=await response.json();if(!valid())return;if(!response.ok||value.error)fail(value.error??'Static placement search failed.');
     const report=decodeTexturePlacement(value,request,{sceneId:context.sceneId,pngSha256:source.sha256,pngSize:source.size});
+    const mapValue=await glbPost('/api/texture-upload-map',{asset_id:assetId,source_key:context.sourceKey},signal,4*1024*1024);if(!valid())return;const map=await decodeTextureUploadMap(mapValue,report);if(!valid())return;renderTextureUploadMap(summary,map,report);
     if(report.placement){for(const [key,value] of Object.entries(report.placement))fields[key].value=String(value);status.textContent='Static free coordinates filled. Convert PNG to review a TIM draft; runtime residency and material compatibility remain unverified.';}
     else status.textContent=report.status==='no_fit'?'No fit against known static uploads. Enter coordinates manually if you have separate residency evidence.':'Static search reached its bounded pair budget. Enter coordinates manually or try smaller dimensions.';
     const details=node('details'),pre=node('pre',JSON.stringify(report,null,2));pre.className='diagnostic-detail';details.append(node('summary',`${report.known_rectangle_count} qualified static rectangles - placement evidence`),pre);summary.append(details);
