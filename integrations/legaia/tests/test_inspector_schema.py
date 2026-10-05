@@ -58,6 +58,30 @@ class InspectorSchema(unittest.TestCase):
         schema['components']['AssetModel']['actions'][0]['label']='changed'
         self.assertEqual(inspector_schema()['components']['AssetModel']['actions'][0]['label'],'Inspect model')
 
+    def test_authored_script_components_are_detached_and_omit_empty_overrides(self):
+        import tempfile
+        from pathlib import Path
+        from copy import deepcopy
+        from sdk.project import ProjectService
+        from integrations.legaia.tests.test_project_workflow import synthetic_scene
+        families=('ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors')
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene())
+            identifier=p.imports[p.active_scene]['actors'][0]['semantic_id'];before=deepcopy(p.imports)
+            self.assertTrue(all(name not in p.state()['scene']['entities'][0]['components'] for name in families))
+            for name in families:
+                p.overrides.setdefault(identifier,{})[name]={'entries':{'16':{'fixture':'authored'}}}
+            state=p.state();components=state['scene']['entities'][0]['components']
+            for name in families:
+                self.assertEqual(components[name]['authored_instruction_count'],1)
+                components[name]['entries']['16']['fixture']='changed'
+                self.assertEqual(p.overrides[identifier][name]['entries']['16']['fixture'],'authored')
+                definition=state['inspector_schema']['components'][name]
+                self.assertEqual(definition['layout'],'read-only-properties')
+                self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
+                self.assertEqual(definition['actions'][0]['id'],'inspect-script')
+            self.assertEqual(p.imports,before)
+
     def test_allocated_assignment_is_readonly_metadata_with_reviewed_actions(self):
         definition=inspector_schema()['components']['ActorAllocatedAnimation']
         self.assertEqual(definition['layout'],'read-only-properties')

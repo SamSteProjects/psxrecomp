@@ -75,6 +75,21 @@ def inspector_schema():
             'notes':['Timing, live animation state and retargeting are not inferred from an imported association.']}
     },'unknown_component_policy':'read-only-details','live_writes':False}
 
+    for identifier, label, action, note in (
+        ('ScriptMovement', 'Authored script movement', 'Inspect movement instructions', 'Encoded X/Z and move-selector overrides do not establish executed paths, height or movement behavior.'),
+        ('ScriptFlags', 'Authored script flag operands', 'Inspect flag instructions', 'Encoded flag operands do not establish live variable values, story meaning or executed paths.'),
+        ('ScriptWaits', 'Authored script waits', 'Inspect wait instructions', 'Encoded wait operands do not establish runtime cadence or wall-clock durations.'),
+        ('ScriptModelSelectors', 'Authored script model selectors', 'Inspect model-selector instructions', 'Encoded model selectors do not establish runtime rebinding, animation compatibility or executed paths.'),
+    ):
+        schema['components'][identifier] = {
+            'label': label, 'units': 'Authored source operands', 'layout': 'read-only-properties',
+            'properties': [{'id': 'authored_instruction_count', 'label': 'Authored instructions',
+                            'path': ['authored_instruction_count'], 'type': 'integer', 'state': 'authored-through-source-editor'}],
+            'actions': [{'id': 'inspect-script', 'label': action, 'capability': 'actor_script_preview'}],
+            'details': [{'label': 'Authored entries by source instruction PC', 'path': ['entries']}],
+            'notes': ['Open the source editor for separate retail, authored and effective operands. Existing qualified commands own Apply/Clear, history and Build.', note],
+        }
+
     # Asset inspector groups describe SDK catalog records, not entity components.
     tools = {
         'actor': ('AssetActor', 'Actor record', 'project_navigation', 'select-asset-actor', 'Select actor in scene'),

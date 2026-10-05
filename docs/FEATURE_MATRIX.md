@@ -1,5 +1,32 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: Authored script components in the entity Inspector
+
+Actors with authored movement, flag, wait or model-selector instruction overrides
+now expose the corresponding SDK components to the shared Inspector. Each section
+shows an authored instruction count, detached entries keyed by stable source
+instruction identity, explicit semantic limits and a registered source-editor action.
+Empty families are omitted. Undo/Clear removes the section; Redo/Save/Open restores
+it with the project override. Source bytes and imported metadata remain separate.
+
+These are readonly component summaries. Existing source editors retain qualified
+retail/authored/effective operands and their native Apply/Clear/Build commands.
+The common inspector does not parse MAN data, infer executed paths or write generic
+component values. Movement height/behavior, flag story meaning, wait cadence and
+model/animation rebinding remain unverified until appropriate gameplay acceptance.
+
+Validation: six focused metadata checks cover all four families, detached data
+and empty-component omission. Five existing movement/flag/wait project checks and
+the common renderer/action checks passed. A private Town01 browser check opened
+Actor0044's authored wait section and its source editor with retail16 versus
+effective17, with unchanged authored state/history/source key and zero page errors.
+Undo/Redo component presence and Save/Open passed; imported metadata stayed intact.
+Screenshot inspected. Evidence: ignored
+`local-output/sdk-20260909/script-component-inspector-20261004/parent/proof.json`.
+No game launched. Browser workflow acceptance here covers waits; other families
+have bounded metadata coverage and retain their existing source-editor workflows.
+
+
 ## 2026-10-04: Allocated assignment component inspector
 
 The allocated initial-animation Inspector now uses the SDK component contract

@@ -3314,6 +3314,11 @@ class ProjectService:
                                             'ScriptFacing': {'entries': deepcopy(self.overrides.get(identifier, {}).get('ScriptFacing', {}).get('entries', {}))},
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
+        for entity in entities:
+            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors'):
+                entries = self.overrides.get(entity['id'], {}).get(component, {}).get('entries', {})
+                if entries:
+                    entity['components'][component] = {'entries': deepcopy(entries), 'authored_instruction_count': len(entries)}
         from .project_settings import view as project_settings
         from .asset_references import source_key as reference_key
         return {"inspector_schema": inspector_schema(), "asset_reference_source_key": reference_key(self), "project_settings": project_settings(self), "project": {"name": self.name, "path": str(self.root), "disc_path": self.disc_path, "dirty": self.dirty, "unsaved_sections": self.unsaved_sections, "mode": self.mode},
