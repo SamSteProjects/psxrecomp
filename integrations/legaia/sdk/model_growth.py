@@ -14,6 +14,23 @@ from .build import authored_state_key
 from .project import ProjectError, digest
 
 
+def _content_requires_growth(project, archive, members):
+    # Reuse exact content qualification and composed compression, not error text.
+    from importer.model_authoring import model_shape_overlays
+    from importer.serialization import LzsCapacityError
+    assets, payloads, bindings = {}, {}, {}
+    for identifier, binding, _ in members:
+        assets[identifier] = next(a for a in project.imports[binding['source_scene_id']]['assets']['models']
+                                  if a['semantic_id'] == identifier)
+        payloads[identifier] = project.read_model_replacement(identifier, binding)
+        bindings[identifier] = binding
+    try:
+        model_shape_overlays(archive, assets, payloads, removal_bindings=bindings)
+    except LzsCapacityError:
+        return True
+    return False
+
+
 def prepare_model_growth(project, archive):
     key = authored_state_key(project)
     groups, documents = {}, set()
@@ -32,10 +49,13 @@ def prepare_model_growth(project, archive):
         source = asset['source_record']
         identity = (source['prot_entry_index'], source.get('container_section'))
         groups.setdefault(identity, []).append((identifier, binding, source))
-    requests, reports, deferred = [], [], []
+    requests, reports, deferred, content_growth = [], [], [], []
     for (entry_index, section_index), members in sorted(groups.items(), key=lambda row:str(row[0])):
-        if not any(binding['format'] == 'tmd-face-addition-v1' for _, binding, _ in members):
+        topology_growth = any(binding['format'] == 'tmd-face-addition-v1' for _, binding, _ in members)
+        if not topology_growth and not _content_requires_growth(project, archive, members):
             continue
+        if not topology_growth:
+            content_growth.extend(identifier for identifier, _, _ in members)
         if type(section_index) is not int:
             raise ProjectError('Model growth carrier is not yet a qualified packed resource')
         entry = archive.entry(entry_index)
@@ -90,8 +110,9 @@ def prepare_model_growth(project, archive):
         requests.append(dict(entry_index=entry_index, descriptor_index=section_index,
             expected_pack_sha256=sha256(pack).hexdigest(), replacements=replacements))
         reports.append(dict(entry_index=entry_index, descriptor_index=section_index,
-            authored_models=sorted(identifier for identifier,_,_ in members), carrier=audit))
+            authored_models=sorted(identifier for identifier,_,_ in members),
+            reason='topology-allocation' if topology_growth else 'compressed-content-capacity', carrier=audit))
     if authored_state_key(project) != key:
         raise ProjectError('Project changed while preparing model growth')
     return requests, dict(schema_version='legaia.model-growth-preparation.v1', authored_state_key=key,
-        deferred_model_ids=sorted(deferred), carriers=reports, build_ready=False, gameplay_verified=False)
+        deferred_model_ids=sorted(deferred), content_growth_model_ids=sorted(content_growth), carriers=reports, build_ready=False, gameplay_verified=False)

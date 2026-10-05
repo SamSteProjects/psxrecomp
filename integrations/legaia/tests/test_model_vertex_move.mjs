@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {vertexMovePreview,pickProjectedVertex} from '../editor/model-vertex-move.js';
+import {vertexMovePreview,pickProjectedVertex,objectMovePreview} from '../editor/model-vertex-move.js';
 const source={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:1},{object_index:1,vertex_start:1,vertex_count:2}],vertices:[[1,2,3],[4,5,6],[7,8,9]],triangles:[[0,1,2]],normals:[[0,4096,0]]}},before=structuredClone(source);
 const proposed=vertexMovePreview(source,1,1,[-32768,16,32767]);
 assert.deepEqual(proposed.vertices,[[1,2,3],[4,5,6],[-32768,16,32767]]);assert.deepEqual(source,before);assert.deepEqual(proposed.triangles,source.preview.triangles);assert.deepEqual(proposed.normals,source.preview.normals);proposed.vertices[0][0]=99;assert.deepEqual(source,before);
@@ -12,3 +12,9 @@ assert.equal(pickProjectedVertex([{index:0,x:10,y:10,depth:2}],20.1,10),null);
 assert.equal(pickProjectedVertex([null,{index:0,x:NaN,y:10,depth:2}],10,10),null);
 assert.throws(()=>pickProjectedVertex([],Infinity,0));assert.throws(()=>pickProjectedVertex([],0,0,33));
 console.log('Vertex picking: bounded screen radius, nearest point, depth/index ties and malformed projections passed');
+
+const translated=objectMovePreview(source,1,[16,-8,32]);
+assert.deepEqual(translated.vertices,[[1,2,3],[20,-3,38],[23,0,41]]);assert.deepEqual(source,before);assert.deepEqual(translated.normals,source.preview.normals);assert.deepEqual(translated.triangles,source.preview.triangles);
+for(const [owner,offset] of [[2,[0,0,0]],[1,[32767,0,0]],[1,[0,-32769,0]],[1,[0,0,.5]],[1,[0,0,NaN]],[1,[0,0]]])assert.throws(()=>objectMovePreview(source,owner,offset));
+console.log('Object translation: all owned rows, other object unchanged, immutable Current, overflow and retained normals/topology passed');
+assert.throws(()=>objectMovePreview({preview:{objects:[{object_index:0,vertex_start:0,vertex_count:1}],vertices:[[-32768,0,0]]}},0,[-1,0,0]));

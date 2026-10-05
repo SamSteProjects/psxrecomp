@@ -1,5 +1,27 @@
 # Deferred gameplay verification
 
+## Whole-object model translation - 2026-10-05
+
+Project: `local-output/sdk-20260909/object-move-20261005/project/`.
+Package: `local-output/sdk-20260909/object-move-20261005/build/legaia.sdk.0f096fa3c17d-0.1.0-c4ee713956d5cd3b.psxmod`.
+SHA-256: `ae41e80b50649ef9f52a0d15c1c07c2f8106ead48f1075d5ed399fe4eb438bf2`.
+Proof: `local-output/sdk-20260909/object-move-20261005/proof.json`.
+
+`asset://town01/models/scene-tmd/0000`, object0: every one of its50 vertices is
+translated by X208/Y-16/Z32 from Retail; other objects, normals and topology remain
+exact. Draft drag, Escape, Current comparison, scope/history locks, overflow
+rejection, one Undo step, Save/Open and retained Undo/Redo passed. The edit exceeds
+the original compressed stream span by17 bytes; normal Build emits a format7
+relocated disc payload. Independent full-section directory/ZIP readback and native
+logical/raw framing, metadata and vanilla-clear checks passed.
+
+Later establish the exact in-game model consumer and compare the translated object
+against Retail, including pose, scene transitions and save/load stability. The
+editor preview is object-local and unposed. The separate Town01 transition arrival
+X1664/Z3264/facing3 remains in this package. This is its own example, not the earlier
+two-vertex package. No game launched, user runtime installed or Retail disc exported.
+
+
 ## Retained two-vertex editing - 2026-10-05
 
 Private project: `local-output/sdk-20260909/vertex-session-final-20261005/project/`.

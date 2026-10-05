@@ -58,6 +58,29 @@ class ModelGrowthTests(unittest.TestCase):
         self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
         self.assertTrue(rebuild['reopened_pack_verified']);self.assertFalse(audit['build_ready'])
 
+    def test_content_capacity_uses_shared_relocation_and_other_errors_propagate(self):
+        from importer.serialization import LzsCapacityError
+        p,asset,other,pack,raw=self.fixture()
+        p.model_overrides[asset]=deepcopy(p.model_overrides[asset]['base_binding'])
+        before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
+        # Native Retail workflow covers the real encoder overflow. This isolates
+        # the typed fallback boundary and all shared-carrier content retention.
+        with patch('importer.model_authoring.model_shape_overlays',side_effect=LzsCapacityError('capacity')):
+            requests,audit=prepare_model_growth(p,_archive(raw))
+        self.assertEqual(audit['content_growth_model_ids'],sorted([asset,other]))
+        self.assertEqual(audit['carriers'][0]['reason'],'compressed-content-capacity')
+        result,_=rebuild_model_pack_entry(raw,sha256(raw).hexdigest(),**requests[0])
+        archive=_archive(result);body=archive.read_entry(archive.entry(1));descriptor=parse_scene_assets(body,1).descriptors[1]
+        decoded,_=decompress_lzs(body[descriptor.data_offset:],descriptor.size)
+        for slot,identifier in ((1,asset),(0,other)):
+            start,_=_pack_ranges(decoded)[slot];payload=p.read_model_replacement(identifier,p.model_overrides[identifier])
+            self.assertEqual(decoded[start:start+len(payload)],payload)
+        with patch('importer.model_authoring.model_shape_overlays',return_value=([],[])):
+            self.assertEqual(prepare_model_growth(p,_archive(raw))[0],[])
+        with patch('importer.model_authoring.model_shape_overlays',side_effect=ImportError('unaudited content')):
+            with self.assertRaisesRegex(ImportError,'unaudited content'):prepare_model_growth(p,_archive(raw))
+        self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
+
     def test_stale_directory_carrier_and_imported_bounds_reject(self):
         p,asset,_,_,raw=self.fixture()
         record=next(a['source_record'] for a in p.imports[p.active_scene]['assets']['models'] if a['semantic_id']==asset)

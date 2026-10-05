@@ -8,6 +8,10 @@ from typing import Any
 from .core import ImportError, decompress_lzs, parse_man
 
 
+class LzsCapacityError(ImportError):
+    """Qualified decoded data cannot fit its original compressed allocation."""
+
+
 def encode_placement_coordinate(value: int | float, field: str = "position") -> int:
     """Invert retail `tile*128 + (bit7 ? 128 : 64)` without quantization."""
     if (isinstance(value, bool) or not isinstance(value, (int, float)) or
@@ -175,7 +179,7 @@ def _serialize_man_decoded(original_stream, original, consumed, changed, scene, 
     if decoded != changed or encoded_consumed != len(encoded):
         raise ImportError(f"independent LZS decode did not verify encoded {kind} bytes")
     if len(encoded) > consumed:
-        raise ImportError(f"{scene} edited {kind} requires {len(encoded)} compressed bytes but its original span holds {consumed}; relocation is unsupported")
+        raise LzsCapacityError(f"{scene} edited {kind} requires {len(encoded)} compressed bytes but its original span holds {consumed}; relocation is unsupported")
     replacement = encoded + original_span[len(encoded):]
     if decompress_lzs(replacement, decoded_size)[0] != changed:
         raise ImportError(f"padded {kind} replacement failed decode validation")

@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Whole-object movement and compressed-content delivery - 2026-10-05
+
+The model geometry movement workspace now offers Selected vertex and Entire object
+scopes. Object scope moves every existing vertex in the selected native object,
+including hidden rows, with XYZ offsets from Current and a bounds-centred gizmo.
+Normals, topology and other objects stay fixed. This edits object-local geometry;
+it does not change actor placement or assign a pose. Dragging remains local until
+Apply. Dirty/invalid drafts lock scope, object and history; Current comparison,
+snap, Escape cancellation, retained Apply and ordinary Undo/Redo remain available.
+Every candidate vertex must fit signed16. Offset controls use signed16 source units.
+
+Native Town01 model0000 object0 passed a208/-16/32 translation across50 vertices,
+draft-only drag, Escape, overflow rejection, scope locks, one Undo step, Save/Open
+and retained Undo/Redo with zero page errors. The real Build initially exceeded the
+original compressed span by17 bytes. Normal Build now relocates qualified TMD packs
+when composed content cannot fit, reusing the existing pack/archive/native reader
+path. A typed capacity error selects this path; other qualification errors propagate.
+All authored members sharing the pack compose together. Fitting fixed-layout edits
+keep ordinary overlays. Noncanonical/unowned packs still reject.
+
+Full independently reconstructed section readback matches Build directory and ZIP.
+The native reader passed complete logical/raw-sector framing, metadata and vanilla
+clear checks. Focused source/gizmo, content/history and relocation checks passed.
+Evidence: `local-output/sdk-20260909/object-move-20261005/proof.json`.
+Package SHA-256: `ae41e80b50649ef9f52a0d15c1c07c2f8106ead48f1075d5ed399fe4eb438bf2`.
+No game launched or user runtime installed. Appearance/pose/scene lifecycle remains
+in the deferred gameplay queue. The full SDK goal remains active and solo.
+
+
 ## Retained vertex editing and project history - 2026-10-05
 
 The vertex movement workspace remains open after Apply. It requalifies the new

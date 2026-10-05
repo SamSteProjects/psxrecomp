@@ -127,6 +127,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-branch-target-only': 'script branch destinations',
         'worldmap-menu-record-only': 'world-map landmarks',
         'model-pack-topology-relocation': 'model topology and shared pack edits',
+        'model-pack-content-relocation': 'model content exceeding compressed source capacity',
         'animation-bank-allocation-relocation': 'allocated animation records',
         'TMD-vertex-normal-XYZ-only': 'model shapes',
         'TMD-existing-layout-content': 'model faces, UVs and baked colors',
@@ -722,7 +723,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         overlays.extend(worldmap_overlays)
         audit_edits.extend(worldmap_changes)
         growth_requests, growth_audit = [], None
-        if any(binding.get('format') == 'tmd-face-addition-v1' for binding in getattr(project, 'model_overrides', {}).values()):
+        if getattr(project, 'model_overrides', {}):
             from .model_growth import prepare_model_growth
             growth_requests, growth_audit = prepare_model_growth(project, archive)
         deferred_models = set(growth_audit['deferred_model_ids']) if growth_audit else set()
@@ -1174,7 +1175,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
             if fresh_hash != disc_hash:
                 raise BuildError('Source disc changed while preparing relocation')
             relocation, relocation_audit = prepare_build_relocation(image, archive, growth_requests, overlays)
-        audit_edits.extend(dict(semantic_id=identifier, field='model.shape', scope='model-pack-topology-relocation',
+        audit_edits.extend(dict(semantic_id=identifier, field='model.shape', scope=('model-pack-content-relocation' if identifier in growth_audit.get('content_growth_model_ids', []) else 'model-pack-topology-relocation'),
                                before_sha256=_hash(project._model_source(identifier, project.model_overrides[identifier]['source_scene_id'])),
                                after_sha256=_hash(project.read_model_replacement(identifier, project.model_overrides[identifier])),
                                scene=project.imports[project.model_overrides[identifier]['source_scene_id']]['scene']['name'])

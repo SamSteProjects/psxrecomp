@@ -82,3 +82,23 @@ readback change only model bytes1516/1524. Injected refresh failure blocked edit
 Close/reopen recovered and Redo restored the final source. Final recovery check and
 screenshots are private: `local-output/sdk-20260909/vertex-session-final-20261005/`.
 No game was launched; appearance remains in the manual queue.
+
+
+## Move an entire object - 2026-10-05
+
+Choose Entire object in Scope. XYZ inputs become offsets from the qualified Current
+object; the handles originate at its bounds centre. Every owned vertex, including
+hidden/unreferenced rows, moves together. No actor transform, pose channel, normals
+or topology changes. The signed16 offsets and each resulting signed16 vertex are
+validated locally and again by the normal project command. Apply object translation
+publishes one history step, keeps the workspace open and resets offsets to zero
+against refreshed Current. Discard before changing scope/object or using history.
+Current comparison hides the handles; Draft shows the translated mesh and markers.
+
+Native Town01 model0000 object0 was translated by208/-16/32 across all50 vertices.
+The editor/history/Save/Open workflow passed. The edit needed17 extra compressed
+bytes, so normal Build now uses qualified pack relocation for this capacity case.
+Other qualification errors do not trigger fallback, and fitting content still uses
+fixed-span overlays. Source-bound model/pack provenance remains required. Independent
+full-section Build/ZIP and native logical/raw-sector readback passed. Evidence is
+private: `local-output/sdk-20260909/object-move-20261005/`. Gameplay remains deferred.
