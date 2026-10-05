@@ -1526,7 +1526,7 @@ function synchronizeResources(){
   sceneAnimationController?.updateState();
   if(animationGlbEditor){if(selected()?.id!==animationGlbEntityId)animationGlbEditor.dispose();else animationGlbEditor.updateState();}
   if(animationAllocationEditor){if(selected()?.id!==animationAllocationEntityId)animationAllocationEditor.dispose();else animationAllocationEditor.updateState();}
-  if(animationRecordLibrary){if(selected()?.id!==animationRecordEntityId)animationRecordLibrary.dispose();else animationRecordLibrary.updateState();}
+  if(animationRecordLibrary){if(animationRecordAssetId===null&&selected()?.id!==animationRecordEntityId)animationRecordLibrary.dispose();else animationRecordLibrary.updateState();}
   if(retainedAnimationEditor){if(retainedAnimationAssetId===null&&selected()?.id!==retainedAnimationEntityId)retainedAnimationEditor.dispose();else retainedAnimationEditor.updateState();}
   if(retainedAnimationGlbEditor){if(retainedAnimationGlbAssetId===null&&selected()?.id!==retainedAnimationGlbEntityId)retainedAnimationGlbEditor.dispose();else retainedAnimationGlbEditor.updateState();}
   modelGlbEditor?.updateState();
@@ -2705,6 +2705,7 @@ function openAnimationResource(record){
     openRetainedAnimationAsset({record,getState:()=>state,busy:()=>busy,onError:e=>notify(e.message,true),
       onEdit:({assetId,entityId,row})=>inspectRetainedAnimationContent({id:entityId},row,assetId),
       onGlb:({assetId,entityId,row})=>inspectRetainedAnimationGlb({id:entityId},row,assetId),
+      onLifecycle:({assetId,entityId,row})=>inspectSavedAnimationRecords({id:entityId},row,assetId),
       onModel:id=>openModel(id),onActor:async id=>{if(await api('/api/selection',{entity_id:id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}},
       onPreview:(data,value)=>openModel(data.model_asset_id,'allocated-record',data.retained_record.entity_id,'authored',null,value)});
     return;
@@ -3050,7 +3051,7 @@ function renderInspector(){
 
 let animationGlbEditor=null,animationGlbEntityId=null;
 let animationAllocationEditor=null,animationAllocationEntityId=null;
-let animationRecordLibrary=null,animationRecordEntityId=null;
+let animationRecordLibrary=null,animationRecordEntityId=null,animationRecordAssetId=null;
 let retainedAnimationEditor=null,retainedAnimationEntityId=null,retainedAnimationAssetId=null;
 let retainedAnimationGlbEditor=null,retainedAnimationGlbEntityId=null,retainedAnimationGlbAssetId=null;
 function refreshRetainedAssetAfterApply(assetId){
@@ -3082,17 +3083,17 @@ async function inspectRetainedAnimationContent(entity,row,assetId=null){
       $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});}
   });
 }
-async function inspectSavedAnimationRecords(entity){
+async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=null){
   if(busy||state.project.mode!=='edit')return;
-  animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;
-  animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,
-    onEdit:row=>inspectRetainedAnimationContent(entity,row),
-    onGlb:row=>inspectRetainedAnimationGlb(entity,row),
+  animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=assetId;
+  animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord,
+    onEdit:row=>inspectRetainedAnimationContent(entity,row,assetId),
+    onGlb:row=>inspectRetainedAnimationGlb(entity,row,assetId),
     assignment:entity.components?.ActorAllocatedAnimation?.authored??null,
     modelAssetId:entity.components?.ActorAppearance?.effective?.asset_id??null,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
     busy:()=>busy,setBusy,onError:error=>notify(error.message??String(error),true),
-    onApplied:next=>{state=next;render();notify('Allocated clip settings updated. Save project to persist.');},
+    onApplied:next=>{state=next;render();notify('Allocated clip settings updated. Save project to persist.');refreshRetainedAssetAfterApply(assetId);},
     onPosePreview:async(data,{returnToEditor})=>{
       setBusy(false);await openModel(data.semantic_id,data.animation.clip_id,entity.id,'imported',null,data,returnToEditor);
       if(model!==data||!$('model-dialog').open)throw new Error($('model-error').textContent||'Could not open saved allocated clip.');

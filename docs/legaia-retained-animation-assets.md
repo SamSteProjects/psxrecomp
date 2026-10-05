@@ -100,3 +100,31 @@ retirement persisted. Undo/Redo, Save/Open and normal private Build passed, incl
 native bank/initial-assignment/relocation readback and package ZIP/SHA verification.
 Both proposed screenshots were inspected. No game was launched or installed.
 Evidence: `local-output/sdk-20260909/retained-asset-glb-20261005/proof.json`.
+
+## Direct retained lifecycle
+
+Choose Manage retained lifecycle from an authored animation asset. The Inspector
+loads and verifies only that clip against the fresh saved library; it offers Preview,
+Review retirement/restoration and Apply reviewed change. Preview returns to the same
+Inspector. Review preserves project state. Apply changes the authored bank membership,
+preserving the stable UUID and captured bytes; refreshed asset status follows Apply.
+Save project to persist. The asset view can also open its direct content/GLB editor.
+
+This view does not assign an actor or clear initial references. If retirement is
+blocked because the clip is still assigned, clear the intended actor's authored initial
+assignment through its Inspector, then reopen the asset and Review again. It never
+silently clears references. Actor selection is independent of this asset workflow.
+Project, scene, mode, source and busy guards remain active, and a mismatched fetched
+capture cannot enable lifecycle Apply. Undo/Redo, Save/Open and normal private Build
+are supported; runtime playback and game appearance remain separately unverified.
+
+Verification: 3 retail-enabled Python tests, 2 Node workflow checks and 3 JavaScript
+syntax checks passed. The actual headless editor verified exact single-asset scope,
+blocked assigned retirement, readonly saved-pose Preview/Return and lifecycle Review,
+then retired an unassigned clip and restored a retired clip through exactly two Apply
+commands. Actor selection, retail imports, every captured record hash and the complete
+initial-assignment component were unchanged; asset status refreshed automatically.
+Undo/Redo and Save/Open passed. Normal private Build passed native bank, initial header
+and relocation readback plus ZIP/SHA integrity checks. Restoration screenshot inspected.
+No game launched or installed. Evidence:
+`local-output/sdk-20260909/retained-asset-lifecycle-20261005/proof.json`.

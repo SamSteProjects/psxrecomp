@@ -1,5 +1,18 @@
 # Legaia SDK validation plan
 
+## Direct retained asset lifecycle checks
+
+- Open exact assigned, unassigned and retired assets with unrelated actor selected.
+- Verify single-record identity/hash/owner/model/count/status qualification; mismatched
+  library data must never publish actionable controls.
+- Verify asset lifecycle view hides and guards actor-assignment actions.
+- Preview and Review stay readonly; assigned retirement reports its reference blocker
+  without clearing an actor. Retire unassigned and restore retired through exact Apply.
+- Verify automatic catalog status, stable UUID/capture hash, imports/selection unchanged,
+  two atomic commands, Undo/Redo, Save/Open and normal Build/native readback.
+- Exercise stale source, late result, close, Live and capability handoff guards.
+- Retain manual game appearance/playback acceptance separately.
+
 ## Direct retained asset GLB workflow checks
 
 - Open assigned and retired animation assets without selecting their capture actor.

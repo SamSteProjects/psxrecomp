@@ -45,3 +45,8 @@ assert.equal(dialog.removed,true);assert.equal(result.assetId,id);assert.equal(r
 current.project.mode='live';dialog=openRetainedAnimationAsset(options);action=find(dialog,'Edit retained GLB');assert.equal(action.hidden,true);result=null;await action.onclick();assert.equal(result,null);assert.match(errors.pop(),/Edit mode/);dialog.close();
 current.project.mode='edit';current.capabilities.actor_animation_authoring=false;dialog=openRetainedAnimationAsset(options);assert.equal(find(dialog,'Edit retained GLB').hidden,true);dialog.close();
 console.log('Retained asset GLB action: guarded detached capture handoff, close/disposal, busy/stale rejection and Live/capability visibility passed.');
+current=structuredClone({...state,project:{mode:'edit',path:'fixture'}});result=null;
+dialog=openRetainedAnimationAsset({...options,onLifecycle:context=>{result=context;}});
+await find(dialog,'Manage retained lifecycle').onclick();assert.equal(dialog.removed,true);assert.equal(result.assetId,id);assert.equal(result.row.record_id,uuid);assert.equal(result.row.active,false);
+dialog=openRetainedAnimationAsset(options);assert.equal(find(dialog,'Manage retained lifecycle').hidden,true);dialog.close();
+console.log('Retained asset lifecycle action reuses the qualified captured-record handoff.');

@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Retained asset retirement and restoration - 2026-10-05
+
+Manage retained lifecycle now opens a single-clip lifecycle Inspector directly from
+an authored animation asset. Its fresh library row must match the inspected capture
+identity, hash, owners, source model, counts and active status before controls become
+available. The actor library keeps its existing multi-clip and assignment workflow;
+the asset lifecycle view exposes no actor-assignment actions and their handlers reject
+assignment. Opening or previewing the asset does not select its capture actor.
+
+Review retirement/restoration is readonly. Apply uses the existing activation command
+and exact review/source key, then refreshes the asset catalog through the guarded
+post-command path. Clip identity and captured bytes persist. Existing authored initial
+references block retirement until cleared in the actor Inspector. Source/project/scene/
+mode changes invalidate the view; Undo/Redo, Save/Open and normal Build remain the
+existing workflow. No new serializer or runtime write is introduced. Gameplay
+acceptance remains deferred. See [asset lifecycle](legaia-retained-animation-assets.md#direct-retained-lifecycle).
+
+Verification: 3 retail-enabled Python tests, 2 Node workflow checks and 3 JavaScript
+syntax checks passed. The actual headless editor verified exact single-asset scope,
+blocked assigned retirement, readonly saved-pose Preview/Return and lifecycle Review,
+then retired an unassigned clip and restored a retired clip through exactly two Apply
+commands. Actor selection, retail imports, every captured record hash and the complete
+initial-assignment component were unchanged; asset status refreshed automatically.
+Undo/Redo and Save/Open passed. Normal private Build passed native bank, initial header
+and relocation readback plus ZIP/SHA integrity checks. Restoration screenshot inspected.
+No game launched or installed. Evidence:
+`local-output/sdk-20260909/retained-asset-lifecycle-20261005/proof.json`.
+
 ## Direct retained asset GLB interchange - 2026-10-05
 
 A retained animation asset now offers Edit retained GLB in Edit mode when native
