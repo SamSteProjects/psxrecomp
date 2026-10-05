@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Inspect object movement drafts in the placed scene - 2026-10-05
+
+The 3D geometry movement workspace now offers a source-qualified Scene instance
+selector and Inspect object draft in scene for Entire object translation. Choose
+one supported instance or all instances of the shared model. It first qualifies
+the normal object proposal against exact local Current/Proposed native geometry,
+bounds, material words, source hash and owner, then requests the existing placed
+scene proposal. Known HTTP texture/blend enrichment stays separate from raw geometry;
+JSON key order has no semantic meaning. No project command or Apply is implicit.
+
+The scene retains qualified placement and supported pose and exposes ordinary
+Current/Proposed comparison, isolation, Return to movement draft and Restore.
+Both return paths keep exact offset/scope/instance choices. Source, scene, draft
+and late-response guards prevent stale handoff; Close withdraws an owned inspection.
+The action disables for single-vertex scope, invalid/no-op offsets, loading or an
+unavailable authored scene/model instance. Single-vertex scene handoff remains
+future integration, while its existing object-local editing remains supported.
+
+A native Town01 model0000 draft64/-16/32 passed single/all-instance scene rendering,
+Current/Proposed comparison, Return/Restore retention and rejection of a reply after
+the draft changed. The complete project document, history and authored asset state
+remain unchanged; zero authoring requests and zero page errors. Screenshots inspected.
+Focused geometry/review guards and4 existing object/pose checks passed. Evidence:
+`local-output/sdk-20260909/movement-scene-final-check-20261005/proof.json`.
+No game launched. This read-only workflow adds no new gameplay-verification gate;
+actual model appearance/pose remains on the existing deferred package queue.
+The full SDK goal stays active and solo.
+
+
 ## Whole-object movement and compressed-content delivery - 2026-10-05
 
 The model geometry movement workspace now offers Selected vertex and Entire object

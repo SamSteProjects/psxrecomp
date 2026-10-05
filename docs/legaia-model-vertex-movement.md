@@ -102,3 +102,23 @@ Other qualification errors do not trigger fallback, and fitting content still us
 fixed-span overlays. Source-bound model/pack provenance remains required. Independent
 full-section Build/ZIP and native logical/raw-sector readback passed. Evidence is
 private: `local-output/sdk-20260909/object-move-20261005/`. Gameplay remains deferred.
+
+
+## Inspect an object draft in the placed scene - 2026-10-05
+
+In Entire object scope, enter or drag a valid nonzero offset, choose Scene instance
+(or all supported model instances), then Inspect object draft in scene. A current
+authored scene with a supported consumer is required. The raw local geometry draft
+is checked against the normal native object proposal before requesting scene placement.
+Imported/effective hashes, owner, bounds, all native geometry and material words stay
+qualified; HTTP texture/blend display enrichment is handled separately. Placement
+and supported pose are retained; this does not prove runtime residency or visibility.
+
+Use Current/Proposed comparison and isolation in the scene workspace. Return to
+movement draft and Restore scene preview both retain the draft and instance choice.
+Apply remains explicit after returning. Closing the movement editor withdraws any
+owned scene proposal. Changed scene/source/draft and late replies reject. Single
+vertex scope has no scene action yet. Native Town01 single/all-instance checks,
+comparison, both returns, late changed-draft rejection and unchanged complete project/
+history/assets passed with zero writes/page errors. Screenshots and evidence:
+`local-output/sdk-20260909/movement-scene-final-check-20261005/`. No game was launched.
