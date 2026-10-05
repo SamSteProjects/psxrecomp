@@ -49,9 +49,29 @@ def prepare(project,asset_id,primitive_edits,material_edits,expected_sha256,expe
     return candidate,result
 
 
-def apply(project,asset_id,primitive_edits,material_edits,expected_sha256,expected_source_key,review_key):
+def reviewed(project,asset_id,primitive_edits,material_edits,expected_sha256,expected_source_key,review_key):
     candidate,report=prepare(project,asset_id,primitive_edits,material_edits,expected_sha256,expected_source_key)
     if not isinstance(review_key,str) or review_key!=report['review_key']:raise ProjectError('Combined model draft changed after review')
+    return candidate,report
+
+
+def scene_binding(project,asset_id,candidate):
+    """Keep authored channel/vector ownership in a readonly candidate ledger."""
+    from copy import deepcopy
+    existing=project.model_overrides.get(asset_id)
+    if not existing or existing['format']!='tmd-face-addition-v1':return None
+    from importer.model_face_ledger import append_content_ledger
+    original=project._model_source(asset_id,project.active_scene)
+    from .model_face_addition import base_content
+    base=base_content(project,asset_id,original,existing)
+    qualified,ledger,_=append_content_ledger(base,existing['ledger'],candidate)
+    if qualified!=candidate:raise ProjectError('Combined scene ledger differs from the reviewed model')
+    binding=deepcopy(existing);binding.update(asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),ledger=ledger)
+    return binding
+
+
+def apply(project,asset_id,primitive_edits,material_edits,expected_sha256,expected_source_key,review_key):
+    candidate,report=reviewed(project,asset_id,primitive_edits,material_edits,expected_sha256,expected_source_key,review_key)
     if not report['changes_from_current']:raise ProjectError('Combined model draft has no changes to apply')
     project.set_model_replacement(asset_id,candidate)
     report.pop('current_preview');report.pop('preview')

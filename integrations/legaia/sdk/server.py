@@ -1064,16 +1064,26 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_materials import donor_models
                     self._json(200, donor_models(self.server.project, body['source_key']))
                     return
-                if route in ('/api/model-texture-assignment-preview','/api/model-texture-assignment-apply'):
+                if route in ('/api/model-texture-assignment-preview','/api/model-texture-assignment-apply','/api/model-texture-assignment-scene-preview'):
                     expected={'asset_id','primitive_edits','material_edits','expected_sha256','source_key'}
-                    if route.endswith('-apply'):expected.add('review_key')
+                    if route.endswith('-apply') or route.endswith('-scene-preview'):expected.add('review_key')
+                    if route.endswith('-scene-preview'):expected.update(('entity_id','all_instances'))
                     if set(body)!=expected or any(not isinstance(body[k],str) for k in ('asset_id','expected_sha256','source_key')):
                         raise ProjectError('Combined model authoring requires exact source identity and both native drafts')
-                    from .model_texture_assignment import prepare,apply
+                    from .model_texture_assignment import prepare,apply,reviewed,scene_binding
                     args=(self.server.project,body['asset_id'],body['primitive_edits'],body['material_edits'],body['expected_sha256'],body['source_key'])
                     if route.endswith('-apply'):
                         report=apply(*args,body['review_key'])
                         self._json(200,dict(self.server.state(),model_texture_assignment_report=report))
+                    elif route.endswith('-scene-preview'):
+                        if not isinstance(body['entity_id'],str) or type(body['all_instances']) is not bool:
+                            raise ProjectError('Combined scene review requires a qualified instance and explicit scope')
+                        candidate,report=reviewed(*args,body['review_key'])
+                        binding=scene_binding(self.server.project,body['asset_id'],candidate)
+                        report=self.server.scene_shape_proposal(body['asset_id'],body['entity_id'],candidate,report,body['source_key'],body['all_instances'],material_content=True,prepared_binding=binding)
+                        from .model_materials import _bounded
+                        _bounded(report,'Combined scene model preview')
+                        self._json(200,report)
                     else:
                         _,report=prepare(*args)
                         asset=self.server.project.assets.records[body['asset_id']]

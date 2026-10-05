@@ -1,6 +1,6 @@
 # Combined native face/material model assignment
 
-Status: native backend, HTTP and face-editor browser workflow qualified.
+Status: native backend, HTTP, face-editor browser workflow and combined placed-scene comparison qualified.
 Separate face-only and material editors remain available.
 
 `POST /api/model-texture-assignment-preview` accepts exactly:
@@ -66,7 +66,24 @@ page selection, combined UV/page staging, readonly Review, draft invalidation an
 combined Apply/Save/reload/Build review. Independent normal Build readback, model
 Undo/Redo and offline Open also passed:
 `local-output/sdk-20260909/model-texture-assignment-ui-20261004/parent/verified/proof.json`.
-Placed-scene comparison of the combined pending draft is not implemented yet;
-the scene action is disabled while a binding draft is staged. The final applied
-model can be inspected through the ordinary scene workflow. No game launched;
-live residency and gameplay verification remain open.
+`POST /api/model-texture-assignment-scene-preview` takes the same draft/source
+fields as Apply, including the accepted `review_key`, plus `entity_id` and the
+explicit boolean `all_instances`. It regenerates the combined model and requires
+that review key before composing the final native content through the ordinary
+scene poses. Added topology uses a temporary content ledger replay against its
+qualified base. No model replacement or history entry is published. Proposed UV
+crops and native material bindings are refreshed from the verified texture catalog.
+
+Inspect proposed faces in scene now supports the combined draft. The browser
+checks its complete review metadata against the accepted model review, preserves
+existing instance transforms, and supports Current/Proposed switching, isolation,
+optional GLB face highlights and Return to face editor. Return retains the reviewed
+combined Apply; any source/draft change still requires fresh Review.
+
+Five native/HTTP tests and the private Town01 browser proof passed both posed shared
+instances and readonly Current/Proposed/isolation/Return. A non-overlapping checker
+texture is resolved explicitly by both changed material previews; an earlier
+conflicting-address test remained ambiguous. Save/Open, Undo/Redo and normal Build
+independent model/TIM readback passed:
+`local-output/sdk-20260909/model-texture-assignment-scene-20261004/parent/qualified/proof.json`.
+No game launched; live residency and gameplay verification remain open.

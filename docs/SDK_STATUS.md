@@ -1,5 +1,31 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Combined pending face/material scene comparison
+
+The reviewed UV/face plus texture-binding draft can now be inspected in the authored
+scene before Apply. The combined scene endpoint regenerates both native audits and
+requires the accepted review key. Existing placement matrices, pose channels and
+shared instance groups are retained; proposed crops/bindings are refreshed from the
+verified texture catalog. Retained authored topology uses a temporary replayed
+content ledger without publishing model files or history entries. The browser
+checks the scene report against every accepted review metadata field before showing
+Current/Proposed, isolation, optional GLB face highlights and Return to face editor.
+Returning retains the accepted review and one combined model Apply.
+
+Five focused native/HTTP tests passed, including two posed shared instances,
+unchanged placements/source/history, exact final UV/material fields, invalid/stale
+review rejection, and retained authored topology ledger composition. Existing face
+lifecycle and shared scene highlight checks passed. Private Town01 browser proof
+verified readonly scene comparison/isolation/Return, yellow display highlights,
+combined Apply, Undo/Redo, Save/Open and exact normal Build model/TIM readback:
+`local-output/sdk-20260909/model-texture-assignment-scene-20261004/parent/qualified/proof.json`.
+The proof uses a non-overlapping static texture region and asserts both changed
+materials resolve to the added texture. An earlier overlapping private test correctly
+reported ambiguity; no upload ordering was inferred. No game launched. Static address
+matching still does not establish live VRAM residency or gameplay correctness.
+The earlier combined placed-scene-pending notes below are superseded.
+
+
 ## 2026-10-04: Combined face and texture-page browser workflow
 
 The face editor now explicitly stages a qualified Current texture page/depth and
