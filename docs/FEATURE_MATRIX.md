@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: Retained animation output-frame timeline
+
+**Edit retained content** now displays an **Output frame timeline**. Each cell
+shows the output index, frozen donor index and authored-axis count for the selected
+rigid object. Tooltips expose exact authored axes and total authored objects for
+that frame. Repeated donor frames retain distinct output contributions. Authored
+cells, the selected frame and the inclusive range have separate display cues.
+
+Click selects an output frame and loads its channel fields. Shift-click extends
+the range from the last clicked frame for reverse/repeat/remove/interpolation.
+Navigation sends no API request and retains accepted Review if channel content is
+unchanged. Pending operations disable navigation; stale context withdraws the
+cells. Valid clips remain inspectable when their edit revision budget is exhausted.
+Invalid mapping/range/object/channel data withdraws the timeline. Cells use
+keyboard-accessible buttons, retain focus after navigation, and occupy a bounded
+scroll region. No playback cadence or runtime state is inferred.
+
+Validation: bounded timeline metadata and editor lifecycle checks pass repeated
+donor frames, object-specific axes, 512-frame limits, no-request navigation,
+review retention, exhausted-budget inspection and stale-source withdrawal.
+Private Town01 browser checks pass click/Shift-click selection, channel loading,
+range interpolation, readonly preview Return, assigned Apply, Undo/Redo and
+Save/Open. Normal Build matches the complete candidate animation bank and preserves
+every original retail record. Screenshot inspected, zero page errors. Evidence:
+`local-output/sdk-20260909/retained-timeline-20261004/parent/proof.json` (ignored).
+No game launched or physical Retail disc exported; gameplay remains deferred.
+
+
 ## 2026-10-04: Retained clip partial-axis interpolation
 
 In **Edit retained content**, open **Frame sequence tools**, author the same

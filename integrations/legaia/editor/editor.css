@@ -223,3 +223,5 @@
 .mesh-donor-preview canvas{display:block;flex:1;min-height:200px;max-height:420px;margin-top:14px}
 .mesh-donor-preview [data-material-summary]{overflow:auto;max-height:160px;flex:none;overflow-wrap:anywhere}
 @media(max-width:860px){.mesh-donor-workspace{grid-template-columns:minmax(0,1fr);height:auto;min-height:0}.mesh-donor-settings>[data-mappings]{flex:none;max-height:40dvh}.mesh-donor-preview{min-height:360px}.mesh-donor-preview canvas{height:300px;flex:none}.mesh-donor-settings>[role=status]{max-height:none}}
+
+.retained-frame-timeline{border:1px solid var(--line);border-radius:6px;padding:12px;margin-top:18px}.retained-frame-timeline h3{margin:0;font-size:12px}.retained-frame-cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:5px;max-height:180px;overflow:auto}.retained-frame-cells button{font-size:10px;padding:8px 5px}.retained-frame-cells button[data-in-range=true]{border-color:#688777}.retained-frame-cells button[data-authored=true]{color:#e4c88b}.retained-frame-cells button[aria-pressed=true]{background:var(--selected);outline:2px solid var(--mint);outline-offset:-2px}
