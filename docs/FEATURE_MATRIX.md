@@ -1,5 +1,32 @@
 # Legaia SDK feature matrix
 
+## Selected model vertex group rotation - 2026-10-05
+
+The movement workspace now stages -90, +90 and 180 degree turns of 1..4096 selected
+object-local vertices about source X/Y/Z. Positive source Y points down. Pivot choices
+are object-local origin or the selected bounds center. Exact doubled pivot coordinates
+and signed permutations avoid trigonometric drift; final signed16 words round to nearest,
+with half ties away from zero. Overflow rejects the entire candidate. Stored normals,
+unselected rows, padding, packet topology and allocation ownership remain unchanged.
+This edits geometry only; it does not reconstruct lighting normals or actor transforms.
+
+Draft transforms lock selection, offsets, picking and history. Discard restores Current;
+Retail/Current/Draft and exact source-qualified placed-scene Current/Proposed comparisons
+retain the draft through Return/Restore, including all instances. Apply creates one
+normal model replacement history step. Unchanged native words produce no command.
+Undo/Redo, Save/Open and the normal Build serializer reuse the existing workflow.
+See [group rotation](legaia-model-vertex-movement.md#selected-group-rotation).
+
+Verification: four focused synthetic Python rotation checks (including HTTP and allocated
+rows), six existing scaling/alignment checks, Node geometry/review checks and two JS syntax
+checks passed. A private actual-retail browser exercise verified no-op, staging, Discard,
+locks, comparison, Return/Restore, all-instance inspection, one Apply and Undo/Redo; native
+Save/Open and independent Build directory/ZIP full-section readback also passed. Only
+selected XYZ bytes changed. Evidence: ignored
+`local-output/sdk-20260909/vertex-rotation-20261005/` (`proof.json`, screenshots and audit).
+No game was launched or installed. Gameplay appearance and lighting remain deferred;
+the full SDK goal is still active and incomplete.
+
 ## Selected model vertex group scaling - 2026-10-05
 
 The model movement workspace now stages positive uniform scaling of 1..4096 selected

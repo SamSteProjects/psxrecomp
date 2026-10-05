@@ -1468,6 +1468,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self.server.project.align_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['axis'],body['anchor'],body['expected_sha256'])
                     self._json(200,self.server.state())
                     return
+                if route == '/api/model-vertices-rotation':
+                    if set(body)!={'asset_id','object_index','indices','axis','quarter_turns','pivot','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex rotation requires model, object, indices, axis, quarter turns, pivot and inspected hash')
+                    self.server.project.rotate_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['axis'],body['quarter_turns'],body['pivot'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
                 if route == '/api/model-vertices-scaling':
                     if set(body)!={'asset_id','object_index','indices','percent','pivot','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex scaling requires model, object, indices, percent, pivot and inspected hash')
                     self.server.project.scale_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['percent'],body['pivot'],body['expected_sha256'])

@@ -105,6 +105,27 @@ def align_shape_vertices(original: bytes, effective: bytes, expected_sha256: str
     return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]
 
 
+def rotate_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
+                          object_index: int, indices: list[int], axis: str, quarter_turns: int, pivot: str) -> bytes:
+    """Rotate selected source rows, keeping stored normals and native ownership."""
+    if axis not in ('x','y','z') or type(quarter_turns) is not int or quarter_turns not in (-1,1,2) or pivot not in ('origin','center'):
+        raise ImportError('Vertex group rotation requires X/Y/Z, -90/+90/180 degrees and origin or center pivot')
+    qualified=translate_shape_vertices(original,effective,expected_sha256,object_index,indices,[0,0,0])
+    document=json.loads(export_shape_json(qualified));vertices=document['objects'][object_index]['vertices']
+    pivot2=[0,0,0] if pivot=='origin' else [min(vertices[i][a] for i in indices)+max(vertices[i][a] for i in indices) for a in range(3)]
+    for i in indices:
+        x,y,z=[2*v-pivot2[a] for a,v in enumerate(vertices[i])]
+        for _ in range(quarter_turns % 4):
+            x,y,z=(x,-z,y) if axis=='x' else (z,y,-x) if axis=='y' else (-y,x,z)
+        numerators=[v+pivot2[a] for a,v in enumerate((x,y,z))]
+        rotated=[((abs(n)+1)//2)*(-1 if n<0 else 1) for n in numerators]
+        if any(not -32768 <= v <= 32767 for v in rotated):
+            raise ImportError('Vertex group rotation exceeds signed16; nothing was applied')
+        vertices[i]=rotated
+    replacement=import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
+    return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]
+
+
 def scale_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
                          object_index: int, indices: list[int], percent: int, pivot: str) -> bytes:
     """Uniform selected-row scale; exact half-unit pivot and signed word rounding."""

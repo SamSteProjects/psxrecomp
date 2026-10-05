@@ -1,5 +1,18 @@
 # Legaia SDK validation plan
 
+## Selected vertex group rotation checks
+
+- Compare native/browser X/Y/Z turns -90/+90/180 about source origin and group bounds
+  center, including half-unit pivot rounding and positive-Y-down conventions.
+- Reject invalid axis/turn/pivot, booleans, duplicate/out-of-range rows, stale source
+  hashes and signed16 overflow atomically. A centered single-row turn is a no-op.
+- Preserve other vertices, stored normals, opaque padding, packets and allocated ownership.
+- Check staging, Discard, locks, layers, qualified scene Current/Proposed, Return/Restore
+  and all instances without project/file mutation before explicit Apply.
+- Verify one history step, refreshed Current, Undo/Redo, Save/Open and normal Build;
+  independently decode directory and ZIP payloads to the complete expected section.
+- Defer game appearance/lighting acceptance; native byte preservation is not gameplay proof.
+
 ## Selected vertex group scaling checks
 
 - Compare browser and native candidate at origin/bounds-center pivots, including

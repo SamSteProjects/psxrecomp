@@ -74,3 +74,15 @@ assert.throws(()=>vertexGroupScalePreview({preview:{objects:[{object_index:0,ver
 const scaleRequest={...request,operation:'vertex_scaling',values:{indices:[0,1],percent:150,pivot:'center'}},scalePreview=vertexGroupScalePreview(source,1,[0,1],150,'center'),scaleReport={...report,operation:'vertex_scaling',values:scaleRequest.values,preview:scalePreview};
 qualifyObjectMoveReview(scaleReport,scaleRequest,{...expected,preview:scalePreview});assert.throws(()=>qualifyObjectMoveReview({...scaleReport,values:{...scaleRequest.values,pivot:'origin'}},scaleRequest,{...expected,preview:scalePreview}));
 console.log('Vertex scaling: exact subset, origin/bounds pivot, signed half-away rounding, no-op, overflow and scene-review identity passed');
+
+import {vertexGroupRotatePreview} from '../editor/model-vertex-move.js';
+for(const [axis,row] of [['x',[4,-6,5]],['y',[6,5,-4]],['z',[-5,4,6]]]){const rotated=vertexGroupRotatePreview(source,1,[0],axis,1,'origin');assert.deepEqual(rotated.vertices[1],row);assert.deepEqual(rotated.vertices[2],source.preview.vertices[2]);assert.deepEqual(rotated.normals,source.preview.normals);}
+assert.deepEqual(vertexGroupRotatePreview(source,1,[0],'x',2,'center').vertices,source.preview.vertices);
+const half=structuredClone(source);half.preview.vertices[1]=[-4,0,1];half.preview.vertices[2]=[3,1,2];assert.deepEqual(vertexGroupRotatePreview(half,1,[0,1],'y',1,'center').vertices.slice(1),[[-1,0,5],[0,1,-2]]);
+for(const [axis,turn,pivot] of [['w',1,'origin'],['x',true,'origin'],['x',0,'origin'],['x',3,'origin'],['x',1,'mean']])assert.throws(()=>vertexGroupRotatePreview(source,1,[0],axis,turn,pivot));
+const limit=structuredClone(source);limit.preview.vertices[1]=[-32768,0,0];assert.throws(()=>vertexGroupRotatePreview(limit,1,[0],'y',1,'origin'),/signed16/);
+console.log('Vertex group rotation: axes, origin/center pivots, half rounding, fixed normals and bounds passed');
+
+const rotationRequest={asset_id:'asset://fixture',object_index:1,operation:'vertex_rotation',values:{indices:[0],axis:'y',quarter_turns:1,pivot:'origin'},expected_sha256:'b'.repeat(64)},rotationExpected={source_sha256:'a'.repeat(64),current_preview:source.preview,preview:vertexGroupRotatePreview(source,1,[0],'y',1,'origin')},rotationReport={...rotationRequest,source_sha256:rotationExpected.source_sha256,effective_sha256:rotationRequest.expected_sha256,proposed_sha256:'c'.repeat(64),project_changed:false,current_preview:rotationExpected.current_preview,preview:rotationExpected.preview};
+assert.deepEqual(qualifyObjectMoveReview(rotationReport,rotationRequest,rotationExpected),rotationReport);
+for(const forged of [{axis:'x'},{quarter_turns:-1},{pivot:'center'},{indices:[1]}])assert.throws(()=>qualifyObjectMoveReview({...rotationReport,values:{...rotationReport.values,...forged}},rotationRequest,rotationExpected));

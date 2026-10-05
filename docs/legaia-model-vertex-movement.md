@@ -322,3 +322,26 @@ matched. Scene screenshot inspected. The initial browser attempt found a missing
 root scene label/qualification path; it was fixed and the failed attempt preserved.
 No game launched or installed. Evidence:
 `local-output/sdk-20260909/vertex-scaling-20261005/proof.json`.
+
+## Selected group rotation
+
+In **Move model geometry**, choose **Selected vertex group**, enter or recall the
+object-local indices, choose **Turn** (-90, +90 or 180 degrees) and **Pivot** (group bounds
+center or object-local origin), then click **Rotate group X/Y/Z**. Axes refer to retail
+source coordinates, where positive Y points down. Rotation uses the same signed axis
+permutations as whole-object rotation. The pivot retains half-unit coordinates and final
+words round nearest with half ties away from zero. There is no arbitrary-angle operation.
+
+This stages a local draft. Selection, offsets, picking and project history lock until
+Discard or Apply; Current/Retail comparison remains available. Inspect the draft in the
+scene, compare Current/Proposed, and Return or Restore to retain it. Exact operation,
+indices, axis, turn, pivot, geometry and source hashes qualify Review. Apply uses
+`/api/model-vertices-rotation` and one existing model replacement command; Undo/Redo,
+Save/Open and normal Build preserve the authored result. An unchanged result adds no
+history. Signed16 overflow rejects the entire draft. Only selected vertex XYZ words change;
+unselected rows, stored normals, padding, packets and native ownership remain fixed.
+Normals are not reconstructed, so lighting/gameplay acceptance remains a manual check.
+
+Evidence: `local-output/sdk-20260909/vertex-rotation-20261005/proof.json` and its browser
+screenshots/native Build audit. The private browser and directory/ZIP readback did not
+launch, install or control the game.
