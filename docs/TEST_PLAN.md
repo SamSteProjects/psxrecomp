@@ -1,5 +1,21 @@
 # Legaia SDK validation plan
 
+## Build-review native coordinate checkpoint — 2026-10-05
+
+Nine focused Python Build-review/model-growth/normal-package cases, ordinary and
+NPC Build-review Node suites, and module syntax pass. Cover source/no-output guards,
+relocation ledger retention, independent signed native-word readback, deterministic
+normal package output, immutable 128-row pages and malformed ledger rejection.
+Actual private Town01 browser reads 130 native changes across both pages, checks
+paging bounds and close disposal, and preserves project/history/all fixture files.
+The 540px screenshot is inspected; no page errors or authoring/Save/Build/Run requests.
+Evidence: `local-output/sdk-20260909/build-review-model-coordinates-20261005/proof.json`.
+Campaign follow-up: maximum ledger size, normal-coordinate records, mixed primitive
+and removal records, authored-input withdrawal while paging, and topology layouts.
+Topology bindings without ledgers remain hashes/relocation evidence only. Synthetic
+normal packages were tested; this retail browser check writes no package. Gameplay
+acceptance remains manual; no game, installation or full-disc export ran.
+
 ## Model vertex distribution checkpoint — 2026-10-05
 
 Six focused Python distribution/alignment cases cover signed extrema, nearest spacing,

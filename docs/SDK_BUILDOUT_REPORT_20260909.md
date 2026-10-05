@@ -1,5 +1,32 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Review native model coordinate changes before Build — 2026-10-05
+
+**Review Build → Native coordinate audit** exposes qualified vertex/normal records:
+object and vector index, axis, model byte offset, and signed before/after values.
+Details render lazily with 128 coordinates per page. Primitive, material, removal
+and allocation records remain separate records in the full audit; they are not
+interpreted as coordinates. The existing first-256 top-level change-row limit stays.
+Reports without a native ledger do not acquire invented coordinate changes.
+
+Existing-layout shape/content and face-removal ledgers now survive model-pack
+relocation into both Build audit and report. Topology-addition bindings retain their
+existing relocation evidence without a fabricated coordinate ledger. The browser
+validates hashes, signed values, indices and unique aligned offsets before exposing
+review; paging is guarded by the current authored-input identity. Recorded offsets
+are model-layout offsets, not an assertion of a retail file address.
+
+Validation: nine focused Python Build-review/growth/normal-Build cases, both ordinary
+and NPC Build-review Node suites, and module syntax pass. Synthetic normal packages
+retain independently checked native ledgers and deterministic relocation behavior.
+Actual private Town01 review exposes 130 exact native changes over two pages for a
+model-pack-content relocation, with correct paging bounds, readable 540px layout,
+no browser errors and unchanged project/history/all fixture files. Independent native
+word and source/candidate hash readback passes. Review creates no package.
+Evidence: `local-output/sdk-20260909/build-review-model-coordinates-20261005/proof.json`.
+No game, installation or full-disc export ran. Gameplay acceptance remains deferred;
+the full SDK goal stays active.
+
 ## Distribute selected model vertices along a source axis — 2026-10-05
 
 **Move model geometry → Selected vertex group → Distribute group X/Y/Z** stages even

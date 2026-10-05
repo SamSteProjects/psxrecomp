@@ -45,6 +45,10 @@ class ModelGrowthTests(unittest.TestCase):
         p,asset,other,pack,raw=self.fixture();before=deepcopy((p._document(),p.undo_stack,p.redo_stack))
         requests,audit=prepare_model_growth(p,_archive(raw))
         self.assertEqual(len(requests),1);self.assertEqual(audit['deferred_model_ids'],sorted([asset,other]))
+        self.assertNotIn(asset,audit['model_content_changes']) # topology ledger is not relabeled as coordinate-only
+        words=audit['model_content_changes'][other];self.assertTrue(words)
+        for word in words:
+            self.assertEqual(struct.unpack_from('<h',p._model_source(other),word['byte_offset'])[0],word['before_value']);self.assertEqual(struct.unpack_from('<h',p.read_model_replacement(other,p.model_overrides[other]),word['byte_offset'])[0],word['after_value'])
         self.assertEqual({row['slot_index'] for row in requests[0]['replacements']},{0,1})
         result,rebuild=rebuild_model_pack_entry(raw,sha256(raw).hexdigest(),**requests[0])
         reopened=_archive(result);entry=reopened.entry(1);body=reopened.read_entry(entry)
@@ -68,6 +72,7 @@ class ModelGrowthTests(unittest.TestCase):
         with patch('importer.model_authoring.model_shape_overlays',side_effect=LzsCapacityError('capacity')):
             requests,audit=prepare_model_growth(p,_archive(raw))
         self.assertEqual(audit['content_growth_model_ids'],sorted([asset,other]))
+        self.assertEqual(set(audit['model_content_changes']),{asset,other})
         self.assertEqual(audit['carriers'][0]['reason'],'compressed-content-capacity')
         result,_=rebuild_model_pack_entry(raw,sha256(raw).hexdigest(),**requests[0])
         archive=_archive(result);body=archive.read_entry(archive.entry(1));descriptor=parse_scene_assets(body,1).descriptors[1]

@@ -53,6 +53,11 @@ class ModelGrowthNormalBuildTests(unittest.TestCase):
             self.assertFalse(review['output_written']);self.assertFalse((p.root/'Builds').exists())
             result=build_project(p)
             again=build_project(p);self.assertEqual(result['sha256'],again['sha256'])
+        native=next(row for row in result['report']['changes'] if row['owner_id']==other)['coordinate_changes'];self.assertTrue(native)
+        import struct
+        original=p._model_source(other);candidate=p.read_model_replacement(other,p.model_overrides[other])
+        for word in native:
+            self.assertEqual(struct.unpack_from('<h',original,word['byte_offset'])[0],word['before_value']);self.assertEqual(struct.unpack_from('<h',candidate,word['byte_offset'])[0],word['after_value'])
         with zipfile.ZipFile(result['path']) as package:
             manifest=tomllib.loads(package.read('manifest.toml').decode())
             self.assertEqual(manifest['format_version'],7);self.assertNotIn('overlay',manifest)

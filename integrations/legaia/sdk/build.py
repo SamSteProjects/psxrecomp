@@ -1178,6 +1178,8 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         audit_edits.extend(dict(semantic_id=identifier, field='model.shape', scope=('model-pack-content-relocation' if identifier in growth_audit.get('content_growth_model_ids', []) else 'model-pack-topology-relocation'),
                                before_sha256=_hash(project._model_source(identifier, project.model_overrides[identifier]['source_scene_id'])),
                                after_sha256=_hash(project.read_model_replacement(identifier, project.model_overrides[identifier])),
+                               **({'coordinate_changes': deepcopy(growth_audit['model_content_changes'][identifier])}
+                                  if identifier in growth_audit.get('model_content_changes', {}) else {}),
                                scene=project.imports[project.model_overrides[identifier]['source_scene_id']]['scene']['name'])
                            for identifier in sorted(deferred_models))
     build_kind = "authored" if overlays or relocation else "retail"

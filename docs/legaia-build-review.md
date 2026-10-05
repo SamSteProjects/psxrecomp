@@ -7,12 +7,13 @@ used by normal Build. Review returns audited before/after changes, source/audit/
 manifest hashes, overlay counts and explicit blockers. It writes no output files
 and does not run the package packer, install overlays or launch a game.
 
-NPC drafts remain normal-Build blockers. Review lists each retained draft and
-assesses existing overrides with drafts explicitly excluded in the detached
-snapshot. The current project, its imported facts, authored assets, history and
-saved metadata are not changed. This partial assessment cannot enable Build while
-draft blockers remain. If serialization fails, the assessment is absent and later
-changes are not claimed to have passed.
+Current v2 review includes source-qualified NPC candidates. Unsupported, stale or
+out-of-capacity candidates remain blockers. Package fit does not establish runtime
+allocation, spawning, scheduling or opaque script behavior; see
+[qualified NPC Build candidates](legaia-npc-build-candidates.md). The current project,
+imported facts, authored assets, history and saved metadata remain unchanged. If
+serialization fails, the assessment is absent and later changes are not claimed
+to have passed.
 
 A ready review exposes **Build reviewed inputs** in Edit mode. It passes the
 reviewed authored-input identity to normal Build; both the browser and server
@@ -29,7 +30,22 @@ is bounded to eight MiB; the UI shows the first 256 change rows with an explicit
 total when larger. Full serializer coverage is represented by the audited report
 count and hash, rather than by the displayed row count.
 
-Validation on 2026-10-01: five retail-enabled Python checks passed, including
+For model-shape rows with a qualified ledger, open **Native coordinate audit** to
+see object/vector/axis, model byte offset and signed before/after values. Coordinates
+render lazily in 128-row pages. Other primitive/material/removal/allocation records
+remain in the full audit and are counted separately. Existing-layout ledgers survive
+model-pack relocation into normal Build metadata. Topology additions without a ledger
+show their existing hashes/relocation evidence only. Offsets refer to the recorded
+model layout. Source changes require reopening review before paging or building.
+
+2026-10-05 validation: nine focused Python cases, ordinary/NPC Build-review Node
+suites and syntax pass. Normal synthetic package readback checks ledger retention.
+A private retail Town01 browser review checks all 130 native words across two pages,
+source/candidate hashes, paging bounds and 540px layout, without changing project,
+history or files. No retail package or game was created/launched for this check.
+Evidence: `local-output/sdk-20260909/build-review-model-coordinates-20261005/proof.json`.
+
+Historical v1 validation on 2026-10-01 (draft exclusion is superseded by v2 candidate inclusion): five retail-enabled Python checks passed, including
 no-write/no-packer review, retained draft blockers, source drift/stale dispatch,
 audit/manifest/report equality with actual Build, and unchanged raw/compressed
 animation Build behavior. All 23 Node test files and 25 module syntax checks

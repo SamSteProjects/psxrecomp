@@ -49,7 +49,7 @@ def prepare_model_growth(project, archive):
         source = asset['source_record']
         identity = (source['prot_entry_index'], source.get('container_section'))
         groups.setdefault(identity, []).append((identifier, binding, source))
-    requests, reports, deferred, content_growth = [], [], [], []
+    requests, reports, deferred, content_growth, content_changes = [], [], [], [], {}
     for (entry_index, section_index), members in sorted(groups.items(), key=lambda row:str(row[0])):
         topology_growth = any(binding['format'] == 'tmd-face-addition-v1' for _, binding, _ in members)
         if not topology_growth and not _content_requires_growth(project, archive, members):
@@ -87,6 +87,19 @@ def prepare_model_growth(project, archive):
             if original != pack[start:start+source['byte_length']]:
                 raise ProjectError('Model growth imported model differs from its physical carrier')
             payload = project.read_model_replacement(identifier, binding)
+            if binding['format'] == 'tmd-face-removal-v1':
+                from importer.model_face_removal import qualify_face_removal
+                _, changes = qualify_face_removal(original, binding['source_sha256'], payload, binding['removed_faces'])
+                content_changes[identifier] = changes + [dict(kind='primitive_removal', **row) for row in binding['removed_faces']]
+            elif binding['format'] in ('tmd-shape', 'tmd-content-v1', 'tmd-content-v2', 'tmd-content-v3'):
+                from importer.model_authoring import replace_model_shape, replace_model_content
+                if binding['format'] == 'tmd-shape':
+                    _, changes = replace_model_shape(original, binding['source_sha256'], payload)
+                else:
+                    _, changes = replace_model_content(original, binding['source_sha256'], payload,
+                        allow_materials=binding['format'] in ('tmd-content-v2', 'tmd-content-v3'),
+                        allow_normal_references=binding['format'] == 'tmd-content-v3')
+                content_changes[identifier] = changes
             if binding['format'] == 'tmd-face-addition-v1':
                 base_binding = deepcopy(binding['base_binding'])
                 base_payload = project.read_model_replacement(identifier, base_binding) if base_binding else None
@@ -115,4 +128,5 @@ def prepare_model_growth(project, archive):
     if authored_state_key(project) != key:
         raise ProjectError('Project changed while preparing model growth')
     return requests, dict(schema_version='legaia.model-growth-preparation.v1', authored_state_key=key,
-        deferred_model_ids=sorted(deferred), content_growth_model_ids=sorted(content_growth), carriers=reports, build_ready=False, gameplay_verified=False)
+        deferred_model_ids=sorted(deferred), content_growth_model_ids=sorted(content_growth),
+        model_content_changes=deepcopy(content_changes), carriers=reports, build_ready=False, gameplay_verified=False)
