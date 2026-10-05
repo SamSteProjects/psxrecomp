@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Allocated assignment component inspector
+
+The allocated initial-animation Inspector now uses the SDK component contract
+for labels, properties, source witness details, notes and registered actions.
+It exposes inherited/retained clip identity, record hash, captured model reference,
+selector identity and explicit gameplay evidence status. The captured model uses
+the shared reference-navigation adapter. **Manage allocated clips** is capability
+and Edit gated; **Preview allocated initial animation** is available only for an
+assigned retained clip and uses the existing readonly assigned-pose workflow.
+
+The old ad hoc Inspector button handler is removed. Registered action dispatch
+retains selection/source/busy guards, and management keeps the existing native
+Review/Apply commands. No generic component writes or retail-format knowledge
+were added to the property renderer. Specialized editor migration remains partial.
+
+Validation: five focused SDK schema checks and the component-renderer/action
+checks passed. Private Town01 browser verification covered the registered
+assignment section, readonly assigned preview, library/content editing, one
+reviewed Apply with reference updates, Undo/Redo, Save/Open and exact complete
+normal Build ANM readback with original retail records preserved. A readonly
+layout/navigation check verified that full hashes/model IDs fit their cells and
+the captured-model link opens its asset details Inspector. Shared property styles
+now wrap long code/reference values. Screenshots inspected, zero page errors.
+Evidence: ignored `local-output/sdk-20260909/allocated-inspector-20261004/verified/`
+(`proof.json`, `layout.log`, `wrapped-assignment.png`). No game launched or
+physical Retail export; gameplay acceptance remains deferred.
+
+
 ## 2026-10-04: Retained animation output-frame timeline
 
 **Edit retained content** now displays an **Output frame timeline**. Each cell

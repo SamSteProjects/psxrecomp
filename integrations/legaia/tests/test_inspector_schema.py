@@ -58,4 +58,17 @@ class InspectorSchema(unittest.TestCase):
         schema['components']['AssetModel']['actions'][0]['label']='changed'
         self.assertEqual(inspector_schema()['components']['AssetModel']['actions'][0]['label'],'Inspect model')
 
+    def test_allocated_assignment_is_readonly_metadata_with_reviewed_actions(self):
+        definition=inspector_schema()['components']['ActorAllocatedAnimation']
+        self.assertEqual(definition['layout'],'read-only-properties')
+        self.assertEqual({p['id'] for p in definition['properties']},{'record_id','record_sha256','model_asset_id','initial_selection','gameplay_verified'})
+        self.assertTrue(all('authoring' not in p for p in definition['properties']))
+        actions=definition['actions']
+        self.assertTrue(actions[0]['requires_edit'])
+        self.assertEqual(actions[0]['capability'],'actor_animation_assignment')
+        self.assertEqual(actions[1]['when'],['authored','record_id'])
+        self.assertNotIn('requires_edit',actions[1])
+        definition['properties'][0]['label']='changed'
+        self.assertEqual(inspector_schema()['components']['ActorAllocatedAnimation']['properties'][0]['label'],'Retained clip')
+
 if __name__=='__main__':unittest.main()
