@@ -816,6 +816,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/transition-graph.js': ('transition-graph.js', 'text/javascript'),
                  '/transition-graph-workspace.js': ('transition-graph-workspace.js', 'text/javascript'),
                  '/model-primitives.js': ('model-primitives.js', 'text/javascript'),
+                 '/model-uv-workspace.js': ('model-uv-workspace.js', 'text/javascript'),
                  '/uv-rectangle.js': ('uv-rectangle.js', 'text/javascript'),
                  '/model-object-ownership.js': ('model-object-ownership.js', 'text/javascript'),
                  '/model-materials.js': ('model-materials.js', 'text/javascript'),

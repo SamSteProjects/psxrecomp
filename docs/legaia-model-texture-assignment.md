@@ -87,3 +87,13 @@ conflicting-address test remained ambiguous. Save/Open, Undo/Redo and normal Bui
 independent model/TIM readback passed:
 `local-output/sdk-20260909/model-texture-assignment-scene-20261004/parent/qualified/proof.json`.
 No game launched; live residency and gameplay verification remain open.
+
+
+The face editor's **UV workspace** shows Current and Draft native byte outlines.
+After Preview, each side displays its source-qualified static texture crop. Draft
+corner dragging updates the existing UV fields and withdraws the review/Proposed
+crop; Preview is required again before Apply or scene inspection. It preserves
+other face/material drafts and authors no project state until the existing Apply.
+Missing or ambiguous static evidence remains labelled. Numeric corner fields are
+available for precise edits and coincident corners. Crops are bounded native page
+pixels, not inferred full texture images or proof of runtime residency.

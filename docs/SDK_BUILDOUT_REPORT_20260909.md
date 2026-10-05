@@ -1,5 +1,27 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Native face UV workspace
+
+The face editor now includes a 2D UV workspace with Current and Draft outlines,
+numbered triangle/quad corners, a native byte grid and source-qualified static
+texture crops after Preview. Drag a Draft corner to edit the same existing U/V
+fields. Coordinates clamp to 0..255; vertex/color/normal/material drafts remain.
+Dragging withdraws the accepted review and Proposed crop, changes no project state,
+and requires Preview before Apply. Current's qualified crop remains readonly.
+Ambiguous/missing texture evidence is labelled and does not display guessed pixels.
+The existing numeric fields remain available, including coincident UV corners.
+
+Focused Node checks passed corner/quad ownership, clamped pointer conversion,
+detached pixel buffers and stale/duplicate/malformed/ambiguous texture guards. The
+face lifecycle suite and five combined native/HTTP cases passed; HTTP serves the
+new module. Private Town01 browser verification passed actual dragging and byte
+field updates, readonly state, review invalidation, refreshed UV crops, combined
+scene comparison/Return and one Apply/Undo/Redo/Save/Open/normal Build with exact
+model/TIM readback. The workspace screenshot was inspected:
+`local-output/sdk-20260909/model-uv-workspace-20261004/parent/qualified/proof.json`.
+No game launched; live texture residency and gameplay acceptance remain open.
+
+
 ## 2026-10-04: Combined pending face/material scene comparison
 
 The reviewed UV/face plus texture-binding draft can now be inspected in the authored

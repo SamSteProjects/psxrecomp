@@ -109,7 +109,10 @@ class CombinedModelTextureAssignment(unittest.TestCase):
 
     def test_exact_http_preview_and_fresh_review_apply(self):
         p,native=self.fixture();faces,materials=self.drafts(native);body=dict(asset_id=ASSET,primitive_edits=faces,material_edits=materials,expected_sha256=sha256(native).hexdigest(),source_key=source_key(p))
-        with patch('sdk.server.EditorServer.model_preview',side_effect=lambda a,prepared=None:prepared),http_server(p) as (_,post):
+        with patch('sdk.server.EditorServer.model_preview',side_effect=lambda a,prepared=None:prepared),http_server(p) as (server,post):
+            from urllib.request import urlopen
+            with urlopen(f'http://127.0.0.1:{server.server_port}/model-uv-workspace.js') as response:
+                self.assertEqual(response.status,200);self.assertIn(b'createModelUvWorkspace',response.read())
             for bad in [dict(body,extra=True),dict(body,source_key='stale'),dict(body,primitive_edits=[])]:
                 status,_=post('/api/model-texture-assignment-preview',bad);self.assertEqual(status,400)
             status,r=post('/api/model-texture-assignment-preview',body);self.assertEqual(status,200,r);self.assertFalse(p.model_overrides)
