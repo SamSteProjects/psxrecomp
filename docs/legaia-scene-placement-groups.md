@@ -1,5 +1,33 @@
 # Mixed scene placement groups
 
+## Scale mixed actor/scenery placement spacing — 2026-10-05
+
+**Move scene placement group → Scale spacing on grid** now scales selected imported
+actor and static-decoration X/Z distances around a selected placement anchor. Enter an
+integer percentage from 1 through 1000. Selected Current X/Z and the anchor must lie on
+the 64-unit actor grid; relative results round to the nearest 64 units, half steps away
+from the anchor. The anchor stays fixed and 100 percent is a no-op. Rounding can bring
+placements together; review the exact Retail/Current/Proposed table before applying.
+
+The existing scene inspection shows Current or Proposed positions without authoring.
+Changing the operation/percentage withdraws the review. Apply rechecks project/source,
+selection, exact operation and complete proposal, then records one atomic Undo step.
+Actor native coordinate bounds and scenery signed-offset limits still apply. Height,
+facing, object rotations, shared descriptor edits and unselected placements remain
+unchanged. This scales placement spacing, not geometry or collision resources. The
+mixed placement dialog action row now wraps within narrow screens.
+
+Validation: 19 focused Python layout/group/HTTP cases, the expanded Node qualification
+suite and editor-module syntax check pass. A fresh private Town01 browser exercised
+50/100/200 percent, a fixed decoration anchor, exact Current/Proposed GPU matrices,
+review withdrawal, Return, one Apply and 540px action bounds. Undo/Redo, Save/Open and
+normal Build pass; independent native MAN actor decoding and complete MAP directory/ZIP
+readback match the proposal while preserving opaque/unselected bytes. Package SHA256:
+`735e2c3f44c2ead8b8424baefc1573ca2eb55a5b07091c3309e91032744497de`.
+Private evidence: `local-output/sdk-20260909/mixed-placement-scale-20261005/proof.json`.
+No game, installation or full-disc export ran. Gameplay appearance remains deferred;
+the full SDK goal stays active.
+
 Use **Box select placements** to drag a rectangle over visible imported actor
 and static-decoration meshes. Selection uses depth-tested pixels; hidden and
 fully occluded meshes are not selected. Drag replaces the group, Ctrl/Command adds,

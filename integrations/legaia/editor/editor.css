@@ -289,3 +289,6 @@
 .transform-table .column-title .property-state{font-size:8px}.transform-property-states{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px;font-size:9px;color:var(--muted)}.transform-property-states>span{display:flex;align-items:center;gap:4px}.transform-property-states .property-state{display:inline-block;margin:0;white-space:nowrap;font-size:9px}
 
 .inspector-component-filter label:has(select){width:100%;display:flex;align-items:center;gap:8px;min-width:0}.inspector-component-filter select{flex:1;min-width:0;max-width:100%;font-size:10px;padding:5px}
+
+#scene-placement-group-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}
+#scene-placement-group-dialog .dialog-actions button{max-width:100%;white-space:normal;text-align:left}

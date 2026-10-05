@@ -92,4 +92,31 @@ class MixedRotationTests(unittest.TestCase):
    with patch.object(p,'_environment_source',return_value=bytes(source)):
     p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=192)));p.undo();history=deepcopy((p.undo_stack,p.redo_stack));op=dict(kind='rotate',anchor_entity_id=ACTOR,quarter_turns=1);r=layout_review(p,SCENE,MIXED,op);self.assertFalse(r['project_change']);p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertEqual((p.undo_stack,p.redo_stack),history)
 
+class MixedScaleTests(unittest.TestCase):
+ def test_grid_rounding_anchor_history_save_and_preservation(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,0,0,0)
+   with patch.object(ProjectService,'_environment_source',return_value=bytes(source)):
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=256,z=256,y=77)))
+    before=deepcopy(p.overrides);depth=len(p.undo_stack);op=dict(kind='scale',anchor_entity_id=ACTOR,percent=50)
+    r=layout_review(p,SCENE,MIXED,op);self.assertEqual(p.overrides,before)
+    decor=next(t for t in r['targets'] if t['kind']=='decoration');self.assertEqual(decor['current'],dict(x=192,z=192));self.assertEqual(decor['proposed'],dict(x=192,z=192)) # -32 rounds away from anchor
+    op['percent']=200;r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=128,z=128))
+    p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.overrides[ACTOR],before[ACTOR]);after=deepcopy(p.overrides);p.undo();self.assertEqual(p.overrides,before);p.redo();self.assertEqual(p.overrides,after);self.assertEqual(ProjectService.open(p.save()).overrides,after)
+    noop=layout_review(p,SCENE,MIXED,dict(op,percent=100));self.assertFalse(noop['project_change']);history=deepcopy((p.undo_stack,p.redo_stack));p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=noop['operation'],review_key=noop['review_key']));self.assertEqual((p.undo_stack,p.redo_stack),history)
+ def test_positive_half_grid_bounds_and_atomic_rejections(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,0,0,0)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    op=dict(kind='scale',anchor_entity_id=ACTOR,percent=50);r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=192,z=192))
+    before=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
+    for invalid in [dict(op,percent=v) for v in (True,0,1001,50.0,'50')]+[dict(op,axis='x'),dict(op,anchor_entity_id='other')]:
+     with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,invalid)
+    with self.assertRaises(ProjectError):p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=dict(op,percent=200),review_key=r['review_key']))
+    self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=16384,z=16384)))
+    with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(op,anchor_entity_id=IDS[0],percent=1000))
+   with patch.object(p,'_environment_source',return_value=source_map()):
+    with self.assertRaisesRegex(ProjectError,'grid'):layout_review(p,SCENE,MIXED,op)
+
 if __name__=='__main__':unittest.main()
