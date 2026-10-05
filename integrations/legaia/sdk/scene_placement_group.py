@@ -52,14 +52,16 @@ def _review(project, scene, entity_ids, delta, operation=None):
         elif operation['kind']=='scale':
             anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
             if anchor is None:raise ProjectError('Mixed scale anchor must be selected')
-            if any(type(t['current'][a]) is not int or t['current'][a] % 64 for t in targets for a in ('x','z')):
-                raise ProjectError('Mixed scale requires selected X/Z coordinates on the 64-unit actor grid')
+            if any(type(t['current'][a]) is not int for t in targets for a in ('x','z')):
+                raise ProjectError('Mixed scale requires integer Current X/Z coordinates')
             for target in targets:
+                step=64 if target['kind']=='actor' else 1
                 proposed={}
                 for a in ('x','z'):
-                    n=(target['current'][a]-anchor['current'][a])*operation['percent']
-                    units=(abs(n)+3200)//6400
-                    proposed[a]=anchor['current'][a]+(-units if n<0 else units)*64
+                    n=anchor['current'][a]*100+(target['current'][a]-anchor['current'][a])*operation['percent']
+                    denominator=100*step
+                    units=(abs(n)+denominator//2)//denominator
+                    proposed[a]=(-units if n<0 else units)*step
                 target['proposed']=proposed
         elif operation['kind']=='rotate':
             anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
@@ -117,7 +119,7 @@ def _review(project, scene, entity_ids, delta, operation=None):
         raise ProjectError('Project changed while reviewing mixed placement')
     identities = sorted(entity_ids)
     key = digest(dict(project_source_key=context['before'], scene=scene,
-                      source_sha256=context['source_hash'], entity_ids=identities, delta=delta, **({'operation':operation,'algorithm':'source-grid-layout.v1','targets':targets} if operation is not None else {})))
+                      source_sha256=context['source_hash'], entity_ids=identities, delta=delta, **({'operation':operation,'algorithm':'native-coordinate-scale.v1' if operation['kind']=='scale' else 'source-grid-layout.v1','targets':targets} if operation is not None else {})))
     return dict(schema_version='legaia.scene-placement-layout-review.v1' if operation is not None else 'legaia.scene-placement-group-review.v1',
                 project_source_key=context['before'], scene_id=scene, source_sha256=context['source_hash'],
                 review_key=key, entity_ids=identities, delta=deepcopy(delta),

@@ -1,20 +1,22 @@
 # Legaia SDK validation plan
 
-## Mixed placement spacing scale checkpoint — 2026-10-05
+## Native-precision mixed placement scale checkpoint — 2026-10-05
 
-19 focused Python layout/group/HTTP cases and the expanded Node decoder suite pass.
-Scale checks cover signed half-away 64-unit rounding, selected anchor, 1–1000 integer
-budget, off-grid/actor-bound rejection, stale operations, metadata preservation,
-100-percent no-op, atomic history and persistence. Actual private retail browser checks
-exercise 50/100/200 percent, fixed decoration anchor, exact Current/Proposed GPU matrices,
-withdrawal/Return and one Apply. All action buttons fit at 540px. Undo/Redo, Save/Open and
-normal Build pass with independent MAN placement/opaque-byte checks, complete MAP
-readback and ZIP integrity. Private proof:
-`local-output/sdk-20260909/mixed-placement-scale-20261005/proof.json`.
-Campaign follow-up: 128 placements, native signed-offset boundaries, percentage extremes,
-coincident rounding results, source replacement while reviewing and repeated history.
-Runtime movement, collision consistency and gameplay appearance remain separate manual
-gates; no game, installation or full-disc export ran.
+18 focused Python layout/group cases, expanded Node DTO checks and module syntax pass.
+The earlier four HTTP checks passed at the grid-only checkpoint; this checkpoint's
+actual retail browser exercises the layout-review/command routes with an off-grid
+anchor. Coverage includes signed half-away rounding at native actor/decor precision,
+100-percent identity, 1–1000 integer limits, actor native bounds, scenery signed-offset
+overflow, exact operation qualification, atomic rejection/history and persistence.
+Actual Town01 browser checks 50/100/175 percent, fixed off-grid anchor, Current/Proposed
+GPU matrices, withdrawal/Return, one Apply and all action bounds at 540px. Undo/Redo,
+Save/Open and normal Build pass with independent MAN placement/opaque-byte checks,
+complete MAP readback and ZIP integrity. Proof:
+`local-output/sdk-20260909/mixed-placement-native-scale-20261005/proof.json`.
+Campaign follow-up: 128 placements, percentage extremes, coincident rounding results,
+source replacement during review, mixed descriptor ownership and repeated history.
+Runtime movement, collision consistency and gameplay appearance remain manual gates.
+No game, installation or full-disc export ran.
 
 ## Asset-reference download checkpoint — 2026-10-05
 

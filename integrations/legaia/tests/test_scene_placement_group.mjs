@@ -64,10 +64,16 @@ const gridTargets=report.targets.map((r,i)=>({...r,current:i?{x:128,z:256}:{x:19
 for(const percent of [1,50,100,200,1000]){
  const op={kind:'scale',anchor_entity_id:ids[1],percent},points=mixedLayoutPositions(gridTargets,op);
  assert.deepEqual(points[1].position,gridTargets[1].current);
- const expected={x:128+Math.floor((64*percent+3200)/6400)*64,z:256-Math.floor((64*percent+3200)/6400)*64};assert.deepEqual(points[0].position,expected);
+ const expected={x:Math.floor((12800+64*percent+50)/100),z:Math.floor((25600-64*percent+50)/100)};assert.deepEqual(points[0].position,expected);
  const scaled={...report,schema_version:'legaia.scene-placement-layout-review.v1',delta:{x:0,z:0},operation:op,targets:gridTargets.map((r,i)=>({...r,proposed:points[i].position}))};scaled.affected_count=scaled.targets.filter(r=>r.current.x!==r.proposed.x||r.current.z!==r.proposed.z).length;scaled.project_change=scaled.affected_count>0;assert.deepEqual(decodeScenePlacementLayout(scaled,key,scene,ids,op),scaled);
  assert.throws(()=>decodeScenePlacementLayout({...scaled,targets:scaled.targets.map((r,i)=>i?r:{...r,proposed:{...r.proposed,x:r.proposed.x+64}})},key,scene,ids,op));
 }
 for(const percent of [true,0,1001,50.5,'50'])assert.throws(()=>mixedLayoutPositions(gridTargets,{kind:'scale',anchor_entity_id:ids[1],percent}));
-assert.throws(()=>mixedLayoutPositions(gridTargets.map((r,i)=>i?r:{...r,current:{x:193,z:192}}),{kind:'scale',anchor_entity_id:ids[1],percent:100}));
-console.log('Mixed spacing scale: signed half-away grid rounding, fixed anchor, exact DTO, input and source-grid rejection passed.');
+const nativeTargets=gridTargets.map((r,i)=>i?r:{...r,current:{x:193,z:191}});assert.deepEqual(mixedLayoutPositions(nativeTargets,{kind:'scale',anchor_entity_id:ids[0],percent:100}).map(r=>r.position),nativeTargets.map(r=>r.current));
+assert.deepEqual(mixedLayoutPositions(nativeTargets,{kind:'scale',anchor_entity_id:ids[0],percent:50})[1].position,{x:192,z:192});
+assert.throws(()=>mixedLayoutPositions(nativeTargets.map((r,i)=>i?r:{...r,current:{x:193.5,z:191}}),{kind:'scale',anchor_entity_id:ids[1],percent:100}));
+console.log('Mixed spacing scale: native actor/scenery precision, off-grid anchor, fixed anchor, exact DTO and integer guards passed.');
+
+const signedTargets=nativeTargets.map((r,i)=>i?r:{...r,current:{x:-1,z:257}});
+assert.deepEqual(mixedLayoutPositions(signedTargets,{kind:'scale',anchor_entity_id:ids[1],percent:50})[0].position,{x:64,z:257});
+assert.deepEqual(mixedLayoutPositions(signedTargets,{kind:'scale',anchor_entity_id:ids[1],percent:200})[0].position,{x:-130,z:258});

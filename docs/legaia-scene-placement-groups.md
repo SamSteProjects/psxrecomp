@@ -1,32 +1,35 @@
 # Mixed scene placement groups
 
-## Scale mixed actor/scenery placement spacing — 2026-10-05
+## Scale mixed placements at native coordinate precision — 2026-10-05
 
-**Move scene placement group → Scale spacing on grid** now scales selected imported
-actor and static-decoration X/Z distances around a selected placement anchor. Enter an
-integer percentage from 1 through 1000. Selected Current X/Z and the anchor must lie on
-the 64-unit actor grid; relative results round to the nearest 64 units, half steps away
-from the anchor. The anchor stays fixed and 100 percent is a no-op. Rounding can bring
-placements together; review the exact Retail/Current/Proposed table before applying.
+**Move scene placement group → Scale spacing at native precision** scales selected
+imported actor and static-decoration X/Z distances around a selected placement anchor.
+Enter an integer percentage from 1 through 1000. Current coordinates must be integers;
+decorations and decoration anchors can lie between actor grid points. Final actor
+coordinates round to their native 64-unit spacing, decorations to native integer units,
+with half steps away from zero. The anchor stays fixed and 100 percent is a no-op.
+Rounding can bring placements together; review Retail/Current/Proposed before applying.
+This replaces the initial grid-only spacing scale; scenery no longer snaps to actor
+precision and rounding applies to final coordinates rather than relative distances.
 
-The existing scene inspection shows Current or Proposed positions without authoring.
-Changing the operation/percentage withdraws the review. Apply rechecks project/source,
-selection, exact operation and complete proposal, then records one atomic Undo step.
-Actor native coordinate bounds and scenery signed-offset limits still apply. Height,
-facing, object rotations, shared descriptor edits and unselected placements remain
-unchanged. This scales placement spacing, not geometry or collision resources. The
-mixed placement dialog action row now wraps within narrow screens.
+Current/Proposed scene inspection changes no authored data. Changed inputs withdraw the
+review. Apply rechecks project/source, selection, exact operation and full proposal,
+then records one atomic Undo step. The scale arithmetic has a distinct review-key
+algorithm binding. Actor coordinate bounds and scenery signed-offset limits remain.
+Height, facing, object rotations, shared descriptor edits and unselected placements
+stay unchanged. Scaling changes spacing, not geometry or collision resources.
 
-Validation: 19 focused Python layout/group/HTTP cases, the expanded Node qualification
-suite and editor-module syntax check pass. A fresh private Town01 browser exercised
-50/100/200 percent, a fixed decoration anchor, exact Current/Proposed GPU matrices,
-review withdrawal, Return, one Apply and 540px action bounds. Undo/Redo, Save/Open and
-normal Build pass; independent native MAN actor decoding and complete MAP directory/ZIP
-readback match the proposal while preserving opaque/unselected bytes. Package SHA256:
-`735e2c3f44c2ead8b8424baefc1573ca2eb55a5b07091c3309e91032744497de`.
-Private evidence: `local-output/sdk-20260909/mixed-placement-scale-20261005/proof.json`.
-No game, installation or full-disc export ran. Gameplay appearance remains deferred;
-the full SDK goal stays active.
+Validation: 18 focused Python layout/group cases, expanded Node qualification and module
+syntax checks pass, covering native signed half rounding, off-grid anchor, 100-percent
+identity, actor bounds, scenery offset overflow and atomic rejection. Actual private
+Town01 browser checks exercise 50/100/175 percent, fixed off-grid decoration anchor,
+Current/Proposed GPU matrices, withdrawal/Return, one Apply and all action bounds at
+540px. Undo/Redo, Save/Open and normal Build pass; independent MAN actor decoding and
+complete MAP directory/ZIP readback preserve opaque/unselected bytes. Package SHA256:
+`2178e97c3548ff3c392d371f8e7869038c50408cdb9f765b1b31418663b2d373`.
+Evidence: `local-output/sdk-20260909/mixed-placement-native-scale-20261005/proof.json`.
+No game, installation or full-disc export ran; gameplay appearance remains deferred.
+The full SDK goal stays active.
 
 Use **Box select placements** to drag a rectangle over visible imported actor
 and static-decoration meshes. Selection uses depth-tested pixels; hidden and

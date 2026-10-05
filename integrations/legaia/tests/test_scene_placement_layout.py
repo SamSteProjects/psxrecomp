@@ -100,7 +100,7 @@ class MixedScaleTests(unittest.TestCase):
     p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=256,z=256,y=77)))
     before=deepcopy(p.overrides);depth=len(p.undo_stack);op=dict(kind='scale',anchor_entity_id=ACTOR,percent=50)
     r=layout_review(p,SCENE,MIXED,op);self.assertEqual(p.overrides,before)
-    decor=next(t for t in r['targets'] if t['kind']=='decoration');self.assertEqual(decor['current'],dict(x=192,z=192));self.assertEqual(decor['proposed'],dict(x=192,z=192)) # -32 rounds away from anchor
+    decor=next(t for t in r['targets'] if t['kind']=='decoration');self.assertEqual(decor['current'],dict(x=192,z=192));self.assertEqual(decor['proposed'],dict(x=224,z=224)) # scenery keeps native unit precision
     op['percent']=200;r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=128,z=128))
     p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.overrides[ACTOR],before[ACTOR]);after=deepcopy(p.overrides);p.undo();self.assertEqual(p.overrides,before);p.redo();self.assertEqual(p.overrides,after);self.assertEqual(ProjectService.open(p.save()).overrides,after)
     noop=layout_review(p,SCENE,MIXED,dict(op,percent=100));self.assertFalse(noop['project_change']);history=deepcopy((p.undo_stack,p.redo_stack));p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=noop['operation'],review_key=noop['review_key']));self.assertEqual((p.undo_stack,p.redo_stack),history)
@@ -108,7 +108,7 @@ class MixedScaleTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as directory:
    p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,0,0,0)
    with patch.object(p,'_environment_source',return_value=bytes(source)):
-    op=dict(kind='scale',anchor_entity_id=ACTOR,percent=50);r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=192,z=192))
+    op=dict(kind='scale',anchor_entity_id=ACTOR,percent=50);r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=160,z=224))
     before=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
     for invalid in [dict(op,percent=v) for v in (True,0,1001,50.0,'50')]+[dict(op,axis='x'),dict(op,anchor_entity_id='other')]:
      with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,invalid)
@@ -116,7 +116,30 @@ class MixedScaleTests(unittest.TestCase):
     self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
     p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=16384,z=16384)))
     with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(op,anchor_entity_id=IDS[0],percent=1000))
+
+class MixedNativeScaleTests(unittest.TestCase):
+ def test_native_decoration_anchor_noop_and_actor_quantization(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory)
    with patch.object(p,'_environment_source',return_value=source_map()):
-    with self.assertRaisesRegex(ProjectError,'grid'):layout_review(p,SCENE,MIXED,op)
+    before=deepcopy(p._document());op=dict(kind='scale',anchor_entity_id=IDS[0],percent=100);r=layout_review(p,SCENE,MIXED,op);self.assertFalse(r['project_change']);self.assertTrue(all(t['proposed']==t['current'] for t in r['targets']))
+    op['percent']=50;r=layout_review(p,SCENE,MIXED,op);anchor=next(t for t in r['targets'] if t['kind']=='decoration');self.assertEqual(anchor['proposed'],anchor['current'])
+    actor=next(t for t in r['targets'] if t['kind']=='actor');expected={}
+    for a in ('x','z'):
+     n=anchor['current'][a]*100+(actor['current'][a]-anchor['current'][a])*50;expected[a]=((abs(n)+3200)//6400)*64*(1 if n>=0 else -1)
+    self.assertEqual(actor['proposed'],expected);self.assertEqual(p._document(),before)
+ def test_signed_native_unit_half_rounding(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,-321,0,-65) # decoration (-129,257)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    op=dict(kind='scale',anchor_entity_id=ACTOR,percent=50);r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='decoration')['proposed'],dict(x=-1,z=257)) # -0.5 -> -1; 256.5 ->257
+    op['percent']=100;r=layout_review(p,SCENE,MIXED,op);self.assertFalse(r['project_change'])
+ def test_native_offset_overflow_is_atomic(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,32767,0,0)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    before=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
+    with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(kind='scale',anchor_entity_id=ACTOR,percent=200))
+    self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
 
 if __name__=='__main__':unittest.main()
