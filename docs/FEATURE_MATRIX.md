@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Retained animation assignment-user navigation - 2026-10-05
+
+Retained animation assets now list their authored initial-assignment users by stable
+actor identity. Select assigned actor navigates through the existing selection service,
+frames the actor and synchronizes Hierarchy/Inspector. Capture actor navigation stays
+separate. Unassigned and retired clips show an explicit empty state. This is authored
+initial-selection evidence, not script-driven residency or observed runtime playback.
+
+The list qualifies every registered user against the current scene's exact retained
+record/hash/model component and effective initial-animation identity. Missing, duplicate,
+extra or changed users reject navigation. Current project/scene/source, busy and pending
+preview guards remain active. Pending Preview locks the selector; closing aborts the
+request. The Inspector wraps its action row and bounds its width/scroll area so all
+actions remain reachable at desktop and 540px widths. No authoring command or serializer
+is introduced. See
+[assignment users](legaia-retained-animation-assets.md#navigate-to-assigned-actors).
+
+Verification: the Node metadata/action workflow and two focused Python catalog checks
+passed, along with JS syntax. The actual private-retail browser exercised a clip with
+two users, distinct capture/target actor navigation, empty active/retired states,
+Hierarchy/Inspector synchronization, 540px action reachability and pending-preview
+close/locks without page errors.
+Document, history, mode, active scene and every saved file remained unchanged; there were
+no authoring, Save, Build or game requests. Evidence: ignored
+`local-output/sdk-20260909/retained-assignment-users-20261005/proof.json` and `users.png`.
+The first browser attempt exposed the overflowing action row; it was fixed and the failed
+attempt preserved. Gameplay acceptance remains deferred; the full SDK goal stays active
+and solo.
+
 ## Selected model vertex group rotation - 2026-10-05
 
 The movement workspace now stages -90, +90 and 180 degree turns of 1..4096 selected

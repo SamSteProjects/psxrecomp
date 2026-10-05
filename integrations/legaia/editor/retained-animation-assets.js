@@ -32,6 +32,27 @@ export function retainedAnimationAssignmentContext(record,state,targetEntityId){
   if(typeof targetEntityId!=='string'||!new RegExp('^'+scene+'/actors/man-p1/[0-9]{4}$').test(targetEntityId))throw new Error('Select an imported actor in the current scene before assigning this clip.');
   return {...context,targetEntityId};
 }
+export function retainedAnimationAssignedActors(record,state){
+  const data=decodeRetainedAnimationAsset(record),scene='scene://'+data.semantic_id.split('/')[2];
+  if(state?.scene?.id!==scene||!hash(state.scene_preview_source_key)||!Array.isArray(state.scene.entities)||state.scene.entities.length>4096)throw new Error('Assigned actor navigation requires the current scene and source-qualified entities.');
+  const expected=new Set(data.retained_record.assigned_actor_ids),seen=new Set(),result=[];
+  for(const entity of state.scene.entities){
+    if(!entity||typeof entity.id!=='string'||seen.has(entity.id))throw new Error('Assigned actor navigation has invalid or duplicate scene entities.');seen.add(entity.id);
+    const value=entity.components?.ActorAllocatedAnimation?.authored;
+    if(value?.record_id===data.retained_record.record_id||expected.has(entity.id)){
+      if(!expected.has(entity.id)||!exact(value,['scene_id','record_id','record_sha256','model_asset_id'])||value.scene_id!==scene||value.record_id!==data.retained_record.record_id||value.record_sha256!==data.retained_record.record_sha256||value.model_asset_id!==data.model_asset_id)throw new Error('Authored initial assignments differ from the inspected clip. Refresh assets.');
+      const effective=entity.components?.ActorAnimation?.effective;
+      if(effective?.animation_asset_id!==data.semantic_id||effective.source_kind!=='allocated_record'||effective.record_id!==data.retained_record.record_id)throw new Error('Actor effective initial animation differs from its retained assignment. Refresh assets.');
+      result.push({id:entity.id,label:typeof entity.name==='string'&&entity.name.length>0&&entity.name.length<=256?entity.name:entity.id});
+    }
+  }
+  if(result.length!==expected.size)throw new Error('An assigned actor is absent from the current scene. Refresh assets.');
+  return result.sort((a,b)=>a.id.localeCompare(b.id));
+}
+export function retainedAnimationAssignedTarget(record,state,entityId){
+  const row=retainedAnimationAssignedActors(record,state).find(row=>row.id===entityId);
+  if(!row)throw new Error('Choose a verified authored initial assignment for this clip.');return row.id;
+}
 export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onGlb=null,onLifecycle=null,onAssign=null,getAssignmentTarget=()=>null,onError=()=>{}}){
   if(busy())return;
   const data=decodeRetainedAnimationAsset(record),initial=getState(),key=initial.scene_preview_source_key,scene=initial.scene?.id,path=initial.project?.path;
@@ -52,15 +73,25 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
   lifecycle.onclick=async()=>{try{guard();const context=retainedAnimationEditContext(data,getState());dialog.close();await onLifecycle(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
   const assign=add('button','Assign to selected actor',actions);assign.hidden=typeof onAssign!=='function'||!data.retained_record.active||initial.project?.mode!=='edit'||initial.capabilities?.actor_animation_assignment!==true||initial.capabilities?.actor_animation_authoring!==true;
   assign.onclick=async()=>{try{guard();const context=retainedAnimationAssignmentContext(data,getState(),getAssignmentTarget());dialog.close();await onAssign(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
+  const users=add('section');add('h3','Authored initial assignment users',users);
+  const usersNote=add('p','These actors reference this retained clip for their authored initial selection. Script changes and runtime playback are not inferred.',users);
+  const usersLabel=add('label','Assigned actor',users),usersChoice=add('select',undefined,usersLabel);usersChoice.setAttribute('aria-label','Retained clip assigned actor');
+  const selectUser=add('button','Select assigned actor',users);usersChoice.disabled=selectUser.disabled=true;
+  function refreshUsers(){
+    usersChoice.disabled=selectUser.disabled=true;
+    try{const previous=usersChoice.value,rows=retainedAnimationAssignedActors(data,getState());usersChoice.replaceChildren();for(const row of rows){const option=add('option',row.label+' | '+row.id,usersChoice);option.value=row.id;}usersChoice.value=rows.some(row=>row.id===previous)?previous:rows[0]?.id??'';usersLabel.hidden=selectUser.hidden=rows.length===0;usersChoice.disabled=selectUser.disabled=pending||busy()||!current()||typeof onActor!=='function'||rows.length===0;usersNote.textContent=rows.length?rows.length+' verified authored initial assignment'+(rows.length===1?'':'s')+'. Script changes and runtime playback are not inferred.':'No authored initial assignments reference this clip. Capture provenance remains separate.';}
+    catch(e){usersNote.textContent=e.message;}
+  }
+  selectUser.onclick=async()=>{try{guard();const target=retainedAnimationAssignedTarget(data,getState(),usersChoice.value);dialog.close();await onActor(target);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
   const details=add('details');add('summary','Retained source and provenance',details);add('pre',JSON.stringify(data,null,2),details).className='diagnostic-detail';
   let controller=null,pending=false;
   const current=()=>dialog.open&&getState().scene_preview_source_key===key&&getState().scene?.id===scene&&getState().project?.path===path;
   const guard=()=>{if(!current())throw new Error('Project source changed. Reopen the retained clip.');if(busy()||pending)throw new Error('Finish the current operation before inspecting this clip.');};
   model.onclick=async()=>{try{guard();dialog.close();await onModel(data.model_asset_id);}catch(e){onError(e);}};
   owner.onclick=async()=>{try{guard();dialog.close();await onActor(data.retained_record.entity_id);}catch(e){onError(e);}};
-  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
+  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=usersChoice.disabled=selectUser.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
     const response=await fetch('/api/retained-animation-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:data.semantic_id,expected_source_key:key}),signal:controller.signal});const value=await response.json();
     if(!current()){if(dialog.open)status.textContent='Project source changed. Reopen the retained clip.';return;}if(!response.ok||value.error)throw new Error(value.error||'Retained clip preview failed.');qualifyRetainedAnimationPreview(value,data);dialog.close();await onPreview(data,value);
-  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open)preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=!current();}};
-  dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();return dialog;
+  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open){preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=!current();refreshUsers();}}};
+  dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();refreshUsers();return dialog;
 }

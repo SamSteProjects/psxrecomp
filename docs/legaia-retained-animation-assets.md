@@ -160,3 +160,28 @@ check changed target selection and verified disposal with no command or document
 history or file changes. Normal private Build passed native bank/initial-header/
 relocation readback plus ZIP/SHA checks. No game launched or installed. Evidence:
 `local-output/sdk-20260909/retained-asset-assignment-20261005/proof.json`.
+
+## Navigate to assigned actors
+
+Open a retained animation asset and use **Authored initial assignment users**. The
+**Assigned actor** selector lists verified stable actor identities. Choose one and click
+**Select assigned actor** to frame it and open the same selection in the Hierarchy and
+Inspector. This is useful when reviewing initial animation assignments or deciding which
+actor's assignment to clear before retiring a clip. Clearing remains an explicit actor
+Inspector action. **Select capture actor** continues to navigate to the original capture
+owner, which may be different from any assigned actor.
+
+The list represents authored initial selections only. Scripts can select other clips;
+no runtime playback is inferred. Unassigned/retired clips show no authored users. Each
+user must match the inspected clip's current record hash/model and the actor's effective
+initial-animation identity. Changed or missing sources require refreshing assets.
+Pending preview locks navigation; closing aborts it. Navigation uses existing selection
+and camera behavior without a project command, history step, Save, Build or game launch.
+
+Private actual-retail evidence: `local-output/sdk-20260909/retained-assignment-users-20261005/`
+(`proof.json`, `browser-proof.json`, `users.png`). Two users, empty states and pending close
+were exercised with unchanged project/history/files. Gameplay verification stays deferred.
+
+The retained Inspector wraps its action row and constrains its width/scroll area. All
+seven asset actions remain reachable at 540px. The initial overflowing-action browser
+attempt is preserved alongside the corrected proof.

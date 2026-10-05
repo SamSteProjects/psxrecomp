@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const code=await readFile(new URL('../editor/retained-animation-assets.js',import.meta.url),'utf8');
-const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview,retainedAnimationEditContext,retainedAnimationAssignmentContext,openRetainedAnimationAsset}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {decodeRetainedAnimationAsset,qualifyRetainedAnimationPreview,retainedAnimationEditContext,retainedAnimationAssignmentContext,retainedAnimationAssignedActors,retainedAnimationAssignedTarget,openRetainedAnimationAsset}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const uuid='12345678-1234-4123-8123-123456789abc',id=`animation://fixture/authored-record/${uuid}`,actor='scene://fixture/actors/man-p1/0001',model='asset://legaia/models/global-special/00f0',hash='a'.repeat(64);
 const row={record_id:uuid,animation_id:id,entity_id:actor,channel_owner_entity_id:actor,model_source_entity_id:actor,donor_asset_id:model,donor_animation_id:'animation://fixture/scene-anm/0001',record_sha256:hash,frame_count:2,object_count:1,active:false,runtime_assigned:false,assigned_actor_ids:[]};
 const value={semantic_id:id,asset_kind:'animation',scope:'authored-retained',authored_animation_record:true,frame_count:2,bone_count:1,model_asset_id:model,retained_record:row,source_record:{source_kind:'authored_animation_record',record_id:uuid,record_sha256:hash,ledger_sha256:hash,donor_record_sha256:hash,donor_animation_id:row.donor_animation_id}};
@@ -27,6 +27,7 @@ console.log('Direct retained asset editing: detached legacy row, captured owner,
 class Element{
  constructor(tag){this.tag=tag;this.children=[];this.open=false;this.listeners={};}
  append(child){this.children.push(child);}
+ replaceChildren(){this.children=[];}
  setAttribute(){}
  addEventListener(name,callback){this.listeners[name]=callback;}
  showModal(){this.open=true;}
@@ -58,3 +59,11 @@ result=null;dialog=openRetainedAnimationAsset({...options,record:{id,data:active
 dialog=openRetainedAnimationAsset({...options,onAssign:()=>{}});assert.equal(find(dialog,'Assign to selected actor').hidden,true);dialog.close();
 current.capabilities.actor_animation_assignment=false;assert.throws(()=>retainedAnimationAssignmentContext(active,current,target),/assignment capability/);
 console.log('Retained asset assignment: explicit distinct target, active clip, scene and capability guards passed.');
+
+const actorState=structuredClone(current);actorState.scene.entities=[{id:actor,name:'Actor 0001',components:{ActorAllocatedAnimation:{authored:{scene_id:scene,record_id:uuid,record_sha256:hash,model_asset_id:model}},ActorAnimation:{effective:{animation_asset_id:id,source_kind:'allocated_record',record_id:uuid}}}}];
+assert.deepEqual(retainedAnimationAssignedActors(active,actorState),[{id:actor,label:'Actor 0001'}]);assert.equal(retainedAnimationAssignedTarget(active,actorState,actor),actor);assert.throws(()=>retainedAnimationAssignedTarget(active,actorState,target));
+for(const mutate of [s=>s.scene.entities=[],s=>s.scene.entities.push(structuredClone(s.scene.entities[0])),s=>s.scene.entities[0].components.ActorAllocatedAnimation.authored.record_sha256='b'.repeat(64),s=>s.scene.entities[0].components.ActorAllocatedAnimation.authored.model_asset_id='asset://other',s=>s.scene.entities[0].components.ActorAnimation.effective.animation_asset_id='animation://other',s=>s.scene.id='scene://other']){const bad=structuredClone(actorState);mutate(bad);assert.throws(()=>retainedAnimationAssignedActors(active,bad));}
+assert.throws(()=>retainedAnimationAssignedActors(value,actorState),/differ/);
+current=actorState;result=null;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onActor:target=>{result=target;}});action=find(dialog,'Select assigned actor');assert.equal(action.disabled,false);pending=true;await action.onclick();assert.equal(result,null);assert.match(errors.pop(),/current operation/);pending=false;current.scene.entities[0].components.ActorAllocatedAnimation.authored.record_sha256='b'.repeat(64);await action.onclick();assert.equal(result,null);assert.match(errors.pop(),/differ/);dialog.close();
+current=structuredClone(actorState);current.scene.entities[0].components.ActorAllocatedAnimation.authored.record_sha256=hash;dialog=openRetainedAnimationAsset({...options,record:{id,data:active},onActor:target=>{result=target;}});await find(dialog,'Select assigned actor').onclick();assert.equal(result,actor);assert.equal(dialog.removed,true);assert.deepEqual(errors,[]);
+console.log('Retained assignment user navigation: complete current authored/effective witnesses, duplicate/missing/forged users, busy/stale guards and readonly actor handoff passed.');

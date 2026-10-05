@@ -276,3 +276,9 @@
 .script-bookmarks{padding:12px;margin:12px 0;border:1px solid var(--line);border-radius:6px}.script-bookmarks>input,.script-bookmarks>select{max-width:100%;margin:4px 6px 4px 0}
 
 .project-bookmarks-dialog{width:min(800px,calc(100vw - 28px))}.project-bookmark-list{max-height:60vh;overflow:auto}.project-bookmark-card{padding:12px;border:1px solid var(--line);border-radius:6px;margin:10px 0}.project-bookmark-card code,.project-bookmark-card pre{white-space:pre-wrap;overflow-wrap:anywhere}.project-bookmark-card button{margin-top:10px}.focused-script-bookmark{padding:10px;border:1px solid var(--mint);color:var(--mint)}
+
+#retained-animation-asset-dialog{width:min(740px,calc(100vw - 35px));max-height:90vh;overflow:auto}
+#retained-animation-asset-dialog .dialog-actions{flex-wrap:wrap;justify-content:flex-start}
+#retained-animation-asset-dialog .dialog-actions button{max-width:100%;white-space:normal;text-align:left}
+#retained-animation-asset-dialog p,#retained-animation-asset-dialog h2{overflow-wrap:anywhere}
+#retained-animation-asset-dialog select{max-width:100%;min-width:0;width:100%}

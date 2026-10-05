@@ -1,5 +1,18 @@
 # Legaia SDK validation plan
 
+## Retained animation assignment-user navigation checks
+
+- List all authored initial users with stable actor identities; keep capture provenance
+  and runtime playback distinct. Unassigned and retired clips show an empty state.
+- Match registered users to exact Current retained record/hash/model components and
+  effective initial-animation identities; reject missing/duplicate/extra/forged users.
+- Guard source/project/scene changes, busy actions and pending previews. Close aborts
+  a pending preview without selecting a user or publishing an authored change.
+- Navigate to each listed actor through normal selection, frame and synchronize the
+  Hierarchy/Inspector; preserve document, history, files, mode and scene.
+- Keep every action reachable at desktop and 540px widths; long clip/source IDs wrap.
+- No Build/Save/game request is needed for this readonly Inspector workflow.
+
 ## Selected vertex group rotation checks
 
 - Compare native/browser X/Y/Z turns -90/+90/180 about source origin and group bounds
