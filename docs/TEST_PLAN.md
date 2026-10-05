@@ -1,5 +1,20 @@
 # Legaia SDK validation plan
 
+## Inspector property-state checkpoint — 2026-10-05
+
+Focused checks cover catalog completeness/detachment/no capabilities, layer ownership,
+precise authored workflow, unknown/malformed/escaped state labels, unknown/false values,
+unsupported Y Build status and unchanged command/action/reference eligibility. Actual
+retail browser proof covers actor/asset labels against the SDK, reference navigation,
+540px legibility, collapse/keyboard restore and unchanged document/history/files with
+zero authoring/Save/Build/Run requests. Private evidence:
+`local-output/sdk-20260909/inspector-property-states-20261005/proof.json`.
+Campaign follow-up: all registered component/asset inspectors, empty inherited states,
+localized/long labels, mode/source refresh and screen-reader explanation. Real live
+capture freshness/identity remains in the deferred runtime acceptance work, not proven
+by a property-state presentation label.
+
+
 ## Mixed actor/scenery position rotation checkpoint — 2026-10-05
 
 Focused development checks completed: -1/+1/2 exact quarter turns, actor and decoration

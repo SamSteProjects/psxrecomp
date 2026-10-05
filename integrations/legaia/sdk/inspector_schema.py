@@ -116,6 +116,31 @@ def inspector_schema():
         'details': [{'label': 'Authored transition entries', 'path': ['entries']}],
         'notes': ['Open the qualified source editor for separate retail, authored and effective entry operands. Destination names stay fixed; runtime arrival and transition execution remain unverified.']}
 
+    # Presentation states describe evidence/ownership, never authoring capabilities.
+    schema['property_states'] = {
+        'read-only-retail': {'label': 'Retail', 'note': 'Imported source value. Read only; authored changes stay separate.'},
+        'read-only-source': {'label': 'Source', 'note': 'Bound source input. Read only.'},
+        'read-only-project': {'label': 'Project', 'note': 'Project metadata displayed read only here.'},
+        'read-only-reference': {'label': 'Reference', 'note': 'SDK reference. Navigation does not imply editing or runtime use.'},
+        'derived': {'label': 'Derived', 'note': 'Calculated SDK metadata; not a live measurement.'},
+        'effective': {'label': 'Effective', 'note': 'Resolved project value after inheritance and overrides; not a live measurement.'},
+        'authored-through-command': {'label': 'Authored', 'note': 'Project value changed only through a supported command.'},
+        'authored-through-review': {'label': 'Authored', 'note': 'Project value owned by a source-qualified review workflow.'},
+        'authored-through-donor-review': {'label': 'Authored', 'note': 'Project reference owned by a verified donor review.'},
+        'authored-through-source-editor': {'label': 'Authored', 'note': 'Project override owned by the qualified source editor.'},
+        'live-observed': {'label': 'Live observed', 'note': 'Read-only observation/correlation metadata. Missing values and unconfirmed associations remain unresolved.'},
+        'unresolved': {'label': 'Unresolved', 'note': 'This property has no established interpretation or binding. A displayed value does not resolve that uncertainty.'},
+        'evidence-status': {'label': 'Evidence', 'note': 'Verification status reported by the SDK; false or unknown is not acceptance.'},
+        'editor-state': {'label': 'Editor', 'note': 'Current editor session state; not retail content or an authored game property.'},
+        'unsupported': {'label': 'Unsupported', 'note': 'This property has no supported Build representation.'},
+    }
+    schema['components']['Transform']['layer_states'] = {
+        'imported': 'read-only-retail', 'authored': 'authored-through-command', 'effective': 'effective'}
+    for identifier in ('ActorAppearance', 'ActorAnimation'):
+        for layer in schema['components'][identifier]['layers']:
+            layer['state'] = {'imported': 'read-only-retail', 'authored': 'authored-through-review',
+                              'base': 'effective', 'effective': 'effective'}[layer['id']]
+
     # Asset inspector groups describe SDK catalog records, not entity components.
     tools = {
         'actor': ('AssetActor', 'Actor record', 'project_navigation', 'select-asset-actor', 'Select actor in scene'),

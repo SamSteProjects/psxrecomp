@@ -51,3 +51,25 @@ assert.equal(registeredActions(retainedSchema,'Retained',{authored:null},{assign
 console.log('Retained assignment metadata preserves inherited/false values, model navigation and capability/Edit separation.');
 let contextReceived;const contextualButton={dataset:{inspectorAction:'inspect',inspectorComponent:'ScriptWaits'}};bindComponentActions({querySelectorAll:()=>[contextualButton]},{inspect:{run:context=>contextReceived=context}},{current:()=>true,editable:()=>false,busy:()=>false,onError:error=>{throw error;}});await contextualButton.onclick();assert.deepEqual(contextReceived,{componentId:'ScriptWaits',actionId:'inspect'});assert(renderComponentActions(retainedSchema,'Retained',retained,{assignment:true},retainedRegistry,true).includes('data-inspector-component="Retained"'));
 console.log('Registered action dispatch carries escaped component identity without changing mutation eligibility.');
+
+const {propertyStateBadge}=await import('../editor/component-inspector.js');
+const states={
+ 'read-only-retail':{label:'Retail',note:'Imported <source>'},'authored-through-command':{label:'Authored',note:'Command only'},effective:{label:'Effective',note:'Resolved project'},unresolved:{label:'Unresolved',note:'Unknown'},unsupported:{label:'Unsupported',note:'No Build'},
+ 'live-observed':{label:'Live observed',note:'Read only, binding remains unconfirmed'},derived:{label:'Derived',note:'Calculated'},
+};
+const stateSchema=structuredClone(schema);stateSchema.property_states=states;stateSchema.components.Transform.layer_states={imported:'read-only-retail',authored:'authored-through-command',effective:'effective'};stateSchema.components.Transform.properties[1].build.supported=false;
+const labelled=renderComponentProperties(stateSchema,'Transform',component,true);
+for(const state of ['read-only-retail','authored-through-command','effective','unresolved','unsupported'])assert(labelled.includes(`data-property-state="${state}"`));
+assert(labelled.includes('Imported &lt;source&gt;'));assert(labelled.includes('value="192"'));assert(!labelled.includes('disabled'));
+assert(renderComponentProperties(stateSchema,'Transform',component,false).includes('disabled'));
+assert.equal(propertyStateBadge({},'derived'),'');assert(propertyStateBadge(stateSchema,'invented').includes('data-property-state="unclassified"'));
+assert(propertyStateBadge({...stateSchema,property_states:{derived:{label:'<script>',note:'"quoted"'}}},'derived').includes('&lt;script&gt;'));
+assert(propertyStateBadge({...stateSchema,property_states:{derived:{label:1,note:'invalid'}}},'derived').includes('Unclassified'));
+const observation={...stateSchema,components:{Live:{layout:'read-only-properties',properties:[{id:'confirmed',label:'Confirmed',path:['confirmed'],state:'live-observed'}]}}};
+const observed=renderComponentProperties(observation,'Live',{confirmed:false});assert(observed.includes('<code>false</code>'));assert(observed.includes('data-property-state="live-observed"'));assert(!observed.includes('input'));assert(!observed.includes('button'));
+const stateLayered={...stateSchema,components:{Appearance:{layout:'layered-properties',layers:[{id:'imported',label:'Imported',state:'read-only-retail'},{id:'authored',label:'Authored',state:'authored-through-command'}],properties:[{id:'model',label:'Model',path:['model'],type:'asset-reference',layers:['imported','authored'],state:'derived'}]}}};
+const layeredHtml=renderComponentProperties(stateLayered,'Appearance',{imported:{model:'model://source'},authored:{model:null}},false,true);assert(layeredHtml.includes('data-property-state="read-only-retail"'));assert(layeredHtml.includes('data-property-state="authored-through-command"'));assert(layeredHtml.includes('data-component-reference="model://source"'));assert(layeredHtml.includes('<code>—</code>'));
+console.log('Property-state labels: SDK/layer declarations, unknown and unsupported Build status, preserved false/missing values, safe fallback/escaping and unchanged edit/reference guards passed.');
+
+const preciseLayer=structuredClone(layered);preciseLayer.property_states={'authored-through-donor-review':{label:'Authored donor',note:'Verified donor only'}};preciseLayer.components.Appearance.layers.find(layer=>layer.id==='authored').state='authored-through-review';preciseLayer.components.Appearance.properties.find(p=>p.layers.includes('authored')).state='authored-through-donor-review';
+assert(renderComponentProperties(preciseLayer,'Appearance',{imported:{},authored:{},effective:{}}).includes('data-property-state="authored-through-donor-review"'));

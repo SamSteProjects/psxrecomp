@@ -282,3 +282,8 @@
 #retained-animation-asset-dialog .dialog-actions button{max-width:100%;white-space:normal;text-align:left}
 #retained-animation-asset-dialog p,#retained-animation-asset-dialog h2{overflow-wrap:anywhere}
 #retained-animation-asset-dialog select{max-width:100%;min-width:0;width:100%}
+
+.property-label{min-width:0;overflow-wrap:anywhere}.property-state{display:block;width:fit-content;max-width:100%;font-size:9px;font-weight:400;line-height:1.45;margin-top:3px;padding:1px 4px;border:1px solid #40564d;border-radius:3px;color:#b7cec1;overflow-wrap:anywhere}
+.property-state[data-property-state=unresolved],.property-state[data-property-state=unsupported],.property-state[data-property-state=unclassified]{color:#e4c58e;border-color:#715e3d}
+.property-state[data-property-state=live-observed]{color:#acd7ec;border-color:#476777}
+.transform-table .column-title .property-state{font-size:8px}.transform-property-states{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px;font-size:9px;color:var(--muted)}.transform-property-states>span{display:flex;align-items:center;gap:4px}.transform-property-states .property-state{display:inline-block;margin:0;white-space:nowrap;font-size:9px}

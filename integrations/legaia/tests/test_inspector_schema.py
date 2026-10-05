@@ -140,4 +140,18 @@ class InspectorSchema(unittest.TestCase):
             reset=next(a for a in state['inspector_schema']['components']['Dialogue']['actions'] if a['id']=='reset-script-component')
             self.assertTrue(reset['requires_edit']);self.assertEqual(reset['when'],['authored_run_count'])
 
+    def test_property_states_cover_registry_without_granting_capabilities(self):
+        schema=inspector_schema();states=schema['property_states']
+        self.assertFalse(schema['live_writes']);self.assertNotIn('live-writable',states)
+        for component in schema['components'].values():
+            for prop in component['properties']:
+                if 'state' in prop:self.assertIn(prop['state'],states)
+            for layer in component.get('layers',[]):
+                if isinstance(layer,dict):self.assertIn(layer['state'],states)
+            for state in component.get('layer_states',{}).values():self.assertIn(state,states)
+        for definition in states.values():
+            self.assertEqual(set(definition),{'label','note'});self.assertTrue(definition['label']);self.assertTrue(definition['note'])
+        self.assertEqual(schema['components']['Transform']['layer_states']['authored'],'authored-through-command')
+        states['derived']['label']='Changed';self.assertEqual(inspector_schema()['property_states']['derived']['label'],'Derived')
+
 if __name__=='__main__':unittest.main()

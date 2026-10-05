@@ -1,5 +1,35 @@
 # Legaia SDK status — 2026-10-05
 
+## SDK property-state labels in the Inspector — 2026-10-05
+
+The shared component/asset property renderer now displays SDK-declared property states:
+Retail, Authored, Effective, Derived, Reference, Source, Project, Live observed,
+Unresolved, Evidence and Editor. A detached `property_states` presentation catalog owns
+labels and explanatory notes. Appearance/initial-animation layers and Transform columns
+have explicit declared states; precise authored donor/source-workflow states stay intact.
+Transform separately shows Retail Y as Unresolved and its Build representation as
+Unsupported in a full-width row. Empty/false values, source details and reference labels
+remain exact. Property-state labels describe ownership/evidence category; an empty
+Authored value is still inherited, and a Live observed category does not confirm a live
+sample or actor association. Unknown/malformed state declarations display Unclassified.
+
+This is display metadata, not a command/capability registry. Existing Edit/busy/source
+checks, property commands, action eligibility and read-only/live-write boundaries remain.
+All existing generic component/asset consumers receive the labels without new special
+binary-format knowledge or authored data. Specialized editors retain their own adapters.
+
+Validation: nine focused Python schema tests, both component Inspector/reference Node
+suites and module syntax pass. Actual private retail browser checks cover all displayed
+labels/notes against SDK declarations, authored X/Y values, separate unsupported height,
+model-reference asset navigation, 540px layout and collapse/keyboard restoration without
+page errors. Document, Undo/Redo, source scene, selection and every saved file stayed
+unchanged; no command, Save, Build or Run requests. Screenshots inspected; initial Y-label
+wrapping was corrected and prior attempts preserved. Private evidence:
+`local-output/sdk-20260909/inspector-property-states-20261005/proof.json`.
+No game ran; no manual gameplay gate is added. Full SDK/live parity remains unfinished
+and solo work continues.
+
+
 ## Mixed actor/scenery position rotation — 2026-10-05
 
 The scene placement group workspace now rotates selected imported actors and static

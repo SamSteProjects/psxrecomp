@@ -202,3 +202,29 @@ registered Edit-only rename action. The bounded name adapter rejects arbitrary
 command metadata; ProjectService owns history and stale review validation.
 Project creation/opening and runtime launch configuration retain their existing
 workspaces.
+
+## Property-state presentation
+
+`inspector_schema.property_states` is a detached catalog of labels and explanatory notes.
+Registered properties declare their state; layered references declare the state of each
+layer, retaining a more precise authored workflow when supplied. Transform uses explicit
+Imported/Authored/Effective column states, plus separate full-width Retail Y: Unresolved
+and Build Y: Unsupported labels. The shared component and asset renderer displays these
+states without changing values, commands, actions or reference-navigation names.
+
+Labels identify a property's evidence/ownership category. An empty Authored value still
+inherits; a Live observed category does not establish a sample, freshness or confirmed
+actor identity. Read the displayed value/status and evidence together. False evidence
+status remains false; unresolved values never become zero. Unsupported height remains
+project-only and must be cleared before Build. Unknown/malformed catalog entries show
+Unclassified and do not grant authoring. Legacy schema fixtures without the additive
+catalog retain their previous display. Catalog text is escaped and bounded.
+
+Nine focused Python contract tests, component/reference Node checks and a real retail
+browser passed. Actor and asset navigation, declared labels/notes, coordinate values,
+540px layout and collapsed-component keyboard behavior preserved document/history,
+scene/selection and saved bytes. No authoring, Save, Build or Run requests occurred.
+The first screenshots exposed axis-column label wrapping; full-width state rows fixed
+it. Private proof/screenshots:
+`local-output/sdk-20260909/inspector-property-states-20261005/`.
+This presentation milestone does not complete specialized-editor migration or live parity.

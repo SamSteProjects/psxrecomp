@@ -2,10 +2,18 @@ const escape=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<'
 const at=(value,path)=>path.reduce((item,key)=>item?.[key],value);
 const propertyValue=(value,p)=>[p.path,...(p.fallback_paths??[])].map(path=>at(value,path)).find(item=>item!==null&&item!==undefined)??p.empty_label??'—';
 export const navigableComponentReference=(value,type)=>['asset-reference','entity-reference'].includes(type)&&typeof value==='string'&&value.length<=1024&&/^[a-z][a-z0-9-]*:\/\/[^\s\x00-\x20\x7f<>"']+$/.test(value);
-const propertyRow=(p,value,navigation=false,layer='')=>{
-  const target=propertyValue(value,p),label=[layer,p.label].filter(Boolean).join(' ');
+export function propertyStateBadge(schema,state){
+  if(!schema.property_states)return '';
+  const definition=Object.hasOwn(schema.property_states,state??'')?schema.property_states[state]:null;
+  const valid=definition&&typeof definition.label==='string'&&definition.label.length<=80&&typeof definition.note==='string'&&definition.note.length<=600;
+  const label=valid?definition.label:'Unclassified',note=valid?definition.note:'No registered property state. No edit or runtime capability is inferred.';
+  return `<small class="property-state" data-property-state="${escape(valid?state:'unclassified')}" title="${escape(note)}" aria-label="${escape(label+': '+note)}">${escape(label)}</small>`;
+}
+const propertyRow=(schema,p,value,navigation=false,layer=null)=>{
+  const target=propertyValue(value,p),label=[layer?.label,p.label].filter(Boolean).join(' ');
+  const state=layer?.id==='authored'&&p.state?.startsWith('authored-')?p.state:layer?.state??p.state;
   const content=navigation&&navigableComponentReference(target,p.type)?`<button type="button" data-component-reference="${escape(target)}" data-reference-type="${escape(p.type)}" aria-label="Inspect ${escape(label)} reference: ${escape(target)}"><code>${escape(target)}</code></button>`:`<code>${escape(target)}</code>`;
-  return `<div class="property"><span>${escape(p.label)}</span>${content}</div>`;
+  return `<div class="property"><span class="property-label">${escape(p.label)}${propertyStateBadge(schema,state)}</span>${content}</div>`;
 };
 const notes=definition=>(definition.notes??[]).map(note=>`<p class="field-note">${escape(note)}</p>`).join('');
 export function componentDefinition(schema,id){
@@ -19,18 +27,20 @@ export function renderComponentProperties(schema,id,component,editable=false,ref
 }
 function renderPropertyContent(schema,id,component,editable=false,referenceNavigation=false){
   const definition=componentDefinition(schema,id);
-  if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(p,component,referenceNavigation)).join('')+notes(definition);
+  if(definition.layout==='read-only-properties')return definition.properties.map(p=>propertyRow(schema,p,component,referenceNavigation)).join('')+notes(definition);
   if(definition.layout==='layered-properties'){
     if(!Array.isArray(definition.layers)||definition.layers.length>8||new Set(definition.layers.map(row=>row.id)).size!==definition.layers.length)throw new Error('Invalid property layers');
-    return definition.layers.map(layer=>`<div class="appearance-layer" data-property-layer="${escape(layer.id)}"><h4>${escape(layer.label)}</h4>${definition.properties.filter(p=>p.layers?.includes(layer.id)).map(p=>propertyRow(p,component[layer.id],referenceNavigation,layer.label)).join('')}</div>`).join('')+notes(definition);
+    return definition.layers.map(layer=>`<div class="appearance-layer" data-property-layer="${escape(layer.id)}"><h4>${escape(layer.label)}</h4>${definition.properties.filter(p=>p.layers?.includes(layer.id)).map(p=>propertyRow(schema,p,component[layer.id],referenceNavigation,layer)).join('')}</div>`).join('')+notes(definition);
   }
   if(definition.layout!=='layered-number'||JSON.stringify(definition.layers)!==JSON.stringify(['imported','authored','effective']))throw new Error('Unsupported property layout');
-  let html='<div class="transform-table"><span></span><span class="column-title">Imported</span><span class="column-title">Authored</span><span class="column-title">Effective</span>';
+  let html='<div class="transform-table"><span></span>'+definition.layers.map(layer=>`<span class="column-title">${escape(layer[0].toUpperCase()+layer.slice(1))}${propertyStateBadge(schema,definition.layer_states?.[layer])}</span>`).join('');
   for(const p of definition.properties){
     if(p.type!=='number'||!p.authoring||!Array.isArray(p.path)||p.path.length!==2)throw new Error('Unsupported numeric property');
     const values=definition.layers.map(layer=>at(component[layer],p.path)),bounds=p.authoring;
     const title=p.build.note+(p.retail_status==='unresolved'?' · Retail value unresolved':'');
     html+=`<span class="axis-${escape(p.id)}">${escape(p.label)}</span><output>${escape(values[0])}</output><input data-component-property="${escape(p.id)}" aria-label="Authored ${escape(p.label)}" type="number" min="${escape(bounds.minimum)}" max="${escape(bounds.maximum)}" step="${escape(bounds.step)}" title="${escape(title)}" placeholder="—" value="${typeof values[1]==='number'&&Number.isFinite(values[1])?values[1]:''}" ${editable?'':'disabled'}><output class="effective">${escape(values[2])}</output>`;
+    const stateNotes=[...(p.retail_status==='unresolved'?[`<span>Retail ${escape(p.label)}: ${propertyStateBadge(schema,'unresolved')}</span>`]:[]),...(p.build.supported===false?[`<span>Build ${escape(p.label)}: ${propertyStateBadge(schema,'unsupported')}</span>`]:[])];
+    if(schema.property_states&&stateNotes.length)html+=`<span class="transform-property-states">${stateNotes.join('')}</span>`;
   }
   return html+'</div>'+definition.notes.map(note=>`<p class="field-note">${escape(note)}</p>`).join('');
 }
