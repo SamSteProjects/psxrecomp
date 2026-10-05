@@ -4492,6 +4492,7 @@ async function openModelVectors(initial=null){
   }catch(error){$('model-error').textContent=error.message;}finally{setBusy(false);}
 }
 $('shape-vectors').onclick=()=>openModelVectors();
+const modelVertexMoveButton=document.createElement('button');modelVertexMoveButton.id='shape-vertex-move';modelVertexMoveButton.textContent='Move vertices in 3D';$('shape-vectors').after(modelVertexMoveButton);modelVertexMoveButton.onclick=()=>{if(busy||shapeDraft||state.project?.mode!=='edit')return;openVertexMovement({object_index:Number($('model-object').value),vector_index:0});};
 let modelPrimitiveEditor=null;
 const primitiveContext=()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key});
 async function inspectModelPrimitives(initial=null){
@@ -4576,7 +4577,7 @@ function updateShapeDraft(){
   $('shape-file-report').replaceChildren();
   const pending=!!$('shape-file').files?.length,shape=state.model_overrides?.[modelAssetId];
   discardShape.hidden=!pending;
-  $('shape-upload').disabled=!pending||state.project?.mode!=='edit';$('shape-file-preview').disabled=!pending||state.project?.mode!=='edit';$('shape-vectors').disabled=pending||state.project?.mode!=='edit';$('shape-primitives').disabled=pending||state.project?.mode!=='edit';$('shape-authored-tmd').disabled=!state.model_overrides?.[modelAssetId];
+  $('shape-upload').disabled=!pending||state.project?.mode!=='edit';$('shape-file-preview').disabled=!pending||state.project?.mode!=='edit';$('shape-vectors').disabled=pending||state.project?.mode!=='edit';modelVertexMoveButton.disabled=pending||state.project?.mode!=='edit';$('shape-primitives').disabled=pending||state.project?.mode!=='edit';$('shape-authored-tmd').disabled=!state.model_overrides?.[modelAssetId];
   $('shape-retail').disabled=pending;$('shape-authored').disabled=pending||!shape;
   $('shape-clear').disabled=pending||!shape||state.project?.mode!=='edit';$('shape-download-authored').disabled=pending||!shape;$('shape-authored-json').disabled=pending||!shape;
   $('model-export').disabled=pending;

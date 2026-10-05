@@ -35,3 +35,26 @@ uses the actual compressed model section and verifies its complete bytes.
 
 Private evidence: `local-output/sdk-20260909/vertex-move-20261005/proof.json`.
 No game was launched or output installed; in-game model appearance remains deferred.
+
+
+## Direct viewport selection - 2026-10-05
+
+Move vertices in3D also opens directly from the model shape panel. With Pick vertices
+enabled, click a projected point to select its existing object-local row. The query
+uses a10-pixel radius, choosing nearest screen position, then frontmost projected
+depth and lowest row index for ties. It includes hidden vertices; orbit to separate
+coincident points. An orbit drag never selects. Dirty or invalid drafts block another
+selection until Discard; numeric object/index selection remains available.
+
+The point overlay is transparent over the geometry. It draws at most1024 projected
+rows plus the selected row, and reports how many points were drawn. Picking considers
+all qualified projected rows, including rows outside this drawing cap. Current and
+Draft comparison and the existing source-hash guarded Apply path remain available.
+
+A native Town01 model0000 workflow selected exact vertices1 and2 in both Draft and
+Current layers. Dirty/invalid locks, pick toggle, orbit exclusion and close cleanup
+passed. Complete project document/history unchanged, zero authoring requests or browser
+errors. The first screenshot exposed an opaque overlay hiding the geometry; the final
+run fixes it and its screenshot was inspected. Pure screen/depth/index/bound checks
+passed. Evidence: `local-output/sdk-20260909/vertex-picking-final-20261005/proof.json`.
+No game was launched; no additional gameplay acceptance is needed for point selection.

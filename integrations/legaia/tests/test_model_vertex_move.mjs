@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
-import {vertexMovePreview} from '../editor/model-vertex-move.js';
+import {vertexMovePreview,pickProjectedVertex} from '../editor/model-vertex-move.js';
 const source={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:1},{object_index:1,vertex_start:1,vertex_count:2}],vertices:[[1,2,3],[4,5,6],[7,8,9]],triangles:[[0,1,2]],normals:[[0,4096,0]]}},before=structuredClone(source);
 const proposed=vertexMovePreview(source,1,1,[-32768,16,32767]);
 assert.deepEqual(proposed.vertices,[[1,2,3],[4,5,6],[-32768,16,32767]]);assert.deepEqual(source,before);assert.deepEqual(proposed.triangles,source.preview.triangles);assert.deepEqual(proposed.normals,source.preview.normals);proposed.vertices[0][0]=99;assert.deepEqual(source,before);
 for(const [object,index,values] of [[2,0,[0,0,0]],[0,1,[0,0,0]],[1,-1,[0,0,0]],[1,0,[0,0,32768]],[1,0,[0,0,-32769]],[1,0,[0,0,.5]],[1,0,[0,NaN,0]],[1,0,[0,0]]])assert.throws(()=>vertexMovePreview(source,object,index,values));
 console.log('Vertex draft: exact object-local row, signed16 bounds, immutable Current and retained topology/normals passed');
+assert.equal(pickProjectedVertex([{index:8,x:10,y:10,depth:9},{index:3,x:10,y:10,depth:4},{index:2,x:10,y:10,depth:4}],10,10),2);
+assert.equal(pickProjectedVertex([{index:0,x:10,y:10,depth:2},{index:1,x:11,y:11,depth:1}],11,11),1);
+assert.equal(pickProjectedVertex([{index:0,x:10,y:10,depth:2}],20,10),0);
+assert.equal(pickProjectedVertex([{index:0,x:10,y:10,depth:2}],20.1,10),null);
+assert.equal(pickProjectedVertex([null,{index:0,x:NaN,y:10,depth:2}],10,10),null);
+assert.throws(()=>pickProjectedVertex([],Infinity,0));assert.throws(()=>pickProjectedVertex([],0,0,33));
+console.log('Vertex picking: bounded screen radius, nearest point, depth/index ties and malformed projections passed');

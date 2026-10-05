@@ -1,5 +1,25 @@
 # Legaia SDK status — 2026-10-05
 
+## Pick vertices in the model movement viewport - 2026-10-05
+
+Move vertices in3D now opens directly from the model shape panel. The movement
+viewport displays bounded projected point markers and selects the exact existing
+object-local vertex by click, using screen distance then depth/index ties. Picking
+includes hidden vertices; it does not establish visible-surface ownership. Current
+and Draft retain the same camera. Dirty or invalid drafts lock selection until
+Discard; orbit drags do not pick. Numeric object/index controls remain available.
+The transparent point overlay preserves the visible mesh; marker drawing is capped
+at1024 plus the selected point, while picking considers all qualified projected rows.
+
+Native Town01 model0000 checks selected exact rows1 and2, verified dirty/invalid
+locks, pick toggle, Current-layer selection, orbit exclusion and close cleanup.
+The complete project document/history stayed unchanged; zero authoring requests
+or browser errors. Final screenshot inspected. Focused nearest/depth/index/bounds
+Node checks passed. Evidence: `local-output/sdk-20260909/vertex-picking-final-20261005/`.
+This browsing addition needs no immediate gameplay check; the previous vertex edit
+package stays in the manual queue. The full SDK goal remains active and solo.
+
+
 ## Direct model vertex movement - 2026-10-05
 
 The vector Inspector now opens a Current/Draft geometry viewport for an existing
