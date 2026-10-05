@@ -1,5 +1,26 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Focused stability recheck - 2026-10-04
+
+At SDK source `28bda1d7`, the inspected runtime/precompile source hashes still
+match the preserved inclusion evidence. Fresh synthetic restore-entry and
+restore-continuation execution passed through the real overlay loader. Production
+audio-output readiness and locked statistics snapshot fixtures passed. Ninja
+Multi-Config/GCC passed nine inventory/body variants in both Release and Debug
+(18 executable sum checks), sparse numeric filename ownership and final unchanged
+builds. The restricted Ninja invocation failed before configuration; the permitted
+retry passed both tests in14.303s. No implementation change was justified by this
+recheck. Private current evidence:
+`local-output/sdk-20260909/stability-recheck-20261004/parent/accepted.json`.
+
+This is focused fixture acceptance, not complete runtime/release equivalence.
+The preserved local release source ref remains `3ac7d410`; the sibling reference
+directory currently has no Git metadata and cannot establish a fresh source HEAD.
+No game, installed runtime or retail disc output was launched or modified.
+Startup audio overflow, field savestate performance and the existing deferred
+gameplay/audio boundaries remain open.
+
+
 ## 2026-10-04: Reveal selection in the hierarchy
 
 **Reveal selection** clears the hierarchy search, expands the selected row's group,

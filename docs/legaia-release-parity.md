@@ -1,5 +1,26 @@
 # Legaia stability and release parity
 
+## Focused stability recheck - 2026-10-04
+
+At SDK source `28bda1d7`, the inspected runtime/precompile source hashes still
+match the preserved inclusion evidence. Fresh synthetic restore-entry and
+restore-continuation execution passed through the real overlay loader. Production
+audio-output readiness and locked statistics snapshot fixtures passed. Ninja
+Multi-Config/GCC passed nine inventory/body variants in both Release and Debug
+(18 executable sum checks), sparse numeric filename ownership and final unchanged
+builds. The restricted Ninja invocation failed before configuration; the permitted
+retry passed both tests in14.303s. No implementation change was justified by this
+recheck. Private current evidence:
+`local-output/sdk-20260909/stability-recheck-20261004/parent/accepted.json`.
+
+This is focused fixture acceptance, not complete runtime/release equivalence.
+The preserved local release source ref remains `3ac7d410`; the sibling reference
+directory currently has no Git metadata and cannot establish a fresh source HEAD.
+No game, installed runtime or retail disc output was launched or modified.
+Startup audio overflow, field savestate performance and the existing deferred
+gameplay/audio boundaries remain open.
+
+
 **Precompile multi-configuration acceptance (2026-10-03):** The existing synthetic static-overlay fixture now builds and executes both Release and Debug for every inventory/body variant when using a multi-configuration generator. Shared generated sources must reach both configurations after growth, shrinkage, body-only changes, split/monolithic switching, empty output and regrowth. Single-configuration behavior remains unchanged. See [release parity evidence](legaia-release-parity.md#ninja-multi-config-acceptance-2026-10-03).
 
 Validation: Ninja Multi-Config1.13.2, CMake4.2.3 and MSYS2 UCRT GCC16.1.0 pass both focused tests in12.745s with no skips: nine recipes times two configurations,18 executable sum checks, final no-change builds and sparse numeric filename ownership. A restricted invocation failed before configuration while starting the Winget Ninja executable; the approved retry passes. GNU Make is not installed and its coverage remains open. Private logs/tool/source identities: `local-output/sdk-20260909/precompile-ninja-multi-20261003/parent/`. No runtime implementation, game executable, installed mod, retail payload or gameplay acceptance changed; no game ran.
