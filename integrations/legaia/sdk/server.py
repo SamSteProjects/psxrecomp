@@ -1661,6 +1661,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .scene_selection_sets import review
                     self._json(200,review(self.server.project,body['selection_set_id'],body['review_key']))
                     return
+                if route == '/api/scene-placement-layout-review':
+                    if set(body)!={'entity_id','entity_ids','operation'}:raise ProjectError('Mixed layout review requires scene, selection and operation only')
+                    from .scene_placement_group import layout_review
+                    self._json(200,layout_review(self.server.project,body['entity_id'],body['entity_ids'],body['operation']))
+                    return
                 if route == '/api/scene-placement-group-review':
                     if set(body)!={'entity_id','entity_ids','delta'}:raise ProjectError('Scene placement review requires scene, selected identities and X/Z offset only')
                     from .scene_placement_group import review

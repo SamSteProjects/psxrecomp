@@ -9,7 +9,7 @@ from .project import ProjectError, digest
 from .project_copy import source_key
 
 
-def review(project, scene, entity_ids, delta):
+def _review(project, scene, entity_ids, delta, operation=None):
     if project.mode != 'edit' or not isinstance(scene, str) or scene != project.active_scene or scene not in project.imports:
         raise ProjectError('Mixed placement requires the active imported scene in Edit mode')
     if (not isinstance(entity_ids, list) or not 2 <= len(entity_ids) <= 128 or
@@ -42,18 +42,37 @@ def review(project, scene, entity_ids, delta):
                 encode_placement_coordinate(proposed[axis], f'{identifier} proposed {axis.upper()}')
             except ImportError as exc:
                 raise ProjectError(str(exc)) from exc
-        after = deepcopy(before or {})
-        for axis in ('x', 'z'):
-            if delta[axis]:
-                after.setdefault('Transform', {}).setdefault('position', {})[axis] = proposed[axis]
-        after = after or None
-        if before != after:
-            changes[identifier] = after
         targets.append(dict(entity_id=identifier, kind='actor', retail=retail, current=current, proposed=proposed))
-    merged = _merge(project, scene, context, {
-        t['entity_id']: {axis: t['current'][axis] + delta[axis] for axis in ('x', 'z')}
-        for t in context['targets']})
-    targets.extend(dict(t, kind='decoration') for t in merged['targets'])
+    targets.extend(dict(t,kind='decoration',proposed=deepcopy(t['current'])) for t in context['targets'])
+    if operation is not None:
+        axis=operation['axis']
+        if operation['kind']=='align':
+            anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
+            if anchor is None:raise ProjectError('Mixed layout anchor must be selected')
+            value=anchor['current'][axis]
+            if type(value) is not int or value % 64:raise ProjectError('Mixed alignment anchor must lie on the 64-unit actor grid')
+            for target in targets:target['proposed'][axis]=value
+        else:
+            if any(type(t['current'][axis]) is not int or t['current'][axis] % 64 for t in targets):raise ProjectError('Mixed distribution requires selected source coordinates on the 64-unit actor grid')
+            ordered=sorted(targets,key=lambda t:(t['current'][axis],t['entity_id']))
+            low,high=ordered[0]['current'][axis]//64,ordered[-1]['current'][axis]//64
+            span,intervals=high-low,len(ordered)-1
+            if span<intervals:raise ProjectError('Mixed distribution requires at least one 64-unit interval per gap')
+            for i,target in enumerate(ordered):target['proposed'][axis]=(low+(2*span*i+intervals)//(2*intervals))*64
+    for target in targets:
+        identifier=target['entity_id']
+        if target['kind']=='decoration':
+            if operation is None:target['proposed']={a:target['current'][a]+delta[a] for a in ('x','z')}
+            continue
+        before=deepcopy(project.overrides.get(identifier));after=deepcopy(before or {})
+        for axis in ('x','z'):
+            try:encode_placement_coordinate(target['proposed'][axis],f'{identifier} proposed {axis.upper()}')
+            except ImportError as exc:raise ProjectError(str(exc)) from exc
+            if target['proposed'][axis]!=target['current'][axis]:after.setdefault('Transform',{}).setdefault('position',{})[axis]=target['proposed'][axis]
+        after=after or None
+        if before!=after:changes[identifier]=after
+    merged=_merge(project,scene,context,{t['entity_id']:t['proposed'] for t in targets if t['kind']=='decoration'})
+    targets=[t for t in targets if t['kind']=='actor']+[dict(t,kind='decoration') for t in merged['targets']]
     if merged['project_change']:
         after = deepcopy(project.overrides.get(scene, {}))
         value = merged['value']
@@ -66,22 +85,34 @@ def review(project, scene, entity_ids, delta):
         raise ProjectError('Project changed while reviewing mixed placement')
     identities = sorted(entity_ids)
     key = digest(dict(project_source_key=context['before'], scene=scene,
-                      source_sha256=context['source_hash'], entity_ids=identities, delta=delta))
-    return dict(schema_version='legaia.scene-placement-group-review.v1',
+                      source_sha256=context['source_hash'], entity_ids=identities, delta=delta, **({'operation':operation,'algorithm':'source-grid-layout.v1','targets':targets} if operation is not None else {})))
+    return dict(schema_version='legaia.scene-placement-layout-review.v1' if operation is not None else 'legaia.scene-placement-group-review.v1',
                 project_source_key=context['before'], scene_id=scene, source_sha256=context['source_hash'],
                 review_key=key, entity_ids=identities, delta=deepcopy(delta),
                 targets=sorted(targets, key=lambda t: t['entity_id']), changes=changes,
                 affected_count=sum(t['current'] != t['proposed'] for t in targets),
                 project_change=bool(changes), scope='imported-actor-and-static-decoration-xz-only',
-                gameplay_verified=False)
+                gameplay_verified=False, **({'operation':deepcopy(operation)} if operation is not None else {}))
+
+
+def review(project,scene,entity_ids,delta):
+    return _review(project,scene,entity_ids,delta)
+
+
+def layout_review(project,scene,entity_ids,operation):
+    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute') or operation.get('axis') not in ('x','z'):
+        raise ProjectError('Mixed layout requires align/distribute on X/Z')
+    fields={'kind','axis','anchor_entity_id'} if operation['kind']=='align' else {'kind','axis'}
+    if set(operation)!=fields:raise ProjectError('Mixed layout accepts exact operation fields only')
+    return _review(project,scene,entity_ids,{'x':0,'z':0},operation)
 
 
 def apply(project, command):
     if (not isinstance(command, dict) or
-            set(command) != {'type', 'entity_id', 'entity_ids', 'delta', 'review_key'} or
-            command['type'] != 'apply_scene_placement_group'):
-        raise ProjectError('Mixed placement Apply requires owner, selection, offset and current review key only')
-    result = review(project, command['entity_id'], command['entity_ids'], command['delta'])
+            command.get('type') not in ('apply_scene_placement_group','apply_scene_placement_layout') or
+            set(command) != {'type','entity_id','entity_ids','review_key', 'operation' if command['type']=='apply_scene_placement_layout' else 'delta'}):
+        raise ProjectError('Mixed placement Apply requires owner, selection, offset or layout, and current review key only')
+    result = (layout_review(project,command['entity_id'],command['entity_ids'],command['operation']) if command['type']=='apply_scene_placement_layout' else review(project,command['entity_id'],command['entity_ids'],command['delta']))
     if result['review_key'] != command['review_key']:
         raise ProjectError('Mixed placement inputs changed since review')
     after = deepcopy(result['changes'])

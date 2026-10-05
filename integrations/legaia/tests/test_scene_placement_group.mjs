@@ -31,3 +31,12 @@ assert.throws(()=>offsetScenePlacementGroup({...report,targets:[{...report.targe
 const safeEdge={...report,delta:{x:0,z:0},affected_count:0,project_change:false,targets:report.targets.map((row,index)=>({...row,current:{x:index?Number.MAX_SAFE_INTEGER:192,z:320},proposed:{x:index?Number.MAX_SAFE_INTEGER:192,z:320}}))};
 assert.throws(()=>offsetScenePlacementGroup(safeEdge,'x',64));
 console.log('Mixed placement drag composition, 64-unit increments, immutable selections, bounds and decoded proposal guards passed.');
+
+import {mixedLayoutPositions,decodeScenePlacementLayout} from '../editor/scene-placement-group.js';
+const operation={kind:'align',axis:'x',anchor_entity_id:ids[1]},layout={...report,schema_version:'legaia.scene-placement-layout-review.v1',delta:{x:0,z:0},operation,affected_count:1,targets:report.targets.map(row=>({...row,proposed:{...row.current,x:576}}))};
+assert.deepEqual(decodeScenePlacementLayout(layout,key,scene,ids,operation),layout);
+for(const change of [{affected_count:2},{operation:{...operation,axis:'z'}},{targets:layout.targets.map(row=>({...row,proposed:{...row.proposed,z:0}}))}])assert.throws(()=>decodeScenePlacementLayout({...layout,...change},key,scene,ids,operation));
+const three=[...report.targets,{entity_id:'environment://fixture/field-map/decorations/00002',current:{x:1024,z:320}}];assert.deepEqual(mixedLayoutPositions(three,{kind:'distribute',axis:'x'}).map(row=>row.position.x),[192,640,1024]);
+assert.throws(()=>mixedLayoutPositions(three,{kind:'align',axis:'x',anchor_entity_id:'other'}));assert.throws(()=>mixedLayoutPositions(three,{kind:'distribute',axis:'y'}));
+assert.throws(()=>mixedLayoutPositions(three.map(row=>({...row,current:{...row.current,x:1}})),{kind:'distribute',axis:'x'}));
+console.log('Mixed layout: exact anchor/grid distribution, complete proposal qualification and forged operation/count/axis guards passed.');

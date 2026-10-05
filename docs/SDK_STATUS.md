@@ -1,5 +1,37 @@
 # Legaia SDK status — 2026-10-05
 
+## Mixed actor/scenery alignment and distribution - 2026-10-05
+
+The mixed scene placement dialog now supports aligning source X/Z to a selected actor
+or static-decoration anchor and distributing a mixed group along either axis. Groups
+retain 2..128 imported actors/decorations with at least one of each. Alignment requires
+an anchor on the 64-unit actor grid; distribution requires grid-aligned selected coordinates,
+preserves endpoints, uses nearest grid spacing with upward half ties, and orders equal
+positions by stable ID. Off-grid inputs reject explicitly rather than silently snapping.
+
+The existing complete actor/MAP qualification and merge paths validate every candidate
+before publication, retaining unrelated components, axes, shared transforms and instance
+edits. Review is readonly and source-qualified. Retail/Current/Proposed tables, scene
+comparison and Return retain the reviewed operation. Changing mode/anchor withdraws it.
+Layout inspection holds preview height and rotations; shared-offset drag handles are
+restricted to offset mode. One Apply writes actor Transform and Environment changes as
+one history step, with no-op suppression, Undo/Redo, Save/Open and normal Build. Runtime
+height, collision, activation and gameplay suitability remain unverified. See
+[mixed layouts](legaia-scene-placement-groups.md#alignment-and-distribution).
+
+Verification: two focused synthetic layout checks and six existing mixed-offset checks
+passed, along with Node source/arithmetic/review guards and two JS syntax checks. Actual
+private-retail browser evidence covers distribution preview, decoration-anchor alignment,
+mode withdrawal, exact Proposed/Current GPU matrices, retained height/rotation, Return
+and one Apply. Document/files stayed unchanged before Apply; one history step, Undo/Redo
+and Save/Open passed. Normal Build directory/ZIP full MAP readback, independent MAN actor
+coordinate decoding with opaque-byte preservation, package SHA and ZIP integrity passed.
+The initial browser harness matched a nested summary as well as Scene tools; its selector
+was corrected and the failed attempt preserved. Evidence: ignored
+`local-output/sdk-20260909/mixed-placement-layout-20261005/proof.json` and screenshots.
+No game was launched or installed. Gameplay checks remain deferred; the full SDK goal
+is active and incomplete, with solo implementation continuing.
+
 ## Retained animation assignment-user navigation - 2026-10-05
 
 Retained animation assets now list their authored initial-assignment users by stable

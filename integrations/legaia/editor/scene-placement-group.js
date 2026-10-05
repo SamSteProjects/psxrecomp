@@ -30,6 +30,22 @@ export function decodeScenePlacementGroup(value,key,scene,ids,delta){
   return structuredClone({...value,delta});
 }
 
+export function mixedLayoutPositions(targets,operation){
+  const fields=operation?.kind==='align'?['anchor_entity_id','axis','kind']:['axis','kind'];
+  if(!operation||Object.keys(operation).sort().join()!==fields.join()||!['align','distribute'].includes(operation.kind)||!['x','z'].includes(operation.axis))throw new Error('Choose exact mixed alignment/distribution fields on X/Z.');
+  const result=targets.map(row=>({entity_id:row.entity_id,position:{...row.current}})),axis=operation.axis;
+  if(operation.kind==='align'){const anchor=targets.find(row=>row.entity_id===operation.anchor_entity_id);if(!anchor||!Number.isSafeInteger(anchor.current[axis])||anchor.current[axis]%64)throw new Error('Selected mixed anchor must lie on the 64-unit actor grid.');for(const row of result)row.position[axis]=anchor.current[axis];}
+  else{if(targets.some(row=>!Number.isSafeInteger(row.current[axis])||row.current[axis]%64))throw new Error('Mixed distribution requires selected coordinates on the 64-unit actor grid.');const ordered=[...result].sort((a,b)=>a.position[axis]-b.position[axis]||a.entity_id.localeCompare(b.entity_id)),low=ordered[0].position[axis]/64,span=ordered.at(-1).position[axis]/64-low,intervals=ordered.length-1;if(span<intervals)throw new Error('Mixed distribution needs one 64-unit interval per gap.');for(const [i,row] of ordered.entries())row.position[axis]=(low+Math.floor((2*span*i+intervals)/(2*intervals)))*64;}
+  for(const row of result)if(row.entity_id.startsWith('scene://')&&(row.position.x<64||row.position.x>16384||row.position.z<64||row.position.z>16384||row.position.x%64||row.position.z%64))throw new Error('Mixed layout exceeds actor source-grid bounds.');return result;
+}
+export function decodeScenePlacementLayout(value,key,scene,ids,operation){
+  if(value?.schema_version!=='legaia.scene-placement-layout-review.v1'||JSON.stringify(value.operation)!==JSON.stringify(operation)||JSON.stringify(scenePlacementGroupDelta(value.delta))!==JSON.stringify({x:0,z:0}))throw new Error('Mixed layout operation differs from requested review.');
+  decodeScenePlacementGroup({...value,schema_version:'legaia.scene-placement-group-review.v1',affected_count:0,project_change:false,targets:value.targets?.map(row=>({...row,proposed:{...row.current}}))},key,scene,ids,{x:0,z:0});
+  const expected=mixedLayoutPositions(value.targets,operation);let changed=0;
+  for(const [i,row] of value.targets.entries()){if(JSON.stringify(row.proposed)!==JSON.stringify(expected[i].position))throw new Error('Mixed layout positions differ from exact source-grid arithmetic.');changed+=row.current.x!==row.proposed.x||row.current.z!==row.proposed.z;}
+  if(value.affected_count!==changed||value.project_change!==(changed>0))throw new Error('Mixed layout change count differs from exact proposal.');return structuredClone(value);
+}
+
 export function offsetScenePlacementGroup(report,axis,amount){
   if(!['x','z'].includes(axis)||!Number.isSafeInteger(amount)||amount%64)throw new Error('Placement drag requires an X or Z offset in multiples of 64');
   const reviewed=decodeScenePlacementGroup(report,report?.project_source_key,report?.scene_id,report?.entity_ids,report?.delta);
@@ -50,6 +66,8 @@ export function mountScenePlacementGroup({host,getState,getSelection,busy,setBus
   const delta=()=>{
     const values={};for(const axis of ['x','z']){const text=dialog.querySelector(`[name="${axis}"]`).value;if(!text.trim())throw new Error('Enter both placement offsets');values[axis]=Number(text);}return scenePlacementGroupDelta(values);
   };
+  const request=()=>{const mode=dialog.querySelector('[name="layout-mode"]').value;if(mode==='offset')return {delta:delta()};const [kind,axis]=mode.split('_');return {operation:{kind,axis,...(kind==='align'?{anchor_entity_id:dialog.querySelector('[name="layout-anchor"]').value}:{})}};};
+  const decode=(value,binding,requested)=>requested.operation?decodeScenePlacementLayout(value,binding.key,binding.scene,binding.ids,requested.operation):decodeScenePlacementGroup(value,binding.key,binding.scene,binding.ids,requested.delta);
   const restoreInspection=()=>{if(inspecting){inspecting=false;inspectionLayer=null;onInspection(null);}strip.hidden=true;note.textContent='Placement preview · proposal height held · runtime unknown · not applied';};
   const withdraw=()=>{generation++;if(controller){controller.abort();controller=null;setBusy(false);}report=null;restoreInspection();dialog?.querySelector('[data-result]')?.replaceChildren();};
   function restore(){context=null;withdraw();if(dialog){const old=dialog;dialog=null;if(old.open)old.close();old.remove();}refresh();}
@@ -59,8 +77,10 @@ export function mountScenePlacementGroup({host,getState,getSelection,busy,setBus
     returnButton.disabled=busy();restoreButton.disabled=busy()&&!controller;
     if(context&&!current()){restore();return;}
     if(!dialog?.open)return;
-    let valid=false;try{delta();valid=true;}catch{}
-    for(const item of dialog.querySelectorAll('input,[data-review],[data-apply],[data-inspect]'))item.disabled=busy();
+    let valid=false;try{request();valid=true;}catch{}
+    for(const item of dialog.querySelectorAll('input,select,[data-review],[data-apply],[data-inspect]'))item.disabled=busy();
+    const mode=dialog.querySelector('[name="layout-mode"]').value,layout=mode!=='offset';for(const input of dialog.querySelectorAll('input[name="x"],input[name="z"]')){input.parentElement.hidden=layout;input.disabled=busy()||layout;}
+    dialog.querySelector('[name="layout-anchor"]').parentElement.hidden=!mode.startsWith('align_');
     dialog.querySelector('[data-review]').disabled=busy()||!valid||!current();
     dialog.querySelector('[data-apply]').disabled=busy()||!valid||!current()||!report?.project_change;
     for(const item of dialog.querySelectorAll('[data-inspect]'))item.disabled=busy()||!report||!current();
@@ -69,8 +89,8 @@ export function mountScenePlacementGroup({host,getState,getSelection,busy,setBus
     if(button.disabled||busy())return;restore();
     const s=getState();context={key:s.project_copy_source_key,scene:s.scene.id,ids:selection()};placementIds(context.ids,context.scene);
     dialog=document.createElement('dialog');dialog.id='scene-placement-group-dialog';dialog.className='project-dialog';dialog.style.width='min(800px,90vw)';dialog.style.maxHeight='90vh';dialog.style.overflowY='auto';
-    dialog.innerHTML='<h2>Move scene placement group</h2><p>Review X/Z offsets for selected imported actors and static decorations. Apply records the group as one Undo step. Proposal height is held at the current preview height; runtime behavior remains unknown.</p><form><div class="dialog-actions"><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="0" required aria-label="Scene placement group X offset"></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required aria-label="Scene placement group Z offset"></label></div><button data-review type="submit">Review group</button></form><p data-status role="status"></p><div data-result style="max-height:40vh;overflow:auto"></div><div class="dialog-actions"><button data-inspect="proposed" type="button" disabled>Inspect proposed placements</button><button data-inspect="current" type="button" disabled>Inspect current placements</button><button data-apply type="button" disabled>Apply group</button><button data-close type="button">Cancel</button></div>';
-    const activeDialog=dialog;
+    dialog.innerHTML='<h2>Move scene placement group</h2><p>Review X/Z offsets for selected imported actors and static decorations. Apply records the group as one Undo step. Alignment uses a selected actor or decoration anchor on the 64-unit actor grid. Distribution preserves grid endpoints with nearest spacing and stable identity ties. Proposal height is held; runtime behavior remains unknown.</p><form><label>Operation<select name="layout-mode" aria-label="Mixed placement operation"><option value="offset">Shared offset</option><option value="align_x">Align X to selected anchor</option><option value="align_z">Align Z to selected anchor</option><option value="distribute_x">Distribute X on grid</option><option value="distribute_z">Distribute Z on grid</option></select></label><label hidden>Anchor<select name="layout-anchor" aria-label="Mixed placement layout anchor"></select></label><div class="dialog-actions"><label>X offset<input name="x" type="number" step="64" min="-16320" max="16320" value="0" required aria-label="Scene placement group X offset"></label><label>Z offset<input name="z" type="number" step="64" min="-16320" max="16320" value="0" required aria-label="Scene placement group Z offset"></label></div><button data-review type="submit">Review group</button></form><p data-status role="status"></p><div data-result style="max-height:40vh;overflow:auto"></div><div class="dialog-actions"><button data-inspect="proposed" type="button" disabled>Inspect proposed placements</button><button data-inspect="current" type="button" disabled>Inspect current placements</button><button data-apply type="button" disabled>Apply group</button><button data-close type="button">Cancel</button></div>';
+    const activeDialog=dialog;for(const id of context.ids){const option=document.createElement('option');option.value=id;option.textContent=id;dialog.querySelector('[name="layout-anchor"]').append(option);}
     const status=text=>{if(dialog===activeDialog)activeDialog.querySelector('[data-status]').textContent=text;};
     const render=()=>{
       const output=dialog.querySelector('[data-result]');output.replaceChildren();status(`${report.targets.length} placements reviewed · ${report.affected_count} placements change.`);
@@ -80,25 +100,25 @@ export function mountScenePlacementGroup({host,getState,getSelection,busy,setBus
     renderReport=render;statusReport=status;
     activeDialog.querySelector('form').oninput=()=>{withdraw();status('Offsets changed; review again.');refresh();};
     activeDialog.querySelector('form').onsubmit=async event=>{
-      event.preventDefault();if(busy()||!current()||!activeDialog.querySelector('form').reportValidity())return;
-      let requested;try{requested=delta();}catch(error){status(error.message);return;}
+      event.preventDefault();if(busy()||!current()||(!request().operation&&!activeDialog.querySelector('form').reportValidity()))return;
+      let requested;try{requested=request();}catch(error){status(error.message);return;}
       withdraw();const token=++generation,binding=context,requestController=new AbortController();controller=requestController;setBusy(true);refresh();
       try{
-        const response=await fetch('/api/scene-placement-group-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:binding.scene,entity_ids:binding.ids,delta:requested}),signal:requestController.signal});
+        const response=await fetch(requested.operation?'/api/scene-placement-layout-review':'/api/scene-placement-group-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({entity_id:binding.scene,entity_ids:binding.ids,...requested}),signal:requestController.signal});
         const value=await response.json();if(!response.ok||value.error)throw new Error(value.error||'Scene placement group review failed');
-        if(dialog!==activeDialog||!activeDialog.open||generation!==token||context!==binding||!current()||JSON.stringify(delta())!==JSON.stringify(requested))return;
-        report=decodeScenePlacementGroup(value,binding.key,binding.scene,binding.ids,requested);render();
+        if(dialog!==activeDialog||!activeDialog.open||generation!==token||context!==binding||!current()||JSON.stringify(request())!==JSON.stringify(requested))return;
+        report=decode(value,binding,requested);render();
       }catch(error){if(error.name!=='AbortError'&&dialog===activeDialog&&activeDialog.open&&generation===token){status(error.message);onError(error.message);}}
       finally{if(controller===requestController){controller=null;setBusy(false);}refresh();}
     };
     activeDialog.querySelector('[data-apply]').onclick=async()=>{
-      if(busy()||!current()||!report?.project_change||JSON.stringify(delta())!==JSON.stringify(report.delta))return;
+      if(busy()||!current()||!report?.project_change||JSON.stringify(request())!==JSON.stringify(report.operation?{operation:report.operation}:{delta:report.delta}))return;
       const reviewed=report;
-      if(await api('/api/command',{type:'apply_scene_placement_group',entity_id:context.scene,entity_ids:context.ids,delta:reviewed.delta,review_key:reviewed.review_key}))restore();
+      if(await api('/api/command',{type:reviewed.operation?'apply_scene_placement_layout':'apply_scene_placement_group',entity_id:context.scene,entity_ids:context.ids,...(reviewed.operation?{operation:reviewed.operation}:{delta:reviewed.delta}),review_key:reviewed.review_key}))restore();
       else{withdraw();status('Scene placement group was rejected. Review current placements again.');refresh();}
     };
     for(const item of activeDialog.querySelectorAll('[data-inspect]'))item.onclick=()=>{
-      if(busy()||!report||!current()||JSON.stringify(delta())!==JSON.stringify(report.delta))return;
+      if(busy()||!report||!current()||JSON.stringify(request())!==JSON.stringify(report.operation?{operation:report.operation}:{delta:report.delta}))return;
       inspecting=true;inspectionLayer=item.dataset.inspect;note.textContent=item.dataset.inspect==='proposed'?'Proposed placements · X/Z handles snap 64 · height held · runtime unknown · not applied':'Current placements · runtime unknown';strip.hidden=false;retaining=true;activeDialog.close();onInspection(report,item.dataset.inspect);onFrame(report);refresh();
     };
     activeDialog.querySelector('[data-close]').onclick=()=>activeDialog.close();
@@ -108,7 +128,7 @@ export function mountScenePlacementGroup({host,getState,getSelection,busy,setBus
   returnButton.onclick=()=>{if(busy()||!report||!current()||!dialog)return;restoreInspection();dialog.showModal();refresh();};
   restoreButton.onclick=()=>{if(!busy()||controller)restore();};
   async function moveProposal(axis,amount,expectedReviewKey){
-    if(busy()||!current()||!inspecting||inspectionLayer!=='proposed'||!report||report.review_key!==expectedReviewKey||amount===0)return false;
+    if(busy()||!current()||!inspecting||inspectionLayer!=='proposed'||!report||report.operation||report.review_key!==expectedReviewKey||amount===0)return false;
     let requested;try{requested=offsetScenePlacementGroup(report,axis,amount);}catch(error){note.textContent=`Drag rejected: ${error.message}`;onError(error.message);return false;}
     const reviewed=report,binding=context,activeDialog=dialog,token=++generation,requestController=new AbortController();controller=requestController;
     setBusy(true);note.textContent='Reviewing dragged placement offset…';refresh();

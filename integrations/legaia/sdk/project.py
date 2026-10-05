@@ -2100,7 +2100,7 @@ class ProjectService:
                 self.undo_stack.append({'target':'model_overrides','asset_id':identifier,'before':before,'after':None})
                 self.redo_stack.clear()
             return
-        if command.get('type')=='apply_scene_placement_group':
+        if command.get('type') in ('apply_scene_placement_group','apply_scene_placement_layout'):
             from .scene_placement_group import apply
             apply(self,command)
             return

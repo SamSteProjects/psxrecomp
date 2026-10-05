@@ -3935,7 +3935,7 @@ function draw(){
     }
   }
   const placementCenter=scenePlacementCenter();
-  if(placementCenter&&canEdit()&&!busy){
+  if(placementCenter&&canEdit()&&!busy&&!scenePlacementInspection?.report?.operation){
     const start=project(placementCenter),length=camera.distance*.085;
     if(start)for(const [axis,color] of [['x','#e0988a'],['z','#8bbbdc']]){
       const end={...placementCenter,[axis]:placementCenter[axis]+length},q=project(end);if(!q)continue;line(placementCenter,end,color,3);ctx.fillStyle=color;ctx.beginPath();ctx.arc(q.x,q.y,6,0,Math.PI*2);ctx.fill();ctx.font='bold 11px "Segoe UI",sans-serif';ctx.fillText(`Placements ${axis.toUpperCase()}`,q.x+9,q.y+4);handles.push({scenePlacementGroup:true,axis,x:q.x,y:q.y,start});

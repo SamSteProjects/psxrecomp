@@ -1,5 +1,18 @@
 # Legaia SDK validation plan
 
+## Mixed scene placement layout checks
+
+- Align X/Z to a selected actor/decoration anchor; require the 64-unit actor grid.
+- Distribute grid-aligned mixed coordinates with fixed endpoints, nearest spacing,
+  upward half ties and stable-ID ordering for equal positions; reject insufficient span.
+- Validate all actor bounds, static descriptor ranges/capacity and complete merged MAP
+  bindings before an atomic Apply; preserve unselected axes/components/shared edits.
+- Qualify exact operation/selection/source and arithmetic; mode/anchor changes withdraw
+  review. Layout scene inspection holds height/rotation and has no shared-offset handles.
+- Compare Current/Proposed GPU matrices and Return; verify readonly files before Apply,
+  one Undo/Redo step, no-op, Save/Open and full MAP plus independent MAN Build readback.
+- Keep runtime height, collision, script behavior and gameplay acceptance deferred.
+
 ## Retained animation assignment-user navigation checks
 
 - List all authored initial users with stable actor identities; keep capture provenance

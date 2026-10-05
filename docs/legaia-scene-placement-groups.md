@@ -84,3 +84,28 @@ and the saved selection library. Private evidence:
 `local-output/sdk-20260909/scene-placement-drag-20261001/`.
 No game launched. Runtime visibility, placement scripts and collision remain in
 [the deferred gameplay queue](legaia-gameplay-verification-queue.md).
+
+## Alignment and distribution
+
+**Operation** now offers shared offsets, **Align X/Z to selected anchor**, and
+**Distribute X/Z on grid** for the mixed selection. Alignment accepts any selected
+imported actor or static decoration as its anchor, provided its chosen coordinate lies
+on the 64-unit actor grid. Distribution requires all selected coordinates on that grid,
+preserves the minimum and maximum, orders ties by stable identity and rounds intermediate
+grid coordinates nearest with upward half ties. Adjacent gaps differ by at most one grid
+interval. Off-grid anchors/coordinates and insufficient spans reject without authorship.
+
+Choose the operation and anchor, then **Review group**. The same Retail/Current/Proposed
+table and scene comparison show every candidate. Changing operation/anchor invalidates
+Review. **Return to placement review** retains it. Layout inspection holds preview height
+and rotation; shared-offset X/Z handles appear only in offset mode. **Apply group**
+revalidates the exact layout, selection, project source, actor encoding and complete MAP
+merge before publishing one Undo/Redo step. No-op layouts add no history. Save/Open and
+normal Build use existing serializers. Heights, facing, unrelated components, unselected
+instances, shared transforms and collision edits remain preserved; gameplay is deferred.
+
+Private evidence: `local-output/sdk-20260909/mixed-placement-layout-20261005/` includes
+`proof.json`, review/scene screenshots and normal Build audit. The actual retail editor
+checked distribution, alignment to a decoration, mode withdrawal, GPU comparison, Return
+and one Apply; history/persistence and full MAP/independently decoded MAN package readback
+passed. No game launch or installation was performed.
