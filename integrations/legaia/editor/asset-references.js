@@ -5,6 +5,7 @@ relations.add('reference_pinned_model_clip');
 relations.add('script_flag_reference');
 relations.add('script_transition_reference');relations.add('transition_destination_source');
 relations.add('field_trigger_script_reference');
+relations.add('effective_field_trigger_script_reference');
 const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 const identity=value=>typeof value==='string'&&value.length>0&&value.length<=1024;
 const canonicalScenes=(ids,minimum=1)=>Array.isArray(ids)&&ids.length>=minimum&&ids.length<=64&&ids.every(id=>identity(id)&&id.startsWith('scene://')&&id.length>8)&&new Set(ids).size===ids.length&&JSON.stringify(ids)===JSON.stringify([...ids].sort());
@@ -18,6 +19,12 @@ function validTriggerReference(edge,nodes){
   const proof=edge.trigger_reference_evidence,match=/^trigger:\/\/([A-Za-z0-9_-]+)\/field-map\/(primary|fallback)\/kind-1\/([0-9]{4})$/.exec(edge.source_id);
   if(!match||!exactKeys(edge,['id','source_id','target_id','kind','scene_id','layer','runtime_binding','source_import_sha256','source_catalog_key','trigger_reference_evidence'])||!exactKeys(proof,triggerProofKeys)||edge.layer!=='decoded'||edge.scene_id!=='scene://'+match[1]||nodes.get(edge.source_id).kind!=='trigger'||nodes.get(edge.target_id).kind!=='script'||nodes.get(edge.source_id).scene_id!==edge.scene_id||nodes.get(edge.target_id).scene_id!==edge.scene_id)return false;
   return hash(proof.trigger_source_record_sha256)&&hash(proof.script_source_record_sha256)&&proof.table_source===match[2]&&proof.table_kind===1&&boundedInteger(proof.trigger_row_index,0,2042)&&proof.trigger_row_index===Number.parseInt(match[3],10)&&boundedInteger(proof.partition_two_record_index,0,255)&&proof.gate===1&&proof.reachability==='not_evaluated'&&edge.target_id===`script://${match[1]}/scripts/man-p2/${String(proof.partition_two_record_index).padStart(4,'0')}`;
+}
+function validEffectiveTriggerReference(edge,nodes){
+  const binding=edge.trigger_binding_evidence;
+  if(!exactKeys(edge,['id','source_id','target_id','kind','scene_id','layer','runtime_binding','source_import_sha256','source_catalog_key','trigger_reference_evidence','trigger_binding_evidence'])||edge.layer!=='effective'||!hash(edge.source_catalog_key)||!exactKeys(binding,['map_source_sha256','component_sha256','imported_partition_two_record_index','target_byte_offset'])||!hash(binding.map_source_sha256)||!hash(binding.component_sha256)||!boundedInteger(binding.imported_partition_two_record_index,0,255)||!boundedInteger(binding.target_byte_offset,65556,73727)||edge.trigger_reference_evidence?.table_source!=='primary'||binding.imported_partition_two_record_index===edge.trigger_reference_evidence.partition_two_record_index)return false;
+  const source={...edge,kind:'field_trigger_script_reference',layer:'decoded'};delete source.trigger_binding_evidence;
+  return validTriggerReference(source,nodes);
 }
 function validTransitionReference(edge,nodes){
   const proof=edge.transition_reference_evidence,transitionId=edge.kind==='script_transition_reference'?edge.target_id:edge.source_id;
@@ -42,13 +49,19 @@ export function decodeAssetReferences(value,assetId,sourceKey,scope='active'){
   if(!Array.isArray(value.nodes)||value.nodes.length>4097||!Array.isArray(value.incoming)||!Array.isArray(value.outgoing)||value.incoming.length+value.outgoing.length>4096)throw new Error('Invalid asset reference bounds.');
   const nodes=new Map();for(const node of value.nodes){if(!identity(node.id)||nodes.has(node.id)||!kinds.has(node.kind)||!identity(node.scene_id)||!identity(node.label)||typeof node.available!=='boolean')throw new Error('Invalid asset reference node.');nodes.set(node.id,node);}
   if(!nodes.has(assetId))throw new Error('Missing asset reference root.');
-  const edges=new Set(),transitionProofs=new Map(),transitionSites=new Set(),triggerSites=new Set(),triggerTargets=new Map();for(const [direction,rows] of [['incoming',value.incoming],['outgoing',value.outgoing]])for(const edge of rows){
+  const edges=new Set(),transitionProofs=new Map(),transitionSites=new Set(),triggerSites=new Set(),triggerTargets=new Map(),triggerSources=new Map(),triggerBindings=new Map();for(const [direction,rows] of [['incoming',value.incoming],['outgoing',value.outgoing]])for(const edge of rows){
     if(!hash(edge.id)||edges.has(edge.id)||!nodes.has(edge.source_id)||!nodes.has(edge.target_id)||!relations.has(edge.kind)||!['imported','effective','authored','decoded'].includes(edge.layer)||edge.runtime_binding!=='not_asserted'||!hash(edge.source_import_sha256)||!identity(edge.scene_id)||direction==='incoming'&&edge.target_id!==assetId||direction==='outgoing'&&edge.source_id!==assetId||edge.layer==='decoded'&&!hash(edge.source_catalog_key)||edge.pc!==undefined&&(!Number.isSafeInteger(edge.pc)||edge.pc<0))throw new Error('Invalid asset reference edge.');
     edges.add(edge.id);
-    if(Object.hasOwn(edge,'trigger_reference_evidence')&&edge.kind!=='field_trigger_script_reference')throw new Error('Trigger evidence cannot assert another relationship.');
-    if(edge.kind==='field_trigger_script_reference'){
-      if(!validTriggerReference(edge,nodes))throw new Error('Invalid source-scoped field trigger script reference evidence.');
-      if(triggerSites.has(edge.source_id))throw new Error('Duplicate field trigger script reference.');triggerSites.add(edge.source_id);
+    if(Object.hasOwn(edge,'trigger_reference_evidence')&&!['field_trigger_script_reference','effective_field_trigger_script_reference'].includes(edge.kind))throw new Error('Trigger evidence cannot assert another relationship.');
+    if(Object.hasOwn(edge,'trigger_binding_evidence')&&edge.kind!=='effective_field_trigger_script_reference')throw new Error('Authored trigger binding evidence cannot assert another relationship.');
+    if(['field_trigger_script_reference','effective_field_trigger_script_reference'].includes(edge.kind)){
+      if(!(edge.kind==='field_trigger_script_reference'?validTriggerReference(edge,nodes):validEffectiveTriggerReference(edge,nodes)))throw new Error('Invalid source-scoped field trigger script reference evidence.');
+      const site=edge.kind+'|'+edge.source_id;if(triggerSites.has(site))throw new Error('Duplicate field trigger script reference.');triggerSites.add(site);
+      const oldSource=triggerSources.get(edge.source_id),proof=edge.trigger_reference_evidence;
+      if(oldSource&&(oldSource.trigger_reference_evidence.trigger_source_record_sha256!==proof.trigger_source_record_sha256||oldSource.source_import_sha256!==edge.source_import_sha256||oldSource.source_catalog_key!==edge.source_catalog_key||oldSource.scene_id!==edge.scene_id))throw new Error('Retail and effective trigger sources disagree.');
+      if(oldSource&&oldSource.kind!==edge.kind){const retail=edge.kind==='field_trigger_script_reference'?edge:oldSource,effective=edge.kind==='effective_field_trigger_script_reference'?edge:oldSource;if(retail.trigger_reference_evidence.partition_two_record_index!==effective.trigger_binding_evidence.imported_partition_two_record_index)throw new Error('Effective trigger evidence differs from its Retail target.');}
+      triggerSources.set(edge.source_id,edge);
+      if(edge.trigger_binding_evidence){const old=triggerBindings.get(edge.scene_id),binding=edge.trigger_binding_evidence;if(old&&(old.map_source_sha256!==binding.map_source_sha256||old.component_sha256!==binding.component_sha256))throw new Error('Effective trigger bindings disagree about their scene component.');triggerBindings.set(edge.scene_id,binding);}
       const previous=triggerTargets.get(edge.target_id);
       if(previous&&(previous.trigger_reference_evidence.script_source_record_sha256!==edge.trigger_reference_evidence.script_source_record_sha256||previous.source_import_sha256!==edge.source_import_sha256||previous.source_catalog_key!==edge.source_catalog_key||previous.scene_id!==edge.scene_id))throw new Error('Field triggers disagree about their verified P2 source.');
       triggerTargets.set(edge.target_id,edge);
@@ -120,10 +133,11 @@ export function qualifyAssetReferenceInstructionSite(site,record,sourceKey){
     site.source_record_sha256!==null&&(!hash(site.source_record_sha256)||source.sha256!==site.source_record_sha256))throw new Error('Reference instruction source changed or could not be qualified. Refresh asset references.');
   return structuredClone(site);
 }
-export const assetReferenceRelationLabel=edge=>edge.kind==='reference_pinned_model_clip'?`pinned model/clip association · clip ${edge.reference_clip_evidence.clip_id} · actor playback unknown`:edge.kind==='field_trigger_script_reference'?`encoded gate-1 trigger → partition 2 source record ${edge.trigger_reference_evidence.partition_two_record_index} · activation not evaluated`:transitionRelations.has(edge.kind)?`${edge.kind==='script_transition_reference'?'source script instruction':'encoded destination source'} · reachability not evaluated`:edge.kind.replaceAll('_',' ');
+export const assetReferenceRelationLabel=edge=>edge.kind==='reference_pinned_model_clip'?`pinned model/clip association · clip ${edge.reference_clip_evidence.clip_id} · actor playback unknown`:['field_trigger_script_reference','effective_field_trigger_script_reference'].includes(edge.kind)?`${edge.kind==='effective_field_trigger_script_reference'?'Current authored':'Retail encoded'} gate-1 trigger → partition 2 source record ${edge.trigger_reference_evidence.partition_two_record_index} · activation not evaluated`:transitionRelations.has(edge.kind)?`${edge.kind==='script_transition_reference'?'source script instruction':'encoded destination source'} · reachability not evaluated`:edge.kind.replaceAll('_',' ');
 export function assetReferenceTriggerEvidenceLabel(edge){
   const proof=edge.trigger_reference_evidence;if(!proof)return null;
-  return `${proof.table_source} MAP kind-${proof.table_kind} row ${proof.trigger_row_index} · trigger SHA-256 ${proof.trigger_source_record_sha256} · partition 2 record ${proof.partition_two_record_index} SHA-256 ${proof.script_source_record_sha256}. Encoded source reference only; activation, script execution and gameplay reachability are not established.`;
+  const binding=edge.trigger_binding_evidence;
+  return `${proof.table_source} MAP kind-${proof.table_kind} row ${proof.trigger_row_index} · Retail trigger SHA-256 ${proof.trigger_source_record_sha256} · partition 2 record ${proof.partition_two_record_index} SHA-256 ${proof.script_source_record_sha256}.${binding?` Authored TriggerScripts SHA-256 ${binding.component_sha256} · MAP source SHA-256 ${binding.map_source_sha256} · Retail target record ${binding.imported_partition_two_record_index}.`:''} Encoded source reference only; activation, script execution and gameplay reachability are not established.`;
 }
 export function assetReferenceTransitionEvidenceLabel(edge){
   const proof=edge.transition_reference_evidence;if(!proof)return null;

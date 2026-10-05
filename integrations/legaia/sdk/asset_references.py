@@ -7,8 +7,8 @@ def source_key(project):
                        imports={key:digest(doc) for key,doc in sorted(project.imports.items())},
                        overrides=project.overrides,drafts=project.actor_drafts))
 
-def _trigger_script_evidence(record,source_scripts,scene,document):
-    """Qualify one encoded gate-1 MAP row against a unique source P2 record."""
+def _trigger_script_evidence(record,source_scripts,scene,document,*,target_index=None):
+    """Qualify a source gate-1 MAP row and its Retail or authored P2 target."""
     encoded=record.get('encoded',{})
     if record.get('table_kind')!=1 or not isinstance(encoded,dict) or encoded.get('gate')!=1:return None
     from hashlib import sha256
@@ -49,6 +49,9 @@ def _trigger_script_evidence(record,source_scripts,scene,document):
     imported_disc=document.get('source',{}).get('disc_identity')
     if isinstance(imported_disc,str) and imported_disc.startswith('sha256:') and imported_disc!='sha256:'+disc['sha256']:
         reject('trigger disc differs from imported scene')
+    if target_index is not None:
+        if table != 'primary' or not integer(target_index,0,255):reject('authored target scope')
+        index=target_index
     target=f'script://{name}/scripts/man-p2/{index:04d}';scripts=source_scripts.get(target,[])
     # Missing, multiply recorded and aliased P2 targets stay unresolved. The row
     # retains its source identity, with no guessed script or runtime dispatch.
@@ -153,7 +156,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -167,6 +170,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         if flag_evidence is not None:value['flag_reference_evidence']=deepcopy(flag_evidence)
         if transition_evidence is not None:value['transition_reference_evidence']=deepcopy(transition_evidence)
         if trigger_evidence is not None:value['trigger_reference_evidence']=deepcopy(trigger_evidence)
+        if trigger_binding_evidence is not None:
+            value['trigger_binding_evidence']=deepcopy(trigger_binding_evidence)
+            value['source_catalog_key']=catalog['source_key']
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
     for scene,document in sorted(project.imports.items()):
@@ -208,6 +214,20 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         evidence=_reference_clip_evidence(record,model_records)
         if evidence is not None:reference_clips[record['id']]=evidence
         node(record['id'],record['kind'],scene,record.get('name'))
+    trigger_binding=project.overrides.get(scene,{}).get('TriggerScripts')
+    trigger_assignments={}
+    if trigger_binding is not None and catalog['records']:
+        if project._validate_trigger_scripts(scene,trigger_binding) != trigger_binding:
+            raise ProjectError('Authored trigger reference binding is not canonical')
+        from importer.trigger_authoring import trigger_authoring_options
+        from hashlib import sha256
+        trigger_map=project._environment_source(scene)
+        if sha256(trigger_map).hexdigest()!=trigger_binding['source_sha256']:
+            raise ProjectError('Authored trigger reference MAP source changed')
+        trigger_source_rows={r['trigger_id']:r for r in trigger_authoring_options(trigger_map,project.imports[scene]['scene']['name'])['records']}
+        trigger_assignments={row['trigger_id']:row for row in trigger_binding['edits']}
+        if set(trigger_assignments)-trigger_ids:
+            raise ProjectError('Authored trigger reference is absent from the verified catalog')
     for record in catalog['records']:
         identity=record['id'];kind=record['kind']
         if kind=='script':
@@ -287,6 +307,18 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                 relation=_trigger_script_evidence(record,source_scripts,scene,project.imports[scene]) if kind=='trigger' else None
                 if relation is None:unresolved+=1
                 else:edge(identity,relation[0],'field_trigger_script_reference',scene,'decoded',trigger_evidence=relation[1])
+            if identity in trigger_assignments:
+                authored=trigger_assignments[identity]
+                original_row=trigger_source_rows.get(identity)
+                if original_row is None or original_row['encoded']!=record.get('encoded') or original_row['sha256']!=record.get('source_record',{}).get('sha256') or original_row['byte_offset']!=record.get('source_record',{}).get('byte_offset'):
+                    raise ProjectError('Authored trigger reference catalog differs from the actual MAP row')
+                relation=_trigger_script_evidence(record,source_scripts,scene,project.imports[scene],target_index=int(authored['script_id'].rsplit('/',1)[1]))
+                if relation is None or relation[0]!=authored['script_id'] or relation[1]['script_source_record_sha256']!=authored['script_sha256']:
+                    raise ProjectError('Authored trigger reference target differs from the verified catalog')
+                proof=dict(map_source_sha256=trigger_binding['source_sha256'],component_sha256=digest(trigger_binding),
+                           imported_partition_two_record_index=record['encoded']['record_index'],
+                           target_byte_offset=record['source_record']['byte_offset']+2)
+                edge(identity,relation[0],'effective_field_trigger_script_reference',scene,'effective',trigger_evidence=relation[1],trigger_binding_evidence=proof)
         elif kind=='worldmap':
             name=record.get('destination_source_label')
             if name:

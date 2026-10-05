@@ -48,3 +48,25 @@ was updated for the new registered trigger action. Evidence:
 No game launched or installed output changed. The prior16-test API/Build package
 acceptance remains separate; gameplay activation/dispatch and general effective
 asset-reference graph edges remain unfinished. The full SDK goal stays active.
+
+## Effective trigger references - 2026-10-04
+
+The asset-reference graph now retains each original Retail gate-1 trigger edge
+and adds a separate effective edge for its current authored script binding.
+Active-scene, inverse-target and project-wide queries share this distinction.
+Both targets navigate to their qualified source owners. Authored edges retain
+MAP/component hashes and the original target-byte location; fresh source checks
+reject missing targets, forged hashes, catalog mismatches and stale source rows.
+The graph asserts no runtime binding, activation or script execution.
+
+Six focused Python checks passed with the private disc and no skips, including
+native vell Apply, read-only graph queries, provenance rejection and Undo removal.
+JavaScript decoder checks and syntax validation passed. A fresh browser workflow
+verified Retail record8 plus authored record0 in active/project scopes, authored
+target navigation, unchanged project document and zero page errors. The panel
+screenshot was inspected. Evidence:
+`local-output/sdk-20260909/effective-trigger-references-20261004/verified/proof.json`.
+An earlier harness waited for collapsed raw provenance to be visible; opening
+that disclosure corrected the check. No game launched or installed output changed.
+Trigger activation/dispatch still needs gameplay verification. Broader graph and
+SDK buildout remain unfinished; the full goal stays active and solo.
