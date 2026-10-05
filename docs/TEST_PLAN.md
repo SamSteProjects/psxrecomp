@@ -1,5 +1,21 @@
 # Legaia SDK validation plan
 
+## Project script bookmark navigation - 2026-10-05
+
+Cover all-scene and scene-filtered catalogs, token search including padded/unpadded
+hex offsets and source hashes, empty catalogs, duplicate/invalid IDs, detached rows
+and size/source bounds. Exercise same-scene and cross-scene actor/P2 open routes;
+require exact original record qualification before selection focus. Changed source
+must expose an error with no focused row or stale report/controls. Test changed
+catalog/project keys, pending/busy dispatch and closed/disposed dialogs. Compare the
+complete document, history, Authored files and Build key after a roundtrip. This
+navigation changes active scene/selection context; it must issue no authoring,
+history, Build or Save commands. Native map01/town01 actor/P2 and wrong-hash cases,
+focused JavaScript guards and20 neighboring Python regressions passed. Screenshots
+inspected; private proof: `local-output/sdk-20260909/project-script-bookmarks-20261005/`.
+No game launch or new gameplay acceptance is needed for this navigation feature.
+
+
 ## Saved script bookmark regression coverage - 2026-10-05
 
 Exercise original instruction and dialogue boundaries, actor and partition-two

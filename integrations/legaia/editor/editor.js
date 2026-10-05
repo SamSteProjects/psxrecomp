@@ -70,7 +70,8 @@ import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,r
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
 import {mountInspectorSections,inspectorSectionSnapshot} from '/inspector-sections.js';
 import {focusScriptInspectorFamily,mountScriptFamilyNavigation} from '/script-inspector-navigation.js';
-import {mountScriptBookmarks} from '/script-bookmarks.js';
+import {mountScriptBookmarks,qualifyScriptBookmark} from '/script-bookmarks.js';
+import {mountProjectScriptBookmarks} from '/project-script-bookmarks.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
@@ -722,6 +723,7 @@ function setBusy(value) {
   if($('resource-refresh'))$('resource-refresh').disabled=value || !state.capabilities?.resource_catalog;
   if($('scene-transitions'))$('scene-transitions').disabled=value || !state.capabilities?.scene_transitions;
   if($('project-transitions'))$('project-transitions').disabled=value||!state.capabilities?.scene_transitions;
+  projectBookmarkNavigator?.updateState();
   if($('scene-flags'))$('scene-flags').disabled=value || !state.capabilities?.scene_flags;if($('project-flags'))$('project-flags').disabled=value||!state.capabilities?.scene_flags;
   if($('scene-text'))$('scene-text').disabled=value||!state.capabilities?.scene_text_search;
   if($('project-text'))$('project-text').disabled=value||!state.capabilities?.scene_text_search;
@@ -1371,7 +1373,20 @@ const resourceStateKey=()=>JSON.stringify([state.project?.path,state.scene?.id,s
 let flagResourceDialog=null,transitionResourceDialog=null;
 $('resource-refresh').onclick=refreshResources;
 const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);
+let projectBookmarkNavigator=null;
 const projectTransitionsButton=document.createElement('button');projectTransitionsButton.id='project-transitions';projectTransitionsButton.textContent='Project transitions';transitionsButton.after(projectTransitionsButton);projectTransitionsButton.onclick=()=>openSceneTransitions(true);
+projectBookmarkNavigator=mountProjectScriptBookmarks({after:projectTransitionsButton,getState:()=>state,busy:()=>busy||worldmapDraftPending||scriptDrafts.size>0||!!sceneAnimationController?.active(),onError:error=>notify(error.message,true),onOpen:async bookmark=>{
+  const projectPath=state.project.path;
+  const qualified=()=>{const row=(state.script_bookmarks??[]).find(value=>value.id===bookmark.id);if(state.project.path!==projectPath||!row||row.review_key!==bookmark.review_key)throw new Error('Bookmark or project changed before navigation.');return row;};
+  qualified();
+  if(bookmark.scene_id!==state.scene?.id&&!await api('/api/scene',{scene_id:bookmark.scene_id}))return;
+  qualified();if(state.scene_view_source_key!==bookmark.import_sha256)throw new Error('Bookmark imported scene witness differs from this scene.');
+  const owner=bookmark.owner_id.includes('/scripts/man-p2/')?{id:bookmark.owner_id,name:bookmark.name,partitionTwo:true}:entities().find(row=>row.id===bookmark.owner_id);
+  if(!owner)throw new Error('Bookmarked script owner is unavailable in this imported scene.');
+  if(!owner.partitionTwo){if(!await api('/api/selection',{entity_id:owner.id}))return;qualified();}
+  await openActorScript(owner,false,null,null,null,null,bookmark);
+}});
+
 const transitionsContext=(projectWide=false)=>JSON.stringify([resourceStateKey(),projectWide?state.project_transition_state_key:null]);
 const transitionsDialog=document.createElement('dialog');transitionsDialog.id='scene-transitions-dialog';document.body.append(transitionsDialog);
 let transitionsAbort=null,transitionWorkspace=null;
@@ -3374,8 +3389,8 @@ async function openActorCandidate(entity){
   }catch(error){if(dialog.open)dialog.querySelector('p').textContent=String(error.message||error);}
 }
 let scriptBookmarkControls=null;
-async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null,focusComponent=null){
-  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;setBusy(true);
+async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=null,focusInstruction=null,focusComponent=null,focusBookmark=null){
+  if(busy||(refresh&&!scriptDialog.open))return;const scroll=refresh?scriptDialog.scrollTop:0;scriptBookmarkControls?.dispose();scriptBookmarkControls=null;scriptFacingControls?.dispose();scriptFacingControls=null;scriptBranchControls?.dispose();scriptBranchControls=null;scriptReport=null;setBusy(true);
   if(!refresh){scriptEntity=entity;scriptDrafts.clear();
   scriptDialog.innerHTML=`<div class="dialog-heading"><h2>Script and dialogue</h2><button id="close-script" aria-label="Close script inspection">×</button></div><p>${escapeHTML(entity.name)} · Review source-qualified branch destinations below</p><div id="script-authoring-toolbar" class="script-authoring-toolbar" hidden><button id="script-undo">Undo</button><button id="script-redo">Redo</button><button id="script-save">Save project</button><span id="script-authoring-status"></span></div><div id="script-report"><p>Verifying the imported script record…</p></div><p class="dialog-error" role="alert"></p>`;
   $('close-script').onclick=()=>scriptDialog.close();scriptDialog.showModal();
@@ -3387,6 +3402,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     if(entity.triggerId||entity.partitionTwo){if(report.script_id!==entity.id.replace(/^scene:\/\//,'script://')||report.scene_id!==state.scene?.id||report.source_key!==state.scene_preview_source_key)throw new Error('Script identity or source changed.');report={...report,...report.inspection};}
     if(!scriptDialog.open)return;
     if(report.read_only!==true||!Array.isArray(report.instructions)||!Array.isArray(report.dialogues))throw new Error('Script service returned an invalid inspection report.');
+    if(focusBookmark){focusInstruction=qualifyScriptBookmark(focusBookmark,entity.id,report);}
     const instructions=report.instructions,dialogues=report.dialogues,opaque=report.opaque_regions ?? [],stops=report.stops ?? [];
     $('script-report').innerHTML=`<p class="script-summary">${instructions.length} decoded instructions · ${dialogues.length} dialogue segments · ${report.status==='partial'?'Partial inspection':'Supported paths decoded'}</p><p class="field-note">Record offsets are relative to the script record. Decoded paths do not establish which branch runs in the game. Name substitutions remain explicit placeholders.</p><div id="script-warnings"></div><section><h3>Decoded dialogue</h3><div id="script-dialogue"></div></section><details class="script-instructions" ${dialogues.length?'':'open'}><summary>Instruction paths (${instructions.length})</summary><div class="script-table-wrap"><table><thead><tr><th>Record offset</th><th>Instruction</th><th>Operands</th><th>Successors</th></tr></thead><tbody></tbody></table></div></details><details class="script-raw"><summary>Source, raw bytes and decoder limits</summary><pre class="diagnostic-detail"></pre></details>`;
     if(opaque.length||stops.length){const warning=document.createElement('div');warning.className='script-warning';warning.textContent=`${opaque.length} opaque regions · ${stops.length} decoder stops. Unvisited bytes and unsupported behavior remain unresolved.`;$('script-warnings').append(warning);for(const region of opaque){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(region.pc)} · ${region.length} opaque bytes: ${region.reason}`;$('script-warnings').append(line);}for(const stop of stops){const line=document.createElement('p');line.className='field-note';line.textContent=`${scriptOffset(stop.pc)}: ${stop.reason}`;$('script-warnings').append(line);}}
@@ -3396,6 +3412,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
 
     $('script-report').querySelector('.script-raw pre').textContent=JSON.stringify(report,null,2);
     scriptReport=report;
+    if(focusBookmark){const note=document.createElement('p');note.className='focused-script-bookmark';note.setAttribute('role','status');note.textContent=`Verified bookmark: ${focusBookmark.name} · ${scriptOffset(focusInstruction)} ${focusBookmark.mnemonic} · Original source boundary`; $('script-report').prepend(note);}
     if(state.capabilities?.saved_script_bookmarks){
       const owner=scriptEntity.id,key=resourceStateKey(),accepted=report;
       scriptBookmarkControls=mountScriptBookmarks($('script-report'),{owner,report,getRows:()=>state.script_bookmarks??[],getSelected:()=>instructionNavigation.selected(),select:instructionNavigation.select,
@@ -3615,6 +3632,7 @@ function renderTransitionAuthoring(){
 
 function canEditDialogue(){return state.capabilities?.actor_dialogue_authoring===true && (state.project?.mode ?? 'edit').toLowerCase()==='edit';}
 function updateScriptActions(){
+  projectBookmarkNavigator?.updateState();
   scriptFacingControls?.updateState();scriptBranchControls?.updateState();scriptBookmarkControls?.updateState();
   const authoring=scriptReport?.dialogue_authoring;
   $('script-authoring-toolbar').hidden=!state.capabilities?.actor_dialogue_authoring||!(state.capabilities?.script_branch_authoring||authoring?.supported||authoring?.unresolved_overrides?.length||scriptReport?.transition_authoring?.supported||scriptReport?.movement_authoring?.supported||scriptReport?.movement_authoring?.unresolved_overrides?.length||scriptReport?.flag_authoring?.supported||scriptReport?.flag_authoring?.unresolved_overrides?.length||scriptReport?.wait_authoring?.supported||scriptReport?.wait_authoring?.unresolved_overrides?.length||scriptReport?.model_selector_authoring?.supported||scriptReport?.model_selector_authoring?.unresolved_overrides?.length||scriptReport?.facing_authoring?.supported||scriptReport?.facing_authoring?.unresolved_overrides?.length);

@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Project-wide source script bookmark navigation - 2026-10-05
+
+Script bookmarks now opens a project-wide catalog beside the resource tools.
+Search covers names, scene/owner identity, padded/unpadded hex offsets, mnemonics
+and original record hashes; a scene selector narrows imported memberships. Cards
+show original record/import witnesses and retain the existing stable bookmark IDs.
+Empty, stale and pending contexts are explicit; Refresh rebinds the current list.
+
+Open bookmarked instruction navigates to the imported scene, selects an actor owner
+where applicable, and opens actor/partition-two inspection. The newly inspected
+original owner, record hash, unique decoded PC and mnemonic qualify before focus.
+A verified-bookmark label identifies the requested original boundary. Mismatched
+source rejects before any row is focused. Pending edits/animation, stale/busy lists
+and changed bookmark/project guards prevent unintended navigation. No instruction
+or bookmark command is issued. Active scene/selection use normal editor navigation;
+a scene change can mark the active-scene setting dirty.
+
+Native map01 -> town01 actor0044 -> town01 partition-two0015 -> map01 actor0001
+passed search/scope/source witness browsing, exact owner selection and saved-PC focus.
+A deliberately mismatched record hash rejected before focus with no stale evidence.
+Complete project document/history/Authored files and Build input key were unchanged
+on return. Zero command/history/Build/Save requests, page errors or game launches.
+Catalog/source/search JavaScript guards and20 neighboring bookmark/view/copy Python
+regressions passed. Screenshots inspected. Private evidence:
+`local-output/sdk-20260909/project-script-bookmarks-20261005/proof.json`.
+See [project-wide workflow](legaia-script-bookmarks.md#project-wide-navigation).
+No new gameplay gate; full SDK goal remains active.
+
+
 ## Source-qualified saved script bookmarks - 2026-10-05
 
 The Script and dialogue workspace now saves named original decoded instruction/

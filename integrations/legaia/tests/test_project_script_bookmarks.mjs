@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {projectScriptBookmarks,findProjectScriptBookmarks} from '../editor/project-script-bookmarks.js';
+const row={id:'bookmark://00000000-0000-0000-0000-000000000001',name:'Greeting end',scene_id:'scene://town01',owner_id:'scene://town01/actors/man-p1/0044',pc:20,mnemonic:'CFLAG_SET',import_sha256:'a'.repeat(64),source_record_sha256:'b'.repeat(64),review_key:'c'.repeat(64)};
+const p2={...row,id:'bookmark://00000000-0000-0000-0000-000000000002',name:'Gate',owner_id:'scene://town01/scripts/man-p2/0015',pc:23};
+const state={scenes:[{id:'scene://town01'}],script_bookmarks:[p2,row]},before=structuredClone(state),rows=projectScriptBookmarks(state);
+assert.equal(rows[1].name,'Greeting end');assert.deepEqual(state,before);rows[0].name='Detached';assert.deepEqual(state,before);
+assert.equal(findProjectScriptBookmarks(state.script_bookmarks,' greeting 0x14 ').length,1);assert.equal(findProjectScriptBookmarks(state.script_bookmarks,'0x0014 cflag_set','scene://town01').length,1);assert.equal(findProjectScriptBookmarks(state.script_bookmarks,'man-p2').length,1);assert.equal(findProjectScriptBookmarks(state.script_bookmarks,'missing').length,0);assert.equal(findProjectScriptBookmarks(state.script_bookmarks,'','scene://map01').length,0);assert.equal(findProjectScriptBookmarks(state.script_bookmarks,'b'.repeat(64)).length,2);
+for(const change of [{id:'bookmark://'+'-'.repeat(36)},{pc:true},{pc:65536},{name:' Greeting'},{scene_id:'scene://missing'},{owner_id:'scene://map01/actors/man-p1/0044'},{source_record_sha256:'bad'},{review_key:'bad'}])assert.throws(()=>projectScriptBookmarks({...state,script_bookmarks:[{...row,...change}]}));
+assert.throws(()=>projectScriptBookmarks({...state,script_bookmarks:[row,row]}));assert.throws(()=>projectScriptBookmarks({...state,script_bookmarks:Array(257).fill(row)}));assert.deepEqual(projectScriptBookmarks({...state,script_bookmarks:[]}),[]);
+console.log('Project bookmark catalog identity/source guards, detached snapshots and scene/token search passed.');

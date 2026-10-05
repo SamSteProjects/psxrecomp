@@ -39,3 +39,28 @@ emitted identical native payloads. Imports, overrides and Authored files remaine
 unchanged. Twenty focused Python tests and JavaScript source/boundary guards passed.
 Private evidence: `local-output/sdk-20260909/script-bookmarks-final-20261005/`.
 No game was launched; this navigation feature adds no gameplay acceptance gate.
+
+## Project-wide navigation
+
+Choose **Script bookmarks** beside the project resource tools to browse all saved
+locations across imported scenes. Search by name, scene, script owner, hex offset,
+mnemonic or original record hash. Multiple search terms must all match; the scene
+selector narrows results further. Expand **Original source witness** for the record
+and imported-scene hashes. An empty project explains how to save the first bookmark.
+
+**Open bookmarked instruction** changes the active editor scene when necessary,
+selects an actor owner when applicable, and opens the actor or partition-two script
+workspace. The freshly inspected original record must match the saved owner, hash,
+offset and mnemonic before any bookmarked row is focused. The workspace displays a
+verified-bookmark label. A changed record produces an inspection error instead of
+guessing another offset. A changed project list requires **Refresh bookmark list**.
+Finish pending script/world-map edits or active animation preview before navigating.
+
+This route does not author instructions or bookmark metadata. Active scene and
+selection follow the existing editor navigation behavior; changing scenes can mark
+the retained active-scene setting dirty. A native map01 → town01 actor → town01
+partition-two script → map01 roundtrip passed exact selection/focus and preserved
+the complete project document, history and Authored files on return. A deliberately
+mismatched inspection record rejected before focus. Catalog search, stale/pending
+dispatch and detached source snapshots passed focused checks. Screenshots inspected;
+no game launched. Evidence: `local-output/sdk-20260909/project-script-bookmarks-20261005/`.
