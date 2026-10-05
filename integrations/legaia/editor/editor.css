@@ -235,3 +235,5 @@
 #script-dialog .movement-authoring,#script-dialog .flag-authoring,#script-dialog .wait-authoring,#script-dialog .modelSelector-authoring,#script-dialog .facing-authoring,#script-dialog .script-branch-authoring{scroll-margin-top:90px}
 
 #script-dialog .dialogue-authoring-note,#script-dialog .transition-authoring{scroll-margin-top:90px}
+
+#script-dialog .script-owner-inspector{border:1px solid var(--line);padding:12px;margin:14px 0}#script-dialog .script-owner-inspector .component{border-top:1px solid var(--line);padding-top:10px}#script-dialog .script-owner-inspector h4{margin:8px 0}

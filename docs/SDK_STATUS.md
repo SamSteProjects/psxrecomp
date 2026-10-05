@@ -1,5 +1,29 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Standalone source-owner component Inspector
+
+Verified partition-two script inspection now includes an **Authored script
+components** panel using the shared registered Inspector. It renders supported
+Dialogue, Transitions, Movement, Flags, Waits, ModelSelectors, Facing and Branches
+from the project's existing authored script records, with detached counts/details.
+Unknown families are omitted; no raw retail layout or execution is inferred.
+Inspection actions focus the qualified source editor. Reviewed reset uses the
+existing source-bound command, one Undo entry and imported inheritance. After
+reset the source editor refreshes and retains an explicit empty component summary.
+Only active-scene, typed partition-two owner identities can use this alternate
+review path; actor Inspector behavior and commands remain intact.
+
+Validation: 13 focused schema/component-review Python tests and JavaScript shared
+Inspector/reset/focus/owner tests passed. The actual desktop browser workflow opened
+a real Town01 partition-two transition from Authored Assets, focused source entry
+controls, reviewed/cancelled without mutation, reset and refreshed to empty. Undo/Redo,
+Save/Open, exact history depth and unchanged imports passed. Screenshot inspected;
+zero page errors. Earlier harness attempts used an incorrect asset tab/ID selector
+and made no writes. Successful evidence: ignored
+`local-output/sdk-20260909/script-owner-inspector-20261004/desktop/proof.json`.
+No game launched; runtime transition acceptance remains deferred.
+
+
 ## 2026-10-04: Dialogue and transition Inspector authoring summaries
 
 Dialogue now shows its authored text-run count and offers reviewed component

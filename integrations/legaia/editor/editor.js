@@ -64,6 +64,7 @@ import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,r
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
 import {focusScriptInspectorFamily} from '/script-inspector-navigation.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
+import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
@@ -3303,6 +3304,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
       mountScriptOperandFiles($('script-report'),{owner,scene:state.scene.id,current:()=>scriptDialog.open&&key===resourceStateKey()&&scriptEntity?.id===owner&&scriptReport===accepted&&operandOwnerContext(state,owner)===ownerContext&&canEditDialogue(),busy:()=>busy,setBusy,api,reopen:()=>openActorScript(scriptEntity,true),onError:error=>notify(error.message,true)});
     }
     renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();renderFlagAuthoring();renderWaitAuthoring();renderModelSelectorAuthoring();renderFacingAuthoring();updateScriptActions();
+    if(scriptEntity.id.includes('/scripts/man-p2/')){const owner=scriptEntity.id,key=resourceStateKey(),accepted=scriptReport;mountScriptOwnerInspector($('script-report'),{owner,getState:()=>state,current:()=>scriptDialog.open&&scriptEntity?.id===owner&&scriptReport===accepted&&key===resourceStateKey(),editable:canEditDialogue,busy:()=>busy,api,onReset:()=>openActorScript(scriptEntity,true),onError:error=>notify(error.message,true)});}
     scriptDialog.scrollTop=scroll;
     if(Number.isInteger(focusInstruction)){
       $('script-report').querySelector('.script-instructions').open=true;

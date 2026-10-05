@@ -4,16 +4,19 @@ const families=new Set(['ScriptMovement','ScriptFlags','ScriptWaits','ScriptMode
 export function scriptComponentResetReview(state,entity,component){
   if(!families.has(component)||state?.project?.mode!=='edit')throw new Error('Choose an authored script component in Edit mode');
   const current=state.scene?.entities?.find(row=>row.id===entity?.id);
+  const script=state.authored_assets?.find(row=>row.id===entity?.id&&row.kind==='script'&&row.scene_id===state.scene?.id&&typeof row.id==='string'&&/^scene:\/\/[A-Za-z0-9_-]{1,128}\/scripts\/man-p2\/[0-9]{4}$/.test(row.id)&&row.id.startsWith(state.scene.id+'/scripts/man-p2/'));
   const review=state.authored_assets?.find(row=>row.id===entity?.id)?.component_reviews?.find(row=>row.component===component);
   const field=component==='Dialogue'?'runs':'entries';
   const entries=component==='Dialogue'?current?.components?.Dialogue?.authored?.runs:current?.components?.[component]?.entries;
-  if(!entries||Array.isArray(entries)||typeof entries!=='object'||!Object.keys(entries).length||Object.keys(entries).length>1024||
+  const scriptEntries=script?.authored?.[component]?.[field];
+  const reviewedEntries=entries??scriptEntries;
+  if(!reviewedEntries||Array.isArray(reviewedEntries)||typeof reviewedEntries!=='object'||!Object.keys(reviewedEntries).length||Object.keys(reviewedEntries).length>1024||
       !review||typeof review.review_key!=='string'||!/^[a-f0-9]{64}$/.test(review.review_key)||
-      JSON.stringify(review.authored?.[field])!==JSON.stringify(entries))throw new Error('Authored component review is unavailable or stale; refresh the Inspector');
-  return JSON.parse(JSON.stringify({component,owner:entity.id,entries,review_key:review.review_key}));
+      JSON.stringify(review.authored?.[field])!==JSON.stringify(reviewedEntries))throw new Error('Authored component review is unavailable or stale; refresh the Inspector');
+  return JSON.parse(JSON.stringify({component,owner:entity.id,entries:reviewedEntries,review_key:review.review_key}));
 }
 
-export function openScriptComponentReset({entity,component,getState,current,editable,busy,api,onError}){
+export function openScriptComponentReset({entity,component,getState,current,editable,busy,api,onError,onReset=()=>{}}){
   if(busy()||!editable()||!current())return;
   const review=scriptComponentResetReview(getState(),entity,component);
   const dialog=document.createElement('dialog');dialog.className='script-component-reset';
@@ -31,7 +34,7 @@ export function openScriptComponentReset({entity,component,getState,current,edit
       const latest=scriptComponentResetReview(getState(),entity,component);
       if(latest.review_key!==review.review_key)throw new Error('Authored component changed; cancel and review it again');
       applying=true;apply.disabled=true;
-      if(await api('/api/command',{type:'revert_authored_component',entity_id:review.owner,component:review.component,review_key:review.review_key},{success:`${review.component} reset. Undo restores its authored entries.`}))dialog.close();
+      if(await api('/api/command',{type:'revert_authored_component',entity_id:review.owner,component:review.component,review_key:review.review_key},{success:`${review.component} reset. Undo restores its authored entries.`})){dialog.close();await onReset(review.component);}
     }catch(error){onError(error);}finally{applying=false;apply.disabled=false;}
   };
   actions.append(cancel,apply);dialog.append(title,owner,note,data,actions);

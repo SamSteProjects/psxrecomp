@@ -833,6 +833,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/inspector-component-filter.js": ("inspector-component-filter.js", "text/javascript"),
                  "/script-inspector-navigation.js": ("script-inspector-navigation.js", "text/javascript"),
                  "/script-component-reset.js": ("script-component-reset.js", "text/javascript"),
+                 "/script-owner-inspector.js": ("script-owner-inspector.js", "text/javascript"),
                  "/component-references.js": ("component-references.js", "text/javascript"),
                  "/model-user-selection.js": ("model-user-selection.js", "text/javascript"),
                  "/preset-files.js": ("preset-files.js", "text/javascript"),
