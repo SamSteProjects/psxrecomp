@@ -1,5 +1,24 @@
 # Legaia SDK feature matrix
 
+## 2026-10-04: Reviewed script component reset in the actor Inspector
+
+The registered ScriptMovement, ScriptFlags, ScriptWaits and ScriptModelSelectors
+components now offer **Review component reset** in Edit mode. The dialog shows the
+owner, exact authored instruction identities and operands, and removal count.
+**Reset reviewed component** removes that family in one Undo entry and restores
+inheritance from imported operands. Cancel is read only. Other authored components
+remain intact. The existing source-bound component revert command rejects stale
+witnesses; no new serializer, generic property write or runtime write is introduced.
+
+Validation: 11 focused schema/component history tests and JavaScript review/action
+checks passed. A private Town01 browser workflow reviewed and cancelled without
+mutation, reset two authored wait entries together while retaining Transform, and
+verified one Undo entry, Redo, Save/Open and unchanged imported evidence. Screenshot
+inspected; zero browser errors. Evidence: ignored
+`local-output/sdk-20260909/script-component-reset-20261004/parent/proof.json`.
+This is an implemented offline authoring workflow; gameplay remains unverified.
+
+
 ## 2026-10-04: Actor Inspector component filtering
 
 The actor Inspector now has **Filter Inspector components**, **Authored only**

@@ -229,3 +229,5 @@
 .property>code{min-width:0;overflow-wrap:anywhere}.property>button[data-component-reference]{min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left}.property>button[data-component-reference] code{overflow-wrap:anywhere}
 
 .inspector-component-filter{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 15px;border-bottom:1px solid var(--line)}.inspector-component-filter>input{width:100%;font-size:11px}.inspector-component-filter label{display:flex;align-items:center;gap:6px;font-size:11px}.inspector-component-filter label input{width:auto}.inspector-component-filter button{font-size:10px;padding:5px 7px}.inspector-component-filter>span{width:100%;font-size:10px;color:var(--muted)}
+
+.script-component-reset{width:min(760px,calc(100vw - 35px));max-height:90vh;overflow:auto}.script-component-reset>code{display:block;overflow-wrap:anywhere}.script-component-reset .diagnostic-detail{max-height:45vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}

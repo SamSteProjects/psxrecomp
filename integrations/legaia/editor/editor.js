@@ -63,6 +63,7 @@ import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
 import {focusScriptInspectorFamily} from '/script-inspector-navigation.js';
+import {openScriptComponentReset} from '/script-component-reset.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {mountActorSelectionSets,decodeSavedActorSelection} from '/actor-selection-sets.js';
 import {mountGroupAppearance} from '/group-appearance.js';
@@ -2870,6 +2871,7 @@ function renderInspector(){
     'preview-allocated-initial-animation':{canRun:()=>Boolean(components.ActorAllocatedAnimation?.authored?.record_id),run:()=>openModel(components.ActorAllocatedAnimation.authored.model_asset_id,'authored-initial-animation',entity.id)},
     'inspect-model':{run:()=>openModel(components.ModelRenderer.asset_id)},
     'inspect-script':{run:({componentId}={})=>openActorScript(entity,false,null,null,null,componentId)},
+    'reset-script-component':{requiresEdit:true,run:({componentId})=>openScriptComponentReset({entity,component:componentId,getState:()=>state,current:()=>actorActionContext===resourceStateKey()&&selected()?.id===entity.id,editable:canEdit,busy:()=>busy,api,onError:error=>notify(error.message,true)})},
     'inspect-actor-candidate':{run:()=>openActorCandidate(entity)},
     'inspect-templates':{run:showTemplates},
     'preview-scene-animation':{canRun:()=>components.Animation?.preview_support?.supported===true,run:()=>openModel(components.ModelRenderer.asset_id,'scene-header',entity.id)},

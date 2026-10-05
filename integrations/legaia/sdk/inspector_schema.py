@@ -85,7 +85,8 @@ def inspector_schema():
             'label': label, 'units': 'Authored source operands', 'layout': 'read-only-properties',
             'properties': [{'id': 'authored_instruction_count', 'label': 'Authored instructions',
                             'path': ['authored_instruction_count'], 'type': 'integer', 'state': 'authored-through-source-editor'}],
-            'actions': [{'id': 'inspect-script', 'label': action, 'capability': 'actor_script_preview'}],
+            'actions': [{'id': 'inspect-script', 'label': action, 'capability': 'actor_script_preview'},
+                        {'id': 'reset-script-component', 'label': 'Review component reset', 'capability': 'project_navigation', 'requires_edit': True}],
             'details': [{'label': 'Authored entries by source instruction PC', 'path': ['entries']}],
             'notes': ['Open the source editor for separate retail, authored and effective operands. Existing qualified commands own Apply/Clear, history and Build.', note],
         }

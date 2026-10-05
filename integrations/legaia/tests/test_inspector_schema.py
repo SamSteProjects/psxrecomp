@@ -80,6 +80,10 @@ class InspectorSchema(unittest.TestCase):
                 self.assertEqual(definition['layout'],'read-only-properties')
                 self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
                 self.assertEqual(definition['actions'][0]['id'],'inspect-script')
+                reset=definition['actions'][1]
+                self.assertEqual(reset['id'],'reset-script-component')
+                self.assertEqual(reset['capability'],'project_navigation')
+                self.assertTrue(reset['requires_edit'])
             self.assertEqual(p.imports,before)
 
     def test_allocated_assignment_is_readonly_metadata_with_reviewed_actions(self):
