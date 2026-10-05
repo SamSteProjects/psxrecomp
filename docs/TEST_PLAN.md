@@ -1,5 +1,18 @@
 # Legaia SDK validation plan
 
+## Asset-reference download checkpoint — 2026-10-05
+
+Focused Node checks cover full Active/Project JSON round trips, exact source/root/scope
+qualification, input immutability, safe bounded filenames and the 32 MiB UTF-8 budget.
+Actual private retail browser checks exercise both downloads while a zero-match filter
+is active, pending-discovery disable, decoder readback, dialog disposal and 540px button
+reachability. Document/history/files and project/scene/selection stay unchanged, with no
+authoring, Save, Build or Run. Proof:
+`local-output/sdk-20260909/asset-reference-download-20261005/proof.json`.
+Campaign follow-up: withdraw source context while open, busy transitions, failed/aborted
+project discovery, close during discovery, all resource kinds and maximum-sized reports.
+Saved references do not establish runtime use or gameplay acceptance.
+
 ## Retained project provenance search checkpoint — 2026-10-05
 
 Focused Node checks cover variant names/aliases, import/catalog hashes, claim/evidence

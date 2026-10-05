@@ -174,6 +174,12 @@ export function filterAssetReferences(value,{layer='all',direction='all',query='
   });
   return structuredClone({incoming:rows('incoming','source_id'),outgoing:rows('outgoing','target_id')});
 }
+export function assetReferenceDownload(value,assetId,sourceKey,scope='active'){
+  const report=decodeAssetReferences(value,assetId,sourceKey,scope),text=JSON.stringify(report,null,2)+'\n';
+  if(new TextEncoder().encode(text).byteLength>32*1024*1024)throw new Error('Reference report download exceeds 32 MiB.');
+  const name=assetId.replace(/[^a-z0-9_-]/gi,'_').slice(-100);
+  return {filename:`legaia-references-${scope}-${name}-${sourceKey.slice(0,12)}.json`,text};
+}
 export function openAssetReferences({record,getState,busy,onNavigate,onInspectInstruction=null,onError=()=>{},initialScope='active'}){
   if(busy()||!getState().capabilities?.asset_references)return;
   const key=getState().asset_reference_source_key,dialog=document.createElement('dialog');let controller=null,generation=0,accepted=null,acceptedScope=null,loading=false;dialog.id='asset-references-dialog';dialog.className='project-dialog';
@@ -186,10 +192,16 @@ export function openAssetReferences({record,getState,busy,onNavigate,onInspectIn
   const layer=choice('Recorded reference layer',[['all','All layers'],['imported','Imported'],['decoded','Derived source'],['authored','Authored'],['effective','Effective / Current']]);
   const direction=choice('Reference direction',[['all','Both directions'],['outgoing','Dependencies'],['incoming','Referenced by']]);
   const searchLabel=document.createElement('label'),search=document.createElement('input');search.type='search';search.maxLength=512;search.setAttribute('aria-label','Search recorded references');search.placeholder='Labels, IDs, relationships, scenes or hashes';searchLabel.textContent='Search recorded references';searchLabel.append(search);tools.append(searchLabel);
+  const save=document.createElement('button');save.type='button';save.textContent='Save full reference report';save.disabled=true;save.title='Save every verified relationship and coverage limit. Display filters do not trim the report.';
   const counts=document.createElement('p');counts.dataset.referenceFilterCount='';counts.setAttribute('role','status');
-  const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();dialog.addEventListener('close',()=>{generation++;controller?.abort();accepted=null;dialog.remove();});const heading=document.createElement('div');heading.className='dialog-heading';heading.append(title,close);dialog.append(heading,tools,status,counts,content);document.body.append(dialog);dialog.showModal();
+  const close=document.createElement('button');close.textContent='Close';close.onclick=()=>dialog.close();dialog.addEventListener('close',()=>{generation++;controller?.abort();accepted=null;dialog.remove();});const heading=document.createElement('div');heading.className='dialog-heading';heading.append(title,close);dialog.append(heading,tools,save,status,counts,content);document.body.append(dialog);dialog.showModal();
   const navigate=async (value,action=onNavigate)=>{if(!dialog.open||busy())return;if(!current()){status.textContent='Project sources changed. Reopen asset references.';return;}try{dialog.close();await action(value);}catch(error){onError(error);}};
-  const controls=()=>{for(const input of [layer,direction,search])input.disabled=loading||!accepted||!current();};
+  save.onclick=()=>{
+    if(loading||!accepted||busy()||!current())return;
+    try{const file=assetReferenceDownload(accepted,record.id,key,acceptedScope),url=URL.createObjectURL(new Blob([file.text],{type:'application/json;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=file.filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+    catch(error){status.textContent=error.message;onError(error);}
+  };
+  const controls=()=>{save.disabled=loading||!accepted||busy()||!current();for(const input of [layer,direction,search])input.disabled=loading||!accepted||!current();};
   const render=()=>{content.replaceChildren();counts.textContent='';if(!current()){status.textContent='Project sources changed. Reopen asset references.';controls();return;}if(!accepted)return;
     const result=accepted,scope=acceptedScope,nodes=new Map(result.nodes.map(node=>[node.id,node]));let filtered;try{filtered=filterAssetReferences(result,{layer:layer.value,direction:direction.value,query:search.value});search.setAttribute('aria-invalid','false');}catch(error){search.setAttribute('aria-invalid','true');status.textContent=error.message;return;}status.textContent=`Recorded references only · ${result.coverage.unresolved_reference_count} unresolved references across the graph · derived resources: ${result.coverage.resource_scene_id}`;
     if(scope==='project'){const available=result.coverage.scenes.filter(row=>row.status==='available').length;status.textContent=`Recorded references only · ${result.coverage.unresolved_reference_count} unresolved references · resource catalogs ${available}/${result.coverage.scenes.length} available`;for(const row of result.coverage.scenes.filter(row=>row.status==='unavailable')){const reason=document.createElement('p');reason.textContent=`${row.scene_id}: ${row.reason}`;content.append(reason);}}

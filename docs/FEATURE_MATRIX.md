@@ -1,5 +1,25 @@
 # Legaia SDK feature matrix
 
+## Save complete asset-reference reports — 2026-10-05
+
+Asset references now offers **Save full reference report** in Active and Project scopes.
+The downloaded JSON preserves every accepted incoming/outgoing relationship, source
+binding, node, coverage limit and diagnostic; display filters never trim the snapshot.
+Export rechecks the exact root asset, source key and scope, limits formatted UTF-8 JSON
+to 32 MiB and uses a bounded safe filename. Pending discovery, a busy editor or changed
+source context cannot start an export. Closing disposes the reference dialog as before.
+
+The snapshot records known references, not runtime residency, execution or gameplay
+reachability. It does not edit authored data or replace a live source refresh; there is
+no report import command. Focused Node tests cover complete Active/Project readback,
+identity/source/scope rejection, immutable inputs, filenames and the byte budget.
+Private retail browser checks cover actual downloads in both scopes, pending disable,
+zero-match filters retaining the full report, decoder readback and the reachable 540px
+button. Project/scene/selection, document/history and saved files remain unchanged;
+no authoring, Save, Build or Run occurs. Evidence:
+`local-output/sdk-20260909/asset-reference-download-20261005/proof.json`.
+Manual gameplay acceptance remains deferred; the full SDK goal is still active.
+
 ## Project asset provenance search across retained memberships — 2026-10-05
 
 Field-specific asset search now covers all retained project membership records. `name:`
