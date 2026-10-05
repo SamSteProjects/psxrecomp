@@ -903,7 +903,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 request_limit = 2 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-slot-review','/api/texture-slot-pixels','/api/texture-slot-apply','/api/texture-slot-edit-review','/api/texture-slot-edit-pixels','/api/texture-slot-edit-apply'):
                 request_limit = 68 * 1024 * 1024
-            if urlsplit(self.path).path in ('/api/texture-image-convert','/api/texture-slot-source-review','/api/texture-slot-source-apply'):
+            if urlsplit(self.path).path in ('/api/texture-placement','/api/texture-image-convert','/api/texture-slot-source-review','/api/texture-slot-source-apply'):
                 request_limit = 68 * 1024 * 1024
             if urlsplit(self.path).path in ('/api/texture-png-preview','/api/texture-png-pixels-preview','/api/texture-png-scene-preview','/api/texture-png-import'):
                 request_limit = 68 * 1024 * 1024
@@ -1859,6 +1859,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         report=apply(*args,body['review_key'],glb_source=body.get('glb_source'))
                         self._json(200,dict(self.server.state(),texture_source_report=report))
+                    return
+                if route=='/api/texture-placement':
+                    if set(body)!={'asset_id','source_key','png_base64','bpp'}:
+                        raise ProjectError('Texture placement requires exact texture, source PNG, native mode and context')
+                    value=body['png_base64']
+                    if not isinstance(value,str) or not 1<=len(value)<=11184812:
+                        raise ProjectError('Placement PNG exceeds its eight MiB source budget')
+                    try:content=base64.b64decode(value,validate=True)
+                    except ValueError as exc:raise ProjectError('Placement PNG requires valid base64') from exc
+                    from .texture_placement import suggest
+                    self._json(200,suggest(self.server.project,body['asset_id'],body['source_key'],content,body['bpp']))
                     return
                 if route=='/api/texture-image-convert':
                     if set(body) not in ({'asset_id','source_key','png_base64','stp_png_base64','options'},{'asset_id','source_key','png_base64','stp_png_base64','options','glb_source'}):

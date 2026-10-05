@@ -2,6 +2,31 @@
 
 ## Trigger group viewport comparison - 2026-10-04
 
+## Static texture placement finder - 2026-10-04
+
+The PNG-to-TIM dialog now offers Find static free coordinates. Its read-only,
+source-bound query considers known Current scene textures, authored slots and
+boot uploads, fills image/palette coordinates, and keeps conversion, slot review
+and Apply separate. Existing authored-slot edits exclude only their own Current
+footprint. Deterministic bounded search distinguishes a fit, no fit and budget
+exhaustion. Static placement does not prove runtime residency or material use.
+
+The shared overlap census now accounts for GP0 upload wrapping across X=1024
+and Y=512, matching local runtime GPU writes. Real vell boot uploads at X=960
+with width256 previously lost their wrapped tail; slot review and the finder now
+both include it. Unsupported transfers reject rather than clip.
+
+Eight focused Python checks passed with the private disc and no skips, plus a
+wrapped-tail overlap regression. Focused placement and existing image conversion
+JavaScript checks passed. A fresh native vell editor workflow filled image (0,0)
+and palette (320,511) for an 8x8 4-bit sample against92 normalized rectangles,
+then separately converted the PNG. Independent overlap count was zero; project
+document, history and selection remained unchanged, with zero page errors.
+Desktop and narrow screenshots were inspected. No gameplay or installed build
+changed. Details: [static texture placement](legaia-texture-placement.md).
+Private evidence: `local-output/sdk-20260909/texture-placement-20261004/final/proof.json`.
+The full SDK goal remains active and solo.
+
 Reviewed trigger groups can now be inspected as Retail, Current or Proposed cells
 in the central scene viewport. All selected cells receive a distinct outline, and
 Frame reviewed group fits their combined bounds. The floating comparison control

@@ -156,11 +156,21 @@ def metadata(identifier,binding,content):
         'Static upload addresses do not establish runtime residency or upload order.'])
 
 
-def _footprint(project, context, candidate, *, exclude_asset_id=None):
-    new = validate_added_tim(candidate)
-    proposed = [('image', (new.image.x, new.image.y, new.image.width_words, new.image.height))]
-    if new.clut:
-        proposed.append(('flattened-clut', (new.clut.x, new.clut.y, new.clut.width_words * new.clut.height, 1)))
+def native_upload_rectangles(rectangle):
+    """GP0 A0 word uploads wrap X modulo 1024 and Y modulo 512 (gpu.c)."""
+    x,y,w,h=rectangle
+    if (any(type(n) is not int for n in rectangle) or not 0<=x<=65535 or not 0<=y<=65535 or
+            not 1<=w<=1024 or not 1<=h<=512):
+        raise ProjectError('Known upload dimensions exceed qualified native transfer bounds')
+    x%=1024;y%=512
+    xs=[(x,min(w,1024-x))];ys=[(y,min(h,512-y))]
+    if x+w>1024:xs.append((0,x+w-1024))
+    if y+h>512:ys.append((0,y+h-512))
+    return [(left,top,width,height) for left,width in xs for top,height in ys]
+
+
+def known_upload_rectangles(project, context, *, exclude_asset_id=None):
+    """Complete Current rectangles used by the static overlap witness."""
     uploads = []
     for tim, locator in context._catalog.textures:
         owner = locator['semantic_id']
@@ -178,6 +188,15 @@ def _footprint(project, context, candidate, *, exclude_asset_id=None):
         if tim.clut:
             rectangles.append((owner, 'flattened-clut', (tim.clut.x, tim.clut.y, tim.clut.width_words * tim.clut.height, 1)))
     rectangles.extend((None, 'boot-upload', (b.x, b.y, b.width_words, b.height)) for b, _ in context._catalog.boot_uploads)
+    return [(owner,kind,piece) for owner,kind,rectangle in rectangles for piece in native_upload_rectangles(rectangle)]
+
+
+def _footprint(project, context, candidate, *, exclude_asset_id=None):
+    new = validate_added_tim(candidate)
+    proposed = [('image', (new.image.x, new.image.y, new.image.width_words, new.image.height))]
+    if new.clut:
+        proposed.append(('flattened-clut', (new.clut.x, new.clut.y, new.clut.width_words * new.clut.height, 1)))
+    rectangles = known_upload_rectangles(project, context, exclude_asset_id=exclude_asset_id)
     if new.clut:
         rectangles.append((None, 'proposed-clut', proposed[1][1]))
     rows = []
