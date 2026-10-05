@@ -58,3 +58,27 @@ errors. The first screenshot exposed an opaque overlay hiding the geometry; the 
 run fixes it and its screenshot was inspected. Pure screen/depth/index/bound checks
 passed. Evidence: `local-output/sdk-20260909/vertex-picking-final-20261005/proof.json`.
 No game was launched; no additional gameplay acceptance is needed for point selection.
+
+
+## Retained editing and history - 2026-10-05
+
+Apply now keeps the workspace open and reloads a qualified Current source. The
+camera and selected row remain when available. Edit another vertex in the same
+session. Undo project change and Redo project change use ordinary project history;
+discard a dirty or invalid draft first. Ctrl-Z/Shift-Ctrl-Z also works outside text
+inputs. Text inputs retain their native text undo. History can include other project
+changes; it is not a private per-vertex history.
+
+Publishing requires the same project/scene/mode. A fresh source report is required
+before continued editing. If publishing succeeds but refresh fails, the tool clears
+stale geometry and disables editing/history; Close and reopen to recover. The backend
+change remains published and available through normal project history. Missing initial
+vertex rows reject; selection after history navigation remains within the fresh tables.
+
+Two native retained edits changed object0 vertex0 to352/-32/241 and vertex1 to368/0/145.
+Button/keyboard Undo/Redo, camera retention, fresh source, draft locks, two history
+steps and Save/Open passed. Full native section reconstruction and normal Build/ZIP
+readback change only model bytes1516/1524. Injected refresh failure blocked editing;
+Close/reopen recovered and Redo restored the final source. Final recovery check and
+screenshots are private: `local-output/sdk-20260909/vertex-session-final-20261005/`.
+No game was launched; appearance remains in the manual queue.

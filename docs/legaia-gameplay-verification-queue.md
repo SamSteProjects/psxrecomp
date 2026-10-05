@@ -1,5 +1,28 @@
 # Deferred gameplay verification
 
+## Retained two-vertex editing - 2026-10-05
+
+Private project: `local-output/sdk-20260909/vertex-session-final-20261005/project/`.
+Package: `local-output/sdk-20260909/vertex-session-final-20261005/build/legaia.sdk.0f096fa3c17d-0.1.0-a4e05b11c08029a4.psxmod`.
+SHA-256: `6231a807062d06e0618b5899be8848cafa29419730fd12b296357c39fa3190c5`.
+Proof: `local-output/sdk-20260909/vertex-session-final-20261005/proof.json`.
+
+Asset `asset://town01/models/scene-tmd/0000`, object0: vertex0 changes from
+320/-32/241 to352/-32/241; vertex1 changes from320/0/145 to368/0/145.
+Independent full Retail-section reconstruction matches Build directory and ZIP
+readback; only native model byte offsets1516 and1524 change. Other vectors,
+normals, topology and unrelated section bytes remain exact. Two retained edits,
+camera/source refresh, normal button/keyboard Undo/Redo, draft locks, Save/Open,
+and injected source-refresh failure with Close/reopen recovery passed.
+
+Later establish an in-game instance consuming this exact model source and compare
+both vertex edits with Retail, then check scene/save-load stability. The preview
+is object-local and unposed. The package retains the earlier Town01 transition
+arrival X1664/Z3264/facing3, whose separate queue entry remains applicable.
+This is a separate two-edit example from the older one-vertex package below.
+No game launched, output installed or Retail disc exported.
+
+
 ## Direct model vertex movement - 2026-10-05
 
 Private project: `local-output/sdk-20260909/vertex-move-20261005/project/`.

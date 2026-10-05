@@ -4310,7 +4310,7 @@ modelGlbButton.onclick=async()=>{
 let objectProposalRenderer=null,objectProposalCanvas=null;
 async function openVertexMovement(initial){
   if(busy||shapeDraft||state.project.mode!=='edit')return;const asset=modelAssetId;modelVertexMoveEditor?.dispose();vectorDialog.close();$('model-dialog').close();const module=await import('/model-vertex-move.js');
-  modelVertexMoveEditor=await module.openModelVertexMove({assetId:asset,initial,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Model vertex moved. Save project to persist.');await openModel(asset,null,null,'authored');}});
+  modelVertexMoveEditor=await module.openModelVertexMove({assetId:asset,initial,getHistory:()=>state.history??{},getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async(next,action)=>{state=next;render();notify(action==='apply'?'Model vertex moved. Save project to persist.':action==='undo'?'Project change undone.':'Project change redone.');}});
 }
 async function openModelVectors(initial=null){
   if(busy||shapeDraft||state.project.mode!=='edit')return;

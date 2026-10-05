@@ -1,5 +1,25 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Retained vertex editing and project history - 2026-10-05
+
+The vertex movement workspace remains open after Apply. It requalifies the new
+Current source and retains the camera and selected existing row, allowing another
+vertex edit without reopening. Ordinary project Undo/Redo is available through
+explicit toolbar controls and non-input Ctrl-Z/Shift-Ctrl-Z shortcuts. Dirty/invalid
+drafts block history. Native input text undo stays local to the input. Changed
+project/scene/mode rejects continuation. A published change with a failed source
+refresh disables editing until Close/reopen; stale geometry is withdrawn.
+
+Native Town01 model0000 checks passed two retained edits, fresh source after each,
+camera retention, button/keyboard Undo/Redo, draft locks, two ordinary history steps
+and Save/Open. Injected refresh failure blocked editing, and Close/reopen recovered.
+Final source-failure/recovery evidence is recorded alongside the
+workflow at `local-output/sdk-20260909/vertex-session-final-20261005/`. Full normal
+Build directory and ZIP section readback matches independent Retail reconstruction,
+with only model bytes1516 and1524 changed. Other vectors/normals/topology stay fixed.
+No game launched; appearance remains deferred. The SDK goal remains active and solo.
+
+
 ## Pick vertices in the model movement viewport - 2026-10-05
 
 Move vertices in3D now opens directly from the model shape panel. The movement
