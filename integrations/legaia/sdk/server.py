@@ -1731,6 +1731,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                                     'project_source_key':original_key,'review_key':report['review_key'],
                                     'scene':dict(proposed,representation='authored')})
                     return
+                if route == '/api/transition-arrival-review':
+                    if set(body)!={'asset_id','project_state_key','destination_source_key','arrival'}:
+                        raise ProjectError('Arrival Review requires source identity, project/destination keys and arrival only')
+                    from .transition_arrival import review
+                    self._json(200,review(self.server.project,body['asset_id'],body['project_state_key'],body['destination_source_key'],body['arrival']))
+                    return
+                if route == '/api/transition-arrival-apply':
+                    from .transition_arrival import apply
+                    apply(self.server.project,body)
+                    self._json(200,self.server.state())
+                    return
                 if route == "/api/transition-arrival-preview":
                     if set(body) != {'asset_id','source_key'}:
                         raise ProjectError('Transition arrival inspection requires only asset_id and source_key')

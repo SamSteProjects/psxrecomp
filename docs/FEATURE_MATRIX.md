@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Reviewed arrival authoring in the destination viewport - 2026-10-04
+
+The arrival comparison now authors the existing source transition through destination
+viewport controls. Enter grid X/Z and facing sector, Review the green Proposed marker
+beside Retail/Current and inspect the exact source byte audit, then Apply that reviewed
+request. Draft changes withdraw Apply; Discard restores Current. Source/project/destination
+changes invalidate the review. Apply revalidates all inputs, preserves upper direction
+bits and unrequested operands, invokes the normal transition command and refreshes the
+Current marker. Reference Y remains an inspection plane and is never authored.
+
+Review independently qualifies the exact target byte audit against its Retail source
+record/PC and requested encoded operands. It retains all other source entry edits and
+does not change the active scene or publish overrides. Already saved entries report no
+authored change. No destination names, instruction lengths, branch bytes or source trigger
+positions are changed. No transform-drag tool or runtime execution is claimed.
+
+Five focused Python checks and JavaScript review/source-byte/proposed-coordinate guards
+passed. Native Town01 -> map01 browser Review/Apply passed on destination geometry,
+including stale-draft withdrawal, one Undo step, refreshed Current, Save/Open and Undo/Redo.
+Desktop Proposed and narrow saved screenshots were inspected with zero browser errors.
+Normal private Build and independent full MAN/ZIP readback matched exactly two source-byte
+changes, at28574 and28576. A fresh native report additionally qualified zero Current delta
+with two retained Retail-to-Current source byte changes. Gameplay remains deferred; no
+game launch or runtime installation occurred. Private evidence:
+`local-output/sdk-20260909/transition-arrival-authoring-20261004/verified/proof.json`.
+See [arrival authoring](legaia-transition-arrival-authoring.md).
+
+
 ## Transition arrival viewport comparison - 2026-10-04
 
 Transition source resources now offer **Compare arrival in destination scene** when

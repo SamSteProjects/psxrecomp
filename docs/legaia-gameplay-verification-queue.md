@@ -1,5 +1,28 @@
 # Deferred gameplay verification
 
+## Reviewed destination arrival authoring - 2026-10-04
+
+Offline validation passed; gameplay is deferred. Private project:
+`local-output/sdk-20260909/transition-arrival-authoring-20261004/verified/project/`. Exact delivered package: `local-output/sdk-20260909/transition-arrival-authoring-20261004/verified/build/legaia.sdk.0f096fa3c17d-0.1.0-99037abee6f75ac6.psxmod`.
+Package SHA-256: `1ce5215a4bb015deee0be12be0ab099615956d862094dcfba76f57dfc432bfce`. Native/browser/Build evidence:
+`local-output/sdk-20260909/transition-arrival-authoring-20261004/verified/proof.json`.
+
+The edited source is `transition://town01/scripts/man-p2/0000/0016`: Town01
+partition-two record0000, source instruction PC0x16 naming map01. Saved arrival
+is X256/Z3264, facing sector3 (static angle1536/4096). Full decompressed MAN and
+ZIP readback change only offsets28574 and28576, preserving the destination label,
+Z operand, record layout and all unrelated bytes. Retail arrival is X12352/Z3264,
+facing sector4; the earlier saved Current input was X128 with sector2.
+
+When manually verifying this source transition, establish that the named source
+instruction actually executes and loads map01, then compare the resulting position
+and facing with the saved entry and live inspector. Check map entry, subsequent
+movement/exit and save/load stability. The viewport reference Y is not authored or
+verified height. A static source reference does not prove this route is reached,
+or that world-map handlers preserve every arrival property. No game was launched
+or installed for this milestone; no gameplay acceptance is claimed.
+
+
 ## 2026-10-04: Texture page UV target region helper
 
 For later gameplay validation, use **Choose target UVs from a scene texture** to
