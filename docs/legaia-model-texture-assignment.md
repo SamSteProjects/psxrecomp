@@ -97,3 +97,12 @@ other face/material drafts and authors no project state until the existing Apply
 Missing or ambiguous static evidence remains labelled. Numeric corner fields are
 available for precise edits and coincident corners. Crops are bounded native page
 pixels, not inferred full texture images or proof of runtime residency.
+
+
+Clicking a visible native surface in either model comparison selects its existing
+object/primitive and updates corner fields and the UV workspace. Both triangles
+of a quad select the same face. This readonly selection is blocked by pending face
+or material drafts; apply/discard them first. Dragging continues to orbit. Picking
+uses the renderer's depth test and visible texture coverage, with complete native
+face ownership checks. It applies to the unposed model comparison rather than
+inferring source face ownership from a live runtime or placed-scene click.

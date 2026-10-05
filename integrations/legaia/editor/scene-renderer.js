@@ -46,22 +46,22 @@ export class SceneRenderer {
     const shader=(type,source)=>{const item=gl.createShader(type);gl.shaderSource(item,source);gl.compileShader(item);if(!gl.getShaderParameter(item,gl.COMPILE_STATUS)){const message=gl.getShaderInfoLog(item);gl.deleteShader(item);throw new Error(message);}return item;};
     let vertex=null,fragment=null;
     try{
-    vertex=shader(gl.VERTEX_SHADER,`attribute vec3 a_position;attribute vec3 a_color;attribute vec2 a_uv;attribute vec3 a_normal;
-      uniform mat4 u_view;uniform mat4 u_model;uniform mat3 u_normalMatrix;varying vec3 v_color;varying vec2 v_uv;varying vec3 v_normal;
-      void main(){gl_Position=u_view*u_model*vec4(a_position,1.0);v_color=a_color;v_uv=a_uv;vec3 n=u_normalMatrix*a_normal;float len=length(n);v_normal=len>0.000001?n/len:vec3(0.0);}`);
-    fragment=shader(gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 v_color;varying vec2 v_uv;varying vec3 v_normal;
+    vertex=shader(gl.VERTEX_SHADER,`attribute vec3 a_position;attribute vec3 a_pickId;attribute vec3 a_color;attribute vec2 a_uv;attribute vec3 a_normal;
+      uniform mat4 u_view;uniform mat4 u_model;uniform mat3 u_normalMatrix;varying vec3 v_pickId;varying vec3 v_color;varying vec2 v_uv;varying vec3 v_normal;
+      void main(){gl_Position=u_view*u_model*vec4(a_position,1.0);v_pickId=a_pickId;v_color=a_color;v_uv=a_uv;vec3 n=u_normalMatrix*a_normal;float len=length(n);v_normal=len>0.000001?n/len:vec3(0.0);}`);
+    fragment=shader(gl.FRAGMENT_SHADER,`precision mediump float;varying vec3 v_pickId;varying vec3 v_color;varying vec2 v_uv;varying vec3 v_normal;
       uniform sampler2D u_texture;uniform bool u_textured;uniform bool u_picking;uniform vec3 u_pick;uniform bool u_semi;uniform int u_pass;
-      uniform bool u_normalDiagnostic;
+      uniform bool u_normalDiagnostic;uniform bool u_trianglePicking;
       void main(){vec4 color=vec4(v_color,1.0);bool semi=u_semi;if(u_textured){vec4 texel=texture2D(u_texture,v_uv);if(texel.a<0.01)discard;if(!u_normalDiagnostic)color.rgb*=texel.rgb;semi=semi&&texel.a<0.75;}
       if(u_normalDiagnostic){float len=length(v_normal);color.rgb=len>0.000001?v_normal/len*0.5+0.5:vec3(0.5);}
       if(!u_picking&&((u_pass==0&&semi)||(u_pass==1&&!semi)))discard;
-      gl_FragColor=u_picking?vec4(u_pick,1.0):color;}`);
+      gl_FragColor=u_picking?vec4(u_trianglePicking?v_pickId:u_pick,1.0):color;}`);
     this.program=gl.createProgram();gl.attachShader(this.program,vertex);gl.attachShader(this.program,fragment);gl.linkProgram(this.program);
     if(!gl.getProgramParameter(this.program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(this.program));
     }catch(error){if(this.program)gl.deleteProgram(this.program);this.program=null;throw error;}
     finally{if(vertex)gl.deleteShader(vertex);if(fragment)gl.deleteShader(fragment);}
-    this.locations={};for(const name of ['position','color','uv','normal'])this.locations[name]=gl.getAttribLocation(this.program,'a_'+name);
-    for(const name of ['view','model','texture','textured','picking','pick','semi','pass','normalMatrix','normalDiagnostic'])this.locations[name]=gl.getUniformLocation(this.program,'u_'+name);
+    this.locations={};for(const name of ['position','color','uv','normal','pickId'])this.locations[name]=gl.getAttribLocation(this.program,'a_'+name);
+    for(const name of ['view','model','texture','textured','picking','pick','semi','pass','normalMatrix','normalDiagnostic','trianglePicking'])this.locations[name]=gl.getUniformLocation(this.program,'u_'+name);
     this.gridBuffer=gl.createBuffer();this.gridKey=null;this.gridCount=0;this.pickTarget=null;
     this.whiteTexture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.whiteTexture);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
@@ -70,7 +70,7 @@ export class SceneRenderer {
 
   clear(){
     const gl=this.gl;
-    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.normalBuffer)gl.deleteBuffer(batch.normalBuffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
+    for(const mesh of this.meshes.values())for(const batch of mesh.batches){gl.deleteBuffer(batch.buffer);if(batch.normalBuffer)gl.deleteBuffer(batch.normalBuffer);if(batch.wireBuffer)gl.deleteBuffer(batch.wireBuffer);if(batch.trianglePickBuffer)gl.deleteBuffer(batch.trianglePickBuffer);if(batch.texture)gl.deleteTexture(batch.texture);}
     this.meshes.clear();this.instances=[];this.scene=null;
     if(!this.lost){gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);}
   }
@@ -203,13 +203,14 @@ export class SceneRenderer {
   }
 
   bind(buffer,normalBuffer=null){
-    const gl=this.gl,l=this.locations;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+    const gl=this.gl,l=this.locations;gl.disableVertexAttribArray(l.pickId);gl.vertexAttrib3f(l.pickId,0,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
     for(const [name,size,offset] of [['position',3,0],['color',3,12],['uv',2,24]]){gl.enableVertexAttribArray(l[name]);gl.vertexAttribPointer(l[name],size,gl.FLOAT,false,32,offset);}
     if(normalBuffer){gl.bindBuffer(gl.ARRAY_BUFFER,normalBuffer);gl.enableVertexAttribArray(l.normal);gl.vertexAttribPointer(l.normal,3,gl.FLOAT,false,12,0);}
     else{gl.disableVertexAttribArray(l.normal);gl.vertexAttrib3f(l.normal,0,0,0);}
   }
 
-  draw(view,picking=false){
+  draw(view,picking=false,trianglePicking=false){
+    if(trianglePicking&&(!picking||this.instances.length!==1))throw new Error('Triangle picking requires one inspected model instance.');
     if(this.lost||!view.width||!view.height)return;
     validateTransforms(view.transforms);
     if(view.normalDiagnostic!==undefined&&typeof view.normalDiagnostic!=='boolean')throw new Error('Invalid source normal diagnostic mode.');
@@ -217,7 +218,7 @@ export class SceneRenderer {
     if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
     if(picking)this.preparePick(w,h);else gl.bindFramebuffer(gl.FRAMEBUFFER,null);
     gl.viewport(0,0,w,h);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-    gl.useProgram(this.program);gl.uniformMatrix4fv(l.view,false,this.viewMatrix(view));gl.uniform1i(l.texture,0);gl.uniform1i(l.picking,picking);gl.activeTexture(gl.TEXTURE0);
+    gl.useProgram(this.program);gl.uniformMatrix4fv(l.view,false,this.viewMatrix(view));gl.uniform1i(l.texture,0);gl.uniform1i(l.picking,picking);gl.uniform1i(l.trianglePicking,trianglePicking);gl.activeTexture(gl.TEXTURE0);
     gl.disable(gl.DITHER);gl.disable(gl.BLEND);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);
     const drawInstance=(index,pass)=>{
       const instance=this.instances[index],mesh=this.meshes.get(instance.geometry_key),id=index+1;
@@ -235,7 +236,12 @@ export class SceneRenderer {
           gl.blendEquationSeparate(mode===2?gl.FUNC_REVERSE_SUBTRACT:gl.FUNC_ADD,gl.FUNC_ADD);
           gl.blendFuncSeparate(mode===0||mode===3?gl.CONSTANT_ALPHA:gl.ONE,mode===0?gl.CONSTANT_ALPHA:gl.ONE,gl.ONE,gl.ZERO);
         }
-        this.bind(batch.buffer,diagnostic?batch.normalBuffer:null);gl.uniform1i(l.semi,batch.semi);gl.uniform1i(l.textured,!!batch.texture);gl.bindTexture(gl.TEXTURE_2D,batch.texture??this.whiteTexture);gl.drawArrays(gl.TRIANGLES,0,batch.count);
+        this.bind(batch.buffer,diagnostic?batch.normalBuffer:null);
+        if(trianglePicking){
+          if(!batch.trianglePickBuffer){const ids=new Float32Array(batch.count*3);for(let v=0;v<batch.count;v++){const id=batch.normalCorners[v][0]+1;ids.set([(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255],v*3);}batch.trianglePickBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,batch.trianglePickBuffer);gl.bufferData(gl.ARRAY_BUFFER,ids,gl.STATIC_DRAW);}
+          gl.bindBuffer(gl.ARRAY_BUFFER,batch.trianglePickBuffer);gl.enableVertexAttribArray(l.pickId);gl.vertexAttribPointer(l.pickId,3,gl.FLOAT,false,12,0);
+        }
+        gl.uniform1i(l.semi,batch.semi);gl.uniform1i(l.textured,!!batch.texture);gl.bindTexture(gl.TEXTURE_2D,batch.texture??this.whiteTexture);gl.drawArrays(gl.TRIANGLES,0,batch.count);
       }
     };
     for(let index=0;index<this.instances.length;index++)drawInstance(index,0);
@@ -332,6 +338,17 @@ export class SceneRenderer {
         for(let i=0;i<pixels.length;i+=4){const id=this.instances[(pixels[i]|pixels[i+1]<<8|pixels[i+2]<<16)-1]?.entity_id;if(id)ids.add(id);}
       }
       return [...ids].sort();
+    }finally{this.draw(view);}
+  }
+
+  /** Native decoded triangle ID, with the same depth and texture-zero coverage. */
+  pickTriangle(x,y,view){
+    if(!finite(x)||!finite(y)||!finite(view?.width)||!finite(view?.height)||view.width<=0||view.height<=0||x<0||y<0||x>=view.width||y>=view.height)return null;
+    if(this.lost||this.instances.length!==1)return null;
+    try{
+      this.draw(view,true,true);const pixel=new Uint8Array(4),px=Math.floor(x*this.canvas.width/view.width),py=Math.max(0,Math.min(this.canvas.height-1,Math.floor((view.height-y)*this.canvas.height/view.height)));
+      this.gl.readPixels(px,py,1,1,this.gl.RGBA,this.gl.UNSIGNED_BYTE,pixel);const index=(pixel[0]|pixel[1]<<8|pixel[2]<<16)-1,mesh=this.meshes.get(this.instances[0].geometry_key);
+      return index>=0&&index<mesh.triangles.length?index:null;
     }finally{this.draw(view);}
   }
 

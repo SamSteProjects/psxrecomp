@@ -113,6 +113,8 @@ class CombinedModelTextureAssignment(unittest.TestCase):
             from urllib.request import urlopen
             with urlopen(f'http://127.0.0.1:{server.server_port}/model-uv-workspace.js') as response:
                 self.assertEqual(response.status,200);self.assertIn(b'createModelUvWorkspace',response.read())
+            with urlopen(f'http://127.0.0.1:{server.server_port}/model-face-picking.js') as response:
+                self.assertEqual(response.status,200);self.assertIn(b'nativeModelFaceAtTriangle',response.read())
             for bad in [dict(body,extra=True),dict(body,source_key='stale'),dict(body,primitive_edits=[])]:
                 status,_=post('/api/model-texture-assignment-preview',bad);self.assertEqual(status,400)
             status,r=post('/api/model-texture-assignment-preview',body);self.assertEqual(status,200,r);self.assertFalse(p.model_overrides)

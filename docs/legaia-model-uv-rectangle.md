@@ -1,5 +1,33 @@
 # Reviewed model UV rectangle retargeting
 
+## 2026-10-04: Direct native face selection in model comparison
+
+Click a visible surface in either Current or Proposed model view to select its
+native object/primitive. Existing corner fields, paging and the UV workspace update
+together. A click retains the readonly comparison; selection changes no project
+state. Pending face or texture-binding drafts must be applied/discarded first.
+Dragging remains orbit; pointer cancellation does not select. Both decoded triangles
+of a quad map to one native face. GLB selection highlights remain display-only.
+
+The renderer now exposes a bounded single-model triangle picking pass. Material
+batches retain decoded triangle IDs, and picking uses the ordinary depth test and
+texture-zero discard. The normal entity picking path remains separate and tested.
+Pick buffers/framebuffers are released through renderer disposal when the face
+editor closes. Native layout/object/corner ownership is checked before selecting.
+This selects unposed model faces; direct face editing from a placed scene is still
+separate future integration, and runtime ownership is not inferred.
+
+Focused ownership, face lifecycle and combined HTTP checks passed. A private GPU
+proof selected the front surface, selected the surface behind a transparent texel,
+rejected background/out-of-view clicks and restored ordinary entity picking with
+no WebGL error. A Town01 browser selected native primitive 5 without authoring,
+refused selection with pending drafts, then passed UV dragging, combined scene
+comparison/Return, Apply/Undo/Redo/Save/Open and exact normal Build model/TIM readback.
+Screenshot inspected; evidence:
+`local-output/sdk-20260909/model-face-picking-20261004/parent/proof.json`.
+No game launched; gameplay acceptance remains deferred and the full goal active.
+
+
 ## 2026-10-04: Native face UV workspace
 
 The face editor now includes a 2D UV workspace with Current and Draft outlines,
