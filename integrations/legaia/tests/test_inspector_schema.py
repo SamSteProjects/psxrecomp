@@ -99,4 +99,24 @@ class InspectorSchema(unittest.TestCase):
         definition['properties'][0]['label']='changed'
         self.assertEqual(inspector_schema()['components']['ActorAllocatedAnimation']['properties'][0]['label'],'Retained clip')
 
+    def test_facing_and_branch_reset_actions_require_authored_entries(self):
+        import tempfile
+        from pathlib import Path
+        from sdk.project import ProjectService
+        from integrations.legaia.tests.test_project_workflow import synthetic_scene
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene())
+            owner=p.imports[p.active_scene]['actors'][0]['semantic_id']
+            for name in ('ScriptFacing','ScriptBranches'):
+                self.assertEqual(p.state()['scene']['entities'][0]['components'][name]['authored_instruction_count'],0)
+                p.overrides.setdefault(owner,{})[name]={'entries':{'fixture':{'value':1}}}
+                state=p.state();component=state['scene']['entities'][0]['components'][name]
+                self.assertEqual(component['authored_instruction_count'],1)
+                component['entries'].clear()
+                self.assertEqual(len(p.overrides[owner][name]['entries']),1)
+                action=state['inspector_schema']['components'][name]['actions'][1]
+                self.assertEqual(action['id'],'reset-script-component')
+                self.assertEqual(action['when'],['authored_instruction_count'])
+                self.assertTrue(action['requires_edit'])
+
 if __name__=='__main__':unittest.main()

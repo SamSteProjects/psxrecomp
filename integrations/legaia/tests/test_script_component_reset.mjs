@@ -11,3 +11,9 @@ for(const mutate of [s=>s.project.mode='live',s=>s.scene.entities=[],s=>s.author
   const copy=JSON.parse(before);mutate(copy);assert.throws(()=>scriptComponentResetReview(copy,entity,'ScriptWaits'));
 }
 console.log('Script reset review is detached, family-bounded and rejects missing/stale witnesses.');
+for(const component of ['ScriptFacing','ScriptBranches']){
+  const copy=JSON.parse(before),entries={[entry]:{fixture:1}};
+  copy.scene.entities[0].components={[component]:{entries}};
+  copy.authored_assets[0].component_reviews=[{component,authored:{entries},review_key:'b'.repeat(64)}];
+  assert.equal(scriptComponentResetReview(copy,entity,component).component,component);
+}

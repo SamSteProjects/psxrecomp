@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {focusScriptInspectorFamily} from '../editor/script-inspector-navigation.js';
-for(const [id,selector] of [['ScriptMovement','.movement-authoring'],['ScriptFlags','.flag-authoring'],['ScriptWaits','.wait-authoring'],['ScriptModelSelectors','.modelSelector-authoring']]){
+for(const [id,selector] of [['ScriptMovement','.movement-authoring'],['ScriptFlags','.flag-authoring'],['ScriptWaits','.wait-authoring'],['ScriptModelSelectors','.modelSelector-authoring'],['ScriptFacing','.facing-authoring'],['ScriptBranches','.script-branch-authoring']]){
   const calls=[],section={scrollIntoView:options=>calls.push(['scroll',options]),focus:options=>calls.push(['focus',options])};
   assert.equal(focusScriptInspectorFamily({querySelector:value=>{assert.equal(value,selector);return section;}},id),true);assert.equal(section.tabIndex,-1);assert.deepEqual(calls,[['scroll',{block:'start'}],['focus',{preventScroll:true}]]);
 }

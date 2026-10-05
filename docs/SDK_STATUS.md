@@ -1,5 +1,25 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Facing and branch Inspector workflows
+
+ScriptFacing and ScriptBranches now expose detached authored-instruction counts
+and the same reviewed component reset as other supported script operand families.
+Reset is available only with authored entries in Edit mode; source inspection
+remains available after reset. The Inspector's facing and branch actions focus
+their qualified editor sections. All six operand-family sections have scroll
+spacing for the sticky script toolbar. Imported operands, authored values and
+effective values remain distinct; branch reachability and runtime facing remain
+unverified. Existing serializers and source-bound removal commands are reused.
+
+Validation: 15 focused schema, facing and retail branch workflow tests passed,
+including native branch Build readback. JavaScript component/action/reset/focus
+checks passed. A private Town01 browser workflow verified source-editor focus,
+review/cancel with no mutations, one Undo entry per reset, hidden reset actions
+when empty, Undo/Redo, Save/Open and unchanged imports. Evidence: ignored
+`local-output/sdk-20260909/facing-branch-inspector-20261004/verified/proof.json`.
+No game launched; manual gameplay remains deferred.
+
+
 ## 2026-10-04: Reviewed script component reset in the actor Inspector
 
 The registered ScriptMovement, ScriptFlags, ScriptWaits and ScriptModelSelectors

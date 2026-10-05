@@ -91,6 +91,15 @@ def inspector_schema():
             'notes': ['Open the source editor for separate retail, authored and effective operands. Existing qualified commands own Apply/Clear, history and Build.', note],
         }
 
+    for identifier in ('ScriptFacing', 'ScriptBranches'):
+        definition = schema['components'][identifier]
+        definition['properties'] = [{'id': 'authored_instruction_count', 'label': 'Authored instructions',
+                                     'path': ['authored_instruction_count'], 'type': 'integer',
+                                     'state': 'authored-through-source-editor'}]
+        definition['actions'].append({'id': 'reset-script-component', 'label': 'Review component reset',
+                                      'capability': 'project_navigation', 'requires_edit': True,
+                                      'when': ['authored_instruction_count']})
+
     # Asset inspector groups describe SDK catalog records, not entity components.
     tools = {
         'actor': ('AssetActor', 'Actor record', 'project_navigation', 'select-asset-actor', 'Select actor in scene'),

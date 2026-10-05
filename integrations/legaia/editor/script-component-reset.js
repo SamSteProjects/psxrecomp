@@ -1,4 +1,4 @@
-const families=new Set(['ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors']);
+const families=new Set(['ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches']);
 
 // Uses the existing source-bound removal witness; never accepts arbitrary component writes.
 export function scriptComponentResetReview(state,entity,component){
