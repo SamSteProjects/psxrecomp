@@ -816,6 +816,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
                  '/region-bounds.js': ('region-bounds.js', 'text/javascript'),
                  '/trigger-cells.js': ('trigger-cells.js', 'text/javascript'),
+                 '/trigger-group.js': ('trigger-group.js', 'text/javascript'),
                  '/trigger-scripts.js': ('trigger-scripts.js', 'text/javascript'),
                  '/transition-graph.js': ('transition-graph.js', 'text/javascript'),
                  '/transition-graph-workspace.js': ('transition-graph-workspace.js', 'text/javascript'),
@@ -1798,6 +1799,17 @@ class EditorHandler(BaseHTTPRequestHandler):
                     return
                 if route == '/api/trigger-scripts-apply':
                     from .trigger_scripts import apply
+                    apply(self.server.project, body)
+                    self._json(200, self.server.state())
+                    return
+                if route == '/api/trigger-group-review':
+                    if set(body) != {'scene_id','trigger_ids','delta','action'}:
+                        raise ProjectError('Trigger group review accepts scene, selected identities, delta and action only')
+                    from .trigger_group import review
+                    self._json(200, review(self.server.project, body['scene_id'], body['trigger_ids'], body['delta'], body['action']))
+                    return
+                if route == '/api/trigger-group-apply':
+                    from .trigger_group import apply
                     apply(self.server.project, body)
                     self._json(200, self.server.state())
                     return

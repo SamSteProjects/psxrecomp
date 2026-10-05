@@ -24,6 +24,7 @@ function tileBounds(value){const {tile_x:x,tile_z:z}=cells(value);return {x_min:
 function worldBounds(tiles){return Object.fromEntries(BOUNDS.map(key=>[key,tiles[key]*128]));}
 function validateBounds(tiles,world,value){const expected=tileBounds(value);if(!exact(tiles,BOUNDS)||!same(tiles,expected,BOUNDS)||!exact(world,BOUNDS)||!same(world,worldBounds(expected),BOUNDS))fail('Trigger bounds differ from their half-open source cell or raw world quantization.');}
 
+export function triggerCellSource(record,state){return structuredClone(recordContext(record,state));}
 function recordContext(record,state){
   const id=identity(record?.id),data=record?.data,source=data?.source_record;
   if(record.type!=='trigger'||record.sceneId!==id.scene||state?.scene?.id!==id.scene||state.project?.mode!=='edit'||!hash(state.project_copy_source_key)||!hash(state.scene_trigger_state_key)||data?.semantic_id!==record.id||data.asset_kind!=='trigger'||data.table_source!=='primary'||data.table_kind!==id.kind||data.record_index!==id.index)fail('Trigger catalog selection differs from the active editable scene.');
