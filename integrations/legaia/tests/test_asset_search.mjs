@@ -13,3 +13,12 @@ assert(!assetMatchesQuery({id:'asset',data:{}},parseAssetQuery('confidence:unkno
 const shared={...record,sceneId:'scene://town01',projectMembership:{scene_ids:['scene://town01','scene://map01']}};
 assert(assetMatchesQuery(shared,parseAssetQuery('scene:map01')));assert(!assetMatchesQuery(shared,parseAssetQuery('-scene:map01')));
 console.log('Asset field, phrase, URI, exclusion, recorded confidence, provenance, bounds and immutable-record checks passed.');
+
+const variants={...record,projectMembership:{scene_ids:['scene://town01','scene://map01'],chosenSceneId:'scene://town01',variants:[
+ {scene_id:'scene://town01',source_import_sha256:'a'.repeat(64),source_catalog_key:'b'.repeat(64),record:{name:'Town binding',source_record:{prot_entry_name:'town_alias',offset:123},claims:[{confidence:'confirmed',evidence:[{source:'Town evidence'}]}]}},
+ {scene_id:'scene://map01',source_import_sha256:'c'.repeat(64),source_catalog_key:'d'.repeat(64),record:{name:'Other binding',source_record:{prot_entry_name:'map_alias',offset:456},claims:[{confidence:'inferred',evidence:[{source:'Other evidence'}]}],components:{RetailMetadata:{source_record:{iso_file:'OTHER.DAT'}}}}}
+]}};const variantsBefore=structuredClone(variants);
+for(const query of ['provenance:'+ 'c'.repeat(64),'provenance:'+ 'd'.repeat(64),'name:"Other binding"','scene:map_alias','provenance:"Other evidence"','provenance:OTHER.DAT','confidence:inferred'])assert(assetMatchesQuery(variants,parseAssetQuery(query)),query);
+for(const query of ['-provenance:'+ 'c'.repeat(64),'-name:"Other binding"','provenance:'+ 'e'.repeat(64),'provenance:invented','name:"Other evidence"'])assert(!assetMatchesQuery(variants,parseAssetQuery(query)),query);
+assert.deepEqual(variants,variantsBefore);assert.equal(variants.data,record.data);assert.equal(variants.projectMembership.chosenSceneId,'scene://town01');
+console.log('Project field search covers retained membership names, source aliases, import/catalog hashes and provenance without merging or activating source variants.');

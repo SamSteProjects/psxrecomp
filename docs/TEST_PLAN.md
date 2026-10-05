@@ -1,5 +1,20 @@
 # Legaia SDK validation plan
 
+## Retained project provenance search checkpoint — 2026-10-05
+
+Focused Node checks cover variant names/aliases, import/catalog hashes, claim/evidence
+metadata, positive/excluded fields and immutable chosen-source qualification. Eight
+existing project-source Python cases and both modified editor syntax checks pass.
+Actual three-scene retail browser proof reproduces the prior module's missing hash,
+finds a shared asset by nonchosen Map01 provenance, keeps chosen Dolk2 in Details and
+checks exclusions/540px UI with unchanged document/history/files and no authoring,
+Save, Build or Run. Private proof:
+`local-output/sdk-20260909/project-provenance-search-20261005/proof.json`.
+Campaign follow-up: all resource kinds, absent catalogs, 64 memberships, alternate source
+scene filters, long/quoted aliases and source-refresh withdrawal. Search metadata is not
+runtime use or a joined cross-membership binding; gameplay acceptance stays separate.
+
+
 ## Inspector property-category checkpoint — 2026-10-05
 
 Focused Node checks cover category/query/actual authored-identity composition, empty

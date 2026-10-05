@@ -46,3 +46,25 @@ filter name. Excluded URI tokens behave the same way. Explicit
 `scene:scene://town01` and `id:scene://...` remain field filters. The actual retail
 actor/scene Details workflow exposed the failure and passed after the parser
 correction; focused URI/exclusion/field checks passed.
+
+## Retained membership provenance
+
+In imported project scope, `name:` covers each retained variant's recorded name and
+`scene:` covers its source-entry aliases. `provenance:` covers all retained source
+records, claims, RetailMetadata and explicit membership import SHA256/catalog bindings.
+For example, `id:worldmap://legaia/menu/placements/0000 provenance:<source SHA256>` can
+find the shared placement by a verified source membership other than the chosen one.
+Replace the placeholder with the recorded hash; no new decoding occurs during search.
+Exclusions use the same coverage, so `-provenance:<hash>` removes matching shared records.
+
+A search match never changes the source variant. Details continues to show the chosen
+membership; choose **Imported source membership** to change it explicitly. Search terms
+match the asset's retained metadata and can occur in different memberships. They do not
+establish a joined binding, runtime residency, confidence for every property or gameplay
+reachability. Active-scope records without project memberships behave as before.
+
+The 2026-10-05 browser proof reproduces the old hash miss and finds the asset by Map01
+provenance while retaining Dolk2 in real Details. Node and eight project-source Python
+checks pass; project/history/files and scene/selection stay unchanged. Private evidence:
+`local-output/sdk-20260909/project-provenance-search-20261005/`.
+No game, authoring, Save, Build or Run was requested by this search workflow.

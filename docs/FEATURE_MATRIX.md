@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Project asset provenance search across retained memberships — 2026-10-05
+
+Field-specific asset search now covers all retained project membership records. `name:`
+includes each variant's recorded name; `scene:` includes its source entry alias;
+`provenance:` includes source records, claims, RetailMetadata and explicit scene/import
+SHA256/catalog-key bindings. Bare and field searches now consistently find a shared asset
+by another retained membership's verified source hash. Confidence/model searches retain
+their existing recorded-value behavior. Positive and excluded terms use the same full
+record coverage; no confidence, name or source fact is invented.
+
+Search does not choose, merge or activate variants. Details/activation retain one exact
+chosen source record with the existing source-context/catalog qualification. Combined
+terms match recorded asset metadata across memberships; they do not assert that all terms
+came from one binding. Use the membership selector to choose a source. Active records
+without project memberships retain their existing field behavior. Search help is updated.
+
+Validation: both expanded asset-search/project-assets Node suites, eight focused Python
+project-source cases and both modified editor-module syntax checks pass. A fresh private
+three-scene retail browser reproduced the old field-search miss against the prior module,
+then found the shared world-map placement using a nonchosen Map01 import/catalog hash.
+Exclusion, unchanged chosen Dolk2 variant, real Details membership and 540px search passed
+with no page errors. Document/history, scene/selection and all saved files stayed
+unchanged; no authoring, Save, Build or Run requests. Screenshot inspected. Two incorrect
+Details selectors in the harness were corrected from actual card markup; failed attempts
+are preserved. Private proof:
+`local-output/sdk-20260909/project-provenance-search-20261005/proof.json`.
+No game ran; the full SDK goal remains unfinished and active, with solo work continuing.
+
+
 ## Inspector property-category filtering — 2026-10-05
 
 The actor Inspector now offers **Property category** alongside text search and **Authored

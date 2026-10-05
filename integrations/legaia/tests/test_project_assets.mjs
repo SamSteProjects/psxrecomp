@@ -76,3 +76,9 @@ try{
   ctx={...emptyContext};control=null;host=mount();chooseScope(host,'project');assert.equal(hasText(host,'No imported scenes'),true);assert.equal(action(host).disabled,true);const count=calls.length;assert.equal(await action(host).onclick(),false);assert.equal(calls.length,count);control.dispose();
 }finally{for(const [key,value] of Object.entries(globals)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}}
 console.log('Project asset source/coverage/variant qualification; detached memberships; explicit refresh and filtering; preferred source selection; stale/abort/disposal and busy ownership passed.');
+
+const {assetMatchesQuery,parseAssetQuery}=await import('../editor/asset-search.js');
+const sourceSearchRecord=projectAssetRecords(decodeProjectAssets(snapshot(),context),'all',scene('a')).find(record=>record.id===sharedId),sourceSearchBefore=structuredClone(sourceSearchRecord);
+assert(assetMatchesQuery(sourceSearchRecord,parseAssetQuery('provenance:'+h('c'))));assert(assetMatchesQuery(sourceSearchRecord,parseAssetQuery('provenance:'+h('f'))));assert(assetMatchesQuery(sourceSearchRecord,parseAssetQuery('name:"Dolk2 binding"')));assert(!assetMatchesQuery(sourceSearchRecord,parseAssetQuery('-provenance:'+h('c'))));
+assert.equal(sourceSearchRecord.sceneId,scene('a'));assert.equal(sourceSearchRecord.data.binding.source_fact,'Town01 binding');assert.deepEqual(sourceSearchRecord,sourceSearchBefore);assert.equal(projectAssetVariant(sourceSearchRecord,context).record.binding.source_fact,'Town01 binding');
+console.log('Verified project variants feed provenance/name search while activation keeps the exact chosen source record.');

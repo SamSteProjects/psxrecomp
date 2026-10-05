@@ -11,13 +11,14 @@ export function parseAssetQuery(query){
 }
 function values(value){return value===undefined||value===null?'':typeof value==='string'?value:JSON.stringify(value);}
 export function assetSearchIndex(record){
-  const data=record.data??{},components=data.components??{},confidences=[],models=[];
+  const data=record.data??{},variants=record.projectMembership?.variants??[],sources=[data,...variants.map(variant=>variant.record)],confidences=[],models=[];
   const visit=(value,key='')=>{if(value===null||value===undefined)return;if(key==='confidence'&&typeof value==='string')confidences.push(value);
     if(typeof value==='string'){if(value.startsWith('asset://')&&value.includes('/models/'))models.push(value);return;}
     if(Array.isArray(value)){for(const item of value)visit(item,key);}else if(typeof value==='object'){for(const [name,item] of Object.entries(value))visit(item,name);}};
   visit(record);if(record.type==='model')models.push(record.id);
-  const fields={name:[record.label,data.name],id:[record.id],type:[record.type,data.asset_kind],scene:[record.sceneId,record.source,record.authoredRecord?.source_scene,data.source_record?.prot_entry_name,...(record.projectMembership?.scene_ids??[])],model:models,confidence:confidences,
-    provenance:[data.source_record,data.claims,components.RetailMetadata,record.authoredRecord?.source_record]};
+  const fields={name:[record.label,...sources.map(source=>source?.name)],id:[record.id],type:[record.type,data.asset_kind],scene:[record.sceneId,record.source,record.authoredRecord?.source_scene,...sources.map(source=>source?.source_record?.prot_entry_name),...(record.projectMembership?.scene_ids??[])],model:models,confidence:confidences,
+    provenance:[...sources.flatMap(source=>[source?.source_record,source?.claims,source?.components?.RetailMetadata]),record.authoredRecord?.source_record,
+      ...variants.map(({scene_id,source_import_sha256,source_catalog_key})=>({scene_id,source_import_sha256,source_catalog_key}))]};
   return Object.fromEntries([['all',values(record).toLowerCase()],...Object.entries(fields).map(([key,items])=>[key,items.map(values).join(' ').toLowerCase()])]);
 }
 export function assetMatchesQuery(record,tokens){const index=assetSearchIndex(record);return tokens.every(token=>{const match=index[token.field??'all'].includes(token.text);return token.exclude?!match:match;});}
