@@ -1,5 +1,34 @@
 # Legaia SDK status — 2026-10-05
 
+## Saved scene visibility and grid — 2026-10-05
+
+**Saved scene views** now retain manually hidden imported actors/static decorations/
+ground, an optional isolated instance and the grid switch, alongside camera,
+representation and layers. **Recall scene view** restores the focused inspection;
+**Restore scene** still preserves manually hidden instances. Model filters, proposal
+previews, runtime observations and new NPC draft visibility are outside this metadata.
+
+Visibility uses canonically sorted source-bound IDs (up to 32768 hidden instances)
+and a MAP hash when environment instances are retained. Save/replace verifies the
+source MAP and static cell membership. Portable Open validates typed metadata without
+requiring a disc; recall checks current preview membership, isolated renderability and
+MAP identity after scene/representation loading. Active group/collision proposals
+withdraw the tool. Old views without visibility/grid keep their former recall semantics.
+These fields use existing command/history/persistence and change no game components,
+imported facts, normal-Build inputs or scene-preview source keys.
+
+Validation: nine focused Python view cases, expanded scene-view and camera Node suites,
+and both editor-module syntax checks pass. Cover typed/canonical metadata, native static
+membership, MAP mismatch/atomic rejection, source drift, legacy projects, Undo/Redo and
+Save/Open. Actual private Town01 browser saves a hidden actor and isolated decoration,
+recalls camera/grid/isolation, restores manual hiding, checks metadata Undo/Redo and
+Save/Open, and retains isolation across Retail-to-Authored preview reload at 540px.
+Screenshot inspected; no page errors. Imported/authored game data and Build/preview
+keys remain unchanged. Evidence:
+`local-output/sdk-20260909/saved-scene-visibility-20261005/proof.json`.
+No package, game, installation or full-disc export ran. Gameplay verification remains
+deferred; the full SDK goal stays active and implementation remains solo.
+
 ## Save the complete pre-Build review — 2026-10-05
 
 **Review Build → Save full Build review…** downloads the complete accepted v1/v2

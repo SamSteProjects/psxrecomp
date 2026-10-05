@@ -2,13 +2,16 @@
 from copy import deepcopy
 import math
 import uuid
+import re
+import struct
+from hashlib import sha256
 from .project import ProjectError, digest
 
 COMMANDS = {'create_scene_view', 'rename_scene_view', 'update_scene_view', 'delete_scene_view'}
 
 def display(value):
-    if not isinstance(value, dict) or set(value) != {'camera', 'representation', 'layers'}:
-        raise ProjectError('Scene view requires camera, representation and layers only')
+    if not isinstance(value, dict) or not {'camera', 'representation', 'layers'} <= set(value) or set(value) - {'camera', 'representation', 'layers', 'grid', 'visibility'}:
+        raise ProjectError('Scene view requires supported camera, representation, layers and optional display visibility')
     camera = value['camera']
     if not isinstance(camera, dict) or set(camera) != {'projection', 'yaw', 'pitch', 'distance', 'target'}:
         raise ProjectError('Invalid scene view camera')
@@ -27,7 +30,56 @@ def display(value):
     layers = value['layers']
     if not isinstance(layers, dict) or set(layers) != {'actors', 'scenery', 'ground'} or any(type(item) is not bool for item in layers.values()):
         raise ProjectError('Invalid scene view layers')
+    if 'grid' in value and type(value['grid']) is not bool:
+        raise ProjectError('Scene view grid must be a display boolean')
     return deepcopy(value)
+
+def _visibility(project, scene, value):
+    if 'visibility' not in value:
+        return []
+    visibility = value['visibility']
+    if not isinstance(visibility, dict) or set(visibility) != {'hidden_entity_ids', 'isolated_entity_id', 'map_sha256'}:
+        raise ProjectError('Scene view requires exact visibility fields')
+    hidden, isolated = visibility['hidden_entity_ids'], visibility['isolated_entity_id']
+    if (not isinstance(hidden, list) or len(hidden) > 32768 or
+            any(not isinstance(item, str) or not 1 <= len(item) <= 1024 for item in hidden) or
+            hidden != sorted(set(hidden)) or
+            isolated is not None and (not isinstance(isolated, str) or isolated in hidden)):
+        raise ProjectError('Scene view visibility requires canonical unique hidden IDs and a visible isolation target')
+    actors = {row['semantic_id'] for row in project.imports[scene]['actors']}
+    prefix = 'environment://' + scene.removeprefix('scene://') + '/field-map/'
+    environment = []
+    for identifier in hidden + ([] if isolated is None else [isolated]):
+        if identifier in actors:
+            continue
+        suffix = identifier.removeprefix(prefix + 'decorations/')
+        if identifier != prefix + 'ground' and (not identifier.startswith(prefix + 'decorations/') or not re.fullmatch(r'[0-9]{5}', suffix) or int(suffix) >= 16384):
+            raise ProjectError('Saved visibility supports imported actors, static decorations and ground only')
+        environment.append(identifier)
+    binding = visibility['map_sha256']
+    if (environment and (not isinstance(binding, str) or not re.fullmatch(r'[0-9a-f]{64}', binding))) or (not environment and binding is not None):
+        raise ProjectError('Scene view visibility MAP binding differs from its instance types')
+    return environment
+
+
+def _verify_visibility(project, scene, value):
+    environment = _visibility(project, scene, value)
+    if not environment:
+        return
+    source = project._environment_source(scene)
+    if sha256(source).hexdigest() != value['visibility']['map_sha256']:
+        raise ProjectError('Scene view visibility source MAP changed')
+    for identifier in environment:
+        if identifier.endswith('/ground'):
+            continue
+        cell = int(identifier.rsplit('/', 1)[1])
+        if len(source) < 0x8000 + cell * 2 + 2:
+            raise ProjectError('Scene view decoration exceeds the source MAP')
+        word = struct.unpack_from('<H', source, 0x8000 + cell * 2)[0]
+        record = word & 511
+        if record < 4 or not word & 0x2000 or struct.unpack_from('<H', source, record * 32 + 18)[0] & 4:
+            raise ProjectError('Scene view decoration is not a static source instance')
+
 
 def validate(project, identifier, value):
     try:
@@ -42,6 +94,7 @@ def validate(project, identifier, value):
             value['import_sha256'] != digest(project.imports[value['scene_id']])):
         raise ProjectError('Scene view differs from its imported scene binding')
     display(value['display'])
+    _visibility(project, value['scene_id'], value['display'])
 
 def review_key(project, value):
     return digest({'project_root': str(project.root), 'scene_view': value})
@@ -80,6 +133,8 @@ def command(project, body):
             after = None
     if after is not None:
         validate(project, identifier, after)
+        if kind in ('create_scene_view', 'update_scene_view'):
+            _verify_visibility(project, after['scene_id'], after['display'])
         if any(key != identifier and row['scene_id'] == after['scene_id'] and row['name'].casefold() == after['name'].casefold() for key, row in project.scene_views.items()):
             raise ProjectError('A saved view with this name already exists in the scene')
     if before == after:

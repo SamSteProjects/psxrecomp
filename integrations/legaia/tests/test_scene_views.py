@@ -5,6 +5,9 @@ import json
 import math
 import tempfile
 import unittest
+import struct
+from hashlib import sha256
+from unittest.mock import patch
 from sdk.project import ProjectService, ProjectError, digest
 from sdk.scene_views import review_key
 from sdk.build import authored_state_key
@@ -73,6 +76,33 @@ class SceneViewTests(unittest.TestCase):
         with self.assertRaisesRegex(ProjectError,'scene views'):p.import_metadata(changed)
         p.undo();opened=ProjectService.open(p.save())
         with self.assertRaisesRegex(ProjectError,'scene views'):opened.import_metadata(changed)
+    def test_visibility_grid_history_and_portable_reopen(self):
+        p=self.p;actor=p.imports[p.active_scene]['actors'][0]['semantic_id']
+        d=deepcopy(DISPLAY);d.update(grid=False,visibility=dict(hidden_entity_ids=[actor],isolated_entity_id=None,map_sha256=None))
+        game=(deepcopy(p.imports),deepcopy(p.overrides),authored_state_key(p),source_key(p));row=self.create(display=d)
+        self.assertEqual(row['display'],d);p.undo();self.assertFalse(p.scene_views);p.redo()
+        opened=ProjectService.open(p.save());self.assertEqual(opened.scene_views,p.scene_views)
+        self.assertEqual((p.imports,p.overrides,authored_state_key(p),source_key(p)),game)
+        replacement=deepcopy(d);replacement['visibility']=dict(hidden_entity_ids=[],isolated_entity_id=actor,map_sha256=None);replacement['grid']=True
+        p.command(self.cmd('update_scene_view',row,display=replacement));p.undo();self.assertEqual(p.scene_views[row['id']]['display'],d);p.redo();self.assertEqual(p.scene_views[row['id']]['display'],replacement)
+    def test_static_visibility_source_membership_and_map_binding(self):
+        p=self.p;source=bytearray(0x10000);struct.pack_into('<H',source,0x8002,0x2004);source=bytes(source)
+        prefix='environment://'+p.active_scene.removeprefix('scene://')+'/field-map/'
+        d=deepcopy(DISPLAY);d.update(grid=True,visibility=dict(hidden_entity_ids=[prefix+'ground'],isolated_entity_id=prefix+'decorations/00001',map_sha256=sha256(source).hexdigest()))
+        with patch.object(p,'_environment_source',return_value=source):row=self.create(display=d)
+        self.assertEqual(ProjectService.open(p.save()).scene_views,p.scene_views)
+        before=deepcopy((p.scene_views,p.undo_stack,p.redo_stack));bad=deepcopy(d);bad['visibility']['map_sha256']='a'*64
+        with patch.object(p,'_environment_source',return_value=source),self.assertRaisesRegex(ProjectError,'source MAP'):p.command(self.cmd('update_scene_view',row,display=bad))
+        bad=deepcopy(d);bad['visibility']['isolated_entity_id']=prefix+'decorations/00002'
+        with patch.object(p,'_environment_source',return_value=source),self.assertRaisesRegex(ProjectError,'static source'):p.command(self.cmd('update_scene_view',row,display=bad))
+        self.assertEqual((p.scene_views,p.undo_stack,p.redo_stack),before)
+    def test_visibility_invalid_requests_are_atomic(self):
+        p=self.p;actor=p.imports[p.active_scene]['actors'][0]['semantic_id'];base=deepcopy(DISPLAY);base.update(grid=False,visibility=dict(hidden_entity_ids=[actor],isolated_entity_id=None,map_sha256=None))
+        for mutate in [lambda d:d.update(grid=1),lambda d:d['visibility'].update(hidden_entity_ids=[actor,actor]),lambda d:d['visibility'].update(isolated_entity_id=actor),lambda d:d['visibility'].update(hidden_entity_ids=['actor://unknown']),lambda d:d['visibility'].update(map_sha256='a'*64),lambda d:d['visibility'].update(runtime_address=4096),lambda d:d.update(visibility=None)]:
+            bad=deepcopy(base);mutate(bad)
+            with self.assertRaises(ProjectError):self.create(display=bad)
+            self.assertFalse(p.scene_views);self.assertFalse(p.undo_stack)
+
     def test_malformed_saved_views_and_legacy_project(self):
         p=self.p;path=p.save();raw=json.loads(path.read_text(encoding='utf-8'));self.assertNotIn('scene_views',raw);self.assertEqual(ProjectService.open(path).scene_views,{})
         row=self.create();p.save();raw=json.loads(path.read_text(encoding='utf-8'));raw['scene_views'][row['id']]['display']['camera']['target']['y']=None;path.write_text(json.dumps(raw),encoding='utf-8')

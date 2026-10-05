@@ -8,7 +8,8 @@ walls/ground cannot obscure Front or Side inspection. The existing **Focus**
 button frames it. Isolation preserves manual hidden objects and scene layer
 switches; restoring it does not force previously hidden objects visible.
 Project/scene/source/representation changes and scene proposals withdraw the
-isolation. It authors no model/component/history state and is not saved in views.
+isolation. Toggling isolation authors no model/component/history state. New saved
+views can retain isolation as editor display metadata, alongside manual visibility.
 
 ## Axis views - 2026-10-04
 
@@ -29,7 +30,8 @@ existing source-bound saved view/history behavior remain available.
 In Edit mode, open **Saved scene views** beside the scene selection tools.
 Name and save the current camera. **Recall scene view** opens its imported scene
 and restores projection, camera target/orbit/distance, authored or retail
-representation, and the Actors/Scenery/Ground toggles. Recall creates no
+representation, the Actors/Scenery/Ground toggles, grid and source-bound manual
+visibility/isolation in new views. Recall creates no
 history command and changes no actor components.
 
 Names are unique within a scene. Rename, replace with the current view and
@@ -40,8 +42,14 @@ changed-source reimport rejects while a bound view or its history remains.
 
 Camera targets are editor display coordinates, including display height.
 They do not establish retail Y, collision height, facing or live actor identity.
-Individual hidden objects, model filters, selected actors, proposal previews
-and runtime observations are not captured. Live mode and active pose/proposal
+Visibility supports imported actors, static decorations and ground. Hidden IDs are
+unique and canonically sorted (up to 32768); an isolated target must not be manually
+hidden. Environment visibility retains its source MAP hash, with fresh native static
+cell verification on Save/Replace and current preview membership/renderability/hash
+checks on Recall. Portable Open validates metadata without requiring a disc. Old views
+without optional visibility/grid fields retain their former recall behavior.
+Model filters, selected actors, new NPC draft visibility, proposal previews and runtime
+observations are not captured. Live mode and active pose/group/collision proposal
 inspections disable the tool. Closed or changed recall context withdraws camera
 application; stale view reviews reject.
 
@@ -63,3 +71,13 @@ private browser project, including immediate availability after entity selection
 and representation-key withdrawal. `isolation-proof.json` records the checks;
 focused Front/Side screenshots were inspected. Model/history/dirty/source state
 remained unchanged, with no browser errors or game launch.
+
+Visibility/grid validation — 2026-10-05: nine focused Python cases, scene-view/camera
+Node suites and both module syntax checks pass. Private retail Town01 browser saves a
+hidden imported actor and isolated static decoration, recalls camera/grid/isolation,
+preserves hiding on Restore, and checks metadata Undo/Redo plus Save/Open. Retail to
+Authored preview reload retains recalled isolation at 540px. Screenshot inspected;
+no page errors or changes to imported/authored game data and Build/preview keys.
+Evidence: `local-output/sdk-20260909/saved-scene-visibility-20261005/proof.json`.
+No package, game, installation or full-disc export ran. Full SDK/runtime acceptance
+remains incomplete and gameplay verification stays deferred.

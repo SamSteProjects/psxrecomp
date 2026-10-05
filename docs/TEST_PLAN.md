@@ -1,5 +1,22 @@
 # Legaia SDK validation plan
 
+## Saved scene visibility/grid checkpoint — 2026-10-05
+
+Nine focused Python view cases, scene-view/camera Node suites and both editor syntax
+checks pass. Cover typed visibility/grid, canonical IDs, imported actor membership,
+source-qualified static cells, MAP hash mismatch, atomic rejection, history/persistence
+and legacy views. Private Town01 browser saves a manually hidden actor and isolated
+static decoration; actual renderer display checks camera/grid/visibility recall and
+Restore preserving manual hiding. Metadata Undo/Redo, Save/Open and 540px recall from
+Retail to Authored after preview reload pass, with no page errors and unchanged imported,
+authored-game, normal-Build and scene-preview keys. Screenshot inspected. Proof:
+`local-output/sdk-20260909/saved-scene-visibility-20261005/proof.json`.
+Campaign follow-up: maximum hidden selections, ground-only binding, cross-scene recall,
+closed/stale context during preview loading, unavailable source meshes, shared model
+hiding and source replacement. New NPC draft visibility remains unsupported. This is
+editor metadata; runtime appearance/collision parity remains a separate manual gate.
+No package, game, installation or full-disc export ran.
+
 ## Complete Build-review download checkpoint — 2026-10-05
 
 Ordinary/NPC Build-review Node suites and module syntax pass. Cover all 301 changes
