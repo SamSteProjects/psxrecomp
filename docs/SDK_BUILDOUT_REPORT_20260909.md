@@ -1,5 +1,28 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Combined face and texture-page browser workflow
+
+The face editor now explicitly stages a qualified Current texture page/depth and
+indexed palette binding for its selected face, textured group or GLB-selected
+faces. Choosing a UV target alone still changes only the rectangle controls.
+Preview faces validates independent face/material audits, their exact native union
+and Current/final identities; Apply publishes both drafts as one model Undo.
+Discard binding keeps face drafts. Discard draft clears both; source changes
+withdraw the review and require fresh qualification. The actual Current/final model
+comparison is available before Apply. Combined placed-scene proposal comparison
+remains pending, so that scene action is disabled while a binding draft is staged.
+
+Four native codec/HTTP tests now also exercise the browser decoder against actual
+Current and retained-authored-face reports. Existing face/material/picker Node
+checks passed. Private Town01 browser verification passed GLB five-face selection,
+qualified native page choice, UV draft staging, readonly combined Review,
+review invalidation and one combined Apply, plus Undo/Redo, Save/offline Open and
+normal Build exact model/TIM readback with unchanged decoded neighbors:
+`local-output/sdk-20260909/model-texture-assignment-ui-20261004/parent/verified/proof.json`.
+No game launched; runtime texture residency and gameplay verification remain open.
+The earlier API-only browser-pending note below is superseded by this milestone.
+
+
 ## 2026-10-04: Combined native face/material Review and Apply API
 
 Implemented the backend/HTTP composition needed to apply UV/face fields and native

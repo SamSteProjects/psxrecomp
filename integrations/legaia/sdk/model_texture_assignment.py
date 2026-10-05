@@ -43,6 +43,7 @@ def prepare(project,asset_id,primitive_edits,material_edits,expected_sha256,expe
                     'Existing topology ledgers and one model Undo entry are retained by the ordinary replacement publisher.'])
     result['review_key']=digest(dict(report=result,primitive_edits=primitive_edits,material_edits=material_edits))
     result.update(current_preview=decode_tmd(effective),preview=decode_tmd(candidate))
+    for field in ('current_preview','preview'):result[field]['semantic_id']=asset_id
     _bounded(result,'Combined model review')
     if source_key(project)!=expected_source_key:raise ProjectError('Combined model source changed while constructing preview evidence')
     return candidate,result

@@ -1,7 +1,7 @@
 # Combined native face/material model assignment
 
-Status: backend and HTTP qualified; combined browser authoring/review is pending.
-The existing separate face and material editors are unchanged.
+Status: native backend, HTTP and face-editor browser workflow qualified.
+Separate face-only and material editors remain available.
 
 `POST /api/model-texture-assignment-preview` accepts exactly:
 
@@ -44,4 +44,29 @@ Private Town01 HTTP proof independently checked five-face UV/TPage bytes, one
 combined model Undo, stale repeat rejection, offline Open and normal Build exact
 model/TIM bytes with unchanged decoded neighbors:
 `local-output/sdk-20260909/model-texture-assignment-20261004/parent/proof.json`.
-No game launched. The combined browser workflow is the next integration step.
+The browser workflow now uses these routes directly. In the face editor:
+
+1. Qualify the desired GLB faces, or choose selected-face/textured-group scope.
+2. Choose target UVs from a Current scene texture and native page region.
+3. Copy remapped UVs into draft using explicit Source/Target rectangles.
+4. Stage texture binding for UV scope. This is a separate explicit draft action.
+5. Preview faces to compare actual Current/final models and both native audits.
+6. Apply reviewed faces to publish one model change. Discard texture binding draft
+   retains face edits; Discard draft clears both sets.
+
+Intermediate hashes are validated as separate composition evidence. They never
+replace the displayed Current source. The frontend validates each contribution,
+the exact audit union and topology comparison before enabling Apply, then checks
+the Apply receipt against the accepted review. Changing either draft withdraws it.
+A source change requires fresh Current qualification. Both unposed native previews
+carry the model asset identity for the normal face comparison renderer.
+
+A private Town01 browser proof passed five GLB-selected faces, native checker TIM
+page selection, combined UV/page staging, readonly Review, draft invalidation and
+combined Apply/Save/reload/Build review. Independent normal Build readback, model
+Undo/Redo and offline Open also passed:
+`local-output/sdk-20260909/model-texture-assignment-ui-20261004/parent/verified/proof.json`.
+Placed-scene comparison of the combined pending draft is not implemented yet;
+the scene action is disabled while a binding draft is staged. The final applied
+model can be inspected through the ordinary scene workflow. No game launched;
+live residency and gameplay verification remain open.

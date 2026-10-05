@@ -1,6 +1,8 @@
 from copy import deepcopy
 from hashlib import sha256
 import unittest
+import json,shutil,subprocess,tempfile
+from pathlib import Path
 from unittest.mock import patch
 from importer.model_primitives import inspect_model_primitives
 from importer.core import ImportError as NativeImportError
@@ -18,6 +20,18 @@ class CombinedModelTextureAssignment(unittest.TestCase):
         helper=fixtures.GlbMaterialSelection();self.addCleanup(helper.doCleanups)
         p,native,_,_=helper.setup_project();return p,native
 
+    def browser_contract(self,p,faces,materials,report):
+        node=shutil.which('node')
+        if not node:self.skipTest('Node is required for the combined browser contract')
+        from sdk.model_materials import snapshot
+        report=deepcopy(report)
+        for key in ('current_preview','preview'):self.assertEqual(report[key]['semantic_id'],ASSET)
+        data=dict(source=p.model_primitive_source(ASSET),material_source=snapshot(p,ASSET),report=report,faces=faces,materials=materials,context=dict(projectPath=str(p.root),sceneId=p.active_scene,mode='edit',sourceKey=source_key(p)))
+        with tempfile.TemporaryDirectory() as root:
+            path=Path(root)/'contract.json';path.write_text(json.dumps(data),encoding='utf-8')
+            result=subprocess.run([node,str(Path(__file__).with_suffix('.mjs')),str(path)],capture_output=True,text=True,encoding='utf-8',timeout=30)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
     def drafts(self,content):
         row=inspect_model_primitives(content,include_normal_references=True)['objects'][0]['primitives'][0]
         uv=deepcopy(row['uvs']);uv[0][0]=(uv[0][0]+1)%256
@@ -30,6 +44,7 @@ class CombinedModelTextureAssignment(unittest.TestCase):
         candidate,r=combined.prepare(p,ASSET,faces,materials,sha256(native).hexdigest(),key)
         self.assertEqual((p._document(),p.undo_stack,p.redo_stack),before)
         self.assertEqual(r['effective_sha256'],sha256(native).hexdigest());self.assertEqual(r['proposed_sha256'],sha256(candidate).hexdigest())
+        self.browser_contract(p,faces,materials,r)
         self.assertTrue(any(row['field']=='uv' for row in r['changes_from_current']));self.assertTrue(any(row['field']=='tpage' for row in r['changes_from_current']))
         self.assertEqual(len(r['changes_from_current']),len(r['face_changes_from_current'])+len(r['material_changes_from_current']))
         report=combined.apply(p,ASSET,faces,materials,sha256(native).hexdigest(),key,r['review_key']);self.assertNotIn('preview',report)
@@ -56,7 +71,7 @@ class CombinedModelTextureAssignment(unittest.TestCase):
         requests=[dict(face_id='face://authored/00000000-0000-4000-8000-000000000001',donor_face_id=info['topology']['faces'][0]['face_id'],fields={'vertices':[3,2,1,0]})]
         r=addition_review(p,ASSET,requests,sha256(native).hexdigest(),key);p.apply_model_face_additions(ASSET,requests,sha256(native).hexdigest(),key,r['proposed_sha256'])
         stable=[r['face_id'] for r in addition_source(p,ASSET,source_key(p))['topology']['faces']];old=deepcopy(p.model_overrides[ASSET]);content=p.read_model_replacement(ASSET,old);faces,materials=self.drafts(content);key=source_key(p)
-        candidate,r=combined.prepare(p,ASSET,faces,materials,sha256(content).hexdigest(),key);self.assertEqual(r['comparison'],'current_addition_topology')
+        candidate,r=combined.prepare(p,ASSET,faces,materials,sha256(content).hexdigest(),key);self.assertEqual(r['comparison'],'current_addition_topology');self.browser_contract(p,faces,materials,r)
         combined.apply(p,ASSET,faces,materials,sha256(content).hexdigest(),key,r['review_key']);new=p.model_overrides[ASSET]
         self.assertEqual(new['format'],'tmd-face-addition-v1');self.assertEqual([r['face_id'] for r in addition_source(p,ASSET,source_key(p))['topology']['faces']],stable);self.assertEqual(p.read_model_replacement(ASSET,new),candidate);self.assertEqual(len(p.undo_stack),2)
         p.undo();self.assertEqual(p.model_overrides[ASSET],old);p.redo();self.assertEqual(p.read_model_replacement(ASSET,p.model_overrides[ASSET]),candidate)
