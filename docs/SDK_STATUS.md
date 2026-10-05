@@ -1,5 +1,26 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Collapsible scene hierarchy groups
+
+Hierarchy groups for Actors, NPC drafts, Environment, Transitions, Triggers, Regions,
+Collision and Scripts can now be folded with their header buttons. Fold state is a
+local display preference scoped to the current project/scene, retained across panel
+refreshes. Search temporarily expands matching groups and disables folding until
+search is cleared, then restores the saved folds. Group headers participate in the
+existing roving keyboard focus; Left/Right collapse/expand a focused header and
+Up/Down/Home/End skip folded members. Entity identities and selection actions stay
+intact. Folding does not hide meshes, edit source data or change SDK selection.
+
+Validation: focused group-state and existing hierarchy-navigation JavaScript checks
+passed. A real Town01 browser workflow verified actor/environment folds, keyboard
+skipping, search expansion and restoration, catalog-refresh retention and subsequent
+partition-two script selection/Inspector navigation. Source entities, authored data,
+history, dirty flag and SDK selection were unchanged; imports stayed exact. Screenshot
+inspected; zero page errors. Evidence: ignored
+`local-output/sdk-20260909/hierarchy-groups-20261004/verified/proof.json`.
+No game launched; runtime acceptance remains deferred.
+
+
 ## 2026-10-04: Hierarchy-selected script component Inspector
 
 Selecting a verified partition-two script in the scene Hierarchy now exposes

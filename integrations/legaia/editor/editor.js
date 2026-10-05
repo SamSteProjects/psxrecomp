@@ -53,6 +53,7 @@ import {createSceneAnimationController} from '/scene-animation.js';
 import {mountPresetBatch} from '/preset-batch.js';
 import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
+import {mountHierarchyGroups} from '/hierarchy-groups.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
 import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera} from '/scene-camera.js';
@@ -1273,13 +1274,14 @@ async function refreshScenePreview(){
   }catch(error){if(error.name!=='AbortError'&&sceneRequestKey()===key){sceneFailedKey=key;sceneError=error.message;scenePendingKey=null;if(!preserveCamera)sceneRenderer?.clear();renderInspector();notify(error.message,true);}}
   finally{if(sceneAbort===controller){sceneAbort=null;scenePendingKey=null;updateSceneBadge();sceneAnimationController?.updateState();draw();}}
 }
+const hierarchyGroupState={scope:null,collapsed:new Set()};
 const hierarchyNavigation=mountHierarchyNavigation($('hierarchy'),()=>[state.project?.path,state.scene?.id]);
 function renderHierarchy(){
   const focusSnapshot=hierarchyNavigation.beforeRender();
   const list=$('hierarchy');list.setAttribute('aria-multiselectable','true');list.replaceChildren();
   const filter=$('entity-search').value.toLowerCase();
   const actors=entities().filter(e=>`${e.name} ${e.id} ${authoredComponentLabels(e).join(" ")}`.toLowerCase().includes(filter));
-  if(actors.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Actors (${actors.length})`;list.append(heading);}
+  if(actors.length){const heading=document.createElement('div');heading.className='field-note';heading.dataset.hierarchyGroupHeading='actors';heading.textContent=`Actors (${actors.length})`;list.append(heading);}
   for(const entity of actors){
     const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',!selectedSceneResource()&&!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.classList.toggle('selected',!selectedSceneResource()&&!selectedEnvironment()&&!selectedNpcDraft()&&entity.id===state.selection?.entity_id);row.title=entity.id;
     row.innerHTML=`<span class="entity-icon">◇</span><span class="entity-name">${escapeHTML(entity.name ?? entity.id)}</span>${authored(entity)?'<span class="authored-dot" title="Authored override"></span>':''}`;
@@ -1288,14 +1290,14 @@ function renderHierarchy(){
   }
   const environment=environmentEntities().filter(e=>`${e.name} ${e.entity_id}`.toLowerCase().includes(filter));
   const npcDrafts=Object.entries(state.actor_drafts??{}).filter(([id,item])=>item.scene_id===state.scene?.id&&`${item.name} ${id}`.toLowerCase().includes(filter));
-  if(npcDrafts.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`NPC drafts (${npcDrafts.length})`;list.append(heading);}
+  if(npcDrafts.length){const heading=document.createElement('div');heading.className='field-note';heading.dataset.hierarchyGroupHeading='npc-drafts';heading.textContent=`NPC drafts (${npcDrafts.length})`;list.append(heading);}
   for(const [id,item] of npcDrafts){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.textContent=`${item.name} · ${sceneRepresentation==='retail'?'Authored only':'Draft'}`;row.title=id;row.onclick=()=>selectNpcDraft(id);row.setAttribute("aria-selected",id===npcDraftSelection);row.classList.toggle("selected",id===npcDraftSelection);list.append(row);}
-  if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
+  if(environment.length){const heading=document.createElement('div');heading.className='field-note';heading.dataset.hierarchyGroupHeading='environment';heading.textContent=`Environment (${environment.length})`;list.append(heading);}
   for(const item of environment){const row=document.createElement('button');row.className='entity-row';row.setAttribute('role','treeitem');row.setAttribute('aria-selected',String(scenePlacementSelection.length?scenePlacementSelection.includes(item.entity_id):environmentGroupSelection.length?environmentGroupSelection.includes(item.entity_id):item.entity_id===environmentSelection));row.classList.toggle('selected',item.entity_id===environmentSelection);row.classList.toggle('group-selected',scenePlacementSelection.includes(item.entity_id)||environmentGroupSelection.includes(item.entity_id));row.textContent=item.name;row.title=item.entity_id;row.onclick=event=>{if(scenePlacementMode){toggleScenePlacement(item.entity_id);return;}if(event.shiftKey){selectEnvironmentRange(item.entity_id,event.ctrlKey||event.metaKey);return;}if(event.ctrlKey||event.metaKey){toggleEnvironmentSelection(item.entity_id);return;}selectEnvironment(item.entity_id);};row.ondblclick=()=>{selectEnvironment(item.entity_id);frameEnvironment();};list.append(row);}
   if(resourceKey===resourceStateKey())for(const [kind,label] of [['transition','Transitions'],['trigger','Triggers'],['region','Regions'],['collision','Collision'],['script','Scripts']]){
     const records=assetRecords().filter(record=>record.type===kind&&record.sceneId===state.scene?.id&&`${record.label} ${record.id}`.toLowerCase().includes(filter));
     if(!records.length)continue;
-    const heading=document.createElement('div');heading.className='field-note';heading.textContent=`${label} (${records.length})`;list.append(heading);
+    const heading=document.createElement('div');heading.className='field-note';heading.dataset.hierarchyGroupHeading=kind;heading.textContent=`${label} (${records.length})`;list.append(heading);
     for(const record of records){const row=document.createElement('button');row.className='entity-row scene-resource-row';row.setAttribute('role','treeitem');row.title=record.id;row.textContent=record.label;row.dataset.resourceId=record.id;row.setAttribute('aria-selected',String(record.id===sceneResourceSelection));row.classList.toggle('selected',record.id===sceneResourceSelection);row.onclick=()=>selectSceneResource(record);row.ondblclick=()=>selectSceneResource(record,true);list.append(row);}
   }
   if(!list.children.length){const p=document.createElement('div');p.className='empty-panel';p.textContent=entities().length?'No matching entities.':'Imported actors will appear here.';list.append(p);}
@@ -1306,6 +1308,7 @@ function renderHierarchy(){
     const badge=document.createElement('small');badge.textContent='Hidden';badge.style.marginLeft='auto';
     row.append(badge);row.setAttribute('aria-label',`${row.textContent} in viewport`);
   }
+  const groupScope=JSON.stringify([state.project?.path,state.scene?.id]);mountHierarchyGroups(list,{state:hierarchyGroupState,scope:groupScope,filter,current:()=>groupScope===JSON.stringify([state.project?.path,state.scene?.id]),onVisibility:()=>hierarchyNavigation.afterRender(hierarchyNavigation.beforeRender())});
   hierarchyNavigation.afterRender(focusSnapshot);
 }
 // Search SDK records already present in project state, including their provenance.
