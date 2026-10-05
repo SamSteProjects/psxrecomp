@@ -63,7 +63,7 @@ import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
 import {modelUsageContext,effectiveModelUsers,validateModelUserSelection} from '/model-user-selection.js';
 import {renderComponentProperties,propertyCommand,renderUnregisteredComponents,renderComponentDetails,renderComponentActions,bindComponentActions} from '/component-inspector.js';
 import {mountInspectorComponentFilter} from '/inspector-component-filter.js';
-import {focusScriptInspectorFamily} from '/script-inspector-navigation.js';
+import {focusScriptInspectorFamily,mountScriptFamilyNavigation} from '/script-inspector-navigation.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openDraftRepeat} from '/draft-repeat.js';
@@ -652,6 +652,7 @@ function setBusy(value) {
   if($('shape-glb'))$('shape-glb').disabled=value||!!$('shape-file')?.files?.length||state.project?.mode!=='edit'||!state.capabilities?.model_glb_authoring;
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
+  document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
   busy=value;updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
@@ -3320,6 +3321,7 @@ async function openActorScript(entity,refresh=false,focusRun=null,focusDialogue=
     }
     renderDialogueAuthoring();renderTransitionAuthoring();renderMovementAuthoring();renderFlagAuthoring();renderWaitAuthoring();renderModelSelectorAuthoring();renderFacingAuthoring();updateScriptActions();
     if(scriptEntity.id.includes('/scripts/man-p2/')){const owner=scriptEntity.id,key=resourceStateKey(),accepted=scriptReport;mountScriptOwnerInspector($('script-report'),{owner,getState:()=>state,current:()=>scriptDialog.open&&scriptEntity?.id===owner&&scriptReport===accepted&&key===resourceStateKey(),editable:canEditDialogue,busy:()=>busy,api,onReset:()=>openActorScript(scriptEntity,true),onError:error=>notify(error.message,true)});}
+    {const owner=scriptEntity.id,key=resourceStateKey(),accepted=scriptReport;mountScriptFamilyNavigation($('script-report'),{current:()=>scriptDialog.open&&scriptEntity?.id===owner&&scriptReport===accepted&&key===resourceStateKey(),busy:()=>busy});}
     scriptDialog.scrollTop=scroll;
     if(Number.isInteger(focusInstruction)){
       $('script-report').querySelector('.script-instructions').open=true;
