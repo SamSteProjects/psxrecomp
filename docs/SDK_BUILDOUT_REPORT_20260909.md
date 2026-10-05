@@ -1,5 +1,28 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Retained animation frame sequence tools
+
+**Edit retained content** now provides **Reverse selected frames**, **Repeat
+selected frames**, and **Remove selected frames** for an inclusive output-frame
+range. Authored partial translation/rotation channels follow their output frames,
+including distinct edits on repeated donor frames. Repeats copy detached channel
+values; the frozen donor capture remains unchanged. Empty clips, invalid ranges,
+and native frame/channel budget overflow are rejected without losing a valid
+review. Successful changes withdraw Review and require fresh Review before Apply.
+
+These are local draft operations using the existing reviewed native ANM workflow.
+Preview remains read only; Apply updates the retained record and its assigned
+actor references together in one Undo entry. Gameplay timing and rendering
+acceptance remain deferred.
+
+Validation: focused sequence/editor checks and a private Town01 browser workflow
+pass Review/pose Return/Apply, rejected all-frame removal, reference updates,
+Undo/Redo and Save/Open. Normal Build decodes to the exact five-frame candidate
+bank while preserving every original retail record. Evidence: ignored
+`local-output/sdk-20260909/animation-sequence-tools-20261004/final/proof.json`.
+No game was launched and no physical Retail disc was exported.
+
+
 ## 2026-10-04: Front and Side orthographic scene views
 
 The existing Top/orthographic camera now also exposes **Front (X/Y)** and
