@@ -1,5 +1,32 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Retained clip partial-axis interpolation
+
+In **Edit retained content**, open **Frame sequence tools**, author the same
+nonempty set of axes at two output frames for one rigid object, and choose
+**Interpolate authored endpoint axes** over that inclusive range. Translation
+rounds to source integers; rotation follows the shortest per-axis path modulo
+4096 on the 16-unit grid. Half ties choose the larger integer and exact
+half-turns choose the positive direction. This does not infer runtime timing.
+
+Only the explicit endpoint axes are replaced within the range. Other authored
+axes, other objects, frames outside the range and frozen donor mapping/capture
+remain unchanged. Missing or mismatched endpoint axes, identical endpoint frames and
+native budget violations reject without discarding an accepted Review. Staging
+writes no project content; successful changes withdraw Review. The existing
+native Review/pose/Apply workflow owns persistence and reference updates.
+
+Validation: focused retained math/editor checks and the existing six-axis and
+sequence checks passed. A private Town01 browser workflow verified five-frame
+translation/rotation wrapping, retained unrelated contributions, range rejection,
+readonly Review/pose Return, one Apply with assigned reference updates, Undo/Redo
+and Save/Open. Normal Build decoded to the exact complete candidate ANM bank;
+every original retail record remained intact. Screenshot inspected, no page
+errors, game launches or physical Retail export. Evidence: ignored
+`local-output/sdk-20260909/retained-interpolation-20261004/verified/proof.json`.
+Gameplay cadence and rendering acceptance remain deferred.
+
+
 ## 2026-10-04: Retained animation frame sequence tools
 
 **Edit retained content** now provides **Reverse selected frames**, **Repeat
