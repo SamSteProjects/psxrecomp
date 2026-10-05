@@ -64,3 +64,13 @@ const neg={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:2}],ver
 for(const [axis,anchor] of [['w','min'],['x','mean'],[true,'center']])assert.throws(()=>vertexGroupAlignPreview(source,1,[0,1],axis,anchor));
 const alignRequest={...request,operation:'vertex_alignment',values:{indices:[0,1],axis:'x',anchor:'center'}},alignPreview=vertexGroupAlignPreview(source,1,[0,1],'x','center'),alignReport={...report,operation:'vertex_alignment',values:alignRequest.values,preview:alignPreview};assert.deepEqual(qualifyObjectMoveReview(alignReport,alignRequest,{...expected,preview:alignPreview}),alignReport);assert.throws(()=>qualifyObjectMoveReview({...alignReport,values:{...alignRequest.values,axis:'z'}},alignRequest,{...expected,preview:alignPreview}));
 console.log('Vertex alignment: exact selected axis/plane, immutable other rows, signed centre rounding and review identity passed');
+const {vertexGroupScalePreview}=await import('../editor/model-vertex-move.js');
+assert.deepEqual(vertexGroupScalePreview(source,1,[0,1],200,'origin').vertices,[[1,2,3],[8,10,12],[14,16,18]]);
+assert.deepEqual(vertexGroupScalePreview(source,1,[0,1],200,'center').vertices,[[1,2,3],[3,4,5],[9,10,11]]);
+assert.deepEqual(vertexGroupScalePreview(neg,0,[0,1],150,'center').vertices,[[-6,0,0],[5,0,0]]);
+assert.deepEqual(vertexGroupScalePreview(source,1,[0,1],100,'center').vertices,source.preview.vertices);assert.deepEqual(source,before);
+for(const [percent,pivot] of [[0,'origin'],[1001,'origin'],[true,'center'],[1.5,'center'],[100,'mean']])assert.throws(()=>vertexGroupScalePreview(source,1,[0,1],percent,pivot));
+assert.throws(()=>vertexGroupScalePreview({preview:{objects:[{object_index:0,vertex_start:0,vertex_count:1}],vertices:[[32767,0,0]]}},0,[0],200,'origin'));
+const scaleRequest={...request,operation:'vertex_scaling',values:{indices:[0,1],percent:150,pivot:'center'}},scalePreview=vertexGroupScalePreview(source,1,[0,1],150,'center'),scaleReport={...report,operation:'vertex_scaling',values:scaleRequest.values,preview:scalePreview};
+qualifyObjectMoveReview(scaleReport,scaleRequest,{...expected,preview:scalePreview});assert.throws(()=>qualifyObjectMoveReview({...scaleReport,values:{...scaleRequest.values,pivot:'origin'}},scaleRequest,{...expected,preview:scalePreview}));
+console.log('Vertex scaling: exact subset, origin/bounds pivot, signed half-away rounding, no-op, overflow and scene-review identity passed');

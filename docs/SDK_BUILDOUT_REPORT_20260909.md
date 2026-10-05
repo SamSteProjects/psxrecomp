@@ -1,5 +1,37 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Selected model vertex group scaling - 2026-10-05
+
+The model movement workspace now stages positive uniform scaling of 1..4096 selected
+object-local vertices at an integer percent1..1000. Pivot choices are object-local
+origin or the selected group's bounds center. The center retains exact half-unit
+coordinates; both browser and native writer round final words to nearest signed16,
+with ties away from zero. Overflow rejects the candidate atomically. Unselected rows,
+stored normals, topology and native ownership remain unchanged; normals are not rebuilt.
+
+The shared staged-transform state locks selection/offsets/picking/history while a scale
+is pending. Discard restores Current. Retail/Current/Draft and qualified placed-scene
+Current/Proposed comparison retain the draft through Return/Restore, including all
+instances. Exact operation/percent/pivot/selection/source witnesses qualify scene Review.
+Apply routes through the existing source-bound model replacement command, project
+history and normal Build serializer. A 100% or otherwise unchanged native result creates
+no history entry. Allocated selected rows retain their ownership and count. Actor
+placement and supported pose are separate. Gameplay appearance remains deferred.
+See [group scaling](legaia-model-vertex-movement.md#selected-group-scaling).
+
+Verification: 6 focused synthetic Python checks, the Node geometry workflow checks
+and 2 JavaScript syntax checks passed. The actual headless retail editor exercised
+100% no-op, Stage/Discard, draft locks, Retail/Current/Draft, exact placed-scene Review,
+Return/Restore and all-instance inspection, then one Apply, source refresh, Undo/Redo
+and Save/Open. Before Apply, document and authored files remained unchanged. Normal
+private Build passed independent directory/ZIP decompression to the complete expected
+scene section. Only nine bytes inside the selected XYZ words changed; unselected rows,
+opaque padding, normals and packets were byte-identical. Package SHA/ZIP integrity
+matched. Scene screenshot inspected. The initial browser attempt found a missing
+root scene label/qualification path; it was fixed and the failed attempt preserved.
+No game launched or installed. Evidence:
+`local-output/sdk-20260909/vertex-scaling-20261005/proof.json`.
+
 ## Assign retained assets to the selected actor - 2026-10-05
 
 An active retained animation asset now offers Assign to selected actor in Edit mode

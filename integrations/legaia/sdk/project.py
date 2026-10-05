@@ -1664,9 +1664,14 @@ class ProjectService:
             {'indices':indices,'axis':axis,'anchor':anchor},expected_sha256)
         if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
 
+    def scale_model_vertices(self, asset_id, object_index, indices, percent, pivot, expected_sha256):
+        replacement,report=self._prepare_model_object(asset_id,object_index,'vertex_scaling',
+            {'indices':indices,'percent':percent,'pivot':pivot},expected_sha256)
+        if report['changes_from_current']:self.set_model_replacement(asset_id,replacement)
+
     def _prepare_model_object(self, asset_id: str, object_index: int, operation: str,
                               values: dict, expected_sha256: str) -> tuple[bytes, dict]:
-        from importer.model_json import translate_shape_object, translate_shape_vertices, align_shape_vertices, rotate_shape_object, scale_shape_object
+        from importer.model_json import translate_shape_object, translate_shape_vertices, align_shape_vertices, scale_shape_vertices, rotate_shape_object, scale_shape_object
         from importer.model_normal_length import rescale_object_normals
         from importer.model_normal_retarget import retarget_object_normals
         from importer.model_vertex_references import retarget_object_vertices
@@ -1688,6 +1693,8 @@ class ProjectService:
             replacement = translate_shape_vertices(*args, values['indices'], values['offset'])
         elif operation == 'vertex_alignment' and set(values) == {'indices','axis','anchor'}:
             replacement = align_shape_vertices(*args,values['indices'],values['axis'],values['anchor'])
+        elif operation == 'vertex_scaling' and set(values) == {'indices','percent','pivot'}:
+            replacement = scale_shape_vertices(*args,values['indices'],values['percent'],values['pivot'])
         elif operation == 'rotation' and set(values) == {'axis', 'quarter_turns'}:
             replacement = rotate_shape_object(*args, values['axis'], values['quarter_turns'])
         elif operation == 'scale' and set(values) == {'percent'}:
@@ -1699,12 +1706,12 @@ class ProjectService:
         elif operation == 'vertex_references' and set(values) == {'from_index','to_index'}:
             replacement = retarget_object_vertices(*args, values['from_index'], values['to_index'])
         else:
-            raise ProjectError('Choose translation, rotation, scale, normal_length, normal_references or vertex_references with exact operation fields')
+            raise ProjectError('Choose translation, vertex_translation, vertex_alignment, vertex_scaling, rotation, scale, normal_length, normal_references or vertex_references with exact operation fields')
         report = self.preview_model_file(asset_id, replacement)
         report.update(effective_sha256=hashlib.sha256(effective).hexdigest(),
                       object_index=object_index, operation=operation,
                       preview=decode_tmd(replacement), current_preview=decode_tmd(effective))
-        if operation in ('vertex_translation','vertex_alignment'):
+        if operation in ('vertex_translation','vertex_alignment','vertex_scaling'):
             report['values'] = deepcopy(values)
         return replacement, report
 

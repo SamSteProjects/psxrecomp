@@ -289,3 +289,36 @@ page errors/game launches. Allocated-row content replay retains source ownership
 Evidence: `local-output/sdk-20260909/vertex-alignment-20261005/proof.json`.
 Package SHA256: `b56e76531495b9a39f9e2831f5f0727461551f185cebd14e479dcf228bd077d4`.
 Appearance and scene/save-load stability remain on the deferred queue. Goal active.
+
+## Selected group scaling
+
+Choose Selected vertex group, select or recall object-local indices, then choose Scale
+percent and Pivot. Stage group scale previews a local uniform scale from Current.
+Origin uses [0,0,0] in the source object's coordinates; Group bounds center uses the
+selection's axis-aligned min/max midpoint, preserving half-unit pivots until final
+rounding. Percent is an integer1..1000; mirrored, negative and zero scaling are excluded.
+Final native coordinates use nearest signed16 words, ties away from zero. Overflow
+rejects the entire operation. Normals/topology remain fixed; lighting is not reconstructed.
+
+Retail/Current/Draft layers compare geometry. Inspect movement draft in scene qualifies
+the exact selected scale against the native candidate, with Current/Proposed placement
+and supported pose preserved. Return to movement draft or Restore scene preview retains
+the staged scale. Apply vertex group scale creates one normal project replacement;
+Discard restores Current. Selection, offsets, picking, saved-group editing and history
+are locked while a transform draft exists. After Apply, the same workspace refreshes
+Current and normal Undo/Redo are available. Save/Open persists the authored model and
+normal Build uses the existing qualified writer/relocation path. Gameplay remains a
+separate verification gate.
+
+Verification: 6 focused synthetic Python checks, the Node geometry workflow checks
+and 2 JavaScript syntax checks passed. The actual headless retail editor exercised
+100% no-op, Stage/Discard, draft locks, Retail/Current/Draft, exact placed-scene Review,
+Return/Restore and all-instance inspection, then one Apply, source refresh, Undo/Redo
+and Save/Open. Before Apply, document and authored files remained unchanged. Normal
+private Build passed independent directory/ZIP decompression to the complete expected
+scene section. Only nine bytes inside the selected XYZ words changed; unselected rows,
+opaque padding, normals and packets were byte-identical. Package SHA/ZIP integrity
+matched. Scene screenshot inspected. The initial browser attempt found a missing
+root scene label/qualification path; it was fixed and the failed attempt preserved.
+No game launched or installed. Evidence:
+`local-output/sdk-20260909/vertex-scaling-20261005/proof.json`.

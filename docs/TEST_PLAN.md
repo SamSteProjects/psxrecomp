@@ -1,5 +1,17 @@
 # Legaia SDK validation plan
 
+## Selected vertex group scaling checks
+
+- Compare browser and native candidate at origin/bounds-center pivots, including
+  negative and half-unit rounding,100% no-op and signed16 overflow rejection.
+- Reject duplicate/out-of-range indices, booleans, invalid percent/pivot and stale hash.
+- Preserve unselected words, normals, packet topology and allocated row ownership.
+- Stage/Discard, layer comparison, selection/history locks, scene Return/Restore and
+  all-instance inspection must preserve a readonly exact draft before explicit Apply.
+- Verify one project history entry, refreshed Current, Undo/Redo, Save/Open and normal
+  Build; independently decode directory/ZIP payloads to the complete expected section.
+- Keep manual game appearance/lighting acceptance separate from source byte readback.
+
 ## Retained asset-to-selected-actor assignment checks
 
 - Select an imported actor distinct from the capture owner and open an active clip.

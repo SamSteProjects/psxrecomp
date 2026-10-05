@@ -105,6 +105,27 @@ def align_shape_vertices(original: bytes, effective: bytes, expected_sha256: str
     return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]
 
 
+def scale_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
+                         object_index: int, indices: list[int], percent: int, pivot: str) -> bytes:
+    """Uniform selected-row scale; exact half-unit pivot and signed word rounding."""
+    if type(percent) is not int or not 1 <= percent <= 1000 or pivot not in ('origin','center'):
+        raise ImportError('Vertex group scale requires integer percent1..1000 and origin or center pivot')
+    qualified=translate_shape_vertices(original,effective,expected_sha256,object_index,indices,[0,0,0])
+    document=json.loads(export_shape_json(qualified));vertices=document['objects'][object_index]['vertices']
+    twice_pivot=[0,0,0] if pivot=='origin' else [min(vertices[i][a] for i in indices)+max(vertices[i][a] for i in indices) for a in range(3)]
+    for i in indices:
+        scaled=[]
+        for a,value in enumerate(vertices[i]):
+            numerator=twice_pivot[a]*100+(2*value-twice_pivot[a])*percent
+            result=((abs(numerator)+100)//200)*(-1 if numerator<0 else 1)
+            if not -32768 <= result <= 32767:
+                raise ImportError('Vertex group scale exceeds signed16; nothing was applied')
+            scaled.append(result)
+        vertices[i]=scaled
+    replacement=import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
+    return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]
+
+
 def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
                        object_index: int, percent: int) -> bytes:
     """Positive uniform vertex scaling; nearest integer, half away from zero."""
