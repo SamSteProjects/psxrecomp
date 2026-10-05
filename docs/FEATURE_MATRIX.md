@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Marquee selection for model vertex groups - 2026-10-05
+
+In Selected vertex group scope, Shift-drag a rectangle to replace membership;
+Ctrl+Shift-drag (or Meta+Shift) adds to it. The visible dashed overlay does not orbit
+the camera. Selection uses all projected object-local rows, including hidden rows
+and rows beyond the point-marker drawing cap. Reversed rectangles and viewport
+clipping are supported. Empty/very small rectangles retain membership; exceeding
+4096 unique vertices rejects without changing it. The group status shows a count.
+
+Marquee selection is local and requires zero valid offsets, picking enabled and
+Current/Draft geometry. Retail and dirty/invalid drafts cannot select. Controls and
+handles lock during the gesture. Escape, pointer cancellation/capture loss, blur,
+wheel input, viewport resize and changed source/draft/camera cancel without committing
+membership. Source context and viewport dimensions are requalified before release.
+Closing the workspace releases pointer capture and the blur listener.
+
+Native Town01 model0000 selected the expected27 rows, passed additive membership,
+Escape/blur/resize and Retail/dirty-draft guards, then applied X16 to exactly those
+rows through the existing one-step group command. Other vertices, normals and
+native topology stayed exact; Undo/Redo and Save/Open passed. Complete document and
+authored files unchanged before Apply and in the final read-only visual check.
+Changed draft cancels the live rectangle; overlay screenshot inspected. Pure checks
+cover boundaries, reversed/clipped rectangles, hidden/deep rows, immutable inputs,
+add/replace, uniqueness, drawing-cap independence and4096 overflow. Static module
+routing was fixed after the initial native404; final native checks have zero errors.
+Evidence: `local-output/sdk-20260909/vertex-marquee-final-20261005/proof.json`.
+No Build/runtime behavior changes or game launches. Existing group movement output
+remains on the deferred gameplay queue. The full SDK goal stays active.
+
 ## Selected vertex group movement - 2026-10-05
 
 Move model geometry now supports a selected group of 1..4096 unique existing

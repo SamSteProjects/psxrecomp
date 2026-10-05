@@ -807,6 +807,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/model-face-addition.js": ("model-face-addition.js", "text/javascript"),
                  "/model-vector-allocation.js": ("model-vector-allocation.js", "text/javascript"),
                  "/model-vertex-move.js": ("model-vertex-move.js", "text/javascript"),
+                 "/model-vertex-marquee.js": ("model-vertex-marquee.js", "text/javascript"),
                  "/model-group-allocation.js": ("model-group-allocation.js", "text/javascript"),
                  "/model-object-allocation.js": ("model-object-allocation.js", "text/javascript"),
                  "/model-mesh-append.js": ("model-mesh-append.js", "text/javascript"),
