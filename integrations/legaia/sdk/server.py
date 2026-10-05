@@ -1459,6 +1459,11 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .model_vertex_groups import review
                     self._json(200,review(self.server.project,body['group_id'],body['review_key'],body['source_key']))
                     return
+                if route == '/api/model-vertices-alignment':
+                    if set(body)!={'asset_id','object_index','indices','axis','anchor','expected_sha256'} or not isinstance(body['asset_id'],str):raise ProjectError('Vertex alignment requires model, object, indices, axis, anchor and inspected hash')
+                    self.server.project.align_model_vertices(body['asset_id'],body['object_index'],body['indices'],body['axis'],body['anchor'],body['expected_sha256'])
+                    self._json(200,self.server.state())
+                    return
                 if route == '/api/model-vertices-translation':
                     if set(body) != {'asset_id','object_index','indices','offset','expected_sha256'} or not isinstance(body['asset_id'],str):
                         raise ProjectError('Vertex group translation requires model, object, indices, XYZ offset and inspected hash')

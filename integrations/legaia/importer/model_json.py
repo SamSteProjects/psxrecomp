@@ -89,6 +89,22 @@ def translate_shape_vertices(original: bytes, effective: bytes, expected_sha256:
     return replace_model_content(original,source_hash,replacement,allow_normal_references=True)[0]
 
 
+def align_shape_vertices(original: bytes, effective: bytes, expected_sha256: str,
+                         object_index: int, indices: list[int], axis: str, anchor: str) -> bytes:
+    """Flatten selected rows to min/max/bounds centre; only one source axis changes."""
+    if axis not in ('x','y','z') or anchor not in ('min','center','max'):
+        raise ImportError('Vertex alignment requires X/Y/Z and min, center or max')
+    # Reuse complete source, ownership, selection and native-layout qualification.
+    qualified=translate_shape_vertices(original,effective,expected_sha256,object_index,indices,[0,0,0])
+    document=json.loads(export_shape_json(qualified));vertices=document['objects'][object_index]['vertices'];a=('x','y','z').index(axis)
+    low=min(vertices[i][a] for i in indices);high=max(vertices[i][a] for i in indices)
+    total=low+high
+    target=low if anchor=='min' else high if anchor=='max' else ((abs(total)+1)//2)*(-1 if total<0 else 1)
+    for i in indices:vertices[i][a]=target
+    replacement=import_shape_json(effective,expected_sha256,json.dumps(document).encode())[0]
+    return replace_model_content(original,sha256(original).hexdigest(),replacement,allow_normal_references=True)[0]
+
+
 def scale_shape_object(original: bytes, effective: bytes, expected_sha256: str,
                        object_index: int, percent: int) -> bytes:
     """Positive uniform vertex scaling; nearest integer, half away from zero."""

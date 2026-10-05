@@ -1,5 +1,24 @@
 # Deferred gameplay verification
 
+## Selected vertex plane alignment - 2026-10-05
+
+Project: `local-output/sdk-20260909/vertex-alignment-20261005/project/`.
+Package: `local-output/sdk-20260909/vertex-alignment-20261005/build/legaia.sdk.0f096fa3c17d-0.1.0-8add1d9708fe258c.psxmod`.
+SHA-256: `b56e76531495b9a39f9e2831f5f0727461551f185cebd14e479dcf228bd077d4`.
+Proof: `local-output/sdk-20260909/vertex-alignment-20261005/proof.json`.
+
+Town01 model0000 object0 rows0/1/2 align on their bounds-centre Y plane. X/Z,
+unselected rows, normals and topology stay exact. Source-positive Y points down;
+the local plane is the rounded midpoint of the selected rows' min/max words.
+Independent full decoded Retail-section directory/ZIP readback passed with only
+five model byte offsets changed:1518/1526/1527/1534/1535. Normal scene inspection,
+Apply, Undo/Redo and Save/Open passed.
+
+Later establish the exact game consumer and compare the aligned rows with Retail,
+including lighting from unchanged normals, pose, transitions and save/load stability.
+This separate example retains Town01 arrival X1664/Z3264/facing3. No game launched,
+output installed or Retail disc exported. Earlier movement examples remain separate.
+
 ## Selected vertex group translation - 2026-10-05
 
 Project: `local-output/sdk-20260909/vertex-group-20261005/project/`.

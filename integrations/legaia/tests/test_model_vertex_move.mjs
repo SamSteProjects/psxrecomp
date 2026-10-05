@@ -57,3 +57,10 @@ const savedGroup={id:'vertex-group://fixture',name:'Region',scene_id:'scene://fi
 assert.deepEqual(qualifyVertexGroupRecall(recall,savedGroup,recall.project_source_key,request.asset_id,source.preview.objects),recall);
 for(const changed of [{read_only:false},{indices:[1]},{object_index:0},{project_source_key:'a'.repeat(64)},{review_key:'a'.repeat(64)},{asset_id:'asset://other'}])assert.throws(()=>qualifyVertexGroupRecall({...recall,...changed},savedGroup,recall.project_source_key,request.asset_id,source.preview.objects));
 console.log('Saved vertex groups: exact source, object, membership, saved review identity and read-only recall qualification passed');
+
+const {vertexGroupAlignPreview}=await import('../editor/model-vertex-move.js');
+assert.deepEqual(vertexGroupAlignPreview(source,1,[0,1],'x','center').vertices,[[1,2,3],[6,5,6],[6,8,9]]);assert.deepEqual(vertexGroupAlignPreview(source,1,[0,1],'z','min').vertices,[[1,2,3],[4,5,6],[7,8,6]]);assert.deepEqual(source,before);
+const neg={preview:{objects:[{object_index:0,vertex_start:0,vertex_count:2}],vertices:[[-4,0,0],[3,0,0]]}};assert.equal(vertexGroupAlignPreview(neg,0,[0,1],'x','center').vertices[0][0],-1);
+for(const [axis,anchor] of [['w','min'],['x','mean'],[true,'center']])assert.throws(()=>vertexGroupAlignPreview(source,1,[0,1],axis,anchor));
+const alignRequest={...request,operation:'vertex_alignment',values:{indices:[0,1],axis:'x',anchor:'center'}},alignPreview=vertexGroupAlignPreview(source,1,[0,1],'x','center'),alignReport={...report,operation:'vertex_alignment',values:alignRequest.values,preview:alignPreview};assert.deepEqual(qualifyObjectMoveReview(alignReport,alignRequest,{...expected,preview:alignPreview}),alignReport);assert.throws(()=>qualifyObjectMoveReview({...alignReport,values:{...alignRequest.values,axis:'z'}},alignRequest,{...expected,preview:alignPreview}));
+console.log('Vertex alignment: exact selected axis/plane, immutable other rows, signed centre rounding and review identity passed');

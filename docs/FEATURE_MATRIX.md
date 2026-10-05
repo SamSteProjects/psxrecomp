@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Selected vertex plane alignment - 2026-10-05
+
+Selected vertex group scope now offers Align group X/Y/Z at the selected rows'
+minimum, maximum or bounds-centre source coordinate. Centre is (min+max)/2 rounded
+to the nearest signed16 integer with half ties away from zero, including negative
+centres. This changes one axis of selected rows only. Other coordinates, vertices,
+objects, normals, faces/material words and allocation ownership remain unchanged.
+No actor transform or pose channel changes; native positive Y still points down.
+
+Alignment stages a local Draft. Current/Retail comparisons and one/all-instance
+placed-scene inspection retain it through Return/Restore. Nonuniform alignment hides
+translation handles and locks XYZ offsets, membership, library and history until
+Apply/Discard. Explicit Apply uses /api/model-vertices-alignment and one normal
+model override/history step. Already-flat selections make no draft/history change.
+Raw and scene previews share the exact source-qualified candidate; keys, native
+ownership, complete geometry, axis/anchor/membership and stale replies are checked.
+
+Native Town01 model0000 object0 rows[0,1,2] aligned on the centre Y plane passed
+no-op/Discard, draft locks, Current/Draft, placed scene comparison, all-instance mode,
+Return/Restore, Apply, Undo/Redo and Save/Open. Complete document/Authored files
+unchanged before Apply; candidate matches independent exact-axis reconstruction.
+Full Retail-section normal Build directory/ZIP readback passed; only model offsets
+1518/1526/1527/1534/1535 change. Seven focused alignment/group/allocated-object checks
+and JavaScript geometry/rounding/review guards passed; screenshots inspected, zero
+page errors/game launches. Allocated-row content replay retains source ownership.
+Evidence: `local-output/sdk-20260909/vertex-alignment-20261005/proof.json`.
+Package SHA256: `b56e76531495b9a39f9e2831f5f0727461551f185cebd14e479dcf228bd077d4`.
+Appearance and scene/save-load stability remain on the deferred queue. Goal active.
+
 ## Reusable saved model vertex groups - 2026-10-05
 
 Selected vertex group scope now has a project-local library: Save, Recall, Rename,
