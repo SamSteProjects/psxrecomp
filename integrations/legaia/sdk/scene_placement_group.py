@@ -25,7 +25,7 @@ def _review(project, scene, entity_ids, delta, operation=None):
     if not actor_ids or not decoration_ids:
         raise ProjectError('Mixed placement requires at least one imported actor and one static decoration')
     context = _prepare(project, scene, decoration_ids, minimum=1)
-    targets, changes = [], {}
+    targets, changes, reset_axes = [], {}, {}
     for identifier in actor_ids:
         actor = actors[identifier]
         retail = {axis: actor['imported_transform']['position'].get(axis) for axis in ('x', 'z')}
@@ -38,15 +38,18 @@ def _review(project, scene, entity_ids, delta, operation=None):
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
                 raise ProjectError(f'{identifier} has no finite {axis.upper()} placement')
             proposed[axis] = value + delta[axis]
-            try:
-                encode_placement_coordinate(proposed[axis], f'{identifier} proposed {axis.upper()}')
-            except ImportError as exc:
-                raise ProjectError(str(exc)) from exc
+            if operation is None or operation['kind']!='reset':
+                try:
+                    encode_placement_coordinate(proposed[axis], f'{identifier} proposed {axis.upper()}')
+                except ImportError as exc:
+                    raise ProjectError(str(exc)) from exc
         targets.append(dict(entity_id=identifier, kind='actor', retail=retail, current=current, proposed=proposed))
     targets.extend(dict(t,kind='decoration',proposed=deepcopy(t['current'])) for t in context['targets'])
     if operation is not None:
-        axis=operation['axis']
-        if operation['kind']=='align':
+        axis=operation.get('axis')
+        if operation['kind']=='reset':
+            for target in targets:target['proposed']=deepcopy(target['retail'])
+        elif operation['kind']=='align':
             anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
             if anchor is None:raise ProjectError('Mixed layout anchor must be selected')
             value=anchor['current'][axis]
@@ -69,6 +72,12 @@ def _review(project, scene, entity_ids, delta, operation=None):
             try:encode_placement_coordinate(target['proposed'][axis],f'{identifier} proposed {axis.upper()}')
             except ImportError as exc:raise ProjectError(str(exc)) from exc
             if target['proposed'][axis]!=target['current'][axis]:after.setdefault('Transform',{}).setdefault('position',{})[axis]=target['proposed'][axis]
+        if operation is not None and operation['kind']=='reset':
+            transform=after.get('Transform',{});position=transform.get('position',{})
+            reset_axes[identifier]=[a for a in ('x','z') if a in (before or {}).get('Transform',{}).get('position',{})]
+            for a in ('x','z'):position.pop(a,None)
+            if not position:transform.pop('position',None)
+            if not transform:after.pop('Transform',None)
         after=after or None
         if before!=after:changes[identifier]=after
     merged=_merge(project,scene,context,{t['entity_id']:t['proposed'] for t in targets if t['kind']=='decoration'})
@@ -92,7 +101,8 @@ def _review(project, scene, entity_ids, delta, operation=None):
                 targets=sorted(targets, key=lambda t: t['entity_id']), changes=changes,
                 affected_count=sum(t['current'] != t['proposed'] for t in targets),
                 project_change=bool(changes), scope='imported-actor-and-static-decoration-xz-only',
-                gameplay_verified=False, **({'operation':deepcopy(operation)} if operation is not None else {}))
+                gameplay_verified=False, **({'operation':deepcopy(operation)} if operation is not None else {}),
+                **({'reset_actor_axes':reset_axes} if operation is not None and operation['kind']=='reset' else {}))
 
 
 def review(project,scene,entity_ids,delta):
@@ -100,9 +110,9 @@ def review(project,scene,entity_ids,delta):
 
 
 def layout_review(project,scene,entity_ids,operation):
-    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute') or operation.get('axis') not in ('x','z'):
-        raise ProjectError('Mixed layout requires align/distribute on X/Z')
-    fields={'kind','axis','anchor_entity_id'} if operation['kind']=='align' else {'kind','axis'}
+    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset') or operation.get('kind')!='reset' and operation.get('axis') not in ('x','z'):
+        raise ProjectError('Mixed layout requires align/distribute on X/Z or reset to Retail')
+    fields={'kind'} if operation['kind']=='reset' else {'kind','axis','anchor_entity_id'} if operation['kind']=='align' else {'kind','axis'}
     if set(operation)!=fields:raise ProjectError('Mixed layout accepts exact operation fields only')
     return _review(project,scene,entity_ids,{'x':0,'z':0},operation)
 

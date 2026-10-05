@@ -109,3 +109,25 @@ Private evidence: `local-output/sdk-20260909/mixed-placement-layout-20261005/` i
 checked distribution, alignment to a decoration, mode withdrawal, GPU comparison, Return
 and one Apply; history/persistence and full MAP/independently decoded MAN package readback
 passed. No game launch or installation was performed.
+
+## Reset X/Z to Retail
+
+Choose **Reset X/Z to Retail** in **Operation**, then **Review group**. Every selected
+actor/static decoration receives its exact imported source X/Z. The review separately
+reports how many positions move and how many authored actor axes clear, including a
+metadata-only reset when an explicit actor override already equals Retail. Current actor
+component axes qualify the report. Inspect Proposed/Current and Return before **Apply group**.
+
+Apply clears the selected actors' X/Z overrides and prunes empty Transform/components,
+while preserving authored Y, facing and unrelated components. Static scenery resets use
+instance-local source positions; shared authored descriptors remain intact for other
+instances. Selected Y/rotation and unselected instance edits remain unchanged. A shared
+transform can require an explicit compensation on a reset instance. This is a position
+reset, not an entire Environment or actor-property reset. Off-grid integer actor positions
+can be recovered because the candidate is checked against the valid source placement.
+
+The existing source/review guards, atomic Undo/Redo step, no-op behavior, Save/Open and
+normal Build remain. Private evidence: `local-output/sdk-20260909/mixed-placement-reset-20261005/`
+contains `proof.json`, screenshots and audit. The actual retail editor and native package
+readback verified selected source positions and retained unselected actor/scenery changes.
+No game was launched or installed; gameplay verification remains deferred.

@@ -40,3 +40,10 @@ const three=[...report.targets,{entity_id:'environment://fixture/field-map/decor
 assert.throws(()=>mixedLayoutPositions(three,{kind:'align',axis:'x',anchor_entity_id:'other'}));assert.throws(()=>mixedLayoutPositions(three,{kind:'distribute',axis:'y'}));
 assert.throws(()=>mixedLayoutPositions(three.map(row=>({...row,current:{...row.current,x:1}})),{kind:'distribute',axis:'x'}));
 console.log('Mixed layout: exact anchor/grid distribution, complete proposal qualification and forged operation/count/axis guards passed.');
+
+const resetOp={kind:'reset'},reset={...report,schema_version:'legaia.scene-placement-layout-review.v1',delta:{x:0,z:0},operation:resetOp,reset_actor_axes:{[ids[1]]:['x']},targets:report.targets.map(row=>({...row,proposed:{...row.retail}}))};
+assert.deepEqual(decodeScenePlacementLayout(reset,key,scene,ids,resetOp,{[ids[1]]:['x']}),reset);
+for(const axes of [null,{}, {[ids[1]]:[]},{[ids[1]]:['z']}])assert.throws(()=>decodeScenePlacementLayout(reset,key,scene,ids,resetOp,axes));
+const metadataReset={...reset,affected_count:0,targets:reset.targets.map(row=>({...row,current:{...row.retail}}))};assert.deepEqual(decodeScenePlacementLayout(metadataReset,key,scene,ids,resetOp,{[ids[1]]:['x']}),metadataReset);
+assert.throws(()=>decodeScenePlacementLayout({...metadataReset,project_change:false},key,scene,ids,resetOp,{[ids[1]]:['x']}));
+console.log('Mixed Retail reset: exact source positions, Current authored-axis witnesses, metadata-only reset and forged/no-op guards passed.');

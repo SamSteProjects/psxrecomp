@@ -32,4 +32,25 @@ class MixedLayoutTests(unittest.TestCase):
     with self.assertRaisesRegex(ProjectError,'grid'):layout_review(p,SCENE,MIXED,dict(kind='align',axis='x',anchor_entity_id=IDS[0]))
     with self.assertRaisesRegex(ProjectError,'grid'):layout_review(p,SCENE,MIXED,dict(kind='distribute',axis='x'))
 
+class MixedResetTests(unittest.TestCase):
+ def test_reset_exact_source_clears_axes_preserves_components_and_history(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=source_map()
+   with patch.object(ProjectService,'_environment_source',return_value=source):
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=192,z=320,y=77)))
+    environment=dict(source_sha256=sha256(source).hexdigest(),edits=[dict(record_index=4,offset=dict(x=40,y=50,z=60))],instances=[dict(cell_index=129,offset=dict(x=70,y=80),rotation_psx=dict(y=777)),dict(cell_index=258,offset=dict(z=90))])
+    p.command(dict(type='set_environment_transforms',entity_id=SCENE,value=environment));before=deepcopy(p.overrides);depth=len(p.undo_stack);op={'kind':'reset'}
+    r=layout_review(p,SCENE,MIXED,op);self.assertEqual(p.overrides,before);self.assertEqual(r['reset_actor_axes'],{ACTOR:['x','z']});self.assertTrue(all(t['proposed']==t['retail'] for t in r['targets']))
+    p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.overrides[ACTOR]['Transform']['position'],{'y':77});self.assertEqual(p.overrides[SCENE]['Environment']['edits'],environment['edits']);entries={e['cell_index']:e for e in p.overrides[SCENE]['Environment']['instances']};self.assertEqual(entries[258],environment['instances'][1]);self.assertEqual(entries[129]['offset'],dict(x=10,y=80,z=30));self.assertEqual(entries[129]['rotation_psx'],dict(y=777))
+    after=deepcopy(p.overrides);p.undo();self.assertEqual(p.overrides,before);p.redo();self.assertEqual(p.overrides,after);self.assertEqual(ProjectService.open(p.save()).overrides,after);noop=layout_review(p,SCENE,MIXED,op);self.assertFalse(noop['project_change']);history=deepcopy((p.undo_stack,p.redo_stack));p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=noop['review_key']));self.assertEqual((p.undo_stack,p.redo_stack),history)
+ def test_metadata_only_reset_and_off_grid_recovery(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory)
+   with patch.object(p,'_environment_source',return_value=source_map()):
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=128,z=256)))
+    op={'kind':'reset'};r=layout_review(p,SCENE,MIXED,op);self.assertEqual(r['affected_count'],0);self.assertTrue(r['project_change']);p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertNotIn(ACTOR,p.overrides)
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=1)))
+    r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='actor')['proposed']['x'],128)
+    with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(kind='reset',axis='x'))
+
 if __name__=='__main__':unittest.main()

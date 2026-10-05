@@ -1,5 +1,37 @@
 # Legaia SDK status — 2026-10-05
 
+## Mixed group Reset X/Z to Retail - 2026-10-05
+
+The mixed placement dialog now offers Reset X/Z to Retail for the selected imported
+actors and static decorations. It proposes exact source positions, clears selected
+actor X/Z overrides (including redundant overrides already equal to Retail), and prunes
+empty actor Transform/component containers. Height, facing and other components remain.
+Scenery resets merge per-instance source positions while preserving shared transforms,
+Y/rotation and unselected edits; a shared authored transform may require an explicit
+selected-cell compensation rather than clearing the shared record for every instance.
+
+The readonly review carries the exact Current authored actor axes to be cleared, qualified
+against the editor's source-bound actor components. Native-position change counts and
+metadata-only clearing remain separate; the dialog reports both. Existing operation/source
+qualification, scene Current/Proposed comparison, Return, no-op, atomic Apply, Undo/Redo,
+Save/Open and normal Build remain intact. Reset can recover off-grid integer actor X/Z
+because it validates the Retail candidate rather than requiring the invalid Current value
+to encode. This does not reset height, facing, other actor properties, entire Environment
+state or runtime gameplay. See [reset](legaia-scene-placement-groups.md#reset-xz-to-retail).
+
+Verification: two new synthetic reset cases and eight neighboring mixed-group/layout
+cases passed, plus Node reset/arithmetic/witness guards and JS syntax. The actual private
+retail browser reviewed three exact source placements, qualified authored-axis clearing,
+compared Proposed/Current GPU matrices with height/rotation held, returned and applied
+one command. One history step, unchanged files before Apply, Undo/Redo and Save/Open
+passed. Unselected actor and scenery edits were preserved. Normal Build directory/ZIP
+full MAP readback, independently decoded MAN source actor positions and opaque-byte
+preservation, ZIP integrity and SHA passed. Evidence: ignored
+`local-output/sdk-20260909/mixed-placement-reset-20261005/proof.json`, audit and screenshots.
+The first private fixture used the public two-decoration minimum for its single unselected
+cell check; it was corrected to the existing internal minimum-one scope. No game launched
+or installed. Gameplay checks remain deferred; the full SDK goal stays active and solo.
+
 ## Mixed actor/scenery alignment and distribution - 2026-10-05
 
 The mixed scene placement dialog now supports aligning source X/Z to a selected actor

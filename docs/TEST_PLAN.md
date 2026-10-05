@@ -1,5 +1,19 @@
 # Legaia SDK validation plan
 
+## Mixed placement Retail reset checks
+
+- Restore exact Retail X/Z for every selected actor/static decoration; clear selected
+  actor X/Z overrides, prune empty containers and preserve height/facing/other components.
+- Qualify Current authored-axis witnesses; distinguish coordinate changes from redundant
+  override clearing. A second reset is a no-op and preserves history/redo/dirty state.
+- Preserve shared scenery edits, selected Y/rotation and unselected instances; use
+  per-instance compensation for source positions when shared transforms remain authored.
+- Recover invalid off-grid integer actor coordinates through a valid source candidate;
+  reject extra reset fields, stale sources and forged authored-axis reports.
+- Verify readonly review/scene Return, one Apply/history, Undo/Redo, Save/Open, exact MAN
+  source positions and full MAP Build directory/ZIP readback with unselected edits intact.
+- Keep game visibility, collision and gameplay acceptance separate and deferred.
+
 ## Mixed scene placement layout checks
 
 - Align X/Z to a selected actor/decoration anchor; require the 64-unit actor grid.
