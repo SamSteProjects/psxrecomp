@@ -37,10 +37,21 @@ class SceneViewTests(unittest.TestCase):
         new=deepcopy(DISPLAY);new['camera']['target']['x']=3000;p.command(self.cmd('update_scene_view',row,display=new));self.assertEqual(p.scene_views[row['id']]['display'],new)
         p.undo();self.assertEqual(p.scene_views[row['id']],row);p.redo();row=p.scene_views[row['id']]
         p.command(self.cmd('delete_scene_view',row));self.assertFalse(p.scene_views);p.undo();self.assertEqual(p.scene_views[row['id']],row)
+    def test_front_and_side_orthographic_views_persist_without_game_changes(self):
+        p=self.p;game=(deepcopy(p.overrides),authored_state_key(p),source_key(p))
+        for name,yaw in [('Front',0),('Side',math.pi/2)]:
+            d=deepcopy(DISPLAY);d['camera'].update(pitch=0,yaw=yaw)
+            row=self.create(name,d)
+            perspective=deepcopy(d);perspective['camera']['projection']='perspective'
+            with self.assertRaises(ProjectError):p.command(self.cmd('update_scene_view',row,display=perspective))
+            self.assertEqual(p.scene_views[row['id']]['display'],d)
+        self.assertEqual((p.overrides,authored_state_key(p),source_key(p)),game)
+        opened=ProjectService.open(p.save());self.assertEqual(opened.scene_views,p.scene_views)
+        self.assertTrue(all(v['display']['camera']['pitch']==0 for v in opened.scene_views.values()))
     def test_invalid_camera_layers_source_names_and_live_reject(self):
         p=self.p
         bad=[]
-        for key,value in [('pitch',0),('pitch',float('nan')),('distance',19),('distance',float('inf')),('yaw',True),('projection','unknown'),('target',dict(x=0,y=None,z=1))]:
+        for key,value in [('pitch',-.001),('pitch',float('nan')),('distance',19),('distance',float('inf')),('yaw',True),('projection','unknown'),('target',dict(x=0,y=None,z=1))]:
             d=deepcopy(DISPLAY);d['camera'][key]=value;bad.append(d)
         d=deepcopy(DISPLAY);d['layers']['actors']=1;bad.append(d)
         d=deepcopy(DISPLAY);d['runtime']={};bad.append(d)

@@ -55,6 +55,7 @@ import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
 import {mountSceneViews,decodeSavedSceneView} from '/scene-views.js';
+import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera} from '/scene-camera.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
 import {ANIMATION_PRESET_SCOPE,presetScopeLabel} from '/preset-animation.js';
@@ -303,12 +304,14 @@ frameSamplesButton.onclick=()=>{
   camera.distance=Math.max(800,Math.hypot(max.x-min.x,max.y-min.y,max.z-min.z)*1.5);cameraRevision++;draw();
 };
 
-let sceneHidden=new Set(),sceneHiddenScope=null;
+let sceneHidden=new Set(),sceneHiddenScope=null,sceneIsolated=null;
 function hiddenSceneEntities(){
   const scope=JSON.stringify([state.project?.path,state.scene?.id]);
-  if(scope!==sceneHiddenScope){sceneHidden.clear();sceneHiddenScope=scope;}
+  if(scope!==sceneHiddenScope){sceneHidden.clear();sceneIsolated=null;sceneHiddenScope=scope;}
+  const preview=activeScenePreview();if(sceneIsolated&&(state.project?.mode!=='edit'||scenePose||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||!scenePreviewCurrent()||sceneIsolated.key!==sceneRequestKey()||!preview?.entities.some(e=>e.entity_id===sceneIsolated.id&&e.renderable)))sceneIsolated=null;
+  const isolatedHidden=sceneIsolated?(preview?.entities??[]).filter(e=>e.entity_id!==sceneIsolated.id).map(e=>e.entity_id):[];
   const inspectionHidden=scenePose?.inspectionIsolated?new Set((activeScenePreview()?.entities??[]).filter(e=>!scenePose.inspectionEntityIds?.includes(e.entity_id)).map(e=>e.entity_id)):new Set();
-  return new Set([...inspectionHidden,...sceneHidden,...(activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id)]);
+  return new Set([...isolatedHidden,...inspectionHidden,...sceneHidden,...(activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id)]);
 }
 function visibilitySelection(){return environmentSelection??npcDraftSelection??state.selection?.entity_id;}
 for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hide-model','Hide model instances',true],['show-hidden','Show hidden',null]]){
@@ -327,6 +330,9 @@ for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hid
   };
   $('frame-all').before(button);
 }
+const sceneIsolateButton=document.createElement('button');sceneIsolateButton.id='scene-isolate-selected';sceneIsolateButton.textContent='Isolate selected';sceneIsolateButton.setAttribute('aria-pressed','false');sceneIsolateButton.title='Temporarily show one selected instance; Restore preserves manual visibility and scene layers';$('frame-all').before(sceneIsolateButton);
+function updateSceneIsolation(){const hidden=hiddenSceneEntities(),visibilityId=visibilitySelection(),visibilityItem=activeScenePreview()?.entities.find(e=>e.entity_id===visibilityId);sceneIsolateButton.disabled=busy||state.project?.mode!=='edit'||!scenePreviewCurrent()||!!scenePose||!!actorGroupInspection||!!environmentGroupInspection||!!scenePlacementInspection||!sceneIsolated&&(!visibilityItem?.renderable||hidden.has(visibilityId));sceneIsolateButton.textContent=sceneIsolated?'Restore scene':'Isolate selected';sceneIsolateButton.classList.toggle('active',!!sceneIsolated);sceneIsolateButton.setAttribute('aria-pressed',String(!!sceneIsolated));}
+sceneIsolateButton.onclick=()=>{if(busy)return;const hidden=hiddenSceneEntities();if(sceneIsolated)sceneIsolated=null;else{const id=visibilitySelection();if(state.project?.mode!=='edit'||!scenePreviewCurrent()||scenePose||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||hidden.has(id)||!activeScenePreview()?.entities.some(e=>e.entity_id===id&&e.renderable))return;sceneIsolated={id,key:sceneRequestKey()};}cancelViewportGesture();renderHierarchy();draw();};
 for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',ground:'Ground'})){
   const button=document.createElement('button');button.id='scene-layer-'+layer;button.textContent=label;button.className='active';button.setAttribute('aria-pressed','true');button.title=`Show ${label.toLowerCase()} in the scene view`;
   button.onclick=()=>{sceneLayers[layer]=!sceneLayers[layer];button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));cancelViewportGesture();renderHierarchy();draw();};
@@ -350,9 +356,11 @@ async function exportSceneGlb(entityId=null){
   }catch(error){notify(error.message,true);}finally{sceneExportButton.disabled=false;selectedExportButton.disabled=false;setBusy(false);}
 };
 const projectionSelect=document.createElement('select');projectionSelect.id='scene-projection';projectionSelect.setAttribute('aria-label','Scene projection');projectionSelect.innerHTML='<option value="perspective">Perspective</option><option value="orthographic">Orthographic</option>';$('frame-all').before(projectionSelect);
-projectionSelect.onchange=()=>{cancelViewportGesture();pendingEntityFrame=null;camera.projection=projectionSelect.value;document.querySelector('.viewport-type').textContent=projectionSelect.selectedOptions[0].textContent;cameraRevision++;draw();};
+projectionSelect.onchange=()=>{cancelViewportGesture();pendingEntityFrame=null;camera.projection=projectionSelect.value;if(camera.projection==='perspective')camera.pitch=Math.max(.12,camera.pitch);document.querySelector('.viewport-type').textContent=projectionSelect.selectedOptions[0].textContent;cameraRevision++;draw();};
 const topViewButton=document.createElement('button');topViewButton.id='scene-top-view';topViewButton.textContent='Top (X/Z)';topViewButton.title='Orthographic top view: +X right, +Z down; camera only';$('frame-all').before(topViewButton);
-topViewButton.onclick=()=>{cancelViewportGesture();pendingEntityFrame=null;camera.projection='orthographic';projectionSelect.value='orthographic';document.querySelector('.viewport-type').textContent='Orthographic';camera.yaw=0;camera.pitch=Math.PI/2;cameraRevision++;draw();};
+function applySceneAxis(axis){cancelViewportGesture();pendingEntityFrame=null;Object.assign(camera,sceneAxisCamera(camera,axis));projectionSelect.value='orthographic';document.querySelector('.viewport-type').textContent=axis[0].toUpperCase()+axis.slice(1)+' / Orthographic';cameraRevision++;draw();}
+topViewButton.onclick=()=>applySceneAxis('top');
+for(const [axis,label,title] of [['front','Front (X/Y)','Orthographic front: +X right, +Y up; camera only'],['side','Side (Z/Y)','Orthographic right side: +Z left, +Y up; camera only']]){const button=document.createElement('button');button.id='scene-'+axis+'-view';button.textContent=label;button.title=title;topViewButton.before(button);button.onclick=()=>applySceneAxis(axis);}
 const modelToggle=document.createElement('button');modelToggle.id='scene-model-toggle';modelToggle.textContent='Models';modelToggle.className='active';modelToggle.setAttribute('aria-pressed','true');modelToggle.hidden=true;$('frame-all').before(modelToggle);
 modelToggle.onclick=()=>{if(sceneError){sceneFailedKey=null;sceneKey=null;scenePreview=null;sceneError=null;modelsEnabled=true;}else modelsEnabled=!modelsEnabled;modelToggle.classList.toggle('active',modelsEnabled);modelToggle.setAttribute('aria-pressed',modelsEnabled);refreshScenePreview();draw();};
 const representationSelect=document.createElement('select');representationSelect.id='scene-representation';representationSelect.setAttribute('aria-label','Scene representation');representationSelect.innerHTML='<option value="authored">Authored scene</option><option value="retail">Retail scene · comparison</option>';$('frame-all').before(representationSelect);
@@ -639,7 +647,7 @@ function setBusy(value) {
   if($('shape-glb'))$('shape-glb').disabled=value||!!$('shape-file')?.files?.length||state.project?.mode!=='edit'||!state.capabilities?.model_glb_authoring;
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
-  busy=value;updateSceneFacePick();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
+  busy=value;updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
   document.querySelectorAll('[data-revert-component]').forEach(button=>button.disabled=value||!canEdit());
   document.querySelectorAll('.asset-card,.asset-info').forEach(button=>button.disabled=value);
@@ -1225,6 +1233,7 @@ function updateSceneBadge(){
   const ready=sceneModelsReady(),count=ready?sceneRenderer.instances.length:0;
   const hidden=hiddenSceneEntities(),visible=ready?sceneRenderer.instances.filter(instance=>!hidden.has(instance.entity_id)).length:0;
   const visibilityId=visibilitySelection(),visibilityItem=activeScenePreview()?.entities.find(e=>e.entity_id===visibilityId);
+  updateSceneIsolation();
   $('hide-selected').disabled=!visibilityId;
   $('hide-selected').textContent=sceneHidden.has(visibilityId)?'Show selected':'Hide selected';
   $('hide-model').disabled=!visibilityItem?.asset_id;
@@ -3641,7 +3650,7 @@ function frame(entity){
   camera.distance=entity?(hasMesh?Math.max(20,span*2.2):Math.max(100,camera.distance*.35)):Math.max(200,span*1.3);cameraRevision++;
   draw();
 }
-function basis(){const s=Math.sin(camera.yaw),c=Math.cos(camera.yaw),sp=Math.sin(camera.pitch),cp=Math.cos(camera.pitch);return {right:{x:c,y:0,z:-s},up:{x:-s*sp,y:cp,z:-c*sp},forward:{x:-s*cp,y:-sp,z:-c*cp}};}
+function basis(){return sceneCameraBasis(camera);}
 function project(p){const b=basis(),d={x:p.x-camera.target.x,y:p.y-camera.target.y,z:p.z-camera.target.z},dot=v=>d.x*v.x+d.y*v.y+d.z*v.z,depth=camera.distance+dot(b.forward);if(depth<=camera.distance*.01)return null;const scale=Math.min(width,height)*.9/(camera.projection==='orthographic'?camera.distance:depth);return {x:width/2+dot(b.right)*scale,y:height/2-dot(b.up)*scale,depth,scale};}
 function groundAt(x,y,planeY){
   const b=basis(),f=Math.min(width,height)*.9;
@@ -3841,7 +3850,8 @@ canvas.addEventListener('pointermove',event=>{
     else if(drag.type==='wall-rectangle'){if(!wallGestureCurrent(drag)){cancelViewportGesture();return;}try{wallSelection=wallRectangleAt(drag,p);$('transform-drag-status').textContent=`Source wall rows ${wallSelection.row_start}–${wallSelection.row_end}, columns ${wallSelection.column_start}–${wallSelection.column_end} · Y=0 reference plane · Release to review`;}catch(error){wallSelection=null;$('transform-drag-status').textContent=error.message;}}
     else if(drag.type==='scene-placement-box'){if(!scenePlacementBoxCurrent(drag)){cancelViewportGesture();return;}drag.last=p;$('transform-drag-status').textContent='Visible placement pixels · Release to select; Ctrl/Command adds';}
     else if(drag.type==='actor-box'){drag.last=p;}
-    else if(drag.type==='orbit'||drag.type==='scene-face'){camera.yaw-=dx*.006;camera.pitch=Math.max(.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
+    else if(drag.type==='orbit'||drag.type==='scene-face'){camera.yaw-=dx*.006;camera.pitch=Math.max(camera.projection==='orthographic'?0:.12,Math.min(Math.PI/2,camera.pitch+dy*.005));cameraRevision++;}
+    else if(camera.projection==='orthographic'){const a=sceneCameraPlanePoint(camera,{width,height},0,0),b=sceneCameraPlanePoint(camera,{width,height},dx,dy);for(const axis of ['x','y','z'])camera.target[axis]+=a[axis]-b[axis];cameraRevision++;}
     else {const b=basis(),scale=camera.distance/Math.max(1,Math.min(width,height)*.9);camera.target.x-=dx*scale*b.right.x;camera.target.z-=dx*scale*b.right.z;camera.target.x-=dy*scale*Math.sin(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));camera.target.z-=dy*scale*Math.cos(camera.yaw)/Math.max(.15,Math.sin(camera.pitch));cameraRevision++;}
     if(draft&&['transform','group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type))$('transform-drag-status').textContent=['group-transform','environment-group-transform','scene-placement-group-transform'].includes(drag.type)?`${drag.type==='scene-placement-group-transform'?'Placement':drag.type==='environment-group-transform'?'Scenery':'Actor'} group ${drag.handle.axis.toUpperCase()} offset ${format(draft.groupAmount)} · ${drag.snapStep>1?`Snap ${drag.snapStep}`:'Integer move'} · Release to review; preview height held while dragging`:`${drag.handle.axis.toUpperCase()} ${format(draft.position[drag.handle.axis])} · ${drag.snapStep>1?`Snap ${drag.snapStep} units`:'Free move'} · Release to apply`;
     draw();
@@ -3910,10 +3920,10 @@ canvas.addEventListener('pointerup',async event=>{
 canvas.addEventListener('pointercancel',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
 canvas.addEventListener('lostpointercapture',event=>{if(event.pointerId===drag?.pointerId)cancelViewportGesture();});
 function zoomSceneAt(x,y,delta){
-  const before=groundAt(x,y,camera.target.y);
+  const before=camera.projection==='orthographic'?sceneCameraPlanePoint(camera,{width,height},x,y):groundAt(x,y,camera.target.y);
   camera.distance=Math.max(20,Math.min(1e8,camera.distance*Math.exp(delta*.001)));
-  const after=groundAt(x,y,camera.target.y);
-  if(before&&after){camera.target.x+=before.x-after.x;camera.target.z+=before.z-after.z;}
+  const after=camera.projection==='orthographic'?sceneCameraPlanePoint(camera,{width,height},x,y):groundAt(x,y,camera.target.y);
+  if(before&&after)for(const axis of ['x','y','z'])camera.target[axis]+=before[axis]-after[axis];
   cameraRevision++;
 }
 canvas.addEventListener('wheel',event=>{pendingEntityFrame=null;event.preventDefault();cancelViewportGesture();const p=pointer(event);zoomSceneAt(p.x,p.y,event.deltaY);draw();},{passive:false});

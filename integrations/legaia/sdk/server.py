@@ -768,6 +768,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/group-appearance.js": ("group-appearance.js", "text/javascript"),
                  "/actor-selection-sets.js": ("actor-selection-sets.js", "text/javascript"),
                  "/scene-views.js": ("scene-views.js", "text/javascript"),
+                 "/scene-camera.js": ("scene-camera.js", "text/javascript"),
                  "/asset-search.js": ("asset-search.js", "text/javascript"),
                  "/hierarchy-navigation.js": ("hierarchy-navigation.js", "text/javascript"),
                  "/scene-tool-drawer.js": ("scene-tool-drawer.js", "text/javascript"),

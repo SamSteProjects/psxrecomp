@@ -1,5 +1,29 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Front and Side orthographic scene views
+
+The existing Top/orthographic camera now also exposes **Front (X/Y)** and
+**Side (Z/Y)**. Exact level views preserve target/scale. Right-drag pans on the
+camera plane, including display Y, and scroll anchors the cursor's plane point.
+A shared display-camera helper keeps axis orientation and overlay basis consistent.
+Isolate selected temporarily shows one selected instance for unobstructed inspection;
+Restore scene retains manual visibility/layers. Source changes/proposals withdraw it.
+Saved views accept zero orthographic pitch and retain it through recall/history
+and Save/Open; perspective keeps its existing minimum pitch. These camera actions
+author no game transforms and do not infer unknown actor heights.
+
+Six focused project tests and Node camera/source checks passed. Private Town01
+browser verification covered all three GPU axis picks, Front/Side gestures,
+cursor anchoring, saved recall, Undo/Redo and Save/reopen with unchanged imported
+and authored game data/source keys and no page errors. Screenshots inspected.
+Evidence: `local-output/sdk-20260909/scene-axis-views-20261004/integer-cursor/proof.json`.
+Selected-instance isolation/restore, immediate post-selection availability and
+representation reset passed with unchanged model/history/dirty/source state;
+`isolation-proof.json` records the additional browser check.
+No game launched; gameplay and runtime coordinate acceptance remain deferred.
+See [saved scene views](legaia-saved-scene-views.md).
+
+
 ## 2026-10-04: Pick a native face from the authored scene
 
 The main viewport now has **Pick model face**. One surface click resolves the

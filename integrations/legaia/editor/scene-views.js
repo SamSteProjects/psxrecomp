@@ -3,7 +3,7 @@ export function decodeSavedSceneView(value,state){
   const display=value?.display,c=display?.camera,t=c?.target,l=display?.layers;
   const number=(v,lo,hi)=>typeof v==='number'&&Number.isFinite(v)&&v>=lo&&v<=hi;
   const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join('|')===keys.sort().join('|');
-  if(value?.scene_id!==state.scene?.id||value.import_sha256!==state.scene_view_source_key||!exact(display,['camera','representation','layers'])||!exact(c,['projection','yaw','pitch','distance','target'])||!['perspective','orthographic'].includes(c.projection)||!number(c.yaw,-1e12,1e12)||!number(c.pitch,.12,Math.PI/2)||!number(c.distance,20,1e8)||!exact(t,['x','y','z'])||Object.values(t).some(v=>!number(v,-1e12,1e12))||!['authored','retail'].includes(display.representation)||!exact(l,['actors','scenery','ground'])||Object.values(l).some(v=>typeof v!=='boolean'))throw new Error('Saved view differs from the current imported scene or supported camera');
+  if(value?.scene_id!==state.scene?.id||value.import_sha256!==state.scene_view_source_key||!exact(display,['camera','representation','layers'])||!exact(c,['projection','yaw','pitch','distance','target'])||!['perspective','orthographic'].includes(c.projection)||!number(c.yaw,-1e12,1e12)||!number(c.pitch,c.projection==='orthographic'?0:.12,Math.PI/2)||!number(c.distance,20,1e8)||!exact(t,['x','y','z'])||Object.values(t).some(v=>!number(v,-1e12,1e12))||!['authored','retail'].includes(display.representation)||!exact(l,['actors','scenery','ground'])||Object.values(l).some(v=>typeof v!=='boolean'))throw new Error('Saved view differs from the current imported scene or supported camera');
   return structuredClone(display);
 }
 

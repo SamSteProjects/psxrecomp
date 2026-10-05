@@ -17,7 +17,7 @@ def display(value):
     target = camera['target']
     if (camera['projection'] not in ('perspective', 'orthographic') or
             not number(camera['yaw'], -1e12, 1e12) or
-            not number(camera['pitch'], .12, math.pi / 2) or
+            not number(camera['pitch'], 0 if camera['projection'] == 'orthographic' else .12, math.pi / 2) or
             not number(camera['distance'], 20, 1e8) or
             not isinstance(target, dict) or set(target) != {'x', 'y', 'z'} or
             any(not number(item, -1e12, 1e12) for item in target.values())):
