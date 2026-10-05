@@ -1,3 +1,4 @@
+import {qualifyTransitionGraphEntry} from '../editor/transition-graph-entry.js';
 import assert from 'node:assert/strict';
 import {decodeTransitionResource,transitionResourceNavigationAllowed,openTransitionResource} from '../editor/transition-resource.js';
 const hash='a'.repeat(64),fields=['entry_x_encoded','entry_z_encoded','direction_encoded'];
@@ -58,3 +59,11 @@ const review={schema_version:'legaia.transition-arrival-review.v1',read_only:tru
 assert.equal(decodeTransitionArrivalReview(review,request).proposed_arrival.x,256);assert.equal(transitionArrivalMarkers(preview,0,review).length,3);
 for(const mutate of [r=>r.source_byte_audit.pop(),r=>r.source_byte_audit[0].decoded_byte_offset++,r=>r.source_byte_audit[0].before_byte++,r=>r.proposed_arrival.x++,r=>r.proposed_encoded.direction_encoded=2,r=>r.authored_change=false,r=>r.current_change_count=2,r=>r.preview.project_state_key=hash,r=>r.arrival={x:320,z:512,facing_sector:2},r=>r.extra='unknown']){const invalid=structuredClone(review);mutate(invalid);assert.throws(()=>decodeTransitionArrivalReview(invalid,request));}
 console.log('Arrival authoring Review: proposed coordinates, exact source byte audit, preserved facing bits and stale/forged evidence rejection passed.');
+
+const graphResource=resource(),graphFields=['id','source','target','script_id','script_name','owner_id','partition','script_status','source_record','reference','reachability','entry_layers'];
+const graphEntry=Object.fromEntries(graphFields.map(key=>[key,structuredClone(graphResource[key])])),graphRecord={id:graphResource.semantic_id,type:'transition',sceneId:graphResource.source,data:graphResource};
+assert.equal(qualifyTransitionGraphEntry(graphEntry,graphRecord).semantic_id,graphEntry.id);
+const reordered=structuredClone(graphRecord);reordered.data.source_record=Object.fromEntries(Object.entries(reordered.data.source_record).reverse());qualifyTransitionGraphEntry(graphEntry,reordered);
+for(const mutate of [value=>value.id='different',value=>value.sceneId='scene://other',value=>value.type='script',value=>value.data.entry_layers.authored={},value=>value.data.source_record.sha256='b'.repeat(64),value=>value.data.reference.pc=6,value=>value.data.target='scene://other']){const changed=structuredClone(graphRecord);mutate(changed);assert.throws(()=>qualifyTransitionGraphEntry(graphEntry,changed));}
+const changedGraph=structuredClone(graphEntry);changedGraph.entry_layers.effective.direction_encoded=0xfe;assert.throws(()=>qualifyTransitionGraphEntry(changedGraph,graphRecord));
+console.log('Graph entry navigation: exact stable ID, fresh source and Current layers, detached evidence and changed-source rejection passed');

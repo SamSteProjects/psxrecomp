@@ -1,5 +1,22 @@
 # Legaia SDK status — 2026-10-04
 
+## Transition graph to exact source entry - 2026-10-04
+
+Scene and Project transitions now open the exact transition Inspector from each
+instruction row. Cross-scene navigation refreshes source resources and qualifies
+stable identity, owner/PC, full provenance, reference and Current entry layers
+against the retained graph. Project/source/Current changes reject. The Inspector
+then leads into the existing destination arrival comparison and authoring workflow.
+This source navigation creates no authored change; graph reachability stays unknown.
+
+Native Town01/map01 project and scene graph round trips passed with the complete
+project document/history unchanged, zero authoring requests and zero browser errors.
+Screenshots inspected; eight focused Python graph checks and Node source/Current
+qualification guards passed. No game launched; no immediate gameplay check is needed
+for this navigation feature. Details: `docs/legaia-transition-graph-entry-navigation.md`.
+The full SDK goal remains active and solo.
+
+
 ## Arrival draft X/Z handles - 2026-10-04
 
 The destination viewport now has opt-in Move arrival draft handles. Raw guest X/Z

@@ -1,3 +1,4 @@
+import {qualifyTransitionGraphEntry} from '/transition-graph-entry.js';
 import {mountPlacementGizmo} from '/worldmap-placement-gizmo.js';
 import {highlightSceneFaceDocument,highlightSceneFaceProposal} from '/model-face-scene-selection.js';
 import {openTextureSlotEditor} from '/texture-slots.js';
@@ -1393,6 +1394,7 @@ async function openSceneTransitions(projectWide=false){
     transitionWorkspace=mountTransitionGraphWorkspace($('transitions-graph'),graph,{activeSceneId:state.scene?.id,isCurrent:current,
       onError:error=>{if(current())transitionsDialog.querySelector('.dialog-error').textContent=error.message;},
       onInspect:async edge=>{if(busy||!current())return;transitionsDialog.close();if(edge.source!==state.scene?.id&&!await api('/api/scene',{scene_id:edge.source}))return;const owner=edge.partition===2?{id:edge.owner_id,name:edge.script_name,partitionTwo:true}:entities().find(entity=>entity.id===edge.owner_id);if(!owner){notify('The source script owner is unavailable.',true);return;}await openActorScript(owner,false,null,null,edge.reference.pc);},
+      onInspectEntry:state.project?.mode==='edit'&&state.capabilities?.resource_catalog?async edge=>{if(busy||!current())return;const root=state.project?.path,projectKey=state.project_transition_state_key;transitionsDialog.close();await openGraphTransitionEntry(edge,root,projectKey);}:null,
       onOpenScene:async node=>{if(busy||!node.imported||!current())return;transitionsDialog.close();await api('/api/scene',{scene_id:node.id});}
     });
   }catch(error){if(error.name!=='AbortError'&&!controller.signal.aborted&&transitionsAbort===controller&&transitionsDialog.open){transitionWorkspace?.dispose();transitionWorkspace=null;$('transitions-graph').replaceChildren();$('transitions-summary').textContent='Transition graph unavailable.';transitionsDialog.querySelector('.dialog-error').textContent=error.message;}}
@@ -1752,6 +1754,13 @@ async function activateAsset(record,action=null){
   else if(record.type==='flag')inspectFlagResource(record);
   else if(record.type==='transition')inspectTransitionResource(record);
   else showAssetDetails(record);
+}
+async function openGraphTransitionEntry(edge,root,projectKey){
+  const current=()=>root===state.project?.path&&projectKey===state.project_transition_state_key&&state.project?.mode==='edit';
+  try{if(busy||!current())return;if(edge.source!==state.scene?.id&&!await api('/api/scene',{scene_id:edge.source}))return;if(!current()||state.scene?.id!==edge.source)throw new Error('Project or transition graph changed during source navigation.');
+    await refreshResources();if(busy||!current()||state.scene?.id!==edge.source||resourceKey!==resourceStateKey())throw new Error('Fresh source resources are unavailable. Refresh the transition graph.');
+    const record=assetRecords().find(row=>row.id===edge.id);qualifyTransitionGraphEntry(edge,record);inspectTransitionResource(record);
+  }catch(error){notify(error.message,true);}
 }
 function inspectFlagResource(record){
   if(busy||resourceKey!==resourceStateKey())return;

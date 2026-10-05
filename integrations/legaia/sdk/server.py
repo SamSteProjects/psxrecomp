@@ -815,6 +815,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/asset-inspector.js": ("asset-inspector.js", "text/javascript"),
                  '/flag-resource.js': ('flag-resource.js', 'text/javascript'),
                  '/transition-resource.js': ('transition-resource.js', 'text/javascript'),
+                 '/transition-graph-entry.js': ('transition-graph-entry.js', 'text/javascript'),
                  '/transition-arrival-preview.js': ('transition-arrival-preview.js', 'text/javascript'),
                  '/field-spatial.js': ('field-spatial.js', 'text/javascript'),
                  '/region-bounds.js': ('region-bounds.js', 'text/javascript'),

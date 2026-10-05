@@ -25,7 +25,7 @@ function layout(nodes,links,focusId){
   return {positions,width:Math.max(880,(packed.length-1)*280+320),height};
 }
 
-export function mountTransitionGraphWorkspace(host,graph,{activeSceneId=null,isCurrent=()=>true,onInspect=()=>{},onOpenScene=()=>{},onError=()=>{}}={}){
+export function mountTransitionGraphWorkspace(host,graph,{activeSceneId=null,isCurrent=()=>true,onInspect=()=>{},onInspectEntry=null,onOpenScene=()=>{},onError=()=>{}}={}){
   let disposed=false,query='',importedOnly=false,focusId=null,selectedNode=null,selectedLink=null,page=0,view,geometry,box,gesture=null;
   const events=new AbortController(),markerId=`transition-graph-arrow-${++sequence}`;
   const nodeMap=new Map(graph.nodes.map(node=>[node.id,node]));
@@ -105,7 +105,9 @@ export function mountTransitionGraphWorkspace(host,graph,{activeSceneId=null,isC
       for(const [label,key] of [['Retail','imported'],['Authored','authored'],['Effective','effective']]){const values=edge.entry_layers[key],tr=element('tr');tr.append(element('th',label));for(const field of ['entry_x_encoded','entry_z_encoded','direction_encoded'])tr.append(element('td',values[field]??'Inherited'));body.append(tr);}table.append(body);row.append(table);
       const actions=element('div',undefined,'dialog-actions'),inspect=element('button','Inspect source script'),open=element('button','Open imported destination');
       inspect.dataset.inspectGraphEdge=edge.id;open.dataset.openGraphDestination=edge.id;open.disabled=!to.imported;
-      wire(inspect,'click',()=>invoke(()=>onInspect(edge)));wire(open,'click',()=>invoke(()=>onOpenScene(to)));actions.append(inspect,open);row.append(actions);
+      const entry=element('button','Inspect transition entry');entry.dataset.inspectGraphEntry=edge.id;entry.disabled=typeof onInspectEntry!=='function';
+      wire(entry,'click',()=>invoke(()=>onInspectEntry?.(edge)));
+      wire(inspect,'click',()=>invoke(()=>onInspect(edge)));wire(open,'click',()=>invoke(()=>onOpenScene(to)));actions.append(inspect,entry,open);row.append(actions);
       const provenance=element('details');provenance.append(element('summary','Reference provenance'),element('pre',JSON.stringify(edge,null,2),'diagnostic-detail'));row.append(provenance);references.append(row);
     }
     if(!rows.length)references.append(element('p','No supported instructions match this view. This does not establish that a scene has no exits.','field-note'));
