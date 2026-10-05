@@ -1,5 +1,30 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Save the complete pre-Build review — 2026-10-05
+
+**Review Build → Save full Build review…** downloads the complete accepted v1/v2
+review as JSON, including source identity, scope, blockers, native/other change
+records, relocation and serialization provenance, limitations and unverified runtime
+status. It preserves rows beyond the 256-row display limit and all coordinate pages.
+Blocked reviews, including an absent serialization assessment, can be saved without
+claiming readiness. This is review metadata, not a package or an imported authoring file.
+
+The download revalidates the accepted response and current authored-input identity,
+uses a bounded source-key filename and a 32 MiB UTF-8 budget. Pending, busy, stale and
+closed contexts cannot export. Download and Build/Close actions wrap at narrow widths.
+No new SDK command, authored state, history entry or package output is introduced.
+
+Validation: expanded ordinary Build-review Node suite, NPC review suite and module
+syntax pass, covering 301 top-level rows, native/other ledgers, blocked/null assessment,
+v2 coverage, stale/no-output claims and multibyte overflow. Actual private Town01
+browser downloads at desktop and 540px equal the full accepted retail response,
+including all 130 native records. Pending disable, mounted UI stale-source rejection,
+close disposal, narrow action bounds and unchanged document/history/all fixture files
+pass with no page errors. The 540px screenshot is inspected.
+Evidence: `local-output/sdk-20260909/build-review-download-20261005/proof.json`.
+No game, installation, package or full-disc export ran; gameplay acceptance remains
+deferred and the full SDK goal stays active.
+
 ## Review native model coordinate changes before Build — 2026-10-05
 
 **Review Build → Native coordinate audit** exposes qualified vertex/normal records:

@@ -1,5 +1,20 @@
 # Legaia SDK validation plan
 
+## Complete Build-review download checkpoint — 2026-10-05
+
+Ordinary/NPC Build-review Node suites and module syntax pass. Cover all 301 changes
+beyond the display cap, all native/other records, blocked and null assessments, v2
+candidate coverage, stale/source/no-output claims and a 32 MiB UTF-8 limit. Actual
+private retail browser downloads match the entire accepted response at desktop/540px,
+including 130 coordinate records, with pending disable and mounted UI stale rejection.
+Narrow action bounds, screenshot, close disposal, no page errors and unchanged project,
+history and all fixture files pass. Proof:
+`local-output/sdk-20260909/build-review-download-20261005/proof.json`.
+Campaign follow-up: near-limit reports, actual server serialization blockers, project
+replacement during review and repeated downloads/close while another operation is busy.
+The export is metadata only; packaging and gameplay are separate gates. No game,
+installation, package or full-disc export ran.
+
 ## Build-review native coordinate checkpoint — 2026-10-05
 
 Nine focused Python Build-review/model-growth/normal-package cases, ordinary and

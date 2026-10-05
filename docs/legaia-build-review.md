@@ -15,6 +15,21 @@ imported facts, authored assets, history and saved metadata remain unchanged. If
 serialization fails, the assessment is absent and later changes are not claimed
 to have passed.
 
+After review completes, **Save full Build review…** downloads the complete accepted
+JSON response, including blockers when Build is unavailable. It retains all change
+rows and native/other records even when the dialog displays only a subset. The file
+contains source identity, serialization provenance, coverage and limitations; it is
+review metadata rather than a package or an authoring import. Export revalidates the
+response and current authored-input identity, uses a source-key filename and a 32 MiB
+UTF-8 limit, and requires an open, nonbusy dialog. Changed inputs require fresh review.
+
+2026-10-05 download validation: ordinary/NPC Node suites and syntax pass, including
+301-row and multibyte-overflow cases. Actual private retail browser downloads at
+desktop/540px match the complete accepted response and its 130 coordinate records;
+pending disable, mounted UI stale-source guard and unchanged project/history/files
+pass without page errors. No package or game was created. Evidence:
+`local-output/sdk-20260909/build-review-download-20261005/proof.json`.
+
 A ready review exposes **Build reviewed inputs** in Edit mode. It passes the
 reviewed authored-input identity to normal Build; both the browser and server
 reject changed inputs. Actual Build revalidates sources and performs packaging.
