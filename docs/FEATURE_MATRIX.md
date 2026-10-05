@@ -1,5 +1,37 @@
 # Legaia SDK feature matrix
 
+## Mixed actor/scenery position rotation — 2026-10-05
+
+The scene placement group workspace now rotates selected imported actors and static
+scenery positions by -90, +90 or 180 degrees around a selected actor or decoration.
+Both anchor coordinates must lie on the 64-unit actor grid. +90 maps relative
+(X,Z) to (-Z,X); -90 maps to (Z,-X); 180 negates both. The anchor remains fixed.
+Exact integer arithmetic avoids trigonometric rounding. Every proposed actor position
+must satisfy native placement bounds/grid; scenery must satisfy signed MAP offsets
+and complete merged descriptor allocation. This changes X/Z positions only: authored
+height, actor facing, scenery rotations, shared edits, unselected instances, unrelated
+components and collision stay intact. No inferred parenting or terrain height is added.
+
+Review qualifies the exact operation, selected source identities and complete proposal.
+Operation/anchor changes withdraw Review. Current/Proposed scene comparison holds height
+and rotations; Return retains the review. Layout mode has no shared-offset drag handles.
+Explicit Apply recomputes the source-bound candidate and records one atomic Undo/Redo
+step across actor Transform and scene Environment owners. Coincident no-ops preserve
+history/redo. Save/Open and normal Build use the existing MAN/MAP serializers.
+
+Validation: 13 focused Python cases pass (three new rotation cases plus ten existing
+layout/reset/offset checks), the expanded Node suite and editor syntax check pass.
+A private retail browser exercised all three turns around a decoration, operation
+withdrawal, exact Current/Proposed GPU matrices, Return and one reviewed Apply without
+page errors. Pre-Apply saved files/document stayed unchanged. Atomic history, persistence,
+unselected actor/scenery preservation, full MAP directory/ZIP readback, independently
+parsed MAN actor coordinates/opaque bytes and ZIP integrity passed. Screenshot inspected.
+Private evidence: `local-output/sdk-20260909/mixed-placement-rotation-20261005/proof.json`.
+Package SHA256: `86a37e8ee0ec8c82f8853ce6e49d6ffc4f02a28da65916122db97334aa4cce7b`.
+No game, installation or full-disc export ran. Gameplay remains deferred; the full SDK
+goal is unfinished and work continues solo.
+
+
 ## Mixed group Reset X/Z to Retail - 2026-10-05
 
 The mixed placement dialog now offers Reset X/Z to Retail for the selected imported

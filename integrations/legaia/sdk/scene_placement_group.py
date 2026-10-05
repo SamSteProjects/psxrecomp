@@ -1,4 +1,4 @@
-"""Reviewed atomic X/Z offsets across imported actors and static decorations."""
+"""Reviewed atomic X/Z placement operations across imported actors and scenery."""
 from copy import deepcopy
 import math
 
@@ -49,6 +49,17 @@ def _review(project, scene, entity_ids, delta, operation=None):
         axis=operation.get('axis')
         if operation['kind']=='reset':
             for target in targets:target['proposed']=deepcopy(target['retail'])
+        elif operation['kind']=='rotate':
+            anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
+            if anchor is None:raise ProjectError('Mixed rotation anchor must be selected')
+            if any(type(anchor['current'][a]) is not int or anchor['current'][a] % 64 for a in ('x','z')):
+                raise ProjectError('Mixed rotation anchor must lie on the 64-unit actor grid')
+            px,pz=anchor['current']['x'],anchor['current']['z']
+            turns=operation['quarter_turns']
+            for target in targets:
+                dx,dz=target['current']['x']-px,target['current']['z']-pz
+                x,z=(-dz,dx) if turns==1 else (dz,-dx) if turns==-1 else (-dx,-dz)
+                target['proposed']=dict(x=px+x,z=pz+z)
         elif operation['kind']=='align':
             anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
             if anchor is None:raise ProjectError('Mixed layout anchor must be selected')
@@ -110,10 +121,16 @@ def review(project,scene,entity_ids,delta):
 
 
 def layout_review(project,scene,entity_ids,operation):
-    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset') or operation.get('kind')!='reset' and operation.get('axis') not in ('x','z'):
-        raise ProjectError('Mixed layout requires align/distribute on X/Z or reset to Retail')
-    fields={'kind'} if operation['kind']=='reset' else {'kind','axis','anchor_entity_id'} if operation['kind']=='align' else {'kind','axis'}
+    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset','rotate'):
+        raise ProjectError('Mixed layout requires align/distribute, reset or quarter-turn position rotation')
+    kind=operation['kind']
+    fields=({'kind'} if kind=='reset' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate'
+            else {'kind','axis','anchor_entity_id'} if kind=='align' else {'kind','axis'})
     if set(operation)!=fields:raise ProjectError('Mixed layout accepts exact operation fields only')
+    if kind in ('align','distribute') and operation['axis'] not in ('x','z'):
+        raise ProjectError('Mixed layout axis must be X/Z')
+    if kind=='rotate' and (type(operation['quarter_turns']) is not int or operation['quarter_turns'] not in (-1,1,2)):
+        raise ProjectError('Mixed rotation requires -1, 1 or 2 exact quarter turns')
     return _review(project,scene,entity_ids,{'x':0,'z':0},operation)
 
 

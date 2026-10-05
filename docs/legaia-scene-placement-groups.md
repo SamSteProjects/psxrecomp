@@ -131,3 +131,25 @@ normal Build remain. Private evidence: `local-output/sdk-20260909/mixed-placemen
 contains `proof.json`, screenshots and audit. The actual retail editor and native package
 readback verified selected source positions and retained unselected actor/scenery changes.
 No game was launched or installed; gameplay verification remains deferred.
+
+## Quarter-turn position rotation
+
+Choose **Rotate positions -90° / +90° / 180° in X/Z**, select an **Anchor**, then
+**Review group**. The anchor can be a selected imported actor or static decoration;
+its Current X and Z must both lie on the 64-unit actor grid. The anchor stays fixed.
++90 maps relative (X,Z) to (-Z,X); -90 maps to (Z,-X); 180 negates both. The review
+shows exact Retail/Current/Proposed positions without publishing edits. Proposed actor
+coordinates must remain native-grid representable; decoration offsets and the complete
+MAP allocation must remain valid. Invalid anchors, turns or candidates reject atomically.
+
+Inspect Proposed/Current, **Return to placement review**, then **Apply group**.
+This rotates positions about the anchor while holding height, actor facing and scenery
+rotations. Existing shared transforms, unselected edits, collision and unrelated actor
+components stay unchanged. Changing the operation/anchor requires a new Review. Layout
+inspection has no shared-offset handles. One Apply records one Undo step; coincident
+positions are a no-op. Save/Open and normal Build preserve the result.
+
+Private evidence: `local-output/sdk-20260909/mixed-placement-rotation-20261005/` contains
+retail browser proof/screenshots and independently decoded native package readback.
+This does not prove script-driven placement, collision or game visibility; gameplay
+verification remains in the deferred queue.

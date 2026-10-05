@@ -1,5 +1,22 @@
 # Legaia SDK validation plan
 
+## Mixed actor/scenery position rotation checkpoint — 2026-10-05
+
+Focused development checks completed: -1/+1/2 exact quarter turns, actor and decoration
+anchors, fixed pivot, invalid/bool/float/extra fields, off-grid anchor, native actor bound
+rejection, stale Apply, preserved Y/rotation/shared/unselected data, no-op redo, one history
+step and Save/Open. Existing offset/layout/reset and Node proposal-qualification checks
+pass. Private retail browser/native package proof:
+`local-output/sdk-20260909/mixed-placement-rotation-20261005/proof.json`.
+All three turns, input withdrawal, Current/Proposed matrices, Return, one Apply, full MAP
+readback and independent MAN coordinates/opaque preservation passed; no game ran.
+
+Campaign follow-up: mixed selections up to 128, signed MAP/capacity boundaries, source and
+selection changes during pending rotation, narrow viewport accessibility and exact native
+readback for all turns. Deferred gameplay must check visibility, facing retained as
+reviewed, collision and script-owned placement/lifecycle in the produced runtime.
+
+
 ## Mixed placement Retail reset checks
 
 - Restore exact Retail X/Z for every selected actor/static decoration; clear selected

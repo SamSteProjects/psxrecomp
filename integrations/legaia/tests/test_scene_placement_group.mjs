@@ -47,3 +47,15 @@ for(const axes of [null,{}, {[ids[1]]:[]},{[ids[1]]:['z']}])assert.throws(()=>de
 const metadataReset={...reset,affected_count:0,targets:reset.targets.map(row=>({...row,current:{...row.retail}}))};assert.deepEqual(decodeScenePlacementLayout(metadataReset,key,scene,ids,resetOp,{[ids[1]]:['x']}),metadataReset);
 assert.throws(()=>decodeScenePlacementLayout({...metadataReset,project_change:false},key,scene,ids,resetOp,{[ids[1]]:['x']}));
 console.log('Mixed Retail reset: exact source positions, Current authored-axis witnesses, metadata-only reset and forged/no-op guards passed.');
+
+for(const turns of [-1,1,2]){
+ const op={kind:'rotate',anchor_entity_id:ids[1],quarter_turns:turns},points=mixedLayoutPositions(report.targets,op),rotation={...report,schema_version:'legaia.scene-placement-layout-review.v1',delta:{x:0,z:0},operation:op,affected_count:1,targets:report.targets.map((row,i)=>({...row,proposed:points[i].position}))};
+ const [x,z]=turns===1?[896,256]:turns===-1?[256,1024]:[960,960];assert.deepEqual(points[0].position,{x,z});assert.deepEqual(points[1].position,report.targets[1].current);
+ assert.deepEqual(decodeScenePlacementLayout(rotation,key,scene,ids,op),rotation);
+ assert.throws(()=>decodeScenePlacementLayout({...rotation,targets:rotation.targets.map(row=>({...row,proposed:{...row.current}}))},key,scene,ids,op));
+}
+for(const op of [{kind:'rotate',quarter_turns:0,anchor_entity_id:ids[1]},{kind:'rotate',quarter_turns:true,anchor_entity_id:ids[1]},{kind:'rotate',quarter_turns:1,anchor_entity_id:ids[0]+'other'},{kind:'rotate',quarter_turns:1,anchor_entity_id:ids[1],axis:'x'},{kind:'rotate',quarter_turns:1,anchor_entity_id:ids[1]}]){
+ const targets=op.anchor_entity_id===ids[1]&&op.quarter_turns===1&&!op.axis?report.targets.map(row=>({...row,current:{x:1,z:1}})):report.targets;
+ assert.throws(()=>mixedLayoutPositions(targets,op));
+}
+console.log('Mixed position rotation: exact signed permutations, fixed selected anchor, forged proposals and grid/operation guards passed.');
