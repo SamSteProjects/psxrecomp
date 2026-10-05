@@ -1499,7 +1499,7 @@ function synchronizeResources(){
   modelFaceRemovalEditor?.updateState();
   modelAllocationEditor?.updateState();
   modelFaceAdditionEditor?.updateState();
-  modelVectorAllocationEditor?.updateState();
+  modelVectorAllocationEditor?.updateState();modelVertexMoveEditor?.updateState();
   modelMeshAppendEditor?.updateState();
   modelGroupAllocationEditor?.updateState();
   modelObjectAllocationEditor?.updateState();
@@ -4197,7 +4197,7 @@ const vectorDialog=document.createElement('dialog');vectorDialog.id='model-vecto
 let modelFaceRemovalEditor=null;
 let modelAllocationEditor=null;
 let modelFaceAdditionEditor=null;
-let modelVectorAllocationEditor=null;
+let modelVectorAllocationEditor=null,modelVertexMoveEditor=null;
 let modelMeshAppendEditor=null;
 let modelGroupAllocationEditor=null;
 const groupAllocationButton=document.createElement('button');groupAllocationButton.id='shape-add-group';groupAllocationButton.type='button';groupAllocationButton.textContent='Create packet group';$('shape-primitives').after(groupAllocationButton);
@@ -4308,6 +4308,10 @@ modelGlbButton.onclick=async()=>{
     }});
 };
 let objectProposalRenderer=null,objectProposalCanvas=null;
+async function openVertexMovement(initial){
+  if(busy||shapeDraft||state.project.mode!=='edit')return;const asset=modelAssetId;modelVertexMoveEditor?.dispose();vectorDialog.close();$('model-dialog').close();const module=await import('/model-vertex-move.js');
+  modelVertexMoveEditor=await module.openModelVertexMove({assetId:asset,initial,getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id,sourceKey:state.scene_preview_source_key,mode:state.project.mode,assetId:modelAssetId}),busy:()=>busy,setBusy,onError:error=>notify(error.message,true),onApplied:async next=>{state=next;render();setBusy(false);notify('Model vertex moved. Save project to persist.');await openModel(asset,null,null,'authored');}});
+}
 async function openModelVectors(initial=null){
   if(busy||shapeDraft||state.project.mode!=='edit')return;
   const asset=modelAssetId,context=JSON.stringify([state.project.path,state.scene.id]);setBusy(true);
@@ -4328,11 +4332,12 @@ async function openModelVectors(initial=null){
     const form=vectorDialog.querySelector('form'),object=form.elements.object,kind=form.elements.kind,index=form.elements.index,xyz=[];
     for(const row of document.objects){const option=window.document.createElement('option');option.value=row.object_index;option.textContent=`Object ${row.object_index} · ${row.vertices.length} vertices · ${row.normals.length} normals`;object.append(option);}
     for(const axis of ['X','Y','Z']){const label=window.document.createElement('label'),input=window.document.createElement('input');label.textContent=axis;input.type='number';input.step='1';input.min='-32768';input.max='32767';input.required=true;input.setAttribute('aria-label','Vector '+axis);label.append(input);form.querySelector('[data-xyz]').append(label);xyz.push(input);}
+    const moveVertex=window.document.createElement('button');moveVertex.type='button';moveVertex.textContent='Move inspected vertex in 3D';form.querySelector('[data-locate-vector]').after(moveVertex);moveVertex.onclick=()=>{if(busy||!valid||object.disabled||kind.value!=='vertices')return;openVertexMovement({object_index:Number(object.value),vector_index:Number(index.value)});};
     let valid=false;
-    const load=()=>{const values=document.objects[Number(object.value)]?.[kind.value]??[];index.max=String(Math.max(0,values.length-1));const i=Number(index.value);valid=Number.isInteger(i)&&i>=0&&i<values.length;xyz.forEach((input,a)=>{input.value=valid?values[i][a]:'';input.disabled=!valid;});form.querySelector('[type=submit]').disabled=!valid;form.querySelector('[data-retail-vector]').disabled=!valid||!retail.objects[Number(object.value)]?.[kind.value]?.[i];form.querySelector('[data-locate-vector]').disabled=!valid||kind.value!=='vertices';form.querySelector('[data-retail]').textContent=valid?(retail.objects[Number(object.value)]?.[kind.value]?.[i]?'Retail XYZ: '+retail.objects[Number(object.value)][kind.value][i].join(', '):'Allocated vector · no Retail counterpart.'):'';form.querySelector('[data-original]').textContent=valid?'Inspected XYZ: '+values[i].join(', '):'No vector at this index.';object.disabled=kind.disabled=index.disabled=false;};
+    const load=()=>{const values=document.objects[Number(object.value)]?.[kind.value]??[];index.max=String(Math.max(0,values.length-1));const i=Number(index.value);valid=Number.isInteger(i)&&i>=0&&i<values.length;xyz.forEach((input,a)=>{input.value=valid?values[i][a]:'';input.disabled=!valid;});form.querySelector('[type=submit]').disabled=!valid;form.querySelector('[data-retail-vector]').disabled=!valid||!retail.objects[Number(object.value)]?.[kind.value]?.[i];form.querySelector('[data-locate-vector]').disabled=!valid||kind.value!=='vertices';moveVertex.disabled=!valid||kind.value!=='vertices';form.querySelector('[data-retail]').textContent=valid?(retail.objects[Number(object.value)]?.[kind.value]?.[i]?'Retail XYZ: '+retail.objects[Number(object.value)][kind.value][i].join(', '):'Allocated vector · no Retail counterpart.'):'';form.querySelector('[data-original]').textContent=valid?'Inspected XYZ: '+values[i].join(', '):'No vector at this index.';object.disabled=kind.disabled=index.disabled=false;};
     object.onchange=kind.onchange=()=>{index.value='0';load();};index.oninput=load;
-    xyz.forEach(input=>input.oninput=()=>{object.disabled=kind.disabled=index.disabled=true;form.querySelector('[data-locate-vector]').disabled=true;});
-    form.querySelector('[data-retail-vector]').onclick=()=>{if(busy||!valid)return;const values=retail.objects[Number(object.value)]?.[kind.value]?.[Number(index.value)];if(!values)return;xyz.forEach((input,a)=>input.value=values[a]);object.disabled=kind.disabled=index.disabled=true;form.querySelector('[data-locate-vector]').disabled=true;};
+    xyz.forEach(input=>input.oninput=()=>{object.disabled=kind.disabled=index.disabled=true;form.querySelector('[data-locate-vector]').disabled=true;moveVertex.disabled=true;});
+    form.querySelector('[data-retail-vector]').onclick=()=>{if(busy||!valid)return;const values=retail.objects[Number(object.value)]?.[kind.value]?.[Number(index.value)];if(!values)return;xyz.forEach((input,a)=>input.value=values[a]);object.disabled=kind.disabled=index.disabled=true;form.querySelector('[data-locate-vector]').disabled=true;moveVertex.disabled=true;};
     form.querySelector('[data-locate-vector]').onclick=async()=>{
       if(busy||!valid||kind.value!=='vertices'||object.disabled)return;
       if(asset!==modelAssetId||context!==JSON.stringify([state.project.path,state.scene.id]))return;

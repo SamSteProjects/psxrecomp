@@ -1,4 +1,24 @@
-# Legaia SDK status — 2026-10-04
+# Legaia SDK status — 2026-10-05
+
+## Direct model vertex movement - 2026-10-05
+
+The vector Inspector now opens a Current/Draft geometry viewport for an existing
+vertex. X/Y/Z handles and numeric input use signed16 object-local source units;
+positive Y points down and snap steps are1/16/64. Dragging stays local, Escape/camera/
+viewport/context changes cancel unfinished movement, and Current remains separately
+inspectable. Apply uses the existing native-hash guarded vector command as one Undo
+step. Other vectors, normals, objects and topology stay fixed. Closed dialogs release
+renderer, observer and shared gizmo listeners. This is unposed geometry authoring.
+
+Native Town01 model0000 vertex0 moved320/-32/241 to464/-32/241. Styled browser,
+Current/Draft comparison, snap16, Escape, overflow rejection, one Apply, Save/Open
+and Undo/Redo passed with zero page errors. Seven focused Python checks and Node
+source/geometry guards passed. Normal Build directory and ZIP full-section readback
+match independent Retail reconstruction, changing only model byte1516. Evidence:
+`local-output/sdk-20260909/vertex-move-20261005/proof.json`. No game launched; model
+appearance remains in the manual queue. Details: `docs/legaia-model-vertex-movement.md`.
+The broader SDK goal remains active and solo.
+
 
 ## Transition graph to exact source entry - 2026-10-04
 

@@ -1,5 +1,27 @@
 # Deferred gameplay verification
 
+## Direct model vertex movement - 2026-10-05
+
+Private project: `local-output/sdk-20260909/vertex-move-20261005/project/`.
+Delivered package: `local-output/sdk-20260909/vertex-move-20261005/build/legaia.sdk.0f096fa3c17d-0.1.0-9683238dbf03da34.psxmod`.
+SHA-256: `3366cc869eb3b9c130a79f769b68cd18dde1b9ffa521a2ebd9b200d02673872e`.
+Proof: `local-output/sdk-20260909/vertex-move-20261005/proof.json`.
+
+The edited asset is `asset://town01/models/scene-tmd/0000`: object0 vertex0,
+Current320/-32/241 to saved464/-32/241. Only native model byte1516 changes.
+Independent full Retail-section reconstruction equals package directory and ZIP
+readback. Other vectors/normals/topology and all unrelated section bytes match Retail.
+Draft-only drag, snap16, Escape, Current comparison, overflow rejection, one-step
+Apply, Save/Open and Undo/Redo passed. No game launched or output installed.
+
+When checking later, establish an in-game instance consuming this exact model source,
+then compare the one-vertex shape edit against Retail and exercise scene/save-load
+stability. This package also retains the earlier Town01 transition arrival edit
+X1664/Z3264/facing3; that separate queue entry remains applicable. The preview is
+object-local and unposed; it does not establish runtime pose, lighting or material
+residency. Use a clean package/baseline comparison when evaluating appearance.
+
+
 ## Arrival drag delivery - 2026-10-04
 
 Offline editor and native package validation passed; gameplay remains deferred.

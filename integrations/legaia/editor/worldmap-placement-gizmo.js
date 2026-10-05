@@ -12,7 +12,7 @@ export function translateOffset(values,axis,screenDelta,screenAxis,units,step=1)
 
 export function mountPlacementGizmo({host,getAxes,getContext,getValues,allowed,getStep,onBegin,onPreview,onEnd,onCancel,onError,idPrefix='world-placement'}){
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.id=idPrefix+'-gizmo';Object.assign(svg.style,{position:'absolute',inset:'0',width:'100%',height:'100%',pointerEvents:'none',overflow:'hidden'});host.append(svg);
-  const groups=new Map();let active=null;
+  const groups=new Map(),events=new AbortController();let active=null;
   function cancel(reason='Translation preview cancelled'){
     if(!active)return;const previous=active;active=null;
     if(previous.target.hasPointerCapture(previous.id))previous.target.releasePointerCapture(previous.id);
@@ -27,10 +27,10 @@ export function mountPlacementGizmo({host,getAxes,getContext,getValues,allowed,g
     group.onpointercancel=()=>cancel();group.onlostpointercapture=()=>{if(active?.target===group)cancel();};
   }
   function update(){if(active&&!current()){cancel('Source, camera or viewport changed; translation cancelled');return;}const axes=getAxes(),enabled=allowed();for(const [axis,{group,line,circle,label}] of groups){const value=axes[axis];group.style.display=value?'':'none';group.style.opacity=enabled?'1':'.35';line.style.pointerEvents=enabled?'stroke':'none';circle.style.pointerEvents=enabled?'all':'none';if(!value)continue;line.setAttribute('x1',value.start.x);line.setAttribute('y1',value.start.y);line.setAttribute('x2',value.end.x);line.setAttribute('y2',value.end.y);circle.setAttribute('cx',value.end.x);circle.setAttribute('cy',value.end.y);label.setAttribute('x',value.end.x+9);label.setAttribute('y',value.end.y-9);} }
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&active){e.preventDefault();e.stopPropagation();cancel('Escape cancelled the translation preview');}},true);
-  window.addEventListener('blur',()=>cancel('Focus changed; translation cancelled'));
-  svg.addEventListener('wheel',()=>cancel('Camera input changed; translation cancelled'));
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel('Page hidden; translation cancelled');});
-  new ResizeObserver(()=>{if(active&&!current())cancel('Viewport resized; translation cancelled');update();}).observe(host);
-  return {update,cancel,isActive:()=>!!active};
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&active){e.preventDefault();e.stopPropagation();cancel('Escape cancelled the translation preview');}},{capture:true,signal:events.signal});
+  window.addEventListener('blur',()=>cancel('Focus changed; translation cancelled'),{signal:events.signal});
+  svg.addEventListener('wheel',()=>cancel('Camera input changed; translation cancelled'),{signal:events.signal});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel('Page hidden; translation cancelled');},{signal:events.signal});
+  const observer=new ResizeObserver(()=>{if(active&&!current())cancel('Viewport resized; translation cancelled');update();});observer.observe(host);
+  return {update,cancel,isActive:()=>!!active,dispose(){cancel('Translation view closed');events.abort();observer.disconnect();svg.remove();}};
 }
