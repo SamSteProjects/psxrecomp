@@ -1,4 +1,14 @@
 const groups=new Set(['actors','npc-drafts','environment','transition','trigger','region','collision','script']);
+export function revealHierarchyEntity(root,id){
+  if(typeof id!=='string'||!id||id.length>1024)return false;
+  const row=[...root.querySelectorAll('.entity-row')].find(item=>item.title===id);if(!row||row.disabled)return false;
+  let heading=row.previousElementSibling;
+  while(heading&&!heading.dataset.hierarchyGroup)heading=heading.previousElementSibling;
+  if(row.hidden&&heading?.getAttribute('aria-expanded')==='false')heading.click();
+  if(row.hidden)return false;
+  row.scrollIntoView({block:'nearest'});row.focus({preventScroll:true});return true;
+}
+
 export function hierarchyGroupExpanded(id,state,filter=''){
   if(!groups.has(id)||!(state?.collapsed instanceof Set))throw new Error('Invalid hierarchy group state');
   return Boolean(String(filter).trim())||!state.collapsed.has(id);

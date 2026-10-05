@@ -1,5 +1,21 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Reveal selection in the hierarchy
+
+**Reveal selection** clears the hierarchy search, expands the selected row's group,
+scrolls to it and restores keyboard focus. It resolves the current source-resource,
+NPC-draft, scenery or actor selection in the same order as existing editor tools.
+Unrelated folds stay intact; no selection command, authoring command or mesh-visibility
+change is dispatched. Preferences remain local to the workspace.
+
+Focused reveal/group/navigation checks and a real Town01 browser workflow passed
+for actor and partition-two script selection behind folds and nonmatching filters.
+SDK selection, history, dirty state, authored data and imports stayed unchanged;
+zero page errors, screenshot inspected. Evidence: ignored
+`local-output/sdk-20260909/hierarchy-reveal-20261004/parent/proof.json`.
+No game launched; gameplay remains deferred.
+
+
 ## 2026-10-04: Collapsible scene hierarchy groups
 
 Hierarchy groups for Actors, NPC drafts, Environment, Transitions, Triggers, Regions,
