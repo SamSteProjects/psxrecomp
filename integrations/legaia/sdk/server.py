@@ -874,6 +874,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
+                 "/retained-animation-assets.js": ("retained-animation-assets.js", "text/javascript"),
                  "/animation-record-edit.js": ("animation-record-edit.js", "text/javascript"),
                  "/animation-record-glb.js": ("animation-record-glb.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
@@ -2380,6 +2381,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         self.server.project.command(dict(type='set_actor_allocated_animation',**body))
                         self._json(200,self.server.state())
+                    return
+                if route=='/api/retained-animation-preview':
+                    if set(body)!={'asset_id','expected_source_key'}:raise ProjectError('Retained preview requires exact asset identity and current source')
+                    from .retained_animation_assets import preview as retained_preview
+                    animation,asset,view=retained_preview(self.server.project,**body)
+                    geometry=animation.pop('geometry');geometry['frames']=animation.pop('frames')
+                    preview=self.server.model_preview(asset,prepared=geometry,effective_shape=True,project_view=view)
+                    preview['animation']=animation
+                    preview['animation_support']=dict(supported=True,clips=[dict(id='allocated-record',label='Retained clip source')])
+                    self._json(200,preview)
                     return
                 if route in ('/api/animation-record-library','/api/animation-record-pose'):
                     expected = {'scene_id','expected_source_key'}

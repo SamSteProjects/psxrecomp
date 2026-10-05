@@ -48,6 +48,7 @@ import {openModelPrimitiveEditor,decodeModelPrimitives} from '/model-primitives.
 import {nativeSceneFaceAtTriangle} from '/model-face-picking.js';
 import {openAnimationGlbEditor} from '/animation-glb.js';
 import {openAnimationAllocationEditor} from '/animation-allocation.js';
+import {openRetainedAnimationAsset,decodeRetainedAnimationAsset} from './retained-animation-assets.js';
 import {openAnimationRecordLibrary,allocatedAnimationExportRequest} from '/animation-record-library.js';
 import {openRetainedAnimationEditor} from '/animation-record-edit.js';
 import {openRetainedAnimationGlbEditor} from '/animation-record-glb.js';
@@ -1564,7 +1565,7 @@ async function refreshResources(){
     const result=await response.json();if(!response.ok||result.error)throw new Error(typeof result.error==='string'?result.error:'Resource catalog verification failed');
     if(controller.signal.aborted||key!==resourceStateKey())return;
     if(result.scene_id!==sceneId||result.source_key!==sourceKey||result.flag_state_key!==state.scene_flag_state_key||result.transition_state_key!==state.scene_transition_state_key||result.region_state_key!==state.scene_region_state_key||result.trigger_state_key!==state.scene_trigger_state_key||!Array.isArray(result.records)||result.records.length>4096||new Set(result.records.map(record=>record.semantic_id)).size!==result.records.length||result.records.some(record=>typeof record.semantic_id!=='string'||!['texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap'].includes(record.asset_kind)))throw new Error('Resource catalog returned stale or invalid records.');
-    for(const record of result.records){if(record.asset_kind==='flag')decodeFlagResource(record);else if(record.asset_kind==='transition')decodeTransitionResource(record);}
+    for(const record of result.records){if(record.asset_kind==='flag')decodeFlagResource(record);else if(record.asset_kind==='transition')decodeTransitionResource(record);else if(record.scope==='authored-retained')decodeRetainedAnimationAsset(record);}
     resourceLimitations=result.limitations ?? [];resourceRecords=[...new Map(result.records.map(record=>[record.semantic_id,{...record,catalog_limitations:result.limitations}])).values()];resourceKey=key;resourcePendingKey=null;renderAssets();renderHierarchy();renderInspector();
   }catch(error){if(error.name!=='AbortError'&&key===resourceStateKey()){resourceError=error.message;notify(error.message,true);}}
   finally{if(resourceAbort===controller){resourceAbort=null;resourcePendingKey=null;}setBusy(false);synchronizeResources();}
@@ -1819,9 +1820,9 @@ function renderAssets(){
   const projectScope=projectAssetControls?.scope()==='project';
   const list=$('assets'),category=$('asset-category').value;let query=[],searchError=null;try{query=parseAssetQuery($('asset-search').value);}catch(error){searchError=error.message;}
   $('asset-search').setAttribute('aria-invalid',String(!!searchError));
-  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations, actor and partition-two scripts, dialogue, source-scoped flag reference groups, decoded transition assets and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
-  if(projectScope)assetScope.querySelector('p').textContent='Imported project resources retain each recorded source scene and its provenance. Choose a source membership in Details before opening a shared asset. Discovery verifies imported sources without changing project data. Partial or unavailable coverage is listed above; residency, reachability and current playback remain unobserved.';
-  const records=assetRecords(),filtered=searchError?[]:records.filter(record=>(category==='all'||(category==='authored'?!!record.authoredRecord:record.type===category&&(category!=='actor'||projectScope||record.sceneId===state.scene?.id)))&&assetMatchesQuery(record,query));
+  assetScope.querySelector('p').textContent=`Models come from imported scenes; actors come from the active scene. Scenes lists imported scenes. Authored assets gathers project-wide NPC drafts, actor edits, script dialogue edits, model and texture replacements and transform templates without a resource refresh. Refresh adds scene texture candidates, referenced scene-header animations and saved retained clips, actor and partition-two scripts, dialogue, source-scoped flag reference groups, decoded transition assets and supported field-map metadata; it also lists global world-map menu records and eight supported shared field clips, without claiming current actor playback or complete runtime coverage. ${state.capabilities?.actor_script_preview?'Script inspection and supported dialogue text tools are available from an actor’s Inspector.':'Script and dialogue inspection is not available in this service.'} Audio is not cataloged here. ${resourceLimitations.map(limit=>typeof limit==='string'?limit:JSON.stringify(limit)).join(' ')}`;
+  if(projectScope)assetScope.querySelector('p').textContent='Project resources retain each recorded source scene and its provenance. Choose a source membership in Details before opening a shared asset. Discovery verifies imported sources without changing project data. Partial or unavailable coverage is listed above; residency, reachability and current playback remain unobserved.';
+  const records=assetRecords(),filtered=searchError?[]:records.filter(record=>(category==='all'||(category==='authored'?(!!record.authoredRecord||record.data?.authored_animation_record===true):record.type===category&&(category!=='actor'||projectScope||record.sceneId===state.scene?.id)))&&assetMatchesQuery(record,query));
   list.replaceChildren();$('asset-count').textContent=records.length;$('asset-results').textContent=searchError??`${filtered.length} / ${records.length} records`;
   const pageSignature=JSON.stringify([projectScope,projectAssetControls?.filter(),state.project_assets_source_key,category,$('asset-search').value]);
   if(pageSignature!==assetPageSignature){assetPage=0;assetPageSignature=pageSignature;}
@@ -1831,7 +1832,7 @@ function renderAssets(){
   const visible=projectScope?filtered.slice(assetPage*128,(assetPage+1)*128):filtered;
   for(const record of visible){
     const row=document.createElement('div');row.className='asset-result';row.dataset.assetKey=record.id;
-    const card=document.createElement('button');card.className='asset-card';card.dataset.assetAction='open';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${record.authoredRecord?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
+    const card=document.createElement('button');card.className='asset-card';card.dataset.assetAction='open';card.title=record.id;card.innerHTML=`<strong>${escapeHTML(record.label)}${(record.authoredRecord||record.data?.authored_animation_record)?'<span class="asset-authored-badge">Authored</span>':''}</strong><small>${escapeHTML(record.type)} · ${escapeHTML(record.authoredRecord?.source_scene ?? record.source)}</small>${record.authoredRecord?`<span class="asset-change-summary">${escapeHTML(record.changes.join(' · ') || 'Authored project settings')}</span>`:''}<code>${escapeHTML(record.id)}</code>`;
     card.disabled=busy;card.onclick=()=>activateAsset(record);
     const info=document.createElement('button');info.className='asset-info';info.dataset.assetAction='details';info.textContent='ⓘ';info.title='View stable ID, source and provenance';info.setAttribute('aria-label',`Details for ${record.label}`);info.disabled=busy;info.onclick=()=>showAssetDetails(record);row.append(card,info);list.append(row);
   }
@@ -2700,6 +2701,13 @@ function animationPreviewChoices(record,actorEntities,modelReferences){
 }
 function openAnimationResource(record){
   if(busy||resourceKey!==resourceStateKey())return;
+  if(record.data?.scope==='authored-retained'){
+    openRetainedAnimationAsset({record,getState:()=>state,busy:()=>busy,onError:e=>notify(e.message,true),
+      onModel:id=>openModel(id),onActor:async id=>{if(await api('/api/selection',{entity_id:id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}},
+      onPreview:(data,value)=>openModel(data.model_asset_id,'allocated-record',data.retained_record.entity_id,'authored',null,value)});
+    return;
+  }
+
   const data=record.data;
   if(data.scope==='global-field'){
     const preview=data.preview,available=preview&&state.assets.some(asset=>asset.id===preview.asset_id);
@@ -4611,7 +4619,7 @@ async function openModel(assetId,clipId=null,entityId=null,shapeLayer='imported'
     $('shape-file').value='';shapeDraft=null;const shape=state.model_overrides?.[assetId];
     for(const id of ['shape-upload','shape-clear','shape-file'])$(id).disabled=state.project.mode!=='edit';
     $('shape-clear').disabled=state.project.mode!=='edit'||!shape;$('shape-authored').disabled=!shape;
-    $('shape-status').textContent=`Viewing ${clipId==='allocated-record-edit-preview'?'PROPOSED retained content · Current model geometry':clipId==='allocated-record'?'SAVED unassigned clip · Current model geometry':clipId==='allocation-preview'?'PROPOSED unassigned clip · Current model geometry':shapeLayer==='authored'?'AUTHORED object-local shape':clipId==='authored-channels'?'AUTHORED shared animation':clipId==='authored-initial-animation'?'AUTHORED initial animation':clipId==='authored-appearance'?'AUTHORED appearance animation':clipId?'RETAIL assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
+    $('shape-status').textContent=`Viewing ${clipId==='allocated-record-edit-preview'?'PROPOSED retained content · Current model geometry':clipId==='allocated-record'?'SAVED retained clip · Current model geometry':clipId==='allocation-preview'?'PROPOSED unassigned clip · Current model geometry':shapeLayer==='authored'?'AUTHORED object-local shape':clipId==='authored-channels'?'AUTHORED shared animation':clipId==='authored-initial-animation'?'AUTHORED initial animation':clipId==='authored-appearance'?'AUTHORED appearance animation':clipId?'RETAIL assigned animation':'RETAIL object-local shape'} · ${shape?'A persistent shape override exists.':'No shape override.'}`;
     updateShapeDraft();$('model-export').disabled=['file-preview','allocation-preview','allocated-record-edit-preview'].includes(clipId)||data.model_glb_proposal===true||data.representation==='model-material-proposal';exportClipControls.hidden=['file-preview','allocation-preview','allocated-record-edit-preview'].includes(clipId)||!data.frames?.length;
     if(data.model_glb_proposal===true){$('model-dialog').querySelector('h2').textContent='Proposed GLB model · not applied';$('model-description').textContent='Drag to orbit · Scroll to zoom · Proposed object-local positions and UVs · Not applied. Close to return to GLB review.';}
     if(!modelRenderer){const module=await import('/scene-renderer.js');modelRenderer=new module.SceneRenderer(modelCanvas,message=>{$('model-error').textContent=message??'';if(!message)requestAnimationFrame(drawModel);});}

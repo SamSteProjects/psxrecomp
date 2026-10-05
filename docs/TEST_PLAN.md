@@ -1,5 +1,20 @@
 # Legaia SDK validation plan
 
+## Retained animation Asset Database workflow - 2026-10-05
+
+Discover assigned, unassigned and retired captures in active/Project catalogs;
+require stable authored identity, source scene, exact capture witnesses/counts and
+honest active/runtime distinctions. Browse Animations and Authored assets; open
+all three kinds, inspect provenance, captured model/actor navigation, and preview
+saved frames in the normal model viewer. Retired inspection must never activate a
+record or assign a native slot. Check captured-model edges and navigable registered
+clip rows separately from active assignment native/bank evidence. Discovery and
+preview must preserve document/history/files/mode/scene. Cover stale source, wrong
+identity/model, extra/malformed HTTP and metadata fields, closed/pending dialogs,
+changed project context and frame/channel bounds. Gameplay playback remains a
+separate deferred acceptance requirement.
+
+
 ## Retained initial animation references - 2026-10-05
 
 Require original decoded initial references to remain, with retained assignments

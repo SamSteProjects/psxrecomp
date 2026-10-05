@@ -157,7 +157,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             if available:nodes[identifier]['available']=True
         else:nodes[identifier]=value
         if len(nodes)>16384:raise ProjectError('Asset reference node limit exceeded')
-    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None):
+    def edge(source,target,kind,scene,layer='imported',pc=None,evidence=None,animation_evidence=None,reference_clip_evidence=None,flag_evidence=None,transition_evidence=None,trigger_evidence=None,trigger_binding_evidence=None,flag_binding_evidence=None,allocated_evidence=None,retained_evidence=None):
         if source not in nodes or target not in nodes:raise ProjectError('Asset reference has an unavailable structural endpoint')
         value=dict(source_id=source,target_id=target,kind=kind,scene_id=scene,layer=layer,runtime_binding='not_asserted')
         if pc is not None:value['pc']=pc
@@ -181,6 +181,9 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
             value['source_catalog_key']=catalog['source_key']
         if allocated_evidence is not None:
             value['allocated_animation_evidence']=deepcopy(allocated_evidence)
+            value['source_catalog_key']=catalog['source_key']
+        if retained_evidence is not None:
+            value['retained_capture_evidence']=deepcopy(retained_evidence)
             value['source_catalog_key']=catalog['source_key']
         value['id']=digest(value);edges[value['id']]=value
         if len(edges)>32768:raise ProjectError('Asset reference edge limit exceeded')
@@ -223,6 +226,14 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
         evidence=_reference_clip_evidence(record,model_records)
         if evidence is not None:reference_clips[record['id']]=evidence
         node(record['id'],record['kind'],scene,record.get('name'))
+        if record.get('scope')=='authored-retained':
+            model=record['model_asset_id'];row=record['retained_record']
+            if model not in nodes:raise ProjectError('Retained clip capture lacks an imported model endpoint')
+            proof={**record['source_record'],'model_id':model,'channel_owner_entity_id':row['channel_owner_entity_id'],
+                   'model_source_entity_id':row['model_source_entity_id'],'frame_count':row['frame_count'],
+                   'object_count':row['object_count'],'active':row['active']}
+            edge(record['id'],model,'retained_model_capture',scene,'authored',retained_evidence=proof)
+
     from .allocated_animation_references import bindings as allocated_bindings
     for retained in allocated_bindings(project,scene) if catalog.get('source_key') else []:
         owner,clip,model=retained['owner_id'],retained['animation_id'],retained['model_id']
@@ -393,7 +404,7 @@ def assemble(project,catalog,identifier,materials=None,*,_full_graph=False):
                          limitations=['Imported scene/model membership and initial assignments are project-wide. Derived resources cover the active scene only.',
                                       'Script model pools, field trigger dispatch and live animation state are not resolved here.',
                                       'Edges describe recorded references, not runtime residency, successful scheduling or gameplay reachability.',
-                                      'Retained clip nodes have source-qualified authored identity; preview/manage them through their actor Inspector.',*(materials or {}).get('limitations',['Material source relationships were not requested.']),*catalog.get('limitations',[])]))
+                                      'Retained clips are navigable when registered in the verified scene animation catalog; their actor Inspector manages assignments.',*(materials or {}).get('limitations',['Material source relationships were not requested.']),*catalog.get('limitations',[])]))
 
 def inspect(project,identifier):
     from importer.pipeline import _disc_context
@@ -513,7 +524,7 @@ def assemble_project(project,catalogs,identifier,materials_by_scene=None,scene_c
                               unresolved_reference_count=unresolved,scenes=coverage),material_diagnostics=deepcopy(diagnostics),current_material_diagnostics=deepcopy(current_diagnostics),
                 limitations=['Derived resource discovery covers every imported scene with explicit per-scene availability.',
                              'Edges describe recorded references, not runtime residency, successful scheduling or gameplay reachability.',
-                             'Retained clip nodes have source-qualified authored identity; preview/manage them through their actor Inspector.',
+                             'Retained clips are navigable when registered in the verified scene animation catalog; their actor Inspector manages assignments.',
                              'Script model pools, field trigger dispatch and live animation state are not resolved here.',*list(dict.fromkeys(limitations))])
     _reference_limitations(result['limitations'])
     if len(canonical(result))>8*1024*1024:raise ProjectError('Project reference response exceeds8 MiB')

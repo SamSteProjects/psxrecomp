@@ -21,9 +21,10 @@ the original imported hash and current catalog key qualify the graph request.
 Slot positions can change when other retained clips are retired, so the stable
 record UUID remains the identity and each request resolves the current selector.
 
-Retained clips do not yet have standalone navigable Asset Database records.
-Their reference-row navigation is disabled; use their actor Inspector to Manage
-or Preview the clip. This limitation is explicit in the response. Hash/identity
+Retained clips now have navigable records when registered in the verified scene
+animation catalog. See [retained asset workflow](legaia-retained-animation-assets.md).
+Their actor Inspector continues to Manage assignments and edit retained content.
+Hash/identity
 search and layer filters work normally; expand Recorded provenance to review the
 native evidence. These relationships assert project content, not live playback,
 residency, scheduling or gameplay acceptance.

@@ -62,7 +62,7 @@ class AssetDatabase:
         self.current_material_reference_catalogs: dict[str, dict] = {}
 
     def register_resources(self, scene_id: str, source_key: str, records: list[dict], limitations: list[str], *, flag_state_key: str | None = None, transition_state_key: str | None = None, region_state_key: str | None = None, trigger_state_key: str | None = None) -> dict:
-        """Replace a verified derived catalog without mutating imported project facts."""
+        """Replace a verified resource catalog without mutating imported project facts."""
         indexed = {}
         for item in records:
             identifier = item.get("semantic_id")
@@ -70,7 +70,7 @@ class AssetDatabase:
             if not isinstance(identifier, str) or kind not in ("texture", "animation", "script", "dialogue", "collision", "trigger", "region", "worldmap", "flag", "transition") or identifier in indexed:
                 raise ProjectError("Resource catalog has an invalid or duplicate identity")
             record = deepcopy(item)
-            record.update(id=identifier, kind=kind, layer="authored" if item.get("authored_slot") else "derived", scene_id=scene_id)
+            record.update(id=identifier, kind=kind, layer="authored" if item.get("authored_slot") or item.get("authored_animation_record") else "derived", scene_id=scene_id)
             indexed[identifier] = record
         result = {"scene_id": scene_id, "source_key": source_key,
                   "records": [indexed[key] for key in sorted(indexed)], "limitations": list(limitations)}

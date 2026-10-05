@@ -1,5 +1,40 @@
 # Legaia SDK feature matrix
 
+## Retained animations in the Asset Database - 2026-10-05
+
+Refresh scene resources now registers active and retired saved clips as authored
+animation assets, with stable scene/UUID identities. Animations and Authored assets
+show the records and badge; Project discovery includes their source memberships.
+A dedicated readonly asset Inspector discloses status, frames/channels, authored
+initial-assignment counts and original/captured source witnesses. Preview reconstructs
+saved content through the existing decoder and opens the normal model viewer with
+Current geometry. Captured model and actor navigation remain separate actions.
+Retired preview does not reactivate the clip or assign a generated/native slot.
+
+Registered retained clips are now navigable from reference inspection. Every
+retained record has an authored captured-model edge with source hashes, owners,
+counts and active status; active actor assignments preserve their separately
+verified native selector/bank edges. Runtime playback/timing are unresolved.
+Discovery/preview also work in a readonly observation view without changing the
+original mode. Exact-source, malformed/extra-field and disposed-dialog guards
+remain explicit. See [retained asset workflow](legaia-retained-animation-assets.md).
+Validation: 42 focused/neighboring Python checks, four JavaScript workflow/contract
+suites and three syntax checks passed. Native HTTP discovery, actor/clip/model
+references, all three clip previews, Project membership, malformed/stale requests
+and readonly observation mode passed. The actual browser verified animation/authored
+categories, all three inspectors and model viewers, captured-model navigation,
+actor reference -> registered clip metadata navigation and stale-source rejection.
+Complete document/history/files/mode/scene were unchanged. Zero page errors or
+authoring/Build/Save/game requests; screenshots inspected. Private evidence:
+`local-output/sdk-20260909/retained-assets-20261005/proof.json`. Initial browser
+harness assumptions about responsive-only tabs, total authored counts and collapsed
+provenance text were corrected; prior attempts are preserved. No game launched.
+
+The earlier retained-reference navigation limitation is superseded when the
+verified scene catalog registers the clip. Full SDK goal remains active; gameplay
+acceptance remains deferred.
+
+
 ## Retained initial animation reference correction - 2026-10-05
 
 Actor reference inspection now keeps the original decoded initial clip while a

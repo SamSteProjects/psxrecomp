@@ -104,6 +104,8 @@ def refresh_resource_catalog(project) -> dict:
                 limitations.append(f"{kind} unavailable: {exc}")
     from .texture_slots import current_items,metadata
     records.extend(metadata(*row) for row in current_items(project))
+    from .retained_animation_assets import records as retained_records
+    records.extend(retained_records(project))
     if (key != source_key(project) or flag_key != scene_flag_state_key(project) or
             transition_key != scene_transition_state_key(project) or region_key != scene_region_state_key(project) or
             trigger_key != scene_trigger_state_key(project)):
