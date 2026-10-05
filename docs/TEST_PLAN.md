@@ -1,5 +1,18 @@
 # Legaia SDK validation plan
 
+## Retained asset-to-selected-actor assignment checks
+
+- Select an imported actor distinct from the capture owner and open an active clip.
+- Verify exact asset scope, explicit target ID and source row qualification; block
+  retired clips, missing/non-imported target, Live mode and missing capability.
+- Review an incompatible target: report the captured-model/retargeting blocker without
+  a command. Review a compatible target and verify source/native-selector witnesses.
+- Preview the proposed target initial pose and return to reviewed assignment; Apply
+  exactly once. Preserve target selection, imports, capture owner and retained ledger.
+- Verify fresh assigned-actor metadata, Undo/Redo, Save/Open and normal Build readback.
+- Exercise target/source changes and prevent asset assignment views from issuing
+  lifecycle or Clear commands. Game suitability/playback acceptance remains manual.
+
 ## Direct retained asset lifecycle checks
 
 - Open exact assigned, unassigned and retired assets with unrelated actor selected.

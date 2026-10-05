@@ -26,7 +26,13 @@ export function retainedAnimationEditContext(record,state){
   const row=structuredClone(data.retained_record);delete row.assigned_actor_ids;
   return {assetId:data.semantic_id,entityId:row.entity_id,row};
 }
-export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onGlb=null,onLifecycle=null,onError=()=>{}}){
+export function retainedAnimationAssignmentContext(record,state,targetEntityId){
+  const context=retainedAnimationEditContext(record,state),scene=state.scene.id;
+  if(!context.row.active||state.capabilities?.actor_animation_assignment!==true)throw new Error('Initial assignment requires an active retained clip and assignment capability.');
+  if(typeof targetEntityId!=='string'||!new RegExp('^'+scene+'/actors/man-p1/[0-9]{4}$').test(targetEntityId))throw new Error('Select an imported actor in the current scene before assigning this clip.');
+  return {...context,targetEntityId};
+}
+export function openRetainedAnimationAsset({record,getState,busy,onPreview,onModel,onActor,onEdit=null,onGlb=null,onLifecycle=null,onAssign=null,getAssignmentTarget=()=>null,onError=()=>{}}){
   if(busy())return;
   const data=decodeRetainedAnimationAsset(record),initial=getState(),key=initial.scene_preview_source_key,scene=initial.scene?.id,path=initial.project?.path;
   if(!hash(key)||scene!=='scene://'+data.semantic_id.split('/')[2])throw new Error('Retained clip requires its current scene source.');
@@ -44,15 +50,17 @@ export function openRetainedAnimationAsset({record,getState,busy,onPreview,onMod
   glb.onclick=async()=>{try{guard();const context=retainedAnimationEditContext(data,getState());dialog.close();await onGlb(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
   const lifecycle=add('button','Manage retained lifecycle',actions);lifecycle.hidden=typeof onLifecycle!=='function'||initial.project?.mode!=='edit'||initial.capabilities?.actor_animation_authoring!==true;
   lifecycle.onclick=async()=>{try{guard();const context=retainedAnimationEditContext(data,getState());dialog.close();await onLifecycle(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
+  const assign=add('button','Assign to selected actor',actions);assign.hidden=typeof onAssign!=='function'||!data.retained_record.active||initial.project?.mode!=='edit'||initial.capabilities?.actor_animation_assignment!==true||initial.capabilities?.actor_animation_authoring!==true;
+  assign.onclick=async()=>{try{guard();const context=retainedAnimationAssignmentContext(data,getState(),getAssignmentTarget());dialog.close();await onAssign(context);}catch(e){if(dialog.open)status.textContent=e.message;onError(e);}};
   const details=add('details');add('summary','Retained source and provenance',details);add('pre',JSON.stringify(data,null,2),details).className='diagnostic-detail';
   let controller=null,pending=false;
   const current=()=>dialog.open&&getState().scene_preview_source_key===key&&getState().scene?.id===scene&&getState().project?.path===path;
   const guard=()=>{if(!current())throw new Error('Project source changed. Reopen the retained clip.');if(busy()||pending)throw new Error('Finish the current operation before inspecting this clip.');};
   model.onclick=async()=>{try{guard();dialog.close();await onModel(data.model_asset_id);}catch(e){onError(e);}};
   owner.onclick=async()=>{try{guard();dialog.close();await onActor(data.retained_record.entity_id);}catch(e){onError(e);}};
-  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
+  preview.onclick=async()=>{try{guard();pending=true;preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=true;controller=new AbortController();status.textContent='Verifying retained clip and current model geometry...';
     const response=await fetch('/api/retained-animation-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:data.semantic_id,expected_source_key:key}),signal:controller.signal});const value=await response.json();
     if(!current()){if(dialog.open)status.textContent='Project source changed. Reopen the retained clip.';return;}if(!response.ok||value.error)throw new Error(value.error||'Retained clip preview failed.');qualifyRetainedAnimationPreview(value,data);dialog.close();await onPreview(data,value);
-  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open)preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=!current();}};
+  }catch(e){if(e.name!=='AbortError'&&dialog.open){status.textContent=e.message;onError(e);}}finally{pending=false;if(dialog.open)preview.disabled=model.disabled=owner.disabled=edit.disabled=glb.disabled=lifecycle.disabled=assign.disabled=!current();}};
   dialog.addEventListener('close',()=>{controller?.abort();dialog.remove();});document.body.append(dialog);dialog.showModal();return dialog;
 }

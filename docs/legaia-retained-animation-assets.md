@@ -128,3 +128,35 @@ Undo/Redo and Save/Open passed. Normal private Build passed native bank, initial
 and relocation readback plus ZIP/SHA integrity checks. Restoration screenshot inspected.
 No game launched or installed. Evidence:
 `local-output/sdk-20260909/retained-asset-lifecycle-20261005/proof.json`.
+
+## Assign to the selected actor
+
+Select an imported actor in the Hierarchy or viewport, then open an active retained
+animation asset. Choose Assign to selected actor. Verify the target actor ID in the
+assignment dialog before Review initial assignment. A different capture actor is
+allowed only when the native service proves the exact captured model/channel binding;
+unsupported retargeting remains blocked. This action does not select the capture actor.
+
+Preview reviewed assignment shows the target's proposed initial pose without applying
+it. Close the viewer to return to Review, then Apply reviewed change. The retained
+UUID/capture/ledger stay unchanged while the selected target gets its authored initial
+assignment. Asset references refresh automatically. Save project to persist, or use
+Undo/Redo. Clear is available through the actor's existing Inspector workflow.
+
+Retired clips have no assignment action. Missing or non-imported actor selection,
+Live mode, missing capability and stale source block entry. The assignment view is
+bound to its explicit target selection and invalidates if that target changes. It
+exposes no retirement/restoration, Clear, content editing or GLB replacement actions.
+Scripts may later select other clips; runtime timing, looping and gameplay suitability
+remain unverified. Normal Build re-resolves the current native selector.
+
+Verification: 4 retail-enabled Python tests, 3 Node workflow checks and 3 JavaScript
+syntax checks passed. The actual headless editor hid retired assignment, rejected an
+incompatible model, then reviewed/previewed/applied the captured actor-0011 clip to
+selected actor0012 through one exact command. The target pose screenshot was inspected;
+asset assignment metadata refreshed. Imports, ledger/capture hashes and capture actor
+overrides were unchanged. Undo/Redo and Save/Open passed. A second readonly browser
+check changed target selection and verified disposal with no command or document,
+history or file changes. Normal private Build passed native bank/initial-header/
+relocation readback plus ZIP/SHA checks. No game launched or installed. Evidence:
+`local-output/sdk-20260909/retained-asset-assignment-20261005/proof.json`.

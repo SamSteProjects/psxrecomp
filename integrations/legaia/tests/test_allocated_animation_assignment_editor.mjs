@@ -26,5 +26,11 @@ try{
  before=binding;control=await openAnimationRecordLibrary(options());await control.ready;assert.equal(await action(control,'clear-assignment').onclick(),true);assert.equal(calls.at(-1).body.record_id,null);assert.equal(action(control,'assignment-pose').disabled,true);
  assert.equal(await action(control,'apply').onclick(),true);assert.equal(calls.at(-1).body.record_id,null);assert.equal(applied,2);
  control=await openAnimationRecordLibrary(options());await control.ready;await action(control,'assign').onclick();current={...current,sourceKey:'f'.repeat(64)};control.updateState();assert.equal(action(control,'apply').disabled,true);assert.equal(await action(control,'apply').onclick(),false);control.dispose();
+ current={...context};before=null;control=await openAnimationRecordLibrary({...options(),retainedRecord:row,assetAssignment:true});await control.ready;
+ assert.equal(action(control,'review').hidden,true);assert.equal(action(control,'clear-assignment').hidden,true);assert.equal(action(control,'pose').hidden,true);
+ const count=calls.length;assert.equal(await action(control,'review').onclick(),false);assert.equal(await action(control,'clear-assignment').onclick(),false);assert.equal(calls.length,count);
+ assert.equal(await action(control,'assign').onclick(),true);assert.equal(await action(control,'assignment-pose').onclick(),true);assert.equal(returnPreview(),true);assert.equal(await action(control,'apply').onclick(),true);assert.equal(applied,3);
+ await assert.rejects(openAnimationRecordLibrary({...options(),assetAssignment:true}),/active inspected/);
+ await assert.rejects(openAnimationRecordLibrary({...options(),retainedRecord:{...row,active:false},assetAssignment:true}),/active inspected/);
 }finally{Object.assign(globalThis,old);}
 console.log('Allocated assignment Review, exact identity/pose, Apply, clear, retained Return and stale source checks passed.');

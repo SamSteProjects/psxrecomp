@@ -1,5 +1,36 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Assign retained assets to the selected actor - 2026-10-05
+
+An active retained animation asset now offers Assign to selected actor in Edit mode
+with the authoring/assignment capabilities. The exact inspected clip opens a dedicated
+initial-assignment view with the selected imported actor ID shown explicitly. Capture
+actor and target actor remain separate identities. The fresh library row must match
+the inspected asset before actions enable. Target selection changes invalidate this
+view through the existing actor-owned lifetime; project/scene/mode/source guards remain.
+
+Review uses the existing source-qualified native assignment service to verify captured
+model/channel compatibility and current selector resolution. Unsupported retargeting
+reports a blocker without mutating an actor. Preview shows the reviewed target initial
+pose and returns to Review. Apply writes one atomic ActorAllocatedAnimation override,
+preserving the retained ledger/capture and other actors. The catalog refreshes assignment
+references after Apply. This view exposes neither lifecycle changes nor assignment Clear;
+use the existing actor Inspector for Clear. Retired assets cannot start assignment.
+Save/Open, Undo/Redo and normal private Build remain the existing workflow. No runtime
+write or gameplay suitability is inferred. See
+[asset-to-actor assignment](legaia-retained-animation-assets.md#assign-to-the-selected-actor).
+
+Verification: 4 retail-enabled Python tests, 3 Node workflow checks and 3 JavaScript
+syntax checks passed. The actual headless editor hid retired assignment, rejected an
+incompatible model, then reviewed/previewed/applied the captured actor-0011 clip to
+selected actor0012 through one exact command. The target pose screenshot was inspected;
+asset assignment metadata refreshed. Imports, ledger/capture hashes and capture actor
+overrides were unchanged. Undo/Redo and Save/Open passed. A second readonly browser
+check changed target selection and verified disposal with no command or document,
+history or file changes. Normal private Build passed native bank/initial-header/
+relocation readback plus ZIP/SHA checks. No game launched or installed. Evidence:
+`local-output/sdk-20260909/retained-asset-assignment-20261005/proof.json`.
+
 ## Retained asset retirement and restoration - 2026-10-05
 
 Manage retained lifecycle now opens a single-clip lifecycle Inspector directly from

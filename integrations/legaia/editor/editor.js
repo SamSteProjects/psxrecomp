@@ -2706,6 +2706,7 @@ function openAnimationResource(record){
       onEdit:({assetId,entityId,row})=>inspectRetainedAnimationContent({id:entityId},row,assetId),
       onGlb:({assetId,entityId,row})=>inspectRetainedAnimationGlb({id:entityId},row,assetId),
       onLifecycle:({assetId,entityId,row})=>inspectSavedAnimationRecords({id:entityId},row,assetId),
+      getAssignmentTarget:()=>selected()?.id??null,onAssign:({assetId,targetEntityId,row})=>{const entity=selected();if(entity?.id!==targetEntityId)throw new Error('Selected actor changed. Reopen the retained clip.');return inspectSavedAnimationRecords(entity,row,assetId,true);},
       onModel:id=>openModel(id),onActor:async id=>{if(await api('/api/selection',{entity_id:id})){frame(selected());document.querySelector('.workspace-tabs [data-panel="viewport"]').click();}},
       onPreview:(data,value)=>openModel(data.model_asset_id,'allocated-record',data.retained_record.entity_id,'authored',null,value)});
     return;
@@ -3083,12 +3084,12 @@ async function inspectRetainedAnimationContent(entity,row,assetId=null){
       $('model-dialog').addEventListener('close',()=>{if(model===data&&scenePose?.preview!==data)returnToEditor();},{once:true});}
   });
 }
-async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=null){
+async function inspectSavedAnimationRecords(entity,retainedRecord=null,assetId=null,assetAssignment=false){
   if(busy||state.project.mode!=='edit')return;
-  animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=assetId;
-  animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord,
-    onEdit:row=>inspectRetainedAnimationContent(entity,row,assetId),
-    onGlb:row=>inspectRetainedAnimationGlb(entity,row,assetId),
+  animationRecordLibrary?.dispose();animationRecordEntityId=entity.id;animationRecordAssetId=assetAssignment?null:assetId;
+  animationRecordLibrary=await openAnimationRecordLibrary({entityId:entity.id,retainedRecord,assetAssignment,
+    onEdit:assetAssignment?null:row=>inspectRetainedAnimationContent(entity,row,assetId),
+    onGlb:assetAssignment?null:row=>inspectRetainedAnimationGlb(entity,row,assetId),
     assignment:entity.components?.ActorAllocatedAnimation?.authored??null,
     modelAssetId:entity.components?.ActorAppearance?.effective?.asset_id??null,
     getContext:()=>({projectPath:state.project.path,sceneId:state.scene?.id??null,mode:state.project.mode,sourceKey:state.scene_preview_source_key}),
