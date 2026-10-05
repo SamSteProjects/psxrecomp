@@ -320,6 +320,29 @@ No game was launched and no physical Retail disc was exported.
 
 ## 2026-10-04: Front and Side orthographic scene views
 
+## Guarded Current material reference reuse - 2026-10-04
+
+Repeated active/project-wide reference inspection now reuses up to two bounded,
+source-keyed Current material metadata censuses. Retail verification still precedes
+reuse, and existing owned-content readers requalify model/base bindings and effective
+texture/slot/source-recipe files. Same-size tampering cannot return a cached result.
+Changed bindings invalidate; returned metadata is detached; caches stay out of project
+persistence. Project-wide resource registration remains isolated while material caches
+are shared only behind fresh snapshot verification. Current and combined metadata
+budgets remain eight MiB, with existing project query budgets retained.
+
+Twenty-one focused Python checks passed with private retail input and no skips. A
+copied native vell authored project confirmed one Current decode across four initial
+model/slot queries, model/TIM tamper rejection, restored input recovery, changed-binding
+invalidation, warm HTTP/project-wide reuse and continued Retail checks. The styled
+browser retained both reference layers and authored-slot consumers, with project,
+selection/history unchanged and zero page errors. Screenshots inspected. Initial
+local timing was about4.4s cold versus1.6s warm; this is fixture evidence, not a general
+performance claim. No game, installed output or runtime code changed.
+Details: [guarded reference reuse](legaia-current-material-cache.md).
+Evidence: `local-output/sdk-20260909/current-material-cache-20261004/final/proof.json`.
+Full goal remains active and solo; gameplay stays deferred.
+
 ## Current material-to-texture reference graph - 2026-10-04
 
 The Asset Database now displays separate Retail and Current static material links.

@@ -10,6 +10,16 @@ def current_state_key(project):
     return digest(dict(imported_source_key=source_key(project),models=project.model_overrides,
                        textures=project.texture_overrides,texture_additions=project.texture_additions))
 
+def _verify_current_assets(project, model_ids):
+    """Reuse full owned-content qualification, including model bases and slot recipes."""
+    for identifier in sorted(model_ids.intersection(project.model_overrides)):
+        project.read_model_replacement(identifier,project.model_overrides[identifier])
+    if any(b['source_scene_id']==project.active_scene for b in
+           [*project.texture_overrides.values(),*project.texture_additions.values()]):
+        from .resources import apply_texture_overrides
+        catalog=load_scene_texture_catalog(project.disc_path,project.imports[project.active_scene]['scene']['name'])
+        apply_texture_overrides(project,catalog)
+
 def with_current(project, imported):
     """Keep the cached Retail census immutable; decode qualified Current edits separately."""
     from copy import deepcopy
@@ -19,13 +29,29 @@ def with_current(project, imported):
         b['source_scene_id']==project.active_scene for b in [*project.texture_overrides.values(),*project.texture_additions.values()])
     if not changed:return result
     key=current_state_key(project)
-    current=discover(project,current=True)
-    if current_state_key(project)!=key:raise ProjectError('Current material source changed during discovery')
+    cache=project.assets.current_material_reference_catalogs
+    try:
+        if key in cache:
+            _verify_current_assets(project,ids)
+            current=deepcopy(cache[key])
+        else:
+            current=discover(project,current=True)
+            if current_state_key(project)!=key:raise ProjectError('Current material source changed during discovery')
+            _verify_current_assets(project,ids)
+        if current_state_key(project)!=key:raise ProjectError('Current material source changed during discovery')
+    except Exception:
+        cache.pop(key,None)
+        raise
     result['current_models']=current['models'];result['current_state_key']=key
     result['unresolved_reference_count']+=current['unresolved_reference_count']
     result['limitations'].append('Current material edges are separately decoded from qualified saved model/texture edits. Their absence without edits means Retail inheritance; static address matches do not establish runtime residency.')
     from .project import canonical
-    if len(canonical(result))>8*1024*1024:raise ProjectError('Combined material reference metadata exceeds8 MiB')
+    if max(len(canonical(current)),len(canonical(result)))>8*1024*1024:
+        cache.pop(key,None)
+        raise ProjectError('Current or combined material reference metadata exceeds8 MiB')
+    if key in cache:cache.pop(key)
+    while len(cache)>=2:cache.pop(next(iter(cache)))
+    cache[key]=deepcopy(current)
     return result
 
 def source_key(project):

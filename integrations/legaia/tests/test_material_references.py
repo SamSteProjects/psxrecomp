@@ -8,13 +8,30 @@ from test_project_workflow import synthetic_scene
 from importer.textures import TextureCatalog,Tim,TimBlock,associate_material
 
 class MaterialMetadata(unittest.TestCase):
+ def test_current_cache_detached_lru_and_failed_owned_guard_evicts(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.disc_path='source.bin'
+   imported=dict(models=[],unresolved_reference_count=0,limitations=[])
+   binding={'source_scene_id':p.active_scene,'label':'A'};p.texture_additions['texture-new://fixture']=binding
+   current=dict(models=[dict(model_id='asset://fixture/model/0',materials=[])],unresolved_reference_count=0)
+   with patch('sdk.material_references._verify_current_assets') as guard,patch('sdk.material_references.discover',return_value=current) as decode:
+    first=with_current(p,imported);first['current_models'][0]['materials'].append('changed')
+    self.assertEqual(with_current(p,imported)['current_models'][0]['materials'],[]);self.assertEqual(decode.call_count,1);self.assertEqual(guard.call_count,2)
+    for label in ['B','C','D']:binding['label']=label;with_current(p,imported)
+    self.assertEqual(decode.call_count,4);self.assertEqual(len(p.assets.current_material_reference_catalogs),2)
+    with patch('sdk.material_references._verify_current_assets',side_effect=ProjectError('Owned content changed')):
+     with self.assertRaises(ProjectError):with_current(p,imported)
+    self.assertEqual(len(p.assets.current_material_reference_catalogs),1)
+    with_current(p,imported);self.assertEqual(decode.call_count,5)
+   p.texture_additions.clear();p.save();self.assertNotIn('current_material_reference_catalogs',(p.root/'project.legaia.json').read_text())
  def test_current_projection_does_not_mutate_imported_cache_and_rejects_drift(self):
   with tempfile.TemporaryDirectory() as directory:
    p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.disc_path='source.bin'
    imported=dict(models=[],unresolved_reference_count=1,limitations=['Retail only']);p.texture_additions['texture-new://fixture']={'source_scene_id':p.active_scene}
-   with patch('sdk.material_references.discover',return_value=dict(models=[],unresolved_reference_count=2)) as discovery:
+   with patch('sdk.material_references._verify_current_assets'),patch('sdk.material_references.discover',return_value=dict(models=[],unresolved_reference_count=2)) as discovery:
     result=with_current(p,imported);self.assertEqual(result['unresolved_reference_count'],3);discovery.assert_called_once_with(p,current=True)
    self.assertEqual(imported,dict(models=[],unresolved_reference_count=1,limitations=['Retail only']))
+   p.assets.current_material_reference_catalogs.clear()
    def drift(project,**kwargs):project.texture_additions.clear();return dict(models=[],unresolved_reference_count=0)
    with patch('sdk.material_references.discover',side_effect=drift):
     with self.assertRaises(ProjectError):with_current(p,imported)
@@ -29,9 +46,10 @@ class MaterialMetadata(unittest.TestCase):
   from sdk.asset_references import inspect
   with tempfile.TemporaryDirectory() as directory:
    p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.disc_path='source.bin'
-   with patch('importer.pipeline._disc_context') as context,patch('sdk.resources._verify',side_effect=ProjectError('Source changed')),patch('sdk.material_references.verified_catalog') as cached:
+   with patch('importer.pipeline._disc_context') as context,patch('sdk.resources._verify',side_effect=ProjectError('Source changed')),patch('sdk.material_references.verified_catalog') as cached,patch('sdk.material_references.with_current') as current:
     with self.assertRaises(ProjectError):inspect(p,'scene://fixture')
     cached.assert_not_called()
+    current.assert_not_called()
  def test_discovery_source_drift_never_installs_cache(self):
   with tempfile.TemporaryDirectory() as directory:
    p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.disc_path='source.bin'

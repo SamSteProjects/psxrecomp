@@ -506,6 +506,11 @@ def inspect_project(project,identifier):
     for name,value in vars(project).items():
         if name!='assets':setattr(view,name,deepcopy(value))
     view.assets=AssetDatabase()
+    # Catalog registration stays isolated. Source-keyed material metadata is safe
+    # to share only after the complete snapshot's fresh Retail verification below;
+    # Current reuse additionally requalifies owned assets in with_current.
+    view.assets.material_reference_catalogs=project.assets.material_reference_catalogs
+    view.assets.current_material_reference_catalogs=project.assets.current_material_reference_catalogs
     catalogs={};materials={};coverage={};metadata_bytes=0
     with _disc_context(view.disc_path):
         # Verify the complete snapshot before any derived decoding or reuse.
