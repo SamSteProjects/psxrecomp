@@ -30,7 +30,7 @@ import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
-import {mountAssetInspector,assetInspectorDefinition} from '/asset-inspector.js';
+import {mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
 import {bindComponentReferences} from '/component-references.js';
 import {decodeFlagResource,openFlagResource} from '/flag-resource.js';
 import {decodeTransitionResource,openTransitionResource} from '/transition-resource.js';
@@ -1593,6 +1593,12 @@ function showAssetDetails(record,lookup=()=>assetRecords()){
     const current=()=>assetDetails.open&&context===resourceStateKey()&&contract===JSON.stringify([state.inspector_schema,state.capabilities])&&JSON.stringify(lookup().find(item=>item.id===record.id))===snapshot;
     mountAssetInspector(section,{schema:state.inspector_schema,record,capabilities:state.capabilities,current,busy:()=>busy,
       activate:async (item,action)=>{if(!current())return;assetDetails.close();if(action==='inspect-landmark-destination'){const label=item.data?.destination_source_label;if(!label)return;$('import-button').click();$('catalog-prefix').value=label;clearSceneCatalog();$('catalog-search').click();}else await activateAsset(item,action);},onError:error=>notify(error.message,true)});
+    const triggerBindingInspector=mountTriggerBindingInspector(section,{record,getState:()=>state,current,busy:()=>busy,onInspect:async node=>{
+      if(!current())return;const target=lookup().find(item=>item.id===node.id&&item.type==='script'&&item.sceneId===state.scene?.id);
+      if(!target)throw new Error('Source script is absent from the current catalog. Refresh resources.');
+      assetDetails.close();await openActorScript({id:target.data.owner_semantic_id,name:target.label,partitionTwo:true});
+    }});
+    if(triggerBindingInspector)assetDetails.addEventListener('close',triggerBindingInspector.dispose,{once:true});
     $('asset-source-data').parentElement.before(section);
     $('asset-source-data').parentElement.open=false;
     // These record types use the SDK inspector tool rather than a duplicate authored button.

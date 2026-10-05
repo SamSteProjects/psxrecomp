@@ -1,5 +1,30 @@
 # Legaia SDK status — 2026-10-04
 
+## Trigger binding Inspector layers - 2026-10-04
+
+Gate-1 trigger assets in the active scene now show a read-only Script binding
+section directly in their registered Inspector. Retail, Authored and Current
+stable script identities come from the qualified asset-reference graph. Each
+available target opens the shared script Inspector directly. No authored value
+means inherit; unresolved Retail targets remain explicit, even when an authored
+target is qualified. This inspection does not require opening the edit review.
+Other gates do not acquire guessed script bindings. Source changes, busy state
+and closed panels block navigation; closing aborts unfinished reference requests.
+
+Focused JavaScript reference/registry checks and syntax checks passed, including
+inherited/authored/unresolved layers, busy/stale navigation and late closed replies.
+A fresh real vell browser workflow verified Retail8/Authored0/Current0, both Retail
+and Current script endpoints, unchanged project document/selection/history/dirty
+state, zero authoring requests and zero page errors. Desktop and540px screenshots
+were inspected. Evidence:
+`local-output/sdk-20260909/trigger-binding-inspector-20261004/final/proof.json`.
+The first browser pass exposed a shortcut to metadata rather than the complete
+Inspector; that route was corrected. A later check ran before the script report
+loaded; final acceptance waits for the endpoint and rendered report. No game
+launched or installed output changed. Runtime activation/dispatch remains deferred;
+the broader SDK goal stays active and solo.
+
+
 ## Effective trigger references - 2026-10-04
 
 The asset-reference graph now retains each original Retail gate-1 trigger edge

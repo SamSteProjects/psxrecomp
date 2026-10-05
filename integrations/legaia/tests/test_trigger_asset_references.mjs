@@ -62,3 +62,26 @@ assert.equal(decodeAssetReferences(effective,effective.asset_id,key).outgoing.le
 assert.match(assetReferenceRelationLabel(effective.outgoing[2]),/Current authored gate-1 trigger.*record 2/);assert.match(assetReferenceTriggerEvidenceLabel(effective.outgoing[2]),/Authored TriggerScripts SHA-256.*Retail target record 0/);
 for(const mutate of [v=>v.outgoing[2].layer='decoded',v=>v.outgoing[2].trigger_binding_evidence.component_sha256='invalid',v=>v.outgoing[2].trigger_binding_evidence.map_source_sha256='invalid',v=>v.outgoing[2].trigger_binding_evidence.imported_partition_two_record_index=1,v=>v.outgoing[2].trigger_binding_evidence.target_byte_offset=0,v=>v.outgoing[2].trigger_reference_evidence.trigger_source_record_sha256='e'.repeat(64),v=>v.outgoing[2].trigger_reference_evidence.table_source='fallback',v=>v.outgoing[2].trigger_reference_evidence.reachability='executed',v=>delete v.outgoing[2].source_catalog_key,v=>v.outgoing.push({...structuredClone(v.outgoing[2]),id:'b'.repeat(64)})]){const bad=structuredClone(effective);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,bad.asset_id,key));}
 console.log('Distinct Retail/effective trigger edges retain provenance and reject forged layers, duplicate bindings and runtime claims.');
+
+// Inspector layers reuse the qualified graph without inferring an authored target.
+const {triggerBindingSummary}=await import('../editor/asset-inspector.js');
+const retailSummary=triggerBindingSummary(decodeAssetReferences(trigger,trigger.asset_id,key));
+assert.equal(retailSummary.retail.id,scriptId);assert.equal(retailSummary.current.id,scriptId);assert.equal(retailSummary.authored,null);
+const summary=triggerBindingSummary(decodeAssetReferences(effective,effective.asset_id,key));
+assert.equal(summary.retail.id,scriptId);assert.equal(summary.authored.id,newScript);assert.equal(summary.current.id,newScript);
+const unresolvedRetail=triggerBindingSummary({...effective,outgoing:[effective.outgoing[2]]});assert.equal(unresolvedRetail.retail,null);assert.equal(unresolvedRetail.current.id,newScript);
+assert.deepEqual(triggerBindingSummary({nodes:[],outgoing:[]}),{retail:null,authored:null,current:null});
+
+// Read-only Inspector lifecycle: blocked/stale clicks and late responses cannot navigate.
+const {mountTriggerBindingInspector}=await import('../editor/asset-inspector.js');
+class Element{constructor(tag){this.tag=tag;this.children=[];this.dataset={};}append(...children){this.children.push(...children);}setAttribute(){}replaceChildren(...children){this.children=children;}}
+globalThis.document={createElement:tag=>new Element(tag)};
+const record={id:effective.asset_id,type:'trigger',sceneId:scene,data:{table_kind:1,encoded:{gate:1}}};
+let fresh=true,blocked=false,calls=0;const state={scene:{id:scene},asset_reference_source_key:key,capabilities:{asset_references:true}},host=new Element('section');
+const options={record,getState:()=>state,current:()=>fresh,busy:()=>blocked,onInspect:async node=>{assert.equal(node.id,newScript);calls++;},request:async()=>({ok:true,json:async()=>effective})};
+const mounted=mountTriggerBindingInspector(host,options);await mounted.ready;
+const buttons=host.children[0].children[2].children.filter(child=>child.tag==='button'),currentButton=buttons.find(button=>button.textContent==='Inspect Current script');
+blocked=true;await currentButton.onclick();assert.equal(calls,0);blocked=false;await currentButton.onclick();assert.equal(calls,1);fresh=false;await currentButton.onclick();assert.equal(calls,1);fresh=true;mounted.dispose();await currentButton.onclick();assert.equal(calls,1);
+let finish,signal;const lateHost=new Element('section'),late=mountTriggerBindingInspector(lateHost,{...options,request:(_url,args)=>{signal=args.signal;return new Promise(resolve=>{finish=resolve;});}});late.dispose();assert.equal(signal.aborted,true);finish({ok:true,json:async()=>effective});await late.ready;assert.equal(lateHost.children[0].children[2].children.length,0);
+assert.equal(mountTriggerBindingInspector(new Element('section'),{...options,record:{...record,data:{table_kind:1,encoded:{gate:0}}}}),null);
+console.log('Read-only trigger Inspector inherits qualified layers, blocks busy/stale navigation and aborts late closed responses.');

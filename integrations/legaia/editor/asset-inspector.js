@@ -1,4 +1,5 @@
 import {triggerScriptEditable} from './trigger-scripts.js';
+import {decodeAssetReferences} from './asset-references.js';
 import {renderComponentProperties,renderComponentActions,bindComponentActions} from './component-inspector.js';
 
 const TYPES={actor:'AssetActor',scene:'AssetScene',template:'AssetTemplate',worldmap:'AssetWorldmap',model:'AssetModel',texture:'AssetTexture',animation:'AssetAnimation',script:'AssetScript',dialogue:'AssetDialogue',flag:'AssetFlag',transition:'AssetTransition',collision:'AssetCollision',trigger:'AssetTrigger',region:'AssetRegion'};
@@ -19,4 +20,32 @@ export function mountAssetInspector(host,{schema,record,capabilities,current,bus
   const actions=document.createElement('div');actions.className='dialog-actions';actions.innerHTML=renderComponentActions(schema,id,record,capabilities,registry,false);host.append(actions);
   bindComponentActions(actions,registry,{current,editable:()=>false,busy,onError});
   return true;
+}
+
+// The graph qualifies source targets; this adapter only presents SDK layers.
+export function triggerBindingSummary(report){
+  const retail=report.outgoing.find(edge=>edge.kind==='field_trigger_script_reference');
+  const authored=report.outgoing.find(edge=>edge.kind==='effective_field_trigger_script_reference');
+  const nodes=new Map(report.nodes.map(node=>[node.id,node]));
+  const target=edge=>edge?nodes.get(edge.target_id):null;
+  return {retail:target(retail),authored:target(authored),current:target(authored??retail)};
+}
+export function mountTriggerBindingInspector(host,{record,getState,current,busy,onInspect,request=fetch}){
+  if(record.type!=='trigger'||record.data?.table_kind!==1||record.data?.encoded?.gate!==1||record.sceneId!==getState().scene?.id||!getState().capabilities?.asset_references)return null;
+  const key=getState().asset_reference_source_key,controller=new AbortController(),section=document.createElement('section');section.dataset.triggerBindingInspector='';
+  const heading=document.createElement('h4');heading.textContent='Script binding';const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Verifying source targets…';const content=document.createElement('div');section.append(heading,status,content);host.append(section);
+  let disposed=false;
+  const fresh=()=>!disposed&&current()&&key===getState().asset_reference_source_key&&getState().capabilities?.asset_references===true;
+  const dispose=()=>{disposed=true;controller.abort();};
+  const ready=(async()=>{try{
+    const response=await request('/api/asset-references',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({asset_id:record.id}),signal:controller.signal}),value=await response.json();
+    if(!fresh())return;if(!response.ok||value.error)throw new Error(value.error??'Trigger reference verification failed.');
+    const layers=triggerBindingSummary(decodeAssetReferences(value,record.id,key));
+    for(const [layer,label] of [['retail','Retail'],['authored','Authored'],['current','Current']]){
+      const row=document.createElement('div');row.className='property';row.dataset.triggerBindingLayer=layer;const title=document.createElement('span');title.textContent=label;const target=layers[layer],identity=document.createElement('code');identity.textContent=target?.id??(layer==='authored'?'None · inherit':'Unresolved source target');row.append(title,identity);content.append(row);
+      if(target){const button=document.createElement('button');button.type='button';button.textContent=`Inspect ${label} script`;button.dataset.triggerBindingTarget=target.id;button.disabled=!target.available;button.onclick=async()=>{if(!fresh()){status.textContent='Project sources changed. Reopen this Inspector.';return;}if(busy()||!target.available)return;try{await onInspect(target);}catch(error){status.textContent=error.message;}};content.append(button);}
+    }
+    status.textContent='Source binding only. Activation, execution and gameplay reachability are not established.';
+  }catch(error){if(!controller.signal.aborted&&fresh()){content.replaceChildren();status.textContent=error.message;}}})();
+  return {dispose,ready};
 }
