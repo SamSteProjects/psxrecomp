@@ -173,4 +173,34 @@ class MixedNativeRotationTests(unittest.TestCase):
     with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(kind='rotate',anchor_entity_id=ACTOR,quarter_turns=2))
     self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
 
+class MixedMirrorTests(unittest.TestCase):
+ def test_native_axes_anchor_preservation_history_and_save(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=source_map()
+   with patch.object(p,'_environment_source',return_value=source):
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(y=77)));env=dict(source_sha256=sha256(source).hexdigest(),edits=[dict(record_index=4,offset=dict(y=50))],instances=[dict(cell_index=129,offset=dict(y=80),rotation_psx=dict(y=777)),dict(cell_index=258,offset=dict(z=90))]);p.command(dict(type='set_environment_transforms',entity_id=SCENE,value=env));before=deepcopy(p._document());depth=len(p.undo_stack)
+    for axis in ('x','z'):
+     op=dict(kind='mirror',axis=axis,anchor_entity_id=IDS[0]);r=layout_review(p,SCENE,MIXED,op);anchor=next(t for t in r['targets'] if t['entity_id']==IDS[0]);self.assertEqual(anchor['proposed'],anchor['current']);self.assertNotEqual(anchor['current'][axis]%64,0)
+     actor=next(t for t in r['targets'] if t['kind']=='actor');n=2*anchor['current'][axis]-actor['current'][axis];expected=deepcopy(actor['current']);expected[axis]=((abs(n)+32)//64)*64*(1 if n>=0 else -1);self.assertEqual(actor['proposed'],expected);self.assertEqual(p._document(),before)
+    p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertEqual(len(p.undo_stack),depth+1);self.assertEqual(p.overrides[ACTOR]['Transform']['position']['y'],77);self.assertEqual(p.overrides[SCENE]['Environment'],env);self.assertNotIn('x',p.overrides[ACTOR]['Transform']['position']);after=deepcopy(p.overrides);p.undo();self.assertEqual(p._document(),before);p.redo();self.assertEqual(ProjectService.open(p.save()).overrides,after)
+ def test_half_rounding_and_atomic_invalid_bounds(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,-112,0,48)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    op=dict(kind='mirror',axis='x',anchor_entity_id=IDS[0]);r=layout_review(p,SCENE,MIXED,op);self.assertEqual(next(t for t in r['targets'] if t['kind']=='actor')['proposed'],dict(x=64,z=256));before=deepcopy(p._document());history=deepcopy((p.undo_stack,p.redo_stack))
+    for invalid in [dict(op,axis='y'),dict(op,anchor_entity_id='unknown'),dict(op,percent=100),dict(op,axis=True),{'kind':'mirror','axis':'x'}]:
+     with self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,invalid)
+    with self.assertRaises(ProjectError):p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=dict(op,axis='z'),review_key=r['review_key']))
+    self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
+   source=bytearray(source_map());struct.pack_into('<3h',source,4*32,32767,0,0)
+   with patch.object(p,'_environment_source',return_value=bytes(source)),self.assertRaises(ProjectError):layout_review(p,SCENE,MIXED,dict(kind='mirror',axis='x',anchor_entity_id=ACTOR))
+   self.assertEqual(p._document(),before);self.assertEqual((p.undo_stack,p.redo_stack),history)
+ def test_coincident_mirror_noop_keeps_redo(self):
+  with tempfile.TemporaryDirectory() as directory:
+   p=fixtures.ScenePlacementGroupTests().project(directory);source=bytearray(source_map());struct.pack_into('<3h',source,4*32,-64,0,-64)
+   with patch.object(p,'_environment_source',return_value=bytes(source)):
+    p.command(dict(type='set_transform',entity_id=ACTOR,position=dict(x=192)));p.undo();history=deepcopy((p.undo_stack,p.redo_stack))
+    for axis in ('x','z'):
+     op=dict(kind='mirror',axis=axis,anchor_entity_id=ACTOR);r=layout_review(p,SCENE,MIXED,op);self.assertFalse(r['project_change']);p.command(dict(type='apply_scene_placement_layout',entity_id=SCENE,entity_ids=MIXED,operation=op,review_key=r['review_key']));self.assertEqual((p.undo_stack,p.redo_stack),history)
+
 if __name__=='__main__':unittest.main()

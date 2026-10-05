@@ -1,5 +1,34 @@
 # Mixed scene placement groups
 
+## Mirror mixed scene placement coordinates — 2026-10-05
+
+**Move scene placement group → Mirror X/Z coordinates about anchor** reflects the
+selected coordinate across its value at a selected imported actor/static-decoration
+anchor: `proposed_axis = 2 * anchor_axis - Current_axis`. Final actor coordinates round
+to 64 units with half steps away from zero; scenery retains integer precision. Off-grid
+scenery anchors are supported and stay fixed. The other coordinate stays unchanged;
+only changed actor axes become overrides. This reflects positions without mirroring
+models, changing facing/object rotation, creating parenting or recomputing collision.
+
+Exact typed `{kind, axis, anchor_entity_id}` requests use a distinct native-mirror
+review algorithm binding. Review qualifies selection, source and full native proposals;
+Current/Proposed inspection and Return author nothing. Input/source changes withdraw
+review. Actor bounds and complete MAP offset/allocation checks reject atomically. Apply
+records one Undo step through existing commands; no-ops preserve history and redo.
+Shared descriptors, unselected instances, heights and unrelated components remain.
+
+Validation: 28 focused Python layout/group/HTTP cases, expanded mixed-placement Node
+checks and module syntax pass, including both axes, off-grid anchor, half rounding,
+unchanged-axis metadata, invalid/stale requests, no-op/history, offset overflow and
+forged/safe-arithmetic guards. Actual private Town01 browser checks X and Z reflection,
+fixed off-grid anchor, Current/Proposed GPU matrices, held height/rotation, withdrawal/
+Return and one Apply at 540px. Undo/Redo, Save/Open and normal Build pass with full MAP
+directory/ZIP and independent MAN coordinate/opaque-byte readback. Package SHA256:
+`41922554d2e88a1b07fcfd9482853c1a924286f1aab763e7e1b2650a6e451b9b`.
+Evidence: `local-output/sdk-20260909/mixed-placement-mirror-20261005/proof.json`.
+No game, installation or full-disc export ran. Runtime/script-driven placement and
+collision acceptance stay deferred; the full SDK goal remains active and work stays solo.
+
 ## Rotate mixed placements at native coordinate precision — 2026-10-05
 
 **Move scene placement group → Rotate positions -90°/+90°/180° in X/Z** accepts a

@@ -79,6 +79,16 @@ def _review(project, scene, entity_ids, delta, operation=None):
                     units=(abs(n)+step//2)//step
                     position[a]=(-units if n<0 else units)*step
                 target['proposed']=position
+        elif operation['kind']=='mirror':
+            anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
+            if anchor is None:raise ProjectError('Mixed mirror anchor must be selected')
+            if any(type(t['current'][a]) is not int for t in targets for a in ('x','z')):
+                raise ProjectError('Mixed mirror requires integer Current X/Z coordinates')
+            for target in targets:
+                step=64 if target['kind']=='actor' else 1
+                n=2*anchor['current'][axis]-target['current'][axis]
+                units=(abs(n)+step//2)//step
+                target['proposed'][axis]=(-units if n<0 else units)*step
         elif operation['kind']=='align':
             anchor=next((t for t in targets if t['entity_id']==operation['anchor_entity_id']),None)
             if anchor is None:raise ProjectError('Mixed layout anchor must be selected')
@@ -124,7 +134,7 @@ def _review(project, scene, entity_ids, delta, operation=None):
         raise ProjectError('Project changed while reviewing mixed placement')
     identities = sorted(entity_ids)
     key = digest(dict(project_source_key=context['before'], scene=scene,
-                      source_sha256=context['source_hash'], entity_ids=identities, delta=delta, **({'operation':operation,'algorithm':'native-coordinate-scale.v1' if operation['kind']=='scale' else 'native-coordinate-rotation.v1' if operation['kind']=='rotate' else 'source-grid-layout.v1','targets':targets} if operation is not None else {})))
+                      source_sha256=context['source_hash'], entity_ids=identities, delta=delta, **({'operation':operation,'algorithm':'native-coordinate-scale.v1' if operation['kind']=='scale' else 'native-coordinate-rotation.v1' if operation['kind']=='rotate' else 'native-coordinate-mirror.v1' if operation['kind']=='mirror' else 'source-grid-layout.v1','targets':targets} if operation is not None else {})))
     return dict(schema_version='legaia.scene-placement-layout-review.v1' if operation is not None else 'legaia.scene-placement-group-review.v1',
                 project_source_key=context['before'], scene_id=scene, source_sha256=context['source_hash'],
                 review_key=key, entity_ids=identities, delta=deepcopy(delta),
@@ -140,13 +150,13 @@ def review(project,scene,entity_ids,delta):
 
 
 def layout_review(project,scene,entity_ids,operation):
-    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset','rotate','scale'):
-        raise ProjectError('Mixed layout requires align/distribute, reset, position rotation or native spacing scale')
+    if not isinstance(operation,dict) or operation.get('kind') not in ('align','distribute','reset','rotate','scale','mirror'):
+        raise ProjectError('Mixed layout requires align/distribute, reset, position rotation/mirroring or native spacing scale')
     kind=operation['kind']
     fields=({'kind','anchor_entity_id','percent'} if kind=='scale' else {'kind'} if kind=='reset' else {'kind','anchor_entity_id','quarter_turns'} if kind=='rotate'
-            else {'kind','axis','anchor_entity_id'} if kind=='align' else {'kind','axis'})
+            else {'kind','axis','anchor_entity_id'} if kind in ('align','mirror') else {'kind','axis'})
     if set(operation)!=fields:raise ProjectError('Mixed layout accepts exact operation fields only')
-    if kind in ('align','distribute') and operation['axis'] not in ('x','z'):
+    if kind in ('align','distribute','mirror') and operation['axis'] not in ('x','z'):
         raise ProjectError('Mixed layout axis must be X/Z')
     if kind=='rotate' and (type(operation['quarter_turns']) is not int or operation['quarter_turns'] not in (-1,1,2)):
         raise ProjectError('Mixed rotation requires -1, 1 or 2 exact quarter turns')

@@ -1,5 +1,22 @@
 # Legaia SDK validation plan
 
+## Mixed placement mirror checkpoint — 2026-10-05
+
+28 focused Python layout/group/HTTP cases, expanded mixed-placement Node checks and
+module syntax pass. Cover both native reflection axes, off-grid fixed anchor, final
+actor half rounding, unchanged other-axis metadata, atomic invalid/stale requests,
+native bounds/offset overflow, no-op redo and forged/safe arithmetic. Actual private
+Town01 browser checks both axes, operation withdrawal, Current/Proposed GPU matrices
+with height/rotation held, Return and one Apply at 540px. Undo/Redo, Save/Open and
+normal Build pass with full MAP directory/ZIP and independent MAN placement/opaque
+readback; the unchanged actor axis remains unauthored. Screenshot inspected, no page
+errors. Proof: `local-output/sdk-20260909/mixed-placement-mirror-20261005/proof.json`.
+Campaign follow-up: maximum mixed selections, coincident results, both anchor types,
+repeated reflection, boundary coordinates, source withdrawal and shared MAP ownership.
+Model geometry/facing/rotations and collision are retained, not reflected; script-driven
+placement and collision consistency remain separate manual gates. No game,
+installation or full-disc export ran.
+
 ## Native-precision mixed rotation checkpoint — 2026-10-05
 
 25 focused Python layout/group/HTTP cases, mixed-placement Node checks and module
