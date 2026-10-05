@@ -216,7 +216,7 @@ export class SceneRenderer {
   }
 
   draw(view,picking=false,trianglePicking=false){
-    if(trianglePicking&&(!picking||this.instances.length!==1))throw new Error('Triangle picking requires one inspected model instance.');
+    if(trianglePicking&&(!picking||this.instances.filter(i=>!view.hiddenEntities?.has(i.entity_id)).length!==1))throw new Error('Triangle picking requires one visible inspected model instance.');
     if(this.lost||!view.width||!view.height)return;
     validateTransforms(view.transforms);
     if(view.normalDiagnostic!==undefined&&typeof view.normalDiagnostic!=='boolean')throw new Error('Invalid source normal diagnostic mode.');
@@ -364,14 +364,25 @@ export class SceneRenderer {
   }
 
   /** Native decoded triangle ID, with the same depth and texture-zero coverage. */
-  pickTriangle(x,y,view){
+  pickTriangle(x,y,view,entityId=null){
     if(!finite(x)||!finite(y)||!finite(view?.width)||!finite(view?.height)||view.width<=0||view.height<=0||x<0||y<0||x>=view.width||y>=view.height)return null;
-    if(this.lost||this.instances.length!==1)return null;
+    if(this.lost)return null;
+    const instance=entityId===null?(this.instances.length===1?this.instances[0]:null):this.instances.find(i=>i.entity_id===entityId);
+    if(!instance||view.hiddenEntities?.has(instance.entity_id))return null;
+    const isolated={...view,hiddenEntities:new Set([...view.hiddenEntities??[],...this.instances.filter(i=>i!==instance).map(i=>i.entity_id)])};
     try{
-      this.draw(view,true,true);const pixel=new Uint8Array(4),px=Math.floor(x*this.canvas.width/view.width),py=Math.max(0,Math.min(this.canvas.height-1,Math.floor((view.height-y)*this.canvas.height/view.height)));
-      this.gl.readPixels(px,py,1,1,this.gl.RGBA,this.gl.UNSIGNED_BYTE,pixel);const index=(pixel[0]|pixel[1]<<8|pixel[2]<<16)-1,mesh=this.meshes.get(this.instances[0].geometry_key);
+      this.draw(isolated,true,true);const pixel=new Uint8Array(4),px=Math.floor(x*this.canvas.width/view.width),py=Math.max(0,Math.min(this.canvas.height-1,Math.floor((view.height-y)*this.canvas.height/view.height)));
+      this.gl.readPixels(px,py,1,1,this.gl.RGBA,this.gl.UNSIGNED_BYTE,pixel);const index=(pixel[0]|pixel[1]<<8|pixel[2]<<16)-1,mesh=this.meshes.get(instance.geometry_key);
       return index>=0&&index<mesh.triangles.length?index:null;
     }finally{this.draw(view);}
+  }
+
+  /** First resolve the visible instance, then its native decoded triangle. */
+  pickSurface(x,y,view){
+    if(!finite(x)||!finite(y)||!finite(view?.width)||!finite(view?.height)||view.width<=0||view.height<=0||x<0||y<0||x>=view.width||y>=view.height)return null;
+    const id=this.pick(x,y,view);if(id===null)return null;
+    const instance=this.instances.find(i=>i.entity_id===id),triangle=this.pickTriangle(x,y,view,id);
+    return triangle===null?null:{entity_id:id,geometry_key:instance.geometry_key,triangle_index:triangle};
   }
 
   pick(x,y,view){

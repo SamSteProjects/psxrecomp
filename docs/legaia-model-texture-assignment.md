@@ -104,8 +104,8 @@ object/primitive and updates corner fields and the UV workspace. Both triangles
 of a quad select the same face. This readonly selection is blocked by pending face
 or material drafts; apply/discard them first. Dragging continues to orbit. Picking
 uses the renderer's depth test and visible texture coverage, with complete native
-face ownership checks. It applies to the unposed model comparison rather than
-inferring source face ownership from a live runtime or placed-scene click.
+face ownership checks. The model comparison uses the strict unposed adapter;
+the main scene has a separate Current-qualified placed-surface navigation path.
 
 
 **Outline selected native face (cyan)** displays the active face's boundary in
@@ -114,3 +114,20 @@ is omitted, and hidden boundary edges are deliberately shown as a selection
 diagnostic. It is independent of the yellow GLB selection set and changes no
 native data, draft or review identity. The caption identifies the active native
 object/primitive; turning it off preserves selection and all editor state.
+
+
+**Pick model face** in the main authored viewport is a one-shot navigation tool.
+It resolves the frontmost visible entity before isolating its native triangle ID,
+then requires a fresh primitive source matching the loaded project/scene key.
+Each displayed object must be a complete native prefix with exact vertex starts,
+counts, face triangulation and corner indices. Posed vertex positions do not become
+native edits. Unsupported ownership is rejected; empty space leaves selection alone.
+The selected entity is reflected in Hierarchy/Inspector before the existing model
+face editor opens its Current object/primitive. Retail/live modes and pending scene
+proposals are unavailable. Orbit drags never open the face editor.
+
+Private verification covers overlapping instances, hidden/transparent fronts,
+background and outside pixels, normal entity picking after restoration, and actual
+Town01 scene navigation without model/history/source-key mutations. Existing UV,
+material, scene comparison, Apply and normal Build verification also passed.
+No game launched; this does not establish runtime coordinates or visibility.

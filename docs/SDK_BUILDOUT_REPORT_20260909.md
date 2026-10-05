@@ -1,5 +1,25 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-04: Pick a native face from the authored scene
+
+The main viewport now has **Pick model face**. One surface click resolves the
+frontmost visible instance and triangle, selects its entity in the existing
+Hierarchy/Inspector, and opens the corresponding Current native object/primitive.
+Depth, hidden instances and texture-zero coverage participate in picking. Dragging
+still orbits. Fresh source-key checks and exact native corner connectivity qualify
+ownership, including supported posed geometry and complete object prefixes.
+Retail comparison, live mode, pending proposals and conflicting tools cannot arm it.
+Selection writes no model content; native changes retain the existing reviewed Apply.
+
+Node ownership/lifecycle checks and private Town01 headless browser verification
+passed, including readonly scene navigation, GPU overlap/transparency, combined
+UV/material Apply, Save/reopen, Undo/Redo and exact model/TIM normal Build readback.
+Evidence: `local-output/sdk-20260909/scene-face-picking-20261004/syntax-fixed/proof.json`.
+Fresh ownership checks also passed for all 118 loaded Town01 model geometries
+(29 posed, two complete object prefixes); `ownership-proof.json` records this.
+No game launched. Runtime positions, visibility and gameplay remain unverified.
+
+
 ## 2026-10-04: Active native face outline
 
 The model comparison now shows the selected native face's cyan boundary in both
