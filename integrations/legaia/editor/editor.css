@@ -233,3 +233,5 @@
 .script-component-reset{width:min(760px,calc(100vw - 35px));max-height:90vh;overflow:auto}.script-component-reset>code{display:block;overflow-wrap:anywhere}.script-component-reset .diagnostic-detail{max-height:45vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
 
 #script-dialog .movement-authoring,#script-dialog .flag-authoring,#script-dialog .wait-authoring,#script-dialog .modelSelector-authoring,#script-dialog .facing-authoring,#script-dialog .script-branch-authoring{scroll-margin-top:90px}
+
+#script-dialog .dialogue-authoring-note,#script-dialog .transition-authoring{scroll-margin-top:90px}

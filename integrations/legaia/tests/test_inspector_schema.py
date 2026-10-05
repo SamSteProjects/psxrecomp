@@ -119,4 +119,25 @@ class InspectorSchema(unittest.TestCase):
                 self.assertEqual(action['when'],['authored_instruction_count'])
                 self.assertTrue(action['requires_edit'])
 
+    def test_dialogue_and_transition_components_keep_distinct_entry_shapes(self):
+        import tempfile
+        from pathlib import Path
+        from sdk.project import ProjectService
+        from integrations.legaia.tests.test_project_workflow import synthetic_scene
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene())
+            owner=p.imports[p.active_scene]['actors'][0]['semantic_id']
+            components=p.state()['scene']['entities'][0]['components']
+            self.assertEqual(components['Dialogue']['authored_run_count'],0)
+            self.assertNotIn('Transitions',components)
+            p.overrides[owner]={'Dialogue':{'runs':{'text-run':'Edited text'}},'Transitions':{'entries':{'entry':{'entry_bytes':[1,2,3]}}}}
+            state=p.state();components=state['scene']['entities'][0]['components']
+            self.assertEqual(components['Dialogue']['authored_run_count'],1)
+            self.assertEqual(components['Transitions']['authored_instruction_count'],1)
+            components['Dialogue']['authored']['runs'].clear();components['Transitions']['entries'].clear()
+            self.assertEqual(p.overrides[owner]['Dialogue']['runs'],{'text-run':'Edited text'})
+            self.assertEqual(len(p.overrides[owner]['Transitions']['entries']),1)
+            reset=next(a for a in state['inspector_schema']['components']['Dialogue']['actions'] if a['id']=='reset-script-component')
+            self.assertTrue(reset['requires_edit']);self.assertEqual(reset['when'],['authored_run_count'])
+
 if __name__=='__main__':unittest.main()

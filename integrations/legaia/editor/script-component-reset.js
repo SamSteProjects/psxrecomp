@@ -1,14 +1,15 @@
-const families=new Set(['ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches']);
+const families=new Set(['ScriptMovement','ScriptFlags','ScriptWaits','ScriptModelSelectors','ScriptFacing','ScriptBranches','Dialogue','Transitions']);
 
 // Uses the existing source-bound removal witness; never accepts arbitrary component writes.
 export function scriptComponentResetReview(state,entity,component){
   if(!families.has(component)||state?.project?.mode!=='edit')throw new Error('Choose an authored script component in Edit mode');
   const current=state.scene?.entities?.find(row=>row.id===entity?.id);
   const review=state.authored_assets?.find(row=>row.id===entity?.id)?.component_reviews?.find(row=>row.component===component);
-  const entries=current?.components?.[component]?.entries;
+  const field=component==='Dialogue'?'runs':'entries';
+  const entries=component==='Dialogue'?current?.components?.Dialogue?.authored?.runs:current?.components?.[component]?.entries;
   if(!entries||Array.isArray(entries)||typeof entries!=='object'||!Object.keys(entries).length||Object.keys(entries).length>1024||
       !review||typeof review.review_key!=='string'||!/^[a-f0-9]{64}$/.test(review.review_key)||
-      JSON.stringify(review.authored?.entries)!==JSON.stringify(entries))throw new Error('Authored component review is unavailable or stale; refresh the Inspector');
+      JSON.stringify(review.authored?.[field])!==JSON.stringify(entries))throw new Error('Authored component review is unavailable or stale; refresh the Inspector');
   return JSON.parse(JSON.stringify({component,owner:entity.id,entries,review_key:review.review_key}));
 }
 
@@ -18,7 +19,7 @@ export function openScriptComponentReset({entity,component,getState,current,edit
   const dialog=document.createElement('dialog');dialog.className='script-component-reset';
   const title=document.createElement('h2'),owner=document.createElement('code'),note=document.createElement('p'),data=document.createElement('pre');
   title.textContent=`Reset ${component}`;owner.textContent=review.owner;
-  note.textContent=`Remove all ${Object.keys(review.entries).length} authored instruction entries shown below and inherit their imported source operands. Other components stay authored. This is one undoable project change; gameplay remains unverified.`;
+  note.textContent=`Remove all ${Object.keys(review.entries).length} authored ${component==='Dialogue'?'text runs':'instruction entries'} shown below and inherit their imported source ${component==='Dialogue'?'text':'operands'}. Other components stay authored. This is one undoable project change; gameplay remains unverified.`;
   data.className='diagnostic-detail';data.textContent=JSON.stringify(review.entries,null,2);
   const actions=document.createElement('div'),cancel=document.createElement('button'),apply=document.createElement('button');
   actions.className='dialog-actions';cancel.type=apply.type='button';cancel.textContent='Cancel component reset';apply.textContent='Reset reviewed component';

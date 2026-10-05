@@ -3448,6 +3448,7 @@ function renderModelSelectorAuthoring(){
 function renderTransitionAuthoring(){
   const authoring=scriptReport?.transition_authoring;if(!authoring||(!authoring.transitions?.length&&!authoring.unresolved_overrides?.length))return;
   const section=document.createElement('section'),heading=document.createElement('h3'),note=document.createElement('p');
+  section.className='transition-authoring';
   heading.textContent='Transition entries';note.className='field-note';
   note.textContent='Edit encoded entry bytes (0–255). The preview decodes the retail entry format. Destination names remain fixed.';
   section.append(heading,note);$('script-report').append(section);

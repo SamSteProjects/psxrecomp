@@ -3315,9 +3315,10 @@ class ProjectService:
                                             "RuntimeCorrelation": deepcopy(correlation.get("entities", {}).get(identifier, {"status": "unavailable", "binding_confirmed": False, "candidates": [], "reason": correlation.get("reason")})),
                                             "RetailMetadata": {key: deepcopy(actor.get(key)) for key in ("source_record", "claims", "unresolved")}}})
         for entity in entities:
+            entity['components']['Dialogue']['authored_run_count'] = len(entity['components']['Dialogue']['authored'].get('runs', {}))
             for component in ('ScriptFacing', 'ScriptBranches'):
                 entity['components'][component]['authored_instruction_count'] = len(entity['components'][component]['entries'])
-            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors'):
+            for component in ('ScriptMovement', 'ScriptFlags', 'ScriptWaits', 'ScriptModelSelectors', 'Transitions'):
                 entries = self.overrides.get(entity['id'], {}).get(component, {}).get('entries', {})
                 if entries:
                     entity['components'][component] = {'entries': deepcopy(entries), 'authored_instruction_count': len(entries)}

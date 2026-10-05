@@ -100,6 +100,22 @@ def inspector_schema():
                                       'capability': 'project_navigation', 'requires_edit': True,
                                       'when': ['authored_instruction_count']})
 
+    schema['components']['Dialogue']['properties'] = [
+        {'id': 'authored_run_count', 'label': 'Authored text runs', 'path': ['authored_run_count'],
+         'type': 'integer', 'state': 'authored-through-source-editor'}]
+    schema['components']['Dialogue']['actions'].append(
+        {'id': 'reset-script-component', 'label': 'Review component reset',
+         'capability': 'project_navigation', 'requires_edit': True, 'when': ['authored_run_count']})
+    schema['components']['Transitions'] = {
+        'label': 'Authored script transitions', 'units': 'Encoded entry operands', 'layout': 'read-only-properties',
+        'properties': [{'id': 'authored_instruction_count', 'label': 'Authored entries',
+                        'path': ['authored_instruction_count'], 'type': 'integer', 'state': 'authored-through-source-editor'}],
+        'actions': [{'id': 'inspect-script', 'label': 'Inspect transition entries', 'capability': 'actor_script_preview'},
+                    {'id': 'reset-script-component', 'label': 'Review component reset',
+                     'capability': 'project_navigation', 'requires_edit': True}],
+        'details': [{'label': 'Authored transition entries', 'path': ['entries']}],
+        'notes': ['Open the qualified source editor for separate retail, authored and effective entry operands. Destination names stay fixed; runtime arrival and transition execution remain unverified.']}
+
     # Asset inspector groups describe SDK catalog records, not entity components.
     tools = {
         'actor': ('AssetActor', 'Actor record', 'project_navigation', 'select-asset-actor', 'Select actor in scene'),

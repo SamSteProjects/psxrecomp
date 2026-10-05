@@ -1,5 +1,27 @@
 # Legaia SDK status — 2026-10-04
 
+## 2026-10-04: Dialogue and transition Inspector authoring summaries
+
+Dialogue now shows its authored text-run count and offers reviewed component
+reset only when text runs exist. Authored actor Transitions use a registered
+component with an entry count, exact entry details, source-editor navigation and
+reviewed reset. Source inspection focuses dialogue authoring or transition entries
+with spacing below the sticky toolbar. Text runs remain strings under Dialogue.runs;
+encoded transition values remain entries. Existing source-bound revert commands
+remove one component in one Undo entry; unrelated overrides and imports survive.
+
+Validation: 20 focused schema, dialogue, transition and component-review tests
+plus JavaScript action/reset/focus checks passed. A private Town01 browser workflow
+verified dialogue source focus, read-only review/cancel, reset while preserving
+Transform, Undo/Redo and Save/Open. A real Town01 partition-two transition was
+reset through the existing source-bound command with the same history/persistence
+checks. Actor transition Inspector rendering is synthetic-contract validated: no
+supported Town01 actor transition was found, so this does not claim a retail actor
+transition browser workflow. Screenshot inspected; zero browser errors. Evidence:
+ignored `local-output/sdk-20260909/dialogue-transition-inspector-20261004/parent/proof.json`.
+No game launched; runtime text/arrival acceptance remains deferred.
+
+
 ## 2026-10-04: Facing and branch Inspector workflows
 
 ScriptFacing and ScriptBranches now expose detached authored-instruction counts

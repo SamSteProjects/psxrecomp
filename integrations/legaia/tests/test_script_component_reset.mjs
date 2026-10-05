@@ -11,9 +11,17 @@ for(const mutate of [s=>s.project.mode='live',s=>s.scene.entities=[],s=>s.author
   const copy=JSON.parse(before);mutate(copy);assert.throws(()=>scriptComponentResetReview(copy,entity,'ScriptWaits'));
 }
 console.log('Script reset review is detached, family-bounded and rejects missing/stale witnesses.');
-for(const component of ['ScriptFacing','ScriptBranches']){
+for(const component of ['ScriptFacing','ScriptBranches','Transitions']){
   const copy=JSON.parse(before),entries={[entry]:{fixture:1}};
   copy.scene.entities[0].components={[component]:{entries}};
   copy.authored_assets[0].component_reviews=[{component,authored:{entries},review_key:'b'.repeat(64)}];
   assert.equal(scriptComponentResetReview(copy,entity,component).component,component);
+}
+{
+  const copy=JSON.parse(before),runs={['script://fixture/actors/man-p1/0001/dialogue/0000']:'Edited text'};
+  copy.scene.entities[0].components={Dialogue:{authored:{runs},authored_run_count:1}};
+  copy.authored_assets[0].component_reviews=[{component:'Dialogue',authored:{runs},review_key:'b'.repeat(64)}];
+  const reviewed=scriptComponentResetReview(copy,entity,'Dialogue');assert.deepEqual(reviewed.entries,runs);
+  copy.authored_assets[0].component_reviews[0].authored.runs={...runs,other:'stale'};
+  assert.throws(()=>scriptComponentResetReview(copy,entity,'Dialogue'));
 }
