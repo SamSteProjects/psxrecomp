@@ -1,5 +1,23 @@
 # Legaia SDK validation plan
 
+## Selected asset evidence download checkpoint — 2026-10-05
+
+Focused export and asset-inspector Node checks, nine Python inspector-schema
+cases and module syntax pass. Cover complete selected records, separate authored
+metadata, multiple membership retention, UTF-8 size bounds, unsupported/cyclic
+metadata, busy/pending duplicate suppression, local/server source withdrawal and
+closed details during pending fetch. Private Town01 browser downloads actual
+active and project-scope model records; both JSON files equal the selected records,
+with source hashes and authored settings retained. Fresh-server source mismatch
+blocks download; 540px button bounds and screenshot pass. Project document,
+history and files remain unchanged. No authoring, Save, Build or Run requests.
+Proof: `local-output/sdk-20260909/asset-record-evidence-20261005/proof.json`.
+The first attempt failed due to a missing static route; its log is retained and
+the route fix passed a fresh-fixture browser run. Campaign follow-up: every asset
+family, multiple actual shared-scene memberships, unavailable source records,
+source replacement during pending fetch and near-budget project metadata. This
+is catalog evidence export; native payload integrity and gameplay are not claimed.
+
 ## Mixed placement mirror checkpoint — 2026-10-05
 
 28 focused Python layout/group/HTTP cases, expanded mixed-placement Node checks and

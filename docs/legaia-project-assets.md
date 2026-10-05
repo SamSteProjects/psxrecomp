@@ -99,3 +99,24 @@ An isolated private placement edit followed by Undo checked invalidation without
 saving or building that edit. The 540px controls and source inspector were
 reviewed. Browser page/HTTP errors and game-launch requests were zero. The source
 audit preserved populated caches and saved files; gameplay remains unverified.
+
+## Save an asset evidence snapshot
+
+In Asset Details, choose **Save asset evidence…**. The JSON file retains the
+entire selected catalog record: `data` contains the recorded source metadata;
+`authoredRecord`, when present, retains authored settings separately;
+`projectMembership` retains the chosen scene and all recorded source variants.
+Search, category filters and paging do not trim that selected record. The
+`source_context` captures the project identity, active scene, source keys and
+current authored asset metadata. Optional UI fields with no value are omitted
+using normal JSON object semantics.
+
+Before saving, the editor checks fresh server inputs and the current record.
+If sources or membership change, close and reopen Asset Details. Pending clicks
+are disabled. Oversized or unsupported metadata cannot be exported. Files use
+`legaia-asset-<type>-<source-key-prefix>.json` and a 32 MiB UTF-8 budget.
+
+The file is a read-only evidence snapshot, not a native asset or an importable
+edit. It does not issue authoring commands, change history, save the project,
+build or launch the game. Native source verification and runtime acceptance
+remain separate workflows. Do not interpret a recorded binding as runtime use.

@@ -1,5 +1,32 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Save selected Asset Database evidence — 2026-10-05
+
+**Asset Details → Save asset evidence…** downloads the complete selected catalog
+record as `legaia.asset-record-evidence.v1` JSON. Imported source metadata, authored
+settings and every retained project source membership preserve their original
+fields; the chosen membership remains explicit. Export is metadata evidence, not
+an editable interchange file, native payload or Build package.
+
+The button qualifies bounded JSON metadata, uses a 32 MiB UTF-8 budget and checks
+both the current editor record/context and fresh `/api/state` inputs before
+saving. Changed sources, membership, project inputs or closed details reject.
+Pending and busy clicks cannot start a second export. No command, history, Save,
+Build or game operation is issued. Source keys do not establish native payload
+integrity or runtime use; gameplay remains unverified.
+
+Validation: focused export and existing asset-inspector Node checks, nine Python
+inspector-schema cases and module syntax pass. Private Town01 browser downloads
+from active and project scopes match the complete selected source/authored record;
+project membership is retained, the 540px screenshot is inspected and a forged
+fresh-server source key blocks export. Project document, Undo/Redo and every
+project file remain unchanged; no page errors or authoring/Save/Build/Run requests.
+The first browser attempt exposed a missing static module route, fixed before
+passing the fresh-fixture run. Evidence:
+`local-output/sdk-20260909/asset-record-evidence-20261005/proof.json`.
+Gameplay, installation and full-disc export remain deferred. Work stays solo;
+the full SDK goal remains active.
+
 ## Mirror mixed scene placement coordinates — 2026-10-05
 
 **Move scene placement group → Mirror X/Z coordinates about anchor** reflects the
