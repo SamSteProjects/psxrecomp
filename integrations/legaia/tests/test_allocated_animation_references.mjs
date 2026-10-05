@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const code=await readFile(new URL('../editor/asset-references.js',import.meta.url),'utf8');
+const {decodeAssetReferences,filterAssetReferences}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const hash='a'.repeat(64),scene='scene://fixture',owner=scene+'/actors/man-p1/0001',record='12345678-1234-4123-8123-123456789abc';
+const clip=`animation://fixture/authored-record/${record}`,model='asset://legaia/models/global-special/00f0';
+const proof={record_id:record,record_sha256:hash,ledger_sha256:hash,bank_sha256:hash,model_id:model,model_source_entity_id:owner,channel_owner_entity_id:owner,native_record_index:254,native_animation_id:255,frame_count:512,object_count:64};
+const node=(id,kind,available=true)=>({id,kind,available,scene_id:scene,label:kind});
+const edge={id:'b'.repeat(64),source_id:owner,target_id:clip,kind:'allocated_initial_animation_binding',scene_id:scene,layer:'effective',runtime_binding:'not_asserted',source_import_sha256:hash,source_catalog_key:hash,allocated_animation_evidence:{...proof,assignment_owner_id:owner,assignment_sha256:hash}};
+const fixture={schema_version:'legaia.asset-references.v1',asset_id:owner,source_key:hash,read_only:true,nodes:[node(owner,'actor'),node(clip,'animation',false),node(model,'model')],incoming:[],outgoing:[edge],coverage:{verified_scene_ids:[scene],resource_scene_id:scene,unresolved_reference_count:0},limitations:['Source only']};
+const decoded=decodeAssetReferences(fixture,owner,hash);decoded.outgoing[0].allocated_animation_evidence.record_sha256='c'.repeat(64);assert.equal(fixture.outgoing[0].allocated_animation_evidence.record_sha256,hash);
+const changes=[e=>e.record_sha256='bad',e=>e.ledger_sha256='bad',e=>e.bank_sha256='bad',e=>e.assignment_sha256='bad',e=>e.assignment_owner_id=owner+'2',e=>e.native_record_index=255,e=>e.native_animation_id=254,e=>e.frame_count=513,e=>e.object_count=65,e=>e.object_count=0,e=>e.model_id='asset://unknown',e=>e.record_id='invalid',e=>e.channel_owner_entity_id='scene://other/actors/man-p1/0001',e=>e.model_source_entity_id=owner+'/0002',e=>e.extra=true];
+for(const mutate of changes){const bad=structuredClone(fixture);mutate(bad.outgoing[0].allocated_animation_evidence);assert.throws(()=>decodeAssetReferences(bad,owner,hash));}
+for(const mutate of [v=>v.outgoing[0].layer='imported',v=>v.nodes[1].available=true,v=>v.outgoing[0].kind='initial_animation_binding',v=>delete v.outgoing[0].source_catalog_key,v=>v.outgoing[0].extra=true]){const bad=structuredClone(fixture);mutate(bad);assert.throws(()=>decodeAssetReferences(bad,owner,hash));}
+const inverse=structuredClone(fixture);inverse.asset_id=clip;inverse.incoming=inverse.outgoing;inverse.outgoing=[{...edge,id:'d'.repeat(64),source_id:clip,target_id:model,kind:'allocated_model_clip_binding',layer:'authored',allocated_animation_evidence:proof}];
+decodeAssetReferences(inverse,clip,hash);assert.equal(filterAssetReferences(inverse,{query:record,layer:'authored'}).outgoing.length,1);
+const wrong=structuredClone(inverse);wrong.outgoing[0].allocated_animation_evidence.assignment_sha256=hash;assert.throws(()=>decodeAssetReferences(wrong,clip,hash));
+console.log('Retained clip references: exact proofs, shared model identity, selector/frame/channel bounds, layer/owner guards, inverse links and detached output passed.');

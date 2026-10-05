@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## Retained initial animation reference correction - 2026-10-05
+
+Actor reference inspection now keeps the original decoded initial clip while a
+retained assignment replaces the effective inherited clip relationship. Stable
+retained UUID nodes connect the assigned actor to its captured model in active
+scene and Project scopes. Fresh readonly assignment Review qualifies ledger,
+record, bank, model/channel-owner and exact component hashes, plus the current
+native slot/selector and frame/channel counts. Unavailable derived catalogs do
+not assert retained proof. Runtime playback remains unresolved.
+
+Retained clips currently lack standalone navigable AssetDB records; their row
+navigation stays disabled. Use the actor Inspector to Manage/Preview them.
+Recorded provenance, layer filters and identity/hash search remain available.
+See [retained reference workflow](legaia-allocated-animation-references.md).
+
+Focused Python/JavaScript checks cover suppression of only the inherited effective
+edge, original/inverse links, shared-model identities, exact evidence and native
+bounds, detached results and unchanged observation-mode metadata. Native HTTP
+checks cover active/Project actor/clip/model graphs, current native Review agreement,
+Clear/Undo, Save/Open and unchanged project document/history/files for queries.
+All 28 focused/neighboring Python checks and both JavaScript reference suites passed.
+The native browser verified active/Project scopes, retained disabled navigation,
+identity search, layer separation and Recorded provenance, with zero page errors
+or authoring/Build/Save/game requests. Screenshot inspected. Private evidence:
+`local-output/sdk-20260909/allocated-references-20261005/proof.json`.
+The graph change introduces no gameplay verification gate; existing gameplay
+acceptance is deferred and the full SDK goal remains active.
+
+
 ## Project-wide source script bookmark navigation - 2026-10-05
 
 Script bookmarks now opens a project-wide catalog beside the resource tools.

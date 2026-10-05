@@ -1,5 +1,21 @@
 # Legaia SDK validation plan
 
+## Retained initial animation references - 2026-10-05
+
+Require original decoded initial references to remain, with retained assignments
+replacing only the effective inherited relationship. Check actor -> retained clip
+-> captured model and inverse queries in active/Project scopes; unavailable scene
+catalogs must not assert retained proof. Bind exact ledger/record/native bank and
+assignment hashes, owner/model identities and current resolved native slot/selector.
+Cover malformed hashes, cross-scene/canonical owners, wrong layers, extra fields,
+selector/frame/channel bounds, shared model IDs and detached output. Standalone
+retained navigation remains unavailable; the actor Inspector manages/previews it.
+Clear must restore inheritance; Undo and Save/Open must restore retained evidence.
+Queries in Edit and observation contexts must preserve document, history, files,
+active scene and mode. Browser filters/provenance must not issue authoring, Build,
+Save or game requests. This feature does not accept gameplay playback.
+
+
 ## Project script bookmark navigation - 2026-10-05
 
 Cover all-scene and scene-filtered catalogs, token search including padded/unpadded
