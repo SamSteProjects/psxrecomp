@@ -34,7 +34,7 @@ import {interpolateAnimationRange} from '/animation-range.js';
 import {mountScriptOperandBundle} from '/script-operand-bundle.js';
 import {appendCaptureSummary} from '/script-capture.js';
 import {mountScriptOperandFiles,operandOwnerContext} from '/script-operand-files.js';
-import {npcDonorModel,mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
+import {npcDonorModel,npcDonorScript,mountAssetInspector,assetInspectorDefinition,mountTriggerBindingInspector} from '/asset-inspector.js';
 import {mountAssetRecordDownload} from '/asset-record-export.js';
 import {renderEnvironmentInspector} from '/environment-inspector.js';
 import {bindComponentReferences} from '/component-references.js';
@@ -79,6 +79,7 @@ import {mountScriptBookmarks,qualifyScriptBookmark} from '/script-bookmarks.js';
 import {mountProjectScriptBookmarks} from '/project-script-bookmarks.js';
 import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
+import {openNpcDonorScript} from './npc-donor-script.js';
 import {openDraftRepeat} from '/draft-repeat.js';
 import {openDraftGroup} from '/draft-group.js';
 import {openDonorGroup} from '/draft-donor-group.js';
@@ -1768,6 +1769,7 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
+  if(action==='inspect-npc-donor-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC retail donor changed. Reopen Asset Details.');openNpcDonorScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-model'){const model=npcDonorModel(record);if(!model||!state.model_references?.some(ref=>ref.source_id===record.id&&ref.target_id===model&&ref.scene_id===record.sceneId&&ref.kind==='draft_initial_model_assignment'&&ref.effective_donor_id===record.authoredRecord.donor_entity_id))throw new Error('NPC donor model assignment changed. Reopen Asset Details.');openModel(model,null,null,'imported');return;}
   if(action==='inspect-asset-region-bounds'){await inspectRegionBounds(record);return;}
   if(action==='inspect-asset-trigger-cells'){await inspectTriggerCells(record);return;}
@@ -2927,6 +2929,7 @@ function renderInspector(){
     const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
     nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
     const presets=document.createElement('button');presets.id='npc-presets-button';presets.textContent='NPC presets...';presets.disabled=busy||!canEdit();presets.onclick=showTemplates;$('delete-npc-draft').before(presets);
+    const donorScript=document.createElement('button');donorScript.id='npc-donor-script-button';donorScript.textContent='Inspect retail donor script...';donorScript.disabled=busy||!state.capabilities?.actor_script_preview;donorScript.onclick=()=>openNpcDonorScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(donorScript);
     const duplicate=document.createElement('button');duplicate.id='duplicate-npc-draft';duplicate.textContent='Duplicate draft';duplicate.title='Creates an independent draft at the same position, then selects it to move';$('delete-npc-draft').before(duplicate);
     duplicate.onclick=async()=>{const previous=new Set(Object.keys(state.actor_drafts??{}));if(await api('/api/command',{type:'duplicate_actor_draft',entity_id:id,name:npc.name.slice(0,115)+' copy'})){const created=Object.keys(state.actor_drafts??{}).find(key=>!previous.has(key));if(created){selectNpcDraft(created);frameNpcDraft();notify('Draft duplicated at the same position. Move it with X/Z or the viewport handles.');}}};
     const repeat=document.createElement('button');repeat.id='repeat-npc-draft';repeat.textContent='Repeat draft...';duplicate.after(repeat);repeat.onclick=()=>openDraftRepeat({entityId:id,entityIds:currentPlacementSelection(),onError:error=>notify(error.message,true),getState:()=>state,isBusy:()=>busy,canEdit,setBusy,api,

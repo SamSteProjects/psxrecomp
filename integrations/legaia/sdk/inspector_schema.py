@@ -263,6 +263,8 @@ def inspector_schema():
             *[{'id':axis,'label':'Authored '+axis.upper(),'path':['authoredRecord','authored','position',axis],
                'type':'number','state':'authored-through-command'} for axis in ('x','z')]],
         'actions':[{'id':'select-asset-actor','label':'Select NPC draft','capability':'project_navigation'},
+                   {'id':'inspect-npc-donor-script','label':'Inspect retail donor script','capability':'actor_script_preview',
+                    'when':['authoredRecord','donor_entity_id']},
                    {'id':'inspect-npc-donor-model','label':'Inspect recorded donor model','capability':'model_preview',
                     'when':['authoredRecord','model_reference','target_id']}],
         'notes':['This is authored project metadata, not an imported retail actor placement or a confirmed runtime identity.',

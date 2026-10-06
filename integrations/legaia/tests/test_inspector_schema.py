@@ -8,9 +8,9 @@ class InspectorSchema(unittest.TestCase):
         positions=[p for p in component['properties'] if p['id'] in ('x','z')]
         self.assertTrue(all(p['path'][:3]==['authoredRecord','authored','position'] for p in positions))
         self.assertTrue(all(p['state']=='authored-through-command' for p in positions))
-        self.assertEqual([action['id'] for action in component['actions']],['select-asset-actor','inspect-npc-donor-model'])
-        self.assertEqual(component['actions'][1]['when'],['authoredRecord','model_reference','target_id'])
-        self.assertEqual(component['actions'][1]['capability'],'model_preview')
+        self.assertEqual([action['id'] for action in component['actions']],['select-asset-actor','inspect-npc-donor-script','inspect-npc-donor-model'])
+        self.assertEqual(next(a for a in component['actions'] if a['id']=='inspect-npc-donor-model')['when'],['authoredRecord','model_reference','target_id'])
+        self.assertEqual(next(a for a in component['actions'] if a['id']=='inspect-npc-donor-model')['capability'],'model_preview')
         component['properties'][0]['path'].clear();self.assertEqual(inspector_schema()['components']['AssetNpcDraft']['properties'][0]['path'],['id'])
 
     def test_npc_draft_identity_authored_position_and_preview_remain_separate(self):

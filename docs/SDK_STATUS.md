@@ -1,5 +1,32 @@
 # Legaia SDK status — 2026-10-05
 
+## NPC retail donor script inspection - 2026-10-05
+
+Authored NPCs now expose **Inspect retail donor script...** in the NPC Inspector
+and a registered **Inspect retail donor script** action in Asset Details. The SDK
+qualifies the active draft/donor and freshly verifies the imported donor against
+the user-owned disc. The read-only workspace shows decoded dialogue, searchable
+instruction paths, flow overview, successor navigation, source spans, raw record
+and explicit decoder stops. Unknown paths and branch reachability stay unknown.
+
+The report captures full project source identity and exact draft/donor provenance;
+stale or forged bindings and authoring/generated claims reject. Source offsets
+belong to the imported donor, not allocated NPC code or a live actor. This view
+adds no NPC script authoring or runtime execution claim. Donor authoring remains
+separate from this retail-only inspection.
+
+Offline: 20 focused Python checks and donor-script, Asset Inspector and NPC
+Inspector Node contracts pass. The private retail browser passed both entry points,
+exact source response, instruction navigation and retained NPC selection. The
+540px layout was inspected. Donor0012 has 25 decoded instructions and16 dialogue
+segments; its record SHA-256 is
+`5063e5eb8bfd400fba142b0eabee28f50c46b900aa319ebdf86fd0b4eea73a65`.
+Project document, Undo/Redo history, normal Build input identity and preexisting
+files stayed unchanged. No commands, Save, Build, game launch, install or disc
+export occurred. Evidence: `local-output/sdk-20260909/npc-donor-script-20261005/`
+(`proof.json`, `browser.log`, `donor-script-540.png`). Gameplay remains deferred.
+See [NPC donor script workflow](legaia-npc-donor-scripts.md).
+
 ## Copy selected NPC arrangements - 2026-10-05
 
 **Repeat draft...** now offers **Copy selected NPC arrangement** when the current

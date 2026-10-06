@@ -29,10 +29,10 @@ assert.equal(Object.keys(assetInspectorRegistry({type:'unknown'},()=>{})).length
 console.log('Asset inspector descriptor/type registry, capability filtering and stale/busy read-only dispatch passed.');
 
 const npcId='authored-actor://00000000-0000-4000-8000-000000000001',npc={id:npcId,type:'actor',sceneId:'scene://town01',authoredRecord:{id:npcId,kind:'actor',draft:true,name:'Resident',scene_id:'scene://town01',donor_entity_id:'scene://town01/actors/man-p1/0011',authored:{name:'Resident',scene_id:'scene://town01',donor_entity_id:'scene://town01/actors/man-p1/0011',position:{x:128,z:256}}}},npcSchema={...schema,authored_asset_inspectors:{npc_draft:'AssetNpcDraft'}};
-assert.equal(assetInspectorDefinition(npcSchema,npc),'AssetNpcDraft');assert.deepEqual(Object.keys(assetInspectorRegistry(npc,()=>{})),['select-asset-actor']);
+assert.equal(assetInspectorDefinition(npcSchema,npc),'AssetNpcDraft');assert.deepEqual(Object.keys(assetInspectorRegistry(npc,()=>{})),['select-asset-actor','inspect-npc-donor-script']);
 for(const edit of [r=>r.id='scene://retail/actor',r=>r.sceneId='scene://other',r=>r.authoredRecord.draft='true',r=>r.authoredRecord.authored.name='Other',r=>r.authoredRecord.authored.donor_entity_id='other',r=>r.authoredRecord.authored.position.x=32]){const bad=structuredClone(npc);edit(bad);assert.throws(()=>assetInspectorDefinition(npcSchema,bad));}
 assert.throws(()=>assetInspectorDefinition(schema,npc));
-console.log('NPC authored asset classification, source/placement coherence and selection-only action registry passed.');
+console.log('NPC authored asset classification, source/placement coherence and qualified donor-script action registry passed.');
 
 const donorModel='asset://legaia/models/0011',linkedNpc=structuredClone(npc);
 linkedNpc.authoredRecord.model_reference={source_id:npcId,source_name:'Resident',target_id:donorModel,scene_id:npc.sceneId,kind:'draft_initial_model_assignment',imported:false,effective:true,effective_donor_id:npc.authoredRecord.donor_entity_id,runtime_binding:'not_asserted'};
