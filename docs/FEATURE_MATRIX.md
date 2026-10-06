@@ -1,5 +1,14 @@
 # Legaia SDK feature matrix
 
+## 2026-10-06: reusable authored wall patterns
+
+Source wall drafts can now be downloaded as portable JSON, loaded at a new First row/column, rotated clockwise or mirrored across X/Z. Patterns contain authored Block, Unblock and Restore retail operations only. They contain no captured retail/Current source bits or write authority. Loading and transforming stage a Current-baseline draft and withdraw previous Review; a fresh native Review is required before Apply. Restore retail resolves the destination's verified source value. Uniform fills retain their full operation set through export and transforms.
+
+The strict `legaia.wall-pattern.v1` format uses relative 64-unit subcells, even bounded dimensions and at most 4096 unique typed operations. File imports are bounded to 512 KiB. Destination staging preserves the existing 4096 selected-bit Review budget, including single-quadrant selections, and rejects out-of-grid placements before changing draft controls. Invalid files preserve existing draft values and disable old Apply authority; closed or superseded readers cannot publish a draft.
+
+Validation: three focused Python native paint/history/HTTP checks and both Node wall-pattern and rectangle programs passed. Maximum-size 4096-operation JSON round-trips within the file budget. Actual retail browser checks passed relocation, rotation, mirroring, exact download/reimport, invalid-file rejection, fresh Review, scene inspection/return, private Apply, Undo/Redo and Save/Open. Wide/narrow screenshots were inspected; no page errors occurred. Private Build readback matched all MAP bytes independently: only wall bits at byte `0x4815` changed (XOR `0x50`); every floor nibble and other byte remained exact. Native MAP SHA-256 `e2b15ff7fdf124d3979af68b6e11f49a6a7cb6905f1e5eecd5faabd4528d8aa0`; package SHA-256 `9c0b5fb9e856dc8343ee1977b9cc89edad5e847193b7863ba4ec6965e003581d`. Evidence: `local-output/sdk-20260909/wall-pattern-20261006/proof.json`. No game launch, runtime attachment or mod installation occurred. Gameplay acceptance remains deferred and the full SDK goal remains incomplete.
+
+
 ## 2026-10-06: source wall quadrant painting
 
 The source wall rectangle comparison is now an editable paint workspace. `Keep Current walls; paint individual quadrants` preserves the selected rectangle's Current baseline; Block, Unblock and Restore retail brushes change individual Proposed quadrants by pointer click/drag or keyboard Enter/Space. Painting clears the previous Review and disables Apply until fresh Review. Keyboard painting retains focus. Rectangle input changes discard the paint draft. Current/Retail comparison layers remain read-only; fresh reviewed patterns can be inspected in the scene and applied as one Undo step. Scene inspection now expands Scene tools so Return to wall review is accessible.

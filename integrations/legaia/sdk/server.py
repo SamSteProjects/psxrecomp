@@ -820,6 +820,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/environment-rotation-math.js": ("environment-rotation-math.js", "text/javascript"),
                  "/environment-group.js": ("environment-group.js", "text/javascript"),
                  "/wall-viewport.js": ("wall-viewport.js", "text/javascript"),
+                 "/wall-pattern.js": ("wall-pattern.js", "text/javascript"),
                  "/collision-rectangle.js": ("collision-rectangle.js", "text/javascript"),
                  "/model-normal-length.js": ("model-normal-length.js", "text/javascript"),
                  "/model-normal-users.js": ("model-normal-users.js", "text/javascript"),
