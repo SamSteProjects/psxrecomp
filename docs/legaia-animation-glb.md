@@ -242,5 +242,15 @@ Each downloaded GLB is checked against its receipt hash in the browser.
 The project allows at most 32 receipts and 64 MiB of distinct source GLBs, within
 the existing 32 MiB per-file limit. Identical blobs are shared across receipts;
 file verification also deduplicates shared blobs. Old projects with no sources
-retain their previous metadata and Build-key shape. Receipt pruning is not yet
-exposed; full source-library management remains an SDK follow-up.
+retain their previous metadata and Build-key shape.
+
+In Edit mode, choose **Review source removal** for a receipt. Review shows the
+Current receipt count and registered bytes freed; shared files free no bytes
+until their last receipt is removed. **Remove reviewed source receipt** changes
+only the source library metadata, closes the stale parent GLB editor and refreshes
+the project. Undo restores the receipt; Redo removes it again. A changed target,
+source context, collection or native authored state rejects the reviewed action.
+Native animation content stays intact. Local GLB files are preserved for Undo,
+so removal frees the registered input budget rather than physical disk space.
+Save/Open and project copies retain only Current references. Physical cleanup
+and project-wide source-library browsing remain follow-up work.

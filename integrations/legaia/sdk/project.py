@@ -1868,6 +1868,10 @@ class ProjectService:
             return
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'remove_animation_source':
+            from .animation_sources import remove_command
+            remove_command(self,command)
+            return
         if command.get('type') == 'duplicate_animation_record':
             from .animation_record_duplicate import apply
             apply(self,command)
@@ -2807,6 +2811,12 @@ class ProjectService:
             raise ProjectError("Undo and redo require Edit mode")
         if not source:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
+        if source[-1].get('target') == 'animation_sources':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .animation_sources import validate_files
+            validate_files(self,value)
+            self.animation_sources=value
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'animation_source_import':
             entry=source[-1];value=deepcopy(entry[field])
             from .animation_sources import validate_files

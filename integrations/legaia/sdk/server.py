@@ -2276,6 +2276,16 @@ class EditorHandler(BaseHTTPRequestHandler):
                     from .animation_sources import catalog,download
                     self._json(200,(download if route.endswith('download') else catalog)(self.server.project,**body))
                     return
+                if route in ('/api/animation-source-removal-review','/api/animation-source-remove'):
+                    expected={'scene_id','target_id','kind','expected_source_key','receipt_key'}
+                    if route.endswith('remove'):expected.add('review_key')
+                    if set(body)!=expected:raise ProjectError('Animation source removal requires exact fields')
+                    from .animation_sources import review_removal
+                    if route.endswith('remove'):
+                        self.server.project.command(dict(body,type='remove_animation_source'))
+                        self._json(200,self.server.state())
+                    else:self._json(200,review_removal(self.server.project,**body))
+                    return
                 if route == '/api/animation-glb-export':
                     if set(body) != {'entity_id', 'clip_fps'} or not isinstance(body['entity_id'], str):
                         raise ProjectError('Animation GLB export requires an actor and explicit interchange rate only')

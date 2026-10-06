@@ -8,3 +8,10 @@ for(const mutate of [v=>v.project_changed=true,v=>v.historical_inputs=false,v=>v
   const invalid=structuredClone(value);mutate(invalid);assert.throws(()=>decodeAnimationSources(invalid,request));
 }
 console.log('Animation source recovery target, context, receipt, byte and clip guards passed.');
+
+const {decodeAnimationSourceRemoval}=await import('../editor/animation-sources.js');
+const removal={schema_version:'legaia.animation-source-removal.v1',scene_id:request.scene_id,target_id:request.target_id,kind:request.kind,project_source_key:request.expected_source_key,receipt_key:record.receipt_key,glb_sha256:record.glb_sha256,review_key:'f'.repeat(64),collection_key:'a'.repeat(64),native_key:'b'.repeat(64),native_content_changed:false,source_file_deleted:false,receipt_count_before:2,receipt_count_after:1,shared_blob_receipts:1,registered_bytes_released:28};
+assert.deepEqual(decodeAnimationSourceRemoval(removal,request,record),removal);
+for(const mutate of [v=>v.native_content_changed=true,v=>v.source_file_deleted=true,v=>v.receipt_count_after=0,v=>v.receipt_count_before=33,v=>v.registered_bytes_released=0,v=>v.shared_blob_receipts=3,v=>v.review_key='bad',v=>v.target_id='other']){const bad=structuredClone(removal);mutate(bad);assert.throws(()=>decodeAnimationSourceRemoval(bad,request,record));}
+assert.equal(decodeAnimationSourceRemoval({...removal,shared_blob_receipts:2,registered_bytes_released:0},request,record).registered_bytes_released,0);
+console.log('Reviewed animation source removal context, budget and native-preservation guards passed.');

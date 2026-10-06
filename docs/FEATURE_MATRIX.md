@@ -1,5 +1,31 @@
 # Legaia SDK feature matrix
 
+## Animation source receipt management - 2026-10-06
+
+Both animation GLB editors now offer Review source removal and an explicit
+Remove reviewed source receipt action. Review binds the target, active scene,
+source key, full receipt collection and native authored overrides. Apply uses
+ProjectService commands, removes only the receipt from Current and creates one
+metadata Undo/Redo step. Shared blobs free registered-byte budget only after
+the last Current receipt is removed. Local GLB files remain available for Undo;
+this feature does not reclaim physical disk space or revert native animation.
+Save/Open and project copies persist the remaining referenced receipts/files.
+
+**Verified:** 53 focused Python checks and four Node editor checks passed.
+Private retail browser workflows for imported actors and retained UUID clips
+passed Review/Apply, one-step Undo/Redo, stale-review rejection and parent-editor
+closure. Narrow recovery dialogs were visually checked. Save/Open and actual
+project-copy reopening preserved Current. Normal Build `fa3db4c512283b8c`
+passed independent native-bank readback; the bank is unchanged from the input
+project (SHA-256 `3abfb27bb04dde0e553dafe0c683509eb873856b48136776d1485139d1d3f384`).
+Package SHA-256 `9adfef330764716b7920ba695eb7eb947b08cfbff4c0e93d3dbcd5d31469b95c`.
+Evidence: `local-output/sdk-20260909/animation-source-management-20261006/`.
+A diagnostic filename mistake stopped the first verifier after Save/Open and
+copy assertions; verification resumed from saved state without repeating edits.
+No game was launched. Physical blob cleanup, project-wide library browsing,
+full SDK completion and retail playback/timing acceptance remain open.
+
+
 ## Animation source retention and recovery - 2026-10-06
 
 Both imported-actor and retained UUID GLB Applies now retain exact source GLB

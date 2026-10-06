@@ -96,3 +96,52 @@ class AnimationSources(unittest.TestCase):
             with patch('sdk.scene_preview.source_key',return_value='a'*64):
                 with self.assertRaisesRegex(ProjectError,'late native failure'):apply(project,{},raw,**args)
             self.assertEqual((project.overrides,project.animation_sources,project.undo_stack,project.redo_stack),before)
+
+
+    def test_removal_frees_current_budget_and_preserves_native_and_undo(self):
+        from sdk.animation_sources import review_removal
+        raw,args=self.fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            project=ProjectService(Path(directory));project.active_scene='scene://town01'
+            records,row=retain(project,{},raw,**args);project.animation_sources=records
+            project.overrides={'native':{'unchanged':True}};native=deepcopy(project.overrides)
+            request=dict(scene_id=project.active_scene,target_id=args['target_id'],kind='imported',expected_source_key='a'*64)
+            with patch('sdk.scene_preview.source_key',return_value='a'*64):
+                report=review_removal(project,row['receipt_key'],**request)
+                self.assertEqual(report['registered_bytes_released'],len(raw))
+                project.command(dict(request,type='remove_animation_source',receipt_key=row['receipt_key'],review_key=report['review_key']))
+                self.assertEqual(project.animation_sources,{});self.assertEqual(project.overrides,native)
+                self.assertEqual(len(project.undo_stack),1);self.assertEqual(read_source(project,row),raw)
+                project.undo();self.assertEqual(project.animation_sources,records)
+                project.redo();self.assertEqual(project.animation_sources,{})
+                source_path(project,row).unlink()
+                before=deepcopy((project.animation_sources,project.undo_stack,project.redo_stack))
+                with self.assertRaises(ProjectError):project.undo()
+                self.assertEqual((project.animation_sources,project.undo_stack,project.redo_stack),before)
+                self.assertEqual(project.overrides,native)
+
+    def test_removal_review_rejects_native_collection_context_mode_and_absent_changes(self):
+        from sdk.animation_sources import review_removal
+        raw,args=self.fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            project=ProjectService(Path(directory));project.active_scene='scene://town01'
+            records,row=retain(project,{},raw,**args);project.animation_sources=records
+            request=dict(scene_id=project.active_scene,target_id=args['target_id'],kind='imported',expected_source_key='a'*64)
+            with patch('sdk.scene_preview.source_key',return_value='a'*64):
+                report=review_removal(project,row['receipt_key'],**request)
+                command=dict(request,type='remove_animation_source',receipt_key=row['receipt_key'],review_key=report['review_key'])
+                project.overrides={'native':{'changed':True}}
+                with self.assertRaisesRegex(ProjectError,'review removal'):project.command(command)
+                project.overrides={}
+                args['animation_index']=0
+                project.animation_sources,second=retain(project,records,raw,**args)
+                with self.assertRaisesRegex(ProjectError,'review removal'):project.command(command)
+                shared=review_removal(project,row['receipt_key'],**request)
+                self.assertEqual(shared['registered_bytes_released'],0);self.assertEqual(shared['shared_blob_receipts'],2)
+                project.mode='live'
+                with self.assertRaisesRegex(ProjectError,'Edit mode'):review_removal(project,row['receipt_key'],**request)
+                project.mode='edit'
+                with self.assertRaises(ProjectError):review_removal(project,'f'*64,**request)
+                with self.assertRaises(ProjectError):review_removal(project,row['receipt_key'],**dict(request,target_id='other'))
+                with self.assertRaises(ProjectError):review_removal(project,row['receipt_key'],**dict(request,expected_source_key='b'*64))
+                self.assertEqual(project.undo_stack,[])

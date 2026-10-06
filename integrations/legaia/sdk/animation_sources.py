@@ -170,3 +170,38 @@ def download(project,receipt_key,**request):
     from .scene_preview import source_key
     if source_key(project)!=request['expected_source_key']:raise ProjectError('Animation source recovery context changed')
     return dict(result,selected=record,glb_base64=base64.b64encode(raw).decode('ascii'))
+
+
+def review_removal(project,receipt_key,**request):
+    """Review removal from Current; preserve native content and undo source bytes."""
+    if project.mode!='edit':raise ProjectError('Animation source removal requires Edit mode')
+    value=catalog(project,**request)
+    record=next((r for r in value['imports'] if r['receipt_key']==receipt_key),None)
+    if record is None:raise ProjectError('Animation source receipt is absent from Current')
+    shared=sum(r['glb_sha256']==record['glb_sha256'] for r in project.animation_sources.values())
+    report=dict(schema_version='legaia.animation-source-removal.v1',
+        scene_id=value['scene_id'],target_id=value['target_id'],kind=value['kind'],
+        project_source_key=value['project_source_key'],receipt_key=receipt_key,
+        glb_sha256=record['glb_sha256'],receipt_count_before=len(project.animation_sources),
+        receipt_count_after=len(project.animation_sources)-1,
+        registered_bytes_released=record['byte_length'] if shared==1 else 0,
+        shared_blob_receipts=shared,native_content_changed=False,source_file_deleted=False,
+        collection_key=digest(project.animation_sources),native_key=digest(project.overrides))
+    report['review_key']=digest(report)
+    return report
+
+
+def remove_command(project,command):
+    expected={'type','scene_id','target_id','kind','expected_source_key','receipt_key','review_key'}
+    if set(command)!=expected:raise ProjectError('Animation source removal requires exact reviewed fields')
+    request={k:command[k] for k in ('scene_id','target_id','kind','expected_source_key')}
+    report=review_removal(project,command['receipt_key'],**request)
+    if not _hash(command['review_key']) or command['review_key']!=report['review_key']:
+        raise ProjectError('Animation sources changed; review removal again')
+    before=deepcopy(project.animation_sources);after=deepcopy(before)
+    del after[command['receipt_key']]
+    validate_files(project,after)
+    project.animation_sources=after
+    project.undo_stack.append(dict(target='animation_sources',before=before,after=deepcopy(after)))
+    project.redo_stack.clear()
+    return report
