@@ -9,8 +9,24 @@ from .build_history import _load,verify_build
 def authored_spans(metadata,entity_id,retail,generated,draft):
     """Qualify receipt rows against both exact records; unexplained bytes stay so."""
     a,b=(bytes.fromhex(r['raw_hex']) for r in (retail,generated))
+    qualification_record=b;branch_graph=None
+    if 'branches' in draft:
+        from importer.branch_authoring import _graph_candidate,_branch
+        from importer.script_inspection import inspect_record
+        from importer.core import ImportError as NativeError
+        try:
+            source_graph=inspect_record(a,retail['script_offset'])
+            branch_graph=_graph_candidate(a,b,retail['script_offset'],source_graph)
+            restored=bytearray(b)
+            for node in source_graph['instructions']:
+                word=_branch(a,node)
+                if word is not None:
+                    at=word['operand_pc'];restored[at:at+2]=a[at:at+2]
+            qualification_record=bytes(restored)
+            _graph_candidate(a,qualification_record,retail['script_offset'],source_graph)
+        except NativeError as error:raise ProjectError('NPC branch comparison graph is not source-qualified') from error
     spans=[];occupied=set();movement_expected={};facing_expected={};flags_expected={};prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
-    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing'),('npc_flags_changes','own_flag')]:
+    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement'),('npc_facing_changes','own_facing'),('npc_flags_changes','own_flag'),('npc_branches_changes','own_branch')]:
         value=metadata.get(key)
         if value is None:continue
         if not isinstance(value,dict) or not isinstance(value.get('changes'),list) or len(value['changes'])>8192:
@@ -57,7 +73,7 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
                     try:
                         _,facing_expected[owner]=patch_facing_sector(a,retail['script_offset'],pc,requested,base_offset=retail['byte_offset'])
                         # The generated target must remain supported after own movement.
-                        patch_facing_sector(b,generated['script_offset'],pc,requested)
+                        patch_facing_sector(qualification_record,generated['script_offset'],pc,requested)
                     except NativeError as error:raise ProjectError('NPC facing comparison target is not qualified') from error
                 expected=next(iter(facing_expected[owner]),None)
                 if expected is None or any(type(row.get(k)) is not type(v) or row[k]!=v for k,v in expected.items() if k!='decoded_byte_offset') or source_at!=expected['decoded_byte_offset']:
@@ -78,7 +94,7 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
                 if owner not in flags_expected:
                     try:
                         _,flags_expected[owner]=patch_flag_bit(a,retail['script_offset'],pc,requested,base_offset=retail['byte_offset'])
-                        patch_flag_bit(b,generated['script_offset'],pc,requested)
+                        patch_flag_bit(qualification_record,generated['script_offset'],pc,requested)
                     except NativeError as error:raise ProjectError('NPC flag comparison target is not qualified') from error
                 expected=next(iter(flags_expected[owner]),None)
                 if expected is None or any(type(row.get(k)) is not type(v) or row[k]!=v for k,v in expected.items() if k!='decoded_byte_offset') or source_at!=expected['decoded_byte_offset']:
@@ -87,6 +103,27 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
                 if a[pc:header_end]!=b[pc:header_end]:
                     raise ProjectError('NPC flag comparison dispatch differs')
                 before,after=bytes([expected['before_byte']]),bytes([expected['after_byte']])
+            elif category=='own_branch':
+                from importer.branch_authoring import _branch,validate_branch_values
+                from importer.script_inspection import _instruction,inspect_record
+                from importer.core import ImportError as NativeError
+                owner=row.get('branch_id');pc=row.get('pc')
+                if (branch_graph is None or type(pc) is not int or not retail['script_offset']<=pc<=32767 or owner!=prefix+f'branch/{pc:04x}' or
+                    row.get('donor_entity_id')!=draft['donor_entity_id'] or row.get('owner_id')!=draft['donor_entity_id'] or
+                    draft.get('branches',{}).get('donor_entity_id')!=draft['donor_entity_id']):
+                    raise ProjectError('NPC branch comparison differs from its source owner')
+                try:
+                    target=validate_branch_values(draft['branches']['entries'].get(owner))
+                    source_node=_instruction(a,pc);word=_branch(a,source_node)
+                    if word is None or not retail['script_offset']<=word['target_pc']<=32767 or not retail['script_offset']<=target<=32767 or pc not in {r['pc'] for r in source_graph['instructions']} or target not in {r['pc'] for r in source_graph['instructions']+source_graph['dialogues']}:
+                        raise NativeError('Branch target is not an original source boundary')
+                except NativeError as error:raise ProjectError('NPC branch comparison target is not qualified') from error
+                operand=word['operand_pc'];before=a[operand:operand+2];after=((target-operand)&65535).to_bytes(2,'little')
+                expected=dict(pc=pc,mnemonic=source_node['mnemonic'],target_context=source_node['target_context'],condition=word['condition'],encoding=word['encoding'],field='script.branch_target',before_value=word['target_pc'],after_value=target,before_target_pc=word['target_pc'],after_target_pc=target,record_relative_byte_offset=operand,byte_length=2,before_hex=before.hex(),after_hex=after.hex(),source_record_sha256=sha256(a).hexdigest(),effective_record_sha256=sha256(qualification_record).hexdigest(),candidate_record_sha256=sha256(b).hexdigest(),current_successors=source_node['successors'],proposed_successors=_instruction(b,pc)['successors'],unreachable_source_pcs=branch_graph['unreachable_source_pcs'],scope='script-branch-target-only')
+                if before==after or any(type(row.get(k)) is not type(v) or row[k]!=v for k,v in expected.items()) or source_at!=retail['byte_offset']+operand:
+                    raise ProjectError('NPC branch comparison differs from its exact source/composed instruction')
+                expected_bytes=[dict(decoded_byte_offset=generated['byte_offset']+operand+i,source_decoded_byte_offset=retail['byte_offset']+operand+i,before_byte=x,after_byte=y) for i,(x,y) in enumerate(zip(before,after)) if x!=y]
+                if row.get('changed_bytes')!=expected_bytes or any(any(type(r.get(k)) is not type(v) for k,v in expected.items()) for r,expected in zip(row.get('changed_bytes',[]),expected_bytes)):raise ProjectError('NPC branch comparison changed-byte audit differs')
             elif category=='initial_appearance':
                 if 'appearance' not in draft:raise ProjectError('NPC appearance comparison has no authored binding')
                 if row.get('field') not in ('model_index','animation_id') or any(type(row.get(k)) is not int or not 0<=row[k]<=255 for k in ('before_byte','after_byte')):

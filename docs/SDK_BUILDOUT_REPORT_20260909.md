@@ -1,5 +1,29 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Saved NPC branch explanations - 2026-10-05
+
+Saved-build comparison now explains source-qualified NPC branch destination words
+alongside appearance, dialogue, waits, movement, facing and flag bits. Native
+qualification binds original instruction boundaries and the final graph to the
+saved receipt. Browser decoding independently checks all eight supported branch
+word families, exact dispatch, targets, original boundaries and held selectors.
+Edits retained in instructions skipped by a changed branch still qualify: facing
+and flag checks use a private copy with original branch words restored, while the
+comparison always displays exact saved bytes. No project data is changed.
+
+Validation: 11 focused Python checks with private retail input and the Node
+comparison suite pass, including skipped-body edits and forged receipt rejection.
+A fresh saved Town01 Build `6e6a47c3f7d988fe` comparison renders all seven edit
+families and accounts for 30 of 33 changed bytes; three stay unexplained. The 540px
+comparison was visually inspected. Streaming Build `0dc504a3a5d7cf6f` independently
+qualifies both NPC branch spans. Both projects, Undo/Redo history and every project
+file hash remain unchanged. Evidence:
+`local-output/sdk-20260909/npc-branches-script-comparison-20261005/proof.json`.
+
+Portable branch presets remain pending. No game launch, new Build or full-disc
+export occurred; branch activation, story reachability and termination remain
+unverified. Manual gameplay acceptance stays deferred and the SDK goal is active.
+
 ## NPC branch authoring through editor and normal Build - 2026-10-05
 
 NPC branch destinations now connect source-qualified review to the root Inspector

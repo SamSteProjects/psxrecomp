@@ -101,4 +101,41 @@ class ScriptComparisonTests(unittest.TestCase):
                     changed=bytearray(bytes.fromhex(generated['raw_hex']));changed[relative]^=128;bad=dict(self.record(bytes(changed),entry),byte_offset=start,record_index=index)
                     with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,bad,draft)
 
+    def test_branch_spans_native_words_receipts_and_retained_unreachable_operands(self):
+        from copy import deepcopy
+        from test_npc_branches import NpcBranchesTests,ACTOR
+        from test_branch_authoring import family_script
+        from sdk.npc_branches import patch_allocated_branches
+        from importer.man_layout import read_man_layout
+        for family in ('JMP_REL','COND_JMP','BBOX_TEST','FLAG_WORD_BRANCH','SYSFLAG_TEST'):
+            for extended in (False,True):
+                if family=='SYSFLAG_TEST' and extended:continue
+                script,_,_,_=family_script(family,extended);context,candidate,allocations=NpcBranchesTests().fixture(script);target=context.options(ACTOR)['targets'][0];values=dict(target_pc=5)
+                result,audit=patch_allocated_branches(context,candidate,allocations,[dict(draft_id='npc-a',donor_entity_id=ACTOR,entries={target['semantic_id']:values})]);offset,raw,entry=context._source.verified_record(ACTOR);index=allocations['drafts'][0]['record_index'];final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==index);start,length=final['byte_offset'],final['byte_length']
+                retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=index);draft=dict(donor_entity_id=ACTOR,branches=dict(donor_entity_id=ACTOR,entries={target['semantic_id']:values}));metadata={'npc_branches_changes':audit}
+                spans=authored_spans(metadata,'npc-a',retail,generated,draft);self.assertEqual(len(spans),1);self.assertEqual(spans[0]['category'],'own_branch');self.assertEqual(spans[0]['byte_length'],2)
+                for change in (dict(pc=True),dict(record_index=1),dict(donor_entity_id='wrong'),dict(branch_id='wrong'),dict(source_record_sha256='0'*64),dict(effective_record_sha256='0'*64),dict(candidate_record_sha256='0'*64),dict(mnemonic='UNKNOWN'),dict(target_context=255),dict(condition='wrong'),dict(after_target_pc=6),dict(unreachable_source_pcs=[999]),dict(changed_bytes=[])):
+                    forged=deepcopy(metadata);forged['npc_branches_changes']['changes'][0].update(change)
+                    with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+                forged=deepcopy(metadata);forged['npc_branches_changes']['changes']*=2
+                with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+
+    def test_branch_skipped_movement_facing_and_wait_still_have_exact_explanations(self):
+        from test_npc_branches import NpcBranchesTests,ACTOR
+        from importer.movement_authoring import MovementAuthoringContext
+        from importer.facing_authoring import FacingAuthoringContext
+        from importer.wait_authoring import WaitAuthoringContext
+        from importer.man_layout import read_man_layout
+        from sdk.npc_movement import patch_allocated_movement
+        from sdk.npc_facing import patch_allocated_facing
+        from sdk.npc_waits import patch_allocated_waits
+        from sdk.npc_branches import patch_allocated_branches
+        context,candidate,allocations=NpcBranchesTests().fixture(b'\x26\x02\0\x4c\x51\0\x80\xb3\x09\x4a\x0a\0\x26\xf3\xff')
+        draft=dict(donor_entity_id=ACTOR);metadata={}
+        for field,adapter,patcher,values in [('movement',MovementAuthoringContext,patch_allocated_movement,dict(x=128,z=192,move_id=10)),('facing',FacingAuthoringContext,patch_allocated_facing,dict(sector=7)),('waits',WaitAuthoringContext,patch_allocated_waits,dict(duration_ticks=11))]:
+            native=adapter(context._source);target=native.options(ACTOR)['targets'][0];draft[field]=dict(donor_entity_id=ACTOR,entries={target['semantic_id']:values});candidate,audit=patcher(native,candidate,allocations,[dict(draft_id='npc-a',**draft[field])]);metadata['npc_'+('wait' if field=='waits' else field)+'_changes']=audit
+        branch=context.options(ACTOR)['targets'][0];draft['branches']=dict(donor_entity_id=ACTOR,entries={branch['semantic_id']:dict(target_pc=17)});result,audit=patch_allocated_branches(context,candidate,allocations,[dict(draft_id='npc-a',**draft['branches'])]);metadata['npc_branches_changes']=audit
+        offset,raw,entry=context._source.verified_record(ACTOR);index=allocations['drafts'][0]['record_index'];final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==index);start,length=final['byte_offset'],final['byte_length'];retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=index)
+        self.assertIn(8,audit['changes'][0]['unreachable_source_pcs']);self.assertEqual({s['category'] for s in authored_spans(metadata,'npc-a',retail,generated,draft)},{'own_movement','own_facing','own_wait','own_branch'})
+
 if __name__=='__main__':unittest.main()
