@@ -38,18 +38,31 @@ def _visibility(project, scene, value):
     if 'visibility' not in value:
         return []
     visibility = value['visibility']
-    if not isinstance(visibility, dict) or set(visibility) != {'hidden_entity_ids', 'isolated_entity_id', 'map_sha256'}:
+    legacy_fields = {'hidden_entity_ids', 'isolated_entity_id', 'map_sha256'}
+    group_fields = {'hidden_entity_ids', 'isolated_entity_ids', 'map_sha256'}
+    if not isinstance(visibility, dict) or set(visibility) not in (legacy_fields, group_fields):
         raise ProjectError('Scene view requires exact visibility fields')
-    hidden, isolated = visibility['hidden_entity_ids'], visibility['isolated_entity_id']
+    hidden = visibility['hidden_entity_ids']
+    if 'isolated_entity_ids' in visibility:
+        isolated = visibility['isolated_entity_ids']
+        if (not isinstance(isolated, list) or not 1 <= len(isolated) <= 128 or
+                any(not isinstance(item, str) or not 1 <= len(item) <= 1024 for item in isolated) or
+                isolated != sorted(set(isolated))):
+            raise ProjectError('Scene view isolation requires 1..128 canonical unique instance IDs')
+    else:
+        identifier = visibility['isolated_entity_id']
+        if identifier is not None and (not isinstance(identifier, str) or not 1 <= len(identifier) <= 1024):
+            raise ProjectError('Scene view isolation requires an instance ID or null')
+        isolated = [] if identifier is None else [identifier]
     if (not isinstance(hidden, list) or len(hidden) > 32768 or
             any(not isinstance(item, str) or not 1 <= len(item) <= 1024 for item in hidden) or
             hidden != sorted(set(hidden)) or
-            isolated is not None and (not isinstance(isolated, str) or isolated in hidden)):
+            any(identifier in hidden for identifier in isolated)):
         raise ProjectError('Scene view visibility requires canonical unique hidden IDs and a visible isolation target')
     actors = {row['semantic_id'] for row in project.imports[scene]['actors']}
     prefix = 'environment://' + scene.removeprefix('scene://') + '/field-map/'
     environment = []
-    for identifier in hidden + ([] if isolated is None else [isolated]):
+    for identifier in hidden + isolated:
         if identifier in actors:
             continue
         suffix = identifier.removeprefix(prefix + 'decorations/')

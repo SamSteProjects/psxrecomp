@@ -1,5 +1,14 @@
 # Saved scene views
 
+## Selection groups — 2026-10-06
+
+Select actors with Ctrl/Command in the Hierarchy, select a scenery group, or use **Select scene placements** for a mixed group. **Isolate selection (N)** shows the captured group of up to 128 visible, renderable instances. **Restore scene** removes isolation while preserving the camera, hidden instances and layer switches. A hidden or unrenderable member disables the action. Temporary groups can include NPC drafts. Selection changes do not replace an active isolation; Restore before choosing a different group. Current source/scene changes withdraw the group.
+
+Save the isolated group through **Saved scene views** to recall the same actor/decorative visibility later. Group bookmarks retain sorted unique `isolated_entity_ids`, while existing single-instance views retain `isolated_entity_id`. These mutually exclusive forms have the same source membership, static MAP and renderability guards. Save, Replace, Undo/Redo and portable Open preserve group metadata. Saved visibility continues to exclude NPC drafts and model filters; no actor placement or game data is changed by isolation or view metadata.
+
+Eleven focused Python checks, Node guards and actual retail-source browser isolation/Restore/save/recall/history checks passed. The browser also rejected a hidden group member and withdrew isolation after a private actor transform change; Undo restored the original authored data. Complete native Build output was unchanged by the saved view. Screenshot inspected; no page errors. Evidence: `local-output/sdk-20260909/scene-group-isolation-20261006/final/proof.json`. No game was launched.
+
+
 ## Selected instance isolation
 
 **Isolate selected** temporarily shows one supported selected mesh instance.

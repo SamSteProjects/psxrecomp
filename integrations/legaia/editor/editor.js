@@ -72,7 +72,7 @@ import {parseAssetQuery,assetMatchesQuery} from '/asset-search.js';
 import {mountHierarchyNavigation} from '/hierarchy-navigation.js';
 import {mountHierarchyGroups,revealHierarchyEntity} from '/hierarchy-groups.js';
 import {mountSceneToolDrawer} from '/scene-tool-drawer.js';
-import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility} from '/scene-views.js';
+import {mountSceneViews,decodeSavedSceneView,captureSceneViewVisibility,sceneViewIsolationIds} from '/scene-views.js';
 import {sceneCameraBasis,sceneCameraPlanePoint,sceneAxisCamera} from '/scene-camera.js';
 import {appendPresetImport,presetExportButton} from '/preset-files.js';
 import {openActorPresetReview} from '/actor-preset-review.js';
@@ -391,8 +391,8 @@ let sceneHidden=new Set(),sceneHiddenScope=null,sceneIsolated=null;
 function hiddenSceneEntities(){
   const scope=JSON.stringify([state.project?.path,state.scene?.id]);
   if(scope!==sceneHiddenScope){sceneHidden.clear();sceneIsolated=null;sceneHiddenScope=scope;}
-  const preview=activeScenePreview();if(sceneIsolated&&(state.project?.mode!=='edit'||scenePose||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||!scenePreviewCurrent()||sceneIsolated.key!==sceneRequestKey()||!preview?.entities.some(e=>e.entity_id===sceneIsolated.id&&e.renderable)))sceneIsolated=null;
-  const isolatedHidden=sceneIsolated?(preview?.entities??[]).filter(e=>e.entity_id!==sceneIsolated.id).map(e=>e.entity_id):[];
+  const preview=activeScenePreview();if(sceneIsolated&&(state.project?.mode!=='edit'||scenePose||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||!scenePreviewCurrent()||sceneIsolated.key!==sceneRequestKey()||!sceneIsolated.ids.every(id=>preview?.entities.some(e=>e.entity_id===id&&e.renderable))))sceneIsolated=null;
+  const isolatedHidden=sceneIsolated?(preview?.entities??[]).filter(e=>!sceneIsolated.ids.includes(e.entity_id)).map(e=>e.entity_id):[];
   const inspectionHidden=scenePose?.inspectionIsolated?new Set((activeScenePreview()?.entities??[]).filter(e=>!scenePose.inspectionEntityIds?.includes(e.entity_id)).map(e=>e.entity_id)):new Set();
   return new Set([...isolatedHidden,...inspectionHidden,...sceneHidden,...(activeScenePreview()?.entities??[]).filter(e=>!sceneLayers[e.kind!=='environment'?'actors':e.entity_id.endsWith('/ground')?'ground':'scenery']).map(e=>e.entity_id)]);
 }
@@ -413,9 +413,11 @@ for(const [id,label,sameModel] of [['hide-selected','Hide selected',false],['hid
   };
   $('frame-all').before(button);
 }
-const sceneIsolateButton=document.createElement('button');sceneIsolateButton.id='scene-isolate-selected';sceneIsolateButton.textContent='Isolate selected';sceneIsolateButton.setAttribute('aria-pressed','false');sceneIsolateButton.title='Temporarily show one selected instance; Restore preserves manual visibility and scene layers';$('frame-all').before(sceneIsolateButton);
-function updateSceneIsolation(){const hidden=hiddenSceneEntities(),visibilityId=visibilitySelection(),visibilityItem=activeScenePreview()?.entities.find(e=>e.entity_id===visibilityId);sceneIsolateButton.disabled=busy||state.project?.mode!=='edit'||!scenePreviewCurrent()||!!scenePose||!!actorGroupInspection||!!environmentGroupInspection||!!scenePlacementInspection||!sceneIsolated&&(!visibilityItem?.renderable||hidden.has(visibilityId));sceneIsolateButton.textContent=sceneIsolated?'Restore scene':'Isolate selected';sceneIsolateButton.classList.toggle('active',!!sceneIsolated);sceneIsolateButton.setAttribute('aria-pressed',String(!!sceneIsolated));}
-sceneIsolateButton.onclick=()=>{if(busy)return;const hidden=hiddenSceneEntities();if(sceneIsolated)sceneIsolated=null;else{const id=visibilitySelection();if(state.project?.mode!=='edit'||!scenePreviewCurrent()||scenePose||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||hidden.has(id)||!activeScenePreview()?.entities.some(e=>e.entity_id===id&&e.renderable))return;sceneIsolated={id,key:sceneRequestKey()};}cancelViewportGesture();renderHierarchy();draw();};
+const sceneIsolateButton=document.createElement('button');sceneIsolateButton.id='scene-isolate-selected';sceneIsolateButton.textContent='Isolate selected';sceneIsolateButton.setAttribute('aria-pressed','false');sceneIsolateButton.title='Temporarily show the selected instances; Restore preserves manual visibility and scene layers';$('frame-all').before(sceneIsolateButton);
+function isolationSelection(){if(scenePlacementSelection.length||actorGroupSelection.length||environmentGroupSelection.length)return currentPlacementSelection();return visibilitySelection()?[visibilitySelection()]:[];}
+function isolationSelectionReady(ids,hidden){return ids.length>=1&&ids.length<=128&&new Set(ids).size===ids.length&&ids.every(id=>!hidden.has(id)&&activeScenePreview()?.entities.some(e=>e.entity_id===id&&e.renderable));}
+function updateSceneIsolation(){const hidden=hiddenSceneEntities(),ids=isolationSelection();sceneIsolateButton.disabled=busy||state.project?.mode!=='edit'||!scenePreviewCurrent()||!!scenePose||!!actorGroupInspection||!!environmentGroupInspection||!!scenePlacementInspection||!sceneIsolated&&!isolationSelectionReady(ids,hidden);sceneIsolateButton.textContent=sceneIsolated?'Restore scene':ids.length>1?`Isolate selection (${ids.length})`:'Isolate selected';sceneIsolateButton.classList.toggle('active',!!sceneIsolated);sceneIsolateButton.setAttribute('aria-pressed',String(!!sceneIsolated));}
+sceneIsolateButton.onclick=()=>{if(busy)return;const hidden=hiddenSceneEntities();if(sceneIsolated)sceneIsolated=null;else{const ids=isolationSelection();if(state.project?.mode!=='edit'||!scenePreviewCurrent()||scenePose||actorGroupInspection||environmentGroupInspection||scenePlacementInspection||!isolationSelectionReady(ids,hidden))return;sceneIsolated={ids:[...ids].sort(),key:sceneRequestKey()};}cancelViewportGesture();renderHierarchy();draw();};
 for(const [layer,label] of Object.entries({actors:'Actors',scenery:'Scenery',ground:'Ground'})){
   const button=document.createElement('button');button.id='scene-layer-'+layer;button.textContent=label;button.className='active';button.setAttribute('aria-pressed','true');button.title=`Show ${label.toLowerCase()} in the scene view`;
   button.onclick=()=>{sceneLayers[layer]=!sceneLayers[layer];button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));cancelViewportGesture();renderHierarchy();draw();};
@@ -1194,7 +1196,7 @@ groupPresetTool=mountPresetBatch({after:actorGroupTools,getState:()=>state,getSe
 function sceneViewState(){const preview=activeScenePreview();return {...state,scene_view_entity_ids:(preview?.entities??[]).filter(e=>e.kind!=='actor_draft').map(e=>e.entity_id),scene_view_renderable_ids:(preview?.entities??[]).filter(e=>e.renderable&&e.kind!=='actor_draft').map(e=>e.entity_id),scene_view_map_sha256:staticDecorations()[0]?.source_record?.source_record?.map_sha256??preview?.assets?.find(a=>a.pose_kind==='source_heightfield')?.preview?.source_record?.map_sha256??null};}
 savedSceneViews=mountSceneViews({
   after:$('actor-box-select'),getState:sceneViewState,isBusy:()=>busy,canEdit,
-  getDisplay:()=>{hiddenSceneEntities();if(!scenePreviewCurrent())throw new Error('Wait for the current scene before saving visibility.');return {camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers},grid,visibility:captureSceneViewVisibility(sceneHidden,sceneIsolated?.id,sceneViewState())};},
+  getDisplay:()=>{hiddenSceneEntities();if(!scenePreviewCurrent())throw new Error('Wait for the current scene before saving visibility.');return {camera:structuredClone(camera),representation:sceneRepresentation,layers:{...sceneLayers},grid,visibility:captureSceneViewVisibility(sceneHidden,sceneIsolated?.ids,sceneViewState())};},
   canRecall:()=>canEdit()&&!scenePose&&!actorGroupInspection&&!shapeDraft&&!environmentGroupInspection&&!scenePlacementInspection&&!wallInspection,api,
   recall:async(value,projectPath,current)=>{
     const check=()=>{if(!current()||state.project.path!==projectPath||!canEdit()||scenePose||actorGroupInspection||shapeDraft||environmentGroupInspection||scenePlacementInspection||wallInspection||!state.scene_views?.some(row=>row.id===value.id&&row.review_key===value.review_key))throw new Error('Saved view context changed. Review it again.');};
@@ -1209,7 +1211,7 @@ savedSceneViews=mountSceneViews({
     Object.assign(camera,display.camera);projectionSelect.value=camera.projection;document.querySelector('.viewport-type').textContent=camera.projection==='orthographic'?'Orthographic':'Perspective';
     Object.assign(sceneLayers,display.layers);
     if(Object.hasOwn(display,'grid')){grid=display.grid;$('grid-toggle').classList.toggle('active',grid);$('grid-toggle').setAttribute('aria-pressed',String(grid));}
-    if(display.visibility){sceneHiddenScope=JSON.stringify([state.project?.path,state.scene?.id]);sceneHidden=new Set(display.visibility.hidden_entity_ids);sceneIsolated=display.visibility.isolated_entity_id===null?null:{id:display.visibility.isolated_entity_id,key:sceneRequestKey()};}
+    if(display.visibility){sceneHiddenScope=JSON.stringify([state.project?.path,state.scene?.id]);sceneHidden=new Set(display.visibility.hidden_entity_ids);const ids=sceneViewIsolationIds(display.visibility);sceneIsolated=ids.length?{ids,key:sceneRequestKey()}:null;}
     for(const layer of ['actors','scenery','ground']){const button=$('scene-layer-'+layer);if(button){button.classList.toggle('active',sceneLayers[layer]);button.setAttribute('aria-pressed',String(sceneLayers[layer]));}}
     cameraRevision++;renderHierarchy();draw();return true;
   }

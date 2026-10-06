@@ -108,4 +108,26 @@ class SceneViewTests(unittest.TestCase):
         row=self.create();p.save();raw=json.loads(path.read_text(encoding='utf-8'));raw['scene_views'][row['id']]['display']['camera']['target']['y']=None;path.write_text(json.dumps(raw),encoding='utf-8')
         with self.assertRaises(ProjectError):ProjectService.open(path)
 
+    def test_group_isolation_history_and_exact_portable_metadata(self):
+        p=self.p;ids=sorted(row['semantic_id'] for row in p.imports[p.active_scene]['actors'])
+        d=deepcopy(DISPLAY);d['visibility']=dict(hidden_entity_ids=[],isolated_entity_ids=ids,map_sha256=None)
+        inputs=(deepcopy(p.imports),deepcopy(p.overrides),authored_state_key(p),source_key(p))
+        row=self.create('Group',d);self.assertEqual(row['display'],d)
+        p.undo();self.assertFalse(p.scene_views);p.redo();self.assertEqual(ProjectService.open(p.save()).scene_views,p.scene_views)
+        self.assertEqual((p.imports,p.overrides,authored_state_key(p),source_key(p)),inputs)
+        for mutation in (lambda v:v.update(isolated_entity_id=ids[0]),lambda v:v.update(isolated_entity_ids=[]),lambda v:v.update(isolated_entity_ids=ids[::-1]),lambda v:v.update(isolated_entity_ids=ids*65),lambda v:v.update(isolated_entity_ids=[ids[0],ids[0]]),lambda v:v.update(hidden_entity_ids=[ids[0]]),lambda v:v.update(isolated_entity_ids=['authored-actor://unproven'])):
+            bad=deepcopy(d);mutation(bad['visibility']);before=deepcopy((p.scene_views,p.undo_stack,p.redo_stack))
+            with self.assertRaises(ProjectError):p.command(self.cmd('update_scene_view',row,display=bad))
+            self.assertEqual((p.scene_views,p.undo_stack,p.redo_stack),before)
+
+    def test_mixed_group_requires_each_static_instance_and_exact_map(self):
+        p=self.p;actor=p.imports[p.active_scene]['actors'][0]['semantic_id'];prefix='environment://'+p.active_scene.removeprefix('scene://')+'/field-map/'
+        source=bytearray(0x10000);struct.pack_into('<H',source,0x8002,0x2004);source=bytes(source)
+        d=deepcopy(DISPLAY);d['visibility']=dict(hidden_entity_ids=[prefix+'ground'],isolated_entity_ids=sorted([actor,prefix+'decorations/00001']),map_sha256=sha256(source).hexdigest())
+        with patch.object(p,'_environment_source',return_value=source):row=self.create('Mixed',d)
+        for ids in ([actor,prefix+'decorations/00002'],[actor,'environment://foreign/field-map/ground']):
+            bad=deepcopy(d);bad['visibility']['isolated_entity_ids']=sorted(ids)
+            with patch.object(p,'_environment_source',return_value=source),self.assertRaises(ProjectError):p.command(self.cmd('update_scene_view',row,display=bad))
+        self.assertEqual(p.scene_views[row['id']]['display'],d)
+
 if __name__=='__main__':unittest.main()

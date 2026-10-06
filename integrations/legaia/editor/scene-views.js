@@ -9,17 +9,26 @@ export function decodeSavedSceneView(value,state){
   return structuredClone(display);
 }
 
+export function sceneViewIsolationIds(value){
+  return Object.hasOwn(value,'isolated_entity_ids')?value.isolated_entity_ids.slice():value.isolated_entity_id===null?[]:[value.isolated_entity_id];
+}
 export function decodeSceneViewVisibility(value,state){
-  const exact=value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join('|')==='hidden_entity_ids|isolated_entity_id|map_sha256';
-  const hidden=value?.hidden_entity_ids,isolated=value?.isolated_entity_id,allowed=new Set(state.scene_view_entity_ids??[]),renderable=new Set(state.scene_view_renderable_ids??[]),actors=new Set(state.scene?.entities?.map(row=>row.id)??[]);
-  if(!exact||!Array.isArray(hidden)||hidden.length>32768||hidden.some(id=>typeof id!=='string'||!id||id.length>1024||!allowed.has(id))||new Set(hidden).size!==hidden.length||JSON.stringify(hidden)!==JSON.stringify([...hidden].sort())||isolated!==null&&(typeof isolated!=='string'||!allowed.has(isolated)||!renderable.has(isolated)||hidden.includes(isolated)))throw new Error('Saved visibility differs from the current scene instances.');
-  const ids=[...hidden,...(isolated===null?[]:[isolated])],environment=ids.some(id=>!actors.has(id));
+  const keys=value&&typeof value==='object'&&!Array.isArray(value)?Object.keys(value).sort().join('|'):'';
+  const group=keys==='hidden_entity_ids|isolated_entity_ids|map_sha256',legacy=keys==='hidden_entity_ids|isolated_entity_id|map_sha256';
+  if(!group&&!legacy)throw new Error('Saved visibility differs from the current scene instances.');
+  const hidden=value.hidden_entity_ids,isolated=group?value.isolated_entity_ids:value.isolated_entity_id===null?[]:[value.isolated_entity_id];
+  const allowed=new Set(state.scene_view_entity_ids??[]),renderable=new Set(state.scene_view_renderable_ids??[]),actors=new Set(state.scene?.entities?.map(row=>row.id)??[]);
+  const validIds=(ids,maximum,minimum=0)=>Array.isArray(ids)&&ids.length>=minimum&&ids.length<=maximum&&Array.from(ids).every(id=>typeof id==='string'&&id.length>0&&id.length<=1024&&allowed.has(id))&&new Set(ids).size===ids.length&&JSON.stringify(ids)===JSON.stringify([...ids].sort());
+  if(!validIds(hidden,32768)||!validIds(isolated,128,group?1:0)||isolated.some(id=>!renderable.has(id)||hidden.includes(id)))throw new Error('Saved visibility differs from the current scene instances.');
+  const environment=[...hidden,...isolated].some(id=>!actors.has(id));
   if(environment?typeof value.map_sha256!=='string'||!/^[0-9a-f]{64}$/.test(value.map_sha256)||value.map_sha256!==state.scene_view_map_sha256:value.map_sha256!==null)throw new Error('Saved visibility MAP source changed.');
   return structuredClone(value);
 }
 export function captureSceneViewVisibility(hidden,isolated,state){
-  const hidden_entity_ids=[...hidden].sort(),isolated_entity_id=isolated??null,actors=new Set(state.scene?.entities?.map(row=>row.id)??[]),environment=[...hidden_entity_ids,...(isolated_entity_id===null?[]:[isolated_entity_id])].some(id=>!actors.has(id));
-  return decodeSceneViewVisibility({hidden_entity_ids,isolated_entity_id,map_sha256:environment?state.scene_view_map_sha256:null},state);
+  const hidden_entity_ids=[...hidden].sort(),ids=Array.isArray(isolated)?isolated.slice().sort():isolated==null?[]:[isolated];
+  const actors=new Set(state.scene?.entities?.map(row=>row.id)??[]),environment=[...hidden_entity_ids,...ids].some(id=>!actors.has(id));
+  const binding=ids.length>1?{isolated_entity_ids:ids}:{isolated_entity_id:ids[0]??null};
+  return decodeSceneViewVisibility({hidden_entity_ids,...binding,map_sha256:environment?state.scene_view_map_sha256:null},state);
 }
 
 export function mountSceneViews({after,getState,getDisplay,isBusy,canEdit,canRecall,api,recall}){
