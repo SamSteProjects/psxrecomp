@@ -31,3 +31,17 @@ export function wallPatternDraft(input,row,column){
   if(pattern.width_subcells*pattern.height_subcells/(quadrant==='all'?1:4)>4096)fail('Pattern extent exceeds the selected quadrant review budget.');
   return {rectangle:{row_start:row,row_end:rowEnd,column_start:column,column_end:columnEnd,quadrant,blocked:'current'},cell_edits};
 }
+
+// Gaps use complete native grid cells (128 units), preserving quadrant parity.
+export function repeatWallPattern(input,columns=1,rows=1,gapColumns=0,gapRows=0){
+  const pattern=decodeWallPattern(input);
+  if(!integer(columns,1,128)||!integer(rows,1,127)||!integer(gapColumns,0,127)||!integer(gapRows,0,126))fail('Pattern repeat counts and grid-cell gaps must be bounded integers.');
+  const width=columns*pattern.width_subcells+2*gapColumns*(columns-1),height=rows*pattern.height_subcells+2*gapRows*(rows-1);
+  if(width>256||height>254||pattern.cells.length*columns*rows>4096)fail('Repeated pattern exceeds the canonical grid or 4096-operation budget.');
+  const cells=[];
+  for(let row=0;row<rows;row++)for(let column=0;column<columns;column++)for(const cell of pattern.cells)cells.push({...cell,x:cell.x+column*(pattern.width_subcells+2*gapColumns),z:cell.z+row*(pattern.height_subcells+2*gapRows)});
+  const repeated=decodeWallPattern({...pattern,width_subcells:width,height_subcells:height,cells});
+  // Qualify the complete extent too: sparse gaps count toward native Review.
+  wallPatternDraft(repeated,1,0);
+  return repeated;
+}

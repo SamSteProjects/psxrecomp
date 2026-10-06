@@ -1,5 +1,14 @@
 # Legaia SDK status — 2026-10-06
 
+## 2026-10-06: repeated wall-pattern placement
+
+Source wall patterns now support repeated rows/columns with explicit gaps in whole 128-unit native grid cells. Stage repeated pattern expands the current authored operations into one Current-baseline draft, preserving quadrant parity and all untouched gap bits. A fresh Review is required before the single atomic Apply. Counts do not change the draft until Stage; repeating again repeats the newly staged pattern. The expanded pattern remains downloadable in the existing portable format and supports rotation/mirroring.
+
+The pure repetition service rejects invalid counts/gaps, grid extent overflow, more than 4096 operations and selected-quadrant Review extent overflow before mutating controls. Sparse gaps count toward the Review extent budget. The existing native source validation, rectangle review seals, serializer and command history remain authoritative.
+
+Validation: both Node pattern/rectangle checks, JavaScript syntax and three focused Python paint/history/HTTP checks passed. Node coverage includes exact operation placement, gap preservation, quadrant parity, rotation equivalence, detached input and count/extent/destination rejection. Actual retail editor workflow staged a 2-by-2 pattern with gaps, downloaded its exact 12 operations, rejected oversized repetition without altering the draft, completed fresh Review and scene inspection/return, and passed private Apply, Undo/Redo and Save/Open. The Review selected 60 wall bits with seven effective changes. Independent full MAP Build readback exactly matched the intended repeated bits and a pre-existing authored gap bit; all floor nibbles and unrelated bytes were preserved. Native MAP SHA-256 `8f9440f1f32d5e842fb14e38a3e878ef4f93920bc478a40b5f3f97448def4d3b`; package SHA-256 `2f2a3d306971882239cef8a88e8f7a4769891d1c34c4b4fe09ab389962c098d9`. Wide/narrow layouts were inspected and browser errors were empty. Evidence: `local-output/sdk-20260909/wall-pattern-repeat-20261006/proof.json`. No game launch, runtime attachment or installation occurred. Gameplay acceptance remains deferred and the full SDK goal remains incomplete.
+
+
 ## 2026-10-06: reusable authored wall patterns
 
 Source wall drafts can now be downloaded as portable JSON, loaded at a new First row/column, rotated clockwise or mirrored across X/Z. Patterns contain authored Block, Unblock and Restore retail operations only. They contain no captured retail/Current source bits or write authority. Loading and transforming stage a Current-baseline draft and withdraw previous Review; a fresh native Review is required before Apply. Restore retail resolves the destination's verified source value. Uniform fills retain their full operation set through export and transforms.
