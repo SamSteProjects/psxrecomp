@@ -227,6 +227,13 @@ class ModelGlbRetailHttpTests(unittest.TestCase):
                     status, applied = post('/api/model-glb-import', {**edited_body, 'review_key': review['review_key']})
                     self.assertEqual(status, 200, applied)
                     self.assertEqual(applied['model_glb_report'], review)
+                    self.assertEqual(len(project.model_sources), 1)
+                    receipt = next(iter(project.model_sources.values()))
+                    self.assertEqual(receipt['binding'], edited_body['binding'])
+                    self.assertEqual(receipt['candidate_sha256'], review['proposed_sha256'])
+                    from sdk.model_glb_sources import read_source
+                    from base64 import b64decode
+                    self.assertEqual(read_source(project, receipt), b64decode(edited_body['content_base64']))
                     self.assertEqual(applied['project']['mode'], 'edit')
                     self.assertEqual(len(project.undo_stack), 1)
                     self.assertEqual(project.model_overrides[asset_id]['format'], 'tmd-content-v1')

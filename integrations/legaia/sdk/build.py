@@ -40,7 +40,8 @@ def authored_state_key(project) -> str:
                                 "textures": getattr(project, "texture_overrides", {}),
                                 "texture_additions": getattr(project, "texture_additions", {}),
                                 "models": getattr(project, "model_overrides", {}),
-                                **({"animation_sources": project.animation_sources} if getattr(project,"animation_sources",{}) else {})}).encode("utf-8"))
+                                **({"animation_sources": project.animation_sources} if getattr(project,"animation_sources",{}) else {}),
+                                **({"model_sources": project.model_sources} if getattr(project,"model_sources",{}) else {})}).encode("utf-8"))
 
 
 def _merge_trigger_patch(original, current, changed, audit, scene, binding):

@@ -123,6 +123,7 @@ class ProjectService:
         self.texture_additions: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
         self.animation_sources: dict[str, dict] = {}
+        self.model_sources: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
         self.undo_stack: list[dict] = []
@@ -210,6 +211,7 @@ class ProjectService:
                 **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
                 **({"texture_additions": deepcopy(self.texture_additions)} if self.texture_additions else {}),
                 **({"animation_sources": deepcopy(self.animation_sources)} if self.animation_sources else {}),
+                **({"model_sources": deepcopy(self.model_sources)} if self.model_sources else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
@@ -2815,6 +2817,15 @@ class ProjectService:
             raise ProjectError("Undo and redo require Edit mode")
         if not source:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
+        if source[-1].get('target') == 'model_source_import':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .model_glb_sources import validate_files
+            validate_files(self,value['model_sources'])
+            from copy import copy
+            view=copy(self);view.model_overrides=value['model_overrides']
+            for asset,binding in view.model_overrides.items():view.read_model_replacement(asset,binding)
+            self.model_overrides=value['model_overrides'];self.model_sources=value['model_sources']
+            source.pop();target.append(entry);return
         if source[-1].get('target') == 'animation_sources':
             entry=source[-1];value=deepcopy(entry[field])
             from .animation_sources import validate_files
@@ -2901,6 +2912,8 @@ class ProjectService:
                 raise ProjectError("Imported evidence cache was modified; refusing to save")
         from .animation_sources import validate_files
         validate_files(self,self.animation_sources)
+        from .model_glb_sources import validate_files as validate_model_sources
+        validate_model_sources(self,self.model_sources)
         document = self._document()
         path = self.root / "project.legaia.json"
         atomic_write(path, canonical(document))
@@ -2923,6 +2936,9 @@ class ProjectService:
         from .animation_sources import validate_collection, validate_files
         result.animation_sources=validate_collection(raw.get('animation_sources',{}))
         validate_files(result,result.animation_sources)
+        from .model_glb_sources import validate_collection as model_source_collection, validate_files as model_source_files
+        result.model_sources=model_source_collection(raw.get("model_sources",{}))
+        model_source_files(result,result.model_sources)
         for item in raw["imports"]:
             if not isinstance(item, dict) or not all(isinstance(item.get(key), str) for key in ("sha256", "file", "scene")):
                 raise ProjectError("Invalid project import reference")

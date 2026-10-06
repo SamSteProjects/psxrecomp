@@ -1,0 +1,106 @@
+"""Historical fixed-layout model authoring inputs; never replay authority."""
+from copy import deepcopy
+from hashlib import sha256
+from .project import ProjectError, atomic_write, canonical, digest
+
+MAX_RECEIPTS=32
+MAX_GLB_BYTES=32*1024*1024
+MAX_BYTES=64*1024*1024
+FIELDS={'schema_version','asset_id','scene_id','glb_sha256','byte_length','binding','candidate_sha256','review_key','receipt_key'}
+
+def _hash(value):return isinstance(value,str) and len(value)==64 and all(c in '0123456789abcdef' for c in value)
+
+def validate_record(record):
+    if not isinstance(record,dict) or set(record)!=FIELDS or record['schema_version']!='legaia.model-source.v1':raise ProjectError('Invalid model source receipt fields')
+    if any(not _hash(record[k]) for k in ('glb_sha256','candidate_sha256','review_key','receipt_key')):raise ProjectError('Invalid model source digest')
+    if type(record['byte_length']) is not int or not 28<=record['byte_length']<=MAX_GLB_BYTES:raise ProjectError('Model source exceeds its GLB byte budget')
+    if not isinstance(record['asset_id'],str) or not record['asset_id'].startswith('asset://') or not 9<=len(record['asset_id'])<=512:raise ProjectError('Model source requires a stable asset identity')
+    if not isinstance(record['scene_id'],str) or not record['scene_id'].startswith('scene://') or not 9<=len(record['scene_id'])<=160:raise ProjectError('Model source requires a stable scene identity')
+    b=record['binding']
+    if not isinstance(b,dict) or b.get('asset_id')!=record['asset_id'] or b.get('scene_id')!=record['scene_id'] or b.get('schema_version') not in ('legaia.model-glb-binding.v1','legaia.model-glb-binding.v2','legaia.model-glb-binding.v3'):raise ProjectError('Model source binding identity changed')
+    from .model_glb import _json_size
+    _json_size(b,128*1024,'Model source binding')
+    if 'external_object_nodes' in b:
+        nodes=b['external_object_nodes'];objects=b.get('profile',{}).get('objects') if isinstance(b.get('profile'),dict) else None
+        if not isinstance(objects,list) or not 1<=len(objects)<=1024 or not isinstance(nodes,list) or len(nodes)!=len(objects) or any(type(v) is not int or not 0<=v<1024 for v in nodes) or len(set(nodes))!=len(nodes):raise ProjectError('Model source object mapping changed')
+    if digest({k:v for k,v in record.items() if k!='receipt_key'})!=record['receipt_key']:raise ProjectError('Model source receipt changed')
+    return deepcopy(record)
+
+def validate_collection(records):
+    if not isinstance(records,dict) or len(records)>MAX_RECEIPTS:raise ProjectError('Model sources require at most 32 receipts')
+    sizes={}
+    for key,record in records.items():
+        validate_record(record)
+        if key!=record['receipt_key']:raise ProjectError('Model source collection identity changed')
+        h,size=record['glb_sha256'],record['byte_length']
+        if h in sizes and sizes[h]!=size:raise ProjectError('Conflicting model source lengths')
+        sizes[h]=size
+    if sum(sizes.values())>MAX_BYTES:raise ProjectError('Model sources exceed 64 MiB')
+    return deepcopy(records)
+
+def source_path(project,record):
+    validate_record(record)
+    path=project.root/'Authored'/'Models'/'GLBSources'/(record['glb_sha256']+'.glb')
+    if not path.resolve().is_relative_to(project.root.resolve()):raise ProjectError('Model source path escapes project')
+    return path
+
+def read_source(project,record):
+    path=source_path(project,record)
+    if not path.is_file() or path.stat().st_size!=record['byte_length']:raise ProjectError('Model source is missing or changed size')
+    raw=path.read_bytes()
+    if len(raw)!=record['byte_length'] or sha256(raw).hexdigest()!=record['glb_sha256']:raise ProjectError('Model source content hash changed')
+    return raw
+
+def validate_files(project,records):
+    validate_collection(records);seen=set()
+    for record in records.values():
+        if record['glb_sha256'] not in seen:read_source(project,record);seen.add(record['glb_sha256'])
+
+def retain(project,records,content,binding,candidate_sha256,review_key):
+    validate_collection(records)
+    if not isinstance(content,bytes) or not 28<=len(content)<=MAX_GLB_BYTES:raise ProjectError('Model source requires immutable bounded GLB bytes')
+    if not isinstance(binding,dict):raise ProjectError('Model source requires its binding JSON')
+    from importer.animation_glb import _read_glb
+    _read_glb(content)
+    record=dict(schema_version='legaia.model-source.v1',asset_id=binding.get('asset_id'),scene_id=binding.get('scene_id'),
+                glb_sha256=sha256(content).hexdigest(),byte_length=len(content),binding=deepcopy(binding),candidate_sha256=candidate_sha256,review_key=review_key)
+    record['receipt_key']=digest(record);after=deepcopy(records);after[record['receipt_key']]=record;validate_collection(after)
+    path=source_path(project,record)
+    if path.exists():
+        if read_source(project,record)!=content:raise ProjectError('Model source hash path changed')
+    else:atomic_write(path,content)
+    if read_source(project,record)!=content:raise ProjectError('Model source readback changed')
+    return after,deepcopy(record)
+
+def apply(project,asset,candidate,content,binding,report):
+    before=deepcopy((project.model_overrides,project.model_sources,project.undo_stack,project.redo_stack))
+    after,record=retain(project,project.model_sources,content,binding,report['proposed_sha256'],report['review_key'])
+    from .scene_preview import source_key
+    if source_key(project)!=binding['project_source_key']:raise ProjectError('Model source context changed before Apply')
+    try:
+        length=len(project.undo_stack);project.set_model_replacement(asset,candidate)
+        if len(project.undo_stack)!=length+1:raise ProjectError('Model source retention requires one native history step')
+        project.model_sources=after
+        project.undo_stack[-1]=dict(target='model_source_import',before=dict(model_overrides=before[0],model_sources=before[1]),after=dict(model_overrides=deepcopy(project.model_overrides),model_sources=deepcopy(after)))
+    except Exception:
+        project.model_overrides,project.model_sources,project.undo_stack,project.redo_stack=before;raise
+    return record
+
+def catalog(project,asset_id,expected_source_key):
+    from .scene_preview import source_key
+    if not _hash(expected_source_key) or source_key(project)!=expected_source_key:raise ProjectError('Model source recovery context changed')
+    project._model_source(asset_id,project.active_scene)
+    validate_collection(project.model_sources)
+    rows=[deepcopy(r) for r in project.model_sources.values() if r['asset_id']==asset_id and r['scene_id']==project.active_scene]
+    validate_files(project,{r['receipt_key']:r for r in rows})
+    if source_key(project)!=expected_source_key:raise ProjectError('Model source recovery context changed')
+    return dict(schema_version='legaia.model-sources.v1',asset_id=asset_id,scene_id=project.active_scene,project_source_key=expected_source_key,imports=rows,historical_inputs=True,project_changed=False)
+
+def download(project,asset_id,expected_source_key,receipt_key):
+    import base64
+    result=catalog(project,asset_id,expected_source_key);record=next((r for r in result['imports'] if r['receipt_key']==receipt_key),None)
+    if record is None:raise ProjectError('Model source receipt is absent from Current')
+    raw=read_source(project,record)
+    from .scene_preview import source_key
+    if source_key(project)!=expected_source_key:raise ProjectError('Model source recovery context changed')
+    return dict(result,selected=record,glb_base64=base64.b64encode(raw).decode('ascii'))

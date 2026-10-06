@@ -1,5 +1,46 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-06 checkpoint: original model GLB input retention and recovery
+
+Successful fixed-layout model GLB Apply now retains the exact original GLB,
+source binding (including explicit node mapping), proposed native hash and Review
+key in a sealed historical receipt. Native publication and receipt metadata form
+one grouped Undo/Redo step; failure restores both collections and history. Immutable
+source files remain available for Redo. These inputs are historical recovery data,
+not replay authority: export a fresh binding and Review before applying again.
+
+Projects optionally persist `model_sources` (32 receipts, 32 MiB per GLB, 64 MiB of
+distinct inputs). Save/Open checks receipt identities, file lengths/hashes and
+mapping bounds. Registered GLBs under `Authored/Models/GLBSources` travel through
+project copies and Build input snapshots; source receipts contribute to authored
+state keys. Empty/legacy collections preserve previous document/key shapes. The
+native replacement/package formats and retail source cache remain intact.
+
+The model GLB dialog provides Recover model inputs with verified downloads of
+original GLB, binding JSON and receipt JSON. Recovery is read-only, context-bound,
+SHA-qualified and guarded against close/abort and stale busy ownership. No implicit
+re-import or physical source-file deletion occurs. Receipt removal, project-wide
+model input browsing and orphan-file cleanup remain future work.
+
+Validation: 98 focused Python tests and four Node checks passed. A strengthened
+retail HTTP Apply check directly asserts exact GLB/binding/candidate receipt
+publication. Source corruption, receipt/mapping tampering, budgets, rollback and
+Undo/Redo persistence are covered. The actual private retail model workflow
+completed Review/Preview/Return/Apply; its subsequent recovery proof initially
+tried the closed owner dialog. The applied fixture was independently requalified
+and restored from immutable native/source blobs before Save, without repeating
+native Apply. A fresh read-only resource-browser session downloaded all three exact
+inputs. Recovery screenshot inspected. Undo/Redo, Save/Open, project copy, Build
+input retention and independent native TMD/neighbor readback passed.
+
+Evidence: `local-output/sdk-20260909/model-glb-sources-20261006/proof.json`.
+Build: `4afce3b9c89bd196`.
+Package SHA-256: `fdbdacb0da2b0f3cd937326bd2a4a649707d0fb64beb10b67956fd334cabee90`.
+Native TMD SHA-256: `ebc9882475655eda330d4aa9f49b7e5277b522c4b3e3862890652a8e42fa129e`.
+No game launch, mod installation or retail-disc export occurred. Gameplay remains
+deferred; solo work and the full SDK goal remain active and incomplete.
+
+
 ## 2026-10-06 checkpoint: explicit external model object mapping
 
 Model GLB authoring now accepts an optional ordered `external_object_nodes`

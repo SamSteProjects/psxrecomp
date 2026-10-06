@@ -825,3 +825,25 @@ both withdraw accepted Review. Choice equality is checked in Review and proposed
 model responses. Mapping controls lock during pending operations, while the
 existing command, persistence and Build paths consume the verified native model
 without introducing a new native format or runtime identity assumption.
+
+
+### Fixed-layout model GLB source receipts (2026-10-06)
+
+`sdk/model_glb_sources.py` owns historical input receipts separately from the
+retail model source cache (`sdk/model_sources.py`) and allocation-ledger mesh
+receipts (`sdk/model_mesh_sources.py`). A model receipt seals original GLB bytes,
+source binding/mapping, candidate digest and Review digest; it does not grant
+replay authority. Optional project `model_sources` metadata is validated on
+Save/Open and copied with SHA-addressed files in `Authored/Models/GLBSources`.
+Native Apply and receipt publication replace the existing native history entry
+with one combined before/after snapshot. Undo/Redo qualifies source files and
+restored native bindings before changing state. Failed publication restores
+metadata/history; immutable unregistered files may remain for later cleanup.
+
+Authored state keys and export input capture include registered receipts/files,
+so project copy and normal Build snapshots remain reproducible. Legacy empty
+collections keep old document/key shapes. The owning GLB dialog dynamically opens
+read-only input recovery; downloads verify exact originals and never treat an
+archived source key as Current authority. No native model, Build package or runtime
+format changes. Receipt management and project-wide model source browsing remain
+separate pending features.

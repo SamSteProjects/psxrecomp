@@ -916,6 +916,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-record-glb.js": ("animation-record-glb.js", "text/javascript"),
                  "/model-glb.js": ("model-glb.js", "text/javascript"),
                  "/model-glb-mapping.js": ("model-glb-mapping.js", "text/javascript"),
+                 "/model-sources.js": ("model-sources.js", "text/javascript"),
                  "/texture-png.js": ("texture-png.js", "text/javascript"),
                  "/texture-comparison.js": ("texture-comparison.js", "text/javascript"),
                  "/texture-resize.js": ("texture-resize.js", "text/javascript"),
@@ -2285,6 +2286,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         operation=library if route=='/api/animation-source-library' else library_download if route.endswith('download') else library_removal_review
                         self._json(200,operation(self.server.project,**body))
+                    return
+                if route in ('/api/model-sources','/api/model-source-download'):
+                    expected={'asset_id','expected_source_key'}
+                    if route.endswith('download'):expected.add('receipt_key')
+                    if set(body)!=expected:raise ProjectError('Model sources require an exact recovery context')
+                    from .model_glb_sources import catalog,download
+                    self._json(200,(download if route.endswith('download') else catalog)(self.server.project,**body))
                     return
                 if route in ('/api/animation-sources','/api/animation-source-download'):
                     expected={'scene_id','target_id','kind','expected_source_key'}

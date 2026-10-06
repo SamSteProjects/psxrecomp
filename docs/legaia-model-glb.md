@@ -823,3 +823,24 @@ mapping text or files change, retains the chosen mapping through proposed-model
 inspection and Return, and requires explicit Apply. Material-face selection uses
 the same mapping after an exact native no-op qualification. Use normal Undo/Redo,
 Save/Open and Build; gameplay rendering and lighting remain deferred.
+
+
+## Recover original model GLB imports
+
+After a successful Apply, open the model's GLB dialog and choose **Recover model
+inputs**. Download the original uploaded GLB, its original binding JSON (including
+explicit object mapping) and its import receipt. Downloads check the original
+file's SHA-256 and byte length. Retained source inputs survive subsequent native
+model edits; they describe the historical import, not the current model.
+
+Native content and input metadata share one Undo/Redo step. Save/Open, project
+copies and Build input snapshots retain registered sources. The project supports
+32 model import receipts and 64 MiB of distinct original GLBs, with a 32 MiB limit
+per GLB. Receipt metadata removal and physical orphan cleanup are not yet exposed.
+Files may remain as unregistered cache entries after Undo or a failed publication.
+
+An old binding is intentionally stale after edits. Recover original inputs for
+external editing, export a fresh binding from Current, preserve source attributes
+and choose the mapping appropriate to that GLB, then Review again. No receipt
+silently replays changes or authorizes native/runtime writes. Gameplay rendering
+and lighting acceptance remain deferred.

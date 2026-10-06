@@ -228,6 +228,9 @@ class ModelGLBServiceTests(unittest.TestCase):
                 raise ProjectError('Unknown imported source model')
             return self.source
         patches = [patch.dict(sys.modules, {'importer.model_glb': leaf}),
+                   # This facade uses opaque labels instead of real GLB files;
+                   # original-input retention is covered by real GLB fixtures.
+                   patch('sdk.model_glb_sources.retain', side_effect=lambda project,records,*args:(deepcopy(records),None)),
                    patch.object(ProjectService, '_model_source', source_lookup),
                    patch('importer.pipeline._disc_context', side_effect=lambda _disc: nullcontext()),
                    patch('importer.assets.load_model_preview', side_effect=lambda _disc, _asset: decode_tmd(self.source))]

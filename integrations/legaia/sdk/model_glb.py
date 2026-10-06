@@ -276,7 +276,7 @@ def _prepare(project, asset_id: str, content: bytes, binding: dict) -> tuple[byt
         raise ProjectError('Model export binding differs from the current source or effective model; export again')
     snapshot['binding'] = deepcopy(binding)
     candidate, analysis = import_model_glb(snapshot['effective'], content, snapshot['binding']['profile'],
-                                          object_node_indices=binding.get('external_object_nodes'))
+                                          **({'object_node_indices':binding['external_object_nodes']} if 'external_object_nodes' in binding else {}))
     report = _report(snapshot, content, candidate, analysis)
     _current(project, snapshot['binding'])
     return candidate, report
@@ -297,5 +297,6 @@ def apply_import(project, asset_id: str, content: bytes, binding: dict, review_k
         raise ProjectError('GLB or project changed after review; review the model again')
     if not report['pending_changes']:
         raise ProjectError('GLB has no source-quantized model changes to apply')
-    project.set_model_replacement(asset_id, candidate)
+    from .model_glb_sources import apply as retain_model_source
+    retain_model_source(project, asset_id, candidate, content, binding, report)
     return report

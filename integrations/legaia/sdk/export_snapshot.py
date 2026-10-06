@@ -59,6 +59,11 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
         if record['glb_sha256'] not in seen_sources:
             store(f"Authored/Animations/Sources/{record['glb_sha256']}.glb",read_source(project,record))
             seen_sources.add(record['glb_sha256'])
+    from .model_glb_sources import validate_files as validate_model_sources, read_source as read_model_source
+    sources=getattr(project,'model_sources',{})
+    validate_model_sources(project,sources)
+    for record in sources.values():
+        store(f"Authored/Models/GLBSources/{record['glb_sha256']}.glb",read_model_source(project,record))
     if authored_state_key(project) != key:
         raise ProjectError('Project changed while capturing export inputs')
     return key, files

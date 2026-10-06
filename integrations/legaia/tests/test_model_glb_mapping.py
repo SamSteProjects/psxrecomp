@@ -69,7 +69,7 @@ class ModelObjectMapping(unittest.TestCase):
         content=rewrite(self.glb,translate)
         choices=[dict(deepcopy(binding),external_object_nodes=m) for m in ([0,1],[1,0])]
         publications=[];project=SimpleNamespace(set_model_replacement=lambda asset,candidate:publications.append(candidate))
-        with patch('sdk.model_glb._snapshot',side_effect=lambda *a:deepcopy(snapshot)),patch('sdk.model_glb._current'):
+        with patch('sdk.model_glb._snapshot',side_effect=lambda *a:deepcopy(snapshot)),patch('sdk.model_glb._current'),patch('sdk.model_glb_sources.apply',side_effect=lambda p,a,c,*rest:publications.append(c)):
             reviews=[preview_import(project,asset,content,b) for b in choices]
             self.assertEqual(reviews[0]['proposed_sha256'],reviews[1]['proposed_sha256'])
             self.assertNotEqual(reviews[0]['review_key'],reviews[1]['review_key'])
