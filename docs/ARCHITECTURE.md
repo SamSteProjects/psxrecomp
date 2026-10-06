@@ -684,3 +684,19 @@ services. Authored native files and original GLB receipts are read and qualified
 every time. Detached GLB reconstruction shares the one verified Retail source
 for that model, with an imported-evidence digest guard, not arbitrary disc reads.
 This belongs in the integration's source service; the editor consumes its APIs.
+
+
+### Project-wide historical animation input service (2026-10-06)
+
+`animation_sources.library` projects the Current receipt collection across all
+recorded scenes without depending on active scene, actor selection or live RAM.
+It validates sealed receipt metadata and distinct referenced GLB files within
+the 32-receipt/64-MiB project bounds. Its key binds project root, mode, receipts
+and native overrides. SDK download and removal Review operations require that
+key and exact root identity; the editor validates replies and hashes downloads.
+The Asset database toolbar hosts `animation-source-library.js`, which filters
+SDK records without interpreting MAN/ANM addresses. Metadata removal passes
+through ProjectService commands and the existing validated Undo/Redo path.
+Source bytes are retained for Undo and only Current references enter snapshots.
+Receipts are historical external inputs, never native replay authority or live
+identity evidence; native authoring continues to require fresh qualified Review.

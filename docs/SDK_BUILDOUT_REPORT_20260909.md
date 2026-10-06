@@ -1,5 +1,34 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Project-wide animation input browser - 2026-10-06
+
+The Asset database tools now expose **Project animation inputs**. The SDK
+catalogs all Current animation input receipts independently of active scene or
+actor selection, verifies referenced files once per distinct blob, and reports
+receipt/file/registered-byte totals. Search matches scene, target, kind and
+hash; the scene filter preserves recorded source identities. Original GLB,
+parsed binding and receipt downloads recheck project/library identity and exact
+source hashes. Historical inputs remain separate from native authoring authority.
+Edit mode offers reviewed receipt removal, automatic catalog refresh and one
+Undo/Redo metadata command. Library keys bind project root, mode, receipts and
+native overrides; changed inputs reject pending recovery/removal operations.
+
+**Verified:** 55 focused Python checks and five Node editor checks passed.
+A private retail editor workflow with no active scene recovered all nine files
+from three imported/retained receipts, filtered results, reviewed/removed an
+input and refreshed the open browser. Undo/Redo, Save/Open and an actual project
+copy preserved Current and native overrides. Normal Build `2274e2fa360d4ac7`
+passed independent native-bank readback; native bytes are unchanged (SHA-256
+`3abfb27bb04dde0e553dafe0c683509eb873856b48136776d1485139d1d3f384`). Package
+SHA-256 `52ac5f3faaabe999b80baeb0fb32effc63e0094f37894e51eba638835025ca87`.
+Evidence: `local-output/sdk-20260909/animation-source-library-20261006/`.
+The browser fixture initially targeted a responsive tab hidden at desktop width;
+that was corrected before mutation. Verification later resumed from saved state
+to accommodate existing Open behavior that selects the first imported scene.
+No edits were repeated and no game was launched. Physical orphan-file cleanup,
+full SDK completion and retail animation playback/timing remain open.
+
+
 ## Animation source receipt management - 2026-10-06
 
 Both animation GLB editors now offer Review source removal and an explicit

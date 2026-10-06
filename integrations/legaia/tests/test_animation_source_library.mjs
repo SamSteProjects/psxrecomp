@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {decodeAnimationSourceLibrary,filterAnimationSourceLibrary,decodeLibraryRemoval} from '../editor/animation-source-library.js';
+const path='C:/private/project',scene='scene://town01',target=scene+'/actors/man-p1/0011';
+const row={schema_version:'legaia.animation-source.v1',kind:'imported',scene_id:scene,target_id:target,receipt_key:'a'.repeat(64),glb_sha256:'b'.repeat(64),candidate_sha256:'c'.repeat(64),review_key:'d'.repeat(64),byte_length:28,animation_index:null,source_frame_indices:null,binding:{scene_id:scene,entity_id:target}};
+const value={schema_version:'legaia.animation-source-library.v1',project_path:path,library_key:'e'.repeat(64),mode:'edit',imports:[row],receipt_count:1,distinct_glb_count:1,registered_byte_length:28,project_changed:false,historical_inputs:true};
+assert.deepEqual(decodeAnimationSourceLibrary(value,path),value);
+for(const mutate of [v=>v.project_path+='other',v=>v.project_changed=true,v=>v.imports.push(structuredClone(row)),v=>v.distinct_glb_count=2,v=>v.registered_byte_length=29,v=>v.imports[0].binding.entity_id='other',v=>v.imports[0].source_frame_indices=[],v=>v.imports[0].animation_index=true,v=>v.library_key='bad',v=>v.mode='unknown']){const bad=structuredClone(value);mutate(bad);assert.throws(()=>decodeAnimationSourceLibrary(bad,path));}
+assert.equal(filterAnimationSourceLibrary(value.imports,'TOWN01 imported',scene).length,1);assert.equal(filterAnimationSourceLibrary(value.imports,'retained').length,0);assert.equal(filterAnimationSourceLibrary(value.imports,'','scene://other').length,0);
+const removal={schema_version:'legaia.animation-library-removal.v1',project_path:path,library_key:value.library_key,receipt_key:row.receipt_key,glb_sha256:row.glb_sha256,scene_id:scene,target_id:target,kind:'imported',receipt_count_before:1,receipt_count_after:0,registered_bytes_released:28,native_content_changed:false,source_file_deleted:false,review_key:'f'.repeat(64)};
+assert.deepEqual(decodeLibraryRemoval(removal,value,row),removal);
+for(const mutate of [v=>v.native_content_changed=true,v=>v.source_file_deleted=true,v=>v.library_key='a'.repeat(64),v=>v.receipt_count_after=1,v=>v.registered_bytes_released=0,v=>v.kind='retained']){const bad=structuredClone(removal);mutate(bad);assert.throws(()=>decodeLibraryRemoval(bad,value,row));}
+console.log('Project-wide animation input library identity, bounds, search and removal guards passed.');

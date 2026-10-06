@@ -905,6 +905,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-glb-clips.js": ("animation-glb-clips.js", "text/javascript"),
                  "/animation-sources.js": ("animation-sources.js", "text/javascript"),
+                 "/animation-source-library.js": ("animation-source-library.js", "text/javascript"),
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
@@ -2268,6 +2269,19 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         report = apply_import(self.server.project, body['asset_id'], payload, body['binding'], body['review_key'])
                         self._json(200, dict(self.server.state(), model_glb_report=report))
+                    return
+                if route in ('/api/animation-source-library','/api/animation-library-download','/api/animation-library-removal-review','/api/animation-library-remove'):
+                    expected={'expected_project_path'}
+                    if route!='/api/animation-source-library':expected.update({'receipt_key','expected_library_key'})
+                    if route.endswith('/animation-library-remove'):expected.add('review_key')
+                    if set(body)!=expected:raise ProjectError('Animation input library requires exact fields')
+                    from .animation_sources import library,library_download,library_removal_review
+                    if route.endswith('/animation-library-remove'):
+                        self.server.project.command(dict(body,type='remove_project_animation_source'))
+                        self._json(200,self.server.state())
+                    else:
+                        operation=library if route=='/api/animation-source-library' else library_download if route.endswith('download') else library_removal_review
+                        self._json(200,operation(self.server.project,**body))
                     return
                 if route in ('/api/animation-sources','/api/animation-source-download'):
                     expected={'scene_id','target_id','kind','expected_source_key'}

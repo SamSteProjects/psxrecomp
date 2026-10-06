@@ -15,6 +15,7 @@ import {openAssetReferences,qualifyAssetReferenceInstructionSite} from '/asset-r
 import {openActorAnimationAssignment} from '/actor-animation.js';
 import {mountProjectSettings} from '/project-settings.js';
 import {mountProjectCopy} from '/project-copy.js';
+import {mountAnimationSourceLibrary} from '/animation-source-library.js';
 import {mountEnvironmentGroup} from '/environment-group.js';
 import {mountEnvironmentLayout} from '/environment-layout.js';
 import {mountEnvironmentRotationGroup} from '/environment-rotation-group.js';
@@ -725,6 +726,7 @@ function setBusy(value) {
   if($('shape-glb'))$('shape-glb').disabled=value||!!$('shape-file')?.files?.length||state.project?.mode!=='edit'||!state.capabilities?.model_glb_authoring;
   if($('project-settings-button'))$('project-settings-button').disabled=value||!state.capabilities?.project_settings;
   if($('project-copy-button'))$('project-copy-button').disabled=value||!state.capabilities?.project_copy;
+  if($('project-animation-inputs'))$('project-animation-inputs').disabled=value||!state.project?.path;
   document.querySelectorAll('#script-report [data-script-family]').forEach(button=>button.disabled=value);
   busy=value;npcPresetControls?.update();triggerScriptsDialog?.refresh?.();triggerGroupDialog?.refresh?.();updateSceneFacePick();updateSceneIsolation();document.querySelectorAll('[data-scene-resource] button').forEach(button=>button.disabled=value);updateActorGroupSelection();updateScenePlacementSelection();if(value){cancelViewportGesture();cancelFollowTimer();}
   actorBatchTool.synchronize();
@@ -1422,6 +1424,7 @@ $('resource-refresh').onclick=refreshResources;
 const transitionsButton=document.createElement('button');transitionsButton.id='scene-transitions';transitionsButton.textContent='Scene transitions';$('resource-refresh').after(transitionsButton);
 let projectBookmarkNavigator=null;
 const projectTransitionsButton=document.createElement('button');projectTransitionsButton.id='project-transitions';projectTransitionsButton.textContent='Project transitions';transitionsButton.after(projectTransitionsButton);projectTransitionsButton.onclick=()=>openSceneTransitions(true);
+mountAnimationSourceLibrary({after:projectTransitionsButton,getState:()=>state,busy:()=>busy,setBusy,onApplied:next=>{state=next;render();notify('Animation input receipt removed. Save project to persist.');},onError:error=>notify(error.message,true)});
 projectBookmarkNavigator=mountProjectScriptBookmarks({after:projectTransitionsButton,getState:()=>state,busy:()=>busy||worldmapDraftPending||scriptDrafts.size>0||!!sceneAnimationController?.active(),onError:error=>notify(error.message,true),onOpen:async bookmark=>{
   const projectPath=state.project.path;
   const qualified=()=>{const row=(state.script_bookmarks??[]).find(value=>value.id===bookmark.id);if(state.project.path!==projectPath||!row||row.review_key!==bookmark.review_key)throw new Error('Bookmark or project changed before navigation.');return row;};

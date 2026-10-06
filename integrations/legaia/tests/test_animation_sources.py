@@ -145,3 +145,42 @@ class AnimationSources(unittest.TestCase):
                 with self.assertRaises(ProjectError):review_removal(project,row['receipt_key'],**dict(request,target_id='other'))
                 with self.assertRaises(ProjectError):review_removal(project,row['receipt_key'],**dict(request,expected_source_key='b'*64))
                 self.assertEqual(project.undo_stack,[])
+
+
+    def test_project_library_recovers_and_removes_without_active_scene(self):
+        from sdk.animation_sources import library,library_download,library_removal_review
+        import base64
+        raw,args=self.fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));records,row=retain(p,{},raw,**args);p.animation_sources=records
+            p.active_scene=None
+            value=library(p,str(p.root));self.assertEqual(value['imports'],[row]);self.assertEqual(value['registered_byte_length'],len(raw))
+            request=dict(receipt_key=row['receipt_key'],expected_project_path=str(p.root),expected_library_key=value['library_key'])
+            result=library_download(p,**request);self.assertEqual(base64.b64decode(result['glb_base64']),raw)
+            review=library_removal_review(p,**request);p.command(dict(request,type='remove_project_animation_source',review_key=review['review_key']))
+            self.assertEqual(p.animation_sources,{});self.assertEqual(p.overrides,{})
+            p.undo();self.assertEqual(p.animation_sources,records);p.redo();self.assertEqual(p.animation_sources,{})
+            p.save();opened=ProjectService.open(p.root);self.assertEqual(opened.animation_sources,{})
+            self.assertEqual(read_source(p,row),raw)
+
+    def test_project_library_stale_root_native_receipts_mode_and_missing_files_reject(self):
+        from sdk.animation_sources import library,library_download,library_removal_review
+        raw,args=self.fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));records,row=retain(p,{},raw,**args);p.animation_sources=records
+            value=library(p,str(p.root));request=dict(receipt_key=row['receipt_key'],expected_project_path=str(p.root),expected_library_key=value['library_key'])
+            review=library_removal_review(p,**request);command=dict(request,type='remove_project_animation_source',review_key=review['review_key'])
+            for change in ['native','receipts','mode']:
+                p.overrides={};p.animation_sources=deepcopy(records);p.mode='edit'
+                if change=='native':p.overrides={'changed':True}
+                elif change=='receipts':p.animation_sources={}
+                else:p.mode='live'
+                with self.assertRaises(ProjectError):p.command(command)
+                with self.assertRaises(ProjectError):library_download(p,**request)
+                self.assertEqual(p.undo_stack,[])
+            p.mode='edit';p.overrides={};p.animation_sources=records
+            with self.assertRaises(ProjectError):library(p,str(p.root)+'-other')
+            source_path(p,row).unlink()
+            with self.assertRaises(ProjectError):library(p,str(p.root))
+            with self.assertRaises(ProjectError):p.command(command)
+            self.assertEqual(p.animation_sources,records);self.assertEqual(p.undo_stack,[])

@@ -1868,6 +1868,10 @@ class ProjectService:
             return
         if self.mode != "edit":
             raise ProjectError("Authoring commands require Edit mode")
+        if command.get('type') == 'remove_project_animation_source':
+            from .animation_sources import library_remove_command
+            library_remove_command(self,command)
+            return
         if command.get('type') == 'remove_animation_source':
             from .animation_sources import remove_command
             remove_command(self,command)

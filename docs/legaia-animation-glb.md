@@ -252,5 +252,24 @@ the project. Undo restores the receipt; Redo removes it again. A changed target,
 source context, collection or native authored state rejects the reviewed action.
 Native animation content stays intact. Local GLB files are preserved for Undo,
 so removal frees the registered input budget rather than physical disk space.
-Save/Open and project copies retain only Current references. Physical cleanup
-and project-wide source-library browsing remain follow-up work.
+Save/Open and project copies retain only Current references. Physical orphan-file
+cleanup remains follow-up work.
+
+### Project-wide animation inputs
+
+Choose **Project animation inputs** in the Asset database tools to recover and
+manage Current inputs without selecting an actor or activating its source scene.
+The catalog covers all recorded receipts and verifies their source files. Search
+by scene, target, kind or hash, or choose a recorded scene from the filter. Each
+entry identifies the recorded target, selected clip and native candidate hash;
+these describe the historical import rather than current gameplay or playback.
+Downloads preserve exact GLB bytes and parsed binding/receipt values. The native
+animation may have changed since import, so export a fresh binding before reuse.
+
+In Edit mode, **Review input removal** and **Remove reviewed input** remove only
+the selected receipt. The browser refreshes after Apply; the project supports
+Undo/Redo and Save/Open. Shared files free registered bytes only after their last
+Current receipt is removed. Local source files stay intact for Undo. Changed
+project root, mode, source collection or native overrides reject stale requests;
+use **Refresh animation inputs** to obtain current receipts. Opening a project
+with no saved active scene retains its normal first-imported-scene selection.
