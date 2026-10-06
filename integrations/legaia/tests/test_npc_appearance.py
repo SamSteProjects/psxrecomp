@@ -52,7 +52,7 @@ class NpcAppearanceTests(TestCase):
         from tempfile import TemporaryDirectory
         from unittest.mock import patch
         from sdk.project import ProjectService
-        from sdk.npc_appearance import source,review
+        from sdk.npc_appearance import source,review,proposal_view
         from test_project_workflow import synthetic_scene
         with TemporaryDirectory() as directory:
             p=ProjectService(Path(directory));document=synthetic_scene();donor=document['actors'][0]['semantic_id'];witness=deepcopy(document['actors'][0]);witness['semantic_id']='scene://fixture/actors/man-p1/0002';witness['model_reference']['asset_semantic_id']='asset://fixture/models/scene-tmd/0005';document['actors'].append(witness);p.import_metadata(document)
@@ -61,6 +61,10 @@ class NpcAppearanceTests(TestCase):
             original=deepcopy(p.actor_drafts);options=dict(options=[dict(donor_entity_id=witness['semantic_id'])],supported=True)
             with patch.object(p,'appearance_options',return_value=options):
                 request=dict(entity_id=identifier,donor_entity_id=witness['semantic_id']);before=len(p.undo_stack);report=review(p,request);self.assertEqual(p.actor_drafts,original)
+                view=proposal_view(p,report);self.assertEqual(view.actor_drafts[identifier],report['proposed']);self.assertEqual(p.actor_drafts,original);self.assertEqual(len(p.undo_stack),before)
+                view.actor_drafts[identifier]['position']['x']=999;self.assertEqual(p.actor_drafts,original)
+                forged=deepcopy(report);forged['proposed']['name']='Forged'
+                with self.assertRaises(ProjectError):proposal_view(p,forged)
                 with self.assertRaises(ProjectError):p.command(dict(type='set_actor_draft_appearance',**request,review_key='0'*64))
                 p.command(dict(type='set_actor_draft_appearance',**request,review_key=report['review_key']));after=deepcopy(p.actor_drafts);self.assertEqual(len(p.undo_stack),before+1)
                 self.assertEqual(after[identifier]['dialogue'],original[identifier]['dialogue']);self.assertEqual(after[identifier]['donor_entity_id'],donor)

@@ -2604,6 +2604,20 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route=='/api/npc-appearance-review':
                     from .npc_appearance import review
                     self._json(200,review(self.server.project,body));return
+                if route=='/api/npc-appearance-scene':
+                    from .npc_appearance import review,proposal_view
+                    from .project_copy import source_key
+                    from .scene_preview import source_key as preview_source_key
+                    from importer.scene_animation import load_scene_actor_animation_catalog
+                    from importer.environment import load_environment_preview_catalog
+                    from .terrain_preview import terrain_preview
+                    if set(body)!={'entity_id','donor_entity_id','review_key'}:raise ProjectError('NPC appearance scene requires exact reviewed fields')
+                    project=self.server.project;report=review(project,{k:body[k] for k in ('entity_id','donor_entity_id')})
+                    if body['review_key']!=report['review_key']:raise ProjectError('NPC appearance changed since review')
+                    scene_key=preview_source_key(project);view=proposal_view(project,report)
+                    proposed=self.server.scene_previews.preview(view,lambda asset,*args,**kwargs:self.server.model_preview(asset,*args,effective_shape=True,project_view=view,**kwargs),load_scene_actor_animation_catalog,load_environment_preview_catalog,terrain_preview)
+                    if source_key(project)!=report['project_source_key'] or preview_source_key(project)!=scene_key:raise ProjectError('Project changed during NPC appearance scene inspection')
+                    self._json(200,dict(schema_version='legaia.npc-appearance-scene.v1',review=report,scene_preview_source_key=scene_key,scene=dict(proposed,representation='authored')));return
                 if route=='/api/npc-dialogue-source':
                     from .npc_dialogue import source
                     if set(body)!={'entity_id'}:raise ProjectError('NPC dialogue source requires identity only')

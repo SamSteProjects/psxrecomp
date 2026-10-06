@@ -8,7 +8,7 @@ from importer.core import parse_man
 from importer.man_layout import read_man_layout
 from .project import ProjectError, digest
 from .project_copy import source_key
-from copy import deepcopy
+from copy import copy, deepcopy
 
 def appearance_donor(draft):
     return draft.get('appearance',{}).get('donor_entity_id',draft['donor_entity_id'])
@@ -50,6 +50,14 @@ def apply(project,command):
     project.actor_drafts[command['entity_id']]=deepcopy(report['proposed'])
     project.undo_stack.append(dict(target='actor_drafts',entity_id=command['entity_id'],before=report['current'],after=deepcopy(report['proposed'])))
     project.redo_stack.clear()
+
+def proposal_view(project,report):
+    """Detached preview inputs; never publish the reviewed binding or history."""
+    if review(project,report['request'])!=report:
+        raise ProjectError('NPC appearance changed since scene review')
+    view=copy(project);view.actor_drafts=deepcopy(project.actor_drafts)
+    view.actor_drafts[report['entity_id']]=deepcopy(report['proposed'])
+    return view
 
 def patch_project(project,scene_id,context,candidate,allocations):
     actors={a['semantic_id']:a for a in project.imports[scene_id]['actors']}

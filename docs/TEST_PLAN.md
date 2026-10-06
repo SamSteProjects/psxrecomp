@@ -1,5 +1,26 @@
 # Legaia SDK validation plan
 
+## Review NPC appearance in the placed scene - 2026-10-05
+
+The NPC appearance picker now offers **Inspect NPC appearance in scene** after
+Review. It renders a detached Proposed scene at the selected NPC's existing
+placement, with Current/Proposed switching and Return to NPC appearance. Return
+retains the reviewed choice; changing the choice withdraws inspection and Apply.
+The SDK requalifies the witness and review before creating the detached view.
+Project metadata, retail imports, script donor, own dialogue and history remain
+unchanged. Scene identity, retained placement/script/evidence, unrelated entities
+and model/geometry ownership are checked before displaying the proposal.
+
+Offline validation: 11 focused Python checks and the Node appearance contracts
+pass. Actual retail HTTP rejects stale reviews and unsupported fields. The full
+editor passed clear-override model92-to-model105 comparison, both layer switches,
+return-to-review and changed-choice withdrawal without command, Save, Build or
+Run calls. The scene screenshot was inspected. Evidence: proposal-proof.json and
+appearance-proposal-scene.png under
+`local-output/sdk-20260909/npc-appearance-editor-20261005/`.
+This is a visual authoring preview; runtime compatibility remains unverified.
+No game was launched. Gameplay acceptance stays deferred and the full goal active.
+
 ## Independently author an NPC initial appearance - 2026-10-05
 
 NPC Inspector and registered Asset Details now offer **Choose NPC initial

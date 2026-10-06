@@ -81,6 +81,18 @@ import {openScriptComponentReset} from '/script-component-reset.js';
 import {mountScriptOwnerInspector} from '/script-owner-inspector.js';
 import {openNpcBuildScript} from './npc-build-script.js';
 import {openNpcDialogue} from './npc-dialogue.js';
+function openNpcAppearanceInspector(entityId){
+  return openNpcAppearance({entityId,getState:()=>state,isBusy:()=>busy,canEdit,api,
+    canInspectScene:()=>sceneModelsReady()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&!scenePose&&!shapeDraft&&!actorGroupInspection,
+    getScenePreview:()=>scenePreview,
+    inspectScene:(proposed,report,returnToReview,isCurrent)=>{
+      cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
+      scenePose={key:sceneKey,name:'Proposed NPC appearance - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent='Proposed NPC appearance - script donor and placement retained';
+      configureSceneInspectionComparison(proposed);for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
+      const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to NPC appearance';frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:[{entity_id:report.entity_id,proposed:report.proposed.position}]},null);draw();
+    }
+  });
+}
 import {openNpcAppearance} from './npc-appearance.js';
 import {openNpcDonorScript} from './npc-donor-script.js';
 import {openDraftRepeat} from '/draft-repeat.js';
@@ -1772,7 +1784,7 @@ async function resolveProjectAsset(record){
 async function activateAsset(record,action=null){
   if(busy)return;
   try{record=await resolveProjectAsset(record);if(!record)return;}catch(error){notify(error.message,true);return;}
-  if(action==='edit-npc-appearance'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC appearance target changed. Reopen Asset Details.');openNpcAppearance({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
+  if(action==='edit-npc-appearance'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC appearance target changed. Reopen Asset Details.');openNpcAppearanceInspector(record.id);return;}
   if(action==='edit-npc-dialogue'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC dialogue target changed. Reopen Asset Details.');openNpcDialogue({entityId:record.id,getState:()=>state,isBusy:()=>busy,canEdit,api});return;}
   if(action==='inspect-npc-build-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC Build target changed. Reopen Asset Details.');openNpcBuildScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
   if(action==='inspect-npc-donor-script'){const donor=npcDonorScript(record);if(!donor||state.actor_drafts?.[record.id]?.donor_entity_id!==donor||state.actor_drafts[record.id].scene_id!==state.scene?.id)throw new Error('NPC retail donor changed. Reopen Asset Details.');openNpcDonorScript({entityId:record.id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});return;}
@@ -2935,7 +2947,7 @@ function renderInspector(){
     const rename=document.createElement('button');rename.type='submit';rename.textContent='Rename';nameForm.append(nameLabel,rename);$('draft-inspector-form').before(nameForm);
     nameForm.onsubmit=event=>{event.preventDefault();api('/api/command',{type:'rename_actor_draft',entity_id:id,name:nameInput.value});};
     const presets=document.createElement('button');presets.id='npc-presets-button';presets.textContent='NPC presets...';presets.disabled=busy||!canEdit();presets.onclick=showTemplates;$('delete-npc-draft').before(presets);
-    const npcAppearance=document.createElement('button');npcAppearance.id='npc-appearance-button';npcAppearance.textContent='Choose NPC initial appearance...';npcAppearance.disabled=busy||!canEdit();npcAppearance.onclick=()=>openNpcAppearance({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcAppearance);
+    const npcAppearance=document.createElement('button');npcAppearance.id='npc-appearance-button';npcAppearance.textContent='Choose NPC initial appearance...';npcAppearance.disabled=busy||!canEdit();npcAppearance.onclick=()=>openNpcAppearanceInspector(id);$('delete-npc-draft').before(npcAppearance);
     const npcDialogue=document.createElement('button');npcDialogue.id='npc-dialogue-button';npcDialogue.textContent='Edit NPC dialogue...';npcDialogue.disabled=busy||!canEdit();npcDialogue.onclick=()=>openNpcDialogue({entityId:id,getState:()=>state,isBusy:()=>busy,canEdit,api});$('delete-npc-draft').before(npcDialogue);
     const buildScript=document.createElement('button');buildScript.id='npc-build-script-button';buildScript.textContent='Inspect saved Build script...';buildScript.disabled=busy||!state.capabilities?.actor_script_preview;buildScript.onclick=()=>openNpcBuildScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(buildScript);
     const donorScript=document.createElement('button');donorScript.id='npc-donor-script-button';donorScript.textContent='Inspect retail donor script...';donorScript.disabled=busy||!state.capabilities?.actor_script_preview;donorScript.onclick=()=>openNpcDonorScript({entityId:id,getState:()=>state,isBusy:()=>busy,renderInstructions:appendScriptInstructions});$('delete-npc-draft').before(donorScript);

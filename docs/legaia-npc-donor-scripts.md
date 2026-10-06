@@ -158,3 +158,8 @@ and own text before changing script donor.
 
 Actual editor, native package and witness-animation evidence is under
 `local-output/sdk-20260909/npc-appearance-editor-20261005/`. Gameplay remains deferred.
+
+After reviewing an initial appearance, **Inspect NPC appearance in scene** lets
+you compare Current and Proposed at the NPC placement before Apply. Return to NPC
+appearance retains the reviewed selection; a changed selection needs a new review.
+This inspection writes no project state and does not establish runtime behavior.
