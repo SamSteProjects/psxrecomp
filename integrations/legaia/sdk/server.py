@@ -825,6 +825,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/audio-sequence-authoring.js": ("audio-sequence-authoring.js", "text/javascript"),
                  "/audio-note-timeline.js": ("audio-note-timeline.js", "text/javascript"),
                  "/audio-bank.js": ("audio-bank.js", "text/javascript"),
+                 "/audio-bank-authoring.js": ("audio-bank-authoring.js", "text/javascript"),
                  "/audio-waveform.js": ("audio-waveform.js", "text/javascript"),
                  "/audio-waveform-contract.js": ("audio-waveform-contract.js", "text/javascript"),
                  "/audio-audition.js": ("audio-audition.js", "text/javascript"),

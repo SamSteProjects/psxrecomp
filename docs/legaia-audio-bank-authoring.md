@@ -1,4 +1,16 @@
-# Native VAB parameter codec groundwork
+# VAB parameter authoring and native delivery
+
+## Editor workflow
+
+In the Audio Asset Database, select a qualified bank-bearing resource and choose **Inspect bank tables**, then **Edit bank parameters…**. Program and packed-tone rows also open the editor at that exact source identity. The source inspector, waveform inspection and sample audition remain Retail views; the editing dialog qualifies composed Current independently, including any authored sequence operands in the same physical entry.
+
+Choose **Master parameters**, **Program slot**, or **Packed tone record**, then the explicit slot or packed page/record and parameter field. Slots and packed pages are different identities. Retail, Current and reviewed Proposed integers appear separately with native bank/entry byte ownership and encoded bounds. All 27 qualified scalar fields are selectable, including u16 attributes/ADSR operands and signed16 program/sample operands. Encoded ranges do not establish playable instruments, envelopes or audible effects.
+
+Changing the value creates a local draft. **Review bank parameter** requalifies source, full Current and expected changed bytes without mutating the project. **Apply bank parameter** commits one history entry and reloads Current. **Discard parameter draft** and **Stage retail parameter** remain local; restoring Retail must be reviewed before Apply. **Clear bank parameters** removes only bank edits and preserves sequence edits. Reviewed no-ops cannot Apply. Drafts/reviews lock navigation; invalid values disable Review. Invalid slot/page/record navigation restores the qualified selection.
+
+Changes to project inputs or Edit mode withdraw displayed layers and pending proposals. **Refresh bank editing** qualifies them again. Closing aborts read ownership and prevents late publication; closing the source inspector disposes its editing child. This UI does not launch or attach to the game.
+
+Verification on 2026-10-06: 11 retail-enabled Python workflow checks, three Node contract suites and affected-module syntax checks passed. The bank contract independently exercises all 27 native scalar fields, exact spans, signed/unsigned encoding, canonical bindings, composed entry hashes, no-op, retail restoration, stale input and late-close rejection. Actual browser Review/Discard, Apply/reload, no-op, retail staging, master/program/tone selection, signed bounds, invalid slot recovery, source-row identity, Clear preserving SEQ, Undo/stale refresh and wide/400px layouts passed with no page errors. Both reviewed screenshots were inspected without horizontal overflow. Browser edits survived Save/Open and independent complete-entry directory/ZIP native readback, preserving the imported source and prior SEQ binding. Native package SHA-256: `a9424c2b5d6f6bd5699e4c95744e214691e7a27906302f589659d29383990bd2`. Private evidence: `local-output/sdk-20260909/audio-bank-editor-20261006/proof.json`, `browser-proof.json`, `browser.log`, `focused.log` and reviewed screenshots. Gameplay remains deferred.
 
 ## Persistent SDK backend and native delivery
 
@@ -12,7 +24,7 @@
 
 Validation: 26 regression checks and six bank/composition checks passed; two lifecycle/HTTP checks passed again after authored-asset deduplication and HTTP error cleanup. Full independent readback of fresh fixed-span and relocated native directory/ZIP packages passed with all 27 bank parameters plus sequence edits. Fixed package SHA-256: `6f0b596d9840f9e7e61dfa83a9ea153ec7e98bdc1d502f660e073e0a792e1ad1`; relocated package: `a1a47ced9b116b88bb4ad2ba030303ee16cab4bf0d2cf2926d843903d21666d2`. Imported sources and earlier authored script/animation state were preserved. Saved Build receipts stale after bank Clear and match again after Undo. The actual sequence editor accepted bank-only Current, reviewed/applied a sequence change, then cleared it while retaining all bank fields; final screenshot was inspected and no page errors occurred. Private evidence is `local-output/sdk-20260909/audio-bank-native-20261006/` (`proof.json`, `focused.log`, `browser-proof.json`, `browser.log`).
 
-The Audio Asset Database still opens the read-only bank inspector. Bank Retail/Current/Proposed controls are the next UI integration; the backend does not provide instrument resolution, interpreted ADSR, sample replacement, bank allocation, composition synthesis or runtime playback acceptance. Gameplay stays deferred. No game, attachment, installation or full-disc export was used.
+The Audio Asset Database opens a Retail bank inspector with separate Retail/Current/Proposed parameter controls; the backend does not provide instrument resolution, interpreted ADSR, sample replacement, bank allocation, composition synthesis or runtime playback acceptance. Gameplay stays deferred. No game, attachment, installation or full-disc export was used.
 
 The native VAB parameter serializer is implemented and qualified. It is **not yet connected to SDK project commands, editor editing controls or Build**. The bank inspector and source sample audition remain the available bank workflows. Development stays solo; gameplay verification remains deferred.
 
@@ -41,4 +53,4 @@ Verification on 2026-10-06: all nine focused Python checks passed without skips/
 
 A separate source-qualified inventory recorded the raw ranges of all 27 fields across 202 banks, 25,856 fixed program slots and 17,264 packed tone records. All 202 qualified retail carriers use split VAB header/sample chunks; standalone/leading-contiguous delivery is covered by structural fixtures, not claimed as retail coverage. Ranges include unused slots/records and do not define runtime validity limits. Private evidence: `source-field-ranges.json` and `ranges.log` in the same directory. The bank inspector's stale limitation text was also corrected to recognize existing bounded waveform/sample audition workflows; its Node contract and a focused preservation check passed.
 
-Next integration adds bank Retail/Current/Proposed editor controls to the qualified backend described above. Native Build delivery is verified; audible/runtime acceptance remains deferred.
+Bank editor controls and native Build delivery are verified as recorded above. Instrument resolution, interpreted envelopes, sample replacement/allocation, synthesis and audible/runtime acceptance remain open.
