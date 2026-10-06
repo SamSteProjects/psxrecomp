@@ -71,6 +71,16 @@ def _finite_number(value):
         return False
 
 
+def sampling_config(value):
+    if not isinstance(value,dict) or set(value)!={'start_seconds','rate'}:
+        raise ImportError('External sampling requires start_seconds and rate only')
+    start,rate=value['start_seconds'],value['rate']
+    if (not _finite_number(start) or not 0<=start<=3600 or
+            not _finite_number(rate) or not -16<=rate<=16):
+        raise ImportError('External sampling requires start 0..3600 seconds and rate -16..16')
+    return dict(start_seconds=float(start),rate=float(rate))
+
+
 def _vector(value, count, label):
     if (not isinstance(value, list) or len(value) != count or
             any(not _finite_number(v) for v in value)):
@@ -382,7 +392,7 @@ def _tracks(doc, accessors, mapping, duration, animation_index=None, *, hierarch
         endpoint = struct.unpack("<f", struct.pack("<f", duration))[0]
         tolerance = max(1e-7, abs(endpoint) * 2 ** -23)
         if times[-1] > endpoint + tolerance:
-            raise ImportError("Animation key times exceed the existing clip duration; retiming is unsupported")
+            raise ImportError("Animation key times exceed the qualified duration; choose bounded external sampling for a longer clip")
         values = accessors.read(sampler.get("output"), "VEC4" if path == "rotation" else "VEC3")
         cubic = mode == "CUBICSPLINE"
         if cubic and len(times) < 2:
@@ -570,8 +580,8 @@ def _quantize_rotation(glb_q, baseline_angles):
     return [v * 16 for v in ticks], degrees
 
 
-def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None) -> tuple[bytes, dict]:
-    """Sample an existing clip at explicit 1..120 fps without retiming/count growth.
+def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animation_index: int | None = None, object_node_indices: list[int] | None = None, external_sampling: dict | None = None) -> tuple[bytes, dict]:
+    """Sample external poses at explicit 1..120 fps with fixed native frame count.
 
     At i/fps, the float32 representation matches glTF key storage and the SDK
     exporter. Before/after key extents hold their endpoint value; no appended
@@ -582,6 +592,7 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
         raise ImportError("Animation GLB baseline must be immutable record bytes")
     if type(fps) not in (int, float) or not 1 <= fps <= 120 or not math.isfinite(fps):
         raise ImportError("Animation GLB requires an explicit rate from 1 to 120 fps")
+    sampling=sampling_config(external_sampling) if external_sampling is not None else None
     source = decode_animation_record(baseline)
     if source['bone_count'] > 64:
         raise ImportError('Animation GLB source exceeds the 64 rigid-object bound')
@@ -591,10 +602,12 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     doc, payload = _read_glb(content)
     mapping, static, parents = _nodes(doc, source["bone_count"], object_node_indices)
     order = _hierarchy_order(mapping, parents, source["frame_count"])
-    tracks = _tracks(doc, _Accessors(doc, payload), mapping, source["frame_count"] / fps, animation_index, hierarchy_nodes=order)
+    tracks = _tracks(doc, _Accessors(doc, payload), mapping, (3600 if sampling is not None else source["frame_count"] / fps), animation_index, hierarchy_nodes=order)
     edits, maximum_translation, maximum_angle, preserved = [], 0.0, 0.0, 0
     for frame in source["frames"]:
-        time = struct.unpack("<f", struct.pack("<f", frame["frame_index"] / fps))[0]
+        seconds=struct.unpack('<f',struct.pack('<f',frame['frame_index']/fps))[0]
+        if sampling is not None:seconds=sampling['start_seconds']+seconds*sampling['rate']
+        time = struct.unpack("<f", struct.pack("<f", seconds))[0]
         poses = _sample_hierarchy(order, parents, static, tracks, time)
         for channel in frame["object_transforms"]:
             obj, before_t, before_r = channel["object_index"], channel["translation"], channel["rotation_psx"]
@@ -631,10 +644,12 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
                          "maximum_angular_error_degrees": MAX_ANGULAR_ERROR_DEGREES,
                          "baseline_equivalence_radians": ANGLE_EQUIVALENCE_RADIANS,
                          "preserved_rotation_channels": preserved,
-                         "timeline": "float32(i/fps), fixed source frame count, endpoint hold",
+                         "timeline": ("float32(start_seconds+float32(i/fps)*rate), fixed source frame count, endpoint hold" if sampling is not None else
+                                      "float32(i/fps), fixed source frame count, endpoint hold"),
                          "coordinate_conversion": "translation [x,-y,z]; quaternion [-x,y,-z,w]"},
         "scope": "existing-rigid-animation-channels-only", "gameplay_verified": False,
     }
+    if sampling is not None:report['external_sampling']=sampling
     if object_node_indices is not None:
         report['external_object_nodes'] = list(object_node_indices)
     if animation_index is not None:

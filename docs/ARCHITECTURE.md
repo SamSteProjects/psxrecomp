@@ -714,3 +714,20 @@ two choices produce identical native bytes. Receipt metadata retains and checks
 the mapping; frontend binding/report decoders verify it before pose or Apply.
 Editor node inventories are bounded display metadata and do not invent retail
 bone semantics. Skinning and automatic skeletal retargeting remain unsupported.
+
+
+### External animation time sampling (2026-10-06)
+
+Bindings optionally carry `external_sampling` with exactly `start_seconds` and
+`rate`. SDK services validate finite bounds and omit this authored choice only
+when qualifying fresh export identity. The importer preserves native frame
+count and uses `float32(start_seconds + float32(i/fps) * rate)` with endpoint hold.
+Explicit sampling permits external key times up to 3600 seconds; legacy imports
+retain their native-duration guard and report shape. Existing hierarchy, channel,
+quantization, ownership and native packing checks remain in force.
+
+Review keys include normalized sampling independently of candidate bytes. Source
+receipts validate and retain the choice; historical input remains distinct from
+current native replay authority. `animation-glb-sampling.js` shares controls and
+validation between both animation dialogs, with fresh Review required after
+changes. Native playback timing and skeletal retargeting remain separate gaps.

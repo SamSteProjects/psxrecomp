@@ -299,3 +299,28 @@ Review. Use Review, proposed pose Preview, Return and explicit Apply. Original
 input recovery retains the GLB and the binding with the chosen mapping, alongside
 selected clip and retained captured-frame choices. Undo/Redo, Save/Open, copies
 and normal Build use the established native authoring pipeline.
+
+
+## Sample an external animation time range
+
+In either GLB animation dialog, enable **Use external sampling** after choosing
+the edited GLB and a fresh binding. **External start seconds** accepts 0..3600;
+**External sampling rate** accepts -16..16. Rate 1 samples forward normally,
+negative rates reverse, and zero holds the starting pose. For example, start 2
+and rate 4 sample a longer external clip beginning at two seconds. Select its
+clip and provide an explicit object mapping when source identities are absent.
+Review, inspect the proposed pose, Return, then Apply.
+
+For native frame i, the source time is
+`float32(start_seconds + float32(i/fps) * rate)`. Samples before the first or after
+the last key hold that endpoint. External keys may span up to 3600 seconds with
+this option; without it, the existing native clip duration limit applies.
+The native output keeps its frame count, channel layout and playback timing.
+Retained captured-frame selection remains a separate existing workflow.
+
+The binding optionally stores
+`external_sampling: {start_seconds: 2, rate: 4}`. These are authored interchange
+choices, qualified separately from fresh retail identity. Changes invalidate
+Review; invalid values block Review. Original-input recovery and receipt history
+retain the choice through Undo/Redo, Save/Open and project copies. This sampling
+feature does not establish native gameplay speed or animation acceptance.

@@ -38,6 +38,11 @@ def validate_record(record):
         raise ProjectError('Animation source requires a stable target identity')
     if not isinstance(binding,dict) or len(canonical(binding))>128*1024 or binding.get('scene_id')!=scene:
         raise ProjectError('Animation source binding differs from its scene or byte budget')
+    if 'external_sampling' in binding:
+        from importer.animation_glb import sampling_config
+        from importer.core import ImportError as SamplingError
+        try:sampling_config(binding['external_sampling'])
+        except SamplingError as error:raise ProjectError(str(error)) from error
     if 'external_object_nodes' in binding:
         nodes=binding['external_object_nodes'];count=binding.get('object_count')
         if (type(count) is not int or not 1<=count<=64 or not isinstance(nodes,list) or len(nodes)!=count

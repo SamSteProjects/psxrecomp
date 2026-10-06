@@ -117,12 +117,15 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
     # one canonical numeric representation without relaxing identity fields.
     normalized_binding = dict(binding, clip_fps=float(binding['clip_fps']))
     object_nodes=binding.get('external_object_nodes')
+    sampling=binding.get('external_sampling')
+    if 'external_sampling' in binding and sampling is None:raise ProjectError('External sampling cannot be null')
     if 'external_object_nodes' in binding and object_nodes is None:raise ProjectError('Explicit object mapping cannot be null')
     normalized_binding.pop('external_object_nodes',None)
+    normalized_binding.pop('external_sampling',None)
     if digest(normalized_binding) != digest(snapshot['binding']):
         raise ProjectError('Animation export binding differs from the current source or ownership; export again')
     binding = snapshot['binding']
-    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'], animation_index=animation_index,object_node_indices=object_nodes)
+    candidate, analysis = import_animation_glb(snapshot['effective'], content, fps=binding['clip_fps'], animation_index=animation_index,object_node_indices=object_nodes,external_sampling=sampling)
     retail = decode_animation_record(snapshot['retail'])
     channel_owner = snapshot['channel_owner']
     before = _axes(snapshot['owners'].get(channel_owner))
@@ -177,6 +180,7 @@ def _prepare(project, entity_id: str, content: bytes, binding: dict, *, animatio
         # choice must remain part of authorization even when their bytes match.
         review_identity['file_animation_index'] = animation_index
     if object_nodes is not None:review_identity['external_object_nodes']=object_nodes
+    if sampling is not None:review_identity['external_sampling']=analysis['external_sampling']
     report['review_key'] = digest(review_identity)
     command = (dict(type='set_animation_channels', entity_id=channel_owner, value=value) if edits else
                dict(type='clear_animation_channels', entity_id=channel_owner))

@@ -68,3 +68,15 @@ class ClipReviewIdentity(unittest.TestCase):
             with self.assertRaises(ProjectError):apply_import(project,owner,content,dict(binding,external_object_nodes=[1]),first['review_key'])
             self.assertEqual(calls,[])
             apply_import(project,owner,content,dict(binding,external_object_nodes=[1]),second['review_key']);self.assertEqual(len(calls),1)
+
+
+    def test_equal_static_candidates_bind_external_sampling_choices(self):
+        project,owner,content,binding,snapshot,calls=self.fixture(duplicate=False)
+        from importer.animation_glb import _read_glb
+        doc,payload=_read_glb(content);doc['animations']=[];doc['nodes'][0]['translation']=[4,0,0];content=encode(doc,payload)
+        with patch('sdk.animation_glb._snapshot',return_value=snapshot),patch('sdk.animation_glb._current'),patch('sdk.animation_sources.apply',side_effect=lambda p,c,content,**recipe:p.command(c)):
+            a=dict(binding,external_sampling=dict(start_seconds=0,rate=1));b=dict(binding,external_sampling=dict(start_seconds=1,rate=1))
+            first=preview_import(project,owner,content,a);second=preview_import(project,owner,content,b)
+            self.assertEqual(first['candidate_sha256'],second['candidate_sha256']);self.assertNotEqual(first['review_key'],second['review_key'])
+            with self.assertRaises(ProjectError):apply_import(project,owner,content,b,first['review_key'])
+            self.assertEqual(calls,[]);apply_import(project,owner,content,b,second['review_key']);self.assertEqual(len(calls),1)

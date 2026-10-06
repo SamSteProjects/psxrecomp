@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-06 checkpoint: external animation time sampling
+
+Implemented optional external GLB sampling in both imported and retained animation
+workflows. Choose a start time (0..3600 seconds) and rate (-16..16): negative rates
+sample in reverse, zero holds a pose, and out-of-range samples hold endpoints.
+Native frame count and playback timing remain unchanged. Longer external clips
+require this explicit choice; ordinary imports retain the existing duration guard.
+The choice is bound to Review and original-input receipts, separately from retail
+identity. Changing it invalidates Review even if native output would be identical.
+
+Validation: 65 focused Python checks and 8 Node checks passed. Actual editor
+workflows passed Review/Pose/Return/Apply, exact input recovery, Undo/Redo,
+Save/Open and reopened project copies for both animation kinds. A separate
+read-only browser check verified sampling and mapping invalidation, invalid input
+blocking, and final control layout. Fixed float32 STEP boundary sampling by
+rounding the exported native frame clock before applying start/rate; a 15-frame
+round-trip regression covers it.
+
+Evidence: `local-output/sdk-20260909/animation-glb-sampling-20261006/proof.json`
+and `sampling-ui-proof.json`. Normal Build `951632452fa96414`, package SHA-256
+`3dfaac2d58a6379f17ad5d4ed2d0eaa121373a2d4c30f5d9b4d5cd85a95af166`.
+Independent native ANM bank readback matched authored composition exactly:
+`b478a4e572459b837ae2be01b1eb94c160cec9aad4b1952c602e1123a356009d`.
+Reference project unchanged; game not launched. Manual animation/gameplay
+acceptance remains deferred. Full SDK goal remains active; general skinning,
+automatic retargeting, native playback timing and other reported gaps remain open.
+
+
 ## Explicit external rigid-object animation mapping - 2026-10-06
 
 Both animation GLB editors now accept an optional ordered list of external GLB
