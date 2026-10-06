@@ -73,6 +73,38 @@ class WallRectangle(unittest.TestCase):
    with patch.object(p,'_environment_source',side_effect=drift):
     with self.assertRaisesRegex(ProjectError,'changed while'):review(p,p.active_scene,RECT)
 
+class WallPaint(unittest.TestCase):
+ def test_sparse_current_and_retail_paint_exact_bits_one_history(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=ProjectService(Path(d));p.import_metadata(synthetic_scene());source=bytes([0x0a])*0x12000;rectangle={**RECT,'blocked':'current'};cells=[dict(row=1,column=0,quadrant=0,blocked=True),dict(row=1,column=0,quadrant=1,blocked=True),dict(row=1,column=1,quadrant=2,blocked='retail')]
+   with patch.object(ProjectService,'_environment_source',return_value=source):
+    outside=dict(row=3,column=0,quadrant=0,blocked=True);p.command(dict(type='set_collision_walls',entity_id=p.active_scene,value=dict(source_sha256=sha256(source).hexdigest(),edits=[outside])));before=deepcopy(p.overrides);depth=len(p.undo_stack)
+    report=review(p,p.active_scene,rectangle,cells);self.assertEqual(report['schema_version'],'legaia.collision-rectangle-review.v2');self.assertEqual(report['effective_change_count'],2);self.assertEqual(p.overrides,before)
+    command=dict(type='apply_collision_rectangle',entity_id=p.active_scene,rectangle=rectangle,cell_edits=cells,review_key=report['review_key']);p.command(command);self.assertEqual(len(p.undo_stack),depth+1)
+    actual,audit=patch_collision_walls(source,report['source_sha256'],report['value']['edits']);self.assertEqual(actual[0x4080],0x3a);self.assertEqual(actual[0x4180],0x1a);self.assertEqual([r['blocked'] for r in p.overrides[p.active_scene]['Collision']['edits']],[True]*3);self.assertTrue(all((a&15)==(b&15) for a,b in zip(source,actual)))
+    p.undo();self.assertEqual(p.overrides,before);p.redo();self.assertEqual(ProjectService.open(p.save()).overrides,p.overrides)
+    self.assertFalse(review(p,p.active_scene,rectangle,cells)['project_change'])
+ def test_invalid_duplicate_outside_or_changed_paint_reject(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=ProjectService(Path(d));p.import_metadata(synthetic_scene());cell=dict(row=1,column=0,quadrant=0,blocked=True)
+   with patch.object(ProjectService,'_environment_source',return_value=bytes(0x12000)):
+    for cells in [[cell,cell],[{**cell,'row':0}],[{**cell,'quadrant':True}],[{**cell,'column':2}],[{**cell,'blocked':'current'}],[{**cell,'extra':1}]]:
+     with self.assertRaises(ProjectError):review(p,p.active_scene,{**RECT,'blocked':'current'},cells)
+    report=review(p,p.active_scene,RECT,[cell]);
+    with self.assertRaises(ProjectError):p.command(dict(type='apply_collision_rectangle',entity_id=p.active_scene,rectangle=RECT,cell_edits=[{**cell,'blocked':False}],review_key=report['review_key']))
+    self.assertEqual(p.undo_stack,[])
+
+ def test_http_sparse_paint_rejects_null_and_stale_cells(self):
+  from test_model_primitive_workflow import http_server
+  with tempfile.TemporaryDirectory() as d:
+   p=ProjectService(Path(d));p.import_metadata(synthetic_scene());cell=dict(row=1,column=0,quadrant=0,blocked=True);rectangle={**RECT,'blocked':'current'}
+   with patch.object(ProjectService,'_environment_source',return_value=bytes(0x12000)),http_server(p) as (_,post):
+    body=dict(entity_id=p.active_scene,rectangle=rectangle,cell_edits=[cell]);status,report=post('/api/collision-rectangle-review',body);self.assertEqual(status,200,report);self.assertEqual(report['effective_change_count'],1)
+    self.assertEqual(post('/api/collision-rectangle-review',{**body,'cell_edits':None})[0],400)
+    self.assertEqual(post('/api/collision-rectangle-review',{**body,'cell_edits':[cell,cell]})[0],400)
+    command=dict(type='apply_collision_rectangle',**body,review_key=report['review_key']);self.assertEqual(post('/api/command',{**command,'cell_edits':[{**cell,'blocked':False}]})[0],400);self.assertEqual(post('/api/command',{**command,'cell_edits':None})[0],400);self.assertEqual(p.undo_stack,[])
+    self.assertEqual(post('/api/command',command)[0],200);self.assertEqual(len(p.undo_stack),1)
+
 @unittest.skipUnless(os.environ.get('LEGAIA_DISC_BIN'),'requires private retail disc')
 class RetailWallRectangle(unittest.TestCase):
  def test_retail_review_history_reopen_and_exact_map_package(self):

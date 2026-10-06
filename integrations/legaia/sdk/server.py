@@ -1740,9 +1740,10 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,review(self.server.project,body['entity_id'],body['entity_ids'],body['delta']))
                     return
                 if route == '/api/collision-rectangle-review':
-                    if set(body)!={'entity_id','rectangle'}:raise ProjectError('Wall rectangle review requires scene identity and rectangle only')
+                    if set(body) not in ({'entity_id','rectangle'},{'entity_id','rectangle','cell_edits'}):raise ProjectError('Wall rectangle review requires scene, rectangle and optional quadrant edits only')
+                    if 'cell_edits' in body and not isinstance(body['cell_edits'],list):raise ProjectError('Wall paint requires a quadrant edit list')
                     from .collision_rectangle import review
-                    self._json(200,review(self.server.project,body['entity_id'],body['rectangle']))
+                    self._json(200,review(self.server.project,body['entity_id'],body['rectangle'],body.get('cell_edits')))
                     return
                 if route == '/api/project/copies':
                     if body:raise ProjectError('Project copy listing takes no fields')

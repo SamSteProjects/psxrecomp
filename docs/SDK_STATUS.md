@@ -1,5 +1,14 @@
 # Legaia SDK status — 2026-10-06
 
+## 2026-10-06: source wall quadrant painting
+
+The source wall rectangle comparison is now an editable paint workspace. `Keep Current walls; paint individual quadrants` preserves the selected rectangle's Current baseline; Block, Unblock and Restore retail brushes change individual Proposed quadrants by pointer click/drag or keyboard Enter/Space. Painting clears the previous Review and disables Apply until fresh Review. Keyboard painting retains focus. Rectangle input changes discard the paint draft. Current/Retail comparison layers remain read-only; fresh reviewed patterns can be inspected in the scene and applied as one Undo step. Scene inspection now expands Scene tools so Return to wall review is accessible.
+
+The version-2 rectangle review binds a canonical, bounded `cell_edits` list to the same imported MAP/source/project context. Duplicate, out-of-selection, invalid and stale quadrant requests reject. The existing source wall-bit serializer merges the pattern with authored edits outside the selection and preserves all floor nibbles and unrelated MAP bytes. Uniform rectangle requests retain their version-1 contract.
+
+Validation: twelve focused Python rectangle/HTTP/painting checks and Node rectangle/paint qualification checks passed. Actual retail browser workflow passed pointer drag, keyboard focus, retail restoration, draft invalidation, fresh Review, scene inspection/return, private Apply, Undo/Redo and Save/Open, with no page errors. Native private Build readback matched exactly: two wall bits in one MAP byte changed; every floor nibble and unrelated byte remained identical. Package SHA-256 `3410ed6f08330eca2e0866f34bedadd052f50584cbc7bec9d307f4a8cf3b1ec5`. Evidence: `local-output/sdk-20260909/wall-paint-20261006/proof.json`; wide/narrow screenshots inspected. No game launch, runtime attach or mod installation occurred. Source walls remain a static reference baseline; runtime/script collision paints, actor blockers and gameplay acceptance are deferred. The full SDK goal remains incomplete.
+
+
 ## 2026-10-06: Current native mesh import comparison
 
 `Project mesh inputs` now compares each historical receipt with the complete Current native model and reports how many faces introduced by that import are active or retired. The reader requalifies the library and retained input, replays exact before/after ledger spans, checks the historical candidate hash and Current replay bytes, and seals receipt/root/mode/import/native/disc context before returning. The UI validates exact response fields and hash/count consistency. A whole-model difference can reflect later edits or imports; active face identities do not assert unchanged face content or gameplay acceptance. Comparison requests are read-only and require no active source scene change.

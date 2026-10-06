@@ -2055,7 +2055,7 @@ const wallTools=document.createElement('div');wallTools.id='wall-viewport-tools'
 const wallSelectButton=document.createElement('button');wallSelectButton.id='wall-select-mode';wallSelectButton.textContent='Select wall rectangle';wallSelectButton.setAttribute('aria-pressed','false');wallTools.append(wallSelectButton);
 function wallSourceCurrent(){return canEdit()&&scenePreviewCurrent()&&sceneRepresentation==='authored'&&fieldMap&&fieldKey===resourceStateKey()&&!scenePose&&!shapeDraft&&!actorGroupInspection&&!environmentGroupInspection&&!scenePlacementInspection&&!scenePlacementMode;}
 wallRectangleTool=mountWallRectangle({host:wallTools,getState:()=>state,busy:()=>busy,setBusy,api,sourceCurrent:wallSourceCurrent,hasDraft:()=>false,closeInspector:()=>{if(fieldDialog.open)fieldDialog.close();},
-  onInspection:(report,layer)=>{cancelViewportGesture();wallSelectMode=false;wallSelection=null;if(fieldDialog.open)fieldDialog.close();wallInspection=report?{report,layer}:null;updateFieldToggle();draw();},
+  onInspection:(report,layer)=>{if(report){const details=wallTools.closest('details');if(details)details.open=true;}cancelViewportGesture();wallSelectMode=false;wallSelection=null;if(fieldDialog.open)fieldDialog.close();wallInspection=report?{report,layer}:null;updateFieldToggle();draw();},
   onFrame:report=>{const g=wallSelectionGeometry(report.rectangle);camera.target={x:(g.x_min+g.x_max)/2,y:0,z:(g.z_min+g.z_max)/2};camera.distance=Math.max(200,Math.hypot(g.x_max-g.x_min,g.z_max-g.z_min)*2.5);cameraRevision++;draw();}});
 wallSelectButton.onclick=async()=>{
   if(busy||wallSelectButton.disabled)return;cancelViewportGesture();wallSelection=null;
