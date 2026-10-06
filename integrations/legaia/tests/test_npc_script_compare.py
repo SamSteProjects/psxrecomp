@@ -26,4 +26,28 @@ class ScriptComparisonTests(unittest.TestCase):
             with self.assertRaises(ProjectError):authored_spans(bad,identifier,retail,generated,draft)
         bad=deepcopy(metadata);bad['npc_wait_changes']['changes']*=2
         with self.assertRaises(ProjectError):authored_spans(bad,identifier,retail,generated,draft)
+    def test_movement_spans_decode_source_and_preserve_unexplained_bytes(self):
+        from copy import deepcopy
+        from test_npc_movement import NpcMovementTests,ACTOR
+        from sdk.npc_movement import patch_allocated_movement
+        cases=[(b'\x23\0\x80',dict(x=128,z=192)),(b'\xa3\x07\0\x80',dict(x=128)),(b'\x4c\x51\0\x80\xab\x09',dict(x=128,z=192,move_id=10)),(b'\xcc\x07\x51\0\x80\xab\x09',dict(move_id=10)),(b'\x22\x09',dict(move_id=10)),(b'\xa2\x07\x09',dict(move_id=10))]
+        for instruction,values in cases:
+            context,source,candidate,allocations,target=NpcMovementTests().candidate(instruction)
+            result,audit=patch_allocated_movement(context,candidate,allocations,[dict(draft_id='npc-a',donor_entity_id=ACTOR,entries={target['semantic_id']:values})])
+            offset,raw,entry=source.verified_record(ACTOR);allocation=allocations['drafts'][0]
+            # Allocation row spans remain final after the second clone append.
+            from importer.man_layout import read_man_layout
+            final=next(r for r in read_man_layout(result)['records'] if r['partition']==1 and r['record_index']==allocation['record_index'])
+            start,length=final['byte_offset'],final['byte_length'];retail=dict(self.record(raw,entry),byte_offset=offset,record_index=1);generated=dict(self.record(result[start:start+length],entry),byte_offset=start,record_index=allocation['record_index']);draft=dict(donor_entity_id=ACTOR,movement=dict(donor_entity_id=ACTOR,entries={target['semantic_id']:values}));metadata={'npc_movement_changes':audit}
+            spans=authored_spans(metadata,'npc-a',retail,generated,draft);self.assertEqual({r['movement_field'] for r in spans},set(values));self.assertTrue(all(r['category']=='own_movement' and r['byte_length']==1 for r in spans));self.assertEqual(authored_spans({},'npc-a',retail,generated,draft),[])
+            for change in [dict(pc=True),dict(record_index=1),dict(donor_entity_id='wrong'),dict(movement_id='wrong'),dict(source_record_sha256='0'*64),dict(mnemonic='MOVE_UNKNOWN'),dict(target_context=255),dict(record_relative_byte_offset=0),dict(after_coordinate=0),dict(field='y')]:
+                forged=deepcopy(metadata);forged['npc_movement_changes']['changes'][0].update(change)
+                with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+            missing=deepcopy(draft);missing['movement']['entries']={}
+            with self.assertRaises(ProjectError):authored_spans(metadata,'npc-a',retail,generated,missing)
+            oversized=deepcopy(metadata);oversized['npc_movement_changes']['changes']=[audit['changes'][0]]*8193
+            with self.assertRaises(ProjectError):authored_spans(oversized,'npc-a',retail,generated,draft)
+            forged=deepcopy(metadata);forged['npc_movement_changes']['changes']*=2
+            with self.assertRaises(ProjectError):authored_spans(forged,'npc-a',retail,generated,draft)
+
 if __name__=='__main__':unittest.main()

@@ -9,11 +9,11 @@ from .build_history import _load,verify_build
 def authored_spans(metadata,entity_id,retail,generated,draft):
     """Qualify receipt rows against both exact records; unexplained bytes stay so."""
     a,b=(bytes.fromhex(r['raw_hex']) for r in (retail,generated))
-    spans=[];occupied=set();prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
-    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait')]:
+    spans=[];occupied=set();movement_expected={};prefix='script://'+draft['donor_entity_id'].removeprefix('scene://')+'/'
+    for key,category in [('npc_appearance_changes','initial_appearance'),('npc_dialogue_changes','own_dialogue'),('npc_wait_changes','own_wait'),('npc_movement_changes','own_movement')]:
         value=metadata.get(key)
         if value is None:continue
-        if not isinstance(value,dict) or not isinstance(value.get('changes'),list) or len(value['changes'])>2048:
+        if not isinstance(value,dict) or not isinstance(value.get('changes'),list) or len(value['changes'])>8192:
             raise ProjectError('NPC authored comparison audit exceeds its bounds')
         for row in value['changes']:
             if not isinstance(row,dict):raise ProjectError('NPC authored comparison audit row is invalid')
@@ -26,7 +26,25 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
             relative=target_at-generated['byte_offset']
             if relative!=source_at-retail['byte_offset']:
                 raise ProjectError('NPC authored comparison has inconsistent relative offsets')
-            if category=='initial_appearance':
+            movement_field=None
+            if category=='own_movement':
+                from importer.movement_authoring import patch_movement_target
+                from importer.core import ImportError as NativeError
+                owner=row.get('movement_id');pc=row.get('pc');movement_field=row.get('field')
+                if (type(pc) is not int or not 0<=pc<=65535 or owner!=prefix+f'movement/{pc:04x}' or
+                    row.get('donor_entity_id')!=draft['donor_entity_id'] or
+                    draft.get('movement',{}).get('donor_entity_id')!=draft['donor_entity_id']):
+                    raise ProjectError('NPC movement comparison differs from its source owner')
+                requested=draft.get('movement',{}).get('entries',{}).get(owner)
+                if owner not in movement_expected:
+                    try:_,movement_expected[owner]=patch_movement_target(a,retail['script_offset'],pc,requested,base_offset=retail['byte_offset'])
+                    except NativeError as error:raise ProjectError('NPC movement comparison target is not qualified') from error
+                qualified=movement_expected[owner]
+                expected=next((r for r in qualified if r['field']==movement_field),None)
+                if expected is None or any(type(row.get(k)) is not type(v) or row[k]!=v for k,v in expected.items() if k!='decoded_byte_offset') or source_at!=expected['decoded_byte_offset']:
+                    raise ProjectError('NPC movement comparison differs from its decoded source operand')
+                before,after=bytes([expected['before_byte']]),bytes([expected['after_byte']])
+            elif category=='initial_appearance':
                 if 'appearance' not in draft:raise ProjectError('NPC appearance comparison has no authored binding')
                 if row.get('field') not in ('model_index','animation_id') or any(type(row.get(k)) is not int or not 0<=row[k]<=255 for k in ('before_byte','after_byte')):
                     raise ProjectError('NPC appearance comparison requires exact header bytes')
@@ -50,8 +68,9 @@ def authored_spans(metadata,entity_id,retail,generated,draft):
             if category=='own_dialogue':
                 requested=draft.get('dialogue',{}).get('runs',{}).get(owner)
                 if requested is None or requested.ljust(size).encode('ascii')!=after:raise ProjectError('NPC dialogue comparison differs from its authored text')
+            if len(spans)>=8192:raise ProjectError('NPC authored comparison spans exceed their bounds')
             occupied.update(span)
-            spans.append(dict(category=category,source_operand_id=owner,relative_offset=relative,byte_length=size,before_hex=before.hex(),after_hex=after.hex()))
+            spans.append(dict(category=category,source_operand_id=owner,relative_offset=relative,byte_length=size,before_hex=before.hex(),after_hex=after.hex(),**({'movement_field':movement_field} if category=='own_movement' else {})))
     return sorted(spans,key=lambda r:r['relative_offset'])
 
 def compare_records(retail,generated):

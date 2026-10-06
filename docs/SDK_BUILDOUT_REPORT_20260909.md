@@ -1,5 +1,30 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Explain NPC movement edits in saved-script comparison - 2026-10-05
+
+The saved normal Build comparison now labels source-qualified NPC movement
+operand bytes alongside appearance, dialogue and waits. Each movement audit row
+must match its recorded script donor, reached supported instruction, PC, field,
+dispatch context, source hash and exact requested before/after bytes. Final record
+allocation and source/generated relative offsets must match. Missing audit rows
+or other bytes receive no explanation; invalid rows reject the comparison.
+The browser independently checks raw ordinary/extended opcodes, operand offsets,
+current authored values and exact byte encoding before rendering X/Z/selector
+labels. Bounded span counts accommodate all supported operand families.
+
+Validation: 23 focused Python checks and the Node comparison suite pass, including
+MOVE_TO/NPC_RUN/EXEC_MOVE, ordinary/extended contexts, missing bindings, forged
+owners/fields/context/offsets, byte substitutions, overlap and collection bounds.
+Actual saved Build `4725587333eecfe2` yielded 29 changed bytes: 26 accounted for by
+qualified appearance/dialogue/wait/movement spans and three remaining unexplained.
+The real editor comparison and inspected 540px table passed without authoring,
+Build/Save or Run calls. Project document, history and all existing file hashes
+remained unchanged. Evidence:
+`local-output/sdk-20260909/npc-movement-script-comparison-20261005/proof.json`.
+This explains exact authored bytes only; it proves no runtime dispatch, movement
+behavior or branch execution. No game launched; gameplay stays deferred and the
+full SDK goal remains active/incomplete.
+
 ## Movement-bearing NPC presets - 2026-10-05
 
 NPC preset capture now freezes supported own script movement together with
@@ -59,7 +84,7 @@ placement remained fixed. Package SHA256:
 Evidence: `local-output/sdk-20260909/npc-movement-editor-20261005/proof.json`.
 The actual package check covers compressed MAN; streaming integration has not yet
 received a separate retail package check for NPC movement. Saved-script comparison
-still leaves movement/other unqualified changes unexplained. No game was launched.
+now explains qualified movement operands; other unqualified changes stay unexplained. No game was launched.
 Gameplay remains deferred and the full SDK goal stays active/incomplete.
 
 ## NPC-owned movement operand serializer - 2026-10-05

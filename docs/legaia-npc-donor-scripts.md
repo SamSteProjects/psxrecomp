@@ -188,3 +188,17 @@ exports use v5; earlier preset formats remain valid for their supported fields.
 Transfer and separate reviewed placement requalify the retail instruction targets.
 Library import creates no NPC until placement Apply. Script targets remain separate
 from the instance X/Z defaults. See the latest checkpoint in [SDK status](SDK_STATUS.md).
+
+## Compare authored movement operands in a saved Build
+
+Build the current project, choose **Inspect saved Build script**, select its
+matching receipt and open the retail/generated comparison. Movement operand rows
+now show **Own script movement X/Z/MOVE_ID** when the exact source instruction,
+current authored value and final emitted byte qualify. Appearance, dialogue and
+wait explanations remain available. Other changed bytes stay unexplained.
+
+The read-only comparison does not execute scripts or resolve which live actor
+receives a movement instruction. Its movement X/Z are script targets, separate
+from NPC placement. Missing audit evidence never becomes an inferred label.
+Actual four-family comparison evidence is recorded in
+`local-output/sdk-20260909/npc-movement-script-comparison-20261005/proof.json`.
