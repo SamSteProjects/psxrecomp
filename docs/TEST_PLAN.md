@@ -1,5 +1,31 @@
 # Legaia SDK validation plan
 
+## Explain NPC authored edits in saved-script comparison - 2026-10-05
+
+Retail donor/generated NPC comparison now labels exact bytes accounted for by
+saved initial-appearance, own-dialogue and own-wait audit spans. Each span binds
+the emitted allocation, separate retail/generated offsets, exact before/after
+bytes and the current NPC authored field. Overlapping or inconsistent spans,
+wrong owners, preimages, values or allocations reject. Source/header bounds and
+receipt integrity are rechecked. The browser independently verifies the same
+span bytes and authored bindings before displaying the explanations.
+
+Unaccounted changes remain **Other record change - unexplained**. They are not
+classified as authored edits or presumed to be harmless append rebasing. Counts
+report only changed bytes within qualified spans. Existing header/tail byte
+comparison, opaque-path limits and runtime uncertainty remain intact. The whole
+workflow is read-only and the bounded/paged comparison table remains available.
+
+Validation: 19 focused Python checks and the Node comparison contract pass.
+Actual retail saved Build `a61cd16b02574b72` contains 26 changed bytes: 23 accounted
+for by initial appearance, own dialogue and own wait; 3 remain unexplained. The
+real server/dialog rendered all categories, the 540px screenshot was inspected,
+and every project file/history entry remained unchanged. No command, Save, Build
+or Run was called. Evidence:
+`local-output/sdk-20260909/npc-authored-script-comparison-20261005/proof.json`.
+No game was launched. Gameplay equivalence remains unverified and the full SDK
+goal stays active/incomplete.
+
 ## Preserve NPC-owned waits in reusable presets - 2026-10-05
 
 NPC preset capture now freezes supported own wait targets together with own
