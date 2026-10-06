@@ -1,5 +1,36 @@
 # Legaia SDK feature matrix
 
+## NPC drafts in mixed scene placement groups — 2026-10-05
+
+**Scene tools → Select scene placements → Move scene placement group** now accepts
+2–128 members spanning at least two of imported actors, authored NPC drafts and
+static decorations. Shared offsets, alignment, distribution, spacing scale, position
+rotation and coordinate reflection use the existing review workflow. NPCs keep native
+64-unit X/Z coordinates and may be layout anchors. Their donor, name and other
+metadata stay unchanged. Current/Proposed inspection holds source preview height.
+
+NPC-inclusive reviews use version 2 and bind the full Current draft snapshot. NPC
+Retail placement is absent and shown as **Authored only**; Retail reset is disabled
+and rejected for the entire group. Existing actor/scenery version 1 reviews remain.
+Apply validates the whole proposal before changing overrides and NPC drafts, then
+records one combined Undo step. No-op operations preserve history and redo. Saved
+selection sets and runtime placement semantics are separate work.
+
+Validation: 31 focused Python cases, new NPC source/DTO guards, legacy mixed-placement
+Node checks and editor syntax passed. Actual private Town01 browser checks covered
+three-kind selection, hierarchy membership, exact proposals with held height, review
+without mutation, Current/Proposed inspection, atomic Apply/Undo/Redo and Save/reopen.
+The 540px review was inspected; no page errors occurred. Normal Build emitted a
+format 6 package whose complete native MAN and MAP carriers match preparation.
+Readback confirmed imported actor record 12 at X/Z 3840/1920 and appended NPC record
+53 at 3008/5696 with donor model 105 and animation 13. The decoded-size patch and
+saved receipt match current inputs; Build preserved project/history/preexisting files.
+Package SHA256: `e728785c95c6e58f925b3873b785c21b93396e6c711bb9c64f2f465182b61361`.
+Evidence: `local-output/sdk-20260909/mixed-npc-placement-20261005/proof.json` and
+`normal-build-proof.json`. No game launch, installation or full-disc export ran.
+Gameplay remains deferred; the full SDK goal remains active. Work continues solo.
+See [Mixed scene placements](legaia-scene-placement-groups.md).
+
 ## NPC preset file transfer — 2026-10-05
 
 NPC presets now use metadata-only `legaia.npc-preset-file.v1` JSON in the shared

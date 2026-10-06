@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {decodeScenePlacementGroup,decodeScenePlacementLayout,mixedLayoutPositions} from '../editor/scene-placement-group.js';
+const scene='scene://fixture',actor=scene+'/actors/man-p1/0001',npc='authored-actor://12345678-1234-4234-8234-123456789abc',decor='environment://fixture/field-map/decorations/00129',hash='a'.repeat(64),ids=[actor,npc,decor].sort(),delta={x:64,z:64};
+const draft={scene_id:scene,donor_entity_id:actor,name:'New NPC',position:{x:256,z:512}},drafts={[npc]:draft};
+const records={[actor]:{entity_id:actor,kind:'actor',retail:{x:128,z:256},current:{x:128,z:256}},[npc]:{entity_id:npc,kind:'actor_draft',retail:null,current:draft.position,draft},[decor]:{entity_id:decor,kind:'decoration',cell_index:129,retail:{x:200,z:300},current:{x:200,z:300}}};
+const report={schema_version:'legaia.scene-placement-group-review.v2',project_source_key:hash,scene_id:scene,source_sha256:hash,review_key:hash,scope:'actor-draft-and-scene-placement-xz-only',gameplay_verified:false,project_change:true,entity_ids:ids,delta,targets:ids.map(id=>({...records[id],proposed:{x:records[id].current.x+64,z:records[id].current.z+64}})),affected_count:3};
+assert.deepEqual(decodeScenePlacementGroup(report,hash,scene,ids,delta,drafts),report);
+for(const edit of [r=>r.schema_version='legaia.scene-placement-group-review.v1',r=>r.targets.find(t=>t.entity_id===npc).retail={x:256,z:512},r=>r.targets.find(t=>t.entity_id===npc).draft.name='Changed',r=>r.targets.find(t=>t.entity_id===npc).proposed.x+=1,r=>r.targets.find(t=>t.entity_id===npc).kind='actor']){const bad=structuredClone(report);edit(bad);assert.throws(()=>decodeScenePlacementGroup(bad,hash,scene,ids,delta,drafts));}
+const operation={kind:'scale',anchor_entity_id:actor,percent:50},positions=mixedLayoutPositions(report.targets,operation),layout={...report,schema_version:'legaia.scene-placement-layout-review.v2',delta:{x:0,z:0},operation,targets:report.targets.map((t,i)=>({...t,proposed:positions[i].position})),affected_count:2};
+assert.deepEqual(decodeScenePlacementLayout(layout,hash,scene,ids,operation,null,drafts),layout);
+assert.throws(()=>mixedLayoutPositions(report.targets,{kind:'reset'}));assert.throws(()=>decodeScenePlacementGroup(report,hash,scene,ids,delta,{[npc]:{...draft,scene_id:'scene://other'}}));
+console.log('Mixed NPC review source snapshots, absent Retail, native-grid layouts and forged DTO rejection pass.');

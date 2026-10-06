@@ -2755,6 +2755,12 @@ class ProjectService:
             self.name=value
             target.append(entry)
             return
+        if entry.get('target')=='scene_placement_batch':
+            for field,collection in (('overrides',self.overrides),('npc_drafts',self.actor_drafts)):
+                for identifier,components in value[field].items():
+                    if components is None:collection.pop(identifier,None)
+                    else:collection[identifier]=deepcopy(components)
+            target.append(entry);return
         if entry.get('target') in ('entity_overrides','actor_draft_batch'):
             collection = self.actor_drafts if entry['target']=='actor_draft_batch' else self.overrides
             for identifier, components in value.items():

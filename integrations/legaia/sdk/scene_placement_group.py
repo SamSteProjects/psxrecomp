@@ -1,4 +1,4 @@
-"""Reviewed atomic X/Z placement operations across imported actors and scenery."""
+"""Reviewed atomic X/Z placement operations across imported actors, authored NPC drafts and scenery."""
 from copy import deepcopy
 import math
 
@@ -14,18 +14,21 @@ def _review(project, scene, entity_ids, delta, operation=None):
         raise ProjectError('Mixed placement requires the active imported scene in Edit mode')
     if (not isinstance(entity_ids, list) or not 2 <= len(entity_ids) <= 128 or
             any(not isinstance(item, str) for item in entity_ids) or len(set(entity_ids)) != len(entity_ids)):
-        raise ProjectError('Mixed placement requires 2..128 unique imported actor and decoration identities')
+        raise ProjectError('Mixed placement requires 2..128 unique imported actor, NPC draft and decoration identities')
     if (not isinstance(delta, dict) or set(delta) != {'x', 'z'} or
             any(type(v) is not int or abs(v) > 16320 or v % 64 for v in delta.values())):
         raise ProjectError('Mixed offsets require exact X/Z integer multiples of 64 within -16320..16320')
     document = project.imports[scene]
     actors = {actor['semantic_id']: actor for actor in document['actors']}
     actor_ids = sorted(identifier for identifier in entity_ids if identifier in actors)
-    decoration_ids = sorted(identifier for identifier in entity_ids if identifier not in actors)
-    if not actor_ids or not decoration_ids:
-        raise ProjectError('Mixed placement requires at least one imported actor and one static decoration')
-    context = _prepare(project, scene, decoration_ids, minimum=1)
-    targets, changes, reset_axes = [], {}, {}
+    npc_ids = sorted(identifier for identifier in entity_ids if identifier in project.actor_drafts)
+    decoration_ids = sorted(identifier for identifier in entity_ids if identifier not in actors and identifier not in project.actor_drafts)
+    if sum(bool(ids) for ids in (actor_ids,npc_ids,decoration_ids))<2:
+        raise ProjectError('Mixed placement requires at least two kinds: imported actor, NPC draft or static decoration')
+    if npc_ids and operation is not None and operation['kind']=='reset':
+        raise ProjectError('Authored NPC drafts have no retail placement to reset')
+    context = _prepare(project, scene, decoration_ids, minimum=0)
+    targets, changes, reset_axes, npc_changes = [], {}, {}, {}
     for identifier in actor_ids:
         actor = actors[identifier]
         retail = {axis: actor['imported_transform']['position'].get(axis) for axis in ('x', 'z')}
@@ -44,6 +47,10 @@ def _review(project, scene, entity_ids, delta, operation=None):
                 except ImportError as exc:
                     raise ProjectError(str(exc)) from exc
         targets.append(dict(entity_id=identifier, kind='actor', retail=retail, current=current, proposed=proposed))
+    for identifier in npc_ids:
+        draft=deepcopy(project.actor_drafts[identifier]);project._validate_actor_draft(identifier,draft)
+        if draft['scene_id']!=scene:raise ProjectError('NPC draft must belong to the active scene')
+        targets.append(dict(entity_id=identifier,kind='actor_draft',retail=None,current=deepcopy(draft['position']),proposed={a:draft['position'][a]+delta[a] for a in ('x','z')},draft=draft))
     targets.extend(dict(t,kind='decoration',proposed=deepcopy(t['current'])) for t in context['targets'])
     if operation is not None:
         axis=operation.get('axis')
@@ -55,7 +62,7 @@ def _review(project, scene, entity_ids, delta, operation=None):
             if any(type(t['current'][a]) is not int for t in targets for a in ('x','z')):
                 raise ProjectError('Mixed scale requires integer Current X/Z coordinates')
             for target in targets:
-                step=64 if target['kind']=='actor' else 1
+                step=1 if target['kind']=='decoration' else 64
                 proposed={}
                 for a in ('x','z'):
                     n=anchor['current'][a]*100+(target['current'][a]-anchor['current'][a])*operation['percent']
@@ -73,7 +80,7 @@ def _review(project, scene, entity_ids, delta, operation=None):
             for target in targets:
                 dx,dz=target['current']['x']-px,target['current']['z']-pz
                 x,z=(-dz,dx) if turns==1 else (dz,-dx) if turns==-1 else (-dx,-dz)
-                step=64 if target['kind']=='actor' else 1
+                step=1 if target['kind']=='decoration' else 64
                 position={}
                 for a,n in (('x',px+x),('z',pz+z)):
                     units=(abs(n)+step//2)//step
@@ -85,7 +92,7 @@ def _review(project, scene, entity_ids, delta, operation=None):
             if any(type(t['current'][a]) is not int for t in targets for a in ('x','z')):
                 raise ProjectError('Mixed mirror requires integer Current X/Z coordinates')
             for target in targets:
-                step=64 if target['kind']=='actor' else 1
+                step=1 if target['kind']=='decoration' else 64
                 n=2*anchor['current'][axis]-target['current'][axis]
                 units=(abs(n)+step//2)//step
                 target['proposed'][axis]=(-units if n<0 else units)*step
@@ -107,6 +114,10 @@ def _review(project, scene, entity_ids, delta, operation=None):
         if target['kind']=='decoration':
             if operation is None:target['proposed']={a:target['current'][a]+delta[a] for a in ('x','z')}
             continue
+        if target['kind']=='actor_draft':
+            after=deepcopy(project.actor_drafts[identifier]);after['position']=deepcopy(target['proposed']);project._validate_actor_draft(identifier,after)
+            if after!=project.actor_drafts[identifier]:npc_changes[identifier]=after
+            continue
         before=deepcopy(project.overrides.get(identifier));after=deepcopy(before or {})
         for axis in ('x','z'):
             try:encode_placement_coordinate(target['proposed'][axis],f'{identifier} proposed {axis.upper()}')
@@ -121,7 +132,7 @@ def _review(project, scene, entity_ids, delta, operation=None):
         after=after or None
         if before!=after:changes[identifier]=after
     merged=_merge(project,scene,context,{t['entity_id']:t['proposed'] for t in targets if t['kind']=='decoration'})
-    targets=[t for t in targets if t['kind']=='actor']+[dict(t,kind='decoration') for t in merged['targets']]
+    targets=[t for t in targets if t['kind']!='decoration']+[dict(t,kind='decoration') for t in merged['targets']]
     if merged['project_change']:
         after = deepcopy(project.overrides.get(scene, {}))
         value = merged['value']
@@ -135,12 +146,13 @@ def _review(project, scene, entity_ids, delta, operation=None):
     identities = sorted(entity_ids)
     key = digest(dict(project_source_key=context['before'], scene=scene,
                       source_sha256=context['source_hash'], entity_ids=identities, delta=delta, **({'operation':operation,'algorithm':'native-coordinate-scale.v1' if operation['kind']=='scale' else 'native-coordinate-rotation.v1' if operation['kind']=='rotate' else 'native-coordinate-mirror.v1' if operation['kind']=='mirror' else 'source-grid-layout.v1','targets':targets} if operation is not None else {})))
-    return dict(schema_version='legaia.scene-placement-layout-review.v1' if operation is not None else 'legaia.scene-placement-group-review.v1',
+    return dict(schema_version=('legaia.scene-placement-layout-review.' if operation is not None else 'legaia.scene-placement-group-review.')+('v2' if npc_ids else 'v1'),
                 project_source_key=context['before'], scene_id=scene, source_sha256=context['source_hash'],
                 review_key=key, entity_ids=identities, delta=deepcopy(delta),
                 targets=sorted(targets, key=lambda t: t['entity_id']), changes=changes,
                 affected_count=sum(t['current'] != t['proposed'] for t in targets),
-                project_change=bool(changes), scope='imported-actor-and-static-decoration-xz-only',
+                project_change=bool(changes or npc_changes), scope='actor-draft-and-scene-placement-xz-only' if npc_ids else 'imported-actor-and-static-decoration-xz-only',
+                **({'npc_changes':npc_changes} if npc_ids else {}),
                 gameplay_verified=False, **({'operation':deepcopy(operation)} if operation is not None else {}),
                 **({'reset_actor_axes':reset_axes} if operation is not None and operation['kind']=='reset' else {}))
 
@@ -174,6 +186,15 @@ def apply(project, command):
     if result['review_key'] != command['review_key']:
         raise ProjectError('Mixed placement inputs changed since review')
     after = deepcopy(result['changes'])
+    npc_after=deepcopy(result.get('npc_changes',{}))
+    if npc_after:
+        before=dict(overrides={i:deepcopy(project.overrides.get(i)) for i in after},npc_drafts={i:deepcopy(project.actor_drafts.get(i)) for i in npc_after})
+        combined=dict(overrides=after,npc_drafts=npc_after)
+        for collection,values in ((project.overrides,after),(project.actor_drafts,npc_after)):
+            for identifier,value in values.items():
+                if value is None:collection.pop(identifier,None)
+                else:collection[identifier]=deepcopy(value)
+        project.undo_stack.append(dict(target='scene_placement_batch',entity_ids=result['entity_ids'],before=before,after=deepcopy(combined)));project.redo_stack.clear();return
     if not after:
         return
     before = {identifier: deepcopy(project.overrides.get(identifier)) for identifier in after}
