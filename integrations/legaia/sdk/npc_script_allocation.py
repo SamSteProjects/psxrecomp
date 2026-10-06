@@ -4,8 +4,9 @@ from importer.man_layout import read_man_layout
 from .project import ProjectError
 
 
-def allocated_scripts(context,candidate,allocations,requests):
+def allocated_scripts(context,candidate,allocations,requests,*,target_key="targets"):
     """Verify exact donor/clone ownership without applying any authored bytes."""
+    if target_key not in ('targets','transitions'):raise ProjectError('NPC script target collection is unsupported')
     if not isinstance(candidate, bytes) or not 0 < len(candidate) <= 4*1024*1024:
         raise ProjectError('NPC scripts require a bounded immutable MAN candidate')
     if not isinstance(allocations, dict) or not isinstance(allocations.get('drafts'), list) or len(allocations['drafts'])>128:
@@ -46,7 +47,7 @@ def allocated_scripts(context,candidate,allocations,requests):
         if type(index) is not int or index in source_indices or index in indices or type(donor_index) is not int:
             raise ProjectError('NPC scripts must target unique appended actor records')
         options = context.options(owner)
-        targets = {r['semantic_id']: r for r in options['targets']}
+        targets = {r['semantic_id']: r for r in options[target_key]}
         if set(entries) - set(targets):
             raise ProjectError('NPC script entry is not supported by its recorded script donor')
         # verified_record qualifies scene identity, record/hash/alias ownership.
