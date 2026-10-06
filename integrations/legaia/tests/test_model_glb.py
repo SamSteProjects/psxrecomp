@@ -327,7 +327,7 @@ class ModelGlbTests(unittest.TestCase):
             at, _ = rows(doc, binary, p, CORNER_ID)[0]
             struct.pack_into('<f', binary, at, 3)
         def transform(doc, binary):
-            doc['nodes'][0]['scale'] = [2, 1, 1]
+            doc['nodes'][0]['scale'] = [0, 1, 1]
         for edit in (alias, uv_alias, lost, topology, transform):
             with self.subTest(edit=edit.__name__), self.assertRaises(ImportError):
                 import_model_glb(source, rewrite(glb, edit), profile)

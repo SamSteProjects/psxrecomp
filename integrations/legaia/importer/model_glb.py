@@ -16,7 +16,7 @@ import math
 import re
 import struct
 
-from .animation_glb import _read_glb, _rotate_vector
+from .animation_glb import _read_glb
 from .model_glb_transforms import static_model_hierarchy
 from .assets import decode_tmd
 from .core import ImportError
@@ -47,7 +47,7 @@ LIMITATIONS = [
     'Edit raw byte-domain baked RGB through _LEGAIA_SOURCE_RGB; display COLOR_0 is not imported.',
     'Edit stored signed-i16 normal XYZ through _LEGAIA_SOURCE_NORMAL in retail [x,y,z] axes, without the POSITION Y flip or normalization; display NORMAL is ignored.',
     'Unlit corners retain normal XYZ sentinel [32768,32768,32768] and normal index -1; no normal tables or slots are allocated.',
-    'Static rigid transforms and positive uniform scales bake existing positions; stored normals rotate without scaling. No nonuniform scale, skinning, animation or topology allocation.',
+    'Static transforms with positive axis scales bake existing positions; inverse-transpose normal directions preserve stored magnitude. No reflection, skinning, animation or topology allocation.',
     'Keep source-object tags (or object-N names) and all source identity attributes; import in Blender with Merge Vertices disabled and export custom attributes enabled.',
     'Duplicate seam and quad corners must agree after source-domain quantization.',
     'Edit exact stored CLUT/TPage words and shared group ABE through _LEGAIA_SOURCE_MATERIAL; reserved CLUT, TPage ABR and reserved bits survive. Untextured words remain -1.',
@@ -428,15 +428,15 @@ def import_model_glb(effective_tmd: bytes, content: bytes, profile: dict) -> tup
 
     for identity, node_index in mapping.items():
         node = nodes[node_index]
-        translation, rotation, scale = poses[node_index]
+        pose = poses[node_index]
         if (not normals_enabled and any(not row['baked_colors'] for row in inspection['objects'][identity]['primitives'])
-                and any(abs(v) > 1e-12 for v in rotation[:3])):
-            raise ImportError('Rigid model rotation requires a profile with stored normal authoring')
+                and (pose.uniform_rotation is None or any(abs(v) > 1e-12 for v in pose.uniform_rotation[:3]))):
+            raise ImportError('Model rotation or nonuniform scale requires a profile with stored normal authoring')
         def position(value):
-            return [v+t for v,t in zip(_rotate_vector(rotation, [v * scale for v in value]), translation)]
+            return pose.position(value)
         def normal(value):
             # Raw normal attributes use native XYZ, unlike glTF POSITION.
-            converted = _rotate_vector(rotation, [value[0], -value[1], value[2]])
+            converted = pose.normal([value[0], -value[1], value[2]])
             return [converted[0], -converted[1], converted[2]]
         expected = Counter(_canonical_triangle(tuple(row['corners'][c] for c in (0, 2, 1))) for row in triangles[identity])
         actual = Counter()

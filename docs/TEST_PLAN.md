@@ -1,5 +1,34 @@
 # Legaia SDK validation plan
 
+## 2026-10-06 checkpoint: positive nonuniform model scale
+
+Fixed-layout model GLB imports now bake positive per-axis node scale through
+TRS or affine matrices that decompose into local TRS. Parent and child linear
+transforms compose fully, including the nonorthogonal basis produced by a
+rotated child under nonuniform parent scale. Normals use inverse-transpose
+direction and restore their original raw magnitude before signed-i16 rounding;
+uniform-only hierarchies retain the existing rotation path. Zero and negative
+scale, local matrix shear, reflection and perspective reject. Animation imports
+still require unit scale. Composed bounds use conservative products of local
+axis minima/maxima within 1/1024..1024; extreme cancelling transforms may reject.
+
+Validation: 48 focused Python checks and both model GLB Node checks passed.
+A fresh private town01 project exercised the actual resource browser, GLB Review,
+proposed model inspection, Return, Apply, Undo/Redo, Save/Open and normal Build.
+Retail model 0009 used nonuniform parent scale and a rotated, nonuniform child.
+Independent position and inverse-transpose calculations matched the complete
+native TMD; 21 normal slots changed. Decoded neighboring bytes and retail input
+remained unchanged. Invalid scale and stale bindings rejected before mutation.
+
+Evidence: `local-output/sdk-20260909/model-glb-nonuniform-scale-20261006/proof.json`.
+Build: `41c2164f505b1d0c`.
+Package SHA-256: `45d8f215188cfb5b694ec180808c0a3df3b52572d0f5c449962790f641c27631`.
+Native TMD SHA-256: `ebc9882475655eda330d4aa9f49b7e5277b522c4b3e3862890652a8e42fa129e`.
+The proposed model browser screenshot was inspected. No game was launched or mod
+installed. Gameplay appearance remains deferred; the full SDK goal is active
+and incomplete. This checkpoint supersedes earlier nonuniform-scale exclusions.
+
+
 ## 2026-10-06 checkpoint: positive uniform model scale
 
 Fixed-layout model GLB imports now bake positive uniform node and parent scale

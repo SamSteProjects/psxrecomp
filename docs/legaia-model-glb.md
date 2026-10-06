@@ -732,7 +732,7 @@ Unlit sentinel attributes, unrepresented native vector slots, padding, packet
 layout and opaque bytes remain intact. Display NORMAL remains ignored. Aliased
 corners must agree after transformation and source-domain quantization.
 
-Nonuniform scale, shear, reflection, perspective, skinning, morphs, animation, cycles,
+Local matrix shear, reflection, perspective, skinning, morphs, animation, cycles,
 multiple-parent trees, detached nodes and unowned meshes reject. Rotating lit
 objects with an old profile that cannot author stored normals rejects; unlit
 legacy objects and translation-only imports retain their supported field scope.
@@ -763,3 +763,32 @@ Animation GLB imports retain their existing unit-scale requirement. Scene
 placements are separate authored values. Use a fresh binding and the ordinary
 Review/Pose/Return/Apply, Undo/Redo, Save/Open and normal Build workflow; gameplay
 appearance remains deferred.
+
+
+## Bake positive nonuniform model scale
+
+Source object and parent TRS scales may now differ across X/Y/Z. A local affine
+matrix may likewise contain positive nonuniform axis scale and rotation; it must
+still decompose into TRS. The importer composes full linear matrices, so a rotated
+child under a scaled parent retains the resulting composite shear. Shear in an
+individual local matrix remains rejected under the
+[glTF node transform rules](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#transformations).
+
+Positions receive the complete composed matrix and translation. Raw stored normals
+receive its inverse-transpose direction, restored to their original vector
+magnitude before signed-i16 quantization. Zero normals stay zero. Uniform-only
+hierarchies retain the earlier rotation path and exact source behavior. The
+native/GLB Y conversion, unlit sentinels, shared source aliases and unused vector
+preservation remain in force. The viewport still does not prove retail lighting.
+
+Each positive local axis is bounded 1/1024..1024. Ancestor products of minimum and
+maximum local scales provide conservative composed bounds in the same range;
+these may reject extreme reciprocal/cross-axis combinations even when a final
+matrix would cancel them. Native integer-domain and quantization checks remain
+separate. Negative/zero scales, reflection, perspective, local shear, animation
+and skinning remain unsupported. Legacy lit profiles without stored-normal
+editing reject nonuniform transforms; unlit legacy geometry remains supported.
+
+Use fresh binding, Review/Pose/Return/Apply, Undo/Redo, Save/Open and normal Build.
+These edits change native model geometry, not scene-instance placement or native
+animation formats. Gameplay appearance and lighting verification remain deferred.

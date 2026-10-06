@@ -62,13 +62,12 @@ class UniformModelScale(unittest.TestCase):
     def test_bad_local_and_composed_scales_reflection_shear_and_matrix_trs_reject(self):
         source = synthetic(((0x22,),))
         glb, profile = export_model_glb(source, decode_tmd(source))
-        invalid = [[0]*3, [-1]*3, [2,1,1], [True]*3, [1e300]*3, [1e-10]*3, [1025]*3]
+        invalid = [[0]*3, [-1]*3, [True]*3, [1e300]*3, [1e-10]*3, [1025]*3]
         for scale in invalid:
             with self.subTest(scale=scale), self.assertRaises(ImportError):
                 import_model_glb(source, rewrite(glb, lambda d,b: group(d, dict(scale=scale))), profile)
         for matrix in [[-2,0,0,0,0,2,0,0,0,0,2,0,0,0,0,1],
-                       [2,0,0,0,1,2,0,0,0,0,2,0,0,0,0,1],
-                       [2,0,0,0,0,3,0,0,0,0,2,0,0,0,0,1]]:
+                       [2,0,0,0,1,2,0,0,0,0,2,0,0,0,0,1]]:
             with self.subTest(matrix=matrix), self.assertRaises(ImportError):
                 import_model_glb(source, rewrite(glb, lambda d,b: group(d, dict(matrix=matrix))), profile)
         for scale in (64, 1/64):
@@ -82,7 +81,7 @@ class UniformModelScale(unittest.TestCase):
         doc=dict(nodes=[dict(name='object-0', scale=[2,2,2])], scenes=[dict(nodes=[0])], scene=0)
         before=deepcopy(doc)
         _,poses=static_model_hierarchy(doc, 1)
-        self.assertEqual(poses[0][2], 2)
+        self.assertEqual(poses[0].position([1,2,3]), [2,4,6])
         self.assertEqual(doc, before)
 
 

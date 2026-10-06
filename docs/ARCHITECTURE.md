@@ -779,3 +779,24 @@ The original GLB metadata is not mutated. Local and composed scales are bounded
 native output. Model binding/review schemas, Project commands and Build formats
 stay unchanged. Animation import keeps unit scale; this module does not extend
 native animation formats or scene-instance transforms.
+
+
+### Positive nonuniform model scale and normal directions (2026-10-06)
+
+Model hierarchy poses now store full linear matrices, translations, cofactor
+normal matrices, conservative scale bounds and an optional uniform-only rotation.
+Local matrix columns are divided by their positive axis lengths for the existing
+rigid orientation/TRS validation. Parent linear matrices multiply child linear
+matrices and translations; this preserves shear arising from valid nested TRS.
+The implementation follows the
+[glTF node transform order and local matrix decomposition rules](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#transformations).
+
+For positive determinant transforms, the cofactor matrix has the same normal
+direction as inverse-transpose; its common determinant factor cancels when
+restoring the original raw normal magnitude. Zero normals stay zero. Uniform-only
+poses keep their prior quaternion normal path. The importer converts native normal
+axes before/after this operation and applies the existing integer/alias guards.
+Legacy lit profiles cannot omit required normal edits. Local axis bounds and
+ancestor minimum/maximum scale products bound numerical conditioning, with
+conservative rejection of some extreme cancelling combinations. No source metadata
+is mutated; no new binding, command or Build format is introduced.
