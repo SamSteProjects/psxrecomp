@@ -38,6 +38,19 @@ def emitted_prot(source,base_offset,archive,audit):
         working[start:end]=payload;ranges.append((start,end))
     return bytes(working),'fixed_span_PROT_overlays'
 
+def actor_allocations(metadata):
+    """Select the allocation family from the qualified saved carrier receipt."""
+    if not isinstance(metadata,dict):raise ProjectError('Saved NPC allocation metadata is invalid')
+    key={'legaia.npc-fixed-span-build.v1':'actor','legaia.npc-compressed-growth-build.v1':'actor','legaia.npc-streaming-growth-build.v1':'actor_changes'}.get(metadata.get('schema_version'))
+    audit=metadata.get('draft_audit')
+    if key is None or not isinstance(audit,dict) or ('actor' if key=='actor_changes' else 'actor_changes') in audit:
+        raise ProjectError('Saved NPC allocation carrier is unsupported or ambiguous')
+    allocation=audit.get(key);rows=allocation.get('drafts') if isinstance(allocation,dict) else None
+    if not isinstance(rows,list) or not 1<=len(rows)<=128 or any(not isinstance(row,dict) for row in rows):
+        raise ProjectError('Saved NPC allocation rows are missing or exceed their bounds')
+    return deepcopy(rows)
+
+
 def inspect(project,entity_id,build_id):
     draft=project.actor_drafts.get(entity_id) if isinstance(entity_id,str) else None
     if not isinstance(draft,dict) or draft.get('scene_id')!=project.active_scene:raise ProjectError('Choose an NPC draft in the active scene')
@@ -47,7 +60,7 @@ def inspect(project,entity_id,build_id):
     verified=verify_build(project,build_id)
     if not verified['matches_current_inputs']:raise ProjectError('Saved Build differs from current inputs; Build the current project first')
     receipt,audit=_load(project,build_id);metadata=audit.get('npc_candidates',{}).get(draft['scene_id'],{})
-    rows=[row for row in metadata.get('draft_audit',{}).get('actor',{}).get('drafts',[]) if row.get('draft_id')==entity_id]
+    rows=[row for row in actor_allocations(metadata) if row.get('draft_id')==entity_id]
     if len(rows)!=1:raise ProjectError('Saved Build has no unique emitted record for this NPC')
     allocation=rows[0];index=allocation.get('record_index')
     if type(index) is not int or not 0<=index<32768:raise ProjectError('Saved NPC allocation record index is invalid')

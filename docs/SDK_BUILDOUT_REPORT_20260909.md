@@ -1,5 +1,36 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Streaming NPC readback and saved-inspector receipt fix - 2026-10-05
+
+A fresh normal Build of the retail streaming `rayman` scene now has independent
+readback proof for two NPC clones carrying appearance, dialogue, waits, movement
+and NPC_RUN facing. The check found and fixed a saved-inspector bug: streaming
+receipts use `actor_changes` for allocations, while compressed receipts use `actor`.
+The inspector now selects the exact family from the qualified carrier schema and
+rejects unknown/ambiguous receipts or missing/unbounded allocation rows. Output
+DTOs remain unchanged; compressed saved inspection is also reverified.
+
+Validation: 20 focused Python checks pass; one optional private Town01-fixture
+check skips. Saved streaming Build `e5ec43a38c122f65` independently reopens record92
+with sector0/wait12/X3264 and record93 with sector7/wait11/X3200. Both retain Z5696
+movement, appearance model90/animation22, own padded text, placement Z5760 and upper
+facing flags. The entire emitted MAN equals a separately reconstructed post-append
+baseline plus intended clone edits and terminal zero padding; all other record bytes
+stay held. Project/imports/history stay fixed. Package SHA256:
+`04a1befcb91bfbe3c54002b02ab04123eef33537b3079cd4c27cb29e782b704f`.
+Read-only browser comparison labels all five families, and the 540px table was
+visually inspected. Browser project files/history stay unchanged. Evidence:
+`local-output/sdk-20260909/npc-owned-streaming-20261005/proof.json`.
+This closes the separate retail streaming check for NPC-owned facing and movement
+and supplies retail streaming evidence for own waits/text/appearance together.
+
+The first browser probe exceeded its 60-second full-scene viewport readiness
+window. The script comparison was then verified after project readiness, separately
+from scene rendering. Rayman preview-loading performance still needs investigation;
+this checkpoint does not verify its full rendered scene. No game or full-disc export
+ran. Runtime allocation/scheduling, branch execution and visible facing still need
+later gameplay acceptance. The full SDK goal remains active/incomplete.
+
 ## Explain NPC-owned facing in saved script comparison - 2026-10-05
 
 The retail-donor/generated-NPC comparison now labels **Own script facing sector**
@@ -19,8 +50,8 @@ waits, movement and facing; three remain unexplained. The 540px comparison table
 was visually inspected. Project document/history and all existing project file
 hashes stayed fixed. Evidence:
 `local-output/sdk-20260909/npc-facing-script-comparison-20261005/proof.json`.
-No Build/Save/authoring command or game launch occurred. A separate own-facing
-retail streaming package check and later gameplay acceptance remain open.
+No Build/Save/authoring command or game launch occurred. The separate own-facing
+retail streaming package check is now verified above; later gameplay remains open.
 The full SDK goal remains active/incomplete.
 
 ## Transfer NPC-owned facing presets - 2026-10-05
@@ -45,7 +76,7 @@ source NPCs/imports stayed fixed. Package SHA256:
 Evidence: `local-output/sdk-20260909/npc-facing-presets-20261005/proof.json`.
 No game launched. Visible facing, dispatch and branch execution still need later
 gameplay acceptance. Facing explanations in saved-script comparison are now supported, as recorded
-above. A separate own-facing retail streaming package check is still pending.
+above. The separate own-facing retail streaming package check is now verified above.
 The full SDK goal remains active/incomplete.
 
 ## Independently author NPC script facing - 2026-10-05
@@ -71,8 +102,8 @@ upper flags, own X3200/Z5696/selector10 movement, wait11, text and model105/anim
 Placement, imports and existing preset metadata stayed fixed. Package SHA256:
 `582f053dd091e1234eaabf2383620fef902b74f5852608b85f5641f924fdb910`.
 Evidence: `local-output/sdk-20260909/npc-facing-editor-20261005/proof.json`.
-The actual package check covers compressed MAN; own-facing streaming integration
-has not yet received a separate retail package check. Source operands establish no
+This earlier package check covers compressed MAN; streaming readback is now
+verified in the newer rayman checkpoint above. Source operands establish no
 initial/live Transform heading, dispatch identity or execution. No game launched;
 gameplay stays deferred and the full SDK goal is active/incomplete.
 
@@ -7728,7 +7759,8 @@ and Save/Open. Ordinary Build independently checks exact two-byte spans, request
 values, source identity and overlap/unaudited bytes. Reports expose wait.duration_ticks
 and source instruction IDs. Experimental compressed/raw-streaming exporters
 compose/rebase waits and include them in scene audits; new wait coverage in the
-raw-streaming route has not yet received a retail wait probe. Fifteen selected
+raw-streaming route subsequently received a retail own-wait probe in the rayman
+checkpoint at the top of this report. Fifteen selected
 retail-enabled tests passed in27.113s without skips. A focused merge check also
 passed after adding explicit high-byte and second-byte overlap cases. Retail
 town01 actor0044 wait16-to17 composed with actor0002 flag2-to3; saved project,

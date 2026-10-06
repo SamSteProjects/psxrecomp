@@ -224,8 +224,8 @@ leave a facing target supported; a movement proposal that parks an owned facing
 target rejects. Clear facing before changing its recorded script donor.
 
 Normal Build composes the facing nibbles in the final allocated NPC record while
-retaining appearance, dialogue, waits and movement. Compressed package readback
-is verified; a separate own-facing retail streaming package check is pending.
+retaining appearance, dialogue, waits and movement. Compressed and retail streaming package readback
+are verified; see the streaming checkpoint below.
 Preset capture and v6 transfer retain facing-bearing drafts. Authored comparison
 labels now identify exact source-qualified facing bytes.
 Evidence: `local-output/sdk-20260909/npc-facing-editor-20261005/proof.json`.
@@ -259,3 +259,17 @@ unexplained. These byte labels do not establish initial heading or branch execut
 
 Read-only browser evidence and the narrow table are recorded in
 `local-output/sdk-20260909/npc-facing-script-comparison-20261005/proof.json`.
+
+## Streaming Build and saved inspection
+
+The normal streaming Build has independent `rayman` package readback for two NPCs
+with own NPC_RUN sectors0/7, movement, waits, dialogue and appearance. Upper flags,
+all intended clone bytes and all other post-append MAN record bytes remain held.
+Saved inspection now recognizes streaming `actor_changes` allocations as well as
+compressed `actor` receipts, with strict carrier-schema and ambiguity checks.
+The read-only browser comparison labels the facing sector among all five families.
+Evidence: `local-output/sdk-20260909/npc-owned-streaming-20261005/proof.json`.
+
+Rayman's full viewport exceeded the initial 60-second readiness probe and is not
+render-performance verified here. No game ran. Visible facing and branch execution
+remain subject to later gameplay acceptance.
