@@ -163,3 +163,11 @@ After reviewing an initial appearance, **Inspect NPC appearance in scene** lets
 you compare Current and Proposed at the NPC placement before Apply. Return to NPC
 appearance retains the reviewed selection; a changed selection needs a new review.
 This inspection writes no project state and does not establish runtime behavior.
+
+NPC-owned **Edit NPC wait targets** changes only source-qualified WAIT_FRAMES
+operands on that draft's cloned script. Check Own wait and enter an integer target
+from 0 through 32767, Review, then Apply. Uncheck and apply to restore the retail
+operand. Undo restores the prior binding; Save persists it and normal Build emits
+it. Script donor, own dialogue and appearance stay separate. Clear retained waits
+before changing script donor. Targets do not establish seconds, cadence or runtime
+execution. Preset capture currently rejects own waits rather than dropping them.

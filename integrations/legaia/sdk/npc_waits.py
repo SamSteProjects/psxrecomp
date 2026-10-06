@@ -1,13 +1,91 @@
 """Source-qualified fixed-width wait operands owned by allocated NPC records.
 
-This adapter does not publish project commands. It retains script ownership and
-layout, and makes no claim about runtime scheduling or elapsed seconds.
+Reviewed project commands retain script ownership and layout, and make no claim
+about runtime scheduling or elapsed seconds.
 """
 from copy import deepcopy
 from hashlib import sha256
 from importer.man_layout import read_man_layout
 from importer.wait_authoring import patch_wait_target
-from .project import ProjectError
+from .project import ProjectError, digest
+from .project_copy import source_key
+
+
+def validate(project, draft):
+    if 'waits' not in draft:
+        return
+    value = draft['waits']
+    if not isinstance(value, dict) or set(value) != {'donor_entity_id', 'entries'} or value['donor_entity_id'] != draft['donor_entity_id']:
+        raise ProjectError('NPC waits belong to their script donor; clear waits before changing donor')
+    project._validate_waits(draft['donor_entity_id'], {'entries': value['entries']})
+
+
+def source(project, identifier):
+    draft = project.actor_drafts.get(identifier) if isinstance(identifier, str) else None
+    if project.mode != 'edit' or not isinstance(draft, dict) or draft['scene_id'] != project.active_scene:
+        raise ProjectError('NPC waits require an active-scene draft in Edit mode')
+    project._validate_actor_draft(identifier, draft);key = source_key(project)
+    context = project._wait_context(draft['donor_entity_id'])
+    options = context.options(draft['donor_entity_id'])
+    entries = draft.get('waits', {}).get('entries', {})
+    if set(entries) - {r['semantic_id'] for r in options['targets']}:
+        raise ProjectError('Current NPC waits are not source-qualified')
+    context.patch(entries)
+    for row in options['targets']:
+        row['authored_values'] = deepcopy(entries.get(row['semantic_id']))
+        row['effective_values'] = deepcopy(entries.get(row['semantic_id'], row['values']))
+    if source_key(project) != key:
+        raise ProjectError('Project changed during NPC wait inspection')
+    return dict(schema_version='legaia.npc-waits-source.v1', entity_id=identifier,
+                scene_id=draft['scene_id'], project_source_key=key, draft=deepcopy(draft),
+                options=options, gameplay_verified=False, runtime_scheduling='not_asserted')
+
+
+def review(project, request):
+    if not isinstance(request, dict) or set(request) != {'entity_id', 'entries'} or not isinstance(request['entries'], dict):
+        raise ProjectError('NPC wait review requires identity and complete typed entries')
+    report = source(project, request['entity_id']);draft = report['draft'];proposed = deepcopy(draft)
+    if request['entries']:
+        proposed['waits'] = dict(donor_entity_id=draft['donor_entity_id'], entries=deepcopy(request['entries']))
+    else:
+        proposed.pop('waits', None)
+    project._validate_actor_draft(request['entity_id'], proposed)
+    if set(request['entries']) - {r['semantic_id'] for r in report['options']['targets']}:
+        raise ProjectError('NPC wait entry is not qualified by its script donor')
+    _, changes = project._wait_context(draft['donor_entity_id']).patch(request['entries'])
+    if source_key(project) != report['project_source_key']:
+        raise ProjectError('Project changed during NPC wait review')
+    return dict(schema_version='legaia.npc-waits-review.v1', entity_id=request['entity_id'],
+                project_source_key=report['project_source_key'], request=deepcopy(request),
+                current=draft, proposed=proposed, changes=changes,
+                review_key=digest(dict(source=report['project_source_key'], request=request, algorithm='npc-wait-targets.v1')),
+                gameplay_verified=False, runtime_scheduling='not_asserted')
+
+
+def apply(project, command):
+    if set(command) != {'type', 'entity_id', 'entries', 'review_key'}:
+        raise ProjectError('NPC wait Apply requires exact reviewed fields')
+    report = review(project, {k: command[k] for k in ('entity_id', 'entries')})
+    if command['review_key'] != report['review_key']:
+        raise ProjectError('NPC waits changed; review again')
+    if report['current'] == report['proposed']:
+        return
+    project.actor_drafts[command['entity_id']] = deepcopy(report['proposed'])
+    project.undo_stack.append(dict(target='actor_drafts', entity_id=command['entity_id'], before=report['current'], after=deepcopy(report['proposed'])))
+    project.redo_stack.clear()
+
+
+def patch_project(project, scene_id, context, candidate, allocations):
+    requests = []
+    for row in allocations['drafts']:
+        draft = project.actor_drafts[row['draft_id']]
+        if draft['scene_id'] != scene_id:
+            raise ProjectError('NPC wait allocation belongs to another scene')
+        if 'waits' not in draft:
+            continue
+        validate(project, draft)
+        requests.append(dict(draft_id=row['draft_id'], **deepcopy(draft['waits'])))
+    return patch_allocated_waits(context, candidate, allocations, requests) if requests else (candidate, None)
 
 
 def patch_allocated_waits(context, candidate, allocations, requests):

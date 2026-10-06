@@ -1,10 +1,40 @@
 # Legaia SDK feature matrix
 
+## Independently author NPC wait targets - 2026-10-05
+
+NPC Inspector and registered Asset Details now offer **Edit NPC wait targets**.
+The source-qualified picker separates retail targets from optional NPC-owned
+WAIT_FRAMES overrides and accepts integer duration_ticks 0..32767. Review binds the
+full current project/draft; input changes withdraw Apply, and stale reviews reject.
+Apply/Clear make one existing NPC history step. Undo/Redo and Save/Open retain
+script donor, own appearance, own dialogue, name and placement. Changing the script
+donor with retained waits requires clearing them first. Asset summaries label own
+wait targets separately; no runtime timing, seconds or reachability is asserted.
+
+Normal compressed/streaming MAN composition now uses the native clone adapter
+against final allocated record identities. The saved package records a separate
+npc_wait_changes audit. NPC preset capture currently rejects wait-bearing drafts
+explicitly, preventing silent omission; preset capture/transfer/placement support
+is still next.
+
+Offline validation: 36 focused Python checks and two Node contracts pass.
+The actual root editor passed source loading, reviewed Apply, input withdrawal,
+Clear, Undo/Redo and Save/reload. The 540px dialog screenshot was inspected.
+Normal Build `5e3865fd5768fd42` independently reopened the emitted NPC script with an
+exact 11-tick operand, model105/animation13 and complete own dialogue. Other drafts
+and imports stayed fixed. Package SHA256:
+`e3ab5e46486e9869c807360b6f3192b24f3b0ecbdea78ba2600c0e889948e54b`.
+Evidence: `local-output/sdk-20260909/npc-waits-editor-20261005/proof.json`.
+This actual package check covers the compressed MAN route; streaming composition
+is integrated but has not received a separate retail package check for own waits.
+No game was launched. Runtime timing acceptance remains deferred and the full
+SDK goal remains active/incomplete.
+
 ## NPC-owned wait operand native adapter - 2026-10-05
 
 Added a source-qualified serializer for independent WAIT_FRAMES operands on
 allocated NPC scripts. Requests bind a draft, recorded retail script donor and
-supported stable wait IDs with integer duration_ticks0..32767. The adapter resolves
+supported stable wait IDs with integer duration_ticks 0..32767. The adapter resolves
 final record indices after all appends, verifies extent/local entry ownership,
 rejects aliases/retail targets, requalifies current instruction layout and checks
 exact operand preimages. Only selected two-byte targets can change. Limits are

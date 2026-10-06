@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {decodeNpcWaitSource,decodeNpcWaitReview} from '../editor/npc-waits.js';
+const id='authored-actor://00000000-0000-4000-8000-000000000001',owner='scene://town01/actors/man-p1/0040',wait='script://town01/actors/man-p1/0040/wait/0065',key='a'.repeat(64),draft={scene_id:'scene://town01',donor_entity_id:owner,name:'Resident',position:{x:128,z:256},appearance:{script_donor_entity_id:owner,donor_entity_id:'scene://town01/actors/man-p1/0012'}},state={scene:{id:draft.scene_id},actor_drafts:{[id]:draft},project_copy_source_key:key};
+const target={semantic_id:wait,owner_id:owner,pc:101,mnemonic:'WAIT_FRAMES',values:{duration_ticks:10},authored_values:null,effective_values:{duration_ticks:10},source_record_sha256:'b'.repeat(64)},source={schema_version:'legaia.npc-waits-source.v1',entity_id:id,scene_id:draft.scene_id,draft,project_source_key:key,options:{supported:true,targets:[target]},gameplay_verified:false,runtime_scheduling:'not_asserted'};
+assert.deepEqual(decodeNpcWaitSource(source,id,state),source);
+const request={entity_id:id,entries:{[wait]:{duration_ticks:11}}},review={schema_version:'legaia.npc-waits-review.v1',entity_id:id,project_source_key:key,request,current:draft,proposed:{...draft,waits:{donor_entity_id:owner,entries:request.entries}},review_key:'c'.repeat(64),gameplay_verified:false,runtime_scheduling:'not_asserted'};
+assert.deepEqual(decodeNpcWaitReview(review,request,source,state),review);
+for(const mutate of [v=>v.project_source_key='d'.repeat(64),v=>v.options.targets[0].owner_id='wrong',v=>v.options.targets[0].effective_values.duration_ticks=11,v=>v.options.targets[0].values.duration_ticks=32768,v=>v.draft.name='Wrong']){const v=structuredClone(source);mutate(v);assert.throws(()=>decodeNpcWaitSource(v,id,state));}
+for(const mutate of [v=>v.proposed.donor_entity_id='wrong',v=>v.proposed.appearance.donor_entity_id='wrong',v=>v.proposed.position.x++,v=>v.proposed.waits.entries[wait].duration_ticks=12]){const v=structuredClone(review);mutate(v);assert.throws(()=>decodeNpcWaitReview(v,request,source,state));}
+for(const ticks of [true,-1,32768,1.5,NaN])assert.throws(()=>decodeNpcWaitReview(review,{entity_id:id,entries:{[wait]:{duration_ticks:ticks}}},source,state));
+const detached=decodeNpcWaitReview(review,request,source,state);detached.proposed.name='Detached';assert.equal(review.proposed.name,'Resident');
+console.log('NPC wait owner/source/typed target/stale review and retained appearance/placement contracts pass.');

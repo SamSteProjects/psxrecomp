@@ -66,3 +66,25 @@ class NpcWaitTests(TestCase):
         source,man=fixture(b'\x4a\1\1\xff');unsupported=WaitAuthoringContext(source)
         clone,row=append_actor_donor(man,sha256(man).hexdigest(),1)
         with self.assertRaises((ProjectError,ImportError)):patch_allocated_waits(unsupported,clone,{'drafts':[dict(row,draft_id='npc-a')]},[request])
+
+    def test_project_review_history_persistence_clear_and_donor_ownership(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from sdk.project import ProjectService
+        from sdk.npc_waits import source,review
+        from test_project_workflow import synthetic_scene
+        context,_,_,wait=self.setup_candidate()
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.command(dict(type='create_actor_draft',donor_entity_id=ACTOR,name='Resident',position=dict(x=128,z=256)));identifier=next(iter(p.actor_drafts));before=deepcopy(p.actor_drafts);history=len(p.undo_stack)
+            with patch.object(p,'_wait_context',return_value=context):
+                report=source(p,identifier);request=dict(entity_id=identifier,entries={wait:dict(duration_ticks=512)});proposal=review(p,request)
+                self.assertEqual(p.actor_drafts,before);self.assertEqual(len(p.undo_stack),history)
+                with self.assertRaises(ProjectError):p.command(dict(type='set_actor_draft_waits',**request,review_key='0'*64))
+                p.command(dict(type='set_actor_draft_waits',**request,review_key=proposal['review_key']));after=deepcopy(p.actor_drafts)
+                self.assertEqual(source(p,identifier)['options']['targets'][0]['effective_values'],dict(duration_ticks=512));self.assertEqual(len(p.undo_stack),history+1)
+                p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(p.actor_drafts,after);self.assertEqual(ProjectService.open(p.save()).actor_drafts,after)
+                with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=identifier,name='Cannot omit waits'))
+                wrong=deepcopy(after[identifier]);wrong['waits']['donor_entity_id']='wrong'
+                with self.assertRaises(ProjectError):p._validate_actor_draft(identifier,wrong)
+                reset=dict(entity_id=identifier,entries={});proposal=review(p,reset);p.command(dict(type='set_actor_draft_waits',**reset,review_key=proposal['review_key']));self.assertEqual(p.actor_drafts,before);p.undo();self.assertEqual(p.actor_drafts,after)
