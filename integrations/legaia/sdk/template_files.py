@@ -7,6 +7,13 @@ from .project import ProjectError,digest
 MAX_FILE_BYTES=8*1024
 SCHEMA='legaia.actor-preset-file.v1'
 ANIMATED_SCHEMA='legaia.actor-preset-file.v2'
+NPC_SCHEMA='legaia.npc-preset-file.v1'
+
+def _file_schema(scope):
+    if scope=='npc-draft-preset-v1':return NPC_SCHEMA
+    if scope=='authored-actor-preset-v2':return ANIMATED_SCHEMA
+    if scope in ('authored-position-v1','authored-appearance-v1','authored-actor-preset-v1'):return SCHEMA
+    raise ProjectError('Unsupported portable preset scope')
 
 def _pairs(items):
     result={}
@@ -26,14 +33,13 @@ def parse(content):
     try:
         value=json.loads(content,object_pairs_hook=_pairs,parse_constant=_constant)
     except (ValueError,RecursionError) as exc:raise ProjectError('Invalid preset JSON') from exc
-    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA):
+    if not isinstance(value,dict) or set(value)!={'schema_version','source_import_sha256','template'} or value['schema_version'] not in (SCHEMA,ANIMATED_SCHEMA,NPC_SCHEMA):
         raise ProjectError('Unsupported preset file fields or schema')
     source_hash=value['source_import_sha256']
     if not isinstance(source_hash,str) or len(source_hash)!=64 or any(c not in '0123456789abcdef' for c in source_hash):
         raise ProjectError('Preset requires a source import SHA256')
     if not isinstance(value['template'],dict):raise ProjectError('Preset file requires template metadata')
-    from .preset_animation import ANIMATED_SCOPE
-    if (value['schema_version']==ANIMATED_SCHEMA)!=(value['template'].get('scope')==ANIMATED_SCOPE):
+    if value['schema_version']!=_file_schema(value['template'].get('scope')):
         raise ProjectError('Preset file version differs from its template scope')
     return value
 
@@ -62,8 +68,7 @@ def export_file(project,template_id):
     if not isinstance(template_id,str) or template_id not in project.actor_templates:raise ProjectError('Choose an existing actor preset')
     template=deepcopy(project.actor_templates[template_id])
     source_hash=_verify_source(project,template)
-    from .preset_animation import ANIMATED_SCOPE
-    value={'schema_version':ANIMATED_SCHEMA if template['scope']==ANIMATED_SCOPE else SCHEMA,'source_import_sha256':source_hash,'template':template}
+    value={'schema_version':_file_schema(template['scope']),'source_import_sha256':source_hash,'template':template}
     encoded=json.dumps(value,ensure_ascii=True,indent=2)+'\n'
     parse(encoded)
     if project.actor_templates.get(template_id)!=template:raise ProjectError('Preset changed during export')
@@ -82,8 +87,10 @@ def review(project,content,name):
     template['id']='template://'+str(uuid.uuid5(uuid.NAMESPACE_URL,'legaia-preset-import:'+key));template['name']=name
     project._validate_template(template['id'],template)
     if key!=digest({'root':str(project.root),'disc':project.disc_path,'imports':project.imports,'templates':project.actor_templates,'file':value,'name':name}):raise ProjectError('Project changed during preset review')
+    npc=template['scope']=='npc-draft-preset-v1'
+    limitations=(['Import adds an independent NPC preset; no NPC instances or imported actors change.','Frozen retail donor, native-grid name/XZ defaults and owning import remain bound. Placement requires a separate reviewed new instance.','Original capture identity is provenance only. No prefab inheritance, authored script/appearance snapshot or runtime identity is transferred; gameplay remains unverified.'] if npc else ['Import adds one independent preset to the library; it changes no actor components.','Source scene/import and donor compatibility remain bound; Apply revalidates its target.','Coordinates are absolute; height may be project-only and gameplay remains unverified.'])
     return {'schema_version':'legaia.actor-preset-import-review.v1','review_key':key,'template':template,
-            'source_import_sha256':source_hash,'limitations':['Import adds one independent preset to the library; it changes no actor components.','Source scene/import and donor compatibility remain bound; Apply revalidates its target.','Coordinates are absolute; height may be project-only and gameplay remains unverified.']}
+            'source_import_sha256':source_hash,'limitations':limitations}
 
 def apply(project,command):
     if set(command)!={'type','content','name','review_key'}:raise ProjectError('Preset import requires file, name and reviewed key only')

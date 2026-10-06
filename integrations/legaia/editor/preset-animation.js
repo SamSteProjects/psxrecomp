@@ -1,3 +1,4 @@
+import {NPC_PRESET_SCOPE,validateNpcPresetMetadata} from './npc-preset-metadata.js';
 import {decodeActorAnimationOptions} from './actor-animation.js';
 
 export const ANIMATION_PRESET_SCOPE='authored-actor-preset-v2';
@@ -8,8 +9,9 @@ const canonical=value=>Array.isArray(value)?value.map(canonical):object(value)?O
 const same=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 const component=binding=>binding?{donor_entity_id:binding.actor_semantic_id,animation_asset_id:binding.semantic_id,source_record_sha256:binding.source_record.record_sha256}:null;
 const assignment=value=>value&&Object.keys(value).length?value:null;
-export const presetScopeLabel=scope=>({'authored-position-v1':'Position','authored-appearance-v1':'Appearance','authored-actor-preset-v1':'Position and appearance',[ANIMATION_PRESET_SCOPE]:'Initial animation preset'}[scope]??scope);
+export const presetScopeLabel=scope=>({'authored-position-v1':'Position','authored-appearance-v1':'Appearance','authored-actor-preset-v1':'Position and appearance',[ANIMATION_PRESET_SCOPE]:'Initial animation preset',[NPC_PRESET_SCOPE]:'NPC donor/placement preset'}[scope]??scope);
 export function validatePresetMetadata(template){
+  if(template?.scope===NPC_PRESET_SCOPE)return validateNpcPresetMetadata(template);
   const source=template?.source,components=template?.components,scene=source?.scene_id,actorPrefix=scene+'/actors/man-p1/',clipPrefix='animation://'+scene?.slice(8)+'/scene-anm/';
   const actorId=id=>typeof id==='string'&&id.startsWith(actorPrefix)&&/^[0-9]{4}$/.test(id.slice(actorPrefix.length));
   if(!exact(template,['id','name','scope','source','components'])||!/^template:\/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(template.id)||typeof template.name!=='string'||template.name!==template.name.trim()||!template.name.length||template.name.length>80||!exact(source,['disc_identity','scene_id','entity_id'])||!/^scene:\/\/[a-z0-9_]+$/.test(scene)||!actorId(source.entity_id)||!/^sha256:[0-9a-f]{64}$/.test(source.disc_identity)||!object(components))throw new Error('Invalid portable preset metadata.');

@@ -23,9 +23,34 @@ presets. Generic imported-actor Apply explicitly rejects it.
 Presets capture retail donor and placement defaults only. They do not freeze donor
 appearance overrides, authored actor scripts, animation assignment, source height,
 collision or runtime state. Shared model and animation asset edits remain project-wide.
-There is no inherited prefab link, cross-scene remapping, or preset file interchange.
+There is no inherited prefab link or cross-scene remapping.
 Use Review Build to assess the entire candidate and supported normal Build to verify
 native output. Gameplay still needs manual validation of spawn, behavior and visibility.
+
+## Transfer between projects
+
+Choose **Export preset JSON** on an NPC preset card to download `npc-preset.json`.
+In the recipient project, import the same supported retail scene from the same disc,
+open the preset library, and choose **Import preset JSON**. Review its new library
+name and source provenance, then **Import reviewed preset**. Import creates one
+independent library identity and changes no NPC instances. Undo removes the imported
+preset; Redo restores it. Save/reopen retains its frozen defaults and provenance.
+Choose **Review new NPC instance** afterward to place it in its owning scene.
+
+The metadata-only file schema is `legaia.npc-preset-file.v1`, distinct from actor
+preset file versions 1/2. Exact donor, name and native-grid X/Z defaults are retained
+with capture draft identity, scene/disc identity and import hash. The original draft
+need not exist in the recipient. A current user-owned disc and freshly matching
+retail import are required for file export/import. Files are limited to 8 KiB;
+unknown payload fields, mismatched schema/scope/hash and changed library reviews
+reject. No model, texture, script, animation, live state or native binary is embedded.
+
+Private transfer evidence is under
+`local-output/sdk-20260909/npc-preset-transfer-20261005/`: `proof.json` records actual
+download/upload, reviewed import, library Undo/Redo, Save/reload and placement;
+`transfer-review-540.png` records the narrow review. `normal-build-proof.json` verifies
+the recipient's format-6 compressed reserved-span package, exact native MAN, descriptor
+size, model/animation binding and saved current-input receipt. No game was launched.
 
 Acceptance evidence (private fixture, no game launch):
 

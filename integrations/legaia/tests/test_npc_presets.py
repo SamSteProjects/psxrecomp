@@ -5,6 +5,10 @@ from sdk.project import ProjectService, ProjectError
 from sdk.npc_presets import review, proposal_view
 from sdk.project_copy import source_key
 from importer.core import ImportError as NativeError
+from contextlib import nullcontext
+from unittest.mock import patch
+import json
+from sdk.template_files import export_file, review as transfer_review, parse, NPC_SCHEMA
 from test_project_workflow import synthetic_scene
 
 class NpcPresetTests(unittest.TestCase):
@@ -46,5 +50,34 @@ class NpcPresetTests(unittest.TestCase):
     def test_capture_library_undo_redo(self):
         p=self.p;frozen=deepcopy(p.actor_templates);p.undo();self.assertFalse(p.actor_templates);p.redo();self.assertEqual(p.actor_templates,frozen)
         p.command(dict(type='delete_actor_template',template_id=self.preset));self.assertFalse(p.actor_templates);p.undo();self.assertEqual(p.actor_templates,frozen)
+
+    def test_portable_transfer_without_original_draft_and_independent_placement(self):
+        p=self.p;disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()), patch('importer.pipeline.import_scene',return_value=self.doc):
+            value=export_file(p,self.preset);self.assertEqual(value['schema_version'],NPC_SCHEMA)
+            target=ProjectService(Path(self.directory.name)/'recipient');target.import_metadata(self.doc);target.disc_path=p.disc_path
+            before=deepcopy(target._document());report=transfer_review(target,json.dumps(value),'Transferred guard')
+            self.assertEqual(target._document(),before);self.assertFalse(target.actor_drafts)
+            target.command(dict(type='import_actor_template',content=json.dumps(value),name='Transferred guard',review_key=report['review_key']))
+            transferred=report['template']['id'];self.assertNotEqual(transferred,self.preset)
+            self.assertEqual(target.actor_templates[transferred]['source'],value['template']['source'])
+            self.assertFalse(target.actor_drafts);target.undo();self.assertFalse(target.actor_templates);target.redo()
+            target=ProjectService.open(target.save());self.assertEqual(target.actor_templates[transferred]['components'],value['template']['components'])
+            request=dict(template_id=transferred,name='Transferred instance',position=dict(x=256,z=640),expected_source_key=source_key(target))
+            placement=review(target,request);target.command(dict(type='instantiate_npc_preset',**request,review_key=placement['review_key']))
+            self.assertEqual(target.actor_drafts[placement['entity_id']],placement['draft']);self.assertEqual(target.imports[self.doc['scene']['semantic_id']],self.doc)
+
+    def test_portable_schema_source_payload_and_stale_rejection(self):
+        p=self.p;disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()), patch('importer.pipeline.import_scene',return_value=self.doc):
+            value=export_file(p,self.preset);before=deepcopy((p._document(),p.undo_stack))
+            for change in (lambda v:v.update(schema_version='legaia.actor-preset-file.v1'),lambda v:v.update(payload='private'),lambda v:v.update(source_import_sha256='0'*64),lambda v:v['template']['source'].update(import_sha256='0'*64),lambda v:v['template']['components']['NpcDraft'].update(donor_entity_id='wrong')):
+                bad=deepcopy(value);change(bad)
+                with self.assertRaises(ProjectError):transfer_review(p,json.dumps(bad),'Forged')
+            self.assertEqual((p._document(),p.undo_stack),before)
+            content=json.dumps(value);report=transfer_review(p,content,'New guard');p.command(dict(type='rename_actor_template',template_id=self.preset,name='Changed library'))
+            with self.assertRaises(ProjectError):p.command(dict(type='import_actor_template',content=content,name='New guard',review_key=report['review_key']))
+        with patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()), patch('importer.pipeline.import_scene',return_value={}):
+            with self.assertRaisesRegex(ProjectError,'freshly'):export_file(p,self.preset)
 
 if __name__=='__main__':unittest.main()

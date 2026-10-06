@@ -1,6 +1,8 @@
 import {decodeDraftRepeatScene} from './draft-repeat.js';
 import {decodeActorPlacementScene} from './actor-placement-batch.js';
-export const NPC_PRESET_SCOPE='npc-draft-preset-v1';
+import {NPC_PRESET_SCOPE} from './npc-preset-metadata.js';
+import {presetExportButton} from './preset-files.js';
+export {NPC_PRESET_SCOPE};
 const canonical=v=>JSON.stringify(v&&typeof v==='object'?Array.isArray(v)?v.map(x=>JSON.parse(canonical(x))):Object.fromEntries(Object.keys(v).sort().map(k=>[k,JSON.parse(canonical(v[k]))])):v);
 const equal=(a,b)=>canonical(a)===canonical(b);
 const hash=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
@@ -40,7 +42,8 @@ export function mountNpcPresets(options){
     const place=document.createElement('button');place.textContent='Review new NPC instance';place.dataset.owningScene=template.source.scene_id;place.disabled=!canEdit()||isBusy()||template.source.scene_id!==state.scene.id;place.onclick=()=>{if(isBusy()||!canEdit())return;container.close();openNpcPreset({...options,template});};
     const remove=document.createElement('button');remove.textContent='Delete NPC preset';remove.disabled=!canEdit()||isBusy();remove.onclick=()=>{if(!isBusy()&&canEdit())api('/api/command',{type:'delete_actor_template',template_id:template.id});};
     const rename=document.createElement('form'),label=document.createElement('label'),input=document.createElement('input'),save=document.createElement('button');label.textContent='Rename NPC preset';input.value=template.name;input.required=true;input.maxLength=80;save.textContent='Save preset name';input.disabled=save.disabled=!canEdit()||isBusy();label.append(input);rename.append(label,save);rename.onsubmit=event=>{event.preventDefault();if(!isBusy()&&canEdit())api('/api/command',{type:'rename_actor_template',template_id:template.id,name:input.value});};
-    card.append(name,note,provenance,place,remove,rename);list.append(card);
+    const exportButton=presetExportButton({template,getState,isBusy,setBusy:options.setBusy,onError:message=>{if(container.open)section.querySelector('[data-error]').textContent=message;}});
+    card.append(name,note,provenance,place,remove,rename,exportButton);list.append(card);
   }
   const update=()=>{const disabled=isBusy()||!canEdit();for(const c of section.querySelectorAll('input,button'))c.disabled=disabled;for(const c of section.querySelectorAll(':scope > form input,:scope > form button'))c.disabled=disabled||!draft||draft.scene_id!==getState().scene?.id||getSelection()!==selected;for(const c of section.querySelectorAll('[data-owning-scene]'))c.disabled=disabled||c.dataset.owningScene!==getState().scene?.id;};update();return {update};
 }

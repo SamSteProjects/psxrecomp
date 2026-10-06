@@ -1,5 +1,35 @@
 # Legaia SDK feature matrix
 
+## NPC preset file transfer — 2026-10-05
+
+NPC presets now use metadata-only `legaia.npc-preset-file.v1` JSON in the shared
+preset export/import workflow. The editor downloads `npc-preset.json`, reviews an
+independent named library import, then places a new NPC through the separate
+reviewed placement workflow. File/schema scope, exact source/components, capture
+provenance, matching import hashes and the 8 KiB limit are checked. Export/import
+freshly verify the owning retail scene against the project user's disc. Unknown
+payload fields, changed sources and stale library reviews reject. Imported-actor
+preset application remains separate.
+
+Actual private two-project browser acceptance verifies download/upload, a new
+library identity with retained provenance/defaults, changed-name review withdrawal,
+library Undo/Redo, Save/reload and disk reopen, then detached scene inspection and
+placement without the original capture draft. Source project document/history and
+all file bytes stay unchanged; recipient imports and existing scene entities stay
+unchanged. The 946-byte exported file contains metadata only. The 540px import
+review is visually inspected with no page errors. Focused NPC/template-file Python
+and Node checks and existing animation-preset regression checks pass.
+
+The recipient's private normal format-6 Build uses the compressed reserved-span
+route. Native MAN bytes exactly match preparation; descriptor decoded size and
+new record 53 read back at X 2944 / Z 5632, model index 105, animation ID 13. Saved
+receipt verification matches current inputs. Package SHA-256:
+`5f3f409de8ac2e613f18602bb1771312bca52b00c2d2caf1dbcfd9adf3d3b5c6`.
+Evidence: `local-output/sdk-20260909/npc-preset-transfer-20261005/proof.json`,
+`normal-build-proof.json` and `transfer-review-540.png`. No game, install or full-disc
+export occurred. Prefab inheritance, cross-scene remapping and runtime gameplay
+acceptance remain unsupported or deferred. See [NPC presets](NPC_PRESETS.md).
+
 ## Reusable NPC draft presets — 2026-10-05
 
 The preset library now supports a separate `npc-draft-preset-v1` scope. Select an
@@ -23,8 +53,9 @@ Evidence: `local-output/sdk-20260909/npc-presets-20261005/proof.json`,
 `normal-build-proof.json` and `preset-review-540.png`.
 
 This is project-local donor/placement reuse, not prefab inheritance or an authored
-script/appearance snapshot. Shared asset edits remain project-wide. Preset file
-interchange and cross-scene remapping are not implemented. Runtime spawning,
+script/appearance snapshot. Shared asset edits remain project-wide. See the NPC
+preset transfer milestone for file interchange; cross-scene remapping remains
+unsupported. Runtime spawning,
 scheduling, collision and visibility remain deferred to manual gameplay; no game,
 install or full-disc export was performed. See [NPC presets](NPC_PRESETS.md).
 
