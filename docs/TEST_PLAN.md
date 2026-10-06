@@ -1,5 +1,34 @@
 # Legaia SDK validation plan
 
+## NPC-owned facing serializer foundation - 2026-10-05
+
+Added source-qualified facing serialization for uniquely allocated NPC clones.
+Simple CAM_CFG and nonparked NPC_RUN targets accept sector0..7 only. Requests bind
+a draft, its retail script donor and supported instruction ID. The shared allocation
+guard verifies final record indices, extent, local/script entry ownership and aliases.
+Dispatch/opcode, CAM_CFG mode and full operand preimages remain source-bound,
+including no-op requests. Only the low facing nibble changes; upper flags stay held.
+
+Facing composes with independently authored NPC_RUN movement X/Z/selectors and
+wait/appearance edits. A composed parked NPC_RUN target rejects facing authoring.
+Unknown/conflicting paths, nondirection LUT slots, halt-acquire CAM_CFG mode, wrong
+owners/fields/types, stale flags/context, aliased records and duplicate writes reject.
+The adapter emits exact source/final byte offsets and hashes, and asserts no runtime
+dispatch, initial Transform heading or gameplay behavior.
+
+Validation: 17 focused Python checks pass with the retail disc enabled. Synthetic
+cases cover both opcode families, ordinary/extended contexts, all eight sectors,
+two final clones, no-op/stale and unsupported targets, aliases and composition.
+A fresh town01 donor0040 check composed own movement, waits and initial appearance,
+then wrote sector0/7 to two clones. Exactly two facing bytes changed; upper flags,
+all other candidate bytes, MAN layout and source donor records stayed fixed relative
+to the post-append/composition baseline. Project document, history and existing file
+hashes stayed unchanged. Evidence:
+`local-output/sdk-20260909/npc-facing-native-20261005/proof.json`.
+This is a native serializer foundation: project commands, editor controls, preset
+transfer and normal Build integration remain next. No Build, export or game launch
+occurred. Manual gameplay remains deferred; the full SDK goal is active/incomplete.
+
 ## Inspect NPC-owned movement targets in the scene - 2026-10-05
 
 The NPC movement editor now offers retail donor, current NPC and reviewed proposal

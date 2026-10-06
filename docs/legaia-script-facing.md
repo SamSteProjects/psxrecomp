@@ -194,3 +194,18 @@ under that fixture's parent proof directory, SHA256
 No package installed or game launched. Later acceptance remains in the
 [gameplay queue](legaia-gameplay-verification-queue.md); full SDK/runtime scope
 is still incomplete.
+
+## Native NPC-owned facing foundation - 2026-10-05
+
+The allocated-NPC adapter now qualifies simple CAM_CFG and nonparked NPC_RUN
+facing targets against the retail script donor and final clone record. It changes
+only the low nibble to sector0..7, preserving upper flags and other candidate
+bytes. Independently composed NPC movement X/Z/selectors may remain changed;
+a parked movement target rejects facing authoring. Source header/context, full
+facing preimage and CAM_CFG mode checks also apply to no-op requests.
+
+This is serializer infrastructure. Project commands, NPC Inspector controls,
+preset transfer and normal Build composition are not wired yet. It establishes
+no initial or live Transform heading. Focused checks and the private retail
+post-append/composition proof are recorded in
+`local-output/sdk-20260909/npc-facing-native-20261005/proof.json`. No game ran.
