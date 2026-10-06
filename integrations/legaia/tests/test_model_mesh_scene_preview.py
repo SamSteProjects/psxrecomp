@@ -16,6 +16,22 @@ from test_model_primitive_workflow import http_server
 
 
 class MeshScenePreviewTests(unittest.TestCase):
+    def test_object_replacement_http_scene_review_is_read_only(self):
+        p,asset,donor,content,scene=self.fixture(True)
+        source=model_mesh_append.source(p,asset,'a'*64)
+        args=(asset,content,donor,source['effective_sha256'],'a'*64)
+        candidate,binding,report=model_mesh_append.prepare(p,*args,new_group=True,replace_object=True)
+        body=dict(asset_id=asset,content_base64=base64.b64encode(content).decode(),donor_face_id=donor,
+            expected_sha256=source['effective_sha256'],source_key='a'*64,new_group=True,replace_object=True,
+            review_key=report['review_key'],proposed_sha256=report['proposed_sha256'],entity_id='one',all_instances=True)
+        before=deepcopy((p._document(),p.undo_stack,p.redo_stack,scene))
+        with http_server(p) as (server,post),patch.dict(p.assets.records,{asset:dict(id=asset)}),patch('sdk.scene_preview.source_key',return_value='a'*64),patch.object(server.scene_previews,'preview',return_value=scene),patch.object(server,'model_preview',side_effect=lambda asset,**kw:kw['prepared']):
+            status,posed=post('/api/model-mesh-append-scene-preview',body)
+            self.assertEqual(status,200,posed)
+            self.assertEqual(posed['proposal_assets'],preview_shape_instances(scene,asset,candidate,binding)['proposal_assets'])
+            self.assertEqual(post('/api/model-mesh-append-scene-preview',{**body,'replace_object':False})[0],400)
+        self.assertEqual((p._document(),p.undo_stack,p.redo_stack,scene),before)
+
     def fixture(self,cloned=False):
         h=fixtures.MeshGroupReplacementTests();self.addCleanup(h.doCleanups)
         p,asset,donor,content=h.fixture()
@@ -66,8 +82,8 @@ class MeshScenePreviewTests(unittest.TestCase):
         for cloned in (False,True):
             p,asset,donor,content,scene=self.fixture(cloned)
             source=model_mesh_append.source(p,asset,'a'*64)
-            for new_group,replace_group in ((False,False),(True,False),(True,True)):
-                candidate,binding,report=model_mesh_append.prepare(p,asset,content,donor,source['effective_sha256'],'a'*64,new_group=new_group,replace_group=replace_group)
+            for new_group,replace_group,replace_object in ((False,False,False),(True,False,False),(True,True,False),(True,False,True)):
+                candidate,binding,report=model_mesh_append.prepare(p,asset,content,donor,source['effective_sha256'],'a'*64,new_group=new_group,replace_group=replace_group,replace_object=replace_object)
                 baseline=deepcopy(scene)
                 proposed=preview_shape_instances(scene,asset,candidate,binding)
                 self.assertEqual(scene,baseline)

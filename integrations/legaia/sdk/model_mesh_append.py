@@ -38,11 +38,13 @@ LIMITATIONS=[
 ]
 
 
-def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1):
-    if type(new_group) is not bool or type(replace_group) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
+def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,*,new_group=False,replace_group=False,replace_object=False,preserve_primitives=False,primitive_index=None,material_colors=False,scene_index=None,uv_set=0,source_scale=1):
+    if type(new_group) is not bool or type(replace_group) is not bool or type(replace_object) is not bool or type(preserve_primitives) is not bool or type(material_colors) is not bool:
         raise ProjectError('Mesh packet-group choice must be boolean')
-    if replace_group and not new_group:
-        raise ProjectError('Mesh group replacement requires an independent new group')
+    if replace_group and replace_object:
+        raise ProjectError('Choose either group or object geometry replacement')
+    if (replace_group or replace_object) and not new_group:
+        raise ProjectError('Mesh replacement requires an independent new group')
     if preserve_primitives and not new_group:
         raise ProjectError('Preserving mesh primitives requires independent packet groups')
     original,effective,base,base_binding,ledger,topology=_context(project,asset_id,expected_key)
@@ -140,9 +142,9 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
     else:
         candidate,updated,audit=append_face_ledger(base,updated,additions)
     removed=[]
-    if replace_group:
+    if replace_group or replace_object:
         removed=[face['face_id'] for face in topology['faces'] if face['object_index']==donor['object_index']
-            and face['group_index']==row['group_index']]
+            and (replace_object or face['group_index']==row['group_index'])]
         candidate,updated,audit=append_removal_ledger(base,updated,removed)
     binding=dict(format=FORMAT,source_scene_id=project.active_scene,source_sha256=sha256(original).hexdigest(),
         asset_sha256=sha256(candidate).hexdigest(),byte_length=len(candidate),base_binding=base_binding,ledger=updated)
@@ -168,6 +170,11 @@ def prepare(project,asset_id,content,donor_face_id,expected_sha256,expected_key,
         report.update(schema_version='legaia.model-mesh-append-review.v7',preserve_primitives=True)
         report['limitations'][-1]=('Replaces the exact Current donor group' if replace_group else 'Appends geometry')+' with one independent native packet group per GLB primitive, preserving source order and shared position rows. All groups inherit the selected donor layout/material; GLB materials are not allocated. No native object or animation channel is created. Gameplay remains unverified.'
         report['review_key']=digest(dict(base_review_key=report['review_key'],preserve_primitives=True,primitive_ranges=geometry['primitive_ranges']))
+    if replace_object:
+        report.update(schema_version='legaia.model-mesh-append-review.v8',allocation_mode='replace_object',
+            replace_object=True,removed_face_ids=removed,replaced_object=dict(object_index=donor['object_index']))
+        report['limitations'][-1]='Replaces all Current faces and packet groups in the selected donor object. Original vectors and object identity remain; retired faces stay reserved and restorable. Imported groups inherit the selected donor layout/material. Other objects remain. No native object, image or animation channel is created. Gameplay remains unverified.'
+        report['review_key']=digest(dict(base_review_key=report['review_key'],allocation_mode='replace_object',removed_face_ids=removed,replaced_object=report['replaced_object']))
     if primitive_index is not None:
         report['selected_primitive_index']=primitive_index
         report['review_key']=digest(dict(base_review_key=report['review_key'],selected_primitive_index=primitive_index,material_colors=material_colors,scene_index=scene_index))

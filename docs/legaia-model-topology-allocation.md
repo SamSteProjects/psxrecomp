@@ -1,5 +1,46 @@
 # General model topology allocation work
 
+## Replace complete native object geometry from GLB - 2026-10-06
+
+The mesh importer now offers **Replace donor object geometry** alongside append,
+new-group and donor-group replacement. It imports the selected static GLB mesh
+into independent groups, then retires every Current face in the selected native
+TMD object as one published command. Other objects, object identity and existing
+vector rows remain. Retired source/authored faces stay reserved and restorable;
+all existing historical allocation budgets still apply. Preserving GLB primitives
+creates separate new groups, all inheriting the selected triangle donor's layout
+and material binding. This replaces a native object's geometry within a shared
+model asset; it does not allocate arbitrary packet layouts, images or animation
+channels, or replace every object in a multi-object model in one operation.
+
+V8 Review explicitly identifies the object and complete retired face set. Its key
+binds object replacement separately from group replacement, including when both
+would yield identical model bytes. Strict booleans, mutually exclusive replacement
+choices, independent-group requirements, typed topology/render qualification,
+source freshness and reviewed Apply remain enforced. Scene proposals use the
+same reviewed choice and compose existing qualified poses. V1-V7 review modes and
+existing ledger schemas remain supported.
+
+Twenty-five focused cases passed, including multi-group/copied-object retirement,
+other-object ownership, restorability, wrong-mode and forged-review rejection,
+one-step Undo/Redo, Save/Open, normal native Build, HTTP scene-review and existing
+pose composition. A real browser upload/Review/Apply on a private retail Town01
+project replaced model 0036 object 0's seven groups / 163 faces with two groups /
+four faces. Object 1's 14 faces remained. Mode changes withdrew Review; desktop
+and 540-pixel captures were inspected, including the rendered comparison. A
+follow-up read-only browser review held all project files.
+
+Retail normal Build `9014063760bfb107` passed integrity and native model readback.
+Package SHA-256:
+`1af6201e5b9f1b4c10c9703f6b3731467dd06437fcd9f787926febfdb701be0c`.
+Decoded model SHA-256:
+`0e5faa86128f2eb9aa1a1124ee5afe152058ef3771ed5c96353dfcaf38fd8380`.
+Private evidence: `local-output/sdk-20260909/retail-object-mesh-20261006/`.
+No game was launched, no mod was installed and no full-disc export was performed.
+Manual rendered/gameplay acceptance remains queued; the larger SDK goal stays
+active and solo.
+
+
 ## Retail 512-face delivery and packet allocation performance - 2026-10-06
 
 The expanded mesh capacity now has a private retail normal-Build proof. Town01
