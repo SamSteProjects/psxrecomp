@@ -20,7 +20,7 @@ from .project import ProjectError,digest
 
 
 def _snapshot(project,scene_id,record_id,expected_source_key,fps):
-    if type(fps) not in (int,float) or not math.isfinite(fps) or not 1<=fps<=120:
+    if type(fps) not in (int,float) or not 1<=fps<=120 or not math.isfinite(fps):
         raise ProjectError('Retained GLB requires an explicit interchange rate from 1 to 120 fps')
     entry=options(project,scene_id,record_id,expected_source_key)['entry']
     if entry['object_count']>64:raise ProjectError('Retained GLB supports at most 64 existing rigid objects')

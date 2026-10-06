@@ -21,7 +21,7 @@ def _snapshot(project, entity_id: str, fps: float) -> dict:
 
     if project.mode != 'edit':
         raise ProjectError('Animation GLB authoring requires Edit mode')
-    if type(fps) not in (int, float) or not math.isfinite(fps) or not 1 <= fps <= 120:
+    if type(fps) not in (int, float) or not 1 <= fps <= 120 or not math.isfinite(fps):
         raise ProjectError('Choose an explicit animation interchange rate from 1 to 120 fps')
     document = project.imports.get(project.active_scene)
     actor = next((item for item in (document or {}).get('actors', [])

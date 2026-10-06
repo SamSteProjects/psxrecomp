@@ -1,5 +1,30 @@
 # Legaia SDK feature matrix
 
+## Animation GLB numeric overflow rejection - 2026-10-06
+
+**Stability fix:** huge JSON integers in node vectors, integer quaternion
+components or interchange FPS could raise uncaught `OverflowError`. Vector
+validation now turns float-conversion overflow into the existing import error;
+quaternion components reject outside the existing unit tolerance before squared
+norm arithmetic. Import/export and both SDK FPS guards check range before float
+finiteness. Valid source ranges, quaternion tolerance, sidecars and serializers
+are unchanged. Invalid inputs return ordinary HTTP 400 instead of losing the
+request to an uncontrolled exception.
+
+**Verification:** 25 focused numeric/import/cubic/unit-scale checks passed.
+The pinned `1ed42e61` importer reproduced `OverflowError` for oversized
+translation, quaternion and FPS; the new importer rejected each with `ImportError`.
+HTTP checks covered huge rates on imported export and retained Review plus a
+usable follow-up request. A private retail retained upload returned 400 for huge
+translation, quaternion and scale, then 200 for a valid no-op with the original
+record hash. Project/history and reference files stayed unchanged. No new Build,
+game launch, installation or full-disc export was required or performed.
+
+Evidence: `local-output/sdk-20260909/animation-glb-numeric-bounds-20261006/`
+(`verify.py`, pinned `baseline.py`, and `proof.json`). Gameplay verification and
+the remaining full SDK/runtime requirements remain deferred/open.
+
+
 ## GLB constant unit-scale interoperability - 2026-10-06
 
 **Implemented external animation compatibility:** imported-channel and retained

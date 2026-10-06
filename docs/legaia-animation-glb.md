@@ -131,3 +131,18 @@ Private evidence in `local-output/sdk-20260909/animation-glb-identity-scale-2026
 covers imported and retained no-op/Review/pose/Apply, actual editor preview/Return,
 Undo/Redo, Save/Open and exact relocated native ANM readback from normal Build
 `3174f674d5c90450`. Gameplay playback/timing and general retargeting remain deferred.
+
+## Numeric rejection stability - 2026-10-06
+
+Oversized JSON integers in node vectors/quaternions and FPS now reject through
+normal import/SDK errors. FPS range checks precede float conversion; vector
+conversion overflow is rejected; quaternion magnitude is bounded before norm
+arithmetic. Existing valid tolerance and native output behavior are preserved.
+Both imported and retained HTTP workflows return 400 for these malformed values
+without changing project/history or preventing a subsequent valid review.
+
+25 focused checks and a private retail retained upload verified this behavior.
+The pinned previous importer reproduced three uncontrolled overflow paths;
+`local-output/sdk-20260909/animation-glb-numeric-bounds-20261006/` contains the
+comparison and live HTTP evidence. A new native Build was not needed for this
+validation-only fix. Gameplay timing/retargeting acceptance remains open.

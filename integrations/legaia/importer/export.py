@@ -44,7 +44,7 @@ def _png(width: int, height: int, rgba: bytes) -> bytes:
 
 def _rigid_clip_tracks(preview: dict, fps: float):
     """glTF TRS channels for Y-reflected Rz*Ry*Rx object-local poses."""
-    if type(fps) not in (int, float) or not math.isfinite(fps) or not 1 <= fps <= 120:
+    if type(fps) not in (int, float) or not 1 <= fps <= 120 or not math.isfinite(fps):
         raise ImportError("Full-clip export requires an explicit rate from 1 to 120 fps")
     frames, objects = preview.get('frames'), preview.get('objects', [])
     if preview.get('posed') or preview.get('coordinate_system') != 'retail_tmd_object_local':

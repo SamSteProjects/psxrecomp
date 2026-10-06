@@ -60,15 +60,27 @@ def _object(value, label):
     return value
 
 
+def _finite_number(value):
+    if type(value) not in (int, float):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        # JSON integers need not fit a float; reject before numeric conversion.
+        return False
+
+
 def _vector(value, count, label):
     if (not isinstance(value, list) or len(value) != count or
-            any(type(v) not in (int, float) or not math.isfinite(v) for v in value)):
+            any(not _finite_number(v) for v in value)):
         raise ImportError(f"GLB {label} requires {count} finite components")
     return list(value)
 
 
 def _unit_quaternion(value, label):
     q = _vector(value, 4, label)
+    if any(abs(v) > 1.001 for v in q):
+        raise ImportError(f"GLB {label} must be a unit quaternion")
     norm = math.sqrt(sum(v * v for v in q))
     if not math.isfinite(norm) or abs(norm - 1) > 1e-3:
         raise ImportError(f"GLB {label} must be a unit quaternion")
@@ -450,7 +462,7 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float) -> tupl
     """
     if not isinstance(baseline, bytes):
         raise ImportError("Animation GLB baseline must be immutable record bytes")
-    if type(fps) not in (int, float) or not math.isfinite(fps) or not 1 <= fps <= 120:
+    if type(fps) not in (int, float) or not 1 <= fps <= 120 or not math.isfinite(fps):
         raise ImportError("Animation GLB requires an explicit rate from 1 to 120 fps")
     source = decode_animation_record(baseline)
     if source['bone_count'] > 64:
