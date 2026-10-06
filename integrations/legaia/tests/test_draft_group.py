@@ -23,6 +23,25 @@ class DraftGroupTests(unittest.TestCase):
         for i in set(before)-set(self.ids):self.assertEqual(p.actor_drafts[i],before[i])
         self.assertEqual(p.imports,imports);p.undo();self.assertEqual(p.actor_drafts,before);self.assertFalse(p.dirty)
         p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,p.actor_drafts)
+    def test_reviewed_removal_detached_atomic_undo_redo_persistence_and_stale(self):
+        p=self.p;before=deepcopy(p.actor_drafts);imports=deepcopy(p.imports);depth=len(p.undo_stack)
+        request=dict(entity_ids=self.ids,remove=True);report=review(p,request)
+        self.assertTrue(all(row['proposed'] is None for row in report['targets']))
+        view=proposal_view(p,report);self.assertEqual(set(view.actor_drafts),set(before)-set(self.ids))
+        self.assertEqual(p.actor_drafts,before)
+        command=dict(type='delete_actor_drafts',**request,review_key=report['review_key'])
+        for change in ({'remove':1},{'remove':False},{'delta':{'x':0,'z':0}}):
+            with self.assertRaises(ProjectError):review(p,{**request,**change})
+        with self.assertRaises(ProjectError):p.command({**command,'type':'offset_actor_drafts'})
+        p.command(command);self.assertEqual(len(p.undo_stack),depth+1)
+        self.assertEqual(p.actor_drafts,{k:v for k,v in before.items() if k not in self.ids});self.assertEqual(p.imports,imports)
+        self.assertEqual(ProjectService.open(p.save()).actor_drafts,p.actor_drafts)
+        p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(set(p.actor_drafts),set(before)-set(self.ids))
+        p.undo();p.command(dict(type='rename_actor_draft',entity_id=self.ids[0],name='Changed'))
+        unchanged=deepcopy((p.actor_drafts,p.undo_stack,p.redo_stack))
+        with self.assertRaises(ProjectError):p.command(command)
+        self.assertEqual((p.actor_drafts,p.undo_stack,p.redo_stack),unchanged)
+
     def test_alignment_and_distribution_atomic_grid_and_noop(self):
         p=self.p;ids=list(p.actor_drafts);p.command(dict(type='set_actor_draft_position',entity_id=ids[-1],position={'x':320,'z':512}));before=deepcopy(p.actor_drafts)
         request=dict(entity_ids=sorted(ids),layout={'kind':'align','axis':'x','anchor_entity_id':ids[1]})

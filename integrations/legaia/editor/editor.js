@@ -2930,9 +2930,9 @@ function renderInspector(){
       getScenePreview:()=>scenePreview,
       inspectScene:(proposed,report,returnToReview,isCurrent)=>{
         cancelViewportGesture();const failures=sceneRenderer.load(structuredClone(proposed));if(failures.length){sceneRenderer.load(structuredClone(scenePreview));throw new Error(failures.join('; '));}
-        scenePose={key:sceneKey,name:'Proposed NPC draft movement - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`${report.targets.length} proposed NPC draft movements - not applied`;
+        scenePose={key:sceneKey,name:report.request.remove?'Proposed NPC draft removal - not applied':'Proposed NPC draft movement - not applied',returnToFile:returnToReview,isCurrent};scenePoseBar.hidden=false;scenePoseBar.querySelector('span').textContent=`${report.targets.length} proposed NPC draft ${report.request.remove?'removals':'movements'} - not applied`;
         configureSceneInspectionComparison(proposed);for(const control of [scenePoseBar.querySelector('input'),scenePoseBar.querySelector('[data-play]'),scenePoseBar.querySelector('[aria-label="Scene preview rate"]').parentElement])control.hidden=true;
-        const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to NPC draft group';frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:report.targets},null);draw();
+        const back=scenePoseBar.querySelector('[data-return-file]');back.hidden=false;back.textContent='Return to NPC draft group';if(!report.request.remove)frameShapeProposal({instance_scope:'all_model_instances',proposal_instances:report.targets},null);draw();
       }
     });
     for(const control of [nameInput,rename,duplicate,repeat])control.disabled=busy||!canEdit();

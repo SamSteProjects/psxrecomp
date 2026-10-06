@@ -18,3 +18,13 @@ assert.throws(()=>draftGroupPositions({entity_ids:['a','b','c'],layout:{kind:'di
 const alignRequest={entity_ids:['a','b'],layout:{kind:'align',axis:'x',anchor_entity_id:'a'}},aligned={...structuredClone(report),request:alignRequest,changed_count:1,targets:report.targets.map(row=>({...structuredClone(row),proposed:{x:128,z:512}}))};
 assert.equal(decodeDraftGroupReview(aligned,alignRequest,state).changed_count,1);assert.throws(()=>decodeDraftGroupReview({...aligned,changed_count:2},alignRequest,state));
 console.log('NPC alignment anchor, rounded native-grid spacing/endpoints, axis preservation and changed-count qualification passed.');
+
+const removalRequest={entity_ids:['a','b'],remove:true},removalReport={...structuredClone(report),request:removalRequest,targets:report.targets.map(row=>({...structuredClone(row),proposed:null}))};
+assert.equal(decodeDraftGroupReview(removalReport,removalRequest,state).changed_count,2);
+assert.throws(()=>draftGroupPositions({...removalRequest,remove:1},state.actor_drafts));
+const removalResponse={...structuredClone(response),scene:{...structuredClone(scene),entities:[structuredClone(base.entities[2])]}};
+assert.equal(decodeDraftGroupScene(removalResponse,removalReport,base).entities.length,1);
+for(const edit of [v=>v.scene.entities.push(structuredClone(base.entities[0])),v=>v.scene.entities[0].position.x=64,v=>v.scene.assets.push({})]){const bad=structuredClone(removalResponse);edit(bad);assert.throws(()=>decodeDraftGroupScene(bad,removalReport,base));}
+console.log('Reviewed NPC removal qualifies exact absent targets and unchanged imported/unselected scene content.');
+
+assert.throws(()=>decodeDraftGroupReview({...removalReport,request:{...removalRequest,remove:false}},removalRequest,state));

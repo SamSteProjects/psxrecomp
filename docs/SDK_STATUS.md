@@ -1,5 +1,29 @@
 # Legaia SDK status — 2026-10-05
 
+## Reviewed NPC draft group removal — 2026-10-05
+
+The NPC group tool now offers **Remove selected NPC drafts** alongside offset,
+alignment and distribution. Review retains exact selected draft metadata and a
+full-project source-bound key. Its detached scene proposal removes those authored
+instances while preserving every imported and unselected entity. Changing the
+operation withdraws Apply. **Remove reviewed drafts** issues `delete_actor_drafts`
+and creates one atomic Undo entry; Undo restores stable identities and all metadata.
+Only two through 128 existing drafts in the active Edit scene are eligible.
+Malformed requests, wrong command types, missing drafts and stale reviews reject
+before mutation. Imported donor actors remain unchanged.
+
+Focused SDK group/repetition checks (eleven Python cases) and Node report/scene
+qualification pass. Actual private browser verifies review without mutation,
+detached removal, operation invalidation, Apply, exact Undo/Redo, save/reload and
+independent disk reopen; 540px layout passes with no page errors. A private normal format-7 Build passes current-input saved package verification.
+Its final decompressed native MAN matches the prepared candidate and contains
+exactly the four remaining appended NPC rows, with both removed identities absent.
+Package SHA-256: `e1026d3eb4f83f54970f58b475c157177258f71a05c5b2d5672631dae16b90ef`.
+Build leaves the project document/history and preexisting file bytes unchanged.
+Evidence is under
+`local-output/sdk-20260909/npc-draft-removal-20261005/`. Gameplay remains unverified;
+no game launch, install or disc export was performed.
+
 ## NPC drafts in the central project Asset Database — 2026-10-05
 
 The SDK project inventory now registers each validated NPC draft as an explicitly
