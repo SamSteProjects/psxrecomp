@@ -172,6 +172,23 @@ def inspector_schema():
             'notes': ['Catalog identity and provenance do not establish runtime use. Supported edits remain in the source-verified tool.'],
             'actions': [{'id': action, 'label': action_label, 'capability': capability}],
         }
+    schema['asset_inspectors']['audio'] = 'AssetAudio'
+    schema['components']['AssetAudio'] = {
+        'label': 'Source audio resource', 'layout': 'read-only-properties',
+        'properties': [
+            {'id': 'id', 'label': 'Stable ID', 'path': ['id'], 'type': 'asset-reference', 'state': 'derived'},
+            {'id': 'format', 'label': 'Source format', 'path': ['data','format'], 'type': 'string', 'state': 'read-only-retail'},
+            {'id': 'programs', 'label': 'Declared programs', 'path': ['data','bank','program_count'], 'type': 'number', 'nullable': True, 'state': 'read-only-retail'},
+            {'id': 'samples', 'label': 'Declared samples', 'path': ['data','bank','sample_count'], 'type': 'number', 'nullable': True, 'state': 'read-only-retail'},
+            {'id': 'ppqn', 'label': 'Declared ticks per quarter', 'path': ['data','sequence','ppqn'], 'type': 'number', 'nullable': True, 'state': 'read-only-retail'},
+            {'id': 'tempo', 'label': 'Initial microseconds per quarter', 'path': ['data','sequence','initial_tempo_us_per_quarter'], 'type': 'number', 'nullable': True, 'state': 'read-only-retail'},
+            {'id': 'complete', 'label': 'Declared bank byte extent complete', 'path': ['data','declared_bank_complete'], 'type': 'boolean', 'nullable': True, 'state': 'derived'},
+            {'id': 'container', 'label': 'Supported container validated', 'path': ['data','container_validated'], 'type': 'boolean', 'state': 'derived'},
+            {'id': 'assignment', 'label': 'Playback assignment', 'path': ['data','playback_assignment'], 'type': 'string', 'state': 'derived'},
+        ],
+        'notes': ['Header/container evidence only. Scene membership does not establish playback. Events, samples, duration and runtime use remain unverified.'],
+        'actions': [],
+    }
     schema['components']['AssetTrigger']['actions'].append({'id': 'inspect-asset-trigger-cells', 'label': 'Edit trigger cell', 'capability': 'field_trigger_authoring'})
     schema['components']['AssetTrigger']['actions'].append({'id': 'inspect-asset-trigger-scripts', 'label': 'Edit trigger script binding', 'capability': 'field_trigger_script_authoring'})
     schema['components']['AssetTrigger']['actions'].append({'id':'inspect-asset-trigger-group','label':'Move trigger cell group','capability':'field_trigger_authoring'})

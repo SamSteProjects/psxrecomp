@@ -74,6 +74,7 @@ def refresh_resource_catalog(project) -> dict:
     from importer.script_catalog import load_script_asset_catalog
     from importer.field_map import load_field_map_catalog
     from importer.worldmap_menu import load_worldmap_asset_catalog
+    from importer.audio_catalog import load_audio_asset_catalog
     document, key = _scene(project)
     # Remove stale metadata before attempting a new source read. A failed refresh
     # must never leave a prior catalog presented as the current verified result.
@@ -87,6 +88,7 @@ def refresh_resource_catalog(project) -> dict:
         _verify(project, document)
         for kind, loader in (("Textures", load_texture_asset_catalog), ("Animations", load_animation_asset_catalog),
                              ("Shared field animations", load_global_animation_asset_catalog),
+                             ("Source audio", load_audio_asset_catalog),
                              ("World-map landmarks", load_worldmap_asset_catalog),
                              ("Scripts and dialogue", load_script_asset_catalog),
                              ("Field collision and triggers", load_field_map_catalog)):

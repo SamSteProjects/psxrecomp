@@ -15,7 +15,7 @@ MAX_SCENES = 64
 MAX_METADATA_BYTES = 32 * 1024 * 1024
 MAX_ASSETS = 16384
 MAX_MEMBERSHIPS = 65536
-KINDS = {'scene', 'actor', 'model', 'texture', 'animation', 'script', 'dialogue',
+KINDS = {'audio', 'scene', 'actor', 'model', 'texture', 'animation', 'script', 'dialogue',
          'collision', 'trigger', 'region', 'worldmap', 'flag', 'transition'}
 STATUSES = {'available', 'partial', 'unavailable'}
 LIMITATIONS = [

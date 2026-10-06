@@ -1,5 +1,5 @@
 // Metadata evidence only: exporting never opens a source tool or authors bytes.
-const KINDS=new Set(['actor','scene','template','worldmap','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region']);
+const KINDS=new Set(['audio','actor','scene','template','worldmap','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region']);
 const hash=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const metadata=(value,depth=0,seen=new Set())=>{
   if(depth>64)throw new Error('Asset evidence exceeds the metadata depth limit.');

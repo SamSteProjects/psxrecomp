@@ -1,0 +1,18 @@
+# Source audio catalog
+
+In **Hierarchy & assets**, choose **Audio**, then **Refresh scene resources**. To browse all imported memberships, choose **Project resources** and **Refresh project resources**. Search accepts `type:audio`, source IDs, provenance and `confidence:partial`. Open a card to inspect its header and source metadata; **Save asset evidence** downloads metadata only.
+
+Identities are `audio://legaia/prot/NNNN`, scoped to the verified SCUS-94254 disc. They refer to source entries, not guest pointers or guessed track names. Each source carries the disc hash, PROT index/name, physical entry offset/length and SHA-256. Source scope is global: displaying an entry in an imported scene does not prove that scene uses it. Reference graphs expose the audio node without invented actor/scene playback edges.
+
+Discovery checks each physical PROT entry's leading bytes for VAB (`pBAV`), SEQ (`pQES`) or a type-0 chunk with a leading VAB header. Recognized reads are limited to 4 MiB per entry and 32 MiB total, over at most 4096 entries. Interior magic searches and extended neighboring-entry reads are not used. Existing verified-disc context owns source identity and freshness.
+
+Supported sound packs have exactly the bounded aligned header/sample/SEQ chunk prefix (types 0, 1, 2). Source payload hashes and ranges are retained. A complete declared VAB byte extent requires its declared size to equal header plus sample chunk sizes; waveform table validity is not inferred from this arithmetic. Single VAB/SEQ headers are also supported. Standard and Legaia SEQ header shapes retain their declared PPQN, initial tempo and time signature; no event stream is decoded and no duration is guessed.
+
+When a container cannot be decoded, a valid VAB header within its declared leading chunk can still be cataloged. Such records expose the unresolved layout reason, a null sequence and unknown bank completeness. Invalid headers remain unavailable with source indices/reasons. All records have partial confidence, unknown playback assignment and no preview/authoring capability.
+
+The format oracle is the pinned Andrew reference `d6e64c68ede25813d35db20980da82a1a025549b`: `crates/asset/src/sound_pack.rs`, `crates/vab/src/lib.rs`, and `crates/seq/src/lib.rs`. Reference code is consulted for evidence; it is not a shipped dependency.
+
+Retail evidence (2026-10-06): all 1233 source archive entries scanned, 218 recognized headers, 83 supported complete sound-pack byte extents and 135 partial containers; 22,450,176 recognized source bytes read. These counts are specific to the verified USA disc. Proprietary input, metadata fixtures and screenshots remain in ignored local-output. Events, samples, playback, audio replacement, XA and scene-use correlation need further implementation/evidence; manual gameplay is deferred.
+
+Validation: the retail-enabled 37-test focused Python regression passed with no skips/errors/failures; four existing Node contract checks and all five changed JavaScript module syntax checks passed. Fresh retail-project browser checks passed active/project discovery, source/confidence filtering, typed complete/partial header inspection, provenance visibility, metadata download and reference navigation with no page errors. Wide/narrow screenshots were inspected. Project documents, files, Undo/Redo history and the reference fixture remained unchanged. Normal native Build before/after browsing was byte-identical (package SHA-256 `7ec8b65439c3a5893fc264b95ba1d4a7d8c11af7f7687fe7dc7344a3bfbb6b98`). Private proof: `local-output/sdk-20260909/audio-catalog-20261006/proof.json`. No game launch, runtime attachment, installation or full-disc export occurred; gameplay remains deferred and the full SDK goal remains active.
+

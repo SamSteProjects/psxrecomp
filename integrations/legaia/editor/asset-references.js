@@ -1,4 +1,4 @@
-const kinds=new Set(['scene','actor','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
+const kinds=new Set(['audio','scene','actor','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region','worldmap']);
 const relations=new Set(['scene_actor','scene_model_catalog','draft_donor','initial_model','effective_initial_model','actor_script_record','encoded_scene_change','script_dialogue_segment','initial_animation_binding','recorded_model_clip_binding','field_map_table_source','landmark_destination_source','static_material_texture_source']);
 relations.add('effective_initial_animation_binding');relations.add('draft_initial_animation_binding');relations.add('appearance_donor');
 relations.add('allocated_initial_animation_binding');relations.add('allocated_model_clip_binding');relations.add('retained_model_capture');

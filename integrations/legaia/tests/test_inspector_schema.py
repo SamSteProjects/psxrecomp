@@ -99,13 +99,13 @@ class InspectorSchema(unittest.TestCase):
 
     def test_asset_inspectors_are_detached_read_only_tool_groups(self):
         schema=inspector_schema()
-        self.assertEqual(set(schema['asset_inspectors']),{'actor','scene','template','worldmap','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region'})
+        self.assertEqual(set(schema['asset_inspectors']),{'audio','actor','scene','template','worldmap','model','texture','animation','script','dialogue','flag','transition','collision','trigger','region'})
         for kind,identifier in schema['asset_inspectors'].items():
             definition=schema['components'][identifier]
             self.assertEqual(definition['layout'],'read-only-properties')
             self.assertTrue(all('authoring' not in prop for prop in definition['properties']))
-            self.assertEqual(len(definition['actions']),4 if kind == 'trigger' else 2 if kind in ('worldmap','region') else 1)
-            self.assertNotIn('command',definition['actions'][0])
+            self.assertEqual(len(definition['actions']),0 if kind == 'audio' else 4 if kind == 'trigger' else 2 if kind in ('worldmap','region') else 1)
+            for action in definition['actions']:self.assertNotIn('command',action)
         self.assertEqual(schema['components']['AssetRegion']['actions'][1]['capability'],'field_region_authoring')
         schema['components']['AssetModel']['actions'][0]['label']='changed'
         self.assertEqual(inspector_schema()['components']['AssetModel']['actions'][0]['label'],'Inspect model')
