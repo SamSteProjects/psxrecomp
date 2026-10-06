@@ -17,3 +17,21 @@ export function sceneAxisCamera(camera,axis){
  sceneCameraPlanePoint(camera,{width:1,height:1},.5,.5);
  return {...camera,projection:'orthographic',yaw:angles[axis][0],pitch:angles[axis][1],target:{...camera.target}};
 }
+
+// Fit current rendered bounds with ten percent screen padding on each edge.
+export function sceneFrameCamera(camera,viewport,points){
+ if(!['perspective','orthographic'].includes(camera?.projection)||!finite(viewport?.width)||!finite(viewport?.height)||viewport.width<1||viewport.height<1||viewport.width>1e6||viewport.height>1e6||!Array.isArray(points)||points.length<1||points.length>4096)throw new Error('Framing requires a current camera, viewport and bounded mesh corners.');
+ sceneCameraPlanePoint(camera,viewport,viewport.width/2,viewport.height/2);
+ const axes=['x','y','z'],lo={x:Infinity,y:Infinity,z:Infinity},hi={x:-Infinity,y:-Infinity,z:-Infinity};
+ for(const point of points){if(!point||axes.some(a=>!finite(point[a])||Math.abs(point[a])>1e12))throw new Error('Framing bounds contain an invalid display point.');for(const a of axes){lo[a]=Math.min(lo[a],point[a]);hi[a]=Math.max(hi[a],point[a]);}}
+ const target=Object.fromEntries(axes.map(a=>[a,(lo[a]+hi[a])/2])),basis=sceneCameraBasis(camera),focal=Math.min(viewport.width,viewport.height)*.9;
+ let distance=20;
+ for(const point of points){
+  const relative=Object.fromEntries(axes.map(a=>[a,point[a]-target[a]])),dot=v=>axes.reduce((sum,a)=>sum+relative[a]*v[a],0),depth=dot(basis.forward);
+  const horizontal=focal*Math.abs(dot(basis.right))/(viewport.width*.4),vertical=focal*Math.abs(dot(basis.up))/(viewport.height*.4);
+  distance=Math.max(distance,horizontal-(camera.projection==='perspective'?depth:0),vertical-(camera.projection==='perspective'?depth:0),(-depth+.02)/.99999);
+ }
+ distance*=1.001; // Keep exact edge/near-plane corners inside the Float32 renderer.
+ if(!finite(distance)||distance>1e8)throw new Error('Framing exceeds the supported camera distance.');
+ return {...camera,target,distance};
+}

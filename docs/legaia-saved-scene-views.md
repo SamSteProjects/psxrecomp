@@ -1,5 +1,12 @@
 # Saved scene views
 
+## Frame the isolated group — 2026-10-06
+
+After isolating a selection, use **Frame isolated** to fit its visible mesh bounds. Camera angles and Perspective/orthographic mode stay as selected; viewport aspect, current transforms and near-plane depth are included. Hidden layers are skipped. If every isolated member is hidden by its layer, framing is disabled. Restore the layer to frame again. Save the result through **Saved scene views** to retain that camera. Framing changes only the editor camera.
+
+Perspective, Front, Side and narrow viewport checks passed against every projected mesh corner. Layer visibility and the captured group remained unchanged; saved camera recall, NPC unavailable-view recovery and portable Open passed. Native Build output stayed identical. Inspected wide/narrow screenshots and proof: `local-output/sdk-20260909/scene-isolation-framing-20261006/final/`. No gameplay verification was performed.
+
+
 ## NPC visibility and deletion — 2026-10-06
 
 NPC drafts now participate in saved isolated groups, single-instance isolation and manual hidden-instance views. Use **Authored scene**; retail-only views cannot retain authored NPC visibility. Save/Replace require a currently available draft belonging to the saved scene. Mixed static decoration views still bind their exact source MAP. These bookmarks retain editor visibility only; NPC placement, models and game behavior are unchanged.

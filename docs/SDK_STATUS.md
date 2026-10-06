@@ -1,5 +1,12 @@
 # Legaia SDK status — 2026-10-06
 
+## 2026-10-06: frame isolated selections
+
+**Frame isolated** fits the currently visible mesh bounds of the captured isolation group in the viewport. It preserves yaw, pitch, projection, manual hidden instances and layer switches, and accounts for current instance transforms, perspective depth and viewport aspect with ten-percent edge padding. Hidden-layer members are skipped; the action is disabled when no isolated mesh is visible. Saved scene views retain and recall the fitted camera through the existing metadata workflow. Scene content and game coordinates are unchanged.
+
+Validation: the pure camera helper passed eighteen perspective/orthographic, aspect and orientation combinations against the actual renderer projection, plus mutation and invalid-input checks. A fresh retail-source editor browser passed Perspective, Front, Side and narrow-viewport fitting of every current mesh corner, layer skipping/disable, exact saved camera recall, NPC deletion/recovery, metadata history and portable Open. Wide and narrow screenshots were inspected; no page errors. Complete native Build output remained identical before and after the view changes (SHA-256 `ec0f718a3ebfc735e209f6cd935d4d726c5827650095422c5256557c7f7811e3`). Evidence: `local-output/sdk-20260909/scene-isolation-framing-20261006/final/proof.json`. No game launch, runtime attachment or installation occurred. Gameplay acceptance remains deferred and the full SDK goal remains active/incomplete.
+
+
 ## 2026-10-06: saved NPC visibility and unavailable-draft recovery
 
 Saved scene views now capture NPC draft isolation, mixed actor/NPC/static-decoration groups and manually hidden NPCs in the Authored scene representation. NPC-only visibility uses the authored entity identity without inventing a MAP provenance binding; environment members retain the existing source MAP checks. Save/Replace require available, validated same-scene drafts. The existing saved-placement identity validator is reused. Portable Open retains canonical references to deleted drafts, allowing view metadata to remain manageable rather than blocking the project.
