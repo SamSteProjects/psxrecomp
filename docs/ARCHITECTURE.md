@@ -990,3 +990,16 @@ The glTF determinant/winding rule is format evidence; the native packet permutat
 and raw normal magnitude policy are independently implemented and checked against
 all 24 supported packet families. Private actual browser/Build proof does not claim
 in-game rendering or normal-based retail lighting acceptance.
+
+
+### Verified mesh recovery artifacts - 2026-10-06
+
+`model-mesh-sources.js` validates exact sealed receipt fields, disjoint ordered
+ledger spans and bounded single/batch recipe shapes. Every artifact uses the
+existing Current-qualified SDK source-download route, whose native reader verifies
+retained ledger reconstruction. `qualifyMeshSourceDownload` compares the complete
+selected record with the displayed receipt and independently hashes the returned
+GLB. Detached settings/receipt JSON is published only after that source check and
+a final context guard. Dialog-owned AbortController and pending controls prevent
+closed or concurrent reads from publishing artifacts. Initial recovery availability
+is tied to the parent mesh source read; native import recipes are never replayed.

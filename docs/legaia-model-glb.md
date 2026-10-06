@@ -902,3 +902,17 @@ GLB index winding; the SDK applies determinant-based native winding correction.
 Do not reverse the GLB source indices yourself. This creates a reviewed native
 replacement without allocating new objects, vectors or packets. Gameplay rendering
 and lighting acceptance remains deferred.
+
+
+## Recover verified native-mesh import settings - 2026-10-06
+
+Open an authored model from the resource browser, choose Import GLB mesh, then
+Retained mesh sources after its source has loaded. Download original GLB, Download
+import settings JSON and Download import receipt each freshly qualify the saved
+native import and source file. The settings file contains the original single or
+batch recipe, including source scene/section choices, orientation, scale, origin,
+UV channel and donor choices. The receipt also contains source and native-ledger
+hashes. A missing/changed file or changed Current context rejects the download.
+Closing recovery cancels pending requests; no later file is published from that
+closed panel. Settings are historical evidence. Choose Current donors and perform
+a fresh Review before a new Apply; downloading them does not change project state.

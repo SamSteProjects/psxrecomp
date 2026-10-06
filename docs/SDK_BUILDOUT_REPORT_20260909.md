@@ -1,5 +1,30 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## 2026-10-06 checkpoint: verified mesh import settings recovery
+
+Retained mesh sources now downloads a separate import-settings JSON alongside the
+original GLB and complete receipt. All three artifacts requalify the Current SDK
+receipt and original source bytes before publication; selected receipt metadata
+must match the displayed snapshot, and GLB length/SHA-256 must match independently.
+The panel validates receipt fields, ledger spans, unique identities and recipe
+shape, returns detached data and rejects stale context before and after hashing.
+Closing it aborts pending reads; concurrent artifact downloads are suppressed.
+Superseded reads cannot notify a later context. Loading punctuation is corrected.
+
+The parent Import GLB mesh dialog disables Retained mesh sources until its source
+is ready, avoiding an enabled button whose early click was silently ignored.
+Recovered settings remain historical: choose Current donors and Review again for
+a new import. No receipt is replay authority and no native format changes.
+
+Five focused Python source-retention checks and the new Node recovery check passed.
+The full editor resource-browser path recovered six exact files from saved single
+and batch imports; wide/narrow views were inspected, with no page errors. Project
+files, native content and history remained unchanged. Proof:
+`local-output/sdk-20260909/mesh-settings-recovery-20261006/proof.json`.
+No native Apply, Build, game launch or runtime attachment was used. This workflow
+needs no immediate gameplay verification. The full SDK goal remains incomplete.
+
+
 ## 2026-10-06 checkpoint: mirrored model GLB transforms
 
 Current-profile fixed-layout model editing now imports signed nonzero axis scales
