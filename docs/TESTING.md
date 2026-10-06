@@ -102,3 +102,7 @@ restoring the old one.
 ## Native SEQ operand codec (2026-10-06)
 
 Run `python -m unittest test_audio_sequence_authoring test_audio_sequence -v` with `PYTHONPATH=.;integrations/legaia;integrations/legaia/tests` and `LEGAIA_DISC_BIN` configured for the local verified USA source. Ten checks passed without skips. The retail test independently constructs expected changed bytes for all 83 carriers and restores exact originals; fixtures exercise channel/tempo widths, running status, partial tails, carrier isolation and rejection. This is serializer verification, not SDK command, emitted Build or gameplay acceptance. See [SEQ operand groundwork](legaia-audio-sequence-authoring.md).
+
+## Persistent audio operands and native delivery (2026-10-06)
+
+Run `python -m unittest test_audio_authoring test_audio_sequence_authoring test_audio_sequence test_build_report test_project_workflow -v` with the same retail environment. All 31 focused checks passed. Private native proofs cover exact full-entry fixed overlay and relocated PROT delivery, directory/ZIP integrity, preserved imported metadata and existing script/animation composition, and stale Build inputs after Clear/Undo. Browser editing controls are pending; these checks do not establish audible game playback. See [SEQ authoring and delivery](legaia-audio-sequence-authoring.md).

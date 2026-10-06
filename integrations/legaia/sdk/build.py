@@ -40,6 +40,7 @@ def authored_state_key(project) -> str:
                                 "textures": getattr(project, "texture_overrides", {}),
                                 "texture_additions": getattr(project, "texture_additions", {}),
                                 "models": getattr(project, "model_overrides", {}),
+                                **({"audio": project.audio_overrides} if getattr(project, "audio_overrides", {}) else {}),
                                 **({"animation_sources": project.animation_sources} if getattr(project,"animation_sources",{}) else {}),
                                 **({"model_sources": project.model_sources} if getattr(project,"model_sources",{}) else {})}).encode("utf-8"))
 
@@ -129,6 +130,7 @@ def package_change_kinds(edits) -> list[str]:
         'script-facing-sector-only': 'script facing operands',
         'script-branch-target-only': 'script branch destinations',
         'worldmap-menu-record-only': 'world-map landmarks',
+        'audio-SEQ-fixed-operands-only': 'native audio sequence operands',
         'model-pack-topology-relocation': 'model topology and shared pack edits',
         'model-pack-content-relocation': 'model content exceeding compressed source capacity',
         'animation-bank-allocation-relocation': 'allocated animation records',
@@ -168,7 +170,9 @@ def build_report(audit) -> dict:
     changes = []
     for change in audit["edits"]:
         field = change["field"]
-        if change.get('scope') == 'script-movement-target-only':
+        if change.get('scope') == 'audio-SEQ-fixed-operands-only':
+            before, after = deepcopy(change['before_value']), deepcopy(change['after_value'])
+        elif change.get('scope') == 'script-movement-target-only':
             field = 'movement.' + field
             before, after = change['before_coordinate'], change['after_coordinate']
         elif change.get("scope") == "script-flag-bit-only":
@@ -208,6 +212,8 @@ def build_report(audit) -> dict:
                         **({"affected_grid_cell_count":len(change["affected_grid_cells"])}
                            if "affected_grid_cells" in change else {}),
                         "scope": change.get("scope", "initial-man-placement-only"),
+                        **({"event_offset": change["event_offset"], "entry_byte_offset": change["entry_byte_offset"], "byte_length": change["byte_length"]}
+                           if change.get("scope") == "audio-SEQ-fixed-operands-only" else {}),
                         **({'composition_changes': deepcopy(change['composition_changes'])}
                            if 'composition_changes' in change else {})})
     return {"schema_version": "legaia.build-report.v1", "changes": changes,
@@ -764,6 +770,10 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         worldmap_overlays, worldmap_changes = prepare_worldmap_overlay(project, _image, disc_hash)
         overlays.extend(worldmap_overlays)
         audit_edits.extend(worldmap_changes)
+        from .audio_authoring import prepare_overlays as prepare_audio_overlays
+        audio_overlays, audio_changes = prepare_audio_overlays(project, _image, archive)
+        overlays.extend(audio_overlays)
+        audit_edits.extend(audio_changes)
         growth_requests, growth_audit = [], None
         if getattr(project, 'model_overrides', {}):
             from .model_growth import prepare_model_growth
@@ -1350,7 +1360,7 @@ def _build_project(project, output_dir, *, review_only=False) -> dict:
         description = 'Private source-bound model shapes and optional authored scene data.'
         feature_description = 'Apply verified model coordinate edits and other packaged overrides; model topology and materials remain source-owned.'
     change_kinds = package_change_kinds(audit_edits)
-    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('animation channels', 'source collision walls', 'source floor selectors', 'source floor heights', 'source region bounds', 'other audited scene data')):
+    if len(change_kinds) > 1 or any(kind in change_kinds for kind in ('native audio sequence operands', 'animation channels', 'source collision walls', 'source floor selectors', 'source floor heights', 'source region bounds', 'other audited scene data')):
         package_suffix = ' authored scene data'
         feature_name = 'Authored scene data'
     if change_kinds:

@@ -1,5 +1,11 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Persistent SEQ operands and native delivery (2026-10-06)
+
+The native audio codec now has source-qualified SDK commands, atomic Undo/Redo, dirty/authored-resource tracking, Save/Open and project-copy validation. Review preserves project state; Apply revalidates its source/state/proposal key. Restoring retail values or clearing removes the binding. Build independently encodes requested operands and preserves full native entries in both fixed overlays and composed PROT relocation, with audio-specific reports. Browser editing controls are the next integration; source/audio playback assignment and gameplay remain unverified.
+
+All 31 focused Python checks passed without skips. Actual complete/partial retail commands and HTTP freshness guards passed; fresh relocated and plain fixed-span packages retained exact expected full audio entries, source imports and existing script/animation composition. Saved Build freshness changes on Clear and restores on Undo. See [SEQ authoring and delivery](legaia-audio-sequence-authoring.md); evidence is in `local-output/sdk-20260909/audio-authoring-20261006/`. No game launch, attachment, installation or full-disc export. The goal remains active and development stays solo.
+
 ## Connected and inverse model vertex selections (2026-10-06)
 
 The 3D movement editor now expands selected vertices through Current object preview triangles and inverts a group within its object-local table. These are local selection actions; coordinates/normals/topology and history stay unchanged until an explicit group Save. Existing saved-group Recall, Undo/Redo and Save/Open preserve the exact selection. Coincident positions/shared normals are not links; malformed/cross-object triangle references and results over4096 vertices reject atomically. Geometry drafts lock these selection tools.

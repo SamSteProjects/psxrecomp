@@ -6,6 +6,8 @@ from .project import ProjectError, canonical, digest, atomic_write
 
 
 def capture_export_inputs(project, *, max_bytes=None, max_files=None):
+    from .audio_authoring import validate_collection as validate_audio
+    validate_audio(project)
     key = authored_state_key(project)
     files = {}
     total = 0
