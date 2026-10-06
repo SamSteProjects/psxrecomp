@@ -93,3 +93,23 @@ the integrated 498-test checkpoint. Full SDK/runtime acceptance remains open.
 A subsequent integrated pass on clean committed source `7a6459e4` passed514
 Python tests in365.743s with no skips,26 Node test files and27 editor syntax checks.
 This includes project copies; it does not add gameplay or native runtime acceptance.
+
+## Retained mesh and texture sources - 2026-10-06
+
+Editable copies and saved export input snapshots now include original GLBs
+referenced by Current model import receipts. Hash-named files under
+`Authored/Models/Sources` are qualified and copied with the native TMD and ledger.
+Shared originals appear once in the captured inventory. Retained texture PNGs
+and GLBs are also accepted by the editor copy inventory and saved-copy discovery.
+The existing 512-file/256-MiB copy limits include these inputs.
+
+Open the copied project, choose **Import GLB mesh > Retained mesh sources**, and
+download the same original GLBs and settings. Missing or changed sources reject
+copy review/creation before a completed copy is published. Unreferenced files
+and inputs reachable only through excluded Undo/Redo history are not copied.
+Review and Copy still preserve the original project's metadata, dirty state and
+history. Retained original inputs remain project sources, not runtime Build
+assets. Older snapshots created without mesh sources are not repaired implicitly.
+
+The same capture routine serves export input snapshots and editable recovery
+copies. Synthetic snapshot/recovery checks do not generate a retail disc export.

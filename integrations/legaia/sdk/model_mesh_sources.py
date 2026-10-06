@@ -43,6 +43,13 @@ def _path(project,record):
     if not path.resolve().is_relative_to(project.root):raise ProjectError('Mesh source path escapes project')
     return path
 
+def read_source(project,record):
+    path=_path(project,record)
+    if not path.is_file() or path.stat().st_size!=record['byte_length']:raise ProjectError('Retained mesh source is missing or changed size')
+    content=path.read_bytes()
+    if len(content)!=record['byte_length'] or sha256(content).hexdigest()!=record['glb_sha256']:raise ProjectError('Retained mesh source hash changed')
+    return content
+
 def _metadata(asset,binding):
     records=binding.get('mesh_imports',[])
     if not isinstance(records,list) or not 1<=len(records)<=MAX_SOURCES:raise ProjectError('Mesh source receipts require 1 through 32 entries')
@@ -73,10 +80,7 @@ def validate(project,asset,binding,base):
     """Reconstruct each import from its original input and preceding native ledger."""
     records=_metadata(asset,binding);rows=operations(binding)
     for record in records:
-        path=_path(project,record)
-        if not path.is_file() or path.stat().st_size!=record['byte_length']:raise ProjectError('Retained mesh source is missing or changed size')
-        content=path.read_bytes()
-        if sha256(content).hexdigest()!=record['glb_sha256']:raise ProjectError('Retained mesh source hash changed')
+        content=read_source(project,record)
         start=record['first_operation'];end=start+record['operation_count']
         def prefix(length):return dict(schema_version=binding['ledger']['schema_version'],source_sha256=binding['ledger']['source_sha256'],source_byte_length=binding['ledger']['source_byte_length'],operations=deepcopy(rows[:length]))
         # Mesh allocations always produce v5+ ledgers with operations, including an empty prefix.
@@ -115,8 +119,7 @@ def download(project,asset,key,receipt):
     record=next((row for row in result['imports'] if row['receipt_key']==receipt),None)
     if record is None:raise ProjectError('Retained mesh source receipt is absent from Current')
     import base64
-    content=_path(project,record).read_bytes()
-    if len(content)!=record['byte_length'] or sha256(content).hexdigest()!=record['glb_sha256']:raise ProjectError('Retained mesh source changed during download')
+    content=read_source(project,record)
     from .scene_preview import source_key
     if source_key(project)!=key:raise ProjectError('Mesh source context changed during download')
     return dict(result,selected=record,content_base64=base64.b64encode(content).decode())

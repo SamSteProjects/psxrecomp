@@ -676,3 +676,23 @@ inputs. Undo removes the Current receipt; Redo restores it using retained bytes.
 Missing/changed GLBs or recipes fail qualification and Build. Retained originals
 are project sources, not runtime package assets. Older imports have no retained
 original unless they were applied again through this workflow.
+
+## Retained mesh and texture sources - 2026-10-06
+
+Editable copies and saved export input snapshots now include original GLBs
+referenced by Current model import receipts. Hash-named files under
+`Authored/Models/Sources` are qualified and copied with the native TMD and ledger.
+Shared originals appear once in the captured inventory. Retained texture PNGs
+and GLBs are also accepted by the editor copy inventory and saved-copy discovery.
+The existing 512-file/256-MiB copy limits include these inputs.
+
+Open the copied project, choose **Import GLB mesh > Retained mesh sources**, and
+download the same original GLBs and settings. Missing or changed sources reject
+copy review/creation before a completed copy is published. Unreferenced files
+and inputs reachable only through excluded Undo/Redo history are not copied.
+Review and Copy still preserve the original project's metadata, dirty state and
+history. Retained original inputs remain project sources, not runtime Build
+assets. Older snapshots created without mesh sources are not repaired implicitly.
+
+The same capture routine serves export input snapshots and editable recovery
+copies. Synthetic snapshot/recovery checks do not generate a retail disc export.

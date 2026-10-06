@@ -43,6 +43,10 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
     for identifier, binding in project.model_overrides.items():
         payload = project.read_model_replacement(identifier, binding)
         store(f"Authored/Models/{binding['asset_sha256']}.tmd",payload)
+        if binding.get('mesh_imports'):
+            from .model_mesh_sources import read_source
+            for receipt in binding['mesh_imports']:
+                store(f"Authored/Models/Sources/{receipt['glb_sha256']}.glb",read_source(project,receipt))
         if binding['format'] == 'tmd-face-addition-v1' and binding['base_binding'] is not None:
             base = binding['base_binding']
             store(f"Authored/Models/{base['asset_sha256']}.tmd",

@@ -1,5 +1,33 @@
 # Legaia SDK buildout milestone — 2026-09-09
 
+## Retained source inputs in editable project copies - 2026-10-06
+
+**Implemented offline workflow:** Copy project and saved export input snapshots
+now carry the original GLBs referenced by Current mesh import receipts. Sources
+are qualified and included in the inventory/file hashes; shared originals are
+deduplicated. Missing/changed inputs reject before copy creation. Unreferenced
+files and excluded Undo/Redo dependencies stay excluded. Copy byte/file limits
+include retained inputs. The editor and saved-copy discovery now also accept
+retained texture PNGs, fixing rejection of otherwise valid texture-source copies.
+
+Validation: **26 focused Python cases plus the project-copy Node checks** passed.
+Checks cover copied native qualification, original GLB recovery, shared-input
+deduplication, snapshot recovery, texture PNG/STP source recovery, corruption,
+source preservation, bounds, and editor inventory/path guards. Private retail
+Town01 proof used the actual Copy project, saved-copy list, Open copy and mesh
+source download controls at wide/narrow widths. Both GLBs and JSON receipts
+matched. Original files/history and the separate source reference were held.
+Copied-project normal Build **6dc800e2b077da1a**, package SHA-256
+`1f3be0e69bbf76e36e52a9394e2613e1460587ba8982ead81c67f72991fe3c9a`, verified Current inputs and
+matched native model 0036 bytes in the package. Evidence:
+`local-output/sdk-20260909/mesh-source-project-copy-20261006/proof.json`.
+
+No game launch, installation or full-disc export. Export input recovery was
+checked with synthetic saved-snapshot metadata. Older snapshots lacking mesh
+sources are not repaired implicitly. Gameplay acceptance remains queued and the
+full SDK goal remains active/incomplete.
+
+
 ## Retained GLB mesh sources and import receipts - 2026-10-06
 
 Reviewed single and mapped mesh Apply now retain original GLB bytes under

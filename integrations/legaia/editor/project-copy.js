@@ -2,7 +2,7 @@ const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 function inventory(value){
   if(!Array.isArray(value)||!value.length||value.length>512)throw new Error('Invalid project input inventory');
   const seen=new Set();let total=0;
-  for(const row of value){if(!row||typeof row.path!=='string'||!(/^(project\.legaia\.json|Imported\/[0-9a-f]{64}\.json|Authored\/Textures\/[0-9a-f]{64}\.tim|Authored\/Models\/[0-9a-f]{64}\.tmd|Authored\/TextureSources\/[0-9a-f]{64}\.glb)$/.test(row.path))||seen.has(row.path)||!hash(row.sha256)||!Number.isSafeInteger(row.byte_length)||row.byte_length<0||row.byte_length>64*1024*1024)throw new Error('Invalid copied input identity');seen.add(row.path);total+=row.byte_length;}
+  for(const row of value){if(!row||typeof row.path!=='string'||!(/^(project\.legaia\.json|Imported\/[0-9a-f]{64}\.json|Authored\/Textures\/[0-9a-f]{64}\.tim|Authored\/Models\/[0-9a-f]{64}\.tmd|Authored\/TextureSources\/[0-9a-f]{64}\.(glb|png)|Authored\/Models\/Sources\/[0-9a-f]{64}\.glb)$/.test(row.path))||seen.has(row.path)||!hash(row.sha256)||!Number.isSafeInteger(row.byte_length)||row.byte_length<0||row.byte_length>64*1024*1024)throw new Error('Invalid copied input identity');seen.add(row.path);total+=row.byte_length;}
   if(!seen.has('project.legaia.json')||total>256*1024*1024)throw new Error('Copied input inventory exceeds limit');return total;
 }
 export function decodeCopyReview(value,key,path){
@@ -45,7 +45,7 @@ export function mountProjectCopy({after,getState,busy,setBusy,api}){
       }catch(error){if(dialog.open){const note=document.createElement('p');note.textContent=`Saved copies unavailable: ${error.message}`;saved.append(note);}}
     };
     refresh.onclick=async()=>{if(busy()||!current())return;setBusy(true);try{await loadSaved();}finally{setBusy(false);}};
-    setBusy(true);try{reviewed=decodeCopyReview(await request('/api/project/copy-review',{}),key,root);status.textContent=`${reviewed.file_count} captured input files · ${reviewed.byte_length.toLocaleString()} bytes${reviewed.source_dirty?' · includes unsaved metadata':''}`;const note=document.createElement('p');note.textContent='Copies imported evidence, authored changes, drafts, templates, saved views/selections and referenced authored model/texture files. Retail disc, generated outputs, live state and undo history are excluded. The original stays open.';summary.append(note);form.hidden=false;}catch(error){if(dialog.open)status.textContent=`Could not review inputs: ${error.message}`;}finally{setBusy(false);}
+    setBusy(true);try{reviewed=decodeCopyReview(await request('/api/project/copy-review',{}),key,root);status.textContent=`${reviewed.file_count} captured input files · ${reviewed.byte_length.toLocaleString()} bytes${reviewed.source_dirty?' · includes unsaved metadata':''}`;const note=document.createElement('p');note.textContent='Copies imported evidence, authored changes, drafts, templates, saved views/selections and referenced authored model/texture files, including retained original GLB and PNG inputs for source recovery. Retail disc, generated outputs, live state and undo history are excluded. The original stays open.';summary.append(note);form.hidden=false;}catch(error){if(dialog.open)status.textContent=`Could not review inputs: ${error.message}`;}finally{setBusy(false);}
     if(current()){setBusy(true);try{await loadSaved();}finally{setBusy(false);}}
   };
 }
