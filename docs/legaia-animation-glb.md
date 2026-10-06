@@ -13,8 +13,10 @@ existing frame/object counts and selected interchange rate.
 2. Choose an explicit rate from 1 to 120 fps and export the GLB and binding JSON.
    Both files are also retained in the project's private `Exports` directory.
 3. Edit the independent `object-0`, `object-1`, etc. translation/rotation channels
-   in Blender or another GLB editor. Keep object names, source object indices,
-   unit scale, existing timeline and rigid-object arrangement.
+   in Blender or another GLB editor. Keep the exported `source_object.object_index`
+   custom properties; display names may change. If those properties are omitted,
+   preserve the `object-N` names. Keep unit scale, the existing timeline and
+   independent rigid-object arrangement.
 4. Export a self-contained GLB. Select that GLB and the original binding JSON
    in the SDK, then **Review selected files**. Inspect the exact source-axis changes,
    quantization error and shared ownership, and inspect the proposed animation.
@@ -162,3 +164,18 @@ selection. Changing the dropdown clears Review, even when switching back.
 Native records and saved contribution/retained-recipe schemas are unchanged.
 This extends existing rigid-object authoring; it does not introduce general
 skinned retargeting or establish retail playback acceptance.
+
+## Preserving identity while renaming external objects
+
+Nodes retaining `extras.source_object.object_index` map directly to that native
+object. Readable names and absent names are supported, and node order may change
+when the GLB scene/channel references change with it. A canonical `object-N`
+name still rejects if it contradicts the preserved index. Every native object
+must appear exactly once, within the selected scene; malformed, duplicate or
+out-of-range source indices reject. Renaming does not authorize a different
+object count, skinning or parented source-object transforms.
+
+The original binding remains qualified against the current source clip and
+project. Whole-file hashing and native candidate Review bind the edited file;
+Apply never trusts a display name as runtime identity. In external exporters,
+enable custom properties/extras or preserve the original `object-N` names.

@@ -206,13 +206,20 @@ def _nodes(doc, object_count):
         if "skin" in node or "weights" in node:
             raise ImportError("Rigid animation cannot import skinning or morph weights")
         name = node.get("name", "")
+        if not isinstance(name, str):
+            raise ImportError("GLB node display name must be a string")
         match = re.fullmatch(r"object-(0|[1-9][0-9]*)", name) if isinstance(name, str) else None
         extras = node.get("extras", {})
         source = extras.get("source_object") if isinstance(extras, dict) else None
         identity = int(match.group(1)) if match else None
-        if source is not None:
-            if not isinstance(source, dict) or type(source.get("object_index")) is not int or source["object_index"] != identity:
+        if isinstance(extras, dict) and "source_object" in extras:
+            source = _object(source, "source object identity")
+            source_index = _integer(source.get("object_index"), 0, object_count - 1, "source object identity")
+            # Exported extras survive external object renaming. Canonical names
+            # still cannot claim a different native object than those extras.
+            if identity is not None and source_index != identity:
                 raise ImportError("GLB object name and source object identity disagree")
+            identity = source_index
         if identity is not None:
             _integer(identity, 0, object_count - 1, "source object index")
             if identity in mapping:

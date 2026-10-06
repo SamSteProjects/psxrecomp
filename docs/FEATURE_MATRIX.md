@@ -1,5 +1,34 @@
 # Legaia SDK feature matrix
 
+## External animation object names retain native identity - 2026-10-06
+
+Rigid GLB nodes may now use readable external names, or omit display names,
+when they preserve the exported `extras.source_object.object_index`. Node order
+may change with consistent scene/channel indices. Without that property, the
+existing `object-N` fallback remains. Canonical names contradicting preserved
+indices reject, as do malformed, duplicate and out-of-range identities. Every
+source object must still occur once in the selected scene, independently of
+other mapped source objects. Native layout, quantization and source-bound
+Review/Apply remain unchanged; this does not infer skinning or retargeting.
+
+**Verification:** 33 focused Python cases passed, including exact native/opaque
+no-op preservation after renaming/reordering, exact edited-object targeting,
+unnamed nodes, name-only fallback and malformed/conflicting identity rejection.
+Pinned `5d6ae248` reproduced the original rejection on the same renamed fixture.
+Private retail editor and normal Build evidence lives in
+`local-output/sdk-20260909/animation-glb-node-identity-20261006/`.
+Gameplay acceptance and the full SDK goal remain incomplete.
+
+Both real retail browser workflows passed named second-clip Review, Pose/Return,
+selection invalidation and explicit Apply with renamed/reordered nodes. Each
+Apply produced one undoable command; Undo/Redo and Save/Open held exact state.
+Normal Build `b13165dd5963e983` produced package SHA-256
+`ffe8073a5067765b2b519bf2a4dd173f8f5f435ffdce5b4be195656c59ef2ce6`.
+Independent relocated-carrier decompression matched the authored native bank
+SHA-256 `6c1bd95f47855b285e17f3f928fd07b652d894f8fbe3b8c5bc7c92970e4716a2`.
+The reference project remained byte-for-byte unchanged; no game was launched.
+
+
 ## Named GLB animation selection - 2026-10-06
 
 Both imported-actor and retained UUID GLB editors now list the uploaded file's
