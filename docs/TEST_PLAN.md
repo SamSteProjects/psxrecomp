@@ -1,9 +1,26 @@
 # Legaia SDK validation plan
 
+## Authored NPC Asset Details — 2026-10-05
 
+NPC draft cards in active-scene and project scopes now use the SDK-owned
+`AssetNpcDraft` descriptor. It presents the authored identity, name, project scene,
+retail donor binding and authored X/Z coordinates with Project/Authored state
+badges. Imported actor cards retain their existing descriptor. The separate
+`authored_asset_inspectors` mapping preserves imported asset contracts.
 
+The adapter rejects inconsistent draft identities, scene/name/donor records and
+invalid native-grid coordinates before mounting the descriptor. Its only registered
+action, **Select NPC draft**, uses existing scene navigation and opens the draft
+Inspector. This exposes current SDK authored records; it does not add imported
+Asset Database memberships or establish runtime spawning/visibility.
 
-
+Validation: twelve Python Inspector schema cases and the expanded Node asset
+Inspector checks pass. Actual private browser checks match every SDK property in
+both scopes, select the correct NPC Inspector and pass at 540px with no page errors.
+Project document, Undo/Redo and all project file bytes remain unchanged. Evidence:
+`local-output/sdk-20260909/npc-draft-asset-inspector-20261005/proof.json` and
+`asset-540.png`. No Build, game launch, install or disc export was performed;
+manual gameplay verification remains deferred.
 
 ## NPC draft Inspector schema checkpoint — 2026-10-05
 

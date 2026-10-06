@@ -1,6 +1,16 @@
 import unittest
 from sdk.inspector_schema import inspector_schema
 class InspectorSchema(unittest.TestCase):
+    def test_npc_draft_asset_schema_is_authored_metadata_with_selection_only(self):
+        schema=inspector_schema();self.assertEqual(schema['authored_asset_inspectors'],{'npc_draft':'AssetNpcDraft'})
+        component=schema['components']['AssetNpcDraft'];self.assertEqual(component['layout'],'read-only-properties')
+        self.assertTrue(all('authoring' not in prop for prop in component['properties']))
+        positions=[p for p in component['properties'] if p['id'] in ('x','z')]
+        self.assertTrue(all(p['path'][:3]==['authoredRecord','authored','position'] for p in positions))
+        self.assertTrue(all(p['state']=='authored-through-command' for p in positions))
+        self.assertEqual(component['actions'],[{'id':'select-asset-actor','label':'Select NPC draft','capability':'project_navigation'}])
+        component['properties'][0]['path'].clear();self.assertEqual(inspector_schema()['components']['AssetNpcDraft']['properties'][0]['path'],['id'])
+
     def test_npc_draft_identity_authored_position_and_preview_remain_separate(self):
         schema=inspector_schema();components=schema['components']
         for name in ('NpcDraftIdentity','NpcDraftTransform','NpcDraftPreview'):

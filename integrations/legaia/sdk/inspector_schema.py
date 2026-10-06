@@ -251,6 +251,20 @@ def inspector_schema():
             {'id':'mode','label':'Mode','path':['mode'],'type':'string','state':'editor-state'},
         ],'actions':[{'id':'rename-project','label':'Rename project…','capability':'project_settings','requires_edit':True}],
         'notes':['Rename changes project metadata and future package identity. Save persists it; Undo restores the previous name. Imported content and authored assets retain their identities.']}
+    schema['authored_asset_inspectors']={'npc_draft':'AssetNpcDraft'}
+    schema['components']['AssetNpcDraft']={
+        'label':'Authored NPC draft asset','units':'Project-local donor candidate','layout':'read-only-properties',
+        'properties':[
+            {'id':'id','label':'Authored identity','path':['id'],'type':'entity-reference','state':'read-only-project'},
+            {'id':'name','label':'Name','path':['authoredRecord','name'],'type':'string','state':'authored-through-command'},
+            {'id':'scene','label':'Project scene','path':['authoredRecord','scene_id'],'type':'asset-reference','state':'read-only-project'},
+            {'id':'donor','label':'Retail donor binding','path':['authoredRecord','donor_entity_id'],'type':'entity-reference','state':'authored-through-command'},
+            *[{'id':axis,'label':'Authored '+axis.upper(),'path':['authoredRecord','authored','position',axis],
+               'type':'number','state':'authored-through-command'} for axis in ('x','z')]],
+        'actions':[{'id':'select-asset-actor','label':'Select NPC draft','capability':'project_navigation'}],
+        'notes':['This is authored project metadata, not an imported retail actor placement or a confirmed runtime identity.',
+                 'The scene and donor references preserve their SDK identities. Preview/model/script behavior comes from separate qualified tools.',
+                 'Use Review Build for the complete project candidate. A browsable draft does not establish runtime spawning, visibility or gameplay.']}
     schema['components']['NpcDraftIdentity']={
         'label':'NPC draft identity','layout':'read-only-properties',
         'properties':[
