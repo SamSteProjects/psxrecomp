@@ -6,6 +6,8 @@ this doc is the component-level view.
 
 ## Legaia SDK and authoring editor
 
+`model_vertex_grid.py` qualifies an explicit selected-axis/source-unit grid operation through the existing native vector writer, preserves signed16 bounds and audits against retail layout. Project object-preview and model-replacement history own Review/Apply; the movement editor owns local staging, source freshness and complete candidate/scene qualification. Native Build reuses the existing model replacement composition.
+
 `script-node-layers.js` renders selected source boundaries from the already qualified branch snapshot/review DTOs. It validates bounded raw spans and source shape, derives exact per-node byte differences, and keeps unavailable/unvisited paths explicit. `script-branches.js` owns selection and review lifecycle, Current composition remains in SDK operand writers, and stale/failed/discarded reviews withdraw the renderer. No new endpoint, authored state or serializer is introduced.
 
 `source_build_script.py` resolves imported script owners in verified emitted MAN carriers, reusing bounded saved-package/PROT qualification from `npc_build_script.py` and existing native layout/instruction readers. It introduces no authored state or serializer. `source-build-script.js` owns receipt selection, source/state freshness checks, raw-record hash/difference qualification, bounded paired display and local download; the script dialog owns disposal and shared busy state.

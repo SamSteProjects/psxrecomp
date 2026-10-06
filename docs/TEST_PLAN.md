@@ -1,5 +1,12 @@
 # Legaia SDK validation plan
 
+## Native-grid snapping for selected model vertices (2026-10-06)
+
+The existing 3D model movement editor now stages a selected group's Current object-local coordinates onto a native-unit grid, with explicit X/Y/Z axes and integer spacing. Halfway values round away from zero; signed16 overflow rejects the whole operation. Draft/Current/Retail and scene Review/Return remain separate from one atomic Apply. Selected rows/axes change; normals, topology and other rows/objects retain their existing native qualification. Already snapped rows are a no-op; Undo/Redo and Save/Open use the model replacement workflow. This adds authored geometry, not a runtime grid or actor-placement rule.
+
+Workflow and acceptance boundary: [vertex grid tool](legaia-model-vertex-grid.md). Private evidence is in `local-output/sdk-20260909/vertex-grid-20261006/`. Development continues solo; gameplay verification remains deferred.
+
+
 ## Selected script operand layers (2026-10-06)
 
 The source-flow workspace now inspects a selected original instruction/message boundary across Retail, composed Current and reviewed Proposed layers. It shows decoded operands, dispatch/length/successor fields and exact encoded byte differences by record PC. Pending nonbranch form drafts are excluded; unavailable inspections and boundaries not decoded on a layer remain explicit. Review invalidation/Discard, failed Apply, stale source/state and close withdraw the displayed proposal. This is read-only static inspection, with no VM or runtime observation.
