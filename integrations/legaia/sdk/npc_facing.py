@@ -6,8 +6,111 @@ from copy import deepcopy
 from hashlib import sha256
 from importer.facing_authoring import patch_facing_sector,PRESERVATION_MASK
 from importer.man_layout import read_man_layout
+from importer.core import ImportError as NativeError
 from .npc_script_allocation import allocated_scripts
-from .project import ProjectError
+from .project import ProjectError,digest
+from .project_copy import source_key
+
+
+def effective_record(project,draft,context):
+    offset,record,entry=context._source.verified_record(draft['donor_entity_id'])
+    if 'movement' in draft:
+        movement=project._movement_context(draft['donor_entity_id'])
+        if movement._man!=context._man:raise ProjectError('NPC facing/movement source snapshots differ')
+        candidate,_=movement.patch(draft['movement']['entries']);record=candidate[offset:offset+len(record)]
+    return record,entry,offset
+
+
+def qualify(project,draft,entries,context=None):
+    context=context or project._facing_context(draft['donor_entity_id']);options=context.options(draft['donor_entity_id']);targets={r['semantic_id']:r for r in options['targets']}
+    if set(entries)-set(targets):raise ProjectError('NPC facing entry is not supported by its source donor')
+    context.patch(entries);record,entry,offset=effective_record(project,draft,context)
+    for identifier,values in entries.items():patch_facing_sector(record,entry,targets[identifier]['pc'],values,base_offset=offset)
+    return context
+
+
+def validate(project, draft):
+    if 'facing' not in draft:
+        return
+    value = draft['facing']
+    if not isinstance(value, dict) or set(value) != {'donor_entity_id', 'entries'} or value['donor_entity_id'] != draft['donor_entity_id']:
+        raise ProjectError('NPC facing belong to their script donor; clear facing before changing donor')
+    project._validate_facing(draft['donor_entity_id'], {'entries': value['entries']})
+
+
+def source(project, identifier):
+    draft = project.actor_drafts.get(identifier) if isinstance(identifier, str) else None
+    if project.mode != 'edit' or not isinstance(draft, dict) or draft['scene_id'] != project.active_scene:
+        raise ProjectError('NPC facing require an active-scene draft in Edit mode')
+    project._validate_actor_draft(identifier, draft);key = source_key(project)
+    context = project._facing_context(draft['donor_entity_id'])
+    options = context.options(draft['donor_entity_id'])
+    entries = draft.get('facing', {}).get('entries', {})
+    if set(entries) - {r['semantic_id'] for r in options['targets']}:
+        raise ProjectError('Current NPC facing are not source-qualified')
+    qualify(project,draft,entries,context=context)
+    current,entry,source_offset=effective_record(project,draft,context)
+    for row in options['targets']:
+        try:
+            patch_facing_sector(current,entry,row['pc'],row['values'])
+            row['effective_supported']=True;row['effective_reason']=None
+        except NativeError as error:
+            row['effective_supported']=False;row['effective_reason']=str(error)
+        row['authored_values'] = deepcopy(entries.get(row['semantic_id']))
+        row['effective_values'] = deepcopy(entries.get(row['semantic_id'], row['values']))
+    if source_key(project) != key:
+        raise ProjectError('Project changed during NPC facing inspection')
+    return dict(schema_version='legaia.npc-facing-source.v1', entity_id=identifier,
+                scene_id=draft['scene_id'], project_source_key=key, draft=deepcopy(draft),
+                options=options, gameplay_verified=False, runtime_dispatch='not_asserted')
+
+
+def review(project, request):
+    if not isinstance(request, dict) or set(request) != {'entity_id', 'entries'} or not isinstance(request['entries'], dict):
+        raise ProjectError('NPC facing review requires identity and complete typed entries')
+    report = source(project, request['entity_id']);draft = report['draft'];proposed = deepcopy(draft)
+    if request['entries']:
+        proposed['facing'] = dict(donor_entity_id=draft['donor_entity_id'], entries=deepcopy(request['entries']))
+    else:
+        proposed.pop('facing', None)
+    project._validate_actor_draft(request['entity_id'], proposed)
+    if set(request['entries']) - {r['semantic_id'] for r in report['options']['targets']}:
+        raise ProjectError('NPC facing entry is not qualified by its script donor')
+    qualify(project,proposed,request['entries'])
+    _, changes = project._facing_context(draft['donor_entity_id']).patch(request['entries'])
+    if source_key(project) != report['project_source_key']:
+        raise ProjectError('Project changed during NPC facing review')
+    return dict(schema_version='legaia.npc-facing-review.v1', entity_id=request['entity_id'],
+                project_source_key=report['project_source_key'], request=deepcopy(request),
+                current=draft, proposed=proposed, changes=changes,
+                review_key=digest(dict(source=report['project_source_key'], request=request, algorithm='npc-facing-targets.v1')),
+                gameplay_verified=False, runtime_dispatch='not_asserted')
+
+
+def apply(project, command):
+    if set(command) != {'type', 'entity_id', 'entries', 'review_key'}:
+        raise ProjectError('NPC facing Apply requires exact reviewed fields')
+    report = review(project, {k: command[k] for k in ('entity_id', 'entries')})
+    if command['review_key'] != report['review_key']:
+        raise ProjectError('NPC facing changed; review again')
+    if report['current'] == report['proposed']:
+        return
+    project.actor_drafts[command['entity_id']] = deepcopy(report['proposed'])
+    project.undo_stack.append(dict(target='actor_drafts', entity_id=command['entity_id'], before=report['current'], after=deepcopy(report['proposed'])))
+    project.redo_stack.clear()
+
+
+def patch_project(project, scene_id, context, candidate, allocations):
+    requests = []
+    for row in allocations['drafts']:
+        draft = project.actor_drafts[row['draft_id']]
+        if draft['scene_id'] != scene_id:
+            raise ProjectError('NPC facing allocation belongs to another scene')
+        if 'facing' not in draft:
+            continue
+        validate(project, draft)
+        requests.append(dict(draft_id=row['draft_id'], **deepcopy(draft['facing'])))
+    return patch_allocated_facing(context, candidate, allocations, requests) if requests else (candidate, None)
 
 
 def patch_allocated_facing(context,candidate,allocations,requests):

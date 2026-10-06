@@ -204,8 +204,29 @@ bytes. Independently composed NPC movement X/Z/selectors may remain changed;
 a parked movement target rejects facing authoring. Source header/context, full
 facing preimage and CAM_CFG mode checks also apply to no-op requests.
 
-This is serializer infrastructure. Project commands, NPC Inspector controls,
-preset transfer and normal Build composition are not wired yet. It establishes
+Project commands, NPC Inspector controls and normal Build composition are now
+wired; see the authoring workflow below. Preset transfer remains pending. It establishes
 no initial or live Transform heading. Focused checks and the private retail
 post-append/composition proof are recorded in
 `local-output/sdk-20260909/npc-facing-native-20261005/proof.json`. No game ran.
+
+## Author NPC-owned script facing
+
+Select an NPC draft and open **Edit NPC script facing**, or use the registered
+Asset Details action. Check the own facing target and enter an exact sector0..7.
+Retail values, upper flags and unresolved dispatch context stay visible. Review,
+then Apply; input changes withdraw Apply. Uncheck the owned targets and Review/Apply
+to clear them. Undo/Redo use one history step; Save/Open retain the metadata.
+
+This edits scalar script operands, not initial/live Transform heading. Simple
+CAM_CFG and nonparked NPC_RUN are supported. The NPC's own movement edits must
+leave a facing target supported; a movement proposal that parks an owned facing
+target rejects. Clear facing before changing its recorded script donor.
+
+Normal Build composes the facing nibbles in the final allocated NPC record while
+retaining appearance, dialogue, waits and movement. Compressed package readback
+is verified; a separate own-facing retail streaming package check is pending.
+Preset capture currently rejects facing-bearing drafts rather than dropping the
+field. Facing preset transfer and authored comparison labels remain next.
+Evidence: `local-output/sdk-20260909/npc-facing-editor-20261005/proof.json`.
+Gameplay dispatch, branch execution and visible facing require later verification.

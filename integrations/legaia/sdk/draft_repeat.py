@@ -36,6 +36,9 @@ def preview(project, request):
     if 'waits' in original:
         from .npc_waits import source as wait_source
         wait_source(project,identifier)
+    if 'facing' in original:
+        from .npc_facing import source as facing_source
+        facing_source(project,identifier)
     if 'movement' in original:
         from .npc_movement import source as movement_source
         movement_source(project,identifier)
@@ -58,7 +61,7 @@ def preview(project, request):
     return {'project_source_key':key,'schema_version':'legaia.draft-repeat.v1','scene_id':project.active_scene,
             'source_entity_id':identifier,'source_draft':deepcopy(original),'request':normalized,
             'review_key':review,'copies':copies,
-            'limitations':['Independent copies retain the source retail script donor, initial appearance, own dialogue, waits and movement. Shared asset edits remain project-wide; script targets are not shifted with placement.',
+            'limitations':['Independent copies retain the source retail script donor, initial appearance, own dialogue, waits, movement and facing. Shared asset edits remain project-wide; script targets are not shifted with placement.',
                            'Script scheduling, collision, visibility and runtime spawning remain unverified.',
                            NORMAL_BUILD_SCOPE_NOTE,
                            'Actor-pool checks reject unavoidable initial-placement overflow; scenery, other allocations and safe total headroom remain unverified. Experimental export retains separate gates.']}

@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Independently author NPC script facing - 2026-10-05
+
+NPC Inspector and registered Asset Details now offer **Edit NPC script facing**.
+Source-qualified CAM_CFG/NPC_RUN targets expose an own sector0..7 override with
+retail sector, preserved upper flags and unresolved dispatch context. Review
+changes withdraw Apply. Apply/Clear use one history step; Undo/Redo and Save/Open
+retain facing with appearance, dialogue, waits, movement, name and placement.
+Script donor changes require clearing the retained facing binding first.
+
+Facing qualifies the NPC's own movement-composed record. Parked NPC_RUN targets
+are unavailable, and movement review rejects parking a target with an owned facing
+override. Normal compressed/streaming MAN composition applies facing after movement,
+uses final clone allocation and records npc_facing_changes. Repetition qualifies and
+retains own facing. Preset capture currently rejects facing-bearing drafts; facing
+transfer and saved-script authored-span explanations remain next.
+
+Validation: 45 focused Python checks and two Node suites pass. Actual root editor
+Review/Apply/withdrawal/Clear/history/persistence and the inspected 540px dialog
+passed. Normal Build `a27a96074d841507` independently reopened sector0 with preserved
+upper flags, own X3200/Z5696/selector10 movement, wait11, text and model105/animation13.
+Placement, imports and existing preset metadata stayed fixed. Package SHA256:
+`582f053dd091e1234eaabf2383620fef902b74f5852608b85f5641f924fdb910`.
+Evidence: `local-output/sdk-20260909/npc-facing-editor-20261005/proof.json`.
+The actual package check covers compressed MAN; own-facing streaming integration
+has not yet received a separate retail package check. Source operands establish no
+initial/live Transform heading, dispatch identity or execution. No game launched;
+gameplay stays deferred and the full SDK goal is active/incomplete.
+
 ## NPC-owned facing serializer foundation - 2026-10-05
 
 Added source-qualified facing serialization for uniquely allocated NPC clones.
@@ -25,8 +53,8 @@ all other candidate bytes, MAN layout and source donor records stayed fixed rela
 to the post-append/composition baseline. Project document, history and existing file
 hashes stayed unchanged. Evidence:
 `local-output/sdk-20260909/npc-facing-native-20261005/proof.json`.
-This is a native serializer foundation: project commands, editor controls, preset
-transfer and normal Build integration remain next. No Build, export or game launch
+Project commands, editor controls and normal Build integration have now landed;
+see the latest checkpoint above. Preset transfer remains next. No Build, export or game launch
 occurred. Manual gameplay remains deferred; the full SDK goal is active/incomplete.
 
 ## Inspect NPC-owned movement targets in the scene - 2026-10-05

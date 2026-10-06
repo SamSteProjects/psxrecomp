@@ -70,3 +70,34 @@ class NpcFacingTests(TestCase):
         first=0x2b+3*(1+allocations['drafts'][0]['record_index']);second=0x2b+3*(1+allocations['drafts'][1]['record_index']);alias[second:second+3]=alias[first:first+3]
         request=dict(draft_id='npc-a',donor_entity_id=ACTOR,entries={target['semantic_id']:dict(sector=0)})
         with self.assertRaises((ProjectError,ImportError)):patch_allocated_facing(context,bytes(alias),allocations,[request])
+
+    def test_project_facing_review_history_clear_donor_guards_and_parked_movement(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        from unittest.mock import patch
+        from sdk.project import ProjectService
+        from sdk.npc_facing import source,review
+        from sdk.npc_movement import review as movement_review
+        from test_project_workflow import synthetic_scene
+        context,_,_,target=self.fixture(b'\x4c\x51\0\x80\xb3\x09');movement=MovementAuthoringContext(context._source);move=movement.options(ACTOR)['targets'][0]['semantic_id']
+        with TemporaryDirectory() as directory:
+            p=ProjectService(Path(directory));p.import_metadata(synthetic_scene());p.command(dict(type='create_actor_draft',donor_entity_id=ACTOR,name='Resident',position=dict(x=128,z=256)));id=next(iter(p.actor_drafts));before=deepcopy(p.actor_drafts);depth=len(p.undo_stack)
+            with patch.object(ProjectService,'_facing_context',return_value=context),patch.object(ProjectService,'_movement_context',return_value=movement):
+                request=dict(entity_id=id,entries={target['semantic_id']:dict(sector=7)});report=review(p,request);self.assertEqual(p.actor_drafts,before);self.assertEqual(len(p.undo_stack),depth)
+                with self.assertRaises(ProjectError):p.command(dict(type='set_actor_draft_facing',**request,review_key='0'*64))
+                p.command(dict(type='set_actor_draft_facing',**request,review_key=report['review_key']));after=deepcopy(p.actor_drafts);self.assertEqual(source(p,id)['options']['targets'][0]['effective_values'],dict(sector=7));p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,after)
+                for changes in ({'donor_entity_id':'wrong'},{'entries':{target['semantic_id']:dict(sector=True)}}):
+                    invalid=deepcopy(after[id]);invalid['facing'].update(changes)
+                    with self.assertRaises(ProjectError):p._validate_actor_draft(id,invalid)
+                from sdk.draft_repeat import preview as repeat_preview
+                repeated=repeat_preview(p,dict(entity_id=id,count=1,step=dict(x=64,z=0),name='Facing copy'))
+                self.assertEqual(repeated['copies'][0]['draft']['facing'],after[id]['facing'])
+                with self.assertRaisesRegex(ProjectError,'preset capture'):p.command(dict(type='create_npc_preset',entity_id=id,name='Cannot omit facing'))
+                parked=dict(entity_id=id,entries={move:dict(x=16384,z=16384)})
+                with self.assertRaises((ProjectError,ImportError)):movement_review(p,parked)
+                self.assertEqual(p.actor_drafts,after)
+                clear=dict(entity_id=id,entries={});report=review(p,clear);p.command(dict(type='set_actor_draft_facing',**clear,review_key=report['review_key']));self.assertEqual(p.actor_drafts,before)
+                report=movement_review(p,parked);p.command(dict(type='set_actor_draft_movement',**parked,review_key=report['review_key']));self.assertFalse(source(p,id)['options']['targets'][0]['effective_supported'])
+                with self.assertRaises((ProjectError,ImportError)):review(p,request)
+                self.assertNotIn('facing',p.actor_drafts[id]);p.mode='live'
+                with self.assertRaises(ProjectError):source(p,id)

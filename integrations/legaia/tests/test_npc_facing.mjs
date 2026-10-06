@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {decodeNpcFacingSource,decodeNpcFacingReview} from '../editor/npc-facing.js';
+const id='authored-actor://00000000-0000-4000-8000-000000000001',owner='scene://town01/actors/man-p1/0040',facing='script://town01/actors/man-p1/0040/facing/0065',key='a'.repeat(64),draft={scene_id:'scene://town01',donor_entity_id:owner,name:'Resident',position:{x:128,z:256},appearance:{script_donor_entity_id:owner,donor_entity_id:'scene://town01/actors/man-p1/0012'}},state={scene:{id:draft.scene_id},actor_drafts:{[id]:draft},project_copy_source_key:key};
+const target={semantic_id:facing,owner_id:owner,pc:101,mnemonic:'NPC_RUN',target_context:null,before_raw:179,preservation_mask:240,effective_supported:true,effective_reason:null,values:{sector:3},authored_values:null,effective_values:{sector:3},source_record_sha256:'b'.repeat(64)},source={schema_version:'legaia.npc-facing-source.v1',entity_id:id,scene_id:draft.scene_id,draft,project_source_key:key,options:{supported:true,targets:[target]},gameplay_verified:false,runtime_dispatch:'not_asserted'};
+assert.deepEqual(decodeNpcFacingSource(source,id,state),source);
+const request={entity_id:id,entries:{[facing]:{sector:7}}},review={schema_version:'legaia.npc-facing-review.v1',entity_id:id,project_source_key:key,request,current:draft,proposed:{...draft,facing:{donor_entity_id:owner,entries:request.entries}},review_key:'c'.repeat(64),gameplay_verified:false,runtime_dispatch:'not_asserted'};
+assert.deepEqual(decodeNpcFacingReview(review,request,source,state),review);
+for(const mutate of [v=>v.project_source_key='d'.repeat(64),v=>v.options.targets[0].owner_id='wrong',v=>v.options.targets[0].effective_values.sector=11,v=>v.options.targets[0].values.sector=32768,v=>v.draft.name='Wrong']){const v=structuredClone(source);mutate(v);assert.throws(()=>decodeNpcFacingSource(v,id,state));}
+for(const mutate of [v=>v.proposed.donor_entity_id='wrong',v=>v.proposed.appearance.donor_entity_id='wrong',v=>v.proposed.position.x++,v=>v.proposed.facing.entries[facing].sector=12]){const v=structuredClone(review);mutate(v);assert.throws(()=>decodeNpcFacingReview(v,request,source,state));}
+for(const ticks of [true,-1,8,1.5,NaN])assert.throws(()=>decodeNpcFacingReview(review,{entity_id:id,entries:{[facing]:{sector:ticks}}},source,state));
+const detached=decodeNpcFacingReview(review,request,source,state);detached.proposed.name='Detached';assert.equal(review.proposed.name,'Resident');
+console.log('NPC facing owner/source/typed target/stale review and retained appearance/placement contracts pass.');
+
+for(const mutate of [v=>v.options.targets[0].preservation_mask=15,v=>v.options.targets[0].before_raw=184,v=>v.options.targets[0].target_context=256,v=>v.options.targets[0].mnemonic='CAMERA_ZOOM']){const v=structuredClone(source);mutate(v);assert.throws(()=>decodeNpcFacingSource(v,id,state));}
+const parked=structuredClone(source);parked.options.targets[0].effective_supported=false;parked.options.targets[0].effective_reason='NPC_RUN parked sentinel';assert.throws(()=>decodeNpcFacingReview(review,request,parked,state));
+console.log('Facing nibble masks, preserved flags, dispatch bounds and composed parked-target qualification pass.');

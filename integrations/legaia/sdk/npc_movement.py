@@ -51,6 +51,9 @@ def review(project, request):
     else:
         proposed.pop('movement', None)
     project._validate_actor_draft(request['entity_id'], proposed)
+    if 'facing' in proposed:
+        from .npc_facing import qualify
+        qualify(project,proposed,proposed['facing']['entries'])
     if set(request['entries']) - {r['semantic_id'] for r in report['options']['targets']}:
         raise ProjectError('NPC movement entry is not qualified by its script donor')
     _, changes = project._movement_context(draft['donor_entity_id']).patch(request['entries'])

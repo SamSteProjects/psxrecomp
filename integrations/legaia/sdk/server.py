@@ -201,6 +201,7 @@ class EditorServer(ThreadingHTTPServer):
         state["capabilities"]["actor_dialogue_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_wait_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["actor_movement_authoring"] = bool(self.project.disc_path)
+        state["capabilities"]["actor_facing_authoring"] = bool(self.project.disc_path)
         state["capabilities"]["text_font_preview"] = bool(self.project.disc_path)
         state["capabilities"]["scene_text_search"] = bool(self.project.disc_path and self.project.active_scene)
         from .resources import scene_text_state_key, project_text_state_key, project_transition_state_key
@@ -785,6 +786,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/npc-script-comparison.js": ("npc-script-comparison.js", "text/javascript"),
                  "/npc-build-script.js": ("npc-build-script.js", "text/javascript"),
                  "/npc-dialogue.js": ("npc-dialogue.js", "text/javascript"),
+                 "/npc-facing.js": ("npc-facing.js", "text/javascript"),
                  "/npc-waits.js": ("npc-waits.js", "text/javascript"),
                  "/npc-movement.js": ("npc-movement.js", "text/javascript"),
                  "/npc-appearance.js": ("npc-appearance.js", "text/javascript"),
@@ -2607,6 +2609,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     self._json(200,source(self.server.project,body['entity_id']));return
                 if route=='/api/npc-movement-review':
                     from .npc_movement import review
+                    self._json(200,review(self.server.project,body));return
+                if route=='/api/npc-facing-source':
+                    from .npc_facing import source
+                    if set(body)!={'entity_id'}:raise ProjectError('NPC facing source requires identity only')
+                    self._json(200,source(self.server.project,body['entity_id']));return
+                if route=='/api/npc-facing-review':
+                    from .npc_facing import review
                     self._json(200,review(self.server.project,body));return
                 if route=='/api/npc-waits-source':
                     from .npc_waits import source

@@ -2045,6 +2045,9 @@ class ProjectService:
         if command.get('type')=='set_actor_draft_appearance':
             from .npc_appearance import apply
             apply(self,command);return
+        if command.get('type')=='set_actor_draft_facing':
+            from .npc_facing import apply
+            apply(self,command);return
         if command.get('type')=='set_actor_draft_movement':
             from .npc_movement import apply
             apply(self,command);return
@@ -2750,7 +2753,7 @@ class ProjectService:
                 raise ValueError()
         except ValueError:
             raise ProjectError('Invalid authored actor UUID') from None
-        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue','appearance','waits','movement'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
+        if not isinstance(draft, dict) or set(draft)-{'scene_id','donor_entity_id','position','name','dialogue','appearance','waits','movement','facing'} or not {'scene_id','donor_entity_id','position','name'}<=set(draft):
             raise ProjectError('Invalid actor draft fields')
         if not isinstance(draft['name'],str) or not draft['name'].strip() or len(draft['name']) > 120:
             raise ProjectError('Actor draft name must contain 1 through 120 characters')
@@ -2769,6 +2772,8 @@ class ProjectService:
         validate_waits(self,draft)
         from .npc_movement import validate as validate_movement
         validate_movement(self,draft)
+        from .npc_facing import validate as validate_facing
+        validate_facing(self,draft)
 
     def _apply_history(self, source: list, target: list, field: str) -> None:
         if self.mode != "edit":
@@ -3383,7 +3388,7 @@ class ProjectService:
             scene_id = draft['scene_id']
             records.append({'id': identifier, 'kind': 'actor', 'name': draft['name'],
                             'scene_id': scene_id, 'source_scene': self.imports[scene_id]['scene']['name'],
-                            'changes': ['NPC draft', 'Position: X, Z']+(['Initial appearance'] if 'appearance' in draft else [])+(['Own dialogue'] if 'dialogue' in draft else [])+(['Own wait targets'] if 'waits' in draft else [])+(['Own script movement'] if 'movement' in draft else []), 'authored': deepcopy(draft),
+                            'changes': ['NPC draft', 'Position: X, Z']+(['Initial appearance'] if 'appearance' in draft else [])+(['Own dialogue'] if 'dialogue' in draft else [])+(['Own wait targets'] if 'waits' in draft else [])+(['Own script movement'] if 'movement' in draft else [])+(['Own script facing'] if 'facing' in draft else []), 'authored': deepcopy(draft),
                             'draft': True, 'donor_entity_id': draft['donor_entity_id'],
                             'model_reference': deepcopy(draft_models.get(identifier))})
         for identifier, template in sorted(self.actor_templates.items()):
