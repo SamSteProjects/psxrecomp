@@ -96,6 +96,10 @@ Validation: 164 Node checks and 160 editor-module syntax checks passed without f
 
 Current overview: [SDK_CURRENT_STATUS.md](SDK_CURRENT_STATUS.md). Its subsystem summary separates current capabilities from historical checkpoints below; full runtime/gameplay acceptance remains incomplete.
 
+## Native SEQ operand codec groundwork (2026-10-06)
+
+A source-qualified serializer now edits reached channel and tempo operands in standalone SEQ and aligned VAB+SEQ native entries. It preserves event structure, running status, delta times, opaque tails, bank/sample chunks and carrier length, and validates independent decoded readback. All 83 retail sequence carriers passed exact-byte edit/restoration checks, including the partial stream; ten focused Python checks passed without skips. This is codec groundwork only: persistent SDK audio commands/history, editor editing controls and native Build composition are still open. See [native SEQ operand groundwork](legaia-audio-sequence-authoring.md). No gameplay verification is needed for this checkpoint; the overall goal remains active and development stays solo.
+
 ## Source sample audition and WAV export checkpoint (2026-10-06)
 
 Nonempty waveform prefixes now offer **Load audition**, an explicit **Preview rate**, **Play sample**, **Stop sample**, preview volume and **Save preview WAV…**. Loading never plays automatically. Changing rate, Stop, closing the waveform view or a source change cancels pending/active playback; closing releases its audio context. WAV export preserves the decoded mono 16-bit PCM at the chosen preview rate, independently of preview volume. Rate and preview seconds are user choices, not retail pitch/duration facts. Encoded loops are not replayed; source limits/termination stay visible. Empty prefixes expose no audition controls.

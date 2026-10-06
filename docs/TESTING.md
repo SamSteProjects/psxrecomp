@@ -98,3 +98,7 @@ alternative existed. The `ctest` suite above is a candidate: it is hermetic
 (no BIOS, no disc, no network), takes under five seconds, and is currently
 green. Restoring a per-PR check on top of it is a smaller decision than
 restoring the old one.
+
+## Native SEQ operand codec (2026-10-06)
+
+Run `python -m unittest test_audio_sequence_authoring test_audio_sequence -v` with `PYTHONPATH=.;integrations/legaia;integrations/legaia/tests` and `LEGAIA_DISC_BIN` configured for the local verified USA source. Ten checks passed without skips. The retail test independently constructs expected changed bytes for all 83 carriers and restores exact originals; fixtures exercise channel/tempo widths, running status, partial tails, carrier isolation and rejection. This is serializer verification, not SDK command, emitted Build or gameplay acceptance. See [SEQ operand groundwork](legaia-audio-sequence-authoring.md).
