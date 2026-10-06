@@ -1,5 +1,34 @@
 # Legaia SDK status — 2026-10-06
 
+## Portable NPC model-selector presets v9 - 2026-10-06
+
+NPC presets now freeze and transfer signed SET_ACTOR_MODEL operands alongside
+all seven earlier edit families. Capture, export, import review and placement
+freshly qualify selector ownership/instructions; complete branch composition
+includes the frozen selectors, including instructions skipped by changed edges.
+Metadata-only v9 stores stable source IDs and typed signed16 values, without
+model payloads or an inferred runtime model binding. Earlier v1-v8 envelopes and
+size bounds remain supported; selector-bearing files cannot claim an older schema.
+Import adds a library entry only. New instances require separate reviewed placement.
+
+Validation: 20 focused Python checks and both Node preset suites pass. Checks
+cover freezing, branch/movement/facing/wait retention, skipped-body composition,
+invalid signed values, extra/foreign fields, missing native targets, forged saved
+preset placement, atomic history and Save/Open. Actual browser capture/download,
+upload, review withdrawal, library Undo/Redo, Save/reload and detached scene
+placement pass. The 1211-byte v9 file and 540px review were inspected.
+
+Recipient Build `13dd8005234017a7` independently reopens selector0 at PC12; its
+entire NPC record matches the expected donor clone, placement and selector word.
+Source NPC drafts and recipient imports remain unchanged. Package SHA256:
+`f26852879064a47e1d8fb8d272bba54a8bc6930a1eaca1089df04f8d4ea5b58d`.
+Evidence: `local-output/sdk-20260909/npc-model-selectors-presets-20261006/proof.json`.
+
+This supersedes the earlier NPC selector-preset capture restriction. No game
+launch or full-disc export occurred. Runtime pool identity, restaging, pairing
+and story execution remain unverified; manual gameplay acceptance stays deferred
+and the full SDK goal active/incomplete.
+
 ## Saved NPC model-selector explanations - 2026-10-06
 
 Saved-build comparison now explains NPC-owned SET_ACTOR_MODEL selector words.

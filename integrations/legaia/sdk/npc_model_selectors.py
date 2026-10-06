@@ -12,6 +12,11 @@ from .project import ProjectError, digest
 from .project_copy import source_key
 
 
+def qualify(project,draft):
+    validate(project,draft)
+    return project._model_selector_context(draft['donor_entity_id']).patch(draft['model_selectors']['entries'])
+
+
 def validate(project, draft):
     if 'model_selectors' not in draft:
         return
