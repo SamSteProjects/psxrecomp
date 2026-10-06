@@ -19,6 +19,41 @@ MAX_OBJECTS = 1024
 MAX_VERTICES = 100_000
 MAX_PRIMITIVES = 100_000
 MAX_NORMAL_DIAGNOSTICS = 128
+MAX_MODEL_CONTAINER_CACHE_BYTES = 16 * 1024 * 1024
+MAX_MODEL_CONTAINER_CACHE_ENTRIES = 8
+
+
+def _model_container(archive, entry, source):
+    """Reuse a decoded section only within its verified archive's lifetime."""
+    section_index = source.get("container_section")
+    if type(section_index) is not int or section_index < 0:
+        raise ImportError("model source has an invalid LZS section")
+    cache = getattr(archive, '_model_lzs_sections', None)
+    key = (entry, section_index)
+    cached = cache.get(key) if cache is not None else None
+    if cached is not None:
+        stream_offset, body = cached
+        if source.get("compressed_stream_offset") != stream_offset:
+            raise ImportError("model compressed-stream locator no longer matches")
+        # Refresh insertion order for bounded LRU eviction.
+        cache.pop(key)
+        cache[key] = cached
+        return body
+    encoded = archive.read_entry(entry)
+    sections = parse_lzs_sections(encoded)
+    if section_index >= len(sections):
+        raise ImportError("model source has an invalid LZS section")
+    section = sections[section_index]
+    if source.get("compressed_stream_offset") != section.stream_offset:
+        raise ImportError("model compressed-stream locator no longer matches")
+    end = sections[section_index + 1].stream_offset if section_index + 1 < len(sections) else len(encoded)
+    body, _consumed = decompress_lzs(encoded[section.stream_offset:end], section.decoded_size)
+    if cache is not None and len(body) <= MAX_MODEL_CONTAINER_CACHE_BYTES:
+        cache[key] = (section.stream_offset, body)
+        while (len(cache) > MAX_MODEL_CONTAINER_CACHE_ENTRIES or
+               sum(len(value[1]) for value in cache.values()) > MAX_MODEL_CONTAINER_CACHE_BYTES):
+            cache.pop(next(iter(cache)))
+    return body
 
 
 def _range(data: bytes, offset: int, length: int, label: str) -> None:
@@ -214,19 +249,13 @@ def load_model_source(disc: Path | str, asset: dict[str, Any]) -> bytes:
     with _disc_context(disc) as (_image, digest, _mapping, archive):
         if source.get("disc", {}).get("sha256") != digest:
             raise ImportError("model source identity does not match the verified disc")
-        body = archive.read_entry(archive.entry(source["prot_entry_index"]))
+        entry = archive.entry(source["prot_entry_index"])
         kind = source.get("record_kind")
         if kind in ("decoded_lzs_section", "decoded_tmd_pack_slot"):
-            sections = parse_lzs_sections(body)
-            section_index = source.get("container_section")
-            if type(section_index) is not int or not 0 <= section_index < len(sections):
-                raise ImportError("model source has an invalid LZS section")
-            section = sections[section_index]
-            if source.get("compressed_stream_offset") != section.stream_offset:
-                raise ImportError("model compressed-stream locator no longer matches")
-            end = sections[section_index + 1].stream_offset if section_index + 1 < len(sections) else len(body)
-            body, _consumed = decompress_lzs(body[section.stream_offset:end], section.decoded_size)
-        elif kind != "raw_prot_entry":
+            body = _model_container(archive, entry, source)
+        elif kind == "raw_prot_entry":
+            body = archive.read_entry(entry)
+        else:
             raise ImportError(f"unsupported model source record kind: {kind!r}")
         if len(body) != source["containing_size"]:
             raise ImportError("model containing source size no longer matches")

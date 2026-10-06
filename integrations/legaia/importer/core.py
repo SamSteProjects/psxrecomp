@@ -311,6 +311,8 @@ class ProtArchive:
     def __init__(self, image: Mode2Image, node: IsoNode):
         self.image = image
         self.node = node
+        # Immutable model-container derivations owned by one verified operation.
+        self._model_lzs_sections = {}
         self.header_offset, file_num, header_sectors = self._detect_header()
         toc_start = self.header_offset + 8
         toc_end = self.header_offset + header_sectors * self.SECTOR

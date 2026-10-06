@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from importer import pipeline
@@ -27,17 +28,23 @@ class VerifiedDiscScope(unittest.TestCase):
             stack.enter_context(patch.object(pipeline, "Mode2Image", FakeImage))
             hashed = stack.enter_context(patch.object(pipeline, "sha256_file", return_value=SUPPORTED_DISC_SHA256))
             stack.enter_context(patch.object(pipeline, "parse_cdname", return_value={2: "fixture"}))
-            stack.enter_context(patch.object(pipeline, "ProtArchive", side_effect=lambda *_: object()))
+            stack.enter_context(patch.object(pipeline, "ProtArchive", side_effect=lambda *_: SimpleNamespace(_model_lzs_sections={})))
             with pipeline._disc_context(path) as outer:
+                archive = outer[3]
+                archive._model_lzs_sections['fixture'] = (0, b'private derivation')
                 with pipeline._disc_context(path) as nested:
                     self.assertIs(outer, nested)
+                self.assertTrue(archive._model_lzs_sections)
                 self.assertEqual(hashed.call_count, 1)
+            self.assertFalse(archive._model_lzs_sections)
             self.assertIsNone(pipeline._active_disc_context.get())
             with pipeline._disc_context(path): pass
             self.assertEqual(hashed.call_count, 2)
             with self.assertRaisesRegex(ImportError, "changed"):
-                with pipeline._disc_context(path):
+                with pipeline._disc_context(path) as changed:
+                    changed[3]._model_lzs_sections['fixture'] = (0, b'private derivation')
                     path.write_bytes(b"a changed synthetic disc")
+            self.assertFalse(changed[3]._model_lzs_sections)
             with self.assertRaisesRegex(ImportError, "changed"):
                 with pipeline._disc_context(path):
                     # Detect inner drift before the outer operation exits.
@@ -47,8 +54,10 @@ class VerifiedDiscScope(unittest.TestCase):
             self.assertIsNone(pipeline._active_disc_context.get())
             self.assertIsNone(pipeline._active_disc_context.get())
             with self.assertRaisesRegex(RuntimeError, "decoder failure"):
-                with pipeline._disc_context(path):
+                with pipeline._disc_context(path) as failed:
+                    failed[3]._model_lzs_sections['fixture'] = (0, b'private derivation')
                     raise RuntimeError("decoder failure")
+            self.assertFalse(failed[3]._model_lzs_sections)
             self.assertIsNone(pipeline._active_disc_context.get())
 
 

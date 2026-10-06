@@ -462,6 +462,9 @@ def _disc_context(disc: Path | str):
                 raise ImportError("Disc image changed during the verified import operation")
         finally:
             _active_disc_context.reset(token)
+            model_sections = getattr(archive, '_model_lzs_sections', None)
+            if model_sections is not None:
+                model_sections.clear()
 
 
 def _bounded_scene_range(archive: ProtArchive, mapping: dict[int, str], scene: str) -> tuple[int, int]:

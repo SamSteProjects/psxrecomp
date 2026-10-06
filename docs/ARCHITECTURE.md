@@ -950,3 +950,21 @@ and rigid-object budgets, library key, selected import evidence and disc path ar
 qualified before returning. SDK and browser preserve project/receipt/scene identity
 and reject stale or forged requests. This read-only route never creates an Undo
 step, navigates scenes, publishes native bytes or authorizes historical replay.
+
+
+### Operation-owned model LZS derivations - 2026-10-06
+
+`ProtArchive._model_lzs_sections` holds immutable decoded model container bytes
+only while its outer `_disc_context` is active. `assets._model_container` keys
+sections by the complete frozen `ProtEntry` and section index; both misses and
+hits verify the requested compressed-stream offset. The existing model reader
+still checks the full disc digest, containing size and final model byte span.
+Insertion-order LRU retains at most eight sections and 16 MiB. The outer context
+clears the archive cache in `finally`, including disc-stamp and decoder failures;
+nested scope exits preserve it for the remaining outer operation. This does not
+change scene geometry caching, persistent SDK model-source caching or file formats.
+It avoids repeatedly decoding a shared container for different models in a cold
+scene. A local actual Town01 measurement reduced model-container decodes from
+118 to 2 and cold preview time from 19.445 to 11.611 seconds, with identical
+normalized output. Fresh SDK HTTP proof and operation-lifetime tests preserve
+full verification for each separate operation; no gameplay acceptance is claimed.

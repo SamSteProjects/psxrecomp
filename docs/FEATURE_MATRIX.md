@@ -1,5 +1,32 @@
 # Legaia SDK feature matrix
 
+## 2026-10-06 checkpoint: bounded model container reuse during scene generation
+
+Cold scene generation now reuses immutable decoded model LZS sections within one
+verified disc operation. The cache belongs to that operation's PROT archive and
+retains at most eight sections / 16 MiB. It clears on successful or failed exit;
+new operations still hash the entire supported disc. Every model read still
+checks its disc identity, entry/section identity, compressed-stream offset,
+containing size and byte span. Raw PROT model reads retain their existing path.
+
+A fresh Town01 sample improved from 19.445 to 11.611 seconds (about 40 percent).
+Model-container decompressions fell from 118 to 2. The complete normalized preview
+hash matched before/after, including 261 entities, 119 geometries, 17,970 triangles
+and decoded texture data. These are local samples, not a general latency guarantee.
+State refresh was already about 0.258 seconds and required no change.
+
+Validation: 50 focused Python checks passed, covering locator rejection after a
+cache hit, immutable section reuse, section separation, count/byte eviction,
+oversized items, decoder failures, context cleanup, real full-hash rejection,
+scene transforms and model proposal workflows. Fresh real-disc SDK HTTP cold/warm
+scene requests matched the prechange preview; separate model reads each hashed
+and decoded afresh. Project files and history stayed unchanged. Proof and timings:
+`local-output/sdk-20260909/editor-state-batching-20261006/{proof,before,after}.json`.
+No game launch, runtime attach or native Apply was used. No immediate gameplay
+verification is needed for this response-preserving change; existing manual
+scene/runtime acceptance remains pending. The full SDK goal remains incomplete.
+
+
 ## 2026-10-06 checkpoint: saved animation input native content comparison
 
 Project animation inputs now offers Compare current native clip. Imported inputs
