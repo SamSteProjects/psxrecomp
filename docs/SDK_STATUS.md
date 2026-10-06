@@ -1,5 +1,15 @@
 # Legaia SDK status — 2026-10-06
 
+## 2026-10-06: integrated offline verification and current SDK overview
+
+The [current SDK overview](SDK_CURRENT_STATUS.md) now distinguishes implemented workflows, incomplete subsystems and deferred manual acceptance. The implementation baseline remains `5591cc37`; this checkpoint changes test fixtures/assertions and documentation only. Production SDK/runtime validation is unchanged.
+
+Validation: 164 Node checks and 160 editor-module syntax checks passed without fixture skips. The 1,669-test retail-enabled Python baseline completed in a 369-test prefix plus a 1,300-test continuation after Windows denied progress-file replacement. That baseline recorded 81 error events, five assertion failures and two specialized-fixture skips. Tracebacks showed outdated fixture stores/catalog fields/source-key mocks and capability, manifest, budget, catalog-count and branch expectations. All 39 affected modules were rerun after corrections: 128 passed, one specialized fixture skipped, zero errors/failures. This is targeted acceptance, not a fresh all-green full-suite rerun. The private Retail V7 scene-preview and composed Town01 NPC-package fixture checks remain unexecuted. Evidence: `local-output/sdk-20260909/sdk-integrated-offline-20261006/final/acceptance.json`, `remaining/python.json`, `corrected/python.json`, `shared-fixture/python.json` and `node.json`. No game launch, attachment, installation or full-disc export; manual gameplay remains deferred and the full SDK goal active/incomplete.
+
+
+Current overview: [SDK_CURRENT_STATUS.md](SDK_CURRENT_STATUS.md). Its subsystem summary separates current capabilities from historical checkpoints below; full runtime/gameplay acceptance remains incomplete.
+
+
 ## 2026-10-06: inspect historical samples from the viewport
 
 Historical overlays now expose a bounded node selector and **Inspect historical sample**, plus an explicit **Pick historical sample** viewport mode. Inspection opens the existing detached review or comparison filtered to that key, preserving complete evidence and original download metadata. Single-file details expand to show coordinates, capture frames and recorded fields. Coincident baseline/comparison markers deduplicate their declared key; different overlapping keys require choosing the selector. Explicit pick gestures take precedence over scene mesh selection and transform handles, guard project/source/camera/viewport context, and never submit authoring commands. Dragging remains camera navigation. Empty layers disable inspection/picking and withdraw pick mode; source changes retain the existing overlay withdrawal. Imported entity selection stays independent.

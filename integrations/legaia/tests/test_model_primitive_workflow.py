@@ -279,7 +279,7 @@ class ModelPrimitiveProjectWorkflow(unittest.TestCase):
         self.assertEqual(composed['vertices'], pose_vertices(decode_tmd(replacement)['vertices'], geometry['objects'], transforms))
         self.assertEqual(composed['frames'][0]['vertices'], composed['vertices'])
         self.assertEqual(composed['triangle_uvs'], decode_tmd(replacement)['triangle_uvs'])
-        catalog = SimpleNamespace(metadata=lambda: {}, textures=[])
+        catalog = SimpleNamespace(scene='fixture', metadata=lambda: {}, textures=[])
         asset = self.project.assets.records[ASSET]
         asset['source_record']['prot_entry_name'] = 'fixture'
         def association(_catalog, _material, bounds):

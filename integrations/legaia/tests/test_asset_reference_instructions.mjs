@@ -21,7 +21,7 @@ for(const [kind,targetKind] of [['encoded_scene_change','scene'],['script_flag_r
 const hashed=assetReferenceInstructionSite({...edge,kind:'script_transition_reference',transition_reference_evidence:{source_record_sha256:record.source_record.sha256}},new Map([[script,source],[target,{...dialogue,kind:'transition'}]]));assert.equal(qualifyAssetReferenceInstructionSite(hashed,record,catalogKey).source_record_sha256,record.source_record.sha256);
 class Element{
  constructor(tag){this.tagName=tag;this.children=[];this.dataset={};this.events={};this.textContent='';this.open=false;this.value='';}
- append(...items){for(const item of items){item.parent=this;this.children.push(item);}}
+ append(...items){for(const item of items){if(this.tagName==='select'&&!this.children.length&&item.tagName==='option')this.value=item.value;item.parent=this;this.children.push(item);}}
  replaceChildren(...items){this.children=[];this.append(...items);}
  setAttribute(){}
  addEventListener(name,callback){this.events[name]=callback;}

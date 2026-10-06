@@ -43,7 +43,7 @@ class AnimationAllocationWorkflow(unittest.TestCase):
                 self.assertEqual(report['donor_animation_id'],contribution['animation_id'])
                 self.assertEqual(report['channel_owner_entity_id'],owner)
                 self.assertNotEqual(report['effective_bank_sha256'],report['retail_bank_sha256'])
-                self.assertEqual(report['capabilities'],dict(review=True,apply=True,build=False,actor_assignment=False))
+                self.assertEqual(report['capabilities'],dict(review=True,apply=True,build=True,actor_assignment=False))
                 self.assertFalse(report['project_changed'])
                 candidate, direct = prepare_record_allocation(project,owner,body['source_frame_indices'],
                     body['edits'],body['expected_source_key'])

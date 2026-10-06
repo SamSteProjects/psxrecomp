@@ -34,7 +34,7 @@ class AssignmentBuildGuards(unittest.TestCase):
             root = Path(raw)
             documents = {"scene://fixture": {"scene": {"name": "fixture"}, "actors": [first, donor]},
                          "scene://other": {"scene": {"name": "other"}, "actors": [foreign]}}
-            project = SimpleNamespace(root=root, name="fixture", disc_path="synthetic", imports=documents, overrides={})
+            project = SimpleNamespace(texture_additions={}, root=root, name="fixture", disc_path="synthetic", imports=documents, overrides={})
             for components in ({}, {"ModelRenderer": {}}, {"ActorAppearance": {}},
                                {"ActorAppearance": {"donor_entity_id": True}},
                                {"ActorAppearance": {"donor_entity_id": "missing"}},
@@ -53,7 +53,7 @@ class AssignmentBuildGuards(unittest.TestCase):
         first, donor = actor("fixture", 1), actor("fixture", 2)
         document = {"scene": {"name": "fixture"}, "actors": [first, donor]}
         fresh = deepcopy(document); fresh["actors"][1]["model_reference"]["model_index"] = 9
-        project = SimpleNamespace(disc_path="synthetic", imports={"scene://fixture": document},
+        project = SimpleNamespace(texture_additions={}, disc_path="synthetic", imports={"scene://fixture": document},
                                   overrides={first["semantic_id"]: {"ActorAppearance": {"donor_entity_id": donor["semantic_id"]}}})
         with patch("sdk.build.import_scene", return_value=fresh), patch("sdk.build._disc_context") as resources:
             with self.assertRaisesRegex(BuildError, "fresh retail import"):
@@ -94,7 +94,7 @@ class RetailAssignmentBuild(unittest.TestCase):
         private = ROOT / "local-output/sdk-20260909"
         private.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="assignment-build-", dir=private) as raw:
-            project = SimpleNamespace(root=Path(raw), name="Assignment build verification", disc_path=disc,
+            project = SimpleNamespace(texture_additions={}, root=Path(raw), name="Assignment build verification", disc_path=disc,
                                       imports={"scene://town01": document}, overrides={})
             baseline = build_project(project)
             self.assertEqual(baseline["overlay_count"], 0)

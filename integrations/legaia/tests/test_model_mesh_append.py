@@ -59,6 +59,7 @@ class MeshAppendTests(unittest.TestCase):
         helper=build_fixtures.ModelGrowthNormalBuildTests();self.addCleanup(helper.doCleanups)
         p,_,asset,*_=helper.fixture()
         self.enterContext(patch('sdk.model_mesh_append.source_key',return_value='a'*64))
+        self.enterContext(patch('sdk.model_group_allocation.source_key',return_value='a'*64))
         donor=model_face_addition.source(p,asset,'a'*64)['topology']['faces'][0]['face_id']
         return p,asset,donor
 

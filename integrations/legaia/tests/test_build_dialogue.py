@@ -62,7 +62,7 @@ class DialogueBuildGuards(unittest.TestCase):
         actor = {"semantic_id": identifier, "source_record": {"record_index": 1}}
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            project = SimpleNamespace(root=root, name="fixture", disc_path="not-read",
+            project = SimpleNamespace(texture_additions={}, root=root, name="fixture", disc_path="not-read",
                                       imports={"scene://fixture": {"actors": [actor]}}, overrides={})
             for component in (None, {}, {"runs": {}}, {"runs": []}, {"runs": {"run": 1}},
                               {"runs": {1: "text"}}, {"runs": {"run": "text"}, "source_record": {}},
@@ -91,7 +91,7 @@ class RetailDialogueBuild(unittest.TestCase):
                       "animation_id": actors[donor]["placement_fields"]["animation_id"]}
         private = ROOT / "local-output/sdk-20260909"; private.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="dialogue-build-", dir=private) as directory:
-            project = SimpleNamespace(root=Path(directory), name="Dialogue build verification", disc_path=disc,
+            project = SimpleNamespace(texture_additions={}, root=Path(directory), name="Dialogue build verification", disc_path=disc,
                                       imports={"scene://town01": document}, overrides={})
             baseline_build = build_project(project)
             # A valid run under the wrong authored actor must fail before writing.
@@ -119,7 +119,7 @@ class RetailDialogueBuild(unittest.TestCase):
             with zipfile.ZipFile(built["path"]) as package:
                 payload = package.read("assets/town01-man.lzs")
                 self.assertEqual(decompress_lzs(payload, len(original))[0], bytes(combined))
-                self.assertIn(b"no script control edits or relocation", package.read("manifest.toml"))
+                self.assertIn(b"Dialogue: glyph edits preserve the source record layout.", package.read("manifest.toml"))
             audit = json.loads(Path(built["audit"]).read_text())
             dialogue_fields = [c for c in audit["edits"] if c.get("scope") == "inline-mes-glyph-run-only"]
             self.assertEqual(len(dialogue_fields), 1)
@@ -146,7 +146,7 @@ class RetailP2DialogueBuild(unittest.TestCase):
         replacement = run["text"][:-1] + ("?" if run["text"][-1] != "?" else "!")
         private = ROOT / "local-output/sdk-20260909"
         with tempfile.TemporaryDirectory(prefix="p2-dialogue-build-", dir=private) as directory:
-            project = SimpleNamespace(root=Path(directory), name="P2 verification", disc_path=disc,
+            project = SimpleNamespace(texture_additions={}, root=Path(directory), name="P2 verification", disc_path=disc,
                                       imports={"scene://town01": document}, overrides={})
             baseline = build_project(project)
             project.overrides = {identifier: {"Dialogue": {"runs": {run["semantic_id"]: replacement}}}}

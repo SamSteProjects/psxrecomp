@@ -13,7 +13,7 @@ const nodes=new Map();
 const form={querySelector(selector){if(!nodes.has(selector))nodes.set(selector,{});return nodes.get(selector);}};
 const document={objects:[{vertices:[[1,2,3],[10,20,30]],normals:[[100,200,300]]}]};
 const retail={objects:[{vertices:[[4,5,6]],normals:[]}]};
-const handlers=new Function('document','retail','object','kind','index','xyz','form',`let valid=false,busy=false;${code.slice(start,end)}${code.slice(resetStart,resetEnd)}return {load,reset:form.querySelector('[data-retail-vector]').onclick};`)(document,retail,object,kind,index,xyz,form);
+const handlers=new Function('document','retail','object','kind','index','xyz','form','moveVertex',`let valid=false,busy=false;${code.slice(start,end)}${code.slice(resetStart,resetEnd)}return {load,reset:form.querySelector('[data-retail-vector]').onclick};`)(document,retail,object,kind,index,xyz,form,{});
 handlers.load();assert.equal(form.querySelector('[data-retail-vector]').disabled,false);
 handlers.reset();assert.deepEqual(xyz.map(input=>input.value),[4,5,6]);
 index.value='1';handlers.load();

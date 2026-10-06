@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch
 from importer.core import ImportError
 from importer.model_mesh_append import decode_append_mesh
+from importer.model_face_addition import MAX_NEW_FACES
 import test_model_mesh_append as mesh_tests
 from test_model_mesh_append import glb
 
@@ -41,7 +42,7 @@ class MeshAppendModeTests(unittest.TestCase):
                 with self.subTest(mode=mode,indices=indices),self.assertRaises(ImportError):
                     decode_append_mesh(glb(mode=mode,indices=indices))
             with self.assertRaisesRegex(ImportError,'face budget'):
-                decode_append_mesh(glb(mode=mode,indices=[0,1,2]*44))
+                decode_append_mesh(glb(mode=mode,indices=[0,1,2]*(MAX_NEW_FACES+2)))
         for mode in (0,1,2,3,7,True,5.0):
             with self.subTest(mode=mode),self.assertRaises(ImportError):
                 decode_append_mesh(glb(mode=mode))

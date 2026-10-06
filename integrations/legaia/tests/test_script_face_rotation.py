@@ -62,7 +62,7 @@ class FaceRotationInspection(unittest.TestCase):
                 encoded = header + bytes([sub, 31, 0xFE, 0xFF])
                 node = _instruction(encoded, 0)
                 self.assertEqual(node["mnemonic"], "FLAG_WORD_BRANCH")
-                self.assertEqual(node["successors"], [{"pc": -2, "condition": "flag_bit_set"},
+                self.assertEqual(node["successors"], [{"pc": len(header), "condition": "flag_bit_set"},
                                                      {"pc": len(encoded), "condition": "flag_bit_clear"}])
                 self.assertEqual(node["operands"]["bit_encoded"], 31)
                 for end in range(1, len(encoded)):
