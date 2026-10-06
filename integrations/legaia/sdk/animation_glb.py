@@ -202,5 +202,8 @@ def apply_import(project, entity_id: str, content: bytes, binding: dict, review_
         raise ProjectError('GLB or project changed after review; review the animation again')
     if not report['changed_axes']:
         raise ProjectError('GLB has no source-quantized animation changes to apply')
-    project.command(command)
+    from .animation_sources import apply
+    apply(project,command,content,kind='imported',target_id=entity_id,binding=binding,
+          animation_index=animation_index,source_frame_indices=None,
+          candidate_sha256=report['candidate_sha256'],review_key=report['review_key'])
     return report

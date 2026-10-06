@@ -101,5 +101,11 @@ def pose_import(project,scene_id,record_id,source_frame_indices,expected_source_
 def apply_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,review_key,*,animation_index=None):
     _,report=prepare_import(project,scene_id,record_id,source_frame_indices,expected_source_key,content,binding,animation_index=animation_index)
     if review_key!=report['review_key']:raise ProjectError('Retained GLB, binding or mapping changed after Review')
-    project.command(dict(type='edit_animation_record',**report['content_request'],review_key=report['content_review']['review_key']))
+    command=dict(type='edit_animation_record',**report['content_request'],review_key=report['content_review']['review_key'])
+    if report['project_change']:
+        from .animation_sources import apply
+        apply(project,command,content,kind='retained',target_id=record_id,binding=binding,
+              animation_index=animation_index,source_frame_indices=source_frame_indices,
+              candidate_sha256=report['analysis']['candidate_sha256'],review_key=report['review_key'])
+    else:project.command(command)
     return report

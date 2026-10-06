@@ -51,6 +51,14 @@ def capture_export_inputs(project, *, max_bytes=None, max_files=None):
             base = binding['base_binding']
             store(f"Authored/Models/{base['asset_sha256']}.tmd",
                   project.read_model_replacement(identifier, base))
+    from .animation_sources import validate_files, read_source
+    sources=getattr(project,'animation_sources',{})
+    validate_files(project,sources)
+    seen_sources=set()
+    for record in sources.values():
+        if record['glb_sha256'] not in seen_sources:
+            store(f"Authored/Animations/Sources/{record['glb_sha256']}.glb",read_source(project,record))
+            seen_sources.add(record['glb_sha256'])
     if authored_state_key(project) != key:
         raise ProjectError('Project changed while capturing export inputs')
     return key, files

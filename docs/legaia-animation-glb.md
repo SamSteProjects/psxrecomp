@@ -219,3 +219,28 @@ the same scene-space hierarchy baking and native quantization path as TRS.
 Shear, scale, reflection, perspective and nonfinite components reject. Matrix
 plus any TRS property rejects, and every animated matrix node rejects as
 required by glTF. Matrices do not allocate native channels or infer skinning.
+
+## Retained animation import inputs
+
+A changed GLB Apply now retains its immutable uploaded GLB under
+`Authored/Animations/Sources/<sha256>.glb`. Optional project `animation_sources`
+receipts retain the parsed binding, selected clip index, retained donor-frame
+mapping when applicable, reviewed native candidate hash and Review key. The
+GLB bytes are exact; binding JSON formatting is regenerated from parsed values.
+The native change and receipt are one Undo/Redo step. Save/Open validates receipt
+metadata and source hashes, and project copies/export snapshots carry referenced
+source files. Missing or modified referenced sources reject recovery and input
+snapshotting. Native serializers still consume the existing authored channels
+and retained recipes; receipts never authorize replay.
+
+Use **Recover animation sources** or **Recover retained animation sources**
+in the corresponding GLB editor. Download the original GLB, parsed binding or
+receipt. The dialog identifies historical inputs: later changes can make the
+old binding stale, so export a fresh binding and Review before applying again.
+Each downloaded GLB is checked against its receipt hash in the browser.
+
+The project allows at most 32 receipts and 64 MiB of distinct source GLBs, within
+the existing 32 MiB per-file limit. Identical blobs are shared across receipts;
+file verification also deduplicates shared blobs. Old projects with no sources
+retain their previous metadata and Build-key shape. Receipt pruning is not yet
+exposed; full source-library management remains an SDK follow-up.

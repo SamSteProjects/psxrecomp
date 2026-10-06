@@ -2,7 +2,7 @@ const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
 function inventory(value){
   if(!Array.isArray(value)||!value.length||value.length>512)throw new Error('Invalid project input inventory');
   const seen=new Set();let total=0;
-  for(const row of value){if(!row||typeof row.path!=='string'||!(/^(project\.legaia\.json|Imported\/[0-9a-f]{64}\.json|Authored\/Textures\/[0-9a-f]{64}\.tim|Authored\/Models\/[0-9a-f]{64}\.tmd|Authored\/TextureSources\/[0-9a-f]{64}\.(glb|png)|Authored\/Models\/Sources\/[0-9a-f]{64}\.glb)$/.test(row.path))||seen.has(row.path)||!hash(row.sha256)||!Number.isSafeInteger(row.byte_length)||row.byte_length<0||row.byte_length>64*1024*1024)throw new Error('Invalid copied input identity');seen.add(row.path);total+=row.byte_length;}
+  for(const row of value){if(!row||typeof row.path!=='string'||!(/^(project\.legaia\.json|Imported\/[0-9a-f]{64}\.json|Authored\/Textures\/[0-9a-f]{64}\.tim|Authored\/Models\/[0-9a-f]{64}\.tmd|Authored\/TextureSources\/[0-9a-f]{64}\.(glb|png)|Authored\/(Models|Animations)\/Sources\/[0-9a-f]{64}\.glb)$/.test(row.path))||seen.has(row.path)||!hash(row.sha256)||!Number.isSafeInteger(row.byte_length)||row.byte_length<0||row.byte_length>64*1024*1024)throw new Error('Invalid copied input identity');seen.add(row.path);total+=row.byte_length;}
   if(!seen.has('project.legaia.json')||total>256*1024*1024)throw new Error('Copied input inventory exceeds limit');return total;
 }
 export function decodeCopyReview(value,key,path){

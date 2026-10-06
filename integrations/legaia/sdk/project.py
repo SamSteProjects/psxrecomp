@@ -122,6 +122,7 @@ class ProjectService:
         self.texture_overrides: dict[str, dict] = {}
         self.texture_additions: dict[str, dict] = {}
         self.model_overrides: dict[str, dict] = {}
+        self.animation_sources: dict[str, dict] = {}
         self.active_scene: str | None = None
         self.selected: str | None = None
         self.undo_stack: list[dict] = []
@@ -208,6 +209,7 @@ class ProjectService:
                 **({"actor_drafts": deepcopy(self.actor_drafts)} if self.actor_drafts else {}),
                 **({"texture_overrides": deepcopy(self.texture_overrides)} if self.texture_overrides else {}),
                 **({"texture_additions": deepcopy(self.texture_additions)} if self.texture_additions else {}),
+                **({"animation_sources": deepcopy(self.animation_sources)} if self.animation_sources else {}),
                 **({"model_overrides": deepcopy(self.model_overrides)} if self.model_overrides else {})}
 
     @property
@@ -2805,6 +2807,12 @@ class ProjectService:
             raise ProjectError("Undo and redo require Edit mode")
         if not source:
             raise ProjectError("No command to " + ("undo" if field == "before" else "redo"))
+        if source[-1].get('target') == 'animation_source_import':
+            entry=source[-1];value=deepcopy(entry[field])
+            from .animation_sources import validate_files
+            validate_files(self,value['animation_sources'])
+            self.overrides=value['overrides'];self.animation_sources=value['animation_sources']
+            source.pop();target.append(entry);return
         entry = source.pop()
         value = deepcopy(entry[field])
         if entry.get('target') == 'project_name':
@@ -2877,6 +2885,8 @@ class ProjectService:
                 atomic_write(path, canonical(document))
             elif hashlib.sha256(path.read_bytes()).hexdigest() != digest(document):
                 raise ProjectError("Imported evidence cache was modified; refusing to save")
+        from .animation_sources import validate_files
+        validate_files(self,self.animation_sources)
         document = self._document()
         path = self.root / "project.legaia.json"
         atomic_write(path, canonical(document))
@@ -2896,6 +2906,9 @@ class ProjectService:
         if not isinstance(raw.get("imports"), list) or not isinstance(raw.get("authored", {}), dict) or not isinstance(raw.get("retail_source", {}), dict):
             raise ProjectError("Invalid project collection fields")
         result = cls(path.parent, raw["name"])
+        from .animation_sources import validate_collection, validate_files
+        result.animation_sources=validate_collection(raw.get('animation_sources',{}))
+        validate_files(result,result.animation_sources)
         for item in raw["imports"]:
             if not isinstance(item, dict) or not all(isinstance(item.get(key), str) for key in ("sha256", "file", "scene")):
                 raise ProjectError("Invalid project import reference")

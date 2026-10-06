@@ -39,7 +39,8 @@ def authored_state_key(project) -> str:
                                 "actor_drafts": getattr(project, "actor_drafts", {}),
                                 "textures": getattr(project, "texture_overrides", {}),
                                 "texture_additions": getattr(project, "texture_additions", {}),
-                                "models": getattr(project, "model_overrides", {})}).encode("utf-8"))
+                                "models": getattr(project, "model_overrides", {}),
+                                **({"animation_sources": project.animation_sources} if getattr(project,"animation_sources",{}) else {})}).encode("utf-8"))
 
 
 def _merge_trigger_patch(original, current, changed, audit, scene, binding):

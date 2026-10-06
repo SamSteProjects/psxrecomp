@@ -904,6 +904,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                  "/runtime-review.js": ("runtime-review.js", "text/javascript"),
                  "/animation-glb.js": ("animation-glb.js", "text/javascript"),
                  "/animation-glb-clips.js": ("animation-glb-clips.js", "text/javascript"),
+                 "/animation-sources.js": ("animation-sources.js", "text/javascript"),
                  "/actor-animation-glb-target.js": ("actor-animation-glb-target.js", "text/javascript"),
                  "/animation-allocation.js": ("animation-allocation.js", "text/javascript"),
                  "/animation-record-library.js": ("animation-record-library.js", "text/javascript"),
@@ -2267,6 +2268,13 @@ class EditorHandler(BaseHTTPRequestHandler):
                     else:
                         report = apply_import(self.server.project, body['asset_id'], payload, body['binding'], body['review_key'])
                         self._json(200, dict(self.server.state(), model_glb_report=report))
+                    return
+                if route in ('/api/animation-sources','/api/animation-source-download'):
+                    expected={'scene_id','target_id','kind','expected_source_key'}
+                    if route.endswith('download'):expected.add('receipt_key')
+                    if set(body)!=expected:raise ProjectError('Animation sources require an exact recovery context')
+                    from .animation_sources import catalog,download
+                    self._json(200,(download if route.endswith('download') else catalog)(self.server.project,**body))
                     return
                 if route == '/api/animation-glb-export':
                     if set(body) != {'entity_id', 'clip_fps'} or not isinstance(body['entity_id'], str):

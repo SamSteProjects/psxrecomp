@@ -1,3 +1,4 @@
+import {openAnimationSources} from './animation-sources.js';
 import {glbAnimationChoices,populateGlbClipSelect,selectedGlbClipIndex} from './animation-glb-clips.js';
 // External rigid-channel interchange; preview and review never author the project.
 const MAX_GLB=32*1024*1024,MAX_BINDING=128*1024,MAX_AXES=4096*6;
@@ -101,6 +102,7 @@ export async function openAnimationGlbEditor({entityId,getContext,busy,setBusy,o
   const glb=element('input');glb.type='file';glb.accept='.glb,model/gltf-binary';glb.setAttribute('aria-label','Edited animation GLB');
   const manifest=element('input');manifest.type='file';manifest.accept='.json,application/json';manifest.setAttribute('aria-label','Source binding JSON');
   for(const [label,input] of [['Edited GLB · maximum 32 MiB',glb],['Binding JSON from the export · maximum 128 KiB',manifest]]){const node=element('label',label);node.append(input);imported.append(node);}
+  const recover=element('button','Recover animation sources');recover.type='button';imported.append(recover);recover.onclick=()=>openAnimationSources({getContext,targetId:entityId,kind:'imported',onError});
   const clipSelect=element('select');clipSelect.setAttribute('aria-label','Animation in edited GLB');const clipLabel=element('label','Animation in edited GLB');clipLabel.append(clipSelect);imported.append(clipLabel);
   const actions=element('div');actions.className='dialog-actions';actions.style.flexWrap='wrap';const inspect=button('Review selected files','review'),pose=button('Preview reviewed animation','pose'),apply=button('Apply reviewed animation','apply');pose.hidden=onPosePreview===null;actions.append(inspect,pose,apply);imported.append(actions);
   const status=element('p','Choose both edited files to review.');status.setAttribute('role','status');const error=element('p');error.className='dialog-error';error.setAttribute('role','alert');const summary=element('section');summary.hidden=true;
@@ -117,7 +119,7 @@ export async function openAnimationGlbEditor({entityId,getContext,busy,setBusy,o
     const current=contextCurrent(),blocked=!current||pending!==null||busy()!==false;
     fps.disabled=prepare.disabled=blocked;glb.disabled=manifest.disabled=!current||pending==='apply'||busy()!==false&&pending===null;
     getGlb.disabled=getBinding.disabled=blocked||!exportData;
-    clipSelect.disabled=blocked||!candidate;inspect.disabled=blocked||!candidate||candidate.clipChoices.length>1&&clipSelect.value==='';pose.disabled=blocked||!acceptedCurrent(review);apply.disabled=blocked||!acceptedCurrent(review)||review?.report.changed_axes===0;close.disabled=pending==='apply';
+    recover.disabled=blocked;    clipSelect.disabled=blocked||!candidate;inspect.disabled=blocked||!candidate||candidate.clipChoices.length>1&&clipSelect.value==='';pose.disabled=blocked||!acceptedCurrent(review);apply.disabled=blocked||!acceptedCurrent(review)||review?.report.changed_axes===0;close.disabled=pending==='apply';
   }
   function dispose(){if(closed)return;closed=true;invalidate();candidate=exportData=null;if(dialog.open)dialog.close();dialog.remove();}
   async function run(kind,work){

@@ -32,7 +32,7 @@ class ClipReviewIdentity(unittest.TestCase):
 
     def test_equal_native_candidates_require_different_clip_review_keys(self):
         project, owner, content, binding, snapshot, calls = self.fixture()
-        with patch('sdk.animation_glb._snapshot', return_value=snapshot), patch('sdk.animation_glb._current'):
+        with patch('sdk.animation_glb._snapshot', return_value=snapshot), patch('sdk.animation_glb._current'), patch('sdk.animation_sources.apply',side_effect=lambda p,c,content,**recipe:p.command(c)):
             first = preview_import(project, owner, content, binding, animation_index=0)
             second = preview_import(project, owner, content, binding, animation_index=1)
             self.assertEqual(first['candidate_sha256'], second['candidate_sha256'])
@@ -46,7 +46,7 @@ class ClipReviewIdentity(unittest.TestCase):
 
     def test_implicit_single_clip_retains_legacy_review_digest(self):
         project, owner, content, binding, snapshot, calls = self.fixture(duplicate=False)
-        with patch('sdk.animation_glb._snapshot', return_value=snapshot), patch('sdk.animation_glb._current'):
+        with patch('sdk.animation_glb._snapshot', return_value=snapshot), patch('sdk.animation_glb._current'), patch('sdk.animation_sources.apply',side_effect=lambda p,c,content,**recipe:p.command(c)):
             report = preview_import(project, owner, content, binding)
             apply_import(project, owner, content, binding, report['review_key'])
         identity = dict(binding=binding, glb_sha256=sha256(content).hexdigest(),

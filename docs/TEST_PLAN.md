@@ -1,5 +1,35 @@
 # Legaia SDK validation plan
 
+## Animation source retention and recovery - 2026-10-06
+
+Both imported-actor and retained UUID GLB Applies now retain exact source GLB
+bytes and parsed binding/clip/mapping receipts in the project. Source receipt
+and native overrides share one atomic Undo/Redo history step. Save/Open checks
+receipt seals and source hashes; export inputs and project copies include the
+referenced sources. Build-input identity includes populated receipts while
+legacy projects keep their previous key shape. Recovery dialogs download the
+GLB, parsed binding and receipt; browser hashing verifies the exact GLB.
+Receipts are historical inputs, not replay authority: fresh binding/Review is
+still required for authoring. Metadata and blob bounds are 32 receipts, 64 MiB
+of distinct GLBs and 32 MiB per file; shared blobs are verified once per scan.
+Native serializers and imported retail provenance are unchanged.
+
+**Focused checks:** 51 Python checks and four Node editor checks passed. Guards
+cover tampering/missing inputs, identity/mapping, count/byte bounds and native
+command failure rollback. Full workflow proof is retained beneath
+`local-output/sdk-20260909/animation-glb-sources-verified-20261006/`.
+Both browser workflows passed Review/Pose/Return/Apply and recovered exact
+GLB bytes, parsed bindings and receipts. One-step Undo/Redo, Save/Open and
+actual project-copy reopening passed with source metadata and bytes intact.
+Normal Build `34c90e71595b063f` passed independent native-bank readback
+(SHA-256 `3abfb27bb04dde0e553dafe0c683509eb873856b48136776d1485139d1d3f384`);
+package SHA-256 `91f5264f1d31e7426027882adcb4ee4bcd7f5d5174415b5abcccceda0b5eaf0d`.
+The reference project remained unchanged. No game was launched.
+
+Receipt pruning/source-library management remain incomplete, along with the
+full SDK goal and retail animation playback/timing acceptance.
+
+
 ## Static rigid GLB matrix support - 2026-10-06
 
 Animation GLB import now accepts static rigid matrices on source objects and
