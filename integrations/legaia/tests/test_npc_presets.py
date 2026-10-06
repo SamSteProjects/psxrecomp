@@ -219,4 +219,43 @@ class NpcPresetTests(unittest.TestCase):
             target.actor_templates[report['template']['id']]['components']['NpcDraft']['flags']['entries'][flag]=dict(bit=8)
             with self.assertRaises((ProjectError,NativeError)):review(target,dict(request,name='Unsupported instance',expected_source_key=source_key(target)))
 
+    def test_owned_branches_v8_freeze_transfer_and_composed_skipped_body(self):
+        from importer.branch_authoring import BranchAuthoringContext
+        from importer.movement_authoring import MovementAuthoringContext
+        from importer.facing_authoring import FacingAuthoringContext
+        from importer.wait_authoring import WaitAuthoringContext
+        from test_importer_dialogue_authoring import fixture
+        from sdk.npc_branches import review as branch_review
+        base,_=fixture(b'\x26\x02\0\x4c\x51\0\x80\xb3\x09\x4a\x0a\0\x26\xf3\xff')
+        contexts={'_branch_context':BranchAuthoringContext(base),'_movement_context':MovementAuthoringContext(base),'_facing_context':FacingAuthoringContext(base),'_wait_context':WaitAuthoringContext(base)}
+        from contextlib import ExitStack
+        p=self.p;disc=p.root/'fixture.bin';disc.write_bytes(b'synthetic');p.disc_path=str(disc)
+        with ExitStack() as stack:
+            for method,context in contexts.items():stack.enter_context(patch.object(ProjectService,method,return_value=context))
+            stack.enter_context(patch('importer.pipeline._disc_context',side_effect=lambda _:nullcontext()))
+            stack.enter_context(patch('importer.pipeline.import_scene',return_value=self.doc))
+            prefix='script://'+self.donor.removeprefix('scene://')
+            p.actor_drafts[self.original].update(movement=dict(donor_entity_id=self.donor,entries={prefix+'/movement/0008':dict(x=128,z=192,move_id=10)}),facing=dict(donor_entity_id=self.donor,entries={prefix+'/facing/0008':dict(sector=7)}),waits=dict(donor_entity_id=self.donor,entries={prefix+'/wait/000e':dict(duration_ticks=11)}))
+            branch=prefix+'/branch/0005';change=dict(entity_id=self.original,entries={branch:dict(target_pc=17)})
+            accepted=branch_review(p,change);p.command(dict(type='set_actor_draft_branches',**change,review_key=accepted['review_key']))
+            p.command(dict(type='create_npc_preset',entity_id=self.original,name='Branch guard'));template=next(t for t in p.actor_templates.values() if t['name']=='Branch guard');frozen=deepcopy(template)
+            value=export_file(p,template['id']);self.assertEqual(value['schema_version'],'legaia.npc-preset-file.v8');content=json.dumps(value)+' '*9000;self.assertEqual(parse(content),value)
+            for version in range(1,8):
+                with self.assertRaises(ProjectError):parse(json.dumps(dict(value,schema_version=f'legaia.npc-preset-file.v{version}')))
+            clear=dict(entity_id=self.original,entries={});accepted=branch_review(p,clear);p.command(dict(type='set_actor_draft_branches',**clear,review_key=accepted['review_key']));self.assertEqual(p.actor_templates[template['id']],frozen)
+            target=ProjectService(p.root/'branch-recipient');target.import_metadata(self.doc);target.disc_path=p.disc_path;before=deepcopy(target._document());report=transfer_review(target,content,'Transferred branches');self.assertEqual(target._document(),before)
+            target.command(dict(type='import_actor_template',content=content,name='Transferred branches',review_key=report['review_key']));self.assertFalse(target.actor_drafts)
+            request=dict(template_id=report['template']['id'],name='Branch instance',position=dict(x=192,z=576),expected_source_key=source_key(target));instance=review(target,request)
+            for field in ('branches','movement','facing','waits'):self.assertEqual(instance['draft'][field],frozen['components']['NpcDraft'][field])
+            target.command(dict(type='instantiate_npc_preset',**request,review_key=instance['review_key']));self.assertEqual(ProjectService.open(target.save()).actor_drafts,target.actor_drafts);target.undo();self.assertFalse(target.actor_drafts);target.redo();self.assertEqual(target.actor_drafts[instance['entity_id']],instance['draft'])
+            before=deepcopy((target._document(),target.undo_stack,target.redo_stack))
+            for fields in (dict(target_pc=True),dict(target_pc=32768),dict(target_pc=-1),dict(target_pc=17,condition=0),dict(target_pc=9)):
+                forged=deepcopy(value);forged['template']['components']['NpcDraft']['branches']['entries'][branch]=fields
+                with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Forged branches')
+            forged=deepcopy(value);forged['template']['components']['NpcDraft']['branches']['entries']={branch[:-4]+'ffff':dict(target_pc=17)}
+            with self.assertRaises((ProjectError,NativeError)):transfer_review(target,json.dumps(forged),'Missing branch')
+            self.assertEqual((target._document(),target.undo_stack,target.redo_stack),before)
+            target.actor_templates[report['template']['id']]['components']['NpcDraft']['branches']['entries'][branch]=dict(target_pc=9)
+            with self.assertRaises((ProjectError,NativeError)):review(target,dict(request,name='Invalid instance',expected_source_key=source_key(target)))
+
 if __name__=='__main__':unittest.main()

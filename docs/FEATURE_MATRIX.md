@@ -1,5 +1,33 @@
 # Legaia SDK feature matrix
 
+## Portable NPC branch presets v8 - 2026-10-05
+
+NPC presets now freeze independent branch destinations with all six earlier edit
+families. Capture, export, import review and new-instance placement qualify the
+complete frozen script composition against the retail donor. Metadata-only v8
+stores stable branch IDs and typed target PCs; original boundaries, conditions,
+selectors and dispatch remain native-qualified. Earlier v1-v7 envelopes and bounds
+remain available. Branch-bearing files cannot use an older schema. Import creates
+only a library entry; reviewed placement creates an independent undoable NPC.
+
+Validation: 19 focused Python checks with private retail input and both Node
+preset suites pass. Coverage includes freezing after source edits, all earlier
+families, skipped-body composition, atomic history, Save/Open, invalid/interior
+PCs, forged ownership/fields and freshly qualified stored-template placement.
+Actual browser capture/download/upload, changed-review withdrawal, library
+Undo/Redo, Save/reload, detached scene inspection and new-instance Apply pass.
+The 2583-byte v8 file and 540px import review were inspected.
+
+Recipient normal Build `ee559898bc7a73de` independently reopens branch PC14 target11,
+flag bit0, facing sector0, wait11, movement X3200/Z5696/MOVE_ID10, appearance105/13
+and text `Wait NPC`. Source drafts and recipient imports stay unchanged. Package
+SHA256: `3a1ee99cfc40358682941c2afc850393303255f64b6e39f309072d47a0a24f71`.
+Evidence: `local-output/sdk-20260909/npc-branches-presets-20261005/proof.json`.
+
+This supersedes the earlier branch-preset capture restriction. No game launch or
+full-disc export occurred. Runtime activation, story reachability, scheduling and
+termination remain unverified; manual acceptance is deferred and the goal active.
+
 ## Saved NPC branch explanations - 2026-10-05
 
 Saved-build comparison now explains source-qualified NPC branch destination words

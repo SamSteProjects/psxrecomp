@@ -29,6 +29,12 @@ def effective_man(project,draft,context):
     return bytes(candidate)
 
 
+def qualify(project,draft):
+    validate(project,draft)
+    context=project._branch_context(draft['donor_entity_id'])
+    return context.patch_composed(effective_man(project,draft,context),draft['branches']['entries'])
+
+
 def validate(project, draft):
     if 'branches' not in draft:
         return

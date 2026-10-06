@@ -65,7 +65,8 @@ class NpcBranchesTests(TestCase):
                 with self.assertRaises(ProjectError):p.command(dict(type='set_actor_draft_branches',**request,review_key=accepted['review_key']))
                 p.actor_drafts[id]['position']['x']=128;p.command(dict(type='set_actor_draft_branches',**request,review_key=accepted['review_key']));after=deepcopy(p.actor_drafts);self.assertEqual(source(p,id)['options']['targets'][0]['effective_values'],dict(target_pc=5));p.undo();self.assertEqual(p.actor_drafts,before);p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,after)
                 self.assertEqual(preview(p,dict(entity_id=id,count=1,step=dict(x=64,z=0),name='Branch copy'))['copies'][0]['draft']['branches'],after[id]['branches'])
-                with self.assertRaises(ProjectError):p.command(dict(type='create_npc_preset',entity_id=id,name='Branch resident'))
+                p.command(dict(type='create_npc_preset',entity_id=id,name='Branch resident'))
+                self.assertEqual(next(iter(p.actor_templates.values()))['components']['NpcDraft']['branches'],after[id]['branches'])
                 with http_server(p) as (server,post):
                     server.RequestHandlerClass.log_message=lambda *args:None
                     self.assertEqual(post('/api/npc-branches-source',dict(entity_id=id))[0],200)

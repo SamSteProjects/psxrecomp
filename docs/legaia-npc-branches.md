@@ -25,8 +25,8 @@ Review qualifies the complete branch set against the existing own script edits;
 Apply makes one Undo step. Changing inputs withdraws the proposal. Uncheck and
 apply to restore the Retail destination. Undo/Redo and Save/Open retain entries.
 Normal compressed and streaming Build paths compose branches last. Repetition
-qualifies and retains branch entries. Branch-bearing preset capture currently
-rejects; portable presets are still pending. Saved-script comparison now qualifies
+qualifies and retains branch entries. Preset capture and portable metadata v8
+retain branch entries with native composition checks. Saved-script comparison qualifies
 branch words and retained edits in instructions skipped by changed edges.
 
 Thirteen focused Python checks pass with private retail input enabled. A fresh
@@ -76,3 +76,31 @@ file hash remain unchanged. Evidence:
 Portable branch presets remain pending. No game launch, new Build or full-disc
 export occurred; branch activation, story reachability and termination remain
 unverified. Manual gameplay acceptance stays deferred and the SDK goal is active.
+
+## Portable NPC branch presets v8 - 2026-10-05
+
+NPC presets now freeze independent branch destinations with all six earlier edit
+families. Capture, export, import review and new-instance placement qualify the
+complete frozen script composition against the retail donor. Metadata-only v8
+stores stable branch IDs and typed target PCs; original boundaries, conditions,
+selectors and dispatch remain native-qualified. Earlier v1-v7 envelopes and bounds
+remain available. Branch-bearing files cannot use an older schema. Import creates
+only a library entry; reviewed placement creates an independent undoable NPC.
+
+Validation: 19 focused Python checks with private retail input and both Node
+preset suites pass. Coverage includes freezing after source edits, all earlier
+families, skipped-body composition, atomic history, Save/Open, invalid/interior
+PCs, forged ownership/fields and freshly qualified stored-template placement.
+Actual browser capture/download/upload, changed-review withdrawal, library
+Undo/Redo, Save/reload, detached scene inspection and new-instance Apply pass.
+The 2583-byte v8 file and 540px import review were inspected.
+
+Recipient normal Build `ee559898bc7a73de` independently reopens branch PC14 target11,
+flag bit0, facing sector0, wait11, movement X3200/Z5696/MOVE_ID10, appearance105/13
+and text `Wait NPC`. Source drafts and recipient imports stay unchanged. Package
+SHA256: `3a1ee99cfc40358682941c2afc850393303255f64b6e39f309072d47a0a24f71`.
+Evidence: `local-output/sdk-20260909/npc-branches-presets-20261005/proof.json`.
+
+This supersedes the earlier branch-preset capture restriction. No game launch or
+full-disc export occurred. Runtime activation, story reachability, scheduling and
+termination remain unverified; manual acceptance is deferred and the goal active.
