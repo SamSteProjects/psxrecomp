@@ -2,13 +2,13 @@
 
 Select an existing NPC draft in its scene and choose **Repeat draft...** in the
 Inspector. Enter a name prefix, copy count and X/Z spacing, then choose Preview.
-Copy001 is one spacing step from the original, copy002 two steps, and so on.
+In **Line**, copy001 is one spacing step from the original, copy002 two steps, and so on.
 Each copy retains the original retail donor binding and receives an independent
 project UUID. Names end in a three-digit sequence.
 
 Spacing uses integer multiples of64 retail units. Every resulting position must
 fit the existing placement bounds. The total project limit is128 NPC drafts.
-Zero spacing is allowed; coincident placements remain the author's choice.
+In Line, zero spacing is allowed; coincident placements remain the author's choice.
 
 **Inspect copies in scene** shows a detached proposal. Use Proposed/Current to
 compare while retaining the camera, Return to draft copies to retain the review,
@@ -19,6 +19,40 @@ Apply revalidates the source scene, original and full draft collection against
 the reviewed snapshot. A stale or invalid last copy rejects the whole command.
 All copies enter one Undo/Redo history entry. Save retains them; each copy can
 then be renamed, moved, given another donor or deleted independently.
+
+
+## Rectangular grid
+
+Choose **Rectangular grid**, then enter **Grid columns, including original**.
+The original occupies the first cell; copy count counts only new drafts. Copies
+fill across X columns, then continue in Z rows. X step is column spacing and Z
+step is row spacing; both can be negative within placement bounds.
+
+For five copies and three columns, cell order is:
+
+| Cell | X offset | Z offset |
+| --- | --- | --- |
+| Original | 0 | 0 |
+| Copy001 | X step | 0 |
+| Copy002 | 2 × X step | 0 |
+| Copy003 | 0 | Z step |
+| Copy004 | X step | Z step |
+| Copy005 | 2 × X step | Z step |
+
+Columns must be an integer from2 through copy count plus1. X spacing must be
+nonzero. Z spacing must be nonzero when copies reach another row; a single row
+can use zero Z spacing. Every resulting X/Z must still fit64..16384 on the retail
+grid. Pattern, columns and spacing changes clear the accepted preview.
+Grid reviews use `draft-repeat-grid.v1`; line review identities are unchanged.
+The same detached scene inspection, atomic Undo/Redo and Save/Open workflow applies.
+
+Offline 2026-10-05 evidence: 12 focused Python cases and expanded Node checks pass.
+Private actual browser grid/line/invalid review, scene positions, Apply/Undo/Redo/
+Save/reload and disk reopen pass. Prepared native PROT readback matches all six
+draft positions and MAN hash, with59 partition-one records and one growth sector.
+The 540px controls are inspected. Evidence:
+`local-output/sdk-20260909/npc-grid-repetition-20261005/{proof,native-proof}.json`.
+This establishes authored placement/serialization; gameplay remains deferred.
 
 ## Build and runtime boundaries
 

@@ -1,6 +1,27 @@
 # Legaia SDK validation plan
 
 
+
+## NPC grid repetition checkpoint — 2026-10-05
+
+Twelve focused Python repetition/review cases and expanded Node coordinate checks
+pass. Cover row-major grid with negative spacing, distinct pattern binding, stale
+columns rejection, project-wide count limit, grid/bounds validation, single-row
+zero Z spacing, detached preview, one batch history entry and persistence.
+Actual private HTTP/browser review and detached scene pass exact grid coordinates;
+line omits optional columns and keeps legacy placement. Pattern changes withdraw
+Apply, multi-row zero Z rejects, preview creates no drafts, and Apply/Undo/Redo/
+Save/reload plus independent disk reopen pass. No page errors; 540px inspected.
+Native prepared PROT reopen/decompression matches all six draft placements and
+final MAN hash, with partition-one count59 and one growth sector. Original donor
+binding/imports stay unchanged. No normal Build, game, install or disc export.
+Proof: `local-output/sdk-20260909/npc-grid-repetition-20261005/proof.json` and
+`native-proof.json` in the same directory. Initial out-of-bounds fixtures and
+logical-versus-physical table-offset assumptions were corrected before acceptance.
+Campaign follow-up: grid columns/count edges, all four spacing sign combinations,
+close during scene inspection, multi-scene drafts, normal-package routes and
+runtime spawning, scheduling, visibility, collision and actor-pool total headroom.
+
 ## NPC Build scope presentation checkpoint — 2026-10-05
 
 Ten focused Python draft repetition/review/HTTP cases, both existing Node contracts

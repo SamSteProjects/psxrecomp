@@ -2690,6 +2690,7 @@ class EditorHandler(BaseHTTPRequestHandler):
                 if route in ('/api/draft-repeat','/api/draft-repeat-scene'):
                     from .draft_repeat import preview as draft_repeat_preview, proposal_view
                     fields={'entity_id','count','step','name'}
+                    if 'columns' in body:fields.add('columns')
                     if set(body)!=(fields|{'review_key'} if route.endswith('-scene') else fields):
                         raise ProjectError('Draft repeat request has unsupported fields')
                     project=self.server.project

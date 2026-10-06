@@ -1,5 +1,34 @@
 # Legaia SDK status — 2026-10-05
 
+
+## Rectangular NPC draft repetition — 2026-10-05
+
+**Repeat draft → Rectangular grid** now reviews independent donor-bound copies
+across columns, then rows. The original occupies cell zero; copy count excludes
+it. X step spaces columns and Z step spaces rows, using the existing 64-unit
+placement grid and bounds. Columns must be 2..copy-count-plus-one; zero column
+spacing rejects, and rows require nonzero Z spacing when another row is used.
+Negative spacing is supported when every resulting position remains valid.
+
+Grid review uses a distinct algorithm/key while existing line requests, positions
+and deterministic identities remain unchanged. Pattern/column/spacing edits clear
+the accepted report. Detached scene inspection uses the exact reviewed grid;
+Apply revalidates source/draft state and creates one existing batch Undo entry.
+Copies stay individually editable and persist through Save/Open. No new retail
+structure, serializer, runtime spawning or gameplay capability is inferred.
+
+Validation: 12 focused Python repetition/review cases, expanded Node coordinate
+checks and module syntax pass. Real private browser checks cover grid/line review,
+negative row spacing, invalid zero row spacing, pattern-change withdrawal, exact
+proposal scene coordinates, atomic Apply/Undo/Redo/Save/reload and independent
+disk reopen. The 540px controls are inspected, with no page errors. Native prepared
+PROT readback matches all six appended positions (original plus five copies),
+59 partition-one records and one growth sector; input project files stay unchanged
+during native preparation/readback. The first fixtures crossed retail bounds and
+the first readback used a logical alias offset; corrected checks pass. No normal
+Build, game launch, install or full-disc export occurs. Evidence:
+`local-output/sdk-20260909/npc-grid-repetition-20261005/{proof,native-proof}.json`.
+
 ## Current NPC Build scope in repetition/review — 2026-10-05
 
 NPC repetition and experimental archive review now share the normal builder's

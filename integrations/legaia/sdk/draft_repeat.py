@@ -6,8 +6,8 @@ from importer.core import ImportError as RetailImportError
 from .npc_build import NORMAL_BUILD_SCOPE_NOTE
 
 def preview(project, request):
-    if not isinstance(request,dict) or set(request)!={'entity_id','count','step','name'}:
-        raise ProjectError('Draft repetition requires original draft, count, X/Z step and name prefix only')
+    if not isinstance(request,dict) or set(request) not in ({'entity_id','count','step','name'}, {'entity_id','count','step','name','columns'}):
+        raise ProjectError('Draft repetition requires original draft, count, X/Z step, name prefix and optional grid columns only')
     identifier=request['entity_id'];count=request['count'];step=request['step'];name=request['name']
     if not isinstance(identifier,str) or identifier not in project.actor_drafts:
         raise ProjectError('Choose an existing NPC draft')
@@ -20,16 +20,22 @@ def preview(project, request):
         raise ProjectError('Copy steps require X/Z integer multiples of64 within placement bounds')
     if not isinstance(name,str) or not name.strip() or len(name.strip())>116:
         raise ProjectError('Copy name prefix must contain1 through116 characters')
+    columns=request.get('columns')
+    if 'columns' in request:
+        if type(columns) is not int or not 2<=columns<=count+1:
+            raise ProjectError('Grid columns must be an integer from2 through copy count plus1')
+        if not step['x'] or (count>=columns and not step['z']):
+            raise ProjectError('Grid spacing requires a nonzero X step and a nonzero Z step when copies reach another row')
     normalized={**request,'name':name.strip()}
     review=digest({'project_root':str(project.root),'scene':project.active_scene,
                    'source':digest(project.imports[project.active_scene]),'drafts':project.actor_drafts,
-                   'request':normalized,'algorithm':'draft-repeat.v1'})
+                   'request':normalized,'algorithm':'draft-repeat-grid.v1' if columns is not None else 'draft-repeat.v1'})
     copies=[]
     for index in range(1,count+1):
         new_id='authored-actor://'+str(uuid.uuid5(uuid.NAMESPACE_URL,review+'/'+str(index)))
         if new_id in project.actor_drafts:raise ProjectError('Repeated draft identity already exists')
         value={**deepcopy(original),'name':f"{name.strip()} {index:03d}",
-               'position':{axis:original['position'][axis]+index*step[axis] for axis in ('x','z')}}
+               'position':{axis:original['position'][axis]+(index if columns is None else index%columns if axis=='x' else index//columns)*step[axis] for axis in ('x','z')}}
         try:
             project._validate_actor_draft(new_id,value)
         except RetailImportError as exc:
@@ -51,9 +57,9 @@ def proposal_view(project, report):
     return view
 
 def apply(project, body):
-    if set(body)!={'type','entity_id','count','step','name','review_key'}:
+    if set(body) not in ({'type','entity_id','count','step','name','review_key'}, {'type','entity_id','count','step','name','review_key','columns'}):
         raise ProjectError('Repeat draft accepts reviewed repetition fields only')
-    report=preview(project,{key:body[key] for key in ('entity_id','count','step','name')})
+    report=preview(project,{key:body[key] for key in body if key not in ('type','review_key')})
     if body['review_key']!=report['review_key']:
         raise ProjectError('NPC drafts changed since preview; review the copies again')
     after={row['entity_id']:deepcopy(row['draft']) for row in report['copies']}

@@ -21,6 +21,32 @@ class DraftRepeatTests(unittest.TestCase):
         p.command(self.command());self.assertEqual(len(p.undo_stack),depth+1);self.assertNotEqual(authored_state_key(p),key);self.assertEqual(p.actor_drafts[self.original],before[self.original]);self.assertEqual(p.imports,source)
         p.undo();self.assertEqual(p.actor_drafts,before);self.assertFalse(p.dirty);p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,p.actor_drafts)
         new=report['copies'][0]['entity_id'];p.command({'type':'set_actor_draft_position','entity_id':new,'position':{'x':384,'z':384}});self.assertEqual(p.actor_drafts[self.original],before[self.original]);self.assertEqual(p.actor_drafts[report['copies'][1]['entity_id']]['position'],{'x':256,'z':512})
+    def test_grid_row_major_atomic_history_persistence_and_pattern_binding(self):
+        p=self.p;p.command({'type':'set_actor_draft_position','entity_id':self.original,'position':{'x':128,'z':1024}});before=deepcopy(p.actor_drafts);self.request.update(count=5,columns=3,step={'x':64,'z':-128})
+        report=preview(p,self.request)
+        self.assertEqual([r['draft']['position'] for r in report['copies']],
+                         [{'x':192,'z':1024},{'x':256,'z':1024},{'x':128,'z':896},{'x':192,'z':896},{'x':256,'z':896}])
+        line=preview(p,{k:v for k,v in self.request.items() if k!='columns'})
+        self.assertNotEqual(line['review_key'],report['review_key'])
+        stale={'type':'repeat_actor_draft',**self.request,'columns':2,'review_key':report['review_key']}
+        with self.assertRaises(ProjectError):p.command(stale)
+        self.assertEqual(p.actor_drafts,before)
+        depth=len(p.undo_stack);p.command(self.command());self.assertEqual(len(p.undo_stack),depth+1)
+        self.assertEqual(p.actor_drafts[self.original],before[self.original]);p.undo();self.assertEqual(p.actor_drafts,before)
+        p.redo();self.assertEqual(ProjectService.open(p.save()).actor_drafts,p.actor_drafts)
+
+    def test_grid_validation_and_last_row_bounds_leave_project_unchanged(self):
+        before=deepcopy((self.p.actor_drafts,self.p.undo_stack))
+        for edits in ({'columns':True},{'columns':1},{'columns':5},{'columns':2.5},
+                      {'columns':2,'step':{'x':0,'z':64}}, {'columns':2,'step':{'x':64,'z':0}},
+                      {'columns':2,'step':{'x':64,'z':16320}}):
+            with self.assertRaises((ProjectError,ValueError)):preview(self.p,{**self.request,**edits})
+        self.assertEqual((self.p.actor_drafts,self.p.undo_stack),before)
+        # One grid row requires no Z spacing; the original remains its first cell.
+        self.p.command({'type':'set_actor_draft_position','entity_id':self.original,'position':{'x':384,'z':256}})
+        row=preview(self.p,{**self.request,'columns':4,'step':{'x':-64,'z':0}})
+        self.assertEqual([r['draft']['position']['x'] for r in row['copies']],[320,256,192])
+
     def test_last_copy_bounds_count_spacing_invalid_fields_fail_without_mutation(self):
         p=self.p;before=deepcopy(p.actor_drafts);history=deepcopy(p.undo_stack)
         for edits in [{'count':True},{'count':0},{'count':128},{'count':3,'step':{'x':8192,'z':0}},{'step':{'x':32,'z':0}},{'step':{'x':64,'y':0}},{'name':''},{'name':'x'*117},{'bytes':'00'}]:
