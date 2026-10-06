@@ -1,5 +1,5 @@
 import {openAnimationSources} from './animation-sources.js';
-import {validateExternalSampling,createExternalSamplingControl} from './animation-glb-sampling.js';
+import {validateExternalSampling,validateExternalSamplingRange,createExternalSamplingControl} from './animation-glb-sampling.js';
 import {validateObjectMapping,withObjectMapping,createObjectMappingControl,objectNodeInventory} from './animation-glb-mapping.js';
 import {glbAnimationChoices,populateGlbClipSelect,selectedGlbClipIndex} from './animation-glb-clips.js';
 // External rigid-channel interchange; preview and review never author the project.
@@ -17,7 +17,7 @@ const fail=message=>{throw new Error(message);};
 const actor=(value,scene)=>typeof value==='string'&&value.startsWith(scene+'/actors/man-p1/')&&/^\d{4}$/.test(value.slice((scene+'/actors/man-p1/').length));
 const bindingKeys=['schema_version','entity_id','scene_id','asset_id','animation_id','source_record_sha256','effective_record_sha256','project_source_key','frame_count','object_count','clip_fps','coordinate_conversion','node_names'];
 const reviewKeys=['schema_version','entity_id','project_source_key','review_key','candidate_sha256','glb_sha256','changed_axes','frame_count','object_count','maximum_translation_error','maximum_angular_error_degrees','changes','ownership','project_changed','limitations'];
-const reviewMetadata=['animation_id','source_record_sha256','effective_record_sha256','fps','sampled_channel_count','quantization','scope','gameplay_verified','file_animation_index','external_object_nodes','external_sampling'];
+const reviewMetadata=['animation_id','source_record_sha256','effective_record_sha256','fps','sampled_channel_count','quantization','scope','gameplay_verified','file_animation_index','external_object_nodes','external_sampling','external_time_range'];
 
 export function animationGlbContext(value){
   if(!exact(value,['projectPath','sceneId','mode','sourceKey'])||!text(value.projectPath,32768)||!/^scene:\/\/[A-Za-z0-9_-]{1,128}$/.test(value.sceneId)||value.mode!=='edit'||!hash(value.sourceKey))fail('Animation import requires the current editable scene and source key.');
@@ -38,6 +38,7 @@ export function decodeAnimationGlbBinding(value,entityId,context){
 export function decodeAnimationGlbReview(value,binding,entityId,context,glbHash,animationIndex=null){
   binding=decodeAnimationGlbBinding(binding,entityId,context);
   if(!same(value?.external_sampling,binding.external_sampling))fail('Review differs from external sampling.');
+  validateExternalSamplingRange(value,binding);
   if(!same(value?.external_object_nodes,binding.external_object_nodes))fail('Review differs from the explicit object mapping.');
   if(animationIndex===null?Object.hasOwn(value??{},'file_animation_index'):value?.file_animation_index!==animationIndex||!integer(animationIndex,0,63))fail('Review differs from the selected GLB animation.');
   if(!object(value)||!reviewKeys.every(key=>Object.hasOwn(value,key))||Object.keys(value).some(key=>!reviewKeys.includes(key)&&!reviewMetadata.includes(key))||value.schema_version!=='legaia.animation-glb-review.v1'||value.entity_id!==entityId||value.project_source_key!==context.sourceKey||!hash(value.review_key)||!hash(value.candidate_sha256)||!hash(value.glb_sha256)||value.glb_sha256!==glbHash||value.frame_count!==binding.frame_count||value.object_count!==binding.object_count||!integer(value.changed_axes,0,MAX_AXES)||!Array.isArray(value.changes)||value.changes.length!==value.changed_axes||!finite(value.maximum_translation_error,0,.5)||!finite(value.maximum_angular_error_degrees,0,2.2)||value.project_changed!==false||!Array.isArray(value.limitations)||value.limitations.length>64||value.limitations.some(line=>!text(line)))fail('Animation review differs from the selected files or current source. Review them again.');

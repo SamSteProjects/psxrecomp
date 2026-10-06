@@ -4,6 +4,25 @@ from importer.animation_glb import import_animation_glb,sampling_config
 from importer.core import ImportError
 from test_animation_glb import document,encode,record
 class ExternalSampling(unittest.TestCase):
+ def test_repeat_ping_pong_reverse_and_boundary_frames_have_exact_native_bytes(self):
+  source,glb=self.fixture()
+  cases=[('repeat',3,15,[10,0,10]),('repeat',4,-15,[0,10,0]),('ping_pong',3,15,[10,20,10]),('ping_pong',2,-15,[0,10,20]),('repeat',3,0,[10,10,10])]
+  for mode,start,rate,expected in cases:
+   with self.subTest(mode=mode,start=start,rate=rate):
+    actual,report=import_animation_glb(source,glb,fps=15,external_sampling=dict(start_seconds=start,rate=rate,mode=mode))
+    self.assertEqual(actual,record([[([x,0,0],[0,0,0])] for x in expected]));self.assertEqual(len(actual),len(source))
+    self.assertEqual(report['external_time_range'],dict(start_seconds=2.,end_seconds=4.));self.assertIn(mode,report['quantization']['timeline'])
+ def test_clamp_canonicalization_and_static_loop_are_compatible(self):
+  self.assertEqual(sampling_config(dict(start_seconds=0,rate=1,mode='clamp')),dict(start_seconds=0.,rate=1.))
+  for mode in [None,True,0,'loop',[],{}]:
+   with self.subTest(mode=mode),self.assertRaises(ImportError):sampling_config(dict(start_seconds=0,rate=1,mode=mode))
+  frames=[[([4,0,0],[0,0,0])]]*3;doc,payload=document(frames);doc['animations']=[];doc['nodes'][0]['translation']=[4,0,0]
+  for mode in ['repeat','ping_pong']:
+   actual,report=import_animation_glb(record(frames),encode(doc,payload),fps=15,external_sampling=dict(start_seconds=0,rate=-1,mode=mode));self.assertEqual(actual,record(frames));self.assertIsNone(report['external_time_range'])
+ def test_step_repeat_and_ping_pong_use_the_shared_clip_extent(self):
+  source,glb=self.fixture(step=True)
+  for mode,expected in [('repeat',[10,0,10]),('ping_pong',[10,20,10])]:
+   actual,_=import_animation_glb(source,glb,fps=15,external_sampling=dict(start_seconds=3,rate=15,mode=mode));self.assertEqual(actual,record([[([x,0,0],[0,0,0])] for x in expected]))
  def fixture(self,step=False):
   frames=[[([x,0,0],[0,0,0])] for x in [0,10,20]];doc,payload=document(frames,mode='STEP' if step else 'LINEAR',terminal=False);payload=bytearray(payload)
   sampler=doc['animations'][0]['samplers'][0];accessor=doc['accessors'][sampler['input']];view=doc['bufferViews'][accessor['bufferView']];offset=view.get('byteOffset',0)+accessor.get('byteOffset',0)

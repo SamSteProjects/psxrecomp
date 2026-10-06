@@ -1,5 +1,5 @@
 import {openAnimationSources} from './animation-sources.js';
-import {validateExternalSampling,createExternalSamplingControl} from './animation-glb-sampling.js';
+import {validateExternalSampling,validateExternalSamplingRange,createExternalSamplingControl} from './animation-glb-sampling.js';
 import {validateObjectMapping,withObjectMapping,createObjectMappingControl,objectNodeInventory} from './animation-glb-mapping.js';
 import {glbAnimationChoices,populateGlbClipSelect,selectedGlbClipIndex} from './animation-glb-clips.js';
 import {animationGlbContext} from './animation-glb.js';
@@ -17,6 +17,7 @@ export function decodeRetainedGlbBinding(value,options,context){
 export function decodeRetainedGlbReview(value,options,context,binding,frames,glbHash,animationIndex=null){
  decodeRetainedGlbBinding(binding,options,context);
  if(!same(value?.analysis?.external_sampling,binding.external_sampling))fail('Retained Review differs from external sampling.');
+ validateExternalSamplingRange(value?.analysis,binding);
  if(!same(value?.analysis?.external_object_nodes,binding.external_object_nodes))fail('Retained Review differs from the explicit object mapping.');
  if(animationIndex===null?Object.hasOwn(value?.analysis??{},'file_animation_index'):value?.analysis?.file_animation_index!==animationIndex||!integer(animationIndex,0,63))fail('Retained Review differs from the selected GLB animation.');
  const request=value?.content_request,a=value?.analysis;

@@ -72,13 +72,30 @@ def _finite_number(value):
 
 
 def sampling_config(value):
-    if not isinstance(value,dict) or set(value)!={'start_seconds','rate'}:
-        raise ImportError('External sampling requires start_seconds and rate only')
+    if (not isinstance(value,dict) or not {'start_seconds','rate'}<=set(value)
+            or set(value)-{'start_seconds','rate','mode'}):
+        raise ImportError('External sampling requires start_seconds, rate and optional mode only')
     start,rate=value['start_seconds'],value['rate']
     if (not _finite_number(start) or not 0<=start<=3600 or
             not _finite_number(rate) or not -16<=rate<=16):
         raise ImportError('External sampling requires start 0..3600 seconds and rate -16..16')
-    return dict(start_seconds=float(start),rate=float(rate))
+    mode=value.get('mode','clamp')
+    if mode not in ('clamp','repeat','ping_pong'):
+        raise ImportError('External sampling mode must be clamp, repeat or ping_pong')
+    result=dict(start_seconds=float(start),rate=float(rate))
+    # Preserve canonical legacy bindings/review identities for endpoint hold.
+    if mode!='clamp':result['mode']=mode
+    return result
+
+
+def _external_time(seconds,mode,interval):
+    if mode=='clamp' or interval is None:return seconds
+    start,end=interval['start_seconds'],interval['end_seconds']
+    duration=end-start
+    if duration==0:return start
+    if mode=='repeat':return start+(seconds-start)%duration
+    phase=(seconds-start)%(2*duration)
+    return start+(phase if phase<=duration else 2*duration-phase)
 
 
 def _vector(value, count, label):
@@ -584,9 +601,10 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     """Sample external poses at explicit 1..120 fps with fixed native frame count.
 
     At i/fps, the float32 representation matches glTF key storage and the SDK
-    exporter. Before/after key extents hold their endpoint value; no appended
-    source frame is allocated. Y reflection is inverted before signed12 and
-    source-biased 8-bit Euler quantization. Equivalent source angles survive.
+    exporter. Default sampling holds endpoints; explicit cyclic sampling maps
+    the shared clip extent. No appended source frame is allocated. Y reflection
+    is inverted before signed12 and source-biased 8-bit Euler quantization.
+    Equivalent source angles survive.
     """
     if not isinstance(baseline, bytes):
         raise ImportError("Animation GLB baseline must be immutable record bytes")
@@ -603,11 +621,16 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
     mapping, static, parents = _nodes(doc, source["bone_count"], object_node_indices)
     order = _hierarchy_order(mapping, parents, source["frame_count"])
     tracks = _tracks(doc, _Accessors(doc, payload), mapping, (3600 if sampling is not None else source["frame_count"] / fps), animation_index, hierarchy_nodes=order)
+    mode=sampling.get('mode','clamp') if sampling is not None else 'clamp'
+    interval=(dict(start_seconds=min(track[0][0] for track in tracks.values()),
+                   end_seconds=max(track[0][-1] for track in tracks.values())) if tracks else None)
     edits, maximum_translation, maximum_angle, preserved = [], 0.0, 0.0, 0
     for frame in source["frames"]:
-        seconds=struct.unpack('<f',struct.pack('<f',frame['frame_index']/fps))[0]
+        seconds=(frame['frame_index']/fps if mode!='clamp' else
+                 struct.unpack('<f',struct.pack('<f',frame['frame_index']/fps))[0])
         if sampling is not None:seconds=sampling['start_seconds']+seconds*sampling['rate']
         time = struct.unpack("<f", struct.pack("<f", seconds))[0]
+        time=_external_time(time,mode,interval)
         poses = _sample_hierarchy(order, parents, static, tracks, time)
         for channel in frame["object_transforms"]:
             obj, before_t, before_r = channel["object_index"], channel["translation"], channel["rotation_psx"]
@@ -650,6 +673,13 @@ def import_animation_glb(baseline: bytes, content: bytes, *, fps: float, animati
         "scope": "existing-rigid-animation-channels-only", "gameplay_verified": False,
     }
     if sampling is not None:report['external_sampling']=sampling
+    if mode!='clamp':
+        report['external_time_range']=interval
+        report['quantization']['timeline']=report['quantization']['timeline'].replace(
+            'float32(i/fps)','i/fps').replace('endpoint hold',
+            'shared '+mode+' time mapping; individual track endpoints hold')
+        report['quantization']['timeline']+=('; '+mode+' over the selected GLB animation key extent '+str(interval)+
+            '; repeat excludes the final endpoint; ping_pong includes both endpoints; zero extent/static poses hold')
     if object_node_indices is not None:
         report['external_object_nodes'] = list(object_node_indices)
     if animation_index is not None:

@@ -1,5 +1,16 @@
 # Source-bound animation GLB authoring
 
+## External timeline behavior
+
+After loading an edited GLB and its current binding, enable **Sample an external time range**, choose start/rate and select **External timeline behavior**:
+
+- **Hold endpoints** preserves the existing sampling behavior and old bindings.
+- **Repeat clip** wraps the selected animation's shared first-to-last channel key range. Its final endpoint wraps to the first.
+- **Ping-pong clip** reverses at both ends of that same range.
+
+Negative rate reverses traversal; zero holds the chosen mapped time. Single-key/static clips hold rather than inventing a duration. Individual shorter tracks still hold their own endpoints within the shared interval. Choose Review again after changing behavior, then Preview and Apply. Both imported actor and allocated-record editors support the same controls. Native frame/object counts stay fixed; this samples values into existing channels and does not set gameplay loop flags or establish retail playback FPS. Original-input recipes retain the mode and source extent is reported in Review. Existing start/rate bindings need no conversion.
+
+
 The SDK can export an existing imported actor's effective rigid animation to
 GLB, review a GLB edited in an external application, and apply only its changed
 source axes through normal animation commands. The accompanying binding JSON
